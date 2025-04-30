@@ -255,7 +255,7 @@ public:
     vector<Critter*> AttachedCritters {};
 
 private:
-    raw_ptr<Player> _player {};
+    refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
     vector<Item*> _invItems {};
     nanotime _talkNextTime {};

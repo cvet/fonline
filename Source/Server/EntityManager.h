@@ -55,7 +55,7 @@ public:
     ~EntityManager() = default;
 
     [[nodiscard]] auto GetEntity(ident_t id) noexcept -> ServerEntity*;
-    [[nodiscard]] auto GetEntities() noexcept -> const unordered_map<ident_t, ServerEntity*>& { return _allEntities; }
+    [[nodiscard]] auto GetEntities() noexcept -> const unordered_map<ident_t, refcount_ptr<ServerEntity>>& { return _allEntities; }
     [[nodiscard]] auto GetEntitiesCount() const noexcept -> size_t { return _allEntities.size(); }
     [[nodiscard]] auto GetPlayer(ident_t id) noexcept -> Player*;
     [[nodiscard]] auto GetPlayers() noexcept -> const unordered_map<ident_t, Player*>& { return _allPlayers; }
@@ -78,7 +78,7 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         const auto it = _allEntities.find(id);
-        return it != _allEntities.end() ? dynamic_cast<T*>(it->second) : nullptr;
+        return it != _allEntities.end() ? dynamic_cast<T*>(it->second.get()) : nullptr;
     }
 
     template<typename T>
@@ -86,7 +86,7 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         const auto it = _allEntities.find(id);
-        return it != _allEntities.end() ? dynamic_cast<const T*>(it->second) : nullptr;
+        return it != _allEntities.end() ? dynamic_cast<const T*>(it->second.get()) : nullptr;
     }
 
     void LoadEntities();
@@ -140,7 +140,7 @@ private:
     unordered_map<ident_t, Critter*> _allCritters {};
     unordered_map<ident_t, Item*> _allItems {};
     unordered_map<hstring, unordered_map<ident_t, CustomEntity*>> _allCustomEntities {};
-    unordered_map<ident_t, ServerEntity*> _allEntities {};
+    unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities {};
 
     const hstring _playerTypeName {};
     const hstring _locationTypeName {};

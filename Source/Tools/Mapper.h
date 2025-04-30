@@ -216,7 +216,7 @@ public:
 
     void DrawIfaceLayer(uint layer);
 
-    auto GetEntityInnerItems(ClientEntity* entity) const -> vector<ItemView*>;
+    auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
 
     ///@ ExportEvent
     ENTITY_EVENT(OnMapperMessage, string& /*text*/);
@@ -228,7 +228,7 @@ public:
     ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     FileSystem ContentFileSys {};
-    vector<unique_release_ptr<MapView>> LoadedMaps {};
+    vector<refcount_ptr<MapView>> LoadedMaps {};
     unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
     bool PressedKeys[0x100] {};
@@ -294,7 +294,7 @@ public:
     uint TabIndex[INT_MODE_COUNT] {};
     int InContScroll {};
     int ListScroll {};
-    ItemView* InContItem {};
+    refcount_ptr<ItemView> InContItem {};
     bool DrawRoof {};
     int TileLayer {};
     IRect IntBSelectItem {};

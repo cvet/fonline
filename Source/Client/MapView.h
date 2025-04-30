@@ -213,7 +213,8 @@ public:
     auto AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
-    auto GetCritters() -> const vector<CritterHexView*>&;
+    auto GetCritters() const -> const vector<refcount_ptr<CritterHexView>>& { return _critters; }
+    auto GetCritters() -> vector<refcount_ptr<CritterHexView>>& { return _critters; }
     auto GetCritters(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
     void DestroyCritter(CritterHexView* cr);
@@ -228,7 +229,8 @@ public:
     auto GetItem(mpos hex, hstring pid) -> ItemHexView*;
     auto GetItem(mpos hex, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
-    auto GetItems() -> const vector<ItemHexView*>&;
+    auto GetItems() const -> const vector<refcount_ptr<ItemHexView>>& { return _allItems; }
+    auto GetItems() -> vector<refcount_ptr<ItemHexView>>& { return _allItems; }
     auto GetItems(mpos hex) -> const vector<ItemHexView*>&;
     auto GetTile(mpos hex, bool is_roof, int layer) -> ItemHexView*;
     auto GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&;
@@ -322,9 +324,9 @@ private:
     bool _mapLoading {};
     msize _mapSize {};
 
-    vector<CritterHexView*> _critters {};
+    vector<refcount_ptr<CritterHexView>> _critters {};
     unordered_map<ident_t, CritterHexView*> _crittersMap {};
-    vector<ItemHexView*> _allItems {};
+    vector<refcount_ptr<ItemHexView>> _allItems {};
     vector<ItemHexView*> _staticItems {};
     vector<ItemHexView*> _dynamicItems {};
     vector<ItemHexView*> _nonTileItems {};
@@ -411,5 +413,5 @@ private:
     unordered_set<hstring> _ignorePids {};
     vector<char> _hexTrack {};
 
-    vector<unique_release_ptr<SpritePattern>> _spritePatterns {};
+    vector<refcount_ptr<SpritePattern>> _spritePatterns {};
 };

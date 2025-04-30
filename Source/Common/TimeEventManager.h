@@ -70,7 +70,7 @@ private:
 
     raw_ptr<GameTimer> _gameTime;
     raw_ptr<ScriptSystem> _scriptSys;
-    unordered_set<raw_ptr<Entity>> _timeEventEntities {};
+    unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     raw_ptr<Entity> _curTimeEventEntity {};
     raw_ptr<const Entity::TimeEventData> _curTimeEvent {};
     uint _timeEventCounter {};

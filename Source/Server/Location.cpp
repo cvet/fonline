@@ -45,41 +45,6 @@ Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, con
     STACK_TRACE_ENTRY();
 }
 
-auto Location::GetProtoLoc() const noexcept -> const ProtoLocation*
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<const ProtoLocation*>(_proto);
-}
-
-auto Location::GetMapsRaw() noexcept -> vector<Map*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _locMaps;
-};
-
-auto Location::GetMaps() noexcept -> const vector<Map*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _locMaps;
-}
-
-auto Location::GetMaps() const -> vector<const Map*>
-{
-    STACK_TRACE_ENTRY();
-
-    return vec_static_cast<const Map*>(_locMaps);
-}
-
-auto Location::GetMapsCount() const noexcept -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_locMaps.size());
-}
-
 auto Location::GetMapByIndex(uint index) noexcept -> Map*
 {
     STACK_TRACE_ENTRY();
@@ -90,7 +55,7 @@ auto Location::GetMapByIndex(uint index) noexcept -> Map*
         return nullptr;
     }
 
-    return _locMaps[index];
+    return _locMaps[index].get();
 }
 
 auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
@@ -99,22 +64,22 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* map : _locMaps) {
+    for (auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
-            return map;
+            return map.get();
         }
     }
 
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) const noexcept -> uint
+auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    uint index = 0;
+    size_t index = 0;
 
-    for (const auto* map : _locMaps) {
+    for (const auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
             return index;
         }
@@ -122,5 +87,16 @@ auto Location::GetMapIndex(hstring map_pid) const noexcept -> uint
         index++;
     }
 
-    return static_cast<uint>(-1);
+    return static_cast<size_t>(-1);
+}
+
+void Location::AddMap(Map* map)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(map);
+
+    _locMaps.emplace_back(map);
+    map->SetLocId(GetId());
+    map->SetLocMapIndex(static_cast<uint>(_locMaps.size()));
 }

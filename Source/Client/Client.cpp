@@ -235,28 +235,25 @@ FOClient::~FOClient()
         _conn.Disconnect();
     });
 
-    if (_chosen != nullptr) {
-        _chosen->Release();
-        _chosen = nullptr;
-    }
+    _chosen = nullptr;
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         safe_call([this] { _curMap->DestroySelf(); });
         _curMap = nullptr;
     }
 
-    if (_curPlayer != nullptr) {
-        safe_call([this] { _curPlayer->DestroySelf(); });
-        _curPlayer = nullptr;
-    }
-
-    if (_curLocation != nullptr) {
+    if (_curLocation) {
         safe_call([this] { _curLocation->DestroySelf(); });
         _curLocation = nullptr;
     }
 
+    if (_curPlayer) {
+        safe_call([this] { _curPlayer->DestroySelf(); });
+        _curPlayer = nullptr;
+    }
+
     safe_call([this] {
-        for (auto* cr : _globalMapCritters) {
+        for (auto& cr : _globalMapCritters) {
             cr->DestroySelf();
         }
     });
@@ -305,12 +302,11 @@ auto FOClient::GetChosen() noexcept -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
-    if (_chosen != nullptr && _chosen->IsDestroyed()) {
-        _chosen->Release();
+    if (_chosen && _chosen->IsDestroyed()) {
         _chosen = nullptr;
     }
 
-    return _chosen;
+    return _chosen.get();
 }
 
 auto FOClient::GetMapChosen() noexcept -> CritterHexView*
@@ -324,8 +320,8 @@ auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
-    return it != _globalMapCritters.end() ? *it : nullptr;
+    const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
+    return it != _globalMapCritters.end() ? it->get() : nullptr;
 }
 
 void FOClient::TryAutoLogin()
@@ -641,7 +637,7 @@ void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
         }
 
         RUNTIME_ASSERT(!_curPlayer);
-        _curPlayer = SafeAlloc::MakeRaw<PlayerView>(this, ident_t {});
+        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
 
         OnConnected.Fire();
     }
@@ -659,7 +655,7 @@ void FOClient::Net_OnDisconnect()
 
     UnloadMap();
 
-    if (_curPlayer != nullptr) {
+    if (_curPlayer) {
         _curPlayer->DestroySelf();
         _curPlayer = nullptr;
     }
@@ -922,7 +918,7 @@ void FOClient::Net_OnAddCritter()
     const auto is_chosen = _conn.InBuf.Read<bool>();
     _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-    CritterView* cr;
+    refcount_ptr<CritterView> cr;
     CritterHexView* hex_cr;
 
     if (_curMap != nullptr) {
@@ -937,23 +933,22 @@ void FOClient::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
-        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr2) { return cr2->GetId() == cr_id; });
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
 
         if (it != _globalMapCritters.end()) {
             BreakIntoDebugger();
             (*it)->MarkAsDestroyed();
-            (*it)->Release();
             _globalMapCritters.erase(it);
         }
 
-        cr = SafeAlloc::MakeRaw<CritterView>(this, cr_id, proto);
+        cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto);
         cr->RestoreData(_tempPropertiesData);
         _globalMapCritters.emplace_back(cr);
 
         hex_cr = nullptr;
     }
 
-    ReceiveCustomEntities(cr);
+    ReceiveCustomEntities(cr.get());
 
     cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
@@ -988,6 +983,7 @@ void FOClient::Net_OnAddCritter()
     const auto attached_critters_count = _conn.InBuf.Read<uint16>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
+
     for (uint16 i = 0; i < attached_critters_count; i++) {
         attached_critters[i] = _conn.InBuf.Read<ident_t>();
     }
@@ -997,7 +993,7 @@ void FOClient::Net_OnAddCritter()
 
     if (_curMap != nullptr) {
         if (is_attached) {
-            for (auto* map_cr : _curMap->GetCritters()) {
+            for (auto& map_cr : _curMap->GetCritters()) {
                 if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
                     map_cr->MoveAttachedCritters();
                     break;
@@ -1023,10 +1019,9 @@ void FOClient::Net_OnAddCritter()
 
     if (is_chosen) {
         _chosen = cr;
-        _chosen->AddRef();
     }
 
-    OnCritterIn.Fire(cr);
+    OnCritterIn.Fire(cr.get());
 
     if (hex_cr != nullptr) {
 #if FO_ENABLE_3D
@@ -1058,6 +1053,7 @@ void FOClient::Net_OnRemoveCritter()
 
     if (_curMap != nullptr) {
         auto* cr = _curMap->GetCritter(cr_id);
+
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -1067,25 +1063,24 @@ void FOClient::Net_OnRemoveCritter()
 
         OnCritterOut.Fire(cr);
 
-        if (cr == _chosen) {
-            _chosen->Release();
+        if (_chosen == cr) {
             _chosen = nullptr;
         }
     }
     else {
-        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
+
         if (it == _globalMapCritters.end()) {
             BreakIntoDebugger();
             return;
         }
 
-        auto* cr = *it;
+        auto cr = copy(*it);
 
-        OnCritterOut.Fire(cr);
+        OnCritterOut.Fire(cr.get());
         _globalMapCritters.erase(it);
 
-        if (cr == _chosen) {
-            _chosen->Release();
+        if (_chosen == cr) {
             _chosen = nullptr;
         }
 
@@ -1187,13 +1182,7 @@ void FOClient::Net_OnCritterAction()
     const auto action_ext = _conn.InBuf.Read<int>();
     const auto is_context_item = _conn.InBuf.Read<bool>();
 
-    ItemView* context_item = nullptr;
-
-    auto context_item_release = ScopeCallback([&context_item]() noexcept {
-        if (context_item != nullptr) {
-            context_item->Release();
-        }
-    });
+    refcount_ptr<ItemView> context_item;
 
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
@@ -1201,10 +1190,10 @@ void FOClient::Net_OnCritterAction()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        context_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
+        context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(context_item);
+        ReceiveCustomEntities(context_item.get());
     }
 
     if (_curMap == nullptr) {
@@ -1219,7 +1208,11 @@ void FOClient::Net_OnCritterAction()
         return;
     }
 
-    cr->Action(action, action_ext, context_item, false);
+    cr->Action(action, action_ext, context_item.get(), false);
+
+    if (context_item) {
+        context_item->MarkAsDestroyed();
+    }
 }
 
 void FOClient::Net_OnCritterMoveItem()
@@ -1232,13 +1225,7 @@ void FOClient::Net_OnCritterMoveItem()
     const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
     const auto is_moved_item = _conn.InBuf.Read<bool>();
 
-    ItemView* moved_item = nullptr;
-
-    auto moved_item_release = ScopeCallback([&moved_item]() noexcept {
-        if (moved_item != nullptr) {
-            moved_item->Release();
-        }
-    });
+    refcount_ptr<ItemView> moved_item;
 
     if (is_moved_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
@@ -1246,10 +1233,10 @@ void FOClient::Net_OnCritterMoveItem()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        moved_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
+        moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(moved_item);
+        ReceiveCustomEntities(moved_item.get());
     }
 
     CritterView* cr;
@@ -1300,15 +1287,15 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, static_cast<int>(prev_slot), moved_item, false);
+        hex_cr->Action(action, static_cast<int>(prev_slot), moved_item.get(), false);
     }
 
-    if (moved_item != nullptr && cur_slot != prev_slot && cr->GetIsChosen()) {
+    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
         if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             moved_item->SetCritterSlot(prev_slot);
 
-            OnItemInvChanged.Fire(item, moved_item);
+            OnItemInvChanged.Fire(item, moved_item.get());
         }
     }
 
@@ -1328,13 +1315,7 @@ void FOClient::Net_OnCritterAnimate()
     const auto delay_play = _conn.InBuf.Read<bool>();
     const auto is_context_item = _conn.InBuf.Read<bool>();
 
-    ItemView* context_item = nullptr;
-
-    auto context_item_release = ScopeCallback([&context_item]() noexcept {
-        if (context_item != nullptr) {
-            context_item->Release();
-        }
-    });
+    refcount_ptr<ItemView> context_item;
 
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
@@ -1342,10 +1323,10 @@ void FOClient::Net_OnCritterAnimate()
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        context_item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
+        context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(context_item);
+        ReceiveCustomEntities(context_item.get());
     }
 
     if (_curMap == nullptr) {
@@ -1354,6 +1335,7 @@ void FOClient::Net_OnCritterAnimate()
     }
 
     auto* cr = _curMap->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
@@ -1362,7 +1344,11 @@ void FOClient::Net_OnCritterAnimate()
         cr->ClearAnim();
     }
     if (delay_play || !cr->IsAnim()) {
-        cr->Animate(state_anim, action_anim, context_item);
+        cr->Animate(state_anim, action_anim, context_item.get());
+    }
+
+    if (context_item) {
+        context_item->MarkAsDestroyed();
     }
 }
 
@@ -1511,7 +1497,7 @@ void FOClient::Net_OnCritterAttachments()
             cr->SetIsAttached(is_attached);
 
             if (is_attached) {
-                for (auto* map_cr : _curMap->GetCritters()) {
+                for (auto& map_cr : _curMap->GetCritters()) {
                     if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
                         map_cr->MoveAttachedCritters();
                         break;
@@ -1601,12 +1587,11 @@ void FOClient::Net_OnChosenRemoveItem()
         return;
     }
 
-    auto* item_clone = item->CreateRefClone();
-    auto item_clone_release = ScopeCallback([item_clone]() noexcept { item_clone->Release(); });
+    auto item_clone = item->CreateRefClone();
 
     chosen->DeleteInvItem(item, true);
 
-    OnItemInvOut.Fire(item_clone);
+    OnItemInvOut.Fire(item_clone.get());
 
     if (_curMap != nullptr) {
         if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
@@ -1831,7 +1816,7 @@ void FOClient::Net_OnProperty()
         entity = this;
         break;
     case NetProperty::Player:
-        entity = _curPlayer;
+        entity = _curPlayer.get();
         break;
     case NetProperty::Critter:
         entity = _curMap != nullptr ? _curMap->GetCritter(cr_id) : nullptr;
@@ -1855,10 +1840,10 @@ void FOClient::Net_OnProperty()
         }
         break;
     case NetProperty::Map:
-        entity = _curMap;
+        entity = _curMap.get();
         break;
     case NetProperty::Location:
-        entity = _curLocation;
+        entity = _curLocation.get();
         break;
     case NetProperty::CustomEntity:
         entity = GetEntity(entity_id);
@@ -1982,16 +1967,16 @@ void FOClient::Net_OnLoadMap()
 
     if (map_pid) {
         const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
-        _curLocation = SafeAlloc::MakeRaw<LocationView>(this, loc_id, loc_proto);
+        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
         const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
-        _curMap = SafeAlloc::MakeRaw<MapView>(this, map_id, map_proto);
+        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto);
         _curMap->RestoreData(_tempPropertiesData);
         _curMap->LoadStaticData();
 
-        ReceiveCustomEntities(_curLocation);
-        ReceiveCustomEntities(_curMap);
+        ReceiveCustomEntities(_curLocation.get());
+        ReceiveCustomEntities(_curMap.get());
 
         WriteLog("Start load map");
     }
@@ -2009,7 +1994,7 @@ void FOClient::Net_OnSomeItems()
     const auto context_param = any_t {_conn.InBuf.Read<string>()};
     const auto items_count = _conn.InBuf.Read<uint>();
 
-    vector<ItemView*> items;
+    vector<refcount_ptr<ItemView>> items;
     items.reserve(items_count);
 
     for (uint i = 0; i < items_count; i++) {
@@ -2019,19 +2004,16 @@ void FOClient::Net_OnSomeItems()
         RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
-        auto* item = SafeAlloc::MakeRaw<ItemView>(this, item_id, proto);
+        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(item);
+        ReceiveCustomEntities(item.get());
 
         items.emplace_back(item);
     }
 
-    OnReceiveItems.Fire(items, context_param);
-
-    for (const auto* item : items) {
-        item->Release();
-    }
+    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* { return item.get(); });
+    OnReceiveItems.Fire(items2, context_param);
 }
 
 void FOClient::Net_OnViewMap()
@@ -2056,7 +2038,7 @@ void FOClient::Net_OnRemoteCall()
 
     const auto rpc_num = _conn.InBuf.Read<uint>();
 
-    ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
+    ScriptSys->HandleRemoteCall(rpc_num, _curPlayer.get());
 }
 
 void FOClient::Net_OnAddCustomEntity()
@@ -2182,13 +2164,13 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
 
     const auto* registrator = GetPropertyRegistrator(type_name);
 
-    CustomEntityView* entity;
+    refcount_ptr<CustomEntityView> entity;
 
     if (proto != nullptr) {
-        entity = SafeAlloc::MakeRaw<CustomEntityWithProtoView>(this, id, registrator, nullptr, proto);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, nullptr, proto);
     }
     else {
-        entity = SafeAlloc::MakeRaw<CustomEntityView>(this, id, registrator, nullptr);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr);
     }
 
     entity->RestoreData(data);
@@ -2202,9 +2184,9 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
 
     entity->SetCustomHolderEntry(entry);
 
-    holder->AddInnerEntity(entry, entity);
+    holder->AddInnerEntity(entry, entity.get());
 
-    return entity;
+    return entity.get();
 }
 
 void FOClient::ReceiveCritterMoving(CritterHexView* cr)
@@ -2421,7 +2403,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curPlayer);
+    RUNTIME_ASSERT(entity == _curPlayer.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2431,7 +2413,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
         throw ScriptException("Can't modify player public/protected property on unlogined player");
     }
 
-    Net_SendProperty(NetProperty::Player, prop, _curPlayer);
+    Net_SendProperty(NetProperty::Player, prop, _curPlayer.get());
 }
 
 void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
@@ -2493,14 +2475,14 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curMap);
+    RUNTIME_ASSERT(entity == _curMap.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
     }
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Map, prop, _curMap);
+        Net_SendProperty(NetProperty::Map, prop, _curMap.get());
     }
     else {
         throw GenericException("Unable to send map modifiable property", prop->GetName());
@@ -2511,14 +2493,14 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curLocation);
+    RUNTIME_ASSERT(entity == _curLocation.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
     }
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Location, prop, _curLocation);
+        Net_SendProperty(NetProperty::Location, prop, _curLocation.get());
     }
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
@@ -2855,19 +2837,19 @@ void FOClient::UnloadMap()
 
     OnMapUnload.Fire();
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         _curMap->DestroySelf();
         _curMap = nullptr;
 
         CleanupSpriteCache();
     }
 
-    if (_curLocation != nullptr) {
+    if (_curLocation) {
         _curLocation->DestroySelf();
         _curLocation = nullptr;
     }
 
-    for (auto* cr : _globalMapCritters) {
+    for (auto& cr : _globalMapCritters) {
         cr->DestroySelf();
     }
 
@@ -2969,9 +2951,9 @@ void FOClient::DestroyInnerEntities()
     STACK_TRACE_ENTRY();
 
     if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetRawInnerEntities()) {
-            for (auto* entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+        for (auto&& [entry, entities] : GetInnerEntities()) {
+            for (auto& entity : entities) {
+                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
                 RUNTIME_ASSERT(custom_entity);
 
                 custom_entity->DestroySelf();

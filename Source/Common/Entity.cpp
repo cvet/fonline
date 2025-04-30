@@ -290,7 +290,24 @@ void Entity::SetValueAsAny(int prop_index, const any_t& value)
     _props.SetValueAsAny(prop_index, value);
 }
 
-auto Entity::GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*
+auto Entity::GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_innerEntities) {
+        return nullptr;
+    }
+
+    const auto it_entry = _innerEntities->find(entry);
+
+    if (it_entry == _innerEntities->end()) {
+        return nullptr;
+    }
+
+    return &it_entry->second;
+}
+
+auto Entity::GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*
 {
     STACK_TRACE_ENTRY();
 
@@ -314,7 +331,7 @@ void Entity::AddInnerEntity(hstring entry, Entity* entity)
     make_if_not_exists(_innerEntities);
 
     if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
-        _innerEntities->emplace(entry, vector<Entity*> {entity});
+        _innerEntities->emplace(entry, vector<refcount_ptr<Entity>> {entity});
     }
     else {
         vec_add_unique_value(it->second, entity);

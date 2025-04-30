@@ -63,7 +63,7 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
     NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -190,23 +190,21 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         return nullptr;
     }
 
-    auto* loc = SafeAlloc::MakeRaw<Location>(_engine, loc_id, loc_proto);
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
-        loc->Release();
         return nullptr;
     }
 
     try {
-        RegisterLocation(loc);
+        RegisterLocation(loc.get());
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register location {} {}", loc_pid, loc_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        loc->Release();
         return nullptr;
     }
 
@@ -221,15 +219,14 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
                 RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
 
                 const auto loc_map_index = map->GetLocMapIndex();
+                auto& loc_maps = loc->GetMaps();
 
-                auto& loc_maps = loc->GetMapsRaw();
                 if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
                     loc_maps.resize(loc_map_index + 1);
                 }
 
                 loc_maps[loc_map_index] = map;
-
-                map->SetLocation(loc);
+                map->SetLocation(loc.get());
             }
             else {
                 map_ids_changed = true;
@@ -237,12 +234,12 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         }
 
         if (map_ids_changed) {
-            const auto actual_map_ids = vec_transform(loc->GetMapsRaw(), [](const Map* map) -> ident_t { return map->GetId(); });
+            const auto actual_map_ids = vec_transform(loc->GetMaps(), [](const refcount_ptr<Map>& map) -> ident_t { return map->GetId(); });
             loc->SetMapIds(actual_map_ids);
         }
 
         // Inner entities
-        LoadInnerEntities(loc, is_error);
+        LoadInnerEntities(loc.get(), is_error);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed during restore location content {} {}", loc_pid, loc_id);
@@ -250,7 +247,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         is_error = true;
     }
 
-    return loc;
+    return loc.get();
 }
 
 auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
@@ -274,23 +271,21 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     }
 
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    auto* map = SafeAlloc::MakeRaw<Map>(_engine, map_id, map_proto, nullptr, static_map);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
-        map->Release();
         return nullptr;
     }
 
     try {
-        RegisterMap(map);
+        RegisterMap(map.get());
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register map {} {}", map_pid, map_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        map->Release();
         return nullptr;
     }
 
@@ -349,7 +344,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         }
 
         // Inner entities
-        LoadInnerEntities(map, is_error);
+        LoadInnerEntities(map.get(), is_error);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed during restore map content {} {}", map_pid, map_id);
@@ -357,7 +352,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         is_error = true;
     }
 
-    return map;
+    return map.get();
 }
 
 auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critter*
@@ -380,23 +375,21 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         return nullptr;
     }
 
-    auto* cr = SafeAlloc::MakeRaw<Critter>(_engine, cr_id, proto);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
-        cr->Release();
         return nullptr;
     }
 
     try {
-        RegisterCritter(cr);
+        RegisterCritter(cr.get());
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register critter {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        cr->Release();
         return nullptr;
     }
 
@@ -425,7 +418,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         }
 
         // Inner entities
-        LoadInnerEntities(cr, is_error);
+        LoadInnerEntities(cr.get(), is_error);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed during restore critter content {} {}", cr_pid, cr_id);
@@ -433,7 +426,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         is_error = true;
     }
 
-    return cr;
+    return cr.get();
 }
 
 auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
@@ -456,24 +449,22 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         return nullptr;
     }
 
-    auto* item = SafeAlloc::MakeRaw<Item>(_engine, item_id, proto);
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
-        item->Release();
         return nullptr;
     }
 
     try {
         item->SetStatic(false);
-        RegisterItem(item);
+        RegisterItem(item.get());
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register item {} {}", item_pid, item_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        item->Release();
         return nullptr;
     }
 
@@ -507,7 +498,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         }
 
         // Inner entities
-        LoadInnerEntities(item, is_error);
+        LoadInnerEntities(item.get(), is_error);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed during restore item content {} {}", item_pid, item_id);
@@ -515,7 +506,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         is_error = true;
     }
 
-    return item;
+    return item.get();
 }
 
 void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
@@ -580,8 +571,8 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
             const auto* inner_entities = holder->GetInnerEntities(entry);
 
             if (inner_entities != nullptr) {
-                actual_inner_entity_ids = vec_transform(*inner_entities, [](const Entity* entity) -> ident_t {
-                    return static_cast<const CustomEntity*>(entity)->GetId(); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                actual_inner_entity_ids = vec_transform(*inner_entities, [](auto&& entity) -> ident_t {
+                    return static_cast<const CustomEntity*>(entity.get())->GetId(); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
                 });
             }
 
@@ -672,9 +663,9 @@ void EntityManager::CallInit(Location* loc, bool first_time)
     }
 
     if (!loc->IsDestroyed()) {
-        for (auto* map : copy_hold_ref(loc->GetMaps())) {
+        for (auto& map : copy_hold_ref(loc->GetMaps())) {
             if (!map->IsDestroyed()) {
-                CallInit(map, first_time);
+                CallInit(map.get(), first_time);
             }
         }
     }
@@ -974,9 +965,9 @@ void EntityManager::DestroyInnerEntities(Entity* holder)
     STACK_TRACE_ENTRY();
 
     for (InfinityLoopDetector detector; holder->HasInnerEntities(); detector.AddLoop()) {
-        for (auto&& [entry, entities] : copy(holder->GetRawInnerEntities())) {
-            for (auto* entity : entities) {
-                DestroyEntity(entity);
+        for (auto&& [entry, entities] : copy(holder->GetInnerEntities())) {
+            for (auto& entity : entities) {
+                DestroyEntity(entity.get());
             }
         }
     }
@@ -989,7 +980,6 @@ void EntityManager::DestroyAllEntities()
     const auto destroy_entities = [this](auto& entities) {
         for (auto&& [id, entity] : copy(entities)) {
             entity->MarkAsDestroyed();
-            entity->Release();
             entities.erase(id);
             _allEntities.erase(id);
         }
@@ -1064,18 +1054,18 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
 
     const auto* registrator = _engine->GetPropertyRegistrator(type_name);
 
-    CustomEntity* entity;
+    refcount_ptr<CustomEntity> entity;
 
     if (proto != nullptr) {
-        entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
     }
     else {
-        entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
+        entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
     }
 
-    RegisterCustomEntity(entity);
+    RegisterCustomEntity(entity.get());
 
-    return entity;
+    return entity.get();
 }
 
 auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*
@@ -1121,31 +1111,24 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         }
 
         const auto* registrator = _engine->GetPropertyRegistrator(type_name);
-        CustomEntity* entity;
+        refcount_ptr<CustomEntity> entity;
 
         if (proto != nullptr) {
-            entity = SafeAlloc::MakeRaw<CustomEntityWithProto>(_engine, id, registrator, proto);
+            entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrator, proto);
         }
         else {
-            entity = SafeAlloc::MakeRaw<CustomEntity>(_engine, id, registrator, nullptr);
+            entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator, nullptr);
         }
 
         if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, *_engine, *_engine)) {
             WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
-            entity->Release();
             return nullptr;
         }
 
-        try {
-            RegisterCustomEntity(entity);
-        }
-        catch (...) {
-            entity->Release();
-            throw;
-        }
+        RegisterCustomEntity(entity.get());
 
-        return entity;
+        return entity.get();
     }
     catch (const std::exception& ex) {
         WriteLog("Failed during load custom entity {}", id);
@@ -1203,10 +1186,8 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
     holder_props.SetValue(holder_prop, inner_entity_ids);
 
-    UnregisterCustomEntity(entity, true);
-
     entity->MarkAsDestroyed();
-    entity->Release();
+    UnregisterCustomEntity(entity, true);
 }
 
 void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback)
@@ -1251,8 +1232,8 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::fun
             }
         }
         else if (auto* loc = dynamic_cast<Location*>(holder); loc != nullptr) {
-            for (auto* loc_map : loc->GetMaps()) {
-                find_players_recursively(loc_map, derived_access);
+            for (auto& loc_map : loc->GetMaps()) {
+                find_players_recursively(loc_map.get(), derived_access);
             }
         }
         else if (auto* map = dynamic_cast<Map*>(holder)) {

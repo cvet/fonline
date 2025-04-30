@@ -59,10 +59,10 @@ struct StaticMap
     };
 
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> HexField {};
-    vector<pair<ident_t, const Critter*>> CritterBillets {};
-    vector<pair<ident_t, const Item*>> ItemBillets {};
-    vector<pair<ident_t, const Item*>> HexItemBillets {};
-    vector<pair<ident_t, const Item*>> ChildItemBillets {};
+    vector<pair<ident_t, refcount_ptr<Critter>>> CritterBillets {};
+    vector<pair<ident_t, refcount_ptr<Item>>> ItemBillets {};
+    vector<pair<ident_t, Item*>> HexItemBillets {};
+    vector<pair<ident_t, Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
     unordered_map<ident_t, StaticItem*> StaticItemsById {};
 };
@@ -82,7 +82,7 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap* { return _staticMap; }
-    [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto); }
+    [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto.get()); }
     [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation; }
     [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation; }
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;

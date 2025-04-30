@@ -53,18 +53,18 @@ void ItemView::OnDestroySelf()
     SetCritterId(ident_t {});
     SetCritterSlot(CritterItemSlot::Inventory);
 
-    for (auto* item : _innerItems) {
+    for (auto& item : _innerItems) {
         item->DestroySelf();
     }
 
     _innerItems.clear();
 }
 
-auto ItemView::CreateRefClone() const -> ItemView*
+auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 {
     STACK_TRACE_ENTRY();
 
-    auto* ref_item = SafeAlloc::MakeRaw<ItemView>(_engine, ident_t {}, dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
+    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), ident_t {}, dynamic_cast<const ProtoItem*>(_proto.get()), &GetProperties());
 
     ref_item->SetId(GetId(), false);
 
@@ -75,26 +75,26 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    return AddRawInnerItem(item);
+    return AddRawInnerItem(item.get());
 }
 
 auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, nullptr);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);
 
-    return AddRawInnerItem(item);
+    return AddRawInnerItem(item.get());
 }
 
 auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
@@ -105,8 +105,8 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
     RUNTIME_ASSERT(item->GetContainerId() == GetId());
 
-    vec_add_unique_value(_innerItems, item);
-    std::stable_sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    vec_add_unique_value(_innerItems, refcount_ptr {item});
+    std::stable_sort(_innerItems.begin(), _innerItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }
@@ -115,21 +115,7 @@ void ItemView::DestroyInnerItem(ItemView* item)
 {
     STACK_TRACE_ENTRY();
 
-    vec_remove_unique_value(_innerItems, item);
+    vec_remove_unique_value(_innerItems, refcount_ptr {item});
 
     item->DestroySelf();
-}
-
-auto ItemView::GetInnerItems() noexcept -> const vector<ItemView*>&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _innerItems;
-}
-
-auto ItemView::GetConstInnerItems() const -> vector<const ItemView*>
-{
-    STACK_TRACE_ENTRY();
-
-    return vec_static_cast<const ItemView*>(_innerItems);
 }

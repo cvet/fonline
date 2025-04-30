@@ -56,7 +56,7 @@ void CritterView::OnDestroySelf()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* item : _invItems) {
+    for (auto& item : _invItems) {
         item->DestroySelf();
     }
 
@@ -74,21 +74,21 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    return AddRawInvItem(item);
+    return AddRawInvItem(item.get());
 }
 
 auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = SafeAlloc::MakeRaw<ItemView>(_engine, id, proto, nullptr);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetStatic(false);
@@ -96,7 +96,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    return AddRawInvItem(item);
+    return AddRawInvItem(item.get());
 }
 
 auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
@@ -106,7 +106,7 @@ auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
     RUNTIME_ASSERT(item->GetCritterId() == GetId());
 
     vec_add_unique_value(_invItems, item);
-    std::stable_sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    std::stable_sort(_invItems.begin(), _invItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }
@@ -127,7 +127,7 @@ void CritterView::DeleteAllInvItems()
     STACK_TRACE_ENTRY();
 
     while (!_invItems.empty()) {
-        DeleteInvItem(*_invItems.begin(), false);
+        DeleteInvItem(_invItems.front().get(), false);
     }
 }
 
@@ -137,9 +137,9 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _invItems) {
+    for (auto& item : _invItems) {
         if (item->GetId() == item_id) {
-            return item;
+            return item.get();
         }
     }
 
@@ -152,20 +152,13 @@ auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _invItems) {
+    for (auto& item : _invItems) {
         if (item->GetProtoId() == item_pid) {
-            return item;
+            return item.get();
         }
     }
 
     return nullptr;
-}
-
-auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
-{
-    STACK_TRACE_ENTRY();
-
-    return vec_static_cast<const ItemView*>(_invItems);
 }
 
 auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool

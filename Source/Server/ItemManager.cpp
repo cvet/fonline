@@ -112,8 +112,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto* item = SafeAlloc::MakeRaw<Item>(_engine.get(), ident_t {}, proto, props);
-    auto self_destroy_fuse = RefCountHolder(item);
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -129,7 +128,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetInnerItemIds({});
     }
 
-    _engine->EntityMngr.RegisterItem(item);
+    _engine->EntityMngr.RegisterItem(item.get());
 
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
@@ -138,7 +137,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetCount(1);
     }
 
-    _engine->EntityMngr.CallInit(item, true);
+    _engine->EntityMngr.CallInit(item.get(), true);
 
     if (item->IsDestroyed()) {
         throw GenericException("Item destroyed during init", pid);
@@ -146,7 +145,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
 
-    return item;
+    return item.get();
 }
 
 void ItemManager::DestroyItem(Item* item)
@@ -178,12 +177,11 @@ void ItemManager::DestroyItem(Item* item)
         }
     }
 
-    // Erase from main collection
-    _engine->EntityMngr.UnregisterItem(item, true);
-
     // Invalidate for use
     item->MarkAsDestroyed();
-    item->Release();
+
+    // Erase from main collection
+    _engine->EntityMngr.UnregisterItem(item, true);
 }
 
 auto ItemManager::SplitItem(Item* item, uint count) -> Item*

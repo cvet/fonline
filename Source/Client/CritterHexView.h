@@ -59,13 +59,13 @@ public:
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
-    [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
+    [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto IsModel() const noexcept -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+    [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
+    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { return _model.get(); }
 #endif
 
     void Init();
@@ -115,7 +115,7 @@ private:
         uint EndFrm {};
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
-        Entity* ContextItem {};
+        refcount_ptr<Entity> ContextItem {};
     };
 
 #if FO_ENABLE_3D
@@ -146,6 +146,6 @@ private:
 
 #if FO_ENABLE_3D
     shared_ptr<ModelSprite> _modelSpr {};
-    ModelInstance* _model {};
+    raw_ptr<ModelInstance> _model {};
 #endif
 };

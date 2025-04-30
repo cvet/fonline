@@ -693,26 +693,24 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
     }
 
     // Find online
-    auto* player = server->EntityMngr.GetPlayer(id);
+    refcount_ptr<Player> player = server->EntityMngr.GetPlayer(id);
 
-    if (player != nullptr) {
+    if (player) {
         player->AddRef();
-        return player;
+        return player.get();
     }
 
     // Load from db
     auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
+    player = SafeAlloc::MakeRefCounted<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
     player->SetName(name);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
-        player->MarkAsDestroying();
-        player->MarkAsDestroyed();
-        player->Release();
         throw ScriptException("Player data db read failed");
     }
 
-    return player;
+    player->AddRef();
+    return player.get();
 }
 
 ///@ ExportMethod

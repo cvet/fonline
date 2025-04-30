@@ -226,6 +226,52 @@ using std::string_view;
 using std::tuple;
 using std::variant;
 
+// Template helpers
+#define TEMPLATE_HAS_MEMBER(name, member) \
+    template<typename T> \
+    class name \
+    { \
+        using one = char; \
+        struct two \
+        { \
+            char x[2]; \
+        }; \
+        template<typename C> \
+        static auto test(decltype(&C::member)) -> one; \
+        template<typename C> \
+        static auto test(...) -> two; \
+\
+    public: \
+        enum \
+        { \
+            value = sizeof(test<T>(0)) == sizeof(char) \
+        }; \
+    }
+
+TEMPLATE_HAS_MEMBER(has_size, size);
+TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
+TEMPLATE_HAS_MEMBER(has_addref, AddRef);
+TEMPLATE_HAS_MEMBER(has_release, Release);
+
+#undef TEMPLATE_HAS_MEMBER
+
+template<typename Test, template<typename...> typename Ref>
+struct is_specialization : std::false_type
+{
+};
+
+template<template<typename...> typename Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+
+template<typename T>
+static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value /*small_vector test*/;
+template<typename T>
+static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
+template<typename T>
+static constexpr bool is_refcounted_v = has_addref<T>::value && has_release<T>::value;
+
 // Smart pointers
 template<typename T>
 class raw_ptr
@@ -330,6 +376,9 @@ public:
     [[nodiscard]] FORCE_INLINE auto operator==(const raw_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FORCE_INLINE auto operator!=(const raw_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
     [[nodiscard]] FORCE_INLINE auto operator<(const raw_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
@@ -339,6 +388,7 @@ public:
     [[nodiscard]] FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+    FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
 
 private:
     T* _ptr;
@@ -360,6 +410,150 @@ struct HASHNS::hash<raw_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const raw_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
+};
+
+template<typename T>
+class refcount_ptr final
+{
+    //static_assert(is_refcounted_v<T>);
+
+    template<typename U>
+    friend class refcount_ptr;
+
+public:
+    FORCE_INLINE refcount_ptr() noexcept :
+        _ptr(nullptr)
+    {
+    }
+
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr refcount_ptr(nullptr_t) noexcept :
+        _ptr(nullptr)
+    {
+    }
+    FORCE_INLINE auto operator=(nullptr_t) noexcept -> refcount_ptr&
+    {
+        safe_release();
+        _ptr = nullptr;
+        return *this;
+    }
+
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE refcount_ptr(T* p) noexcept
+    {
+        _ptr = p;
+        safe_addref();
+    }
+
+    FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
+    {
+        _ptr = other._ptr;
+        safe_addref();
+    }
+    FORCE_INLINE refcount_ptr(refcount_ptr&& other) noexcept
+    {
+        _ptr = other._ptr;
+        other._ptr = nullptr;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr refcount_ptr(const refcount_ptr<U>& other) noexcept
+    {
+        _ptr = other._ptr;
+        safe_addref();
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr refcount_ptr(refcount_ptr<U>&& other) noexcept
+    {
+        _ptr = other._ptr;
+        other._ptr = nullptr;
+    }
+
+    FORCE_INLINE auto operator=(T* p) noexcept -> refcount_ptr&
+    {
+        reset(p);
+        return *this;
+    }
+    FORCE_INLINE auto operator=(const refcount_ptr& other) noexcept -> refcount_ptr&
+    {
+        if (this != &other) {
+            reset(other._ptr);
+        }
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    FORCE_INLINE auto operator=(const refcount_ptr<U>& other) noexcept -> refcount_ptr&
+    {
+        reset(other._ptr);
+        return *this;
+    }
+    FORCE_INLINE auto operator=(refcount_ptr&& other) noexcept -> refcount_ptr&
+    {
+        if (this != &other) {
+            safe_release();
+            _ptr = other._ptr;
+            other._ptr = nullptr;
+        }
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr&
+    {
+        safe_release();
+        _ptr = other._ptr;
+        other._ptr = nullptr;
+        return *this;
+    }
+
+    FORCE_INLINE ~refcount_ptr() { safe_release(); }
+
+    [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const refcount_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const refcount_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
+    [[nodiscard]] FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
+    [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+
+    FORCE_INLINE void reset(T* p = nullptr) noexcept
+    {
+        safe_release();
+        _ptr = p;
+        safe_addref();
+    }
+
+private:
+    FORCE_INLINE void safe_addref() noexcept
+    {
+        if (_ptr != nullptr) {
+            _ptr->AddRef();
+        }
+    }
+    FORCE_INLINE void safe_release() noexcept
+    {
+        if (_ptr != nullptr) {
+            _ptr->Release();
+        }
+    }
+
+    T* _ptr {};
+};
+
+template<typename T>
+struct HASHNS::hash<refcount_ptr<T>>
+{
+    using is_avalanching = void;
+    auto operator()(const refcount_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
 
 template<typename T>
@@ -505,72 +699,11 @@ template<typename T>
 using unique_del_ptr = propagate_const<std::unique_ptr<T, std::function<void(T*)>>>;
 
 template<typename T>
-struct release_delete
-{
-    constexpr release_delete() noexcept = default;
-    constexpr void operator()(T* p) const noexcept
-    {
-        if (p != nullptr) {
-            p->Release();
-        }
-    }
-};
-
-template<typename T>
-using unique_release_ptr = propagate_const<std::unique_ptr<T, release_delete<T>>>;
-
-template<typename T>
 struct HASHNS::hash<propagate_const<T>>
 {
     using is_avalanching = void;
     auto operator()(const propagate_const<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
-
-// Template helpers
-#define TEMPLATE_HAS_MEMBER(name, member) \
-    template<typename T> \
-    class name \
-    { \
-        using one = char; \
-        struct two \
-        { \
-            char x[2]; \
-        }; \
-        template<typename C> \
-        static auto test(decltype(&C::member)) -> one; \
-        template<typename C> \
-        static auto test(...) -> two; \
-\
-    public: \
-        enum \
-        { \
-            value = sizeof(test<T>(0)) == sizeof(char) \
-        }; \
-    };
-
-TEMPLATE_HAS_MEMBER(has_size, size);
-TEMPLATE_HAS_MEMBER(has_inlined, inlined); // small_vector test
-TEMPLATE_HAS_MEMBER(has_add_ref, AddRef);
-TEMPLATE_HAS_MEMBER(has_release, Release);
-
-#undef TEMPLATE_HAS_MEMBER
-
-template<typename Test, template<typename...> typename Ref>
-struct is_specialization : std::false_type
-{
-};
-
-template<template<typename...> typename Ref, typename... Args>
-struct is_specialization<Ref<Args...>, Ref> : std::true_type
-{
-};
-
-template<typename T>
-static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined<T>::value /*small_vector test*/;
-template<typename T>
-static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
-template<typename T>
-static constexpr bool is_releasable = has_add_ref<T>::value && has_release<T>::value;
 
 // Safe memory allocation
 extern void InitBackupMemoryChunks();
@@ -649,6 +782,8 @@ public:
     template<typename T, typename... Args>
     static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
     {
+        static_assert(!is_refcounted_v<T>);
+
         auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
 
         if (ptr == nullptr) {
@@ -659,7 +794,7 @@ public:
             }
 
             if (ptr == nullptr) {
-                ReportAndExit("Failed to allocate from backup pool");
+                ReportAndExit("Failed to allocate raw from backup pool");
             }
         }
 
@@ -669,21 +804,37 @@ public:
     template<typename T, typename... Args>
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        static_assert(!is_releasable<T>);
+        static_assert(!is_refcounted_v<T>);
+
         return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
-    static auto MakeUniqueReleasable(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_release_ptr<T>
+    static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        static_assert(is_releasable<T>);
-        return unique_release_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+        static_assert(is_refcounted_v<T>);
+
+        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+
+        if (ptr == nullptr) {
+            ReportBadAlloc("Make ref counted failed", typeid(T).name(), 1, sizeof(T));
+
+            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+            }
+
+            if (ptr == nullptr) {
+                ReportAndExit("Failed to allocate ref counted from backup pool");
+            }
+        }
+
+        return ptr;
     }
 
     template<typename T, typename... Args>
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        static_assert(!is_releasable<T>);
+        static_assert(!is_refcounted_v<T>);
 
         try {
             return std::make_shared<T>(std::forward<Args>(args)...);
@@ -708,6 +859,8 @@ public:
     template<typename T>
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
+        static_assert(!is_refcounted_v<T>);
+
         if (count == 0) {
             return nullptr;
         }
@@ -737,6 +890,8 @@ public:
     template<typename T>
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_ptr<T[]>
     {
+        static_assert(!is_refcounted_v<T>);
+
         return unique_ptr<T[]>(MakeRawArr<T>(count));
     }
 };
@@ -2931,21 +3086,19 @@ constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
 }
 
 template<typename T>
-constexpr auto vec_add_unique_value(vector<T>& vec, T value) -> vector<T>&
+constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
     const auto it = std::find(vec.begin(), vec.end(), value);
     RUNTIME_ASSERT(it == vec.end());
     vec.emplace_back(std::move(value));
-    return vec;
 }
 
 template<typename T>
-constexpr auto vec_remove_unique_value(vector<T>& vec, const T& value) -> vector<T>&
+constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
     const auto it = std::find(vec.begin(), vec.end(), value);
     RUNTIME_ASSERT(it != vec.end());
     vec.erase(it);
-    return vec;
 }
 
 template<typename T, typename U>
@@ -2973,11 +3126,11 @@ constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(
 }
 
 template<typename T, typename U>
-constexpr auto vec_transform(const vector<T>& vec, const U& transfromer) -> auto
+constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
 {
     vector<decltype(transfromer(nullptr))> result;
     result.reserve(vec.size());
-    for (const auto& value : vec) {
+    for (auto&& value : vec) {
         result.emplace_back(transfromer(value));
     }
     return result;

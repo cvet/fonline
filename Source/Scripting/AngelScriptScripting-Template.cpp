@@ -668,7 +668,9 @@ static T* ScriptableObject_Factory()
 {
     STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRaw<T>();
+    auto obj = SafeAlloc::MakeRefCounted<T>();
+    obj->AddRef();
+    return obj.get();
 }
 
 #if !COMPILER_MODE
@@ -3572,10 +3574,10 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
         vector<T*> casted_entities;
         casted_entities.reserve(entities->size());
 
-        for (auto* entity : *entities) {
+        for (auto& entity : *entities) {
             ENTITY_VERIFY(entity);
             RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
-            auto* casted_entity = dynamic_cast<T*>(entity);
+            auto* casted_entity = dynamic_cast<T*>(entity.get());
             RUNTIME_ASSERT(casted_entity);
             casted_entities.emplace_back(casted_entity);
         }
@@ -3608,10 +3610,10 @@ static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
         vector<ident_t> ids;
         ids.reserve(entities->size());
 
-        for (auto* entity : *entities) {
+        for (auto& entity : *entities) {
             ENTITY_VERIFY(entity);
             RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
-            auto* casted_entity = dynamic_cast<T*>(entity);
+            auto* casted_entity = dynamic_cast<T*>(entity.get());
             RUNTIME_ASSERT(casted_entity);
             ids.emplace_back(casted_entity->GetId());
         }
@@ -4779,7 +4781,7 @@ void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const FileSystem* resources)
     script_backend->Init(engine, nullptr);
 
 #else
-    auto engine = SafeAlloc::MakeUniqueReleasable<COMPILER_ENGINE_CLASS>();
+    auto engine = SafeAlloc::MakeRefCounted<COMPILER_ENGINE_CLASS>();
     script_backend->Init(engine.get(), resources);
 #endif
 }

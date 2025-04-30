@@ -78,9 +78,9 @@ void ClientEntity::DestroySelf()
     }
 
     if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetRawInnerEntities()) {
-            for (auto* entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+        for (auto&& [entry, entities] : GetInnerEntities()) {
+            for (auto& entity : entities) {
+                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
                 RUNTIME_ASSERT(custom_entity);
 
                 custom_entity->DestroySelf();
@@ -91,7 +91,6 @@ void ClientEntity::DestroySelf()
     }
 
     MarkAsDestroyed();
-    Release();
 }
 
 void CustomEntityView::OnDestroySelf()

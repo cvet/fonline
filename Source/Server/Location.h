@@ -54,18 +54,19 @@ public:
     ~Location() override = default;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto GetMapsRaw() noexcept -> vector<Map*>&;
-    [[nodiscard]] auto GetMaps() noexcept -> const vector<Map*>&;
-    [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
-    [[nodiscard]] auto GetMapsCount() const noexcept -> uint;
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation* { return static_cast<const ProtoLocation*>(_proto.get()); }
+    [[nodiscard]] auto GetMaps() const noexcept -> const vector<refcount_ptr<Map>>& { return _locMaps; }
+    [[nodiscard]] auto GetMaps() noexcept -> vector<refcount_ptr<Map>>& { return _locMaps; }
+    [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _locMaps.size(); }
     [[nodiscard]] auto GetMapByIndex(uint index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
-    [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> uint;
+    [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> size_t;
+
+    void AddMap(Map* map);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
 
 private:
-    vector<Map*> _locMaps {};
+    vector<refcount_ptr<Map>> _locMaps {};
 };

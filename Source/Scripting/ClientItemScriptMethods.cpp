@@ -38,15 +38,18 @@
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 {
-    return self->CreateRefClone();
+    auto cloned_item = self->CreateRefClone();
+    cloned_item->AddRef();
+    return cloned_item.get();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
-    auto* cloned_item = self->CreateRefClone();
+    auto cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
-    return cloned_item;
+    cloned_item->AddRef();
+    return cloned_item.get();
 }
 
 static void ItemGetMapPos(ItemView* self, mpos& hex)
@@ -122,7 +125,16 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
-    return self->GetInnerItems();
+    auto& inner_items = self->GetInnerItems();
+
+    vector<ItemView*> items;
+    items.reserve(inner_items.size());
+
+    for (auto& item : inner_items) {
+        items.emplace_back(item.get());
+    }
+
+    return items;
 }
 
 ///@ ExportMethod

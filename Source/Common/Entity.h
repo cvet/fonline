@@ -351,8 +351,10 @@ public:
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
-    [[nodiscard]] auto GetRawInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
-    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> const vector<Entity*>*;
+    [[nodiscard]] auto GetInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
+    [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
+    [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;
+    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
     [[nodiscard]] auto GetRawPeristentTimeEvents() noexcept -> auto& { return _persistentTimeEvents; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
@@ -396,7 +398,7 @@ private:
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
     unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
     unique_ptr<vector<shared_ptr<TimeEventData>>> _persistentTimeEvents {};
-    unique_ptr<map<hstring, vector<Entity*>>> _innerEntities {};
+    unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};

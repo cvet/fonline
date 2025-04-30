@@ -135,12 +135,13 @@ public:
     [[nodiscard]] auto GetChosen() noexcept -> CritterView*;
     [[nodiscard]] auto GetMapChosen() noexcept -> CritterHexView*;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
-    [[nodiscard]] auto GetGlobalMapCritters() noexcept -> const vector<CritterView*>& { return _globalMapCritters; }
+    [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
+    [[nodiscard]] auto GetGlobalMapCritters() noexcept -> vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
-    [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { NON_CONST_METHOD_HINT_ONELINE() return _curPlayer; }
-    [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { NON_CONST_METHOD_HINT_ONELINE() return _curLocation; }
-    [[nodiscard]] auto GetCurMap() noexcept -> MapView* { NON_CONST_METHOD_HINT_ONELINE() return _curMap; }
+    [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
+    [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
+    [[nodiscard]] auto GetCurMap() noexcept -> MapView* { return _curMap.get(); }
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -376,11 +377,11 @@ protected:
     bool _isAutoLogin {};
 
     unordered_map<ident_t, ClientEntity*> _allEntities {};
-    vector<CritterView*> _globalMapCritters {};
-    PlayerView* _curPlayer {};
-    LocationView* _curLocation {};
-    MapView* _curMap {};
-    CritterView* _chosen {};
+    vector<refcount_ptr<CritterView>> _globalMapCritters {};
+    refcount_ptr<PlayerView> _curPlayer {};
+    refcount_ptr<LocationView> _curLocation {};
+    refcount_ptr<MapView> _curMap {};
+    refcount_ptr<CritterView> _chosen {};
 
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};

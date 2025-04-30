@@ -291,7 +291,7 @@ FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
         }
 
         if (item == nullptr) {
-            for (auto* cr : client->GetCurMap()->GetCritters()) {
+            for (auto& cr : client->GetCurMap()->GetCritters()) {
                 if (!cr->GetIsChosen()) {
                     item = cr->GetInvItem(itemId);
 
@@ -304,7 +304,7 @@ FO_SCRIPT_API ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
     }
     else {
         if (item == nullptr) {
-            for (auto* cr : client->GetGlobalMapCritters()) {
+            for (auto& cr : client->GetGlobalMapCritters()) {
                 if (!cr->GetIsChosen()) {
                     item = cr->GetInvItem(itemId);
 
@@ -345,17 +345,24 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, Cri
     vector<CritterView*> critters;
 
     if (client->GetCurMap() != nullptr) {
-        const auto& map_critters = client->GetCurMap()->GetCritters();
+        auto& map_critters = client->GetCurMap()->GetCritters();
         critters.reserve(map_critters.size());
 
-        for (auto* cr : map_critters) {
+        for (auto& cr : map_critters) {
             if (cr->CheckFind(findType)) {
-                critters.push_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
     else {
-        critters = client->GetGlobalMapCritters();
+        auto& gmap_critters = client->GetGlobalMapCritters();
+        critters.reserve(gmap_critters.size());
+
+        for (auto& cr : gmap_critters) {
+            if (cr->CheckFind(findType)) {
+                critters.emplace_back(cr.get());
+            }
+        }
     }
 
     return critters;
@@ -368,32 +375,32 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hst
 
     if (client->GetCurMap() != nullptr) {
         if (!pid) {
-            for (auto* cr : client->GetCurMap()->GetCritters()) {
+            for (auto& cr : client->GetCurMap()->GetCritters()) {
                 if (cr->CheckFind(findType)) {
-                    critters.push_back(cr);
+                    critters.emplace_back(cr.get());
                 }
             }
         }
         else {
-            for (auto* cr : client->GetCurMap()->GetCritters()) {
+            for (auto& cr : client->GetCurMap()->GetCritters()) {
                 if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
-                    critters.push_back(cr);
+                    critters.emplace_back(cr.get());
                 }
             }
         }
     }
     else {
         if (!pid) {
-            for (auto* cr : client->GetGlobalMapCritters()) {
+            for (auto& cr : client->GetGlobalMapCritters()) {
                 if (cr->CheckFind(findType)) {
-                    critters.push_back(cr);
+                    critters.emplace_back(cr.get());
                 }
             }
         }
         else {
-            for (auto* cr : client->GetGlobalMapCritters()) {
+            for (auto& cr : client->GetGlobalMapCritters()) {
                 if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
-                    critters.push_back(cr);
+                    critters.emplace_back(cr.get());
                 }
             }
         }
@@ -495,12 +502,13 @@ FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, s
 
     clip->SetLooped(looped);
 
-    auto* video = SafeAlloc::MakeRaw<VideoPlayback>();
+    auto video = SafeAlloc::MakeRefCounted<VideoPlayback>();
 
     video->Clip = std::move(clip);
     video->Tex = std::move(tex);
 
-    return video;
+    video->AddRef();
+    return video.get();
 }
 
 ///@ ExportMethod
@@ -750,10 +758,10 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, Mo
     int last_prev_y = client->Settings.LastMouseY;
     client->Settings.MouseX = client->Settings.LastMouseX = x;
     client->Settings.MouseY = client->Settings.LastMouseY = y;
-    client->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
-    client->Settings.MainWindowMouseEvents.push_back(button);
-    client->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
-    client->Settings.MainWindowMouseEvents.push_back(button);
+    client->Settings.MainWindowMouseEvents.emplace_back(SDL_MOUSEBUTTONDOWN);
+    client->Settings.MainWindowMouseEvents.emplace_back(button);
+    client->Settings.MainWindowMouseEvents.emplace_back(SDL_MOUSEBUTTONUP);
+    client->Settings.MainWindowMouseEvents.emplace_back(button);
     client->ParseMouse();
     client->Settings.MainWindowMouseEvents = prev_events;
     client->Settings.MouseX = prev_x;
@@ -1251,12 +1259,12 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
             throw ScriptException("Can't create offscreen surface");
         }
 
-        client->OffscreenSurfaces.push_back(rt);
+        client->OffscreenSurfaces.emplace_back(rt);
     }
 
     auto* rt = client->OffscreenSurfaces.back();
     client->OffscreenSurfaces.pop_back();
-    client->ActiveOffscreenSurfaces.push_back(rt);
+    client->ActiveOffscreenSurfaces.emplace_back(rt);
 
     client->SprMngr.GetRtMngr().PushRenderTarget(rt);
 
@@ -1270,7 +1278,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
     }
 
     if (std::find(client->PreDirtyOffscreenSurfaces.begin(), client->PreDirtyOffscreenSurfaces.end(), rt) == client->PreDirtyOffscreenSurfaces.end()) {
-        client->PreDirtyOffscreenSurfaces.push_back(rt);
+        client->PreDirtyOffscreenSurfaces.emplace_back(rt);
     }
 }
 
@@ -1286,7 +1294,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     auto* const rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.push_back(rt);
+    client->OffscreenSurfaces.emplace_back(rt);
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
@@ -1311,7 +1319,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     auto* const rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.push_back(rt);
+    client->OffscreenSurfaces.emplace_back(rt);
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
@@ -1343,7 +1351,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     auto* const rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.push_back(rt);
+    client->OffscreenSurfaces.emplace_back(rt);
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 

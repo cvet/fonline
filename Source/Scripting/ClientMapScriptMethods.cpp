@@ -94,7 +94,6 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     mspr.MapSpr = mapSpr;
-    mapSpr->AddRef();
 
     if (!no_light) {
         mspr.SetLight(corner, self->GetLightData(), self->GetSize());
@@ -155,7 +154,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 
     // On other critters
     if (item == nullptr) {
-        for (auto* cr : self->GetCritters()) {
+        for (auto& cr : self->GetCritters()) {
             if (!cr->GetIsChosen()) {
                 item = cr->GetInvItem(itemId);
             }
@@ -171,14 +170,14 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 {
-    const auto& all_items = self->GetItems();
+    auto& map_items = self->GetItems();
 
     vector<ItemView*> items;
-    items.reserve(all_items.size());
+    items.reserve(map_items.size());
 
-    for (auto* item : all_items) {
+    for (auto& item : map_items) {
         if (!item->IsFinishing() && !item->GetIsTile()) {
-            items.emplace_back(item);
+            items.emplace_back(item.get());
         }
     }
 
@@ -195,7 +194,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, m
 
     for (auto* item : hex_items) {
         if (!item->IsFinishing()) {
-            items.push_back(item);
+            items.emplace_back(item);
         }
     }
 
@@ -210,6 +209,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterI
     }
 
     auto* cr = self->GetCritter(critterId);
+
     if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
         return nullptr;
     }
@@ -220,7 +220,16 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterI
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self)
 {
-    return vec_static_cast<CritterView*>(self->GetCritters());
+    auto& map_critters = self->GetCritters();
+
+    vector<CritterView*> critters;
+    critters.reserve(map_critters.size());
+
+    for (auto& cr : map_critters) {
+        critters.emplace_back(cr.get());
+    }
+
+    return critters;
 }
 
 ///@ ExportMethod
@@ -228,9 +237,9 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, Critter
 {
     vector<CritterView*> critters;
 
-    for (auto* cr : self->GetCritters()) {
+    for (auto& cr : self->GetCritters()) {
         if (cr->CheckFind(findType)) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -243,16 +252,16 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
     vector<CritterView*> critters;
 
     if (!pid) {
-        for (auto* cr : self->GetCritters()) {
+        for (auto& cr : self->GetCritters()) {
             if (cr->CheckFind(findType)) {
-                critters.push_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
     else {
-        for (auto* cr : self->GetCritters()) {
+        for (auto& cr : self->GetCritters()) {
             if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
-                critters.push_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
@@ -269,9 +278,9 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 
     vector<CritterView*> critters;
 
-    for (auto* cr : self->GetCritters()) {
+    for (auto& cr : self->GetCritters()) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
