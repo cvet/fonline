@@ -346,6 +346,9 @@ Application::Application(int argc, char** argv, bool client_mode) :
     // Initialize audio
     if (!Settings.DisableAudio) {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+            AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
+            AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
+
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
                 UNUSED_VARIABLE(userdata);
                 UNUSED_VARIABLE(total_amount);
@@ -373,8 +376,6 @@ Application::Application(int argc, char** argv, bool client_mode) :
                 if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream), &AudioSpec, nullptr)) {
                     if (SDL_ResumeAudioStreamDevice(audio_stream)) {
                         AudioStream = audio_stream;
-                        AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
-                        AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
                     }
                     else {
                         WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
