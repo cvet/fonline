@@ -89,13 +89,13 @@ auto Map::FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsa
 
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
     const int max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);
-    int pos = -1;
+    int pos = GenericUtils::Random(0, max_pos - 1);
+    int iterations = 0;
 
     while (true) {
-        if (++pos >= max_pos) {
+        if (++iterations > max_pos) {
             return std::nullopt;
         }
-
         if (++pos >= max_pos) {
             pos = 0;
         }
