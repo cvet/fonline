@@ -124,7 +124,10 @@ void ProtoManager::ParseProtos(const FileSystem& resources)
         }
     };
 
-    for (auto&& [type_name, file_proto_pids] : all_file_protos) {
+    for (const auto& file_protos : all_file_protos) {
+        const auto& type_name = file_protos.first;
+        const auto& file_proto_pids = file_protos.second;
+
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
             RUNTIME_ASSERT(_protos[type_name].count(pid) == 0);
