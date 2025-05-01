@@ -2155,7 +2155,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         return;
     }
 
-    ipos center_pos = GetHexCurrentPosition(ls->Hex);
+    ipos center_pos = GetHexPosition(ls->Hex);
     center_pos.x += _engine->Settings.MapHexWidth / 2;
     center_pos.y += _engine->Settings.MapHexHeight / 2;
 
@@ -2718,15 +2718,13 @@ auto MapView::GetScreenRawHex() const -> ipos
     return _screenRawHex;
 }
 
-auto MapView::GetHexCurrentPosition(mpos hex) const -> ipos
+auto MapView::GetHexPosition(mpos hex) const -> ipos
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
-
     const auto& center_field = _viewField[_hVisible / 2 * _wVisible + _wVisible / 2];
-    const auto center_hex = _mapSize.FromRawPos(center_field.RawHex);
-    const auto hex_offset = _engine->Geometry.GetHexInterval(center_hex, hex);
+    const auto center_hex = center_field.RawHex;
+    const auto hex_offset = _engine->Geometry.GetHexInterval(center_hex, ipos {hex.x, hex.y});
 
     return {center_field.Offset.x + hex_offset.x, center_field.Offset.y + hex_offset.y};
 }
@@ -2840,7 +2838,7 @@ void MapView::PrepareFogToDraw()
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
-            const ipos base_pos = GetHexCurrentPosition(base_hex);
+            const ipos base_pos = GetHexPosition(base_hex);
             const auto center_look_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 0}, &chosen->SprOffset};
             const auto center_shoot_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 255}, &chosen->SprOffset};
 
@@ -2894,7 +2892,7 @@ void MapView::PrepareFogToDraw()
                     auto dist_look = GeometryHelper::DistGame(base_hex, target_hex);
 
                     if (_drawLookBorders) {
-                        const auto hex_pos = GetHexCurrentPosition(target_hex);
+                        const auto hex_pos = GetHexPosition(target_hex);
                         const auto color = ucolor {255, static_cast<uint8>(dist_look * 255 / dist), 0, 0};
                         const auto* offset = dist_look == dist ? &chosen->SprOffset : nullptr;
 
@@ -2911,7 +2909,7 @@ void MapView::PrepareFogToDraw()
 
                         TraceBullet(base_hex, target_hex, max_shoot_dist, 0.0f, nullptr, CritterFindType::Any, nullptr, &block_hex, nullptr, true);
 
-                        const auto block_hex_pos = GetHexCurrentPosition(block_hex);
+                        const auto block_hex_pos = GetHexPosition(block_hex);
                         const auto result_shoot_dist = GeometryHelper::DistGame(base_hex, block_hex);
                         const auto color = ucolor {255, static_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
                         const auto* offset = result_shoot_dist == max_shoot_dist ? &chosen->SprOffset : nullptr;
