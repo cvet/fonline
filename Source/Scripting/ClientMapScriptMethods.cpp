@@ -638,7 +638,7 @@ FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& scr
         throw ScriptException("Invalid hex provided");
     }
 
-    screenPos = self->GetHexCurrentPosition(hex);
+    screenPos = self->GetHexPosition(hex);
     screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
     screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
     screenPos.x = static_cast<int>(static_cast<float>(screenPos.x) / self->GetSpritesZoom());

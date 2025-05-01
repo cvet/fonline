@@ -189,7 +189,7 @@ public:
     void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
 
     auto GetScreenRawHex() const -> ipos;
-    auto GetHexCurrentPosition(mpos hex) const -> ipos;
+    auto GetHexPosition(mpos hex) const -> ipos;
 
     void FindSetCenter(mpos hex);
     void RebuildMap(ipos screen_raw_hex);
