@@ -80,7 +80,7 @@ using CallbackFunc = hstring;
 template<typename T>
 using PredicateFunc = hstring;
 
-class FOEngineBase;
+class BaseEngine;
 
 class ProtoItem;
 class ProtoCritter;
@@ -386,18 +386,18 @@ public:
     ScriptHelpers() = delete;
 
     template<typename T, typename U>
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, U prop_index) -> const Property*
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, U prop_index) -> const Property*
     {
         return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*;
 
     template<typename T>
-    static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool
+    static auto CallInitScript(ScriptSystem& script_sys, T* entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            if (auto init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
+            if (auto init_func = script_sys.FindFunc<void, T*, bool>(init_script)) {
                 if (!init_func(entity, first_time)) {
                     return false;
                 }

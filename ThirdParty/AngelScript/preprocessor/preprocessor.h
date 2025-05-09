@@ -52,30 +52,36 @@ namespace Preprocessor
     /* Preprocess                                                           */
     /************************************************************************/
 
+    class Context;
     class OutStream;
     class FileLoader;
     class PragmaCallback;
     class LineNumberTranslator;
     class PragmaInstance;
 
+    Context* CreateContext();
+    void     DeleteContext( Context* ctx ) noexcept;
+
     // Preprocess
-    int Preprocess( std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL );
+    int Preprocess( Context* ctx, std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL );
 
     // Pre preprocess settings
-    void Define( const std::string& str );
-    void Undef( const std::string& str );
-    void UndefAll();
-    bool IsDefined( const std::string& str, std::string* value = NULL );
-    void SetPragmaCallback( PragmaCallback* callback );
-    void CallPragma( const PragmaInstance& pragma );
+    void Define( Context* ctx, const std::string& str );
+    void Undef( Context* ctx, const std::string& str );
+    void UndefAll( Context* ctx );
+    bool IsDefined( Context* ctx, const std::string& str, std::string* value = NULL );
+    void SetPragmaCallback( Context* ctx, PragmaCallback* callback );
+    void CallPragma( Context* ctx, const PragmaInstance& pragma );
 
     // Post preprocess settings
-    LineNumberTranslator* GetLineNumberTranslator();
+    LineNumberTranslator* GetLineNumberTranslator( Context* ctx );
     void                  DeleteLineNumberTranslator( LineNumberTranslator* lnt );
     void                  StoreLineNumberTranslator( LineNumberTranslator* lnt, std::vector< unsigned char >& data );
     LineNumberTranslator* RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
-    const std::string&    ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
-    unsigned int          ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
+    const std::string&    ResolveOriginalFile( Context* ctx, unsigned int line_number );
+    unsigned int          ResolveOriginalLine( Context* ctx, unsigned int line_number );
+    const std::string&    ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt );
+    unsigned int          ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt );
 
     /************************************************************************/
     /* Streams                                                              */

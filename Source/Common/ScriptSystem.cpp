@@ -176,7 +176,7 @@ void ScriptSystem::Process()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view type_name, int prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*
 {
     STACK_TRACE_ENTRY();
 

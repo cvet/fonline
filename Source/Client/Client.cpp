@@ -41,33 +41,41 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode) :
-    FOEngineBase(settings, mapper_mode ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative),
+static void InitClientEngineData(EngineData* engine, const GlobalSettings& settings)
+{
+    STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddDataSource(strex(settings.ClientResources).combinePath("Core"));
+
+    if (const auto restore_info = resources.ReadFile("EngineData.fobin")) {
+        extern void Client_RegisterData(EngineData*, const vector<uint8>&);
+        Client_RegisterData(engine, restore_info.GetData());
+    }
+    else {
+        throw EngineDataNotFoundException(LINE_STR);
+    }
+}
+
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator) :
+    BaseEngine(
+        settings,
+        mapper_registrator ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative, //
+        mapper_registrator ? mapper_registrator : [&] { InitClientEngineData(this, settings); }),
     EffectMngr(Settings, Resources),
-    SprMngr(Settings, window, Resources, GameTime, EffectMngr, *this),
+    SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
-    Cache(strex(Settings.ResourcesDir).combinePath("Cache.fobin")),
+    Cache(strex(Settings.ClientResources).combinePath("Cache.fobin")),
     _conn(Settings)
 {
     STACK_TRACE_ENTRY();
 
     Resources.AddDataSource(Settings.EmbeddedResources);
-    Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("EngineData"));
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Core"));
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Texts"));
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("StaticMaps"));
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientProtos"));
-
-    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ClientAngelScript"));
-    }
 
     for (const auto& entry : Settings.ClientResourceEntries) {
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath(entry));
+        Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
     }
 
 #if FO_IOS
@@ -84,41 +92,41 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Init sprite subsystems
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
 #endif
 
-    SprMngr.InitializeEgg(FOEngineBase::ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
+    SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
     Settings.MousePos = App->Input.GetMousePosition();
 
-    if (mapper_mode) {
+    ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
+
+    if (mapper_registrator) {
         return;
     }
 
-    if (const auto restore_info = Resources.ReadFile("RestoreInfo.fobin")) {
-        extern void Client_RegisterData(FOEngineBase*, const vector<uint8>&);
-        Client_RegisterData(this, restore_info.GetData());
-    }
-    else {
-        throw EngineDataNotFoundException(LINE_STR);
-    }
-
-    extern void Init_AngelScript_ClientScriptSystem(FOEngineBase*);
+#if FO_ANGELSCRIPT_SCRIPTING
+    extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
     Init_AngelScript_ClientScriptSystem(this);
+#endif
 
     _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadTexts(Resources);
+    _curLang.LoadFromResources(Resources);
 
-    ProtoMngr.LoadFromResources();
+    ProtoMngr.LoadFromResources(Resources);
 
     // Modules initialization
     extern void InitClientEngine(FOClient * client);
     InitClientEngine(this);
 
-    ScriptSys->InitModules();
+    ScriptSys.InitModules();
 
     OnStart.Fire();
 
@@ -218,9 +226,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
-
-    // Auto login
-    TryAutoLogin();
 }
 
 FOClient::~FOClient()
@@ -324,53 +329,6 @@ auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
     return it != _globalMapCritters.end() ? it->get() : nullptr;
 }
 
-void FOClient::TryAutoLogin()
-{
-    STACK_TRACE_ENTRY();
-
-    auto auto_login = Settings.AutoLogin;
-
-#if FO_WEB
-    char* auto_login_web = (char*)EM_ASM_INT({
-        if ('foAutoLogin' in Module) {
-            var len = lengthBytesUTF8(Module.foAutoLogin) + 1;
-            var str = _malloc(len);
-            stringToUTF8(Module.foAutoLogin, str, len + 1);
-            return str;
-        }
-        return null;
-    });
-
-    if (auto_login_web) {
-        auto_login = auto_login_web;
-        free(auto_login_web);
-        auto_login_web = nullptr;
-    }
-
-#else
-    // Non-const hint
-    auto_login = auto_login.substr(0);
-#endif
-
-    if (auto_login.empty()) {
-        return;
-    }
-
-    const auto auto_login_args = strex(auto_login).split(' ');
-
-    if (auto_login_args.size() != 2) {
-        return;
-    }
-
-    _isAutoLogin = true;
-
-    if (OnAutoLogin.Fire(auto_login_args[0], auto_login_args[1]) && _initNetReason == INIT_NET_REASON_NONE) {
-        _loginName = auto_login_args[0];
-        _loginPassword = auto_login_args[1];
-        _initNetReason = INIT_NET_REASON_LOGIN;
-    }
-}
-
 void FOClient::MainLoop()
 {
     STACK_TRACE_ENTRY();
@@ -389,8 +347,8 @@ void FOClient::MainLoop()
 
     _conn.Process();
     ProcessInputEvents();
-    ScriptSys->Process();
-    TimeEventMngr->ProcessTimeEvents();
+    ScriptSys.Process();
+    TimeEventMngr.ProcessTimeEvents();
     OnLoop.Fire();
 
     if (_curMap != nullptr) {
@@ -664,8 +622,6 @@ void FOClient::Net_OnDisconnect()
 
     _initNetReason = INIT_NET_REASON_NONE;
     OnDisconnected.Fire();
-
-    TryAutoLogin();
 }
 
 void FOClient::Net_SendLogIn()
@@ -834,7 +790,7 @@ void FOClient::Net_OnInitData()
     if (!data.empty()) {
         FileSystem resources;
 
-        resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+        resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
 
         auto reader = DataReader(data);
 
@@ -902,7 +858,7 @@ void FOClient::Net_OnAddCritter()
     STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
+    const auto pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
@@ -967,7 +923,7 @@ void FOClient::Net_OnAddCritter()
 
     for (uint i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
         const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
@@ -1186,7 +1142,7 @@ void FOClient::Net_OnCritterAction()
 
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
@@ -1229,7 +1185,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (is_moved_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
@@ -1256,7 +1212,7 @@ void FOClient::Net_OnCritterMoveItem()
 
         for (uint i = 0; i < items_count; i++) {
             (void)_conn.InBuf.Read<ident_t>();
-            (void)_conn.InBuf.Read<hstring>(*this);
+            (void)_conn.InBuf.Read<hstring>(Hashes);
             (void)_conn.InBuf.Read<CritterItemSlot>();
             _conn.InBuf.ReadPropsData(_tempPropertiesData);
             ReceiveCustomEntities(nullptr);
@@ -1275,7 +1231,7 @@ void FOClient::Net_OnCritterMoveItem()
 
         for (uint i = 0; i < items_count; i++) {
             const auto item_id = _conn.InBuf.Read<ident_t>();
-            const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+            const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
             const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
             _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
@@ -1319,7 +1275,7 @@ void FOClient::Net_OnCritterAnimate()
 
     if (is_context_item) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
@@ -1530,7 +1486,7 @@ void FOClient::Net_OnChosenAddItem()
     STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
     _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
@@ -1606,7 +1562,7 @@ void FOClient::Net_OnAddItemOnMap()
 
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
     _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
     if (_curMap == nullptr) {
@@ -1661,7 +1617,7 @@ void FOClient::Net_OnAnimateItem()
     NON_CONST_METHOD_HINT();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto anim_name = _conn.InBuf.Read<hstring>(*this);
+    const auto anim_name = _conn.InBuf.Read<hstring>(Hashes);
     const auto looped = _conn.InBuf.Read<bool>();
     const auto reversed = _conn.InBuf.Read<bool>();
 
@@ -1683,7 +1639,7 @@ void FOClient::Net_OnEffect()
 
     NON_CONST_METHOD_HINT();
 
-    const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto radius = _conn.InBuf.Read<uint16>();
     RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
@@ -1714,7 +1670,7 @@ void FOClient::Net_OnFlyEffect()
 
     NON_CONST_METHOD_HINT();
 
-    const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
     const auto eff_cr2_id = _conn.InBuf.Read<ident_t>();
 
@@ -1898,7 +1854,7 @@ void FOClient::Net_OnChosenTalk()
 
     const auto is_npc = _conn.InBuf.Read<bool>();
     const auto talk_cr_id = _conn.InBuf.Read<ident_t>();
-    const auto talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
+    const auto talk_dlg_id = _conn.InBuf.Read<hstring>(Hashes);
     const auto count_answ = _conn.InBuf.Read<uint8>();
 
     if (count_answ == 0) {
@@ -1951,8 +1907,8 @@ void FOClient::Net_OnLoadMap()
 
     const auto loc_id = _conn.InBuf.Read<ident_t>();
     const auto map_id = _conn.InBuf.Read<ident_t>();
-    const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
-    const auto map_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto loc_pid = _conn.InBuf.Read<hstring>(Hashes);
+    const auto map_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
     if (map_pid) {
@@ -1999,7 +1955,7 @@ void FOClient::Net_OnSomeItems()
 
     for (uint i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto pid = _conn.InBuf.Read<hstring>(*this);
+        const auto pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
         RUNTIME_ASSERT(item_id);
 
@@ -2038,7 +1994,7 @@ void FOClient::Net_OnRemoteCall()
 
     const auto rpc_num = _conn.InBuf.Read<uint>();
 
-    ScriptSys->HandleRemoteCall(rpc_num, _curPlayer.get());
+    ScriptSys.HandleRemoteCall(rpc_num, _curPlayer.get());
 }
 
 void FOClient::Net_OnAddCustomEntity()
@@ -2046,9 +2002,9 @@ void FOClient::Net_OnAddCustomEntity()
     STACK_TRACE_ENTRY();
 
     const auto holder_id = _conn.InBuf.Read<ident_t>();
-    const auto holder_entry = _conn.InBuf.Read<hstring>(*this);
+    const auto holder_entry = _conn.InBuf.Read<hstring>(Hashes);
     const auto id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(*this);
+    const auto pid = _conn.InBuf.Read<hstring>(Hashes);
     _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
 
     Entity* holder;
@@ -2122,12 +2078,12 @@ void FOClient::ReceiveCustomEntities(Entity* holder)
     }
 
     for (uint16 i = 0; i < entries_count; i++) {
-        const auto entry = _conn.InBuf.Read<hstring>(*this);
+        const auto entry = _conn.InBuf.Read<hstring>(Hashes);
         const auto entities_count = _conn.InBuf.Read<uint>();
 
         for (uint j = 0; j < entities_count; j++) {
             const auto id = _conn.InBuf.Read<ident_t>();
-            const auto pid = _conn.InBuf.Read<hstring>(*this);
+            const auto pid = _conn.InBuf.Read<hstring>(Hashes);
             _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder != nullptr) {
@@ -2685,7 +2641,7 @@ void FOClient::ChangeLanguage(string_view lang_name)
     STACK_TRACE_ENTRY();
 
     auto lang_pack = LanguagePack {lang_name, *this};
-    lang_pack.LoadTexts(Resources);
+    lang_pack.LoadFromResources(Resources);
 
     _curLang = std::move(lang_pack);
     Settings.Language = lang_name;
@@ -2808,7 +2764,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             // Script
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
                 string func_name = strex(tag.substr(7)).substringUntil('$');
-                if (!ScriptSys->CallFunc<string, string>(ToHashedString(func_name), string(lexems), tag)) {
+                if (!ScriptSys.CallFunc<string, string>(Hashes.ToHashedString(func_name), string(lexems), tag)) {
                     tag = "<script function not found>";
                 }
             }
@@ -3042,7 +2998,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
         const auto is_cr = strex(args[1]).toBool();
         const auto cr_id = is_cr ? ident_t {strex(args[2]).toInt64()} : ident_t {};
-        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(strex(args[2]).toUInt());
+        const auto dlg_pack_id = is_cr ? hstring() : Hashes.ResolveHash(strex(args[2]).toUInt());
         const auto answer_index = static_cast<uint8>(strex(args[3]).toUInt());
 
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);

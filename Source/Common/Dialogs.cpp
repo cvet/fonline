@@ -37,7 +37,7 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
+static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -97,24 +97,24 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FOEngineBase* engine) :
-    _engine {engine}
+DialogManager::DialogManager(EngineData& engine) :
+    _engine {&engine}
 {
     STACK_TRACE_ENTRY();
 }
 
-void DialogManager::LoadFromResources()
+void DialogManager::LoadFromResources(const FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    auto errors = 0;
+    int errors = 0;
+    auto files = resources.FilterFiles("fodlg");
 
-    auto files = _engine->Resources.FilterFiles("fodlg");
     while (files.MoveNext()) {
         try {
             auto file = files.GetCurFile();
-            auto* pack = ParseDialog(file.GetName(), file.GetStr());
-            AddDialog(pack);
+            auto pack = ParseDialog(file.GetName(), file.GetStr());
+            AddDialog(std::move(pack));
         }
         catch (const DialogParseException& ex) {
             ReportExceptionAndContinue(ex);
@@ -127,7 +127,7 @@ void DialogManager::LoadFromResources()
     }
 }
 
-void DialogManager::AddDialog(DialogPack* pack)
+void DialogManager::AddDialog(unique_ptr<DialogPack> pack)
 {
     STACK_TRACE_ENTRY();
 
@@ -135,7 +135,7 @@ void DialogManager::AddDialog(DialogPack* pack)
         throw DialogManagerException("Dialog already added", pack->PackName);
     }
 
-    _dialogPacks.insert(std::make_pair(pack->PackId, pack));
+    _dialogPacks.emplace(pack->PackId, std::move(pack));
 }
 
 auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
@@ -159,19 +159,19 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
     return result;
 }
 
-auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
+auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -> unique_ptr<DialogPack>
 {
     STACK_TRACE_ENTRY();
 
     auto pack = SafeAlloc::MakeUnique<DialogPack>();
+    auto fodlg = ConfigFile(strex("{}.fodlg", pack_name), string(data), &_engine->Hashes, ConfigFileOption::CollectContent);
 
-    auto fodlg = ConfigFile(strex("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
-
-    pack->PackId = _engine->ToHashedString(pack_name);
+    pack->PackId = _engine->Hashes.ToHashedString(pack_name);
     pack->PackName = pack_name;
     pack->Comment = fodlg.GetSectionContent("comment");
 
     const auto lang_key = fodlg.GetStr("data", "lang", "");
+
     if (lang_key.empty()) {
         throw DialogParseException("Lang app not found", pack_name);
     }
@@ -181,29 +181,34 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     }
 
     const auto lang_apps = strex(lang_key).split(' ');
+
     if (lang_apps.empty()) {
         throw DialogParseException("Lang app is empty", pack_name);
     }
 
     for (size_t i = 0; i < lang_apps.size(); i++) {
         const auto& lang_app = lang_apps[i];
+
         if (lang_app.size() != 4) {
             throw DialogParseException("Language length not equal 4", pack_name);
         }
 
         const auto lang_buf = fodlg.GetSectionContent(lang_app);
+
         if (lang_buf.empty()) {
             throw DialogParseException("One of the lang section not found", pack_name);
         }
 
         TextPack temp_msg;
-        if (!temp_msg.LoadFromString(lang_buf, *_engine)) {
+
+        if (!temp_msg.LoadFromString(lang_buf, _engine->Hashes)) {
             throw DialogParseException("Load MSG fail", pack_name);
         }
 
         pack->Texts.emplace_back(lang_app, TextPack {});
 
         uint str_num = 0;
+
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
             const size_t count = temp_msg.GetStrCount(str_num);
             const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
@@ -216,6 +221,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     }
 
     const auto dlg_buf = fodlg.GetSectionContent("dialog");
+
     if (dlg_buf.empty()) {
         throw DialogParseException("Dialog section not found", pack_name);
     }
@@ -224,20 +230,22 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
     string tok;
     input >> tok;
+
     if (tok != "&") {
         throw DialogParseException("Dialog start token not found", pack_name);
     }
 
     while (!input.eof()) {
         Dialog dlg;
-
         input >> dlg.Id;
+
         if (input.fail()) {
             throw DialogParseException("Bad dialog id number", pack_name);
         }
 
         uint text_id = 0;
         input >> text_id;
+
         if (input.fail()) {
             throw DialogParseException("Bad text link", pack_name);
         }
@@ -246,6 +254,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
         string script;
         input >> script;
+
         if (input.fail()) {
             throw DialogParseException("Bad not answer action", pack_name);
         }
@@ -253,10 +262,11 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             script = "";
         }
 
-        dlg.DlgScriptFuncName = _engine->ToHashedString(script);
+        dlg.DlgScriptFuncName = _engine->Hashes.ToHashedString(script);
 
         uint flags = 0;
         input >> flags;
+
         if (input.fail()) {
             throw DialogParseException("Bad flags", pack_name);
         }
@@ -265,6 +275,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
         // Read answers
         input >> tok;
+
         if (input.fail()) {
             throw DialogParseException("Dialog corrupted", pack_name);
         }
@@ -286,13 +297,14 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
         while (!input.eof()) {
             DialogAnswer answer;
-
             input >> answer.Link;
+
             if (input.fail()) {
                 throw DialogParseException("Bad link in answer", pack_name);
             }
 
             input >> text_id;
+
             if (input.fail()) {
                 throw DialogParseException("Bad text link in answer", pack_name);
             }
@@ -301,6 +313,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
             while (!input.eof()) {
                 input >> tok;
+
                 if (input.fail()) {
                     throw DialogParseException("Parse answer character fail", pack_name);
                 }
@@ -336,14 +349,12 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         }
     }
 
-    return pack.release();
+    return pack;
 }
 
-auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq
+auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const -> DialogAnswerReq
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     uint8 who = DR_WHO_PLAYER;
     uint8 oper = '=';
@@ -359,17 +370,21 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
+
     if (input.fail()) {
         throw DialogParseException("Parse DR type fail");
     }
 
     auto type = GetDrType(type_str);
+
     if (type == DR_NO_RECHECK) {
         no_recheck = true;
         input >> type_str;
+
         if (input.fail()) {
             throw DialogParseException("Parse DR type fail2");
         }
+
         type = GetDrType(type_str);
     }
 
@@ -378,6 +393,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
         // Who
         input >> who;
         who = GetWho(who);
+
         if (who == DR_WHO_NONE) {
             throw DialogParseException("Invalid DR property who", who);
         }
@@ -385,18 +401,20 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
         // Name
         input >> name;
         auto is_hash = false;
-        id_index = GetPropEnumIndex(_engine, name, is_demand, type, is_hash);
+        id_index = GetPropEnumIndex(_engine.get(), name, is_demand, type, is_hash);
 
         // Operator
         input >> oper;
+
         if (!CheckOper(oper)) {
             throw DialogParseException("Invalid DR property oper", oper);
         }
 
         // Value
         input >> svalue;
+
         if (is_hash) {
-            ivalue = _engine->ToHashedString(svalue).as_int();
+            ivalue = _engine->Hashes.ToHashedString(svalue).as_int();
         }
         else {
             ivalue = _engine->ResolveGenericValue(svalue);
@@ -406,16 +424,18 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
         // Who
         input >> who;
         who = GetWho(who);
+
         if (who == DR_WHO_NONE) {
             throw DialogParseException("Invalid DR item who", who);
         }
 
         // Name
         input >> name;
-        id_hash = _engine->ToHashedString(name);
+        id_hash = _engine->Hashes.ToHashedString(name);
 
         // Operator
         input >> oper;
+
         if (!CheckOper(oper)) {
             throw DialogParseException("Invalid DR item oper", oper);
         }
@@ -433,6 +453,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
 
         // Values
         string value_str;
+
         if (values_count > 0) {
             input >> value_str;
             script_val[0] = _engine->ResolveGenericValue(value_str);
@@ -474,7 +495,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     result.Who = who;
     result.ParamIndex = id_index;
     result.ParamHash = id_hash;
-    result.AnswerScriptFuncName = _engine->ToHashedString(script_name);
+    result.AnswerScriptFuncName = _engine->Hashes.ToHashedString(script_name);
     result.Op = oper;
     result.ValuesCount = static_cast<uint8>(values_count);
     result.NoRecheck = no_recheck;

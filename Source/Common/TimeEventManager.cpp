@@ -37,9 +37,9 @@
 
 const timespan TimeEventManager::MIN_REPEAT_TIME = timespan(std::chrono::milliseconds {1});
 
-TimeEventManager::TimeEventManager(GameTimer* game_time, ScriptSystem* script_sys) :
-    _gameTime {game_time},
-    _scriptSys {script_sys}
+TimeEventManager::TimeEventManager(GameTimer& game_time, ScriptSystem& script_sys) :
+    _gameTime {&game_time},
+    _scriptSys {&script_sys}
 {
     STACK_TRACE_ENTRY();
 

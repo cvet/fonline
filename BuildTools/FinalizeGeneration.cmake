@@ -702,7 +702,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/WinApiUndef-Include.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
 
@@ -860,20 +859,31 @@ list(APPEND FO_MAPPER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
 
 list(APPEND FO_BAKER_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/DialogBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/DialogBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp")
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp")
 
     list(APPEND FO_ASCOMPILER_SOURCE
@@ -883,6 +893,9 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
+
+    list(APPEND FO_BAKER_SOURCE
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp")
 endif()
 
 list(APPEND FO_SOURCE_META_FILES
@@ -934,16 +947,11 @@ list(APPEND FO_TESTS_SOURCE
 include(FindPython3)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+list(APPEND FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -gamename "${FO_NICE_NAME} ${FO_GAME_VERSION}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -gameversion "${FO_GAME_VERSION}")
-
-if(FO_INFO_MARKDOWN_OUTPUT)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -markdown)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -mdpath "${FO_INFO_MARKDOWN_OUTPUT}")
-endif()
+list(APPEND FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 
 if(FO_NATIVE_SCRIPTING)
     list(APPEND FO_CODEGEN_COMMAND_ARGS -native)
@@ -951,10 +959,6 @@ endif()
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_CODEGEN_COMMAND_ARGS -angelscript)
-
-    if(FO_GENERATE_ANGELSCRIPT_CONTENT)
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -ascontentoutput "${FO_GENERATE_ANGELSCRIPT_CONTENT}")
-    endif()
 endif()
 
 if(FO_MONO_SCRIPTING)
@@ -1005,38 +1009,8 @@ foreach(entry ${FO_MONO_ASSEMBLIES})
     endforeach()
 endforeach()
 
-foreach(entry ${FO_CONTENT})
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -content "${entry}")
-endforeach()
-
-foreach(entry ${FO_RESOURCES})
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -resource "${entry}")
-endforeach()
-
-if(FO_DEBUGGING_CONFIG)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -config "ExternalConfig,${FO_BACKED_RESOURCES_OUTPUT}/Configs/${FO_DEBUGGING_CONFIG}.focfg")
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -config "ResourcesDir,${FO_BACKED_RESOURCES_OUTPUT}")
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -config "EmbeddedResources,${FO_BACKED_RESOURCES_OUTPUT}/Embedded")
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -config "DataSynchronization,False")
-
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -config "BakeOutput,${FO_BACKED_RESOURCES_OUTPUT}")
-
-    foreach(entry ${FO_CONTENT})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -config "BakeContentEntries,+${entry}")
-    endforeach()
-
-    foreach(entry ${FO_RESOURCES})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -config "BakeResourceEntries,+${entry}")
-    endforeach()
-
-    foreach(entry ${FO_BAKING_OPTIONS})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -config "${entry}")
-    endforeach()
-endif()
-
 list(APPEND FO_CODEGEN_META_SOURCE
     ${FO_SOURCE_META_FILES}
-    ${FO_CONTENT_META_FILES}
     ${FO_MONO_SOURCE})
 
 foreach(entry ${FO_CODEGEN_META_SOURCE})
@@ -1046,7 +1020,6 @@ endforeach()
 list(APPEND FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
@@ -1357,15 +1330,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
     if(FO_ANGELSCRIPT_SCRIPTING)
         set(compileASScripts ${FO_DEV_NAME}_ASCompiler)
 
-        list(APPEND compileASScripts -BakeOutput ${FO_BACKED_RESOURCES_OUTPUT})
-
-        foreach(entry ${FO_CONTENT})
-            list(APPEND compileASScripts -BakeContentEntries "+${entry}")
-        endforeach()
-
-        foreach(entry ${FO_RESOURCE})
-            list(APPEND compileASScripts -BakeResourceEntries "+${entry}")
-        endforeach()
+        list(APPEND compileASScripts -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 
         add_custom_target(CompileAngelScript
             COMMAND ${compileASScripts}
@@ -1394,22 +1359,7 @@ endif()
 # Baking
 set(bakeResources "${FO_DEV_NAME}_Baker")
 
-list(APPEND bakeResources -BakeOutput "${FO_BACKED_RESOURCES_OUTPUT}")
-
-foreach(entry ${FO_CONTENT})
-    list(APPEND bakeResources -BakeContentEntries "+${entry}")
-endforeach()
-
-foreach(entry ${FO_RESOURCES})
-    list(APPEND bakeResources -BakeResourceEntries "+${entry}")
-endforeach()
-
-foreach(entry ${FO_BAKING_OPTIONS})
-    string(REPLACE "," ";" entry ${entry})
-    list(GET entry 0 opt)
-    list(GET entry 1 value)
-    list(APPEND bakeResources "-${opt}" "${value}")
-endforeach()
+list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 
 add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
@@ -1430,6 +1380,7 @@ foreach(package ${FO_PACKAGES})
     StatusMessage("+ Package ${package}")
 
     add_custom_target(MakePackage-${package}
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         COMMENT "Make package ${package}")
     list(APPEND FO_COMMANDS_GROUP "MakePackage-${package}")
@@ -1437,11 +1388,10 @@ foreach(package ${FO_PACKAGES})
     foreach(entry ${Package_${package}_Parts})
         set(packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/package.py")
 
+        list(APPEND packageCommands -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
         list(APPEND packageCommands -buildhash "${FO_BUILD_HASH}")
         list(APPEND packageCommands -devname "${FO_DEV_NAME}")
         list(APPEND packageCommands -nicename "${FO_NICE_NAME}")
-        list(APPEND packageCommands -authorname "${FO_AUTHOR_NAME}")
-        list(APPEND packageCommands -gameversion "${FO_GAME_VERSION}")
 
         string(REPLACE "," ";" entry ${entry})
         list(GET entry 0 target)
@@ -1454,12 +1404,6 @@ foreach(package ${FO_PACKAGES})
         list(APPEND packageCommands -platform "${platform}")
         list(APPEND packageCommands -arch "${arch}")
         list(APPEND packageCommands -pack "${pack}")
-
-        foreach(entry ${FO_RESOURCES})
-            string(REPLACE "," ";" entry ${entry})
-            list(GET entry 0 packName)
-            list(APPEND packageCommands -respack ${packName})
-        endforeach()
 
         if(customConfig)
             set(config ${customConfig})
@@ -1478,7 +1422,7 @@ foreach(package ${FO_PACKAGES})
         endif()
 
         list(APPEND packageCommands -input ${FO_OUTPUT_PATH})
-        list(APPEND packageCommands -output ${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package})
+        list(APPEND packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
         list(APPEND packageCommands -compresslevel $<IF:$<OR:$<CONFIG:Release>,$<CONFIG:Release_Ext>,$<CONFIG:MinSizeRel>>,9,1>)
 
         StatusMessage("  ${target} for ${platform}-${arch} in ${pack} with ${config} config")
@@ -1503,33 +1447,13 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
     endif()
 
     cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE rootDir)
-    cmake_path(RELATIVE_PATH FO_BACKED_RESOURCES_OUTPUT BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE resourcesDir)
 
     set(FO_GEN_FILE_CONTENT "${prolog}${start}python \"${rootDir}/${FO_ENGINE_ROOT}/BuildTools/starter.py\"")
 
+    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-maincfg \"${rootDir}/${FO_MAIN_CONFIG}\"")
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-devname \"${FO_DEV_NAME}\"")
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-buildhash \"${FO_BUILD_HASH}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-bininput \"Binaries\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-defaultcfg \"${FO_DEFAULT_CONFIG}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-mappercfg \"${FO_MAPPER_CONFIG}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-baking \"${resourcesDir}\"")
-
-    foreach(entry ${FO_CONTENT})
-        cmake_path(RELATIVE_PATH entry BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE entry)
-        set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-content \"${entry}\"")
-    endforeach()
-
-    foreach(entry ${FO_RESOURCES})
-        string(REPLACE "," ";" entry ${entry})
-        list(GET entry 0 packName)
-        list(GET entry 1 packEntry)
-        cmake_path(RELATIVE_PATH packEntry BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE packEntry)
-        set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-resource \"${packName},${packEntry}\"")
-    endforeach()
-
-    foreach(entry ${FO_BAKING_OPTIONS})
-        set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-config \"${entry}\"")
-    endforeach()
+    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-bininput \"${rootDir}/Binaries\"")
 
     configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
 endif()

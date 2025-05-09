@@ -937,20 +937,27 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
     return !ec;
 }
 
-void DiskFileSystem::ResolvePath(string& path)
+auto DiskFileSystem::ResolvePath(string_view path) -> string
 {
     STACK_TRACE_ENTRY();
+
+    string result;
 
     std::error_code ec;
     const auto resolved = std::filesystem::absolute(MakeFilesystemPath(path), ec);
 
     if (!ec) {
 #if FO_WINDOWS
-        path = WinWideCharToMultiByte(resolved.native().c_str());
+        result = WinWideCharToMultiByte(resolved.native().c_str());
 #else
-        path = resolved.native();
+        result = resolved.native();
 #endif
     }
+    else {
+        result = path;
+    }
+
+    return result;
 }
 
 void DiskFileSystem::MakeDirTree(string_view path)
@@ -1050,16 +1057,23 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
     return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
 }
 
-void DiskFileSystem::ResolvePath(string& path)
+auto DiskFileSystem::ResolvePath(string_view path) -> string
 {
     STACK_TRACE_ENTRY();
 
-    char* buf = realpath(path.c_str(), nullptr);
+    string result;
 
-    if (buf) {
-        path = buf;
+    char* buf = realpath(string(path).c_str(), nullptr);
+
+    if (buf != nullptr) {
+        result = buf;
         free(buf);
     }
+    else {
+        result = path;
+    }
+
+    return result;
 }
 
 void DiskFileSystem::MakeDirTree(string_view path)
@@ -1129,4 +1143,29 @@ void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_s
     STACK_TRACE_ENTRY();
 
     RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
+}
+
+auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, false);
+
+    if (!file) {
+        return false;
+    }
+
+    const auto file_size = file.GetSize();
+
+    if (file_size != buf.size()) {
+        return false;
+    }
+
+    vector<uint8> file_buf(file_size);
+
+    if (!file.Read(file_buf.data(), file_size)) {
+        return false;
+    }
+
+    return MemCompare(file_buf.data(), buf.data(), buf.size());
 }

@@ -91,7 +91,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, false);
+                Data->Client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -144,7 +144,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv, true);
+        InitApp(argc, argv, AppInitFlags::ClientMode);
 
 #if FO_IOS
         MainEntry(nullptr);

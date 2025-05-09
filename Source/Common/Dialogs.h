@@ -131,7 +131,7 @@ class DialogManager final
 {
 public:
     DialogManager() = delete;
-    explicit DialogManager(FOEngineBase* engine);
+    explicit DialogManager(EngineData& engine);
     DialogManager(const DialogManager&) = delete;
     DialogManager(DialogManager&&) noexcept = default;
     auto operator=(const DialogManager&) = delete;
@@ -141,18 +141,17 @@ public:
     [[nodiscard]] auto GetDialog(hstring pack_id) -> DialogPack*;
     [[nodiscard]] auto GetDialogs() -> vector<DialogPack*>;
 
-    void LoadFromResources();
+    void LoadFromResources(const FileSystem& resources);
+    auto ParseDialog(string_view pack_name, string_view data) const -> unique_ptr<DialogPack>;
 
 private:
     [[nodiscard]] auto GetDrType(string_view str) const -> uint8;
     [[nodiscard]] auto GetWho(uint8 who) const -> uint8;
     [[nodiscard]] auto CheckOper(uint8 oper) const -> bool;
 
-    auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
-    auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq;
-    void AddDialog(DialogPack* pack);
+    auto LoadDemandResult(istringstream& input, bool is_demand) const -> DialogAnswerReq;
+    void AddDialog(unique_ptr<DialogPack> pack);
 
-    FOEngineBase* _engine;
+    raw_ptr<EngineData> _engine;
     map<hstring, unique_ptr<DialogPack>> _dialogPacks {};
-    bool _nonConstHelper {};
 };

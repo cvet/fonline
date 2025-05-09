@@ -7,14 +7,16 @@ import sys
 import argparse
 import time
 import uuid
+import glob
+import foconfig
 
 startTime = time.time()
 
 parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
+parser.add_argument('-maincfg', dest='maincfg', required=True, help='main config file')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
-parser.add_argument('-devname', dest='devname', required=True, help='dev game name and version')
-parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
-parser.add_argument('-gameversion', dest='gameversion', required=True, help='game version')
+parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
+parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
 parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
@@ -28,13 +30,12 @@ parser.add_argument('-monomapperref', dest='monomapperref', action='append', def
 parser.add_argument('-monoserversource', dest='monoserversource', action='append', default=[], help='csharp server file path')
 parser.add_argument('-monoclientsource', dest='monoclientsource', action='append', default=[], help='csharp client file path')
 parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
-parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
-parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
-parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
-parser.add_argument('-ascontentoutput', dest='ascontentoutput', help='generated angel script content script output dir')
 parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
 args = parser.parse_args()
+
+fomain = foconfig.ConfigParser()
+fomain.loadFromFile(args.maincfg)
 
 def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
@@ -98,7 +99,6 @@ assert getHash('abcdefg') == '-106836237'
 # Generated file list
 genFileList = ['EmbeddedResources-Include.h',
         'Version-Include.h',
-        'DebugSettings-Include.h',
         'GenericCode-Common.cpp',
         'DataRegistration-Server.cpp',
         'DataRegistration-Client.cpp',
@@ -296,11 +296,28 @@ def parseMetaFile(absPath):
             showError('Invalid tag format', absPath + ' (' + str(lineIndex + 1) + ')', line.strip(), ex)
 
 metaFiles = []
+
+# Files from build system
 for path in args.meta:
     absPath = os.path.abspath(path)
     if absPath not in metaFiles and 'GeneratedSource' not in absPath:
         assert os.path.isfile(absPath), 'Invalid meta file path ' + path
         metaFiles.append(absPath)
+
+# Collect fos files from resource packs
+resPacks = fomain.getSections('ResourcePack')
+fomainDir = os.path.dirname(os.path.abspath(args.maincfg))
+for resPack in resPacks:
+    recursive = resPack.getBool('RecursiveInput', False)
+    for dir in resPack.getStr('InputDir').split(' '):
+        dir = os.path.abspath(os.path.join(fomainDir, dir))
+        assert os.path.isdir(dir), 'Invalid resource pack input dir ' + dir
+        for f in glob.glob(os.path.join(dir, '*'), recursive=recursive):
+            if os.path.isfile(f) and os.path.splitext(f)[1].lower() == '.fos':
+                absPath = os.path.abspath(f)
+                if absPath not in metaFiles:
+                    metaFiles.append(absPath)
+
 metaFiles.sort()
 
 for absPath in metaFiles:
@@ -1179,93 +1196,6 @@ parseTags()
 checkErrors()
 tagsMetas = {} # Cleanup memory
 
-# Parse content
-content = {}
-
-for contentDir in args.content:
-    try:
-        def collectFiles(dir):
-            result = []
-            for file in os.listdir(dir):
-                fileParts = os.path.splitext(file)
-                if len(fileParts) > 1 and fileParts[-1] in ['.fopro', '.foitem', '.focr', '.fomap', '.foloc', '.fodlg']:
-                    result.append(dir + '/' + file)
-            return result
-        
-        for file in collectFiles(contentDir):
-            baseName, ext = os.path.splitext(os.path.basename(file))
-            if ext in ['.fomap', '.fodlg']:
-                content.setdefault(ext, []).append(baseName)
-            else:
-                baseName, ext = os.path.splitext(os.path.basename(file))
-                
-                verbosePrint('getPidNames', file)
-                with open(file, 'r', encoding='utf-8-sig') as f:
-                    try:
-                        fileLines = f.readlines()
-                    except:
-                        print('[CodeGen]', 'Bad file', file)
-                        raise
-                
-                section = None
-                customName = None
-                for fileLine in fileLines:
-                    fileLine = fileLine.strip()
-                    if len(fileLine):
-                        if fileLine[0] == '[' and fileLine[-1] == ']':
-                            if section:
-                                content.setdefault(section, []).append(customName if customName else baseName)
-                            section = fileLine[1:-1]
-                            customName = None
-                        elif fileLine.startswith('$Name'):
-                            customName = fileLine[fileLine.find('=') + 1:].strip()
-                if section:
-                    content.setdefault(section, []).append(customName if customName else baseName)
-    
-    except Exception as ex:
-        showError('Can\'t process content dir ' + contentDir, ex)
-
-for key in content.keys():
-    content[key].sort()
-
-checkErrors()
-
-# Parse resources
-resources = {}
-
-"""
-for resourceEntry in args.resource:
-    try:
-        def collectFiles(dir, arcDir):
-            result = []
-            for entry in os.listdir(dir):
-                entryPath = os.path.abspath(os.path.join(dir, entry))
-                if os.path.isdir(entryPath):
-                    result.extend(collectFiles(entryPath, arcDir + '/' + entry))
-                elif os.path.isfile(entryPath):
-                    result.append(((arcDir + '/' + entry).lstrip('/'), entryPath))
-            return result        
-        
-        resType, resDir = resourceEntry.split(',', 1)
-        resDir = os.path.abspath(resDir)
-        
-        if resType not in resources:
-            resources[resType] = []
-        
-        if os.path.isdir(resDir):
-            resources[resType].extend(collectFiles(resDir, ''))
-        elif os.path.isfile(resDir):
-            resources[resType].extend(resDir)
-    
-    except Exception as ex:
-        showError('Can\'t process resources entry ' + resourceEntry, ex)
-
-for key in resources.keys():
-    resources[key].sort(key=lambda x: x[0])
-
-checkErrors()
-"""
-
 # Generate API
 files = {}
 lastFile = None
@@ -1585,12 +1515,9 @@ def genDataRegistration(target, isASCompiler):
     for entity in gameEntities:
         if not entityAllowed(entity, target):
             continue
-        if entity == 'Game':
-            registerLines.append('registrators["' + entity + '"] = engine->GetPropertyRegistratorForEdit("' + entity + '");')
-        else:
-            registerLines.append('registrators["' + entity + '"] = engine->RegisterEntityType("' + entity + '", ' +
-                    ('true' if gameEntitiesInfo[entity]['Exported'] else 'false') + ', ' +
-                    ('true' if gameEntitiesInfo[entity]['HasProtos'] else 'false') + ');')
+        registerLines.append('registrators["' + entity + '"] = engine->RegisterEntityType("' + entity + '", ' +
+                ('true' if gameEntitiesInfo[entity]['Exported'] else 'false') + ', ' +
+                ('true' if gameEntitiesInfo[entity]['HasProtos'] else 'false') + ');')
     registerLines.append('')
     
     registerLines.append('// Entity holders')
@@ -1709,7 +1636,7 @@ def genDataRegistration(target, isASCompiler):
     
     # Migration rules
     if target in ['Server', 'Baker', 'Mapper'] and not isASCompiler:
-        registerLines.append('const auto to_hstring = [engine](string_view str) -> hstring { return engine->ToHashedString(str); };')
+        registerLines.append('const auto to_hstring = [engine](string_view str) -> hstring { return engine->Hashes.ToHashedString(str); };')
         registerLines.append('')
         registerLines.append('engine->RegisterMigrationRules({')
         for arg0 in sorted(set(ruleTag[0][0] for ruleTag in codeGenTags['MigrationRule'])):
@@ -1731,7 +1658,7 @@ def genDataRegistration(target, isASCompiler):
     # Hstrings
     for holderTag in codeGenTags['EntityHolder']:
         holder, access, entity, entry, flags, _ = holderTag
-        registerLines.append('engine->ToHashedString("' + entry + '");')
+        registerLines.append('engine->Hashes.ToHashedString("' + entry + '");')
     
     createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
     writeCodeGenTemplate('DataRegistration')
@@ -1791,14 +1718,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
     
     # Make stub for disabled script system
     if (lang == 'AngelScript' and not args.angelscript) or (lang == 'Mono' and not args.csharp) or (lang == 'Native' and not args.native):
-        writeFile('class FOEngineBase;')
+        writeFile('class BaseEngine;')
         if isASCompiler:
             if isASCompilerValidation:
-                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem_Validation(FOEngineBase*) { }')
+                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem_Validation(BaseEngine*) { }')
             else:
-                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem(FOEngineBase*) { }')
+                writeFile('void Init_' + lang + 'Compiler_' + target + 'ScriptSystem(BaseEngine*) { }')
         else:
-            writeFile('void Init_' + lang + '_' + target + 'ScriptSystem(FOEngineBase*) { }')
+            writeFile('void Init_' + lang + '_' + target + 'ScriptSystem(BaseEngine*) { }')
         
         return
     
@@ -1899,7 +1826,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] == 'arr':
                 return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] in ['init', 'predicate', 'callback']:
-                return 'GetASFuncName(' + v + ', *self->GetEngine())'
+                return 'GetASFuncName(' + v + ', self->GetEngine()->Hashes)'
             elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
                 r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity='Entity') for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_BACKEND_FROM_SELF())'
                 return 'GetASScriptFuncName' + r if tt[0] == 'ScriptFuncName' else 'GetASScriptFunc' + r
@@ -2035,7 +1962,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if target == 'Mapper':
                     engineEntityType = 'FOMapper'
                 if targ == 'Common':
-                    engineEntityTypeExtern = 'FOEngineBase'
+                    engineEntityTypeExtern = 'BaseEngine'
                 elif targ == 'Mapper':
                     engineEntityTypeExtern = 'FOMapper'
             
@@ -2286,7 +2213,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if not isASCompiler:
                 globalLines.append('    STACK_TRACE_ENTRY();')
                 globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
-                globalLines.append('    auto&& value = script_backend->Engine->Settings.Custom["' + name + '"];')
+                globalLines.append('    auto&& value = script_backend->Engine->Settings.GetCustomSetting("' + name + '");')
                 if type == 'string':
                     globalLines.append('    return value;')
                 elif type == 'any':
@@ -2306,7 +2233,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if not isASCompiler:
                 globalLines.append('    STACK_TRACE_ENTRY();')
                 globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
-                globalLines.append('    script_backend->Engine->Settings.Custom["' + name + '"] = strex("{' + '}", ' + marshalIn(type, 'value') + ');')
+                globalLines.append('    script_backend->Engine->Settings.SetCustomSetting("' + name + '", strex("{' + '}", ' + marshalIn(type, 'value') + '));')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    UNUSED_VARIABLE(value);')
@@ -2386,13 +2313,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             globalLines.append('    [[maybe_unused]] auto in_buf = connection->ReadBuf();')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
-                                globalLines.append('    ReadNetBuf(*in_buf, arg_' + p[1] + ', *self->GetEngine());')
+                                globalLines.append('    ReadNetBuf(*in_buf, arg_' + p[1] + ', self->GetEngine()->Hashes);')
                             globalLines.append('    in_buf.Unlock();')
                         else:
                             globalLines.append('    [[maybe_unused]] auto& connection = self->GetEngine()->GetConnection();')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
-                                globalLines.append('    ReadNetBuf(connection.InBuf, arg_' + p[1] + ', *self->GetEngine());')
+                                globalLines.append('    ReadNetBuf(connection.InBuf, arg_' + p[1] + ', self->GetEngine()->Hashes);')
                         for p in rcArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
                         globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
@@ -2624,36 +2551,10 @@ except Exception as ex:
 
 checkErrors()
 
-# AngelScript content file
-if args.angelscript and args.ascontentoutput:
-    try:
-        createFile('Content.fos', args.ascontentoutput)
-        def writeNames(name, lst):
-            writeFile('namespace ' + name)
-            writeFile('{')
-            for i in lst:
-                writeFile('    hstring ' + i + ' = hstring("' + i + '");')
-            writeFile('}')
-            writeFile('')
-        writeFile('namespace Content')
-        writeFile('{')
-        writeFile('')
-        if '.fodlg' in content:
-            writeNames('Dialog', content['.fodlg'])
-        if '.fomap' in content:
-            writeNames('Map', content['.fomap'])
-        for k in sorted(content.keys()):
-            if k.startswith('Proto'):
-                writeNames(k[5:], content[k])
-        writeFile('}')
-    
-    except Exception as ex:
-        showError('Can\'t generate scripts', ex)
-
 # Markdown
 def genApiMarkdown():
     createFile('SCRIPT_API.md', args.mdpath)
-    writeFile('# ' + args.devname + ' Script API')
+    writeFile('# ' + args.nicename + ' Script API')
     writeFile('')
     writeFile('## Table of Content')
     writeFile('')
@@ -2998,22 +2899,6 @@ def genApi(target):
             writeFile('')
         " ""
 
-        # Content pids
-        " ""
-        writeFile('## Content')
-        writeFile('')
-        def writeEnums(name, lst):
-            writeFile('### ' + name + ' pids')
-            writeFile('')
-            for i in lst:
-                writeFile('* ' +  i)
-            writeFile('')
-        writeEnums('Item', content['foitem'])
-        writeEnums('Critter', content['focr'])
-        writeEnums('Map', content['fomap'])
-        writeEnums('Location', content['foloc'])
-        " ""
-        
         # Namespace end
         writeFile('} // namespace FOnline')
 
@@ -3293,27 +3178,6 @@ def genApi(target):
             writeFile('')
         writeFile('}')
 
-        # Content pids
-        createFile(target + 'Content.cs')
-        writeFile('namespace FOnline')
-        writeFile('{')
-        writeFile('    public static class Content')
-        writeFile('    {')
-        def writeEnums(name, lst):
-            writeFile('        public enum ' + name)
-            writeFile('        {')
-            for i in lst:
-                #writeFile('            ' + i + ' = ' + getHash(i) + ',')
-                pass
-            writeFile('        }')
-            writeFile('')
-        writeEnums('Item', content['foitem'])
-        writeEnums('Critter', content['focr'])
-        writeEnums('Map', content['fomap'])
-        writeEnums('Location', content['foloc'])
-        writeFile('    }')
-        writeFile('}')
-
         # Generate .csproj files
         for assembly in args.monoassembly:
             csprojName = assembly + '.' + target + '.csproj'
@@ -3469,12 +3333,6 @@ checkErrors()
 
 # Embedded resources
 try:
-    #zipData = io.BytesIO()
-    #with zipfile.ZipFile(zipData, 'w', compression=zipfile.ZIP_DEFLATED) as zip:
-    #    for res in resources['Embedded']:
-    #        zip.write('Backed_' + res[1], res[0])
-    #createFile('EmbeddedResources-Include.h', args.genoutput)
-    #writeFile('const uint8 EMBEDDED_RESOURCES[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
@@ -3485,24 +3343,13 @@ except Exception as ex:
 
 checkErrors()
 
-# Default settings
-createFile('DebugSettings-Include.h', args.genoutput)
-writeFile('R"CONFIG(###DebugConfig###')
-for cfg in args.config:
-    k, v = cfg.split(',', 1)
-    if len(v) > 0 and v[0] == '+':
-        writeFile(k + ' += ' + v[1:])
-    else:
-        writeFile(k + ' = ' + v)
-writeFile('###DebugConfigEnd###)CONFIG"')
-
 # Version info
 createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
-writeFile('static constexpr auto FO_GAME_NAME = "' + args.gamename + '";')
-writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gameversion + '";')
+writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHash(args.buildhash) + ';')
+writeFile('static constexpr auto FO_DEBUGGING_MAIN_CONFIG = "' + args.maincfg + '";')
 
 # Actual writing of generated files
 try:
