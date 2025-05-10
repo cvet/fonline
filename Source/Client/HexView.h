@@ -38,7 +38,6 @@
 #include "MapSprite.h"
 
 class MapView;
-class FOEngineBase;
 
 class HexView
 {

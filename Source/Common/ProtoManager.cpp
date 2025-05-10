@@ -37,213 +37,15 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 
-ProtoManager::ProtoManager(FOEngineBase* engine) :
-    _engine {engine},
-    _migrationRuleName {_engine->ToHashedString("Proto")},
-    _itemTypeName {_engine->ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
-    _crTypeName {_engine->ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
-    _mapTypeName {_engine->ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
-    _locTypeName {_engine->ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
+ProtoManager::ProtoManager(EngineData& engine) :
+    _engine {&engine},
+    _migrationRuleName {_engine->Hashes.ToHashedString("Proto")},
+    _itemTypeName {_engine->Hashes.ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
+    _crTypeName {_engine->Hashes.ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
+    _mapTypeName {_engine->Hashes.ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
+    _locTypeName {_engine->Hashes.ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
 {
     STACK_TRACE_ENTRY();
-}
-
-void ProtoManager::ParseProtos(const FileSystem& resources)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto proto_rule_name = _engine->ToHashedString("Proto");
-    const auto component_rule_name = _engine->ToHashedString("Component");
-
-    // Collect data
-    unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
-
-    for (const auto* ext : {"fopro", "fomap", "foitem", "focr", "foloc"}) {
-        const bool is_fomap = string_view(ext) == "fomap";
-        auto files = resources.FilterFiles(ext);
-
-        while (files.MoveNext()) {
-            auto file = files.GetCurFile();
-
-            auto fopro_options = ConfigFileOption::None;
-
-            if (is_fomap) {
-                fopro_options = ConfigFileOption::ReadFirstSection;
-            }
-
-            auto fopro = ConfigFile(file.GetPath(), file.GetStr(), _engine, fopro_options);
-
-            for (auto& section : fopro.GetSections()) {
-                const auto& section_name = section.first;
-                auto& section_kv = section.second;
-
-                // Skip default section
-                if (section_name.empty()) {
-                    continue;
-                }
-
-                hstring type_name;
-
-                if (is_fomap && section_name == "Header") {
-                    type_name = _engine->ToHashedString("Map");
-                }
-                else if (strex(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
-                    type_name = _engine->ToHashedString(section_name.substr("Proto"_len));
-                }
-                else {
-                    throw ProtoManagerException("Invalid proto section name", section_name, file.GetName());
-                }
-
-                if (!_engine->IsValidEntityType(type_name) || !_engine->GetEntityTypeInfo(type_name).HasProtos) {
-                    throw ProtoManagerException("Invalid proto type", section_name, file.GetName());
-                }
-
-                const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetName();
-                auto pid = _engine->ToHashedString(name);
-                pid = _engine->CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
-
-                auto& file_protos = all_file_protos[type_name];
-
-                if (file_protos.count(pid) != 0) {
-                    throw ProtoManagerException("Proto already loaded", type_name, pid, file.GetName());
-                }
-
-                file_protos.emplace(pid, section_kv);
-            }
-        }
-    }
-
-    // Processing
-    const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
-        for (auto&& [key, value] : from_kv) {
-            RUNTIME_ASSERT(!key.empty());
-
-            if (key.front() != '$' || strex(key).startsWith("$Text")) {
-                to_kv[key] = value;
-            }
-        }
-    };
-
-    for (const auto& file_protos : all_file_protos) {
-        const auto& type_name = file_protos.first;
-        const auto& file_proto_pids = file_protos.second;
-
-        for (auto&& [pid, file_kv] : file_proto_pids) {
-            const auto base_name = pid.as_str();
-            RUNTIME_ASSERT(_protos[type_name].count(pid) == 0);
-
-            // Fill content from parents
-            map<string, string> proto_kv;
-
-            std::function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
-                const auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
-
-                for (auto& parent_name : strex(parent_name_line).split(' ')) {
-                    auto parent_pid = _engine->ToHashedString(parent_name);
-                    parent_pid = _engine->CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
-
-                    const auto it_parent = file_proto_pids.find(parent_pid);
-
-                    if (it_parent == file_proto_pids.end()) {
-                        if (base_name == name) {
-                            throw ProtoManagerException("Proto fail to load parent", base_name, parent_name);
-                        }
-
-                        throw ProtoManagerException("Proto fail to load parent for another proto", base_name, parent_name, name);
-                    }
-
-                    fill_parent_recursive(parent_name, it_parent->second);
-                    insert_map_values(it_parent->second, proto_kv);
-                }
-            };
-
-            fill_parent_recursive(base_name, file_kv);
-
-            // Actual content
-            insert_map_values(file_kv, proto_kv);
-
-            // Create proto
-            const auto* property_registrator = _engine->GetPropertyRegistrator(type_name);
-            auto props = Properties(property_registrator);
-            props.ApplyFromText(proto_kv);
-
-            auto* proto = CreateProto(type_name, pid, &props);
-
-            // Components
-            for (auto&& [key, value] : proto_kv) {
-                if (key.front() == '$') {
-                    continue;
-                }
-
-                bool is_component;
-                const auto* prop = property_registrator->FindProperty(key, &is_component);
-                UNUSED_VARIABLE(prop);
-
-                if (!is_component) {
-                    continue;
-                }
-
-                if (value != "Enabled" && value != "Disabled") {
-                    throw ProtoManagerException("Proto item has invalid component value (expected Enabled or Disabled)", base_name, key, value);
-                }
-
-                auto component_name = _engine->ToHashedString(key);
-                component_name = _engine->CheckMigrationRule(component_rule_name, type_name, component_name).value_or(component_name);
-
-                if (!property_registrator->IsComponentRegistered(component_name)) {
-                    throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
-                }
-
-                if (value == "Enabled") {
-                    proto->EnableComponent(component_name);
-                }
-            }
-
-            // Texts
-            RUNTIME_ASSERT(!_engine->Settings.BakeLanguages.empty());
-            const string& default_lang = _engine->Settings.BakeLanguages.front();
-
-            _parsedTexts[type_name][pid] = {};
-
-            for (auto&& [key, value] : proto_kv) {
-                if (strex(key).startsWith("$Text")) {
-                    const auto key_tok = strex(key).split(' ');
-                    const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
-
-                    TextPackKey text_key = pid.as_uint();
-
-                    for (size_t i = 2; i < key_tok.size(); i++) {
-                        const string& num = key_tok[i];
-
-                        if (!num.empty()) {
-                            if (strex(num).isNumber()) {
-                                text_key += strex(num).toUInt();
-                            }
-                            else {
-                                text_key += _engine->ToHashedString(num).as_uint();
-                            }
-                        }
-                    }
-
-                    _parsedTexts[type_name][pid][lang].AddStr(text_key, value);
-                }
-            }
-        }
-    }
-
-    // Mapper collections
-    for (auto&& [pid, proto] : _itemProtos) {
-        if (!proto->GetComponents().empty()) {
-            const_cast<ProtoItem*>(proto)->CollectionName = strex(*proto->GetComponents().begin()).lower();
-        }
-        else {
-            const_cast<ProtoItem*>(proto)->CollectionName = "other";
-        }
-    }
-
-    for (auto&& [pid, proto] : _crProtos) {
-        const_cast<ProtoCritter*>(proto)->CollectionName = "all";
-    }
 }
 
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
@@ -287,147 +89,85 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
     return proto.get();
 }
 
-void ProtoManager::LoadFromResources()
+void ProtoManager::LoadFromResources(const FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    string protos_fname = "Protos.foprob";
+    string protos_ext;
 
     switch (_engine->GetPropertiesRelation()) {
     case PropertiesRelationType::BothRelative:
-        protos_fname = "FullProtos.foprob";
+        protos_ext = "foprob-mapper";
         break;
     case PropertiesRelationType::ServerRelative:
-        protos_fname = "ServerProtos.foprob";
+        protos_ext = "foprob-server";
         break;
     case PropertiesRelationType::ClientRelative:
-        protos_fname = "ClientProtos.foprob";
+        protos_ext = "foprob-client";
         break;
     }
 
-    const auto protos_file = _engine->Resources.ReadFile(protos_fname);
+    auto proto_files = resources.FilterFiles(protos_ext);
 
-    if (!protos_file) {
-        throw ProtoManagerException("Protos binary file not found", protos_fname);
-    }
+    while (proto_files.MoveNext()) {
+        const auto proto_file = proto_files.GetCurFile();
+        auto reader = DataReader({proto_file.GetBuf(), proto_file.GetSize()});
 
-    auto reader = DataReader({protos_file.GetBuf(), protos_file.GetSize()});
+        // Hashes
+        {
+            const auto hashes_count = reader.Read<uint>();
+            string str;
 
-    // Hashes
-    {
-        const auto hashes_count = reader.Read<uint>();
-
-        string str;
-
-        for (uint i = 0; i < hashes_count; i++) {
-            const auto str_len = reader.Read<uint>();
-            str.resize(str_len);
-            reader.ReadPtr(str.data(), str.length());
-            const auto hstr = _engine->ToHashedString(str);
-            UNUSED_VARIABLE(hstr);
-        }
-    }
-
-    // Protos
-    {
-        vector<uint8> props_data;
-
-        const auto types_count = reader.Read<uint>();
-
-        for (uint i = 0; i < types_count; i++) {
-            const auto protos_count = reader.Read<uint>();
-
-            const auto type_name_len = reader.Read<uint16>();
-            const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
-            const auto type_name = _engine->ToHashedString(type_name_str);
-
-            RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
-
-            for (uint j = 0; j < protos_count; j++) {
-                const auto proto_name_len = reader.Read<uint16>();
-                const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
-                const auto proto_id = _engine->ToHashedString(proto_name);
-
-                auto* proto = CreateProto(type_name, proto_id, nullptr);
-
-                const auto components_count = reader.Read<uint16>();
-
-                for (uint16 k = 0; k < components_count; k++) {
-                    const auto component_name_len = reader.Read<uint16>();
-                    const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
-                    const auto component_name_hashed = _engine->ToHashedString(component_name);
-
-                    proto->EnableComponent(component_name_hashed);
-                }
-
-                const uint data_size = reader.Read<uint>();
-                props_data.resize(data_size);
-                reader.ReadPtr<uint8>(props_data.data(), data_size);
-                proto->GetPropertiesForEdit().RestoreAllData(props_data);
+            for (uint i = 0; i < hashes_count; i++) {
+                const auto str_len = reader.Read<uint>();
+                str.resize(str_len);
+                reader.ReadPtr(str.data(), str.length());
+                const auto hstr = _engine->Hashes.ToHashedString(str);
+                UNUSED_VARIABLE(hstr);
             }
         }
-    }
 
-    reader.VerifyEnd();
-}
+        // Protos
+        {
+            const auto types_count = reader.Read<uint>();
+            vector<uint8> props_data;
 
-auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
-{
-    STACK_TRACE_ENTRY();
+            for (uint i = 0; i < types_count; i++) {
+                const auto protos_count = reader.Read<uint>();
 
-    vector<uint8> protos_data;
-    set<hstring> str_hashes;
+                const auto type_name_len = reader.Read<uint16>();
+                const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
+                const auto type_name = _engine->Hashes.ToHashedString(type_name_str);
 
-    {
-        auto writer = DataWriter(protos_data);
+                RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
 
-        vector<uint8> props_data;
+                for (uint j = 0; j < protos_count; j++) {
+                    const auto proto_name_len = reader.Read<uint16>();
+                    const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
+                    const auto proto_id = _engine->Hashes.ToHashedString(proto_name);
 
-        writer.Write<uint>(static_cast<uint>(_protos.size()));
+                    auto* proto = CreateProto(type_name, proto_id, nullptr);
 
-        for (auto&& [type_name, protos] : _protos) {
-            writer.Write<uint>(static_cast<uint>(protos.size()));
+                    const auto components_count = reader.Read<uint16>();
 
-            writer.Write<uint16>(static_cast<uint16>(type_name.as_str().length()));
-            writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+                    for (uint16 k = 0; k < components_count; k++) {
+                        const auto component_name_len = reader.Read<uint16>();
+                        const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
+                        const auto component_name_hashed = _engine->Hashes.ToHashedString(component_name);
 
-            for (auto&& [pid, proto] : protos) {
-                const auto proto_name = proto->GetName();
-                writer.Write<uint16>(static_cast<uint16>(proto_name.length()));
-                writer.WritePtr(proto_name.data(), proto_name.length());
+                        proto->EnableComponent(component_name_hashed);
+                    }
 
-                writer.Write<uint16>(static_cast<uint16>(proto->GetComponents().size()));
-
-                for (const auto& component : proto->GetComponents()) {
-                    const auto& component_str = component.as_str();
-                    writer.Write<uint16>(static_cast<uint16>(component_str.length()));
-                    writer.WritePtr(component_str.data(), component_str.length());
+                    const uint data_size = reader.Read<uint>();
+                    props_data.resize(data_size);
+                    reader.ReadPtr<uint8>(props_data.data(), data_size);
+                    proto->GetPropertiesForEdit().RestoreAllData(props_data);
                 }
-
-                proto->GetProperties().StoreAllData(props_data, str_hashes);
-                writer.Write<uint>(static_cast<uint>(props_data.size()));
-                writer.WritePtr(props_data.data(), props_data.size());
             }
         }
+
+        reader.VerifyEnd();
     }
-
-    vector<uint8> data;
-
-    {
-        auto final_writer = DataWriter(data);
-
-        final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
-
-        for (const auto& hstr : str_hashes) {
-            const auto& str = hstr.as_str();
-            final_writer.Write<uint>(static_cast<uint>(str.length()));
-            final_writer.WritePtr(str.c_str(), str.length());
-        }
-
-        final_writer.WritePtr(protos_data.data(), protos_data.size());
-    }
-
-    return data;
 }
 
 auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept(false) -> const ProtoItem*

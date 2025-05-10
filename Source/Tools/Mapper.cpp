@@ -39,40 +39,36 @@
 #include "StringUtils.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOClient(settings, window, true)
+    FOClient(settings, window, [this] {
+        extern void Mapper_RegisterData(EngineData*);
+        Mapper_RegisterData(this);
+    })
 {
     STACK_TRACE_ENTRY();
 
-    Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("FullProtos"));
-    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("MapperAngelScript"));
+    for (const auto& entry : Settings.MapperResourceEntries) {
+        Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
     }
 
-    for (const auto& dir : settings.BakeContentEntries) {
-        ContentFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
-    }
-
-    if (settings.BakeContentEntries.empty() && !Settings.MapsDir.empty()) {
-        if (!DiskFileSystem::IsDir(Settings.MapsDir)) {
-            throw MapperException("Directory with maps not found", Settings.MapsDir);
+    for (const auto& res_pack : settings.GetResourcePacks()) {
+        for (const auto& dir : res_pack.InputDir) {
+            ContentFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
         }
-
-        ContentFileSys.AddDataSource(Settings.MapsDir, DataSourceType::NonCachedDirRoot);
     }
 
-    extern void Mapper_RegisterData(FOEngineBase*);
-    Mapper_RegisterData(this);
-
-    extern void Init_AngelScript_MapperScriptSystem(FOEngineBase*);
+#if FO_ANGELSCRIPT_SCRIPTING
+    extern void Init_AngelScript_MapperScriptSystem(BaseEngine*);
     Init_AngelScript_MapperScriptSystem(this);
+#endif
 
     _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadTexts(Resources);
+    _curLang.LoadFromResources(Resources);
 
-    ProtoMngr.LoadFromResources();
+    ProtoMngr.LoadFromResources(Resources);
 
     // Fonts
     auto load_fonts_ok = true;
+
     if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
         !SprMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
         !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
@@ -84,6 +80,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         !SprMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
         load_fonts_ok = false;
     }
+
     RUNTIME_ASSERT(load_fonts_ok);
     SprMngr.SetDefaultFont(FONT_DEFAULT);
 
@@ -132,7 +129,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     TabsName[INT_MODE_LIST] = "Maps";
 
     // Start script
-    ScriptSys->InitModules();
+    ScriptSys.InitModules();
     OnStart.Fire();
 
     if (!Settings.StartMap.empty()) {
@@ -2881,6 +2878,7 @@ void FOMapper::ParseCommand(string_view command)
     // Load map
     if (command[0] == '~') {
         string map_name = strex(command.substr(1)).trim();
+
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2897,6 +2895,7 @@ void FOMapper::ParseCommand(string_view command)
     // Save map
     else if (command[0] == '^') {
         string map_name = strex(command.substr(1)).trim();
+
         if (map_name.empty()) {
             AddMess("Error parse map name");
             return;
@@ -2916,18 +2915,21 @@ void FOMapper::ParseCommand(string_view command)
         const auto command_str = string(command.substr(1));
         istringstream icmd(command_str);
         string func_name;
+
         if (!(icmd >> func_name)) {
             AddMess("Function name not typed");
             return;
         }
 
-        auto func = ScriptSys->FindFunc<string, string>(ToHashedString(func_name));
+        auto func = ScriptSys.FindFunc<string, string>(Hashes.ToHashedString(func_name));
+
         if (!func) {
             AddMess("Function not found");
             return;
         }
 
         string str = strex(command).substringAfter(' ').trim();
+
         if (!func(str)) {
             AddMess("Script execution fail");
             return;
@@ -2945,6 +2947,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         vector<int> anims = strex(command.substr(1)).splitToInt(' ');
+
         if (anims.empty()) {
             return;
         }
@@ -2953,6 +2956,7 @@ void FOMapper::ParseCommand(string_view command)
             for (auto* entity : SelectedEntities) {
                 if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
+
                     for (uint j = 0; j < anims.size() / 2; j++) {
                         cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                     }
@@ -2980,7 +2984,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
             pmap->AddRef(); // Todo: fix memleak
             pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
 
@@ -3043,13 +3047,13 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     }
 
     const auto map_file_str = map_file.GetStr();
-    auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
+    auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, &Hashes, ConfigFileOption::ReadFirstSection);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->AddRef(); // Todo: fix memleak
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 

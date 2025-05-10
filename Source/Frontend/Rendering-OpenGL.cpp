@@ -207,7 +207,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
     RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
 
-    if (settings.ClientMode && settings.VSync) {
+    if (settings.VSync) {
         if (!SDL_GL_SetSwapInterval(-1)) {
             SDL_GL_SetSwapInterval(1);
         }

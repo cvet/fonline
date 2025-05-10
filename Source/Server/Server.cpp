@@ -43,12 +43,16 @@
 #include "Version-Include.h"
 
 FOServer::FOServer(GlobalSettings& settings) :
-    FOEngineBase(settings, PropertiesRelationType::ServerRelative),
+    BaseEngine(settings, PropertiesRelationType::ServerRelative,
+        [this] {
+            extern void Server_RegisterData(EngineData*);
+            Server_RegisterData(this);
+        }),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
     ItemMngr(this),
-    DlgMngr(this)
+    DlgMngr(*this)
 {
     STACK_TRACE_ENTRY();
 
@@ -87,7 +91,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                                 string buf;
                                 buf.reserve(health_info.size() + 128);
 
-                                buf += strex("{}\n\n", FO_GAME_NAME);
+                                buf += strex("{} v{}\n\n", App->Settings.GameName, App->Settings.GameVersion);
                                 buf += health_info;
 
                                 _healthFile->Write(buf);
@@ -115,19 +119,9 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Mount data packs");
 
         Resources.AddDataSource(Settings.EmbeddedResources);
-        Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Maps"));
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ServerProtos"));
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Dialogs"));
-        Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("Texts"));
-
-        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-            Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath("ServerAngelScript"));
-        }
 
         for (const auto& entry : Settings.ServerResourceEntries) {
-            Resources.AddDataSource(strex(Settings.ResourcesDir).combinePath(entry));
+            Resources.AddDataSource(strex(Settings.ServerResources).combinePath(entry));
         }
 
         return std::nullopt;
@@ -139,11 +133,16 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Initialize script system");
 
-        extern void Server_RegisterData(FOEngineBase*);
-        Server_RegisterData(this);
+        ScriptSys.MapEngineEntityType<Player>(Player::ENTITY_TYPE_NAME);
+        ScriptSys.MapEngineEntityType<Item>(Item::ENTITY_TYPE_NAME);
+        ScriptSys.MapEngineEntityType<Critter>(Critter::ENTITY_TYPE_NAME);
+        ScriptSys.MapEngineEntityType<Map>(Map::ENTITY_TYPE_NAME);
+        ScriptSys.MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
 
-        extern void Init_AngelScript_ServerScriptSystem(FOEngineBase*);
+#if FO_ANGELSCRIPT_SCRIPTING
+        extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
         Init_AngelScript_ServerScriptSystem(this);
+#endif
 
         return std::nullopt;
     });
@@ -307,7 +306,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Load dialogs data");
 
-        DlgMngr.LoadFromResources();
+        DlgMngr.LoadFromResources(Resources);
 
         return std::nullopt;
     });
@@ -318,10 +317,10 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         WriteLog("Load protos data");
 
-        ProtoMngr.LoadFromResources();
+        ProtoMngr.LoadFromResources(Resources);
 
         _defaultLang = LanguagePack {Settings.Language, *this};
-        _defaultLang.LoadTexts(Resources);
+        _defaultLang.LoadFromResources(Resources);
 
         return std::nullopt;
     });
@@ -345,7 +344,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource("ClientResources", DataSourceType::DirRoot);
+            client_resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -364,16 +363,6 @@ FOServer::FOServer(GlobalSettings& settings) :
                 writer.Write<uint>(static_cast<uint>(data.size()));
                 writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
             };
-
-            add_sync_file("EngineData.zip");
-            add_sync_file("Core.zip");
-            add_sync_file("Texts.zip");
-            add_sync_file("ClientProtos.zip");
-            add_sync_file("StaticMaps.zip");
-
-            if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-                add_sync_file("ClientAngelScript.zip");
-            }
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
                 add_sync_file(strex("{}.zip", resource_entry));
@@ -414,14 +403,14 @@ FOServer::FOServer(GlobalSettings& settings) :
                 SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
             }
             else {
-                if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
+                if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
                     throw ServerInitException("Failed to load globals document");
                 }
             }
 
             GameTime.SetSynchronizedTime(GetSynchronizedTime());
             FrameAdvance();
-            TimeEventMngr->InitPersistentTimeEvents(this);
+            TimeEventMngr.InitPersistentTimeEvents(this);
 
             // Scripting
             WriteLog("Init script modules");
@@ -429,7 +418,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             extern void InitServerEngine(FOServer * server);
             InitServerEngine(this);
 
-            ScriptSys->InitModules();
+            ScriptSys.InitModules();
 
             if (!OnInit.Fire()) {
                 throw ServerInitException("Initialization script failed");
@@ -520,7 +509,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
 
-            ScriptSys->Process();
+            ScriptSys.Process();
 
             return std::chrono::milliseconds {0};
         });
@@ -625,7 +614,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
 
-            TimeEventMngr->ProcessTimeEvents();
+            TimeEventMngr.ProcessTimeEvents();
 
             return std::chrono::milliseconds {0};
         });
@@ -901,7 +890,7 @@ void FOServer::DrawGui(string_view server_name)
 
             // Profiler
             if (ImGui::TreeNode("Profiler")) {
-                buf = "WIP..........................."; // ScriptSys->GetProfilerStatistics();
+                buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -1236,7 +1225,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             result = MapMngr.GetLocationAndMapsStatistics();
             break;
         case 3:
-            // result = ScriptSys->GetDeferredCallsStatistics();
+            // result = ScriptSys.GetDeferredCallsStatistics();
             break;
         case 4:
             result = "WIP";
@@ -1392,7 +1381,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
-        const auto pid = buf.Read<hstring>(*this);
+        const auto pid = buf.Read<hstring>(Hashes);
         const auto count = buf.Read<uint>();
 
         CHECK_ALLOW_COMMAND();
@@ -1409,7 +1398,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Item(s) added");
     } break;
     case CMD_ADDITEM_SELF: {
-        const auto pid = buf.Read<hstring>(*this);
+        const auto pid = buf.Read<hstring>(Hashes);
         const auto count = buf.Read<uint>();
 
         CHECK_ALLOW_COMMAND();
@@ -1426,7 +1415,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_ADDNPC: {
         const auto hex = buf.Read<mpos>();
         const auto dir = buf.Read<uint8>();
-        const auto pid = buf.Read<hstring>(*this);
+        const auto pid = buf.Read<hstring>(Hashes);
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1437,7 +1426,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
-        const auto pid = buf.Read<hstring>(*this);
+        const auto pid = buf.Read<hstring>(Hashes);
 
         CHECK_ALLOW_COMMAND();
 
@@ -1468,27 +1457,27 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto param1 = ResolveGenericValue(param1_str, &failed);
         const auto param2 = ResolveGenericValue(param2_str, &failed);
 
-        if (ScriptSys->CallFunc<void, Player*>(ToHashedString(func_name), player) || //
-            ScriptSys->CallFunc<void, Player*, int>(ToHashedString(func_name), player, param0) || //
-            ScriptSys->CallFunc<void, Player*, any_t>(ToHashedString(func_name), player, param0_str) || //
-            ScriptSys->CallFunc<void, Player*, int, int>(ToHashedString(func_name), player, param0, param1) || //
-            ScriptSys->CallFunc<void, Player*, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str) || //
-            ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2) || //
-            ScriptSys->CallFunc<void, Player*, any_t, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
-            ScriptSys->CallFunc<void, Critter*>(ToHashedString(func_name), player_cr) || //
-            ScriptSys->CallFunc<void, Critter*, int>(ToHashedString(func_name), player_cr, param0) || //
-            ScriptSys->CallFunc<void, Critter*, any_t>(ToHashedString(func_name), player_cr, param0_str) || //
-            ScriptSys->CallFunc<void, Critter*, int, int>(ToHashedString(func_name), player_cr, param0, param1) || //
-            ScriptSys->CallFunc<void, Critter*, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str) || //
-            ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), player_cr, param0, param1, param2) || //
-            ScriptSys->CallFunc<void, Critter*, any_t, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
-            ScriptSys->CallFunc<void>(ToHashedString(func_name)) || //
-            ScriptSys->CallFunc<void, int>(ToHashedString(func_name), param0) || //
-            ScriptSys->CallFunc<void, any_t>(ToHashedString(func_name), param0_str) || //
-            ScriptSys->CallFunc<void, int, int>(ToHashedString(func_name), param0, param1) || //
-            ScriptSys->CallFunc<void, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str) || //
-            ScriptSys->CallFunc<void, int, int, int>(ToHashedString(func_name), param0, param1, param2) || //
-            ScriptSys->CallFunc<void, any_t, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str, param2_str)) {
+        if (ScriptSys.CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
+            ScriptSys.CallFunc<void, Player*, int>(Hashes.ToHashedString(func_name), player, param0) || //
+            ScriptSys.CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
+            ScriptSys.CallFunc<void, Player*, int, int>(Hashes.ToHashedString(func_name), player, param0, param1) || //
+            ScriptSys.CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
+            ScriptSys.CallFunc<void, Player*, int, int, int>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
+            ScriptSys.CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
+            ScriptSys.CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
+            ScriptSys.CallFunc<void, Critter*, int>(Hashes.ToHashedString(func_name), player_cr, param0) || //
+            ScriptSys.CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
+            ScriptSys.CallFunc<void, Critter*, int, int>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
+            ScriptSys.CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
+            ScriptSys.CallFunc<void, Critter*, int, int, int>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
+            ScriptSys.CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
+            ScriptSys.CallFunc<void>(Hashes.ToHashedString(func_name)) || //
+            ScriptSys.CallFunc<void, int>(Hashes.ToHashedString(func_name), param0) || //
+            ScriptSys.CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
+            ScriptSys.CallFunc<void, int, int>(Hashes.ToHashedString(func_name), param0, param1) || //
+            ScriptSys.CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
+            ScriptSys.CallFunc<void, int, int, int>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
+            ScriptSys.CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
         else {
@@ -1834,7 +1823,7 @@ void FOServer::DestroyUnloadedCritter(ident_t cr_id)
         throw GenericException("Critter must be unloaded before destroying");
     }
 
-    DbStorage.Delete(ToHashedString("Critters"), cr_id);
+    DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
 }
 
 void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
@@ -2279,7 +2268,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     if (player == nullptr) {
         player_reconnected = false;
 
-        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
             connection->GracefulDisconnect();
             return;
@@ -2814,7 +2803,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         entry_id = ident_t {1};
     }
 
-    auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
+    auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
 
     hstring collection_name;
 
@@ -4060,10 +4049,10 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
         auto failed = false;
 
         cl->Talk.Locked = true;
-        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
         cl->Talk.Locked = false;
@@ -4107,7 +4096,7 @@ void FOServer::Process_Dialog(Player* player)
     Critter* cr = player->GetControlledCritter();
 
     const auto cr_id = in_buf->Read<ident_t>();
-    const auto dlg_pack_id = in_buf->Read<hstring>(*this);
+    const auto dlg_pack_id = in_buf->Read<hstring>(Hashes);
     const auto num_answer = in_buf->Read<uint8>();
 
     in_buf.Unlock();
@@ -4281,10 +4270,10 @@ void FOServer::Process_Dialog(Player* player)
         bool failed = false;
 
         cr->Talk.Locked = true;
-        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
         cr->Talk.Locked = false;
@@ -4330,7 +4319,7 @@ void FOServer::Process_RemoteCall(Player* player)
 
     in_buf.Unlock();
 
-    ScriptSys->HandleRemoteCall(rpc_num, player);
+    ScriptSys.HandleRemoteCall(rpc_num, player);
 }
 
 auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> Item*
@@ -4373,17 +4362,17 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
 
     switch (demand.ValuesCount) {
     case 0:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
     case 1:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
     case 2:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
     case 3:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
     case 4:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
     case 5:
-        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
     default:
         UNREACHABLE_PLACE();
     }
@@ -4395,32 +4384,32 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 
     switch (result.ValuesCount) {
     case 0:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
             return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;
@@ -4430,32 +4419,32 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 
     switch (result.ValuesCount) {
     case 0:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
             return 0;
         }
         break;
     case 1:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
             return 0;
         }
         break;
     case 2:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
             return 0;
         }
         break;
     case 3:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
             return 0;
         }
         break;
     case 4:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
             return 0;
         }
         break;
     case 5:
-        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
             return 0;
         }
         break;

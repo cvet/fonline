@@ -62,7 +62,6 @@ public:
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
-    [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
     [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { return _model.get(); }
@@ -83,7 +82,6 @@ public:
     void ClearAnim();
     void AddExtraOffs(ipos offset);
     void RefreshOffs();
-    void DrawName();
     auto GetNameTextPos(ipos& pos) const -> bool;
     void ClearMove();
     void MoveAttachedCritters();

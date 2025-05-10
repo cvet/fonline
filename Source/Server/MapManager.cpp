@@ -61,13 +61,13 @@ void MapManager::LoadFromResources()
 {
     STACK_TRACE_ENTRY();
 
-    auto map_files = _engine->Resources.FilterFiles("fomapb");
+    auto map_files = _engine->Resources.FilterFiles("fomapb-server");
 
     std::vector<pair<const ProtoMap*, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     while (map_files.MoveNext()) {
         auto map_file_0 = map_files.GetCurFile();
-        const auto map_pid = _engine->ToHashedString(map_file_0.GetName());
+        const auto map_pid = _engine->Hashes.ToHashedString(map_file_0.GetName());
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
         std::launch async_flags;
@@ -102,7 +102,7 @@ void MapManager::LoadFromResources()
                     const auto str_len = reader.Read<uint>();
                     str.resize(str_len);
                     reader.ReadPtr(str.data(), str.length());
-                    const auto hstr = _engine->ToHashedString(str);
+                    const auto hstr = _engine->Hashes.ToHashedString(str);
                     UNUSED_VARIABLE(hstr);
                 }
             }
@@ -123,7 +123,7 @@ void MapManager::LoadFromResources()
                         const auto cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         const auto cr_pid_hash = reader.Read<hstring::hash_t>();
-                        const auto cr_pid = _engine->ResolveHash(cr_pid_hash);
+                        const auto cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
                         const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
                         auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
@@ -159,7 +159,7 @@ void MapManager::LoadFromResources()
                         const auto item_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
                         const auto item_pid_hash = reader.Read<hstring::hash_t>();
-                        const auto item_pid = _engine->ResolveHash(item_pid_hash);
+                        const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
                         const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
                         auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
@@ -180,19 +180,19 @@ void MapManager::LoadFromResources()
                         }
 
                         // Bind scripts
-                        if (item->GetStaticScript()) {
-                            item->StaticScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, any_t>(item->GetStaticScript());
+                        if (const auto static_script = item->GetStaticScript()) {
+                            item->StaticScriptFunc = _engine->ScriptSys.FindFunc<bool, Critter*, StaticItem*, Item*, any_t>(static_script);
 
                             if (!item->StaticScriptFunc) {
-                                throw MapManagerException("Can't bind static item function", map_proto->GetName(), item->GetStaticScript());
+                                throw MapManagerException("Can't bind static item function", map_proto->GetName(), static_script);
                             }
                         }
 
-                        if (item->GetTriggerScript()) {
-                            item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(item->GetTriggerScript());
+                        if (const auto trigger_script = item->GetTriggerScript()) {
+                            item->TriggerScriptFunc = _engine->ScriptSys.FindFunc<void, Critter*, StaticItem*, bool, uint8>(trigger_script);
 
                             if (!item->TriggerScriptFunc) {
-                                throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), item->GetTriggerScript());
+                                throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), trigger_script);
                             }
                         }
 

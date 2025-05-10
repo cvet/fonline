@@ -352,7 +352,7 @@ NonCachedDir::NonCachedDir(string_view fname)
     STACK_TRACE_ENTRY();
 
     _basePath = fname;
-    DiskFileSystem::ResolvePath(_basePath);
+    _basePath = DiskFileSystem::ResolvePath(_basePath);
     _basePath += "/";
 }
 
@@ -413,7 +413,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     STACK_TRACE_ENTRY();
 
     _basePath = fname;
-    DiskFileSystem::ResolvePath(_basePath);
+    _basePath = DiskFileSystem::ResolvePath(_basePath);
     _basePath += "/";
 
     DiskFileSystem::IterateDir(_basePath, "", recursive, [this](string_view path, size_t size, uint64 write_time) {

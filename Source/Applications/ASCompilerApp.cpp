@@ -50,69 +50,87 @@ int main(int argc, char** argv)
     STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv);
-        LogDisableTags();
+        InitApp(argc, argv, AppInitFlags::DisableLogTags);
 
-        auto server_failed = false;
-        auto client_failed = false;
-        auto mapper_failed = false;
+        RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 
-        FileSystem resources;
-        for (const auto& dir : App->Settings.BakeContentEntries) {
-            resources.AddDataSource(dir, DataSourceType::DirRoot);
-        }
+        bool something_failed = false;
 
-        WriteLog("Compile server scripts");
+        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+            FileSystem res_files;
 
-        try {
-            extern void Init_AngelScriptCompiler_ServerScriptSystem(const FileSystem*);
-            Init_AngelScriptCompiler_ServerScriptSystem(&resources);
-        }
-        catch (const std::exception& ex) {
-            if (CompilerPassedMessages.empty()) {
-                ReportExceptionAndExit(ex);
+            for (const auto& dir : res_pack.InputDir) {
+                res_files.AddDataSource(dir);
             }
 
-            server_failed = true;
-        }
+            auto script_files_collection = res_files.FilterFiles("fos", "", res_pack.RecursiveInput);
 
-        WriteLog("Compile client scripts");
-
-        try {
-            extern void Init_AngelScriptCompiler_ClientScriptSystem(const FileSystem*);
-            Init_AngelScriptCompiler_ClientScriptSystem(&resources);
-        }
-        catch (const std::exception& ex) {
-            if (CompilerPassedMessages.empty()) {
-                ReportExceptionAndExit(ex);
+            if (script_files_collection.GetFilesCount() == 0) {
+                continue;
             }
 
-            client_failed = true;
-        }
+            vector<File> script_files;
 
-        WriteLog("Compile mapper scripts");
-
-        try {
-            extern void Init_AngelScriptCompiler_MapperScriptSystem(const FileSystem*);
-            Init_AngelScriptCompiler_MapperScriptSystem(&resources);
-        }
-        catch (const std::exception& ex) {
-            if (CompilerPassedMessages.empty()) {
-                ReportExceptionAndExit(ex);
+            while (script_files_collection.MoveNext()) {
+                script_files.emplace_back(script_files_collection.GetCurFile());
             }
 
-            mapper_failed = true;
+            bool server_failed = false;
+            bool client_failed = false;
+            bool mapper_failed = false;
+
+            WriteLog("Compile server scripts");
+
+            try {
+                extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
+                Init_AngelScriptCompiler_ServerScriptSystem(script_files);
+            }
+            catch (const std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                server_failed = true;
+            }
+
+            WriteLog("Compile client scripts");
+
+            try {
+                extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
+                Init_AngelScriptCompiler_ClientScriptSystem(script_files);
+            }
+            catch (const std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                client_failed = true;
+            }
+
+            WriteLog("Compile mapper scripts");
+
+            try {
+                extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
+                Init_AngelScriptCompiler_MapperScriptSystem(script_files);
+            }
+            catch (const std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                mapper_failed = true;
+            }
+
+            WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
+            WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
+            WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
+
+            if (server_failed || client_failed || mapper_failed) {
+                something_failed = true;
+            }
         }
 
-        WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
-        WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
-        WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
-
-        if (server_failed || client_failed || mapper_failed) {
-            ExitApp(false);
-        }
-
-        ExitApp(true);
+        ExitApp(!something_failed);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

@@ -118,8 +118,9 @@ public:
     static auto DeleteFile(string_view fname) -> bool;
     static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
     static auto RenameFile(string_view fname, string_view new_fname) -> bool;
-    static void ResolvePath(string& path);
+    static auto ResolvePath(string_view path) -> string;
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor);
+    static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
 };

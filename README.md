@@ -186,7 +186,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: SHA replace to openssl SHA
 * Common: wrap fonline code to namespace
 * Common: hash_t 8 byte integer
-* Common: tick_t 8 byte integer
 * Common: c-style arrays to std::array
 * Common: use more noexcept
 * Common: use more constexpr
@@ -223,6 +222,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: make IfaceAnim scriptable object
 * Client: move screen fading to scripts
 * Client: move screen quake effect to scripts
+* ClientConnection: automatically reconnect on network failures
 * CritterHexView: fidget animation to scripts
 * CritterView: incapsulate AttachedCritters
 * DefaultSprites: incapsulate sprite sheet data
@@ -234,7 +234,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ParticleSprites: optimize sprite atlas filling
 * RenderTarget: optimize sprite atlas filling
 * ResourceManager: why I disable offset adding?
-* ServerConnection: automatically reconnect on network failures
 * SpriteManager: optimize sprite atlas filling
 * SpriteManager: convert FT_ font flags to enum
 * SpriteManager: fix FT_CENTERY_ENGINE workaround
@@ -266,11 +265,9 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * PropertiesSerializator: maybe need some optional warning for unknown/wrong properties
-* Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
 * Settings-Include: move LegBones to fo3d settings
 * Settings: improve editable entries
-* Timer: remove Timer class, use directly std::chrono instead
 * Application: move all these statics to App class fields
 * Rendering-OpenGL: make workarounds for work without ARB_uniform_buffer_object
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
@@ -282,8 +279,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MonoScripting-Template: get Mono domain user data
 * ServerMapScriptMethods: notify clients about manual hex block
 * AdminPanel: admin panel network to Asio
-* ClientConnection: make auto-RAII locker for InBuf/InBufLocker writing/reading
-* ClientConnection: incapsulate ClientConnection data
 * Critter: incapsulate Critter data
 * CritterManager: find better place for critter in square geometry
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
@@ -292,7 +287,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Map: optimize iterms radius search by using GetHexOffsets
 * Map: optimize critters radius search by using GetHexOffsets
 * MapManager: if path finding not be reworked than migrate magic number to scripts
-* Networking: catch exceptions in network servers
 * Player: incapsulate Player data
 * Player: allow attach many critters to sigle player
 * Server: validate player moving path
@@ -302,10 +296,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: don't remeber but need check (IsPlaneNoTalk)
-* Server: improve ban system
 * Server: run network listeners dynamically, without restriction, based on server settings
+* ServerConnection: incapsulate ServerConnection data
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * EffectBaker: enable auto map bindings
+* Mapper: fix memleak (2)
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet

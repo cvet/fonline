@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv);
+        InitApp(-1, nullptr);
         GenericUtils::SetRandomSeed(42);
         return Catch::Session().run(argc, argv);
     }

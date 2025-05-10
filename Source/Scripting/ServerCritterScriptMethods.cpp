@@ -40,7 +40,7 @@
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys.get(), self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 
@@ -50,7 +50,7 @@ FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys.get(), self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 

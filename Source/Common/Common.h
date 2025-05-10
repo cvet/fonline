@@ -924,9 +924,9 @@ using set = std::set<K, std::less<>, SafeAllocator<K>>;
 template<typename K, typename V, typename H = HASHNS::hash<K>>
 using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
 template<typename K, typename V, typename H = HASHNS::hash<K>>
-using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<K>, SafeAllocator<pair<const K, V>>>;
+using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
 template<typename K, typename H = HASHNS::hash<K>>
-using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<K>, SafeAllocator<K>>;
+using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, SafeAllocator<K>>;
 
 template<typename T, unsigned InlineCapacity>
 using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
@@ -965,6 +965,70 @@ inline void destroy_if_empty(unique_ptr<T>& ptr) noexcept
         ptr.reset();
     }
 }
+
+// Vector formatter
+template<typename T>
+struct FMTNS::formatter<T, std::enable_if_t<is_vector_v<T>, char>> : formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        string result;
+        for (const auto& e : value) {
+            if constexpr (std::is_same_v<T, vector<string>>) {
+                result += e + " ";
+            }
+            else if constexpr (std::is_same_v<T, vector<bool>>) {
+                result += e ? "True " : "False ";
+            }
+            else {
+                result += std::to_string(e) + " ";
+            }
+        }
+        if (!result.empty()) {
+            result.pop_back();
+        }
+        return formatter<string_view>::format(result, ctx);
+    }
+};
+/*
+template<typename T>
+static void DrawEntry(string_view name, const vector<T>& entry)
+{
+    STACK_TRACE_ENTRY();
+
+    if constexpr (std::is_same_v<T, string>) {
+        string value;
+        for (const auto& e : entry) {
+            value += e + " ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(strex("{}: {}", name, value).c_str());
+    }
+    else if constexpr (std::is_same_v<T, bool>) {
+        string value;
+        for (const auto e : entry) {
+            value += e ? "True " : "False ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(strex("{}: {}", name, value).c_str());
+    }
+    else {
+        string value;
+        for (const auto& e : entry) {
+            value += std::to_string(e) + " ";
+        }
+        if (!value.empty()) {
+            value.pop_back();
+        }
+        ImGui::TextUnformatted(strex("{}: {}", name, value).c_str());
+    }
+}
+*/
 
 // Enum formatter
 // Todo: improve named enums
@@ -1973,9 +2037,15 @@ constexpr void UnsetBit(T& x, T y) noexcept
 }
 
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-constexpr bool IsEnumSet(T value, T check) noexcept
+constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 {
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
+}
+
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+constexpr auto CombineEnum(T v1, T v2) noexcept -> T
+{
+    return static_cast<T>(static_cast<size_t>(v1) | static_cast<size_t>(v2));
 }
 
 // Formatters
@@ -3294,7 +3364,6 @@ constexpr auto clamp_to(U value) noexcept -> T
 
 // Hashing
 DECLARE_EXCEPTION(HashResolveException);
-DECLARE_EXCEPTION(HashInsertException);
 DECLARE_EXCEPTION(HashCollisionException);
 
 class HashResolver
@@ -3302,7 +3371,6 @@ class HashResolver
 public:
     virtual ~HashResolver() = default;
     [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
-    [[nodiscard]] virtual auto ToHashedStringMustExists(string_view s) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring = 0;
 };
@@ -3349,7 +3417,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
 };
 

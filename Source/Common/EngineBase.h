@@ -47,16 +47,18 @@
 
 DECLARE_EXCEPTION(DataRegistrationException);
 
-class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
+class EngineData : public NameResolver
 {
 public:
-    FOEngineBase(const FOEngineBase&) = delete;
-    FOEngineBase(FOEngineBase&&) noexcept = delete;
-    auto operator=(const FOEngineBase&) = delete;
-    auto operator=(FOEngineBase&&) noexcept = delete;
+    using EngineDataRegistrator = std::function<void()>;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
-    [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
+    explicit EngineData(PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
+    EngineData(const EngineData&) = delete;
+    EngineData(EngineData&&) noexcept = delete;
+    auto operator=(const EngineData&) = delete;
+    auto operator=(EngineData&&) noexcept = delete;
+    ~EngineData() override = default;
+
     [[nodiscard]] auto GetPropertiesRelation() const noexcept -> PropertiesRelationType { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*;
@@ -67,7 +69,7 @@ public:
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& override;
-    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
     [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
@@ -75,6 +77,7 @@ public:
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
 
+    void RegisterPropertiesRelation(PropertiesRelationType props_relation);
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
     void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values);
@@ -82,23 +85,10 @@ public:
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
 
-    void FrameAdvance();
-
-    GlobalSettings& Settings;
-    GeometryHelper Geometry;
-    GameTimer GameTime;
-    ProtoManager ProtoMngr;
-    unique_ptr<ScriptSystem> ScriptSys;
-    unique_ptr<TimeEventManager> TimeEventMngr;
-    FileSystem Resources {};
-    unique_del_ptr<uint8> UserData {};
-
-protected:
-    FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);
-    ~FOEngineBase() override = default;
+    mutable HashStorage Hashes;
 
 private:
-    const PropertiesRelationType _propsRelation;
+    PropertiesRelationType _propsRelation {};
     bool _registrationFinalized {};
     unordered_map<hstring, EntityTypeInfo> _entityTypesInfo {};
     unordered_map<string, unordered_map<string, int>> _enums {};
@@ -109,4 +99,31 @@ private:
     unordered_map<string, tuple<size_t, BaseTypeInfo::StructLayoutInfo>> _valueTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
+};
+
+class BaseEngine : public EngineData, public Entity, public GameProperties
+{
+public:
+    BaseEngine(const BaseEngine&) = delete;
+    BaseEngine(BaseEngine&&) noexcept = delete;
+    auto operator=(const BaseEngine&) = delete;
+    auto operator=(BaseEngine&&) noexcept = delete;
+
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
+    [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
+
+    void FrameAdvance();
+
+    GlobalSettings& Settings;
+    GeometryHelper Geometry;
+    GameTimer GameTime;
+    ProtoManager ProtoMngr;
+    ScriptSystem ScriptSys {};
+    TimeEventManager TimeEventMngr;
+    FileSystem Resources {};
+    unique_del_ptr<uint8> UserData {};
+
+protected:
+    BaseEngine(GlobalSettings& settings, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
+    ~BaseEngine() override = default;
 };

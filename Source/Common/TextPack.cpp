@@ -313,6 +313,68 @@ void TextPack::Clear()
     _strData.clear();
 }
 
+void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!bake_languages.empty());
+
+    // Add default language
+    if (lang_packs.empty() || lang_packs.front().first != bake_languages.front()) {
+        lang_packs.emplace(lang_packs.begin(), bake_languages.front(), map<string, TextPack>());
+    }
+
+    // Add missed languages
+    for (const auto& lang : bake_languages) {
+        if (std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == lang; }) == lang_packs.end()) {
+            lang_packs.emplace_back(lang, map<string, TextPack>());
+        }
+    }
+
+    // Remove unsupported languages
+    for (auto it = lang_packs.begin(); it != lang_packs.end();) {
+        if (std::find_if(bake_languages.begin(), bake_languages.end(), [&](auto&& l) { return l == it->first; }) == bake_languages.end()) {
+            it = lang_packs.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    // Normalize language packs
+    const auto& base_lang_pack = lang_packs.front().second;
+
+    for (size_t i = 1; i < lang_packs.size(); i++) {
+        auto& lang_pack = lang_packs[i].second;
+
+        // Remove packs that are not in the base language pack
+        for (auto it = lang_pack.begin(); it != lang_pack.end();) {
+            if (base_lang_pack.count(it->first) == 0) {
+                it = lang_pack.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+
+        // Add packs that are in the base language pack but not in this pack
+        for (auto&& [pack_name, text_pack] : base_lang_pack) {
+            if (lang_pack.count(pack_name) == 0) {
+                lang_pack.emplace(pack_name, text_pack);
+            }
+        }
+
+        RUNTIME_ASSERT(lang_pack.size() == base_lang_pack.size());
+
+        // Normalize texts to the base language
+        for (auto&& [pack_name, text_pack] : lang_pack) {
+            const auto it = base_lang_pack.find(pack_name);
+            RUNTIME_ASSERT(it != base_lang_pack.end());
+            text_pack.FixStr(it->second);
+        }
+    }
+}
+
 LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resolver) :
     _langName {lang_name},
     _nameResolver {&name_resolver}
@@ -374,21 +436,21 @@ auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) 
     }
 }
 
-void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver)
+void LanguagePack::LoadFromResources(FileSystem& resources)
 {
     STACK_TRACE_ENTRY();
 
-    auto msg_files = resources.FilterFiles("fotxt");
+    auto text_files = resources.FilterFiles("fotxtb");
 
-    while (msg_files.MoveNext()) {
-        auto msg_file = msg_files.GetCurFile();
-        const auto& msg_file_name = msg_file.GetName();
+    while (text_files.MoveNext()) {
+        auto text_file = text_files.GetCurFile();
+        const auto& file_name = text_file.GetName();
 
-        const auto sep = msg_file_name.find('.');
+        const auto sep = file_name.find('.');
         RUNTIME_ASSERT(sep != string::npos);
 
-        string pack_name_str = msg_file_name.substr(0, sep);
-        string lang_name = msg_file_name.substr(sep + 1);
+        string pack_name_str = file_name.substr(0, sep);
+        string lang_name = file_name.substr(sep + 1);
         RUNTIME_ASSERT(!pack_name_str.empty());
         RUNTIME_ASSERT(!lang_name.empty());
 
@@ -396,94 +458,13 @@ void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver
             const auto pack_name = ResolveTextPackName(pack_name_str);
             auto& text_pack = GetTextPackForEdit(pack_name);
 
-            if (!text_pack.LoadFromString(msg_file.GetStr(), hash_resolver)) {
-                throw LanguagePackException("Invalid text file", msg_file.GetPath());
+            if (!text_pack.LoadFromBinaryData(text_file.GetData())) {
+                throw LanguagePackException("Invalid binary text file", text_file.GetPath());
             }
         }
     }
 
     if (GetTextPack(TextPackName::Game).GetSize() == 0) {
         throw LanguagePackException("Unable to load game texts from file", _langName);
-    }
-}
-
-void LanguagePack::SaveTextsToDisk(string_view dir) const
-{
-    STACK_TRACE_ENTRY();
-
-    for (size_t i = 1; i < _textPacks.size(); i++) {
-        const auto& text_pack = _textPacks[i];
-
-        if (text_pack) {
-            const string& pack_name_str = _nameResolver->ResolveEnumValueName("TextPackName", static_cast<int>(i));
-
-            auto file = DiskFileSystem::OpenFile(strex("{}/{}.{}.fotxtb", dir, pack_name_str, _langName), true);
-            RUNTIME_ASSERT(file);
-
-            const auto write_file_ok = file.Write(text_pack->GetBinaryData());
-            RUNTIME_ASSERT(write_file_ok);
-        }
-    }
-}
-
-void LanguagePack::LoadTexts(FileSystem& resources)
-{
-    STACK_TRACE_ENTRY();
-
-    auto msg_files = resources.FilterFiles("fotxtb");
-
-    while (msg_files.MoveNext()) {
-        auto msg_file = msg_files.GetCurFile();
-
-        const auto& msg_file_name = msg_file.GetName();
-
-        const auto sep = msg_file_name.find('.');
-        RUNTIME_ASSERT(sep != string::npos);
-
-        string pack_name_str = msg_file_name.substr(0, sep);
-        string lang_name = msg_file_name.substr(sep + 1);
-        RUNTIME_ASSERT(!pack_name_str.empty());
-        RUNTIME_ASSERT(!lang_name.empty());
-
-        if (lang_name == _langName) {
-            const auto pack_name = ResolveTextPackName(pack_name_str);
-            auto& text_pack = GetTextPackForEdit(pack_name);
-
-            if (!text_pack.LoadFromBinaryData(msg_file.GetData())) {
-                throw LanguagePackException("Invalid binary text file", msg_file.GetPath());
-            }
-        }
-    }
-
-    if (GetTextPack(TextPackName::Game).GetSize() == 0) {
-        throw LanguagePackException("Unable to load game texts from file", _langName);
-    }
-}
-
-void LanguagePack::FixTexts(const LanguagePack& base_lang)
-{
-    STACK_TRACE_ENTRY();
-
-    // Normalize texts to the base language
-    _textPacks.resize(base_lang._textPacks.size());
-
-    for (size_t i = 0; i < base_lang._textPacks.size(); i++) {
-        const auto& base_text_pack = base_lang._textPacks[i];
-        auto& text_pack = _textPacks[i];
-
-        if (base_text_pack) {
-            if (!text_pack) {
-                text_pack = SafeAlloc::MakeUnique<TextPack>();
-                text_pack->Merge(*base_text_pack);
-            }
-            else {
-                text_pack->FixStr(*base_text_pack);
-            }
-        }
-        else {
-            if (text_pack) {
-                text_pack.reset();
-            }
-        }
     }
 }

@@ -101,8 +101,8 @@ static uint8 FoPalette[] = {
 static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
-ImageBaker::ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    BaseBaker(settings, std::move(bake_checker), std::move(write_data))
+ImageBaker::ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
+    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
     STACK_TRACE_ENTRY();
 
@@ -159,7 +159,9 @@ void ImageBaker::BakeFiles(FileCollection files)
         _files = std::move(files);
 
         for (auto&& [ext, loader] : _fileLoaders) {
-            for (_files.ResetCounter(); _files.MoveNext();) {
+            _files.ResetCounter();
+
+            while (_files.MoveNext()) {
                 auto file_header = _files.GetCurFileHeader();
                 string file_ext = strex(file_header.GetPath()).getFileExtension();
 
@@ -167,7 +169,7 @@ void ImageBaker::BakeFiles(FileCollection files)
                     continue;
                 }
 
-                if (_bakeChecker && !_bakeChecker(file_header)) {
+                if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                     continue;
                 }
 
@@ -248,8 +250,8 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
     writer.Write<uint8>(check_number);
 
-    if (!collection.NewExtension.empty()) {
-        _writeData(strex("{}.{}", strex(fname).eraseFileExtension(), collection.NewExtension), data);
+    if (!collection.NewName.empty()) {
+        _writeData(collection.NewName, data);
     }
     else {
         _writeData(fname, data);
@@ -459,6 +461,10 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
     FrameCollection collection;
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+
+    if (strex(fname).startsWith("art/critters/")) {
+        collection.NewName = strex(fname).lower();
+    }
 
     // Animate pixels
     // 0x00 - None
@@ -717,7 +723,13 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
     FrameCollection collection;
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
-    collection.NewExtension = "frm";
+
+    if (strex(fname).startsWith("art/critters/")) {
+        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension().lower(), "fofrm");
+    }
+    else {
+        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension(), "frm");
+    }
 
     // Animate pixels
     // 0x00 - None

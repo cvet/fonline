@@ -189,7 +189,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     auto max_id = GetWorkEntityId().underlying_value();
 
     MapLoader::Load(
-        map_name, str, _engine->ProtoMngr, *_engine,
+        map_name, str, _engine->ProtoMngr, _engine->Hashes,
         [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
             RUNTIME_ASSERT(id);
             RUNTIME_ASSERT(_crittersMap.count(id) == 0);
@@ -259,7 +259,7 @@ void MapView::LoadStaticData()
 {
     STACK_TRACE_ENTRY();
 
-    const auto file = _engine->Resources.ReadFile(strex("{}.fomapb2", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(strex("{}.fomapb-client", GetProtoId()));
 
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
@@ -276,7 +276,7 @@ void MapView::LoadStaticData()
             const auto str_len = reader.Read<uint>();
             str.resize(str_len);
             reader.ReadPtr(str.data(), str.length());
-            const auto hstr = _engine->ToHashedString(str);
+            const auto hstr = _engine->Hashes.ToHashedString(str);
             UNUSED_VARIABLE(hstr);
         }
     }
@@ -298,7 +298,7 @@ void MapView::LoadStaticData()
         for (uint i = 0; i < items_count; i++) {
             const auto static_id = ident_t {reader.Read<ident_t::underlying_type>()};
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
-            const auto item_pid = _engine->ResolveHash(item_pid_hash);
+            const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
             const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
             auto item_props = Properties(item_proto->GetProperties().GetRegistrator());

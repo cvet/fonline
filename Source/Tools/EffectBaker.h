@@ -48,8 +48,7 @@ namespace glslang
 class EffectBaker final : public BaseBaker
 {
 public:
-    EffectBaker() = delete;
-    EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    EffectBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;

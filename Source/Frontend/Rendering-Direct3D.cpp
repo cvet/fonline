@@ -220,7 +220,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
     Settings = &settings;
     RenderDebug = settings.RenderDebug;
-    VSync = settings.ClientMode && settings.VSync;
+    VSync = settings.VSync;
     SdlWindow = static_cast<SDL_Window*>(window);
 
 #if !FO_UWP

@@ -71,6 +71,7 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static unique_ptr<Renderer> ActiveRenderer {};
 static RenderType ActiveRendererType {};
 static RenderTexture* RenderTargetTex {};
+static ucolor ClearColor {150, 150, 150, 255};
 
 static unique_ptr<vector<InputEvent>> EventsQueue {};
 static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
@@ -111,7 +112,7 @@ static auto ScreenPosToWindowPos(ipos pos) -> ipos
     return {win_x, win_y};
 }
 
-void InitApp(int argc, char** argv, bool client_mode)
+void InitApp(int argc, char** argv, AppInitFlags flags)
 {
     STACK_TRACE_ENTRY();
 
@@ -149,7 +150,7 @@ void InitApp(int argc, char** argv, bool client_mode)
     CreateGlobalData();
 
 #if FO_TRACY
-    TracySetProgramName(FO_GAME_NAME);
+    TracySetProgramName(FO_NICE_NAME);
 #endif
 
 #if !FO_WEB
@@ -161,9 +162,13 @@ void InitApp(int argc, char** argv, bool client_mode)
     }
 #endif
 
-    WriteLog("Starting {}", FO_GAME_NAME);
+    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
+        LogDisableTags();
+    }
 
-    App = SafeAlloc::MakeRaw<Application>(argc, argv, client_mode);
+    WriteLog("Starting {}", FO_NICE_NAME);
+
+    App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
 }
 
 void ExitApp(bool success) noexcept
@@ -197,14 +202,14 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
 static unique_ptr<unordered_map<int, MouseButton>> MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, bool client_mode) :
-    Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, AppInitFlags flags) :
+    Settings(argc, argv)
 {
     STACK_TRACE_ENTRY();
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
-    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_NAME);
+    SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
@@ -466,11 +471,11 @@ Application::Application(int argc, char** argv, bool client_mode) :
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
-        if (Settings.ClientMode) {
+        if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
             SDL_DisableScreenSaver();
         }
 
-        if (Settings.ClientMode && Settings.HideNativeCursor) {
+        if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.HideNativeCursor) {
             SDL_HideCursor();
         }
 
@@ -485,6 +490,10 @@ Application::Application(int argc, char** argv, bool client_mode) :
             Settings.ScreenWidth = iround(static_cast<float>(Settings.ScreenHeight) * ratio);
 
             Settings.Fullscreen = true;
+        }
+
+        if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
+            ClearColor = {0, 0, 0, 255};
         }
 
 #if FO_WEB
@@ -510,9 +519,13 @@ Application::Application(int argc, char** argv, bool client_mode) :
         MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
         _allWindows.emplace_back(&MainWindow);
 
+        if (IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
+            SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle), true);
+        }
+
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
 
-        if (Settings.ClientMode && Settings.AlwaysOnTop) {
+        if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
 
@@ -655,7 +668,7 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, 1);
 
-    if (!Settings.ClientMode || Settings.WindowResizable) {
+    if (Settings.WindowResizable) {
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, 1);
     }
 
@@ -706,7 +719,7 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
     }
 
-    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, FO_GAME_NAME);
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, Settings.GameName.c_str());
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
 
@@ -718,10 +731,6 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 
     if (!_isTablet) {
         SDL_SetWindowFullscreenMode(sdl_window, nullptr);
-
-        if (Settings.ClientMode && Settings.Fullscreen) {
-            SDL_SetWindowFullscreen(sdl_window, true);
-        }
     }
 
     const auto display_id = SDL_GetDisplayForWindow(sdl_window);
@@ -737,7 +746,7 @@ void Application::BeginFrame()
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
-    ActiveRenderer->ClearRenderTarget(Settings.ClientMode ? ucolor {0, 0, 0} : ucolor {150, 150, 150});
+    ActiveRenderer->ClearRenderTarget(ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
 

@@ -132,7 +132,7 @@ int main(int argc, char** argv) // Handled by SDL
                         auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                         try {
-                            auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, false);
+                            auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
                             Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }

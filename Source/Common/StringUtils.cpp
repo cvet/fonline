@@ -833,6 +833,9 @@ auto strex::extractDir() -> strex&
     if (pos != string::npos) {
         _sv = _sv.substr(0, pos);
     }
+    else {
+        _sv = "";
+    }
 
     return *this;
 }

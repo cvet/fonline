@@ -80,40 +80,6 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     }
 }
 
-auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
-{
-    NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
-
-    if (s.empty()) {
-        return {};
-    }
-
-    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
-    RUNTIME_ASSERT(hash_value != 0);
-
-    {
-        auto locker = std::shared_lock {_hashStorageLocker};
-
-        if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
-#if FO_DEBUG
-            const auto collision_detected = s != it->second.Str;
-#else
-            const auto collision_detected = s.length() != it->second.Str.length();
-#endif
-
-            if (collision_detected) {
-                throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
-            }
-
-            return hstring(&it->second);
-        }
-    }
-
-    throw HashInsertException("String value is not in hash storage", s);
-}
-
 auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
 {
     NO_STACK_TRACE_ENTRY();

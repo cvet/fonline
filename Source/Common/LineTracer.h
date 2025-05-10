@@ -37,8 +37,6 @@
 
 #include "Entity.h"
 
-class GeometryHelper;
-
 class LineTracer final
 {
 public:

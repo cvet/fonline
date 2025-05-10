@@ -100,13 +100,13 @@ public:
         LexemType   Type;
     };
 
-    std::string Numbers = "0123456789";
-    std::string IdentifierStart = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    std::string IdentifierBody = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    std::string HexNumbers = "0123456789abcdefABCDEF";
+    const std::string Numbers = "0123456789";
+    const std::string IdentifierStart = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const std::string IdentifierBody = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const std::string HexNumbers = "0123456789abcdefABCDEF";
+    const std::string Trivials = ",;\n\r\t [{(]})";
 
-    std::string Trivials = ",;\n\r\t [{(]})";
-    LexemType   TrivialTypes[] =
+    const LexemType   TrivialTypes[] =
     {
         COMMA,
         SEMICOLON,
@@ -174,43 +174,47 @@ public:
     /* Preprocess                                                           */
     /************************************************************************/
 
-    void        PrintMessage( const std::string& msg );
-    void        PrintErrorMessage( const std::string& errmsg );
-    void        PrintWarningMessage( const std::string& warnmsg );
-    std::string RemoveQuotes( const std::string& in );
-    void        SetPragmaCallback( PragmaCallback* callback );
-    void        CallPragma( const PragmaInstance& pragma );
-    std::string PrependRootPath( const std::string& filename );
-    LLITR       ParsePreprocessor( LexemList& lexems, LLITR itr, LLITR end );
-    LLITR       ParseStatement( LLITR itr, LLITR end, LexemList& dest );
-    LLITR       ParseDefineArguments( LLITR itr, LLITR end, LexemList& lexems, std::vector< LexemList >& args );
-    LLITR       ExpandDefine( LLITR itr, LLITR ent, LexemList& lexems, DefineTable& define_table );
-    void        ParseDefine( DefineTable& define_table, LexemList& def_lexems );
-    LLITR       ParseIfDef( LLITR itr, LLITR end );
-    void        ParseIf( LexemList& directive, std::string& name_out );
-    void        ParseUndef( DefineTable& define_table, const std::string& identifier );
-    bool        ConvertExpression( LexemList& expression, LexemList& output );
-    int         EvaluateConvertedExpression( DefineTable& define_table, LexemList& expr );
-    bool        EvaluateExpression( DefineTable& define_table, LexemList& directive );
-    std::string AddPaths( const std::string& first, const std::string& second );
-    void        ParsePragma( LexemList& args );
-    void        ParseTextLine( LexemList& directive, std::string& message );
-    void        SetLineMacro( DefineTable& define_table, unsigned int line );
-    void        SetFileMacro( DefineTable& define_table, const std::string& file );
-    void        RecursivePreprocess( std::string filename, FileLoader& file_source, LexemList& lexems, DefineTable& define_table );
-    void        PrintLexemList( LexemList& out, OutStream& destination );
+    void        PrintMessage( Context* ctx, const std::string& msg );
+    void        PrintErrorMessage( Context* ctx, const std::string& errmsg );
+    void        PrintWarningMessage( Context* ctx, const std::string& warnmsg );
+    std::string RemoveQuotes( Context* ctx, const std::string& in );
+    void        SetPragmaCallback( Context* ctx, PragmaCallback* callback );
+    void        CallPragma( Context* ctx, const PragmaInstance& pragma );
+    std::string PrependRootPath( Context* ctx, const std::string& filename );
+    LLITR       ParsePreprocessor( Context* ctx, LexemList& lexems, LLITR itr, LLITR end );
+    LLITR       ParseStatement( Context* ctx, LLITR itr, LLITR end, LexemList& dest );
+    LLITR       ParseDefineArguments( Context* ctx, LLITR itr, LLITR end, LexemList& lexems, std::vector< LexemList >& args );
+    LLITR       ExpandDefine( Context* ctx, LLITR itr, LLITR ent, LexemList& lexems, DefineTable& define_table );
+    void        ParseDefine( Context* ctx, DefineTable& define_table, LexemList& def_lexems );
+    LLITR       ParseIfDef( Context* ctx, LLITR itr, LLITR end );
+    void        ParseIf( Context* ctx, LexemList& directive, std::string& name_out );
+    void        ParseUndef( Context* ctx, DefineTable& define_table, const std::string& identifier );
+    bool        ConvertExpression( Context* ctx, LexemList& expression, LexemList& output );
+    int         EvaluateConvertedExpression( Context* ctx, DefineTable& define_table, LexemList& expr );
+    bool        EvaluateExpression( Context* ctx, DefineTable& define_table, LexemList& directive );
+    std::string AddPaths( Context* ctx, const std::string& first, const std::string& second );
+    void        ParsePragma( Context* ctx, LexemList& args );
+    void        ParseTextLine( Context* ctx, LexemList& directive, std::string& message );
+    void        SetLineMacro( Context* ctx, DefineTable& define_table, unsigned int line );
+    void        SetFileMacro( Context* ctx, DefineTable& define_table, const std::string& file );
+    void        RecursivePreprocess( Context* ctx, std::string filename, FileLoader& file_source, LexemList& lexems, DefineTable& define_table );
+    void        PrintLexemList(Context* ctx, LexemList& out, OutStream& destination );
 
-    DefineTable                CustomDefines;
-    OutStream*                 Errors = NULL;
-    unsigned int               ErrorsCount = 0;
-    PragmaCallback*            CurPragmaCallback = NULL;
-    LineNumberTranslator*      LNT = NULL;
-    std::string                RootFile;
-    std::string                RootPath;
-    std::string                CurrentFile;
-    unsigned int               CurrentLine = 0;
-    unsigned int               LinesThisFile = 0;
-    std::vector< std::string > FilesPreprocessed;
+    class Context
+    {
+    public:
+        DefineTable                CustomDefines;
+        OutStream*                 Errors = NULL;
+        unsigned int               ErrorsCount = 0;
+        PragmaCallback*            CurPragmaCallback = NULL;
+        LineNumberTranslator*      LNT = NULL;
+        std::string                RootFile;
+        std::string                RootPath;
+        std::string                CurrentFile;
+        unsigned int               CurrentLine = 0;
+        unsigned int               LinesThisFile = 0;
+        std::vector< std::string > FilesPreprocessed;
+    };
 }
 
 /************************************************************************/
@@ -296,12 +300,12 @@ void Preprocessor::LineNumberTranslator::Restore( const std::vector< unsigned ch
 /* Preprocess                                                           */
 /************************************************************************/
 
-void Preprocessor::PrintMessage( const std::string& msg )
+void Preprocessor::PrintMessage( Context* ctx, const std::string& msg )
 {
-    ( *Errors ) << CurrentFile << " (" << LinesThisFile << ") " << msg << "\n";
+    ( *ctx->Errors ) << ctx->CurrentFile << " (" << ctx->LinesThisFile << ") " << msg << "\n";
 }
 
-void Preprocessor::PrintErrorMessage( const std::string& errmsg )
+void Preprocessor::PrintErrorMessage( Context* ctx, const std::string& errmsg )
 {
     std::string err = "Error";
     if( !( errmsg.empty() || errmsg.length() == 0 ) )
@@ -310,11 +314,11 @@ void Preprocessor::PrintErrorMessage( const std::string& errmsg )
         err += errmsg;
     }
 
-    PrintMessage( err );
-    ErrorsCount++;
+    PrintMessage( ctx, err );
+    ctx->ErrorsCount++;
 }
 
-void Preprocessor::PrintWarningMessage( const std::string& warnmsg )
+void Preprocessor::PrintWarningMessage( Context* ctx, const std::string& warnmsg )
 {
     std::string warn = "Warning";
     if( !( warnmsg.empty() || warnmsg.length() == 0 ) )
@@ -323,33 +327,33 @@ void Preprocessor::PrintWarningMessage( const std::string& warnmsg )
         warn += warnmsg;
     }
 
-    PrintMessage( warn );
+    PrintMessage( ctx, warn );
 }
 
-std::string Preprocessor::RemoveQuotes( const std::string& in )
+std::string Preprocessor::RemoveQuotes( Context* ctx, const std::string& in )
 {
     return in.substr( 1, in.size() - 2 );
 }
 
-void Preprocessor::SetPragmaCallback( PragmaCallback* callback )
+void Preprocessor::SetPragmaCallback( Context* ctx, PragmaCallback* callback )
 {
-    CurPragmaCallback = callback;
+    ctx->CurPragmaCallback = callback;
 }
 
-void Preprocessor::CallPragma( const PragmaInstance& pragma )
+void Preprocessor::CallPragma( Context* ctx, const PragmaInstance& pragma )
 {
-    if( CurPragmaCallback )
-        CurPragmaCallback->CallPragma( pragma );
+    if( ctx->CurPragmaCallback )
+        ctx->CurPragmaCallback->CallPragma( pragma );
 }
 
-std::string Preprocessor::PrependRootPath( const std::string& filename )
+std::string Preprocessor::PrependRootPath( Context* ctx, const std::string& filename )
 {
-    if( filename == RootFile )
-        return RootFile;
-    return RootPath + filename;
+    if( filename == ctx->RootFile )
+        return ctx->RootFile;
+    return ctx->RootPath + filename;
 }
 
-Preprocessor::LLITR Preprocessor::ParsePreprocessor( LexemList& lexems, LLITR itr, LLITR end )
+Preprocessor::LLITR Preprocessor::ParsePreprocessor( Context* ctx, LexemList& lexems, LLITR itr, LLITR end )
 {
     unsigned int spaces = 0;
     LLITR        prev = itr;
@@ -381,7 +385,7 @@ Preprocessor::LLITR Preprocessor::ParsePreprocessor( LexemList& lexems, LLITR it
     return itr;
 }
 
-Preprocessor::LLITR Preprocessor::ParseStatement( LLITR itr, LLITR end, LexemList& dest )
+Preprocessor::LLITR Preprocessor::ParseStatement( Context* ctx, LLITR itr, LLITR end, LexemList& dest )
 {
     int depth = 0;
     while( itr != end )
@@ -398,7 +402,7 @@ Preprocessor::LLITR Preprocessor::ParseStatement( LLITR itr, LLITR end, LexemLis
         if( itr->Type == CLOSE )
         {
             if( depth == 0 )
-                PrintErrorMessage( "Mismatched braces while parsing statement." );
+                PrintErrorMessage( ctx, "Mismatched braces while parsing statement." );
             depth--;
         }
         ++itr;
@@ -406,11 +410,11 @@ Preprocessor::LLITR Preprocessor::ParseStatement( LLITR itr, LLITR end, LexemLis
     return itr;
 }
 
-Preprocessor::LLITR Preprocessor::ParseDefineArguments( LLITR itr, LLITR end, LexemList& lexems, std::vector< LexemList >& args )
+Preprocessor::LLITR Preprocessor::ParseDefineArguments( Context* ctx, LLITR itr, LLITR end, LexemList& lexems, std::vector< LexemList >& args )
 {
     if( itr == end || itr->Value != "(" )
     {
-        PrintErrorMessage( "Expected argument list." );
+        PrintErrorMessage( ctx, "Expected argument list." );
         return itr;
     }
     LLITR begin_erase = itr;
@@ -420,7 +424,7 @@ Preprocessor::LLITR Preprocessor::ParseDefineArguments( LLITR itr, LLITR end, Le
     {
         LexemList argument;
         LLITR     prev = itr;
-        itr = ParseStatement( itr, end, argument );
+        itr = ParseStatement( ctx, itr, end, argument );
         if( itr == prev )
             return itr;
 
@@ -428,7 +432,7 @@ Preprocessor::LLITR Preprocessor::ParseDefineArguments( LLITR itr, LLITR end, Le
 
         if( itr == end )
         {
-            PrintErrorMessage( "0x0FA1 Unexpected end of file." );
+            PrintErrorMessage( ctx, "0x0FA1 Unexpected end of file." );
             return itr;
         }
         if( itr->Value == "," )
@@ -436,7 +440,7 @@ Preprocessor::LLITR Preprocessor::ParseDefineArguments( LLITR itr, LLITR end, Le
             ++itr;
             if( itr == end )
             {
-                PrintErrorMessage( "0x0FA2 Unexpected end of file." );
+                PrintErrorMessage( ctx, "0x0FA2 Unexpected end of file." );
                 return itr;
             }
             continue;
@@ -451,7 +455,7 @@ Preprocessor::LLITR Preprocessor::ParseDefineArguments( LLITR itr, LLITR end, Le
     return lexems.erase( begin_erase, itr );
 }
 
-Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList& lexems, DefineTable& define_table )
+Preprocessor::LLITR Preprocessor::ExpandDefine( Context* ctx, LLITR itr, LLITR end, LexemList& lexems, DefineTable& define_table )
 {
     DefineTable::iterator define_entry = define_table.find( itr->Value );
     if( define_entry == define_table.end() )
@@ -470,11 +474,11 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
 
     // define has arguments.
     std::vector< LexemList > arguments;
-    itr = ParseDefineArguments( itr, end, lexems, arguments );
+    itr = ParseDefineArguments( ctx, itr, end, lexems, arguments );
 
     if( define_entry->second.Arguments.size() != arguments.size() )
     {
-        PrintErrorMessage( "Didn't supply right number of arguments to define '" + itr_value + "'." );
+        PrintErrorMessage( ctx, "Didn't supply right number of arguments to define '" + itr_value + "'." );
         return end;
     }
 
@@ -498,18 +502,18 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
     // expand arguments in templist.
 }
 
-void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems )
+void Preprocessor::ParseDefine( Context* ctx, DefineTable& define_table, LexemList& def_lexems )
 {
     def_lexems.pop_front();     // remove #define directive
     if( def_lexems.empty() )
     {
-        PrintErrorMessage( "Define directive without arguments." );
+        PrintErrorMessage( ctx, "Define directive without arguments." );
         return;
     }
     Lexem name = *def_lexems.begin();
     if( name.Type != IDENTIFIER )
     {
-        PrintErrorMessage( "Define's name was not an identifier." );
+        PrintErrorMessage( ctx, "Define's name was not an identifier." );
         return;
     }
     def_lexems.pop_front();
@@ -532,12 +536,12 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
             def_lexems.pop_front();
             if( def_lexems.empty() )
             {
-                PrintErrorMessage( "Expected arguments." );
+                PrintErrorMessage( ctx, "Expected arguments." );
                 return;
             }
             if( def_lexems.begin()->Value != "(" )
             {
-                PrintErrorMessage( "Expected arguments." );
+                PrintErrorMessage( ctx, "Expected arguments." );
                 return;
             }
             def_lexems.pop_front();
@@ -547,7 +551,7 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
             {
                 if( def_lexems.begin()->Type != IDENTIFIER )
                 {
-                    PrintErrorMessage( "Expected identifier." );
+                    PrintErrorMessage( ctx, "Expected identifier." );
                     return;
                 }
                 def.Arguments[ def_lexems.begin()->Value ] = num_args;
@@ -563,14 +567,14 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
             {
                 if( def_lexems.begin()->Value != ")" )
                 {
-                    PrintErrorMessage( "Expected closing parantheses." );
+                    PrintErrorMessage( ctx, "Expected closing parantheses." );
                     return;
                 }
                 def_lexems.pop_front();
             }
             else
             {
-                PrintErrorMessage( "0x0FA3 Unexpected end of line." );
+                PrintErrorMessage( ctx, "0x0FA3 Unexpected end of line." );
                 return;
             }
         }
@@ -580,7 +584,7 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
         {
             if( dlb->Value == "##" && dlb->Type == IGNORE )
                 dlb->Value = "";
-            dlb = ExpandDefine( dlb, def_lexems.end(), def_lexems, define_table );
+            dlb = ExpandDefine( ctx, dlb, def_lexems.end(), def_lexems, define_table );
         }
     }
 
@@ -588,7 +592,7 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
     define_table[ name.Value ] = def;
 }
 
-Preprocessor::LLITR Preprocessor::ParseIfDef( LLITR itr, LLITR end )
+Preprocessor::LLITR Preprocessor::ParseIfDef( Context* ctx, LLITR itr, LLITR end )
 {
     int  depth = 0;
     int  newlines = 0;
@@ -614,7 +618,7 @@ Preprocessor::LLITR Preprocessor::ParseIfDef( LLITR itr, LLITR end )
     }
     if( itr == end && !found_end )
     {
-        PrintErrorMessage( "0x0FA4 Unexpected end of file." );
+        PrintErrorMessage( ctx, "0x0FA4 Unexpected end of file." );
         return itr;
     }
     while( newlines > 0 )
@@ -627,32 +631,32 @@ Preprocessor::LLITR Preprocessor::ParseIfDef( LLITR itr, LLITR end )
     return itr;
 }
 
-void Preprocessor::ParseIf( LexemList& directive, std::string& name_out )
+void Preprocessor::ParseIf( Context* ctx, LexemList& directive, std::string& name_out )
 {
     directive.pop_front();
     if( directive.empty() )
     {
-        PrintErrorMessage( "Expected argument." );
+        PrintErrorMessage( ctx, "Expected argument." );
         return;
     }
     name_out = directive.begin()->Value;
     directive.pop_front();
     if( !directive.empty() )
-        PrintErrorMessage( "Too many arguments." );
+        PrintErrorMessage( ctx, "Too many arguments." );
 }
 
-void Preprocessor::ParseUndef( DefineTable& define_table, const std::string& identifier )
+void Preprocessor::ParseUndef( Context* ctx, DefineTable& define_table, const std::string& identifier )
 {
     auto it = define_table.find( identifier );
     if( it != define_table.end() )
         define_table.erase( it );
 }
 
-bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
+bool Preprocessor::ConvertExpression( Context* ctx, LexemList& expression, LexemList& output )
 {
     if( expression.empty() )
     {
-        PrintMessage( "Empty expression." );
+        PrintMessage( ctx, "Empty expression." );
         return true;
     }
 
@@ -707,7 +711,7 @@ bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
 
             if( !foundLeft )
             {
-                PrintErrorMessage( "Mismatched parentheses." );
+                PrintErrorMessage( ctx, "Mismatched parentheses." );
                 return false;
             }
 
@@ -715,7 +719,7 @@ bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
         }
         else
         {
-            PrintErrorMessage( "Unknown token: " + lexem.Value );
+            PrintErrorMessage( ctx, "Unknown token: " + lexem.Value );
             return false;
         }
     }
@@ -726,7 +730,7 @@ bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
         Lexem& lex = stack.back();
         if( IsLeft( lex ) || IsRight( lex ) )
         {
-            PrintErrorMessage( "Mismatched parentheses." );
+            PrintErrorMessage( ctx, "Mismatched parentheses." );
             return false;
         }
         output.push_back( lex );
@@ -735,7 +739,7 @@ bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
     return true;
 }
 
-int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemList& expr )
+int Preprocessor::EvaluateConvertedExpression( Context* ctx, DefineTable& define_table, LexemList& expr )
 {
     std::vector< int > stack;
 
@@ -752,20 +756,20 @@ int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemL
             {
                 LexemList ll;
                 ll.push_back( lexem );
-                LLITR res = ExpandDefine( ll.begin(), ll.end(), ll, define_table );
+                LLITR res = ExpandDefine( ctx, ll.begin(), ll.end(), ll, define_table );
                 if( res != ll.begin() )
                 {
-                    PrintErrorMessage("Unknown identifier in #if: " + lexem.Value + ".");
+                    PrintErrorMessage( ctx, "Unknown identifier in #if: " + lexem.Value + "." );
                     return 0;
                 }
                 LexemList out;
-                bool      success = ConvertExpression( ll, out );
+                bool      success = ConvertExpression( ctx, ll, out );
                 if( !success )
                 {
-                    PrintErrorMessage( "Error while expanding macros." );
+                    PrintErrorMessage( ctx, "Error while expanding macros." );
                     return 0;
                 }
-                stack.push_back( EvaluateConvertedExpression( define_table, out ) );
+                stack.push_back( EvaluateConvertedExpression( ctx, define_table, out ) );
             }
         }
         else if( IsOperator( lexem ) )
@@ -774,7 +778,7 @@ int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemL
             {
                 if( !stack.size() )
                 {
-                    PrintErrorMessage( "Syntax error in #if: no argument for ! operator." );
+                    PrintErrorMessage( ctx, "Syntax error in #if: no argument for ! operator." );
                     return 0;
                 }
                 stack.back() = stack.back() != 0 ? 0 : 1;
@@ -783,7 +787,7 @@ int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemL
             {
                 if( stack.size() < 2 )
                 {
-                    PrintErrorMessage( "Syntax error in #if: not enough arguments for " + lexem.Value + " operator." );
+                    PrintErrorMessage( ctx, "Syntax error in #if: not enough arguments for " + lexem.Value + " operator." );
                     return 0;
                 }
                 int rhs = stack.back();
@@ -822,27 +826,27 @@ int Preprocessor::EvaluateConvertedExpression( DefineTable& define_table, LexemL
         }
         else
         {
-            PrintErrorMessage( "Internal error on lexem " + lexem.Value + "." );
+            PrintErrorMessage( ctx, "Internal error on lexem " + lexem.Value + "." );
             return 0;
         }
     }
     if( stack.size() == 1 )
         return stack.back();
-    PrintErrorMessage( "Invalid #if expression." );
+    PrintErrorMessage( ctx, "Invalid #if expression." );
     return 0;
 }
 
-bool Preprocessor::EvaluateExpression( DefineTable& define_table, LexemList& directive )
+bool Preprocessor::EvaluateExpression( Context* ctx, DefineTable& define_table, LexemList& directive )
 {
     LexemList output;
     directive.pop_front();
-    bool      success = ConvertExpression( directive, output );
+    bool      success = ConvertExpression( ctx, directive, output );
     if( !success )
         return false;
-    return EvaluateConvertedExpression( define_table, output ) != 0;
+    return EvaluateConvertedExpression( ctx, define_table, output ) != 0;
 }
 
-std::string Preprocessor::AddPaths( const std::string& first, const std::string& second )
+std::string Preprocessor::AddPaths( Context* ctx, const std::string& first, const std::string& second )
 {
     std::string result;
     size_t      slash_pos = first.find_last_of( '/' );
@@ -853,12 +857,12 @@ std::string Preprocessor::AddPaths( const std::string& first, const std::string&
     return result;
 }
 
-void Preprocessor::ParsePragma( LexemList& args )
+void Preprocessor::ParsePragma( Context* ctx, LexemList& args )
 {
     args.pop_front();
     if( args.empty() )
     {
-        PrintErrorMessage( "Pragmas need arguments." );
+        PrintErrorMessage( ctx, "Pragmas need arguments." );
         return;
     }
     std::string p_name = args.begin()->Value;
@@ -867,7 +871,7 @@ void Preprocessor::ParsePragma( LexemList& args )
     while( !args.empty() )
     {
         if( args.begin()->Type == STRING )
-            p_args += RemoveQuotes( args.begin()->Value );
+            p_args += RemoveQuotes( ctx, args.begin()->Value );
         else
             p_args += args.begin()->Value;
 
@@ -880,15 +884,15 @@ void Preprocessor::ParsePragma( LexemList& args )
     PragmaInstance pi;
     pi.Name = p_name;
     pi.Text = p_args;
-    pi.CurrentFile = CurrentFile;
-    pi.CurrentFileLine = LinesThisFile;
-    pi.RootFile = RootFile;
-    pi.GlobalLine = CurrentLine;
-    if( CurPragmaCallback )
-        CurPragmaCallback->CallPragma( pi );
+    pi.CurrentFile = ctx->CurrentFile;
+    pi.CurrentFileLine = ctx->LinesThisFile;
+    pi.RootFile = ctx->RootFile;
+    pi.GlobalLine = ctx->CurrentLine;
+    if( ctx->CurPragmaCallback )
+        ctx->CurPragmaCallback->CallPragma( pi );
 }
 
-void Preprocessor::ParseTextLine( LexemList& directive, std::string& message )
+void Preprocessor::ParseTextLine( Context* ctx, LexemList& directive, std::string& message )
 {
     message = "";
     directive.pop_front();
@@ -907,7 +911,7 @@ void Preprocessor::ParseTextLine( LexemList& directive, std::string& message )
     }
 }
 
-void Preprocessor::SetLineMacro( DefineTable& define_table, unsigned int line )
+void Preprocessor::SetLineMacro( Context* ctx, DefineTable& define_table, unsigned int line )
 {
     DefineEntry       def;
     Lexem             l;
@@ -919,7 +923,7 @@ void Preprocessor::SetLineMacro( DefineTable& define_table, unsigned int line )
     define_table[ "__LINE__" ] = def;
 }
 
-void Preprocessor::SetFileMacro( DefineTable& define_table, const std::string& file )
+void Preprocessor::SetFileMacro( Context* ctx, DefineTable& define_table, const std::string& file )
 {
     DefineEntry def;
     Lexem       l;
@@ -929,26 +933,26 @@ void Preprocessor::SetFileMacro( DefineTable& define_table, const std::string& f
     define_table[ "__FILE__" ] = def;
 }
 
-void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_source, LexemList& lexems, DefineTable& define_table )
+void Preprocessor::RecursivePreprocess( Context* ctx, std::string filename, FileLoader& file_source, LexemList& lexems, DefineTable& define_table )
 {
     size_t      slash = filename.find_last_of( "/\\" );
     std::string current_file = filename.substr( slash != std::string::npos ? slash + 1 : 0 );
-    if( std::find( FilesPreprocessed.begin(), FilesPreprocessed.end(), current_file ) != FilesPreprocessed.end() )
+    if( std::find( ctx->FilesPreprocessed.begin(), ctx->FilesPreprocessed.end(), current_file ) != ctx->FilesPreprocessed.end() )
         return;
-    FilesPreprocessed.push_back( current_file );
-    CurrentFile = current_file;
+    ctx->FilesPreprocessed.push_back( current_file );
+    ctx->CurrentFile = current_file;
 
-    unsigned int start_line = CurrentLine;
-    LinesThisFile = 0;
-    SetFileMacro( define_table, CurrentFile );
-    SetLineMacro( define_table, LinesThisFile );
+    unsigned int start_line = ctx->CurrentLine;
+    ctx->LinesThisFile = 0;
+    SetFileMacro( ctx, define_table, ctx->CurrentFile );
+    SetLineMacro( ctx, define_table, ctx->LinesThisFile );
 
     std::vector< char > data;
     std::string         file_path;
-    bool                loaded = file_source.LoadFile( RootPath, filename, data, file_path );
+    bool                loaded = file_source.LoadFile(ctx->RootPath, filename, data, file_path );
     if( !loaded )
     {
-        PrintErrorMessage( std::string( "Could not open file " ) + RootPath + filename );
+        PrintErrorMessage( ctx, std::string( "Could not open file " ) + ctx->RootPath + filename );
         return;
     }
 
@@ -970,9 +974,9 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
         {
             if( itr != old )
             {
-                CurrentLine++;
-                LinesThisFile++;
-                SetLineMacro( define_table, LinesThisFile );
+                ctx->CurrentLine++;
+                ctx->LinesThisFile++;
+                SetLineMacro( ctx, define_table, ctx->LinesThisFile );
             }
             old = itr;
             ++itr;
@@ -980,7 +984,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
         else if( itr->Type == PREPROCESSOR )
         {
             LLITR     start_of_line = itr;
-            LLITR     end_of_line = ParsePreprocessor( lexems, itr, end );
+            LLITR     end_of_line = ParsePreprocessor( ctx, lexems, itr, end );
 
             LexemList directive( start_of_line, end_of_line );
             itr = lexems.erase( start_of_line, end_of_line );
@@ -996,36 +1000,36 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
             std::string value = directive.begin()->Value;
             if( value == "#define" )
             {
-                ParseDefine( define_table, directive );
+                ParseDefine( ctx, define_table, directive );
             }
             else if( value == "#ifdef" )
             {
                 std::string           def_name;
-                ParseIf( directive, def_name );
+                ParseIf( ctx, directive, def_name );
                 DefineTable::iterator dti = define_table.find( def_name );
                 if( dti == define_table.end() )
                 {
-                    LLITR splice_to = ParseIfDef( itr, end );
+                    LLITR splice_to = ParseIfDef( ctx, itr, end );
                     itr = lexems.erase( itr, splice_to );
                 }
             }
             else if( value == "#ifndef" )
             {
                 std::string           def_name;
-                ParseIf( directive, def_name );
+                ParseIf( ctx, directive, def_name );
                 DefineTable::iterator dti = define_table.find( def_name );
                 if( dti != define_table.end() )
                 {
-                    LLITR splice_to = ParseIfDef( itr, end );
+                    LLITR splice_to = ParseIfDef( ctx, itr, end );
                     itr = lexems.erase( itr, splice_to );
                 }
             }
             else if( value == "#if" )
             {
-                bool satisfied = EvaluateExpression( define_table, directive ) != 0;
+                bool satisfied = EvaluateExpression( ctx, define_table, directive ) != 0;
                 if( !satisfied )
                 {
-                    LLITR splice_to = ParseIfDef( itr, end );
+                    LLITR splice_to = ParseIfDef( ctx, itr, end );
                     itr = lexems.erase( itr, splice_to );
                 }
             }
@@ -1038,61 +1042,61 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
                 directive.pop_front();
 
                 if( directive.empty() )
-                    PrintErrorMessage( "Undef directive without arguments." );
+                    PrintErrorMessage( ctx, "Undef directive without arguments." );
                 else if( directive.size() > 1 )
-                    PrintErrorMessage( "Undef directive multiple arguments." );
+                    PrintErrorMessage( ctx, "Undef directive multiple arguments." );
                 else if( directive.begin()->Type != IDENTIFIER )
-                    PrintErrorMessage( "Undef's name was not an identifier." );
+                    PrintErrorMessage( ctx, "Undef's name was not an identifier." );
                 else
-                    ParseUndef( define_table, directive.begin()->Value );
+                    ParseUndef( ctx, define_table, directive.begin()->Value );
             }
             else if( value == "#include" )
             {
-                if( LNT )
-                    LNT->AddLineRange( file_path, start_line, CurrentLine - LinesThisFile );
-                unsigned int save_lines_this_file = LinesThisFile;
+                if( ctx->LNT )
+                    ctx->LNT->AddLineRange( file_path, start_line, ctx->CurrentLine - ctx->LinesThisFile );
+                unsigned int save_lines_this_file = ctx->LinesThisFile;
                 std::string  file_name;
-                ParseIf( directive, file_name );
+                ParseIf( ctx, directive, file_name );
 
                 LexemList next_file;
-                RecursivePreprocess( AddPaths( filename, RemoveQuotes( file_name ) ), file_source, next_file, define_table );
+                RecursivePreprocess( ctx, AddPaths( ctx, filename, RemoveQuotes( ctx, file_name ) ), file_source, next_file, define_table );
                 lexems.splice( itr, next_file );
-                start_line = CurrentLine;
-                LinesThisFile = save_lines_this_file;
-                CurrentFile = current_file;
-                SetFileMacro( define_table, CurrentFile );
-                SetLineMacro( define_table, LinesThisFile );
+                start_line = ctx->CurrentLine;
+                ctx->LinesThisFile = save_lines_this_file;
+                ctx->CurrentFile = current_file;
+                SetFileMacro( ctx, define_table, ctx->CurrentFile );
+                SetLineMacro( ctx, define_table, ctx->LinesThisFile );
             }
             else if( value == "#pragma" )
             {
-                ParsePragma( directive );
+                ParsePragma( ctx, directive );
             }
             else if( value == "#message" )
             {
                 std::string message;
-                ParseTextLine( directive, message );
-                PrintMessage( message );
+                ParseTextLine( ctx, directive, message );
+                PrintMessage( ctx, message );
             }
             else if( value == "#warning" )
             {
                 std::string warning;
-                ParseTextLine( directive, warning );
-                PrintWarningMessage( warning );
+                ParseTextLine( ctx, directive, warning );
+                PrintWarningMessage( ctx, warning );
             }
             else if( value == "#error" )
             {
                 std::string error;
-                ParseTextLine( directive, error );
-                PrintErrorMessage( error );
+                ParseTextLine( ctx, directive, error );
+                PrintErrorMessage( ctx, error );
             }
             else
             {
-                PrintErrorMessage( "Unknown directive '" + value + "'." );
+                PrintErrorMessage( ctx, "Unknown directive '" + value + "'." );
             }
         }
         else if( itr->Type == IDENTIFIER )
         {
-            itr = ExpandDefine( itr, end, lexems, define_table );
+            itr = ExpandDefine( ctx, itr, end, lexems, define_table );
         }
         else
         {
@@ -1100,47 +1104,62 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
         }
     }
 
-    if( LNT )
-        LNT->AddLineRange( file_path, start_line, CurrentLine - LinesThisFile );
+    if( ctx->LNT )
+        ctx->LNT->AddLineRange( file_path, start_line, ctx->CurrentLine - ctx->LinesThisFile );
 
     file_source.FileLoaded();
 }
 
-int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader )
+Preprocessor::Context* Preprocessor::CreateContext()
+{
+	return new Context();
+}
+
+void Preprocessor::DeleteContext( Context* ctx ) noexcept
+{
+	if (ctx)
+	{
+		if (ctx->LNT)
+			delete ctx->LNT;
+		delete ctx;
+	}
+}
+
+int Preprocessor::Preprocess( Context* ctx, std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader )
 {
     static OutStream  null_stream;
     static FileLoader default_loader;
 
-    if( LNT )
-        delete LNT;
-    LNT = new LineNumberTranslator();
+    if( ctx->LNT )
+        delete ctx->LNT;
+    ctx->LNT = new LineNumberTranslator();
 
-    CurrentFile = "ERROR";
-    CurrentLine = 0;
+    ctx->CurrentFile = "ERROR";
+    ctx->CurrentLine = 0;
 
-    Errors = ( errors ? errors : &null_stream );
-    ErrorsCount = 0;
+    ctx->Errors = ( errors ? errors : &null_stream );
+    ctx->ErrorsCount = 0;
 
-    FilesPreprocessed.clear();
+    ctx->FilesPreprocessed.clear();
 
     size_t n = file_path.find_last_of( "\\/" );
-    RootFile = ( n != std::string::npos ? file_path.substr( n + 1 ) : file_path );
-    RootPath = ( n != std::string::npos ? file_path.substr( 0, n + 1 ) : "" );
+    ctx->RootFile = ( n != std::string::npos ? file_path.substr( n + 1 ) : file_path );
+    ctx->RootPath = ( n != std::string::npos ? file_path.substr( 0, n + 1 ) : "" );
 
-    DefineTable define_table = CustomDefines;
+    DefineTable define_table = ctx->CustomDefines;
     LexemList   lexems;
 
-    RecursivePreprocess( RootFile, loader ? *loader : default_loader, lexems, define_table );
-    PrintLexemList( lexems, result );
-    return ErrorsCount;
+    RecursivePreprocess( ctx, ctx->RootFile, loader ? *loader : default_loader, lexems, define_table );
+    PrintLexemList( ctx, lexems, result );
+    return ctx->ErrorsCount;
 }
 
-void Preprocessor::Define( const std::string& str )
+void Preprocessor::Define( Context* ctx, const std::string& str )
 {
     if( str.length() == 0 )
         return;
 
-    Undef( str.substr( 0, str.find_first_of( " \t" ) ) );
+    Undef( ctx, str.substr( 0, str.find_first_of( " \t" ) ) );
 
     std::string data = "#define ";
     data += str;
@@ -1156,24 +1175,24 @@ void Preprocessor::Define( const std::string& str )
             ++it;
     }
 
-    ParseDefine( CustomDefines, lexems );
+    ParseDefine( ctx, ctx->CustomDefines, lexems );
 }
 
-void Preprocessor::Undef( const std::string& str )
+void Preprocessor::Undef( Context* ctx, const std::string& str )
 {
-    auto it = CustomDefines.find( str );
-    if( it != CustomDefines.end() )
-        CustomDefines.erase( it );
+    auto it = ctx->CustomDefines.find( str );
+    if( it != ctx->CustomDefines.end() )
+        ctx->CustomDefines.erase( it );
 }
 
-void Preprocessor::UndefAll()
+void Preprocessor::UndefAll( Context* ctx )
 {
-    CustomDefines.clear();
+    ctx->CustomDefines.clear();
 }
 
-bool Preprocessor::IsDefined( const std::string& str, std::string* value /* = NULL */ )
+bool Preprocessor::IsDefined( Context* ctx, const std::string& str, std::string* value /* = NULL */ )
 {
-    for( DefineTable::iterator it = CustomDefines.begin(), end = CustomDefines.end(); it != end; ++it )
+    for( DefineTable::iterator it = ctx->CustomDefines.begin(), end = ctx->CustomDefines.end(); it != end; ++it )
     {
         if( it->first == str )
         {
@@ -1192,9 +1211,9 @@ bool Preprocessor::IsDefined( const std::string& str, std::string* value /* = NU
     return false;
 }
 
-Preprocessor::LineNumberTranslator* Preprocessor::GetLineNumberTranslator()
+Preprocessor::LineNumberTranslator* Preprocessor::GetLineNumberTranslator( Context* ctx )
 {
-    return new LineNumberTranslator( *LNT );
+    return new LineNumberTranslator( *ctx->LNT );
 }
 
 void Preprocessor::DeleteLineNumberTranslator( LineNumberTranslator* lnt )
@@ -1214,20 +1233,29 @@ Preprocessor::LineNumberTranslator* Preprocessor::RestoreLineNumberTranslator( c
     return lnt;
 }
 
+const std::string& Preprocessor::ResolveOriginalFile( Context* ctx, unsigned int line_number )
+{
+    static std::string error = "ERROR";
+    return ctx->LNT ? ctx->LNT->Search( line_number ).File : error;
+}
+
+unsigned int Preprocessor::ResolveOriginalLine( Context* ctx, unsigned int line_number )
+{
+    return ctx->LNT ? line_number - ctx->LNT->Search( line_number ).Offset : 0;
+}
+
 const std::string& Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
 {
     static std::string error = "ERROR";
-    lnt = ( lnt ? lnt : LNT );
     return lnt ? lnt->Search( line_number ).File : error;
 }
 
 unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt )
 {
-    lnt = ( lnt ? lnt : LNT );
     return lnt ? line_number - lnt->Search( line_number ).Offset : 0;
 }
 
-void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )
+void Preprocessor::PrintLexemList( Context* ctx, LexemList& out, OutStream& destination )
 {
 	bool need_a_space = false;
     for( LLITR itr = out.begin(); itr != out.end(); ++itr )

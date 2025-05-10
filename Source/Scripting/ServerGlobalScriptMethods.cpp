@@ -44,25 +44,25 @@
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, {});
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
-    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, {});
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
-    server->TimeEventMngr->StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
+    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
@@ -705,7 +705,7 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
     player = SafeAlloc::MakeRefCounted<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
     player->SetName(name);
 
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, server->Hashes, *server)) {
         throw ScriptException("Player data db read failed");
     }
 

@@ -46,7 +46,7 @@ class TimeEventManager
 public:
     static const timespan MIN_REPEAT_TIME;
 
-    explicit TimeEventManager(GameTimer* game_time, ScriptSystem* script_sys);
+    explicit TimeEventManager(GameTimer& game_time, ScriptSystem& script_sys);
     TimeEventManager(const TimeEventManager&) = delete;
     TimeEventManager(TimeEventManager&&) noexcept = delete;
     auto operator=(const TimeEventManager&) = delete;

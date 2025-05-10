@@ -72,13 +72,12 @@ public:
         bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
         string EffectName {};
-        string NewExtension {};
+        string NewName {};
     };
 
     using LoadFunc = std::function<FrameCollection(string_view, string_view, File&)>;
 
-    ImageBaker() = delete;
-    ImageBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = delete;
     auto operator=(const ImageBaker&) = delete;

@@ -6,23 +6,23 @@ import platform
 import sys
 import subprocess
 import traceback
+import foconfig
 
-BIN_TYPES = ['Server', 'Client', 'Single', 'Mapper', 'Editor', 'Baker', 'ASCompiler', 'Tests']
-BIN_NEED_BACKED_RESOURCES = ['Server', 'Client', 'Single', 'Mapper']
+BIN_TYPES = ['Server', 'Client', 'Mapper', 'Editor', 'Baker', 'ASCompiler', 'Tests']
+BIN_NEED_BACKED_RESOURCES = ['Server', 'Client', 'Mapper']
 
 parser = argparse.ArgumentParser(description='FOnline packager')
+parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
-parser.add_argument('-baking', dest='baking', required=True, help='baking dir')
 parser.add_argument('-bininput', dest='bininput', required=True, action='append', default=[], help='binary input dir')
-parser.add_argument('-defaultcfg', dest='defaultcfg', help='Game default config')
-parser.add_argument('-mappercfg', dest='mappercfg', help='Mapper default config')
-parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
-parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-config', dest='config', action='append', default=[], help='config option')
 args = parser.parse_args()
 
 assert platform.system() in ['Linux', 'Darwin', 'Windows'], 'Invalid OS'
+
+fomain = foconfig.ConfigParser()
+fomain.loadFromFile(args.maincfg)
 
 def log(*text):
 	print('[Starter]', *text, flush=True)
@@ -67,7 +67,8 @@ def checkDirHash(dir, inputType):
 
 try:
 	log('Build hash', args.buildhash)
-	bakingEntry = os.path.realpath(args.baking)
+	bakeOutput = fomain.mainSection().getStr('BakeOutput')
+	bakingEntry = os.path.realpath(bakeOutput)
 
 	if not checkDirHash(bakingEntry, 'Resources'):
 		log('Baked resources not found')
@@ -102,17 +103,7 @@ try:
 	for binaryEntry in binaryEntries:
 		log('Found binary entry', os.path.relpath(binaryEntry))
 
-	configs = []
-
-	if bakingEntry:
-		for entry in os.listdir(os.path.join(bakingEntry, 'Configs')):
-			if os.path.isfile(os.path.join(bakingEntry, 'Configs', entry)) and not entry.startswith('Client_') and os.path.splitext(entry)[1] == '.focfg':
-				log('Found config', os.path.splitext(entry)[0])
-				configs.append(os.path.splitext(entry)[0])
-		if args.defaultcfg and args.defaultcfg in configs:
-			del configs[configs.index(args.defaultcfg)]
-			configs.insert(0, args.defaultcfg)
-
+	configs = [subConfig.getStr('Name') for subConfig in fomain.getSections('SubConfig')]
 	choices = []
 	choiceActions = []
 
@@ -125,10 +116,12 @@ try:
 		def action(binEntry=binEntry, binType=binType, buildType=buildType):
 			config = None
 			
-			if binType == 'Mapper' and args.mappercfg:
-				config = args.mappercfg
-			elif binType in ['Server', 'Client', 'Single', 'Mapper']:
-				config = choicebox('Select config to start', configs)
+			if binType in ['Server', 'Client', 'Mapper', 'Editor']:
+				binConfigs = configs[:]
+				if binType in binConfigs:
+					binConfigs.remove(binType)
+					binConfigs.insert(0, binType)
+				config = choicebox('Select config to start', binConfigs)
 				if not config:
 					sys.exit(0)
 			elif binType == 'Baker':
@@ -142,20 +135,11 @@ try:
 			exePath = os.path.relpath(exePath)
 			
 			exeArgs = []
-			if binType in ['Server', 'Client', 'Single', 'Mapper']:
-				exeArgs += ['-ResourcesDir', os.path.relpath(bakingEntry)]
-				exeArgs += ['-EmbeddedResources', os.path.relpath(os.path.join(bakingEntry, 'Embedded'))]
-				exeArgs += ['-DataSynchronization', 'False']
-			if config:
-				exeArgs += ['-ExternalConfig', os.path.relpath(os.path.join(bakingEntry, 'Configs', f'{config}.focfg'))]
+			exeArgs += ['-ApplyConfig', os.path.relpath(args.maincfg)]
+			if config != None:
+				exeArgs += ['-ApplySubConfig', config]
 			if binType == 'Baker':
 				exeArgs += ['-ForceBaking', 'True' if bakingType == 'Force' else 'False']
-			if binType in ['Editor', 'Baker', 'ASCompiler', 'Mapper']:
-				exeArgs += ['-BakeOutput', os.path.relpath(os.path.realpath(args.baking))]
-				for c in args.content:
-					exeArgs += ['-BakeContentEntries', f'+{c}']
-				for r in args.resource:
-					exeArgs += ['-BakeResourceEntries', f'+{r}']
 			for entry in args.config:
 				exeArgs += ['-' + entry.split(',')[0], entry.split(',')[1]]
 			

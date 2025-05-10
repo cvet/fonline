@@ -42,13 +42,13 @@ DECLARE_EXCEPTION(FileSystemExeption);
 class FileHeader
 {
 public:
-    FileHeader() = default;
+    FileHeader() noexcept = default;
     FileHeader(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
     auto operator=(FileHeader&&) noexcept -> FileHeader& = default;
-    explicit operator bool() const;
+    explicit operator bool() const noexcept { return _isLoaded; }
     ~FileHeader() = default;
 
     [[nodiscard]] auto GetName() const -> const string&;
@@ -57,7 +57,7 @@ public:
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
     [[nodiscard]] auto GetDataSource() const -> const DataSource*;
-    [[nodiscard]] auto Duplicate() const -> FileHeader;
+    [[nodiscard]] auto Copy() const -> FileHeader;
 
 protected:
     bool _isLoaded {};
@@ -65,7 +65,7 @@ protected:
     string _filePath {};
     size_t _fileSize {};
     uint64 _writeTime {};
-    const DataSource* _dataSource {};
+    raw_ptr<const DataSource> _dataSource {};
 };
 
 class File final : public FileHeader
@@ -127,6 +127,7 @@ public:
     [[nodiscard]] auto FindFileByName(string_view name) const -> File;
     [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
     [[nodiscard]] auto GetFilesCount() const -> size_t;
+    [[nodiscard]] auto Copy() const -> FileCollection;
 
     auto MoveNext() -> bool;
     void ResetCounter();

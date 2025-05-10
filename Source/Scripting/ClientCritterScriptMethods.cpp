@@ -343,7 +343,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
         hex_cr->GetModel()->AnimationCallbacks.push_back({stateAnim, actionAnim, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
                                                               if (!self->IsDestroyed()) {
                                                                   const auto func_name = static_cast<hstring>(animCallback);
-                                                                  const auto result = self->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, self);
+                                                                  const auto result = self->GetEngine()->ScriptSys.CallFunc<void, CritterView*>(func_name, self);
                                                                   UNUSED_VARIABLE(result);
                                                               }
                                                           }});
