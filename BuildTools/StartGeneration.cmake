@@ -195,9 +195,9 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
 if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER)
-	set(FO_HEADLESS_ONLY NO)
+	set(FO_HEADLESS_ONLY OFF)
 else()
-	set(FO_HEADLESS_ONLY YES)
+	set(FO_HEADLESS_ONLY ON)
 endif()
 
 # Shared Windows settings
@@ -262,7 +262,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	endif()
 
 	if(NOT FO_HEADLESS_ONLY)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
 	endif()
 
@@ -303,7 +303,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(X11 REQUIRED)
 		find_package(OpenGL REQUIRED)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS "GL")
 	endif()
 
@@ -333,7 +333,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(OpenGL REQUIRED)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS ${OPENGL_LIBRARIES})
 	endif()
 
@@ -402,7 +402,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
 	set(FO_HAVE_OPENGL 1)
 	set(FO_OPENGL_ES 1)
 	set(FO_BUILD_PLATFORM "Android-${ANDROID_ABI}")
-	set(FO_BUILD_LIBRARY YES)
+	set(FO_BUILD_LIBRARY ON)
 	set(FO_MONO_OS "android")
 
 	if(${ANDROID_ABI} STREQUAL "armeabi-v7a")

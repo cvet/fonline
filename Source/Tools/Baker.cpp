@@ -213,9 +213,11 @@ void MasterBaker::BakeAll()
                 }
             };
 
-            write_config("Server_", sub_config, server_config_content);
-            write_config("Client_", sub_config, client_config_content);
+            write_config(!sub_config.empty() ? "Server_" : "Server", sub_config, server_config_content);
+            write_config(!sub_config.empty() ? "Client_" : "Client", sub_config, client_config_content);
         };
+
+        bake_config("");
 
         for (const auto& sub_config : App->Settings.GetSubConfigs()) {
             bake_config(sub_config.Name);
