@@ -117,7 +117,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
     CreateGlobalData();
 
 #if FO_TRACY
-    TracySetProgramName(FO_GAME_NAME);
+    TracySetProgramName(FO_NICE_NAME);
 #endif
 
 #if !FO_WEB
