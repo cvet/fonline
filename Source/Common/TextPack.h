@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "FileSystem.h"
+
 DECLARE_EXCEPTION(LanguagePackException);
 
 ///@ ExportEnum
@@ -48,8 +50,6 @@ enum class TextPackName : uint8
     Locations = 5,
     Protos = 6,
 };
-
-class FileSystem;
 
 using TextPackKey = uint;
 
@@ -82,6 +82,8 @@ public:
     void FixStr(const TextPack& base_pack);
     void Clear();
 
+    static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
+
 private:
     multimap<TextPackKey, string> _strData {};
     string _emptyStr {};
@@ -92,9 +94,9 @@ class LanguagePack final
 public:
     LanguagePack() = default;
     LanguagePack(string_view lang_name, const NameResolver& name_resolver);
-    LanguagePack(const LanguagePack&) = default;
+    LanguagePack(const LanguagePack&) = delete;
     LanguagePack(LanguagePack&&) noexcept = default;
-    auto operator=(const LanguagePack&) -> LanguagePack& = default;
+    auto operator=(const LanguagePack&) -> LanguagePack& = delete;
     auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
     auto operator==(string_view lang_name) const -> bool { return lang_name == _langName; }
     ~LanguagePack() = default;
@@ -104,14 +106,11 @@ public:
     [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
     [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
 
-    void ParseTexts(FileSystem& resources, HashResolver& hash_resolver);
-    void SaveTextsToDisk(string_view dir) const;
-    void LoadTexts(FileSystem& resources);
-    void FixTexts(const LanguagePack& base_lang);
+    void LoadFromResources(FileSystem& resources);
 
 private:
     string _langName {};
-    const NameResolver* _nameResolver {};
+    raw_ptr<const NameResolver> _nameResolver {};
     vector<unique_ptr<TextPack>> _textPacks {};
     TextPack _emptyPack {};
 };

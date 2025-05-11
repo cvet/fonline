@@ -79,7 +79,7 @@ static void SignalHandler(int sig)
 }
 #endif
 
-void InitApp(int argc, char** argv, bool client_mode)
+void InitApp(int argc, char** argv, AppInitFlags flags)
 {
     STACK_TRACE_ENTRY();
 
@@ -117,7 +117,7 @@ void InitApp(int argc, char** argv, bool client_mode)
     CreateGlobalData();
 
 #if FO_TRACY
-    TracySetProgramName(FO_GAME_NAME);
+    TracySetProgramName(FO_NICE_NAME);
 #endif
 
 #if !FO_WEB
@@ -129,9 +129,13 @@ void InitApp(int argc, char** argv, bool client_mode)
     }
 #endif
 
-    WriteLog("Starting {}", FO_GAME_NAME);
+    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
+        LogDisableTags();
+    }
 
-    App = SafeAlloc::MakeRaw<Application>(argc, argv, client_mode);
+    WriteLog("Starting {}", FO_NICE_NAME);
+
+    App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
 
 #if FO_LINUX || FO_MAC
     signal(SIGINT, SignalHandler);
@@ -160,11 +164,12 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, bool client_mode) :
-    Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, AppInitFlags flags) :
+    Settings(argc, argv)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(flags);
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
     UNUSED_VARIABLE(_isTablet);

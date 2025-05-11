@@ -111,12 +111,12 @@ constexpr int INIT_NET_REASON_REG = 2;
 constexpr int INIT_NET_REASON_LOAD = 3;
 constexpr int INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public FOEngineBase, public AnimationResolver
+class FOClient : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
 
 public:
-    FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode);
+    FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator);
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
@@ -170,8 +170,6 @@ public:
     ENTITY_EVENT(OnStart);
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnAutoLogin, string /*login*/, string /*password*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnConnecting);
     ///@ ExportEvent
@@ -289,7 +287,6 @@ protected:
         ucolor EndColor {};
     };
 
-    void TryAutoLogin();
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
@@ -374,7 +371,6 @@ protected:
 
     string _loginName {};
     string _loginPassword {};
-    bool _isAutoLogin {};
 
     unordered_map<ident_t, ClientEntity*> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};

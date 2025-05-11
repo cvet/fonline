@@ -138,27 +138,17 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
-    RUNTIME_ASSERT(!settings.BakeResourceEntries.empty());
-
-    // extern void Baker_RegisterData(FOEngineBase*);
-    // Baker_RegisterData(this);
-
-    for (const auto& dir : settings.BakeContentEntries) {
-        InputResources.AddDataSource(dir, DataSourceType::DirRoot);
-    }
-
-    for (const auto& res : settings.BakeResourceEntries) {
-        auto res_splitted = strex(res).split(',');
-        RUNTIME_ASSERT(res_splitted.size() == 2);
-        InputResources.AddDataSource(res_splitted[1]);
+    for (const auto& res_pack : settings.GetResourcePacks()) {
+        for (const auto& dir : res_pack.InputDir) {
+            InputResources.AddDataSource(dir, res_pack.RecursiveInput ? DataSourceType::Default : DataSourceType::DirRoot);
+        }
     }
 
     BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
 
     auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
         const auto file = BakedResources.ReadFile(path);
-        RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+        RUNTIME_ASSERT_STR(file, "Post load ImGui_Default effect not found");
         return file.GetStr();
     });
 

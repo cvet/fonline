@@ -344,10 +344,10 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
     auto it = _sectionKeyValues.find(section_name);
 
     vector<map<string, string>*> key_values;
-    key_values.reserve(key_values.size() + count);
+    key_values.reserve(count);
 
     for (size_t i = 0; i < count; i++, ++it) {
-        key_values.push_back(&it->second);
+        key_values.emplace_back(&it->second);
     }
 
     return key_values;

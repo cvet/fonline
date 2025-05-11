@@ -30,7 +30,7 @@ def decideNewLine(fileLines):
         elif line[-1:] == '\r':
             crCount += 1
 
-    if crlfCount == 0 and lfCount == 0 and crlfCount == 0:
+    if crlfCount == 0 and lfCount == 0 and crCount == 0:
         return os.linesep
     if crlfCount >= crCount and crlfCount >= lfCount:
         return '\r\n'
@@ -44,13 +44,13 @@ def decideNewLine(fileLines):
 
 def readFileLines(filePath):
     with open(filePath, 'rb') as f:
-        return [l.decode('utf-8') for l in f.readlines()]
+        return [line.decode('utf-8') for line in f.readlines()]
 
 
 def findInList(lst, predicate):
     index = 0
-    for l in lst:
-        if predicate(l):
+    for item in lst:
+        if predicate(item):
             return index
         index += 1
     return -1
@@ -61,10 +61,10 @@ def processFile(filePath, todoInfo):
     lineIndex = 0
     for line in fileLines:
         lineIndex += 1
-        for td in todoToFind:
-            tdIndex = line.find(td)
-            if tdIndex != -1:
-                todoEntry = line[tdIndex + len(td):].strip('\r\n \t')
+        for todoMarker in todoToFind:
+            todoIndex = line.find(todoMarker)
+            if todoIndex != -1:
+                todoEntry = line[todoIndex + len(todoMarker):].strip('\r\n \t')
                 if len(todoEntry) == 0:
                     todoEntry = '(Unnamed todo)'
 
@@ -80,8 +80,8 @@ def getFilesAtPath(path):
         if os.path.isfile(path):
             pathList.append(path)
         elif os.path.isdir(path):
-            for p in os.listdir(path):
-                fillRecursive(os.path.join(path, p), pathList)
+            for subPath in os.listdir(path):
+                fillRecursive(os.path.join(path, subPath), pathList)
 
     def isNeedParse(path):
         ext = os.path.splitext(path)[1].lower()[1:]
@@ -105,28 +105,25 @@ def getFilesAtPath(path):
 
 def processPath(path, todoInfo):
     filePathList = getFilesAtPath(path)
-    for path in filePathList:
-        processFile(path, todoInfo)
+    for filePath in filePathList:
+        processFile(filePath, todoInfo)
 
 
 def generateTodoDesc(todoInfo):
     descList = []
-    tdIndex = 0
-    for td in todoInfo:
-        tdIndex += 1
-
-        entryName = td[0]
+    for todoEntry in todoInfo:
+        entryName = todoEntry[0]
         if capitalizeFirstLetter:
             entryName = entryName[:1].upper() + entryName[1:]
         if uncapitalizeFirstLetter:
             entryName = entryName[:1].lower() + entryName[1:]
 
-        filePath = td[1]
+        filePath = todoEntry[1]
         fileName = os.path.splitext(os.path.basename(filePath))[0]
         desc = '* ' + fileName + ': ' + entryName
 
-        if td[2] > 1:
-            desc += ' (' + str(td[2]) + ')'
+        if todoEntry[2] > 1:
+            desc += ' (' + str(todoEntry[2]) + ')'
 
         descList.append(desc)
 
@@ -149,8 +146,8 @@ def injectDesc(path, descList):
     if not dontWriteFile:
         fileLines = readFileLines(path)
 
-        todoBegin = findInList(fileLines, lambda l: l.strip('\r\n') == headLine)
-        todoEnd = findInList(fileLines, lambda l: l.strip('\r\n') == tailLine)
+        todoBegin = findInList(fileLines, lambda line: line.strip('\r\n') == headLine)
+        todoEnd = findInList(fileLines, lambda line: line.strip('\r\n') == tailLine)
 
         if todoBegin == -1 and not generateSection:
             print('Begin section not found')
@@ -159,14 +156,14 @@ def injectDesc(path, descList):
         if todoBegin != -1 and todoEnd != -1 and todoEnd > todoBegin:
             fileLines = fileLines[:todoBegin] + fileLines[todoEnd + 1:]
 
-        nl = decideNewLine(path)
+        nl = decideNewLine(fileLines)
 
         finalOutput = fileLines[:todoBegin]
         finalOutput.extend([todo + nl for todo in todoList])
         finalOutput.extend(fileLines[todoBegin:])
 
         with open(path, 'wb') as f:
-            f.writelines([l.encode('utf-8') for l in finalOutput])
+            f.writelines([line.encode('utf-8') for line in finalOutput])
 
 
 os.chdir(rootPath)

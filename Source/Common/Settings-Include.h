@@ -39,22 +39,30 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
-FIXED_SETTING(bool, ClientMode, false); // Auto
-FIXED_SETTING(string, ExternalConfig, "");
-FIXED_SETTING(string, CommandLine, "");
-FIXED_SETTING(vector<string>, CommandLineArgs);
-FIXED_SETTING(vector<int>, DummyIntVec);
-FIXED_SETTING(string, ImGuiColorStyle, "Light"); // Light, Classic, Dark
+FIXED_SETTING(vector<string>, ApplyConfig);
+FIXED_SETTING(vector<string>, AppliedConfigs); // Auto
+FIXED_SETTING(string, CommandLine); // Auto
+FIXED_SETTING(vector<string>, CommandLineArgs); // Auto
+FIXED_SETTING(string, GameName, "FOnline");
+FIXED_SETTING(string, GameVersion, "0.0.0");
+FIXED_SETTING(string, ApplySubConfig);
+FIXED_SETTING(string, DebuggingSubConfig);
+FIXED_SETTING(vector<int>, DummyIntVec); // Auto
+FIXED_SETTING(string, ImGuiColorStyle); // Light, Classic, Dark
 FIXED_SETTING(uint, ScriptOverrunReportTime, 100);
-FIXED_SETTING(bool, DebugBuild, false);
+FIXED_SETTING(bool, DebugBuild, false); // Auto
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(FileSystemSettings, virtual DummySettings);
-FIXED_SETTING(string, ResourcesDir, "Resources"); // Todo: remove hardcoded ResourcesDir in package.py
-FIXED_SETTING(vector<string>, ClientResourceEntries);
-FIXED_SETTING(vector<string>, ServerResourceEntries);
-FIXED_SETTING(string, EmbeddedResources, "@Embedded");
+SETTING_GROUP(DataSettings, virtual DummySettings);
+FIXED_SETTING(string, BaseServerResourcesName, "ServerResources");
+FIXED_SETTING(string, BaseClientResourcesName, "Resources");
+FIXED_SETTING(string, ServerResources, "Baking");
+FIXED_SETTING(string, ClientResources, "Baking");
+FIXED_SETTING(vector<string>, ServerResourceEntries); // Auto
+FIXED_SETTING(vector<string>, ClientResourceEntries); // Auto
+FIXED_SETTING(vector<string>, MapperResourceEntries); // Auto
+FIXED_SETTING(string, EmbeddedResources, "@Disabled");
 FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 
@@ -73,7 +81,7 @@ FIXED_SETTING(int, MaxPathFindLength, 400);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
+SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
 FIXED_SETTING(uint, DlgTalkMaxTime, 0);
@@ -109,7 +117,7 @@ VARIABLE_SETTING(string, ProxyHost, "");
 VARIABLE_SETTING(uint, ProxyPort, 8080);
 VARIABLE_SETTING(string, ProxyUser, "");
 VARIABLE_SETTING(string, ProxyPass, "");
-VARIABLE_SETTING(uint, Ping, 0);
+VARIABLE_SETTING(uint, Ping); // Auto
 VARIABLE_SETTING(bool, DebugNet, false);
 FIXED_SETTING(bool, BypassCompatibilityCheck, false);
 SETTING_GROUP_END();
@@ -125,10 +133,10 @@ SETTING_GROUP_END();
 SETTING_GROUP(ViewSettings, virtual DummySettings);
 VARIABLE_SETTING(int, ScreenWidth, 1024);
 VARIABLE_SETTING(int, ScreenHeight, 768);
-FIXED_SETTING(int, MonitorWidth, 0); // Auto
-FIXED_SETTING(int, MonitorHeight, 0); // Auto
+FIXED_SETTING(int, MonitorWidth); // Auto
+FIXED_SETTING(int, MonitorHeight); // Auto
 VARIABLE_SETTING(int, ScreenHudHeight, 0);
-VARIABLE_SETTING(ipos, ScreenOffset, 0, 0);
+VARIABLE_SETTING(ipos, ScreenOffset); // Auto
 VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
@@ -138,21 +146,21 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
-FIXED_SETTING(bool, MapHexagonal);
-FIXED_SETTING(bool, MapSquare);
-FIXED_SETTING(int, MapDirCount);
-FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
-FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
-FIXED_SETTING(int, MapHexLineHeight, 12); // hex/square line height
+FIXED_SETTING(bool, MapHexagonal); // Auto
+FIXED_SETTING(bool, MapSquare); // Auto
+FIXED_SETTING(int, MapDirCount); // Auto
+FIXED_SETTING(int, MapHexWidth, 32); // Hex/square width
+FIXED_SETTING(int, MapHexHeight, 16); // Hex/square height
+FIXED_SETTING(int, MapHexLineHeight, 12); // Hex/square line height
 FIXED_SETTING(int, MapTileStep, 2);
-FIXED_SETTING(int, MapTileOffsX, -8); // tile default offsets
-FIXED_SETTING(int, MapTileOffsY, 32); // tile default offsets
-FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
-FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
-FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
+FIXED_SETTING(int, MapTileOffsX, -8); // Tile default offsets
+FIXED_SETTING(int, MapTileOffsY, 32); // Tile default offsets
+FIXED_SETTING(int, MapRoofOffsX, -8); // Roof default offsets
+FIXED_SETTING(int, MapRoofOffsY, -66); // Roof default offsets
+FIXED_SETTING(float, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
-FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
-FIXED_SETTING(string, MapDataPrefix, "Geometry"); // path and prefix for names used for geometry sprites
+FIXED_SETTING(bool, MapSmoothPath, true); // Enable pathfinding path smoothing
+FIXED_SETTING(string, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -203,12 +211,11 @@ SETTING_GROUP_END();
 SETTING_GROUP(BakerSettings, virtual DummySettings);
 FIXED_SETTING(bool, ForceBaking, false);
 FIXED_SETTING(bool, SingleThreadBaking, false);
+FIXED_SETTING(int, MaxBakeOrder, 10);
+FIXED_SETTING(vector<string>, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini");
+FIXED_SETTING(vector<string>, ProtoFileExtensions, "fopro", "fomap");
+FIXED_SETTING(vector<string>, BakeLanguages, "engl");
 FIXED_SETTING(string, BakeOutput);
-FIXED_SETTING(vector<string>, BakeResourceEntries);
-FIXED_SETTING(vector<string>, BakeContentEntries);
-FIXED_SETTING(vector<string>, BakeBaseFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini");
-FIXED_SETTING(vector<string>, BakeExtraFileExtensions);
-FIXED_SETTING(vector<string>, BakeLanguages);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -224,10 +231,6 @@ FIXED_SETTING(uint, CritterFidgetTime, 50000);
 FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
-VARIABLE_SETTING(bool, ShowCritterName, true);
-VARIABLE_SETTING(bool, ShowPlayerName, true);
-VARIABLE_SETTING(bool, ShowNpcName, true);
-VARIABLE_SETTING(bool, ShowDeadNpcName, true);
 FIXED_SETTING(int, NameOffset, 0);
 SETTING_GROUP_END();
 
@@ -247,14 +250,14 @@ FIXED_SETTING(uint8, ChosenLightFlags, 0);
 VARIABLE_SETTING(bool, FullscreenMouseScroll, true);
 VARIABLE_SETTING(bool, WindowedMouseScroll, false);
 VARIABLE_SETTING(bool, ScrollCheck, true);
-VARIABLE_SETTING(bool, ScrollKeybLeft, false);
-VARIABLE_SETTING(bool, ScrollKeybRight, false);
-VARIABLE_SETTING(bool, ScrollKeybUp, false);
-VARIABLE_SETTING(bool, ScrollKeybDown, false);
-VARIABLE_SETTING(bool, ScrollMouseLeft, false);
-VARIABLE_SETTING(bool, ScrollMouseRight, false);
-VARIABLE_SETTING(bool, ScrollMouseUp, false);
-VARIABLE_SETTING(bool, ScrollMouseDown, false);
+VARIABLE_SETTING(bool, ScrollKeybLeft, false); // Auto
+VARIABLE_SETTING(bool, ScrollKeybRight, false); // Auto
+VARIABLE_SETTING(bool, ScrollKeybUp, false); // Auto
+VARIABLE_SETTING(bool, ScrollKeybDown, false); // Auto
+VARIABLE_SETTING(bool, ScrollMouseLeft, false); // Auto
+VARIABLE_SETTING(bool, ScrollMouseRight, false); // Auto
+VARIABLE_SETTING(bool, ScrollMouseUp, false); // Auto
+VARIABLE_SETTING(bool, ScrollMouseDown, false); // Auto
 VARIABLE_SETTING(uint8, RoofAlpha, 200);
 VARIABLE_SETTING(bool, ShowTile, true);
 VARIABLE_SETTING(bool, ShowRoof, true);
@@ -269,26 +272,25 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(PlatformSettings, virtual DummySettings);
-FIXED_SETTING(bool, WebBuild);
-FIXED_SETTING(bool, WindowsBuild);
-FIXED_SETTING(bool, LinuxBuild);
-FIXED_SETTING(bool, MacOsBuild);
-FIXED_SETTING(bool, AndroidBuild);
-FIXED_SETTING(bool, IOsBuild);
-FIXED_SETTING(bool, DesktopBuild);
-FIXED_SETTING(bool, TabletBuild);
+FIXED_SETTING(bool, WebBuild); // Auto
+FIXED_SETTING(bool, WindowsBuild); // Auto
+FIXED_SETTING(bool, LinuxBuild); // Auto
+FIXED_SETTING(bool, MacOsBuild); // Auto
+FIXED_SETTING(bool, AndroidBuild); // Auto
+FIXED_SETTING(bool, IOsBuild); // Auto
+FIXED_SETTING(bool, DesktopBuild); // Auto
+FIXED_SETTING(bool, TabletBuild); // Auto
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(InputSettings, virtual DummySettings);
 VARIABLE_SETTING(uint, DoubleClickTime, 500);
 VARIABLE_SETTING(uint, ConsoleHistorySize, 100);
-VARIABLE_SETTING(ipos, MousePos, 0, 0);
+VARIABLE_SETTING(ipos, MousePos); // Auto
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(MapperSettings, virtual DummySettings);
-FIXED_SETTING(string, MapsDir, "");
+SETTING_GROUP(MapperSettings, virtual DataSettings);
 FIXED_SETTING(string, StartMap, "");
 VARIABLE_SETTING(int, StartHexX, -1);
 VARIABLE_SETTING(int, StartHexY, -1);
@@ -296,12 +298,11 @@ VARIABLE_SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
-FIXED_SETTING(string, AutoLogin, "");
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual DataSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(uint, UpdaterInfoDelay, 1000);
 FIXED_SETTING(int, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
-FIXED_SETTING(string, DefaultSplash, "");
-FIXED_SETTING(string, DefaultSplashPack, "");
+FIXED_SETTING(string, DefaultSplash);
+FIXED_SETTING(string, DefaultSplashPack);
 VARIABLE_SETTING(string, Language, "engl");
 VARIABLE_SETTING(bool, WinNotify, true);
 VARIABLE_SETTING(bool, SoundNotify, false);
@@ -309,12 +310,12 @@ VARIABLE_SETTING(bool, HelpInfo, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual DataSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
 FIXED_SETTING(vector<string>, AccessAdmin);
 FIXED_SETTING(vector<string>, AccessClient);
 FIXED_SETTING(vector<string>, AccessModer);
 FIXED_SETTING(vector<string>, AccessTester);
-FIXED_SETTING(uint, AdminPanelPort, 0);
+FIXED_SETTING(uint, AdminPanelPort);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(bool, CollapseLogOnStart, false);

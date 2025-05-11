@@ -47,8 +47,8 @@
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 
-EffectBaker::EffectBaker(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    BaseBaker(settings, std::move(bake_checker), std::move(write_data))
+EffectBaker::EffectBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
+    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
     STACK_TRACE_ENTRY();
 
@@ -68,7 +68,7 @@ void EffectBaker::BakeFiles(FileCollection files)
 
     vector<std::future<void>> file_bakings;
 
-    for (files.ResetCounter(); files.MoveNext();) {
+    while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
         string ext = strex(file_header.GetPath()).getFileExtension();
 
@@ -82,7 +82,7 @@ void EffectBaker::BakeFiles(FileCollection files)
         }
 #endif
 
-        if (_bakeChecker && !_bakeChecker(file_header)) {
+        if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
             continue;
         }
 

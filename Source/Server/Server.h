@@ -57,7 +57,7 @@
 
 DECLARE_EXCEPTION(ServerInitException);
 
-class FOServer final : public FOEngineBase
+class FOServer final : public BaseEngine
 {
     friend class ServerScriptSystem;
 
@@ -177,9 +177,9 @@ public:
     DialogManager DlgMngr;
 
     DataBase DbStorage {};
-    const hstring GameCollectionName = ToHashedString("Game");
-    const hstring HistoryCollectionName = ToHashedString("History");
-    const hstring PlayersCollectionName = ToHashedString("Players");
+    const hstring GameCollectionName = Hashes.ToHashedString("Game");
+    const hstring HistoryCollectionName = Hashes.ToHashedString("History");
+    const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

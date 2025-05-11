@@ -54,9 +54,12 @@ public:
     [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
     [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8> = 0;
 
+    virtual auto CreateCacheStorage() -> bool = 0;
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
+
+    std::optional<bool> CacheCreated {};
 };
 
 class FileCacheStorage final : public CacheStorageImpl
@@ -73,6 +76,7 @@ public:
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
+    auto CreateCacheStorage() -> bool override;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
@@ -98,6 +102,7 @@ public:
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
+    auto CreateCacheStorage() -> bool override;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
@@ -136,6 +141,7 @@ auto CacheStorage::GetString(string_view entry_name) const -> string
 
     return _impl->GetString(entry_name);
 }
+
 auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
@@ -147,14 +153,26 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
 {
     STACK_TRACE_ENTRY();
 
-    _impl->SetString(entry_name, str);
+    if (!_impl->CacheCreated.has_value()) {
+        _impl->CacheCreated = _impl->CreateCacheStorage();
+    }
+
+    if (_impl->CacheCreated.value()) {
+        _impl->SetString(entry_name, str);
+    }
 }
 
 void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     STACK_TRACE_ENTRY();
 
-    _impl->SetData(entry_name, data);
+    if (!_impl->CacheCreated.has_value()) {
+        _impl->CacheCreated = _impl->CreateCacheStorage();
+    }
+
+    if (_impl->CacheCreated.value()) {
+        _impl->SetData(entry_name, data);
+    }
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
@@ -176,8 +194,24 @@ FileCacheStorage::FileCacheStorage(string_view real_path) :
 {
     STACK_TRACE_ENTRY();
 
-    DiskFileSystem::ResolvePath(_workPath);
-    DiskFileSystem::MakeDirTree(_workPath);
+    _workPath = DiskFileSystem::ResolvePath(_workPath);
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst
+auto FileCacheStorage::CreateCacheStorage() -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    if (!DiskFileSystem::IsDir(_workPath)) {
+        DiskFileSystem::MakeDirTree(_workPath);
+
+        if (!DiskFileSystem::IsDir(_workPath)) {
+            WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
@@ -281,18 +315,27 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
     STACK_TRACE_ENTRY();
 
     _workPath = real_path;
+    _workPath = DiskFileSystem::ResolvePath(_workPath);
+}
 
-    DiskFileSystem::ResolvePath(_workPath);
-    DiskFileSystem::MakeDirTree(_workPath);
+auto UnqliteCacheStorage::CreateCacheStorage() -> bool
+{
+    STACK_TRACE_ENTRY();
 
-    unqlite* db = nullptr;
+    if (!_db) {
+        DiskFileSystem::MakeDirTree(_workPath);
 
-    if (unqlite_open(&db, _workPath.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
-        WriteLog(LogType::Warning, "Can't open unqlite db '{}'", _workPath);
-        return;
+        unqlite* db = nullptr;
+
+        if (unqlite_open(&db, _workPath.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
+            WriteLog(LogType::Warning, "Can't open unqlite db '{}'", _workPath);
+            return false;
+        }
+
+        _db = unique_del_ptr<unqlite> {db, [](unqlite* del_db) { unqlite_close(del_db); }};
     }
 
-    _db = unique_del_ptr<unqlite> {db, [](unqlite* del_db) { unqlite_close(del_db); }};
+    return true;
 }
 
 auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool

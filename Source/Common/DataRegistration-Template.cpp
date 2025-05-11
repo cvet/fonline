@@ -68,24 +68,18 @@
 #if !COMPILER_MODE
 #if SERVER_REGISTRATION
 
-void Server_RegisterData(FOEngineBase* engine)
+void Server_RegisterData(EngineData* engine)
 {
     STACK_TRACE_ENTRY();
 
     ///@ CodeGen ServerRegister
-
-    engine->ScriptSys->MapEngineEntityType<Player>(Player::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<Item>(Item::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<Critter>(Critter::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<Map>(Map::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
 
     engine->FinalizeDataRegistration();
 }
 
 #elif CLIENT_REGISTRATION
 
-void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info_bin)
+void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_bin)
 {
     STACK_TRACE_ENTRY();
 
@@ -163,35 +157,23 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
         prop_registrator->RegisterProperty(flags);
     }
 
-    engine->ScriptSys->MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
-
     engine->FinalizeDataRegistration();
 }
 
 #elif MAPPER_REGISTRATION
 
-void Mapper_RegisterData(FOEngineBase* engine)
+void Mapper_RegisterData(EngineData* engine)
 {
     STACK_TRACE_ENTRY();
 
     ///@ CodeGen MapperRegister
-
-    engine->ScriptSys->MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
-    engine->ScriptSys->MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
     engine->FinalizeDataRegistration();
 }
 
 #elif BAKER_REGISTRATION
 
-void Baker_RegisterData(FOEngineBase* engine)
+void Baker_RegisterData(EngineData* engine)
 {
     STACK_TRACE_ENTRY();
 
@@ -243,11 +225,11 @@ auto Baker_GetRestoreInfo() -> vector<uint8>
 #if COMPILER_MODE
 
 #if SERVER_REGISTRATION
-void AngelScript_ServerCompiler_RegisterData(FOEngineBase* engine)
+void AngelScript_ServerCompiler_RegisterData(EngineData* engine)
 #elif CLIENT_REGISTRATION
-void AngelScript_ClientCompiler_RegisterData(FOEngineBase* engine)
+void AngelScript_ClientCompiler_RegisterData(EngineData* engine)
 #elif MAPPER_REGISTRATION
-void AngelScript_MapperCompiler_RegisterData(FOEngineBase* engine)
+void AngelScript_MapperCompiler_RegisterData(EngineData* engine)
 #endif
 {
     STACK_TRACE_ENTRY();

@@ -265,7 +265,7 @@ TEST_CASE("StringUtils")
         CHECK(strex("./cur/next/../../last/FILE1.ZIP").formatPath().extractFileName().str() == "FILE1.ZIP");
         CHECK(strex("./cur/next/../../last/a/FILE1.ZIP").formatPath().extractDir().str() == "last/a");
         CHECK(strex("./cur/next/../../last/FILE1.ZIP").formatPath().changeFileName("NEWfile").str() == "last/NEWfile.zip");
-        CHECK(strex("./cur/next/../../last").formatPath().changeFileName("NEWfile").str() == "last/NEWfile");
+        CHECK(strex("./cur/next/../../last").formatPath().changeFileName("NEWfile").str() == "NEWfile");
         CHECK(strex("./cur/next/../../last/FILE1.ZIP").formatPath().getFileExtension().str() == "zip");
         CHECK(strex("./cur/next/../../last/FILE1.ZIP").formatPath().eraseFileExtension().str() == "last/FILE1");
         CHECK(strex("cur/next/../../last/a/").combinePath("x/y/z").str() == "last/a/x/y/z");
