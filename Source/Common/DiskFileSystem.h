@@ -74,33 +74,6 @@ private:
     bool _openedForWriting {};
 };
 
-class DiskFind final
-{
-    friend class DiskFileSystem;
-
-public:
-    DiskFind() = delete;
-    DiskFind(DiskFind&&) noexcept;
-    DiskFind(const DiskFind&) = delete;
-    auto operator=(const DiskFind&) -> DiskFind& = delete;
-    auto operator=(DiskFind&&) -> DiskFind& = delete;
-    DiskFind& operator++(int);
-    explicit operator bool() const;
-    ~DiskFind();
-
-    [[nodiscard]] auto IsDir() const -> bool;
-    [[nodiscard]] auto GetPath() const -> string;
-    [[nodiscard]] auto GetFileSize() const -> size_t;
-    [[nodiscard]] auto GetWriteTime() const -> uint64;
-
-private:
-    DiskFind(string_view path, string_view ext);
-
-    struct Impl;
-    unique_ptr<Impl> _impl;
-    bool _findDataValid {};
-};
-
 class DiskFileSystem final
 {
 public:
@@ -110,7 +83,6 @@ public:
 
     [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
-    [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
 
     static auto GetWriteTime(string_view path) -> uint64;
     static auto IsExists(string_view path) -> bool;
@@ -121,6 +93,6 @@ public:
     static auto ResolvePath(string_view path) -> string;
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
-    static void IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor);
+    static void IterateDir(string_view dir, bool recursive, FileVisitor visitor);
     static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
 };

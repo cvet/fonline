@@ -37,6 +37,8 @@
 #include "Baker.h"
 #include "Log.h"
 
+#include "DiskFileSystem.h"
+
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else

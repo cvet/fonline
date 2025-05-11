@@ -35,6 +35,8 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
+#include "Log.h"
+
 #include <filesystem>
 
 #if !FO_WINDOWS
@@ -66,35 +68,7 @@ auto DiskFileSystem::OpenFile(string_view fname, bool write, bool write_through)
     return {fname, write, write_through};
 }
 
-auto DiskFileSystem::FindFiles(string_view path, string_view ext) -> DiskFind
-{
-    STACK_TRACE_ENTRY();
-
-    return {path, ext};
-}
-
 #if FO_WINDOWS
-static auto FileTimeToUInt64(FILETIME ft) -> uint64
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint64>(ft.dwHighDateTime) << 32 | static_cast<uint64>(ft.dwLowDateTime);
-}
-
-static auto WinMultiByteToWideChar(string_view mb) -> std::wstring
-{
-    STACK_TRACE_ENTRY();
-
-    return strex(mb).toWideChar();
-}
-
-static auto WinWideCharToMultiByte(const wchar_t* wc) -> string
-{
-    STACK_TRACE_ENTRY();
-
-    return strex().parseWideChar(wc).normalizePathSlashes();
-}
-
 struct DiskFile::Impl
 {
     HANDLE FileHandle {};
@@ -107,7 +81,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
     HANDLE h;
 
     if (write) {
-        auto try_create = [&fname, &write_through]() { return ::CreateFileW(WinMultiByteToWideChar(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr); };
+        auto try_create = [&fname, &write_through]() { return ::CreateFileW(strex(fname).toWideChar().c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr); };
 
         h = try_create();
 
@@ -117,7 +91,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
         }
     }
     else {
-        auto try_create = [&fname]() { return ::CreateFileW(WinMultiByteToWideChar(fname).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr); };
+        auto try_create = [&fname]() { return ::CreateFileW(strex(fname).toWideChar().c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr); };
 
         h = try_create();
 
@@ -236,7 +210,7 @@ auto DiskFile::GetWriteTime() const -> uint64
         return 0;
     }
 
-    return ::FileTimeToUInt64(tw);
+    return static_cast<uint64>(tw.dwHighDateTime) << 32 | static_cast<uint64>(tw.dwLowDateTime);
 }
 
 auto DiskFile::GetSize() const -> size_t
@@ -579,263 +553,6 @@ auto DiskFile::GetSize() const -> size_t
 }
 #endif
 
-#if FO_WINDOWS
-struct DiskFind::Impl
-{
-    HANDLE FindHandle {};
-    WIN32_FIND_DATAW FindData {};
-};
-
-DiskFind::DiskFind(string_view path, string_view ext)
-{
-    STACK_TRACE_ENTRY();
-
-    string query = strex(path).combinePath("*");
-    if (!ext.empty()) {
-        query += "." + string(ext);
-    }
-
-    WIN32_FIND_DATAW fd;
-    auto* h = ::FindFirstFileW(WinMultiByteToWideChar(query).c_str(), &fd);
-    if (h == INVALID_HANDLE_VALUE) {
-        return;
-    }
-
-    _impl = SafeAlloc::MakeUnique<Impl>();
-    _impl->FindHandle = h;
-    _impl->FindData = fd;
-
-    if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0)) {
-        (*this)++;
-    }
-    else {
-        _findDataValid = true;
-    }
-}
-
-DiskFind::~DiskFind()
-{
-    STACK_TRACE_ENTRY();
-
-    if (_impl) {
-        ::FindClose(_impl->FindHandle);
-    }
-}
-
-DiskFind::DiskFind(DiskFind&&) noexcept = default;
-
-auto DiskFind::operator++(int) -> DiskFind&
-{
-    STACK_TRACE_ENTRY();
-
-    _findDataValid = false;
-
-    if (::FindNextFileW(_impl->FindHandle, &_impl->FindData) == 0) {
-        return *this;
-    }
-
-    if ((_impl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && (wcscmp(_impl->FindData.cFileName, L".") == 0 || wcscmp(_impl->FindData.cFileName, L"..") == 0)) {
-        return (*this)++;
-    }
-
-    _findDataValid = true;
-
-    return *this;
-}
-
-DiskFind::operator bool() const
-{
-    STACK_TRACE_ENTRY();
-
-    return _findDataValid;
-}
-
-auto DiskFind::IsDir() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return (_impl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-}
-
-auto DiskFind::GetPath() const -> string
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return WinWideCharToMultiByte(_impl->FindData.cFileName);
-}
-
-auto DiskFind::GetFileSize() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-    RUNTIME_ASSERT(!(_impl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY));
-
-    return _impl->FindData.nFileSizeLow;
-}
-
-auto DiskFind::GetWriteTime() const -> uint64
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return FileTimeToUInt64(_impl->FindData.ftLastWriteTime);
-}
-
-#else
-
-struct DiskFind::Impl
-{
-    DIR* Dir {};
-    string Path {};
-    string Ext {};
-    dirent* Ent {};
-    bool IsDir {};
-    size_t Size {};
-    uint64 WriteTime {};
-};
-
-DiskFind::DiskFind(string_view path, string_view ext)
-{
-    STACK_TRACE_ENTRY();
-
-    DIR* d = opendir(string(path).c_str());
-
-    if (!d) {
-        return;
-    }
-
-    _impl = SafeAlloc::MakeUnique<Impl>();
-    _impl->Dir = d;
-    _impl->Path = path;
-    _impl->Ext = ext;
-
-    if (!_impl->Path.empty() && _impl->Path.back() != '/') {
-        _impl->Path += "/";
-    }
-
-    if (!ext.empty()) {
-        _impl->Ext = ext;
-    }
-
-    // Read first entry
-    (*this)++;
-}
-
-DiskFind::~DiskFind()
-{
-    STACK_TRACE_ENTRY();
-
-    if (_impl) {
-        closedir(_impl->Dir);
-    }
-}
-
-DiskFind::DiskFind(DiskFind&&) noexcept = default;
-
-auto DiskFind::operator++(int) -> DiskFind&
-{
-    STACK_TRACE_ENTRY();
-
-    _findDataValid = false;
-
-    _impl->Ent = readdir(_impl->Dir);
-    if (_impl->Ent == nullptr) {
-        return *this;
-    }
-
-    // Skip '.' and '..'
-    if (!strcmp(_impl->Ent->d_name, ".") || !strcmp(_impl->Ent->d_name, "..")) {
-        return (*this)++;
-    }
-
-    // Read entire information
-    struct stat st;
-    if (stat((_impl->Path + _impl->Ent->d_name).c_str(), &st)) {
-        return (*this)++;
-    }
-    if (!S_ISDIR(st.st_mode) && !S_ISREG(st.st_mode)) {
-        return (*this)++;
-    }
-
-    // Check extension
-    if (!_impl->Ext.empty()) {
-        // Skip dirs
-        if (S_ISDIR(st.st_mode)) {
-            return (*this)++;
-        }
-
-        // Compare extension
-        const char* ext = nullptr;
-        for (const char* s = _impl->Ent->d_name; *s; s++) {
-            if (*s == '.') {
-                ext = s + 1;
-            }
-        }
-
-        if (!ext || !*ext || strcasecmp(ext, _impl->Ext.c_str())) {
-            return (*this)++;
-        }
-    }
-
-    _impl->IsDir = S_ISDIR(st.st_mode);
-    _impl->Size = st.st_size;
-    _impl->WriteTime = (uint64)st.st_mtime;
-    _findDataValid = true;
-
-    return *this;
-}
-
-DiskFind::operator bool() const
-{
-    STACK_TRACE_ENTRY();
-
-    return _findDataValid;
-}
-
-auto DiskFind::IsDir() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return _impl->IsDir;
-}
-
-auto DiskFind::GetPath() const -> string
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return _impl->Ent->d_name;
-}
-
-auto DiskFind::GetFileSize() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-    RUNTIME_ASSERT(!_impl->IsDir);
-
-    return _impl->Size;
-}
-
-auto DiskFind::GetWriteTime() const -> uint64
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_findDataValid);
-
-    return _impl->WriteTime;
-}
-#endif
-
 auto DiskFile::Write(string_view str) -> bool
 {
     STACK_TRACE_ENTRY();
@@ -889,7 +606,6 @@ auto DiskFileSystem::IsExists(string_view path) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     return !std::filesystem::exists(MakeFilesystemPath(path), ec) && !ec;
 }
 
@@ -898,7 +614,6 @@ auto DiskFileSystem::IsDir(string_view path) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     return std::filesystem::is_directory(MakeFilesystemPath(path), ec) && !ec;
 }
 
@@ -907,7 +622,6 @@ auto DiskFileSystem::DeleteFile(string_view fname) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     std::filesystem::remove(MakeFilesystemPath(fname), ec);
 
     return !std::filesystem::exists(MakeFilesystemPath(fname), ec) && !ec;
@@ -918,7 +632,6 @@ auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     return std::filesystem::copy_file(MakeFilesystemPath(fname), copy_fname, ec);
 }
 
@@ -927,7 +640,6 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     std::filesystem::rename(MakeFilesystemPath(fname), new_fname, ec);
 
     return !ec;
@@ -944,7 +656,7 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
 
     if (!ec) {
 #if FO_WINDOWS
-        result = WinWideCharToMultiByte(resolved.native().c_str());
+        result = strex().parseWideChar(resolved.native().c_str()).normalizePathSlashes();
 #else
         result = resolved.native();
 #endif
@@ -961,7 +673,6 @@ void DiskFileSystem::MakeDirTree(string_view path)
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     std::filesystem::create_directories(MakeFilesystemPath(path), ec);
 }
 
@@ -970,40 +681,40 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-
     std::filesystem::remove_all(MakeFilesystemPath(dir), ec);
 
     return !std::filesystem::exists(MakeFilesystemPath(dir), ec) && !ec;
 }
 
-static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
+static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, DiskFileSystem::FileVisitor& visitor)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto find = DiskFileSystem::FindFiles(strex(base_dir).combinePath(cur_dir), ""); find; find++) {
-        auto path = find.GetPath();
+    const auto full_dir = MakeFilesystemPath(strex(base_dir).combinePath(cur_dir));
+    const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
+
+    for (const auto& dir_entry : dir_iterator) {
+        auto&& path = dir_entry.path().filename().string();
         RUNTIME_ASSERT(!path.empty());
 
         if (path[0] != '.' && path[0] != '~') {
-            if (find.IsDir()) {
-                if (path[0] != '_' && include_subdirs) {
-                    RecursiveDirLook(base_dir, strex(cur_dir).combinePath(path), include_subdirs, ext, visitor);
+            if (dir_entry.is_directory()) {
+                if (path[0] != '_' && recursive) {
+                    RecursiveDirLook(base_dir, strex(cur_dir).combinePath(path), recursive, visitor);
                 }
             }
             else {
-                if (ext.empty() || strex(path).getFileExtension() == ext) {
-                    visitor(strex(cur_dir).combinePath(path), find.GetFileSize(), find.GetWriteTime());
-                }
+                visitor(strex(cur_dir).combinePath(path), dir_entry.file_size(), dir_entry.last_write_time().time_since_epoch().count());
             }
         }
     }
 }
 
-void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor)
+void DiskFileSystem::IterateDir(string_view dir, bool recursive, FileVisitor visitor)
 {
     STACK_TRACE_ENTRY();
 
-    RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
+    RecursiveDirLook(dir, "", recursive, visitor);
 }
 
 auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf) -> bool

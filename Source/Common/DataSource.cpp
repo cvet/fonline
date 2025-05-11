@@ -398,7 +398,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
     STACK_TRACE_ENTRY();
 
     FileNameVec fnames;
-    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 
@@ -416,7 +416,7 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     _basePath = DiskFileSystem::ResolvePath(_basePath);
     _basePath += "/";
 
-    DiskFileSystem::IterateDir(_basePath, "", recursive, [this](string_view path, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(_basePath, recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
         fe.FileName = strex("{}{}", _basePath, path);
         fe.FileSize = size;
@@ -1028,9 +1028,9 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    const auto names = strex(str).normalizeLineEndings().split('\n');
+    auto names = strex(str).normalizeLineEndings().split('\n');
 
-    for (const auto& name : names) {
+    for (auto& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);
 
         if (!file) {
