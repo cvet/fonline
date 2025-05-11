@@ -592,8 +592,10 @@ auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
     return 0;
 }
 
-static auto MakeFilesystemPath(string_view path)
+static auto MakeFilesystemPath(string_view path) -> std::filesystem::path
 {
+    STACK_TRACE_ENTRY();
+
 #if CPLUSPLUS_20
     return std::u8string(path.begin(), path.end());
 #else
@@ -649,23 +651,15 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
 {
     STACK_TRACE_ENTRY();
 
-    string result;
-
     std::error_code ec;
     const auto resolved = std::filesystem::absolute(MakeFilesystemPath(path), ec);
 
     if (!ec) {
-#if FO_WINDOWS
-        result = strex().parseWideChar(resolved.native().c_str()).normalizePathSlashes();
-#else
-        result = resolved.native();
-#endif
+        return string(resolved.u8string());
     }
     else {
-        result = path;
+        return string(path);
     }
-
-    return result;
 }
 
 void DiskFileSystem::MakeDirTree(string_view path)
@@ -694,12 +688,12 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
     const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
-        auto&& path = dir_entry.path().filename().string();
+        const auto path = string(dir_entry.path().filename().u8string());
         RUNTIME_ASSERT(!path.empty());
 
-        if (path[0] != '.' && path[0] != '~') {
+        if (path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
-                if (path[0] != '_' && recursive) {
+                if (path.front() != '_' && recursive) {
                     RecursiveDirLook(base_dir, strex(cur_dir).combinePath(path), recursive, visitor);
                 }
             }

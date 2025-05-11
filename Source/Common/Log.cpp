@@ -37,22 +37,27 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "Platform.h"
+#include "WinApi-Include.h"
 
 [[maybe_unused]] static void FlushLogAtExit();
 
 struct LogData
 {
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     LogData()
     {
+        MainThreadId = std::this_thread::get_id();
+
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         NO_STACK_TRACE_ENTRY();
 
         const auto result = std::at_quick_exit(FlushLogAtExit);
         UNUSED_VARIABLE(result);
-
-        MainThreadId = std::this_thread::get_id();
-    }
 #endif
+
+#if FO_WINDOWS
+        SetConsoleOutputCP(CP_UTF8);
+#endif
+    }
 
     std::mutex LogLocker {};
     unique_ptr<DiskFile> LogFileHandle {};
