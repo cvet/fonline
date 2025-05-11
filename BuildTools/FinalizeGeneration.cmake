@@ -1334,6 +1334,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
 
         add_custom_target(CompileAngelScript
             COMMAND ${compileASScripts}
+            WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Compile AngelScript scripts")
         list(APPEND FO_COMMANDS_GROUP CompileAngelScript)
     endif()
@@ -1351,6 +1352,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
         add_custom_target(CompileMonoScripts
             COMMAND ${compileMonoScripts}
             SOURCES ${FO_MONO_SOURCE}
+            WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Compile Mono scripts")
         list(APPEND FO_COMMANDS_GROUP CompileMonoScripts)
     endif()

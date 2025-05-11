@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "Log.h"
 #include "ScriptSystem.h"
@@ -79,11 +80,20 @@ int main(int argc, char** argv)
             bool client_failed = false;
             bool mapper_failed = false;
 
+            const auto write_file = [&](const_span<uint8> data, string_view ext) {
+                const string path = strex("{}/{}.{}", res_pack.Name, res_pack.Name, ext);
+                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combinePath(path), true);
+                RUNTIME_ASSERT(file);
+                const auto write_ok = file.Write(data);
+                RUNTIME_ASSERT(write_ok);
+            };
+
             WriteLog("Compile server scripts");
 
             try {
                 extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
-                Init_AngelScriptCompiler_ServerScriptSystem(script_files);
+                auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
+                write_file(data, "fosb-server");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -97,7 +107,8 @@ int main(int argc, char** argv)
 
             try {
                 extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
-                Init_AngelScriptCompiler_ClientScriptSystem(script_files);
+                auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
+                write_file(data, "fosb-client");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -111,7 +122,8 @@ int main(int argc, char** argv)
 
             try {
                 extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
-                Init_AngelScriptCompiler_MapperScriptSystem(script_files);
+                auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
+                write_file(data, "fosb-mapper");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {

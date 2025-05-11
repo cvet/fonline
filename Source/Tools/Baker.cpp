@@ -130,6 +130,8 @@ void MasterBaker::BakeAll()
 
     if (_settings.ForceBaking) {
         WriteLog("Force rebuild all resources");
+        DiskFileSystem::DeleteDir(_settings.BakeOutput);
+        DiskFileSystem::MakeDirTree(_settings.BakeOutput);
         force_baking = true;
     }
 
