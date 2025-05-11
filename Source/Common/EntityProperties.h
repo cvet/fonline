@@ -337,8 +337,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, DeadDrawNoFlatten);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
 };
 

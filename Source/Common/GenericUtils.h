@@ -39,7 +39,6 @@ class HashStorage : public HashResolver
 {
 public:
     auto ToHashedString(string_view s) -> hstring override;
-    auto ToHashedStringMustExists(string_view s) const -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
 

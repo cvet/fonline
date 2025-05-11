@@ -38,6 +38,10 @@
 // ReSharper disable once CppUnusedIncludeDirective
 #include "Entity.h"
 
+DECLARE_EXCEPTION(SettingsException);
+
+class ConfigFile;
+
 struct DummySettings
 {
 };
@@ -50,21 +54,58 @@ struct DummySettings
 #define VARIABLE_SETTING(type, name, ...) type name = {__VA_ARGS__}
 #include "Settings-Include.h"
 
+struct ResourcePackInfo
+{
+    string Name {};
+    vector<string> InputDir {};
+    bool RecursiveInput {};
+    bool ServerOnly {};
+    bool ClientOnly {};
+    bool MapperOnly {};
+    int BakeOrder {};
+};
+
+struct SubConfigInfo
+{
+    string Name {};
+    string ConfigDir {};
+    map<string, string> Settings {};
+};
+
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakerSettings
 {
 public:
-    GlobalSettings() = default;
-    GlobalSettings(int argc, char** argv, bool client_mode);
+    explicit GlobalSettings(int argc, char** argv);
+    explicit GlobalSettings(string_view config_path, string_view sub_config);
     GlobalSettings(const GlobalSettings&) = default;
     GlobalSettings(GlobalSettings&&) = default;
     auto operator=(const GlobalSettings&) = delete;
     auto operator=(GlobalSettings&&) noexcept = delete;
     ~GlobalSettings() = default;
 
+    [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
+    [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
+    [[nodiscard]] auto GetCustomSetting(string_view name) const -> const string&;
+    [[nodiscard]] auto Save() const -> map<string, string>;
+
+    void SetCustomSetting(string_view name, string value);
     void Draw(bool editable);
 
-    unordered_map<string, string> Custom {};
-
 private:
-    void SetValue(const string& setting_name, const string& setting_value);
+    void ApplyConfigPath(string_view config_name, string_view config_dir);
+    void ApplyConfigFile(ConfigFile& config, string_view config_dir);
+    void ApplySettingsConfig(string_view config_dir);
+    void ApplySubConfigSection(string_view name);
+    void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
+    void AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir);
+    void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
+    void ApplyAutoSettings();
+
+    bool _bakingMode {};
+    bool _someConfigApplied {};
+    vector<ResourcePackInfo> _resourcePacks {};
+    vector<SubConfigInfo> _subConfigs {};
+    unordered_map<string, string> _customSettings {};
+    unordered_set<string> _appliedSettings {};
+    string _empty {};
 };

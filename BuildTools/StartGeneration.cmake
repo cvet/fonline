@@ -13,22 +13,16 @@ macro(DeclareOption var desc value)
 	StatusMessage("${var} = ${${var}}")
 endmacro()
 
+DeclareOption(FO_MAIN_CONFIG "Main project config" "") # Required
 DeclareOption(FO_DEV_NAME "Short name for project" "") # Required
 DeclareOption(FO_NICE_NAME "More readable name for project" "") # Required
-DeclareOption(FO_AUTHOR_NAME "Author(s) name" "") # Required
-DeclareOption(FO_GAME_VERSION "Version in any format" "") # Required
 DeclareOption(FO_ENABLE_3D "Supporting of 3d models" OFF)
 DeclareOption(FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF)
 DeclareOption(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF)
 DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
-DeclareOption(FO_DEFAULT_CONFIG "Name of default config file" "")
-DeclareOption(FO_DEBUGGING_CONFIG "Name of debugging config file (using during debugging)" "")
-DeclareOption(FO_MAPPER_CONFIG "Name of mapper config file (embed in mapper)" "")
-DeclareOption(FO_GENERATE_ANGELSCRIPT_CONTENT "Content.fos file destination" "")
 DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
-DeclareOption(FO_INFO_MARKDOWN_OUTPUT "Path where information markdown files will be stored" "")
 DeclareOption(FO_CPP_STANDARD "C++ standard for engine compilation (17 (default) or 20)" 17)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
@@ -64,7 +58,7 @@ set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
 
 # Check options
-set(requiredOptions "FO_DEV_NAME" "FO_NICE_NAME" "FO_AUTHOR_NAME" "FO_GAME_VERSION" "FO_GEOMETRY" "FO_APP_ICON" "FO_OUTPUT_PATH")
+set(requiredOptions "FO_MAIN_CONFIG" "FO_DEV_NAME" "FO_NICE_NAME" "FO_GEOMETRY" "FO_APP_ICON" "FO_OUTPUT_PATH")
 
 foreach(opt ${requiredOptions})
 	if("${${opt}}" STREQUAL "")
@@ -201,9 +195,9 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
 if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER)
-	set(FO_HEADLESS_ONLY NO)
+	set(FO_HEADLESS_ONLY OFF)
 else()
-	set(FO_HEADLESS_ONLY YES)
+	set(FO_HEADLESS_ONLY ON)
 endif()
 
 # Shared Windows settings
@@ -268,7 +262,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	endif()
 
 	if(NOT FO_HEADLESS_ONLY)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
 	endif()
 
@@ -309,7 +303,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(X11 REQUIRED)
 		find_package(OpenGL REQUIRED)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS "GL")
 	endif()
 
@@ -339,7 +333,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(OpenGL REQUIRED)
-		set(FO_USE_GLEW YES)
+		set(FO_USE_GLEW ON)
 		list(APPEND FO_RENDER_SYSTEM_LIBS ${OPENGL_LIBRARIES})
 	endif()
 
@@ -408,7 +402,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
 	set(FO_HAVE_OPENGL 1)
 	set(FO_OPENGL_ES 1)
 	set(FO_BUILD_PLATFORM "Android-${ANDROID_ABI}")
-	set(FO_BUILD_LIBRARY YES)
+	set(FO_BUILD_LIBRARY ON)
 	set(FO_MONO_OS "android")
 
 	if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
@@ -508,17 +502,13 @@ set(FO_MAPPER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}$<${
 set(FO_ASCOMPILER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
 set(FO_BAKER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
 set(FO_TESTS_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Tests-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
-set(FO_BACKED_RESOURCES_OUTPUT "${FO_OUTPUT_PATH}/Baking")
 file(MAKE_DIRECTORY "${FO_OUTPUT_PATH}/Binaries")
-file(MAKE_DIRECTORY "${FO_BACKED_RESOURCES_OUTPUT}")
 
 # Contributions
 macro(ResolveContributedFiles)
 	set(result "")
 
 	foreach(file ${ARGN})
-		file(GLOB globFiles LIST_DIRECTORIES FALSE CONFIGURE_DEPENDS "${FO_CONTRIBUTION_DIR}/${file}/*.fos")
-		list(APPEND FO_CONTENT_META_FILES ${globFiles})
 		file(GLOB globFiles LIST_DIRECTORIES TRUE "${FO_CONTRIBUTION_DIR}/${file}")
 
 		foreach(globFile ${globFiles})
@@ -528,47 +518,11 @@ macro(ResolveContributedFiles)
 	endforeach()
 endmacro()
 
-macro(AddContent)
-	ResolveContributedFiles(${ARGN})
-
-	foreach(resultEntry ${result})
-		StatusMessage("+ Content at ${resultEntry}")
-		list(APPEND FO_CONTENT ${resultEntry})
-	endforeach()
-endmacro()
-
-macro(AddResources packName)
-	ResolveContributedFiles(${ARGN})
-
-	foreach(resultEntry ${result})
-		StatusMessage("+ Resources to ${packName} at ${resultEntry}")
-		list(APPEND FO_RESOURCES "${packName},${resultEntry}")
-	endforeach()
-endmacro()
-
-macro(AddRawResources)
-	ResolveContributedFiles(${ARGN})
-
-	foreach(resultEntry ${result})
-		StatusMessage("+ Raw resources at ${resultEntry}")
-		list(APPEND FO_RESOURCES "Raw,${resultEntry}")
-	endforeach()
-endmacro()
-
-macro(AddEmbeddedResources)
-	ResolveContributedFiles(${ARGN})
-
-	foreach(resultEntry ${result})
-		StatusMessage("+ Embedded resources at ${resultEntry}")
-		list(APPEND FO_RESOURCES "Embedded,${resultEntry}")
-	endforeach()
-endmacro()
-
 macro(AddEngineSource target)
 	ResolveContributedFiles(${ARGN})
 
 	foreach(resultEntry ${result})
-		StatusMessage("+ Engine source at ${resultEntry}")
+		StatusMessage("Add engine source (${target}): ${resultEntry}")
 		list(APPEND FO_${target}_SOURCE ${resultEntry})
 		list(APPEND FO_SOURCE_META_FILES ${resultEntry})
 	endforeach()
@@ -577,7 +531,7 @@ endmacro()
 macro(AddNativeIncludeDir)
 	if(FO_NATIVE_SCRIPTING)
 		foreach(dir ${ARGN})
-			StatusMessage("+ Native include dir at ${FO_CONTRIBUTION_DIR}/${dir}")
+			StatusMessage("Add native include dir: ${FO_CONTRIBUTION_DIR}/${dir}")
 			include_directories("${FO_CONTRIBUTION_DIR}/${dir}")
 		endforeach()
 	endif()
@@ -587,7 +541,7 @@ macro(AddNativeSource)
 	if(FO_NATIVE_SCRIPTING)
 		# ResolveContributedFiles( ${ARGN} )
 		# foreach( resultEntry ${result} )
-		# StatusMessage( "+ Engine source at ${resultEntry}" )
+		# StatusMessage( "Add engine source: ${resultEntry}" )
 		# list( APPEND FO_${target}_SOURCE ${resultEntry} )
 		# endforeach()
 	endif()
@@ -595,7 +549,7 @@ endmacro()
 
 macro(AddMonoAssembly assembly)
 	if(FO_MONO_SCRIPTING)
-		StatusMessage("+ Mono assembly ${assembly}")
+		StatusMessage("Add mono assembly ${assembly}")
 		list(APPEND FO_MONO_ASSEMBLIES ${assembly})
 		set(MonoAssembly_${assembly}_CommonRefs "")
 		set(MonoAssembly_${assembly}_ServerRefs "")
@@ -611,7 +565,7 @@ endmacro()
 macro(AddMonoReference assembly target)
 	if(FO_MONO_SCRIPTING)
 		foreach(arg ${ARGN})
-			StatusMessage("+ Mono assembly ${target}/${assembly} redefence to ${arg}")
+			StatusMessage("Add mono assembly ${target}/${assembly} redefence to ${arg}")
 			list(APPEND MonoAssembly_${assembly}_${target}Refs ${arg})
 		endforeach()
 	endif()
@@ -622,7 +576,7 @@ macro(AddMonoSource assembly target)
 		ResolveContributedFiles(${ARGN})
 
 		foreach(resultEntry ${result})
-			StatusMessage("+ Mono source for assembly ${target}/${assembly} at ${resultEntry}")
+			StatusMessage("Add mono source for assembly ${target}/${assembly} at ${resultEntry}")
 			list(APPEND MonoAssembly_${assembly}_${target}Source ${resultEntry})
 		endforeach()
 	endif()
@@ -638,25 +592,12 @@ macro(AddToPackage package binary platform arch packType)
 	list(APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
 endmacro()
 
-macro(SetBakingOption opt)
-	foreach(arg ${ARGN})
-		StatusMessage("+ Baking option ${opt} = ${arg}")
-		list(APPEND FO_BAKING_OPTIONS "${opt},${arg}")
-	endforeach()
-endmacro()
-
 # Core contribution
 set(FO_CONTRIBUTION_DIR ${FO_ENGINE_ROOT})
-AddNativeIncludeDir("Source/Scripting/Native")
 
-if(FO_ANGELSCRIPT_SCRIPTING)
-	AddContent("Source/Scripting/AngelScript")
-endif()
+AddNativeIncludeDir("Source/Scripting/Native")
 
 AddMonoAssembly("FOnline")
 AddMonoSource("FOnline" "Common" "Source/Scripting/Mono/*.cs")
-AddResources("Core" "Resources/Core")
-AddEmbeddedResources("Resources/Embedded")
-AddResources("Core" "Resources/Embedded") # Duplicate embedded to core for correct data updating
 
 set(FO_CONTRIBUTION_DIR ${CMAKE_CURRENT_SOURCE_DIR})

@@ -796,7 +796,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode k
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::IfaceSprites);
+    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
@@ -808,7 +808,7 @@ FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::MapSprites);
+    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
@@ -820,7 +820,7 @@ FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_LoadSeparateSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::OneImage);
+    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
 }
 
 ///@ ExportMethod
@@ -1535,7 +1535,7 @@ FO_SCRIPT_API string Client_Game_BuiltInCommand(FOClient* client, string_view co
                 result += s;
                 result += "\n";
             },
-            *client)) {
+            client->Hashes)) {
         return "Unknown command";
     }
 

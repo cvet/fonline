@@ -11,13 +11,13 @@ import glob
 import io
 import struct
 import stat
+import foconfig
 
 parser = argparse.ArgumentParser(description='FOnline packager')
+parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
 parser.add_argument('-nicename', dest='nicename', required=True, help='Representable game name')
-parser.add_argument('-authorname', dest='authorname', required=True, help='Author name')
-parser.add_argument('-gameversion', dest='gameversion', required=True, help='Game version')
 parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Editor', 'Mapper'], help='package target type')
 parser.add_argument('-platform', dest='platform', required=True, choices=['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
 parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
@@ -34,7 +34,6 @@ parser.add_argument('-pack', dest='pack', required=True, help='package type')
 # macOS: Raw Bundle Zip
 # iOS: Raw Bundle
 # Web: Raw Zip
-parser.add_argument('-respack', dest='respack', required=True, action='append', default=[], help='resource pack entry')
 parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
@@ -42,6 +41,9 @@ parser.add_argument('-input', dest='input', required=True, action='append', defa
 parser.add_argument('-output', dest='output', required=True, help='output dir')
 parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()
+
+fomain = foconfig.ConfigParser()
+fomain.loadFromFile(args.maincfg)
 
 def log(*text):
 	print('[Package]', *text, flush=True)
@@ -51,7 +53,8 @@ log(f'Make {args.target} ({args.config}) for {args.platform}')
 packArgs = args.pack.split('+')
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
-resourcesDir = 'Resources'
+baseServerResName = fomain.mainSection().getStr('BaseServerResourcesName')
+baseClientResName = fomain.mainSection().getStr('BaseClientResourcesName')
 
 curPath = os.path.dirname(sys.argv[0])
 
@@ -124,80 +127,69 @@ def makeTar(name, path, mode):
 
 def build():
 	# Make packs
-	def getTargetEntries(target):
+	def getTargetResPacks(target):
 		resourceEntries = []
-		if target == 'Server':
-			resourceEntries += [['Embedded', '**']]
-			resourceEntries += [['ServerProtos', '*.foprob']]
-			resourceEntries += [['ServerAngelScript', '*.fosb']]
-			resourceEntries += [['Dialogs', '*.fodlg']]
-			resourceEntries += [['Maps', '*.fomapb*']]
-			resourceEntries += [['Texts', '*.fotxtb']]
-			for pack in set(args.respack):
-				if 'Server' in pack:
-					resourceEntries += [[pack, '**']]
-		elif target == 'Client' or target == 'Mapper':
-			resourceEntries += [['Embedded', '**']]
-			resourceEntries += [['Core', '**']]
-			resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
-			resourceEntries += [['ClientProtos', 'ClientProtos.foprob']]
-			resourceEntries += [['ClientAngelScript', 'ClientRootModule.fosb']]
-			resourceEntries += [['StaticMaps', '*.fomapb2']]
-			resourceEntries += [['Texts', '*.fotxtb']]
-			if target == 'Mapper':
-				resourceEntries += [['FullProtos', '*.foprob']]
-				resourceEntries += [['MapperAngelScript', '*.fosb']]
-			for pack in set(args.respack):
-				if not ([1 for t in ['Server', 'Client', 'Single', 'Editor', 'Mapper'] if t in pack] and target not in pack):
-					if pack not in ['Embedded', 'Core']:
-						assert pack not in [p[0] for p in resourceEntries] and pack != 'Configs', 'Used reserved pack name'
-						resourceEntries += [[pack, '**']]
-		elif target == 'Editor':
-			resourceEntries += [['Embedded', '**']]
-		else:
-			assert False
+		resPacks = fomain.getSections('ResourcePack')
+		for resPack in resPacks:
+			serverOnly = resPack.getBool('ServerOnly', False)
+			clientOnly = resPack.getBool('ClientOnly', False)
+			mapperOnly = resPack.getBool('MapperOnly', False)
+			if target == 'Server' and not clientOnly and not mapperOnly:
+				resourceEntries.append(resPack.getStr('Name'))
+			if target == 'Client' and not serverOnly and not mapperOnly:
+				resourceEntries.append(resPack.getStr('Name'))
+			if target == 'Mapper' and not serverOnly:
+				resourceEntries.append(resPack.getStr('Name'))
+		if target == 'Editor':
+			resourceEntries.append('Embedded')
 		return resourceEntries
-		
-	bakingPath = getInput('Baking', 'Resources')
+	
+	def filterFile(target, f):
+		if not os.path.isfile(f):
+			return False
+		if target == 'Server' and (f.endswith('-client') or f.endswith('-mapper')):
+			return False
+		if target == 'Client' and (f.endswith('-server') or f.endswith('-mapper')):
+			return False
+		if target == 'Mapper' and f.endswith('-server'):
+			return False
+		return True
+	
+	bakeOutput = fomain.mainSection().getStr('BakeOutput')
+	bakingPath = getInput(bakeOutput, 'Resources')
 	log('Baking input', bakingPath)
 	
-	if args.target != 'Editor':
-		os.makedirs(os.path.join(targetOutputPath, resourcesDir))
+	if args.target in ['Server']:
+		os.makedirs(os.path.join(targetOutputPath, baseServerResName))
+		os.makedirs(os.path.join(targetOutputPath, baseClientResName))
+	if args.target in ['Client', 'Mapper']:
+		os.makedirs(os.path.join(targetOutputPath, baseClientResName))
 	
-	for packName, fileMask in getTargetEntries(args.target):
-		files = [f for f in glob.glob(os.path.join(bakingPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+	for packName in getTargetResPacks(args.target):
+		files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile(args.target, f)]
 		assert len(files), 'No files in pack ' + packName
 		if packName == 'Embedded':
-			log('Make pack', packName + '/' + fileMask, '=>', 'embed to executable', '(' + str(len(files)) + ')')
+			log('Make pack', packName, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 			embeddedData = io.BytesIO()
 			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 				for file in files:
 					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 			embeddedData = embeddedData.getvalue()
 			embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
-		elif packName == 'Raw':
-			log('Make pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
-			for file in files:
-				shutil.copy(file, os.path.join(targetOutputPath, resourcesDir, os.path.relpath(file, os.path.join(bakingPath, packName))))
 		else:
-			log('Make pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
-			with zipfile.ZipFile(os.path.join(targetOutputPath, resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+			log('Make pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+			baseResName = baseServerResName if args.target in ['Server'] else baseClientResName
+			with zipfile.ZipFile(os.path.join(targetOutputPath, baseResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 				for file in files:
 					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
 	if args.target == 'Server':
-		os.makedirs(os.path.join(targetOutputPath, 'Client' + resourcesDir))
-		
-		for packName, fileMask in getTargetEntries('Client'):
-			files = [f for f in glob.glob(os.path.join(bakingPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+		for packName in getTargetResPacks('Client'):
+			files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile('Client', f)]
 			assert len(files), 'No files in pack ' + packName
-			if packName == 'Raw':
-				log('Make client pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
-				for file in files:
-					shutil.copy(file, os.path.join(targetOutputPath, 'Client' + resourcesDir, os.path.relpath(file, os.path.join(bakingPath, packName))))
-			elif packName != 'Embedded':
-				log('Make client pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
-				with zipfile.ZipFile(os.path.join(targetOutputPath, 'Client' + resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+			if packName != 'Embedded':
+				log('Make client pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+				with zipfile.ZipFile(os.path.join(targetOutputPath, baseClientResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
 					for file in files:
 						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
@@ -206,18 +198,22 @@ def build():
 	log('Embedded data length', len(embeddedData))
 	
 	# Evaluate config
-	configName = args.config if args.target != 'Client' else 'Client_' + args.config
+	configName = ('Server_' if args.target != 'Client' else 'Client_') + args.config
 	log('Config', configName)
 	
-	assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.focfg')), 'Config file not found'
-	with open(os.path.join(bakingPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
+	assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.fomainb')), 'Config file not found'
+	with open(os.path.join(bakingPath, 'Configs', configName + '.fomainb'), 'r', encoding='utf-8-sig') as f:		
 		configData = str.encode(f.read())
+	
+	configData += str.encode('\nEmbeddedResources=@Embedded')
+	configData += str.encode('\nServerResources=' + baseServerResName)
+	configData += str.encode('\nClientResources=' + baseClientResName)
 	
 	def patchConfig(filePath, additionalConfigData=None):
 		resultData = configData + (str.encode('\n' + additionalConfigData) if additionalConfigData else b'')
-		patchData(filePath, b'###InternalConfig###', resultData, 5022)
+		patchData(filePath, b'###InternalConfig###', resultData, 10044)
 	log('Embedded config length', len(configData))
-	
+
 	if args.platform == 'Windows':
 		# Binaries
 		for arch in args.arch.split('+'):
@@ -441,7 +437,7 @@ def build():
 		assert os.path.isfile(filePackagerPath), 'No emscripten tools/file_packager.py found'
 		
 		packagerArgs = ['python3', filePackagerPath, os.path.join(targetOutputPath, 'Resources.data').replace('\\', '/'),
-				'--preload', os.path.join(targetOutputPath, resourcesDir).replace('\\', '/') + '@Resources/',
+				'--preload', os.path.join(targetOutputPath, baseClientResName).replace('\\', '/') + '@Resources/',
 				'--js-output=' + os.path.join(targetOutputPath, 'Resources.js').replace('\\', '/')]
 		log('Call emscripten packager:')
 		for arg in packagerArgs:
@@ -450,7 +446,7 @@ def build():
 		r = subprocess.call(packagerArgs)
 		assert r == 0, 'Emscripten tools/file_packager.py failed'
 		
-		shutil.rmtree(os.path.join(targetOutputPath, resourcesDir), True)
+		shutil.rmtree(os.path.join(targetOutputPath, baseClientResName), True)
 		
 		# Patch *.html
 		patchFile(os.path.join(targetOutputPath, 'index.html'), '$TITLE$', args.nicename)

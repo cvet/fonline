@@ -36,52 +36,55 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(SafeAlloc::MakeRaw<PropertyRegistrator>(ENTITY_TYPE_NAME, props_relation, *this, *this), nullptr),
-    GameProperties(GetInitRef()),
-    Settings {settings},
-    Geometry(settings),
-    GameTime(settings),
-    ProtoMngr(this),
-    ScriptSys(SafeAlloc::MakeUnique<ScriptSystem>()),
-    TimeEventMngr(SafeAlloc::MakeUnique<TimeEventManager>(&GameTime, ScriptSys.get())),
-    _propsRelation {props_relation}
+EngineData::EngineData(PropertiesRelationType props_relation, const EngineDataRegistrator& registrator)
 {
     STACK_TRACE_ENTRY();
 
-    _entityTypesInfo.emplace(FOEngineBase::ToHashedString(ENTITY_TYPE_NAME), EntityTypeInfo {_propsRef.GetRegistrator(), true, false});
+    RUNTIME_ASSERT(registrator);
+
+    _propsRelation = props_relation;
+    registrator();
 }
 
-auto FOEngineBase::RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*
+void EngineData::RegisterPropertiesRelation(PropertiesRelationType props_relation)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
-    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    _propsRelation = props_relation;
+}
+
+auto EngineData::RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    const auto it = _entityTypesInfo.find(Hashes.ToHashedString(type_name));
     RUNTIME_ASSERT(it == _entityTypesInfo.end());
 
-    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(type_name, _propsRelation, *this, *this);
+    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(type_name, _propsRelation, Hashes, *this);
 
-    _entityTypesInfo.emplace(ToHashedString(type_name), EntityTypeInfo {registrator, exported, has_protos});
+    _entityTypesInfo.emplace(Hashes.ToHashedString(type_name), EntityTypeInfo {registrator, exported, has_protos});
 
     return registrator;
 }
 
-void FOEngineBase::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access)
+void EngineData::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(IsValidEntityType(ToHashedString(target_type)));
+    RUNTIME_ASSERT(IsValidEntityType(Hashes.ToHashedString(target_type)));
 
-    const auto it = _entityTypesInfo.find(ToHashedString(holder_type));
+    const auto it = _entityTypesInfo.find(Hashes.ToHashedString(holder_type));
     RUNTIME_ASSERT(it != _entityTypesInfo.end());
-    RUNTIME_ASSERT(it->second.HolderEntries.count(ToHashedString(entry)) == 0);
+    RUNTIME_ASSERT(it->second.HolderEntries.count(Hashes.ToHashedString(entry)) == 0);
 
-    it->second.HolderEntries.emplace(ToHashedString(entry), tuple {ToHashedString(target_type), access});
+    it->second.HolderEntries.emplace(Hashes.ToHashedString(entry), tuple {Hashes.ToHashedString(target_type), access});
 }
 
-void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values)
+void EngineData::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values)
 {
     STACK_TRACE_ENTRY();
 
@@ -103,7 +106,7 @@ void FOEngineBase::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_t
     _enumTypes[name] = std::move(underlying_type);
 }
 
-void FOEngineBase::RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
+void EngineData::RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
 {
     STACK_TRACE_ENTRY();
 
@@ -114,7 +117,7 @@ void FOEngineBase::RegisterValueType(string_view name, size_t size, BaseTypeInfo
     _valueTypes.emplace(name, tuple {size, std::move(layout)});
 }
 
-void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
+void EngineData::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
 {
     STACK_TRACE_ENTRY();
 
@@ -123,18 +126,16 @@ void FOEngineBase::RegisterMigrationRules(unordered_map<hstring, unordered_map<h
     _migrationRules = std::move(migration_rules);
 }
 
-void FOEngineBase::FinalizeDataRegistration()
+void EngineData::FinalizeDataRegistration()
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
     _registrationFinalized = true;
-
-    GetPropertiesForEdit().AllocData();
 }
 
-auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
+auto EngineData::GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
@@ -143,42 +144,35 @@ auto FOEngineBase::GetPropertyRegistrator(hstring type_name) const noexcept -> c
     return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
 }
 
-auto FOEngineBase::GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*
+auto EngineData::GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
-    hstring type_name_hashed;
-
-    try {
-        type_name_hashed = ToHashedStringMustExists(type_name);
-    }
-    catch (...) {
-        return nullptr;
-    }
+    const auto type_name_hashed = Hashes.ToHashedString(type_name);
 
     return GetPropertyRegistrator(type_name_hashed);
 }
 
-auto FOEngineBase::GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*
+auto EngineData::GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_registrationFinalized);
 
-    const auto it = _entityTypesInfo.find(ToHashedString(type_name));
+    const auto it = _entityTypesInfo.find(Hashes.ToHashedString(type_name));
     RUNTIME_ASSERT(it != _entityTypesInfo.end());
 
     return const_cast<PropertyRegistrator*>(it->second.PropRegistrator);
 }
 
-auto FOEngineBase::IsValidEntityType(hstring type_name) const noexcept -> bool
+auto EngineData::IsValidEntityType(hstring type_name) const noexcept -> bool
 {
     NO_STACK_TRACE_ENTRY();
 
     return _entityTypesInfo.find(type_name) != _entityTypesInfo.end();
 }
 
-auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&
+auto EngineData::GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -188,25 +182,25 @@ auto FOEngineBase::GetEntityTypeInfo(hstring type_name) const -> const EntityTyp
     return it->second;
 }
 
-auto FOEngineBase::GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&
+auto EngineData::GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&
 {
     NO_STACK_TRACE_ENTRY();
 
     return _entityTypesInfo;
 }
 
-auto FOEngineBase::GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*
+auto EngineData::GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*
 {
     STACK_TRACE_ENTRY();
 
-    const auto prop_name = ToHashedStringMustExists(strex("{}Ids", entry));
+    const auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
     const auto* holder_prop = holder->GetProperties().GetRegistrator()->FindProperty(prop_name);
     RUNTIME_ASSERT(holder_prop);
 
     return holder_prop;
 }
 
-auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
+auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 {
     STACK_TRACE_ENTRY();
 
@@ -331,7 +325,7 @@ auto FOEngineBase::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     return info;
 }
 
-auto FOEngineBase::GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool
+auto EngineData::GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -348,7 +342,7 @@ auto FOEngineBase::GetEnumInfo(string_view enum_name, const BaseTypeInfo** under
     return true;
 }
 
-auto FOEngineBase::GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
+auto EngineData::GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -367,7 +361,7 @@ auto FOEngineBase::GetValueTypeInfo(string_view type_name, size_t& size, const B
     return true;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
+auto EngineData::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -386,7 +380,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) c
     return it->second;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
+auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -417,7 +411,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
+auto EngineData::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
 {
     STACK_TRACE_ENTRY();
 
@@ -448,7 +442,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
+auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -460,10 +454,10 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
     }
 
     if (str[0] == '@') {
-        return ToHashedString(str.substr(1)).as_int();
+        return Hashes.ToHashedString(str.substr(1)).as_int();
     }
     else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
-        return ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
+        return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
     }
     else if (strex(str).isNumber()) {
         return strex(str).toInt();
@@ -478,7 +472,7 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
     return ResolveEnumValue(str, failed);
 }
 
-auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>
+auto EngineData::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>
 {
     STACK_TRACE_ENTRY();
 
@@ -519,7 +513,20 @@ auto FOEngineBase::CheckMigrationRule(hstring rule_name, hstring extra_info, hst
     return result;
 }
 
-void FOEngineBase::FrameAdvance()
+BaseEngine::BaseEngine(GlobalSettings& settings, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator) :
+    EngineData(props_relation, registrator),
+    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr),
+    GameProperties(GetInitRef()),
+    Settings {settings},
+    Geometry(settings),
+    GameTime(settings),
+    ProtoMngr(*this),
+    TimeEventMngr(GameTime, ScriptSys)
+{
+    STACK_TRACE_ENTRY();
+}
+
+void BaseEngine::FrameAdvance()
 {
     STACK_TRACE_ENTRY();
 

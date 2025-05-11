@@ -32,8 +32,10 @@
 //
 
 #include "Baker.h"
+#include "AngelScriptBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
+#include "DialogBaker.h"
 #include "Dialogs.h"
 #include "DiskFileSystem.h"
 #include "EffectBaker.h"
@@ -41,72 +43,48 @@
 #include "FileSystem.h"
 #include "ImageBaker.h"
 #include "Log.h"
+#include "MapBaker.h"
 #include "MapLoader.h"
 #include "ModelBaker.h"
+#include "ProtoBaker.h"
 #include "ProtoManager.h"
+#include "RawCopyBaker.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "StringUtils.h"
+#include "TextBaker.h"
 #include "Version-Include.h"
 
-class BakerEngine : public FOEngineBase
-{
-public:
-    explicit BakerEngine(PropertiesRelationType props_relation) :
-        FOEngineBase(App->Settings, props_relation)
-    {
-        extern void Baker_RegisterData(FOEngineBase*);
-        Baker_RegisterData(this);
-    }
-
-    static auto GetRestoreInfo() -> vector<uint8>
-    {
-        extern auto Baker_GetRestoreInfo() -> vector<uint8>;
-        return Baker_GetRestoreInfo();
-    }
-};
-
-#if FO_ANGELSCRIPT_SCRIPTING
-class BakerServerCompilerValidation : public FOEngineBase
-{
-public:
-    explicit BakerServerCompilerValidation(PropertiesRelationType props_relation) :
-        FOEngineBase(App->Settings, props_relation)
-    {
-        extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
-        AngelScript_ServerCompiler_RegisterData(this);
-    }
-};
-
-// External variable for compiler messages
-unordered_set<string> CompilerPassedMessages;
-#endif
-
-class Item;
-using StaticItem = Item;
-class Critter;
-class Map;
-class Location;
-
-BaseBaker::BaseBaker(const BakerSettings& settings, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data) :
-    _settings {settings},
+BaseBaker::BaseBaker(const BakerSettings& settings, string&& pack_name, BakeCheckerCallback&& bake_checker, AsyncWriteDataCallback&& write_data, const FileSystem* baked_files) :
+    _settings {&settings},
+    _packName {std::move(pack_name)},
     _bakeChecker {std::move(bake_checker)},
-    _writeData {std::move(write_data)}
+    _writeData {std::move(write_data)},
+    _bakedFiles {baked_files}
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_writeData);
 }
 
-auto BaseBaker::SetupBakers(const BakerSettings& settings, const BakeCheckerCallback& bake_checker, const WriteDataCallback& write_data) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(const string& pack_name, const BakerSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>
 {
     STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(settings, bake_checker, write_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<DialogBaker>(settings, pack_name, bake_checker, write_data, baked_files));
 #if FO_ENABLE_3D
-    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(settings, bake_checker, write_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+#endif
+#if FO_ANGELSCRIPT_SCRIPTING
+    bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(settings, pack_name, bake_checker, write_data, baked_files));
 #endif
 
     extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&);
@@ -115,20 +93,20 @@ auto BaseBaker::SetupBakers(const BakerSettings& settings, const BakeCheckerCall
     return bakers;
 }
 
-Baker::Baker(BakerSettings& settings) :
+MasterBaker::MasterBaker(BakerSettings& settings) :
     _settings {settings}
 {
     STACK_TRACE_ENTRY();
 }
 
-auto Baker::MakeOutputPath(string_view path) const -> string
+auto MasterBaker::MakeOutputPath(string_view path) const -> string
 {
     STACK_TRACE_ENTRY();
 
     return strex(_settings.BakeOutput).combinePath(path);
 }
 
-void Baker::BakeAll()
+void MasterBaker::BakeAll()
 {
     STACK_TRACE_ENTRY();
 
@@ -141,989 +119,293 @@ void Baker::BakeAll()
 
     WriteLog("Start baking");
 
+    RUNTIME_ASSERT(!_settings.BakeOutput.empty());
+
     const auto bake_time = TimeMeter();
 
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
     RUNTIME_ASSERT(build_hash_deleted);
 
+    std::atomic_bool force_baking = false;
+
     if (_settings.ForceBaking) {
         WriteLog("Force rebuild all resources");
+        DiskFileSystem::DeleteDir(_settings.BakeOutput);
+        DiskFileSystem::MakeDirTree(_settings.BakeOutput);
+        force_baking = true;
     }
 
-    int errors = 0;
+    FileSystem baking_output;
 
-    const auto async_mode = _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
-
-    // Resource packs
-    unordered_set<string> resource_names;
-    std::mutex resource_names_locker;
-
-    try {
-        WriteLog("Start bake resource packs");
-
-        RUNTIME_ASSERT(!_settings.BakeResourceEntries.empty());
-
-        map<string, vector<string>> res_packs;
-
-        for (const auto& re : _settings.BakeResourceEntries) {
-            auto re_splitted = strex(re).split(',');
-            RUNTIME_ASSERT(re_splitted.size() == 2);
-            res_packs[re_splitted[0]].emplace_back(std::move(re_splitted[1]));
-        }
-
-        const auto bake_resource_pack = [ // clang-format off
-            &thiz = std::as_const(*this),
-            &settings = std::as_const(_settings),
-            &resource_names_ = resource_names,
-            &resource_names_locker_ = resource_names_locker // clang-format on
-        ](const string& pack_name, const vector<string>& paths) {
-            FileSystem res_files;
-
-            for (const auto& path : paths) {
-                res_files.AddDataSource(path);
-            }
-
-            // Cleanup previous
-            if (settings.ForceBaking) {
-                auto del_res_ok = DiskFileSystem::DeleteDir(thiz.MakeOutputPath(pack_name));
-                RUNTIME_ASSERT(del_res_ok);
-            }
-
-            DiskFileSystem::MakeDirTree(thiz.MakeOutputPath(pack_name));
-
-            const auto is_raw_only = pack_name == "Raw";
-
-            std::atomic_int baked_files = 0;
-
-            // Bake files
-            auto pack_resource_names = unordered_set<string>();
-
-            const auto exclude_all_ext = [](string_view path) -> string {
-                size_t pos = path.rfind('/');
-                pos = path.find('.', pos != string::npos ? pos : 0);
-                return pos != string::npos ? string(path.substr(0, pos)) : string(path);
-            };
-            const auto make_output_path = [](string_view path) -> string {
-                if (strex(path).startsWith("art/critters/")) {
-                    return strex("art/critters/{}", strex(path.substr("art/critters/"_len)).lower());
-                }
-                return string(path);
-            };
-
-            if (!is_raw_only) {
-                const auto bake_checker = [&](const FileHeader& file_header) -> bool {
-                    const auto output_path = make_output_path(file_header.GetPath());
-
+    // Configs
                     {
-                        auto locker = std::unique_lock {resource_names_locker_};
-                        resource_names_.emplace(output_path);
-                    }
-
-                    pack_resource_names.emplace(exclude_all_ext(output_path));
-
-                    if (!settings.ForceBaking) {
-                        return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(strex(pack_name).combinePath(output_path)));
-                    }
-                    else {
-                        return true;
-                    }
-                };
-
-                const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
-                    const auto output_path = make_output_path(path);
-
-                    auto res_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex(pack_name).combinePath(output_path)), true);
-                    RUNTIME_ASSERT(res_file);
-                    const auto res_file_write_ok = res_file.Write(baked_data);
-                    RUNTIME_ASSERT(res_file_write_ok);
-
-                    ++baked_files;
-                };
-
-                auto bakers = BaseBaker::SetupBakers(settings, bake_checker, write_data);
-
-                for (auto& baker : bakers) {
-                    baker->BakeFiles(res_files.GetAllFiles());
-                }
-            }
-
-            // Raw copy
-            for (auto files_to_bake = res_files.GetAllFiles(); files_to_bake.MoveNext();) {
-                auto file_header = files_to_bake.GetCurFileHeader();
-                const auto output_path = make_output_path(file_header.GetPath());
-
-                // Skip not necessary files
-                if (!is_raw_only) {
-                    const string ext = strex(output_path).getFileExtension();
-
-                    if (!vec_exists(settings.BakeBaseFileExtensions, ext) && !vec_exists(settings.BakeExtraFileExtensions, ext)) {
-                        continue;
-                    }
-                }
-
-                {
-                    auto locker = std::unique_lock {resource_names_locker_};
-                    resource_names_.emplace(output_path);
-                }
-
-                pack_resource_names.emplace(exclude_all_ext(output_path));
-
-                const string path_in_pack = strex(pack_name).combinePath(output_path);
-
-                if (!settings.ForceBaking && DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
-                    continue;
-                }
-
-                auto file = files_to_bake.GetCurFile();
-
-                auto res_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(path_in_pack), true);
-                RUNTIME_ASSERT(res_file);
-                auto res_file_write_ok = res_file.Write(file.GetData());
-                RUNTIME_ASSERT(res_file_write_ok);
-
-                ++baked_files;
-            }
-
-            // Delete outdated
-            DiskFileSystem::IterateDir(thiz.MakeOutputPath(pack_name), "", true, [&](string_view path, size_t size, uint64 write_time) {
-                UNUSED_VARIABLE(size);
-                UNUSED_VARIABLE(write_time);
-
-                if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
-                    const string path_in_pack = strex(pack_name).combinePath(path);
-                    DiskFileSystem::DeleteFile(thiz.MakeOutputPath(path_in_pack));
-                    WriteLog("Delete outdated file {}", path_in_pack);
-                }
-            });
-
-            WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
-        };
-
-        vector<std::future<void>> res_bakings;
-
-        for (const auto& res_pack : res_packs) {
-            WriteLog("Bake {}", res_pack.first);
-            auto res_baking = std::async(async_mode, [&bake_resource_pack, res_pack] { bake_resource_pack(res_pack.first, res_pack.second); });
-            res_bakings.emplace_back(std::move(res_baking));
-        }
-
-        for (auto& res_baking : res_bakings) {
-            try {
-                res_baking.get();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
-            }
-            catch (...) {
-                UNKNOWN_EXCEPTION();
-            }
-        }
-
-        WriteLog("Bake resources packs complete");
-    }
-    catch (const std::exception& ex) {
-        WriteLog("Resource baking failed");
-        ReportExceptionAndContinue(ex);
-        errors++;
-    }
-    catch (...) {
-        UNKNOWN_EXCEPTION();
-    }
-
-    // Content
-    try {
-        WriteLog("Bake content");
-
-        RUNTIME_ASSERT(!_settings.BakeContentEntries.empty());
-
-        auto baker_engine = BakerEngine(PropertiesRelationType::BothRelative);
-
-        for (const auto& dir : _settings.BakeContentEntries) {
-            WriteLog("Add content entry {}", dir);
-            baker_engine.Resources.AddDataSource(dir, DataSourceType::DirRoot);
-        }
-
-        // AngelScript scripts
-#if FO_ANGELSCRIPT_SCRIPTING
-        auto as_server_recompiled = false;
-
-        try {
-            WriteLog("Compile AngelScript scripts");
-
-            auto all_scripts_up_to_date = true;
-
-            if (_settings.ForceBaking) {
-                all_scripts_up_to_date = false;
-            }
-            else {
-                auto script_files = baker_engine.Resources.FilterFiles("fos");
-
-                while (script_files.MoveNext() && all_scripts_up_to_date) {
-                    auto file = script_files.GetCurFileHeader();
-
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
-                        all_scripts_up_to_date = false;
-                    }
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("ServerAngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
-                        all_scripts_up_to_date = false;
-                    }
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("MapperAngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
-                        all_scripts_up_to_date = false;
-                    }
-                }
-            }
-
-            if (all_scripts_up_to_date) {
-                WriteLog("Scripts up to date, skip");
-            }
-
-            if (!all_scripts_up_to_date) {
-                WriteLog("Compile server scripts");
-                extern void Init_AngelScriptCompiler_ServerScriptSystem(const FileSystem*);
-                Init_AngelScriptCompiler_ServerScriptSystem(&baker_engine.Resources);
-                as_server_recompiled = true;
-            }
-
-            if (!all_scripts_up_to_date) {
-                WriteLog("Compile client scripts");
-                extern void Init_AngelScriptCompiler_ClientScriptSystem(const FileSystem*);
-                Init_AngelScriptCompiler_ClientScriptSystem(&baker_engine.Resources);
-            }
-
-            if (!all_scripts_up_to_date) {
-                WriteLog("Compile mapper scripts");
-                extern void Init_AngelScriptCompiler_MapperScriptSystem(const FileSystem*);
-                Init_AngelScriptCompiler_MapperScriptSystem(&baker_engine.Resources);
-            }
-
-            WriteLog("Compile AngelScript scripts complete");
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-#endif
-
-        // Validation engine
-        auto validation_engine = SafeAlloc::MakeRefCounted<BakerServerCompilerValidation>(PropertiesRelationType::ServerRelative);
-        const ScriptSystem& script_sys = *validation_engine->ScriptSys;
-
-        try {
-            WriteLog("Compile AngelScript scripts");
-
-#if FO_ANGELSCRIPT_SCRIPTING
-            extern void Init_AngelScriptCompiler_ServerScriptSystem_Validation(FOEngineBase*);
-            Init_AngelScriptCompiler_ServerScriptSystem_Validation(validation_engine.get());
-#endif
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-
-        // Configs
-        try {
             WriteLog("Bake configs");
 
-            if (_settings.ForceBaking) {
-                auto del_configs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Configs"));
+        if (force_baking) {
+            const auto del_configs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Configs"));
                 RUNTIME_ASSERT(del_configs_ok);
             }
 
-            auto configs = baker_engine.Resources.FilterFiles("focfg");
-            bool all_configs_up_to_date = true;
+        DiskFileSystem::MakeDirTree(MakeOutputPath("Configs"));
 
-            while (configs.MoveNext() && all_configs_up_to_date) {
-                auto file = configs.GetCurFileHeader();
-                if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
-                    all_configs_up_to_date = false;
-                }
-                if (DiskFileSystem::GetWriteTime(MakeOutputPath(strex("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
-                    all_configs_up_to_date = false;
-                }
-            }
-
-            if (!all_configs_up_to_date) {
-                configs.ResetCounter();
-                while (configs.MoveNext()) {
-                    auto file = configs.GetCurFile();
-
-                    WriteLog("Process config {}", file.GetName());
-
+        int baked_configs = 0;
                     int settings_errors = 0;
 
-                    // Collect content from end to beginning
-                    string final_content;
+        const auto bake_config = [&](string_view sub_config) {
+            RUNTIME_ASSERT(App->Settings.AppliedConfigs.size() == 1);
+            const auto maincfg = GlobalSettings(App->Settings.AppliedConfigs.front(), sub_config);
+            const auto config_settings = maincfg.Save();
 
-                    {
-                        auto focfg = ConfigFile(file.GetPath(), file.GetStr());
-                        final_content = file.GetStr();
-
-                        auto parent_name = focfg.GetStr("", "$Parent");
-
-                        while (!parent_name.empty()) {
-                            const auto parent_file = configs.FindFileByName(parent_name);
-                            if (!parent_file) {
-                                WriteLog("Parent config {} not found", parent_name);
-                                settings_errors++;
-                                break;
-                            }
-
-                            final_content.insert(0, parent_file.GetStr());
-                            final_content.insert(0, "\n");
-
-                            auto parent_focfg = ConfigFile(parent_file.GetPath(), parent_file.GetStr());
-                            parent_name = parent_focfg.GetStr("", "$Parent");
-                        }
-                    }
-
-                    auto focfg = ConfigFile(file.GetPath(), final_content);
-
-                    string config_content;
                     extern auto GetServerSettings() -> unordered_set<string>;
                     extern auto GetClientSettings() -> unordered_set<string>;
                     auto server_settings = GetServerSettings();
                     auto client_settings = GetClientSettings();
+
+            string server_config_content;
+            server_config_content.reserve(0x4000);
                     string client_config_content;
+            client_config_content.reserve(0x4000);
 
-                    for (auto&& [key, value] : focfg.GetSection("")) {
-                        if (key.front() == '$') {
-                            continue;
-                        }
+            for (auto&& [key, value] : config_settings) {
+                const auto is_server_setting = server_settings.count(key) != 0;
+                const auto is_client_setting = client_settings.count(key) != 0;
+                const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
+                const auto shortened_value = strex(value).isExplicitBool() ? (strex(value).toBool() ? "1" : "0") : value;
 
-                        string resolved_value;
-
-                        if (value.empty()) {
-                            resolved_value = "";
-                        }
-                        else if (strex(value).isNumber()) {
-                            resolved_value = value;
-                        }
-                        else if (strex(value).isExplicitBool()) {
-                            resolved_value = strex(value).toBool() ? "1" : "0";
-                        }
-                        else if (value.find("::") != string::npos) {
-                            bool failed = false;
-                            resolved_value = strex("{}", baker_engine.ResolveEnumValue(value, &failed));
-                            if (failed) {
-                                settings_errors++;
-                            }
-                        }
-                        else {
-                            resolved_value = value;
+                if (!skip_write) {
+                    server_config_content += strex("{}={}\n", key, shortened_value);
                         }
 
-                        config_content += strex("{}={}\n", key, resolved_value);
-
-                        const auto is_server_setting = server_settings.count(key) != 0;
-                        const auto is_client_setting = client_settings.count(key) != 0;
                         if (is_server_setting) {
                             server_settings.erase(key);
                         }
+
                         if (is_client_setting) {
-                            client_config_content += strex("{}={}\n", key, resolved_value);
+                    if (!skip_write) {
+                        client_config_content += strex("{}={}\n", key, shortened_value);
+                    }
+
                             client_settings.erase(key);
                         }
+
                         if (!is_server_setting && !is_client_setting) {
-                            WriteLog("Unknown setting {} = {}", key, resolved_value);
+                    WriteLog("Unknown setting {} = {}", key, value);
                             settings_errors++;
                         }
                     }
 
-                    if (settings_errors != 0) {
-                        throw GenericException("Config errors");
+            for (const auto& key : server_settings) {
+                WriteLog("Uninitialized server setting {}", key);
+                settings_errors++;
                     }
+            for (const auto& key : client_settings) {
+                WriteLog("Uninitialized client setting {}", key);
+                settings_errors++;
+            }
 
-                    const auto write_config = [this](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
-                        auto cfg_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Configs/{}{}.focfg", cfg_name1, cfg_name2)), true);
+            const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
+                const string cfg_path = MakeOutputPath(strex("Configs/{}{}.fomainb", cfg_name1, cfg_name2));
+
+                if (!DiskFileSystem::CompareFileContent(cfg_path, {reinterpret_cast<const uint8*>(cfg_content.data()), cfg_content.size()})) {
+                    auto cfg_file = DiskFileSystem::OpenFile(cfg_path, true);
                         RUNTIME_ASSERT(cfg_file);
                         const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
                         RUNTIME_ASSERT(cfg_file_write_ok);
+                    baked_configs++;
+                }
                     };
 
-                    write_config("", file.GetName(), config_content);
-                    write_config("Client_", file.GetName(), client_config_content);
-                }
+            write_config(!sub_config.empty() ? "Server_" : "Server", sub_config, server_config_content);
+            write_config(!sub_config.empty() ? "Client_" : "Client", sub_config, client_config_content);
+        };
+
+        bake_config("");
+
+        for (const auto& sub_config : App->Settings.GetSubConfigs()) {
+            bake_config(sub_config.Name);
+
+            if (settings_errors != 0) {
+                WriteLog("Main config error{}", settings_errors != 1 ? "s" : "");
+                ExitApp(false);
+            }
+        }
+
+        if (baked_configs != 0) {
+            force_baking = true;
             }
 
-            WriteLog("Bake configs complete");
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-
-        // Protos
-        auto proto_mngr = ProtoManager(&baker_engine);
-
-        try {
-            WriteLog("Bake protos");
-
-            auto parse_protos = false;
-
-            if (_settings.ForceBaking) {
-                auto del_protos_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Protos"));
-                RUNTIME_ASSERT(del_protos_ok);
-
-                parse_protos = true;
-            }
-
-#if FO_ANGELSCRIPT_SCRIPTING
-            if (as_server_recompiled) {
-                parse_protos = true;
-            }
-#endif
-
-            if (!parse_protos) {
-                const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("FullProtos/FullProtos.foprob"));
-
-                if (last_write_time > 0) {
-                    const auto check_up_to_date = [last_write_time, &resources = baker_engine.Resources](string_view ext) -> bool {
-                        auto files = resources.FilterFiles(ext);
-
-                        while (files.MoveNext()) {
-                            auto file = files.GetCurFileHeader();
-
-                            if (file.GetWriteTime() > last_write_time) {
-                                return false;
+        WriteLog("Baking of configs complete, baked {} file{}", baked_configs, baked_configs != 1 ? "s" : "");
                             }
-                        }
 
-                        return true;
-                    };
+    // Engine data
+    {
+        WriteLog("Bake engine data");
 
-                    if (check_up_to_date("foitem") && check_up_to_date("focr") && check_up_to_date("fomap") && check_up_to_date("foloc") && check_up_to_date("fopro")) {
-                        WriteLog("Protos up to date, skip");
+        if (force_baking) {
+            const auto del_engine_data_ok = DiskFileSystem::DeleteDir(MakeOutputPath("EngineData"));
+            RUNTIME_ASSERT(del_engine_data_ok);
                     }
-                    else {
-                        parse_protos = true;
+
+        DiskFileSystem::MakeDirTree(MakeOutputPath("EngineData"));
+
+        bool engine_data_baked = false;
+        const auto engine_data_bin = BakerEngine::GetRestoreInfo();
+
+        const auto del_core_engine_data_ok = DiskFileSystem::DeleteFile(MakeOutputPath("Core/EngineData.fobin"));
+        RUNTIME_ASSERT(del_core_engine_data_ok);
+
+        if (!DiskFileSystem::CompareFileContent(MakeOutputPath("EngineData/EngineData.fobin"), engine_data_bin)) {
+            auto engine_data_file = DiskFileSystem::OpenFile(MakeOutputPath("EngineData/EngineData.fobin"), true);
+            RUNTIME_ASSERT(engine_data_file);
+            const auto engine_data_file_write_ok = engine_data_file.Write(engine_data_bin);
+            RUNTIME_ASSERT(engine_data_file_write_ok);
+            engine_data_baked = true;
                     }
-                }
-                else {
-                    parse_protos = true;
-                }
-            }
 
-            if (parse_protos) {
-                WriteLog("Parse protos");
-                proto_mngr.ParseProtos(baker_engine.Resources);
+        baking_output.AddDataSource(MakeOutputPath("EngineData"));
 
-                // Protos validation
-                unordered_set<hstring> resource_hashes;
-
-                for (const auto& name : resource_names) {
-                    resource_hashes.insert(baker_engine.ToHashedString(name));
-                }
-
-                WriteLog("Validate protos");
-
-                int proto_errors = 0;
-
-                for (auto&& [type_name, protos] : proto_mngr.GetAllProtos()) {
-                    for (auto&& [pid, proto] : protos) {
-                        proto_errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys, resource_hashes);
-                    }
-                }
-
-                // Check maps for locations
-                {
-                    const auto& loc_protos = proto_mngr.GetProtoLocations();
-                    const auto& map_protos = proto_mngr.GetProtoMaps();
-
-                    for (auto&& [pid, proto] : loc_protos) {
-                        for (auto map_pid : proto->GetMapProtos()) {
-                            if (map_protos.count(map_pid) == 0) {
-                                WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
-                                proto_errors++;
+        if (engine_data_baked) {
+            force_baking = true;
                             }
-                        }
-                    }
+
+        WriteLog("Baking of engine data complete, baked {} file{}", engine_data_baked ? 1 : 0, engine_data_baked ? "" : "s");
                 }
 
-                if (proto_errors != 0) {
-                    throw ProtoValidationException("Proto verification failed");
-                }
+    {
+        std::atomic_bool res_baked = false;
 
-                WriteLog("Process server protos");
-                auto server_engine = BakerEngine(PropertiesRelationType::ServerRelative);
-                auto server_proto_mngr = ProtoManager(&server_engine);
-
-                WriteLog("Process client protos");
-                auto client_engine = BakerEngine(PropertiesRelationType::ClientRelative);
-                auto client_proto_mngr = ProtoManager(&client_engine);
-
-                vector<std::future<void>> proto_bakings;
-
-                proto_bakings.emplace_back(std::async(async_mode, [&] { server_proto_mngr.ParseProtos(baker_engine.Resources); }));
-                proto_bakings.emplace_back(std::async(async_mode, [&] { client_proto_mngr.ParseProtos(baker_engine.Resources); }));
-
-                for (auto& proto_baking : proto_bakings) {
-                    proto_baking.get();
-                }
-
-                // Maps
-                WriteLog("Process maps");
-
-                if (_settings.ForceBaking) {
-                    auto del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Maps"));
-                    RUNTIME_ASSERT(del_maps_ok);
-                    del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("StaticMaps"));
-                    RUNTIME_ASSERT(del_maps_ok);
-                }
-
-                const auto bake_map = [ // clang-format off
+        // Resource packs
+        const auto bake_resource_pack = [ // clang-format off
                     &thiz = std::as_const(*this),
                     &settings = std::as_const(_settings),
-                    &baker_engine_ = std::as_const(baker_engine),
-                    &server_proto_mngr_ = std::as_const(server_proto_mngr),
-                    &client_proto_mngr_ = std::as_const(client_proto_mngr),
-                    &hash_resolver = static_cast<HashResolver&>(server_engine),
-                    &script_sys_ = std::as_const(script_sys),
-                    &resource_hashes_ = std::as_const(resource_hashes) // clang-format on
-                ](const ProtoMap* proto_map) {
-                    const auto fomap_files = baker_engine_.Resources.FilterFiles("fomap");
-                    auto map_file = fomap_files.FindFileByName(proto_map->GetName());
-                    RUNTIME_ASSERT(map_file);
+            &baking_output_ = std::as_const(baking_output),
+            &force_baking_ = force_baking,
+            &res_baked_ = res_baked // clang-format on
+        ](const ResourcePackInfo& res_pack, const string& output_dir) {
+            const auto& pack_name = res_pack.Name;
+            const auto& input_dir = res_pack.InputDir;
 
-                    // Skip if up to date
-                    if (!settings.ForceBaking) {
-                        if (DiskFileSystem::GetWriteTime(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
-                            return;
-                        }
-                    }
+            FileSystem input_files;
 
-                    vector<uint8> props_data;
-                    uint map_cr_count = 0;
-                    uint map_item_count = 0;
-                    uint map_client_item_count = 0;
-                    vector<uint8> map_cr_data;
-                    vector<uint8> map_item_data;
-                    vector<uint8> map_client_item_data;
-                    auto map_cr_data_writer = DataWriter(map_cr_data);
-                    auto map_item_data_writer = DataWriter(map_item_data);
-                    auto map_client_item_data_writer = DataWriter(map_client_item_data);
-                    set<hstring> str_hashes;
-                    set<hstring> client_str_hashes;
-                    int map_errors = 0;
-
-                    MapLoader::Load(
-                        proto_map->GetName(), map_file.GetStr(), server_proto_mngr_, hash_resolver,
-                        [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
-                            auto props = proto->GetProperties().Copy();
-                            props.ApplyFromText(kv);
-
-                            map_errors += thiz.ValidateProperties(props, strex("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys_, resource_hashes_);
-
-                            map_cr_count++;
-                            map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                            map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                            props.StoreAllData(props_data, str_hashes);
-                            map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                            map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
-                        },
-                        [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
-                            auto props = proto->GetProperties().Copy();
-                            props.ApplyFromText(kv);
-
-                            map_errors += thiz.ValidateProperties(props, strex("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), script_sys_, resource_hashes_);
-
-                            map_item_count++;
-                            map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                            map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                            props.StoreAllData(props_data, str_hashes);
-                            map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                            map_item_data_writer.WritePtr(props_data.data(), props_data.size());
-
-                            const auto is_static = proto->GetStatic();
-                            const auto is_hidden = proto->GetHidden();
-
-                            if (is_static && !is_hidden) {
-                                const auto* client_proto = client_proto_mngr_.GetProtoItem(proto->GetProtoId());
-                                auto client_props = client_proto->GetProperties().Copy();
-                                client_props.ApplyFromText(kv);
-
-                                map_client_item_count++;
-                                map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                                map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
-                                client_props.StoreAllData(props_data, client_str_hashes);
-                                map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
-                                map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
+            for (const auto& dir : input_dir) {
+                input_files.AddDataSource(dir);
                             }
-                        });
 
-                    if (map_errors != 0) {
-                        throw GenericException("Map validation error(s)");
-                    }
+            const auto filtered_files = input_files.FilterFiles("", "", res_pack.RecursiveInput);
 
-                    // Server side
-                    {
-                        vector<uint8> map_data;
-                        auto final_writer = DataWriter(map_data);
-                        final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
-                        for (const auto& hstr : str_hashes) {
-                            const auto& str = hstr.as_str();
-                            final_writer.Write<uint>(static_cast<uint>(str.length()));
-                            final_writer.WritePtr(str.c_str(), str.length());
+            // Cleanup previous
+            if (force_baking_) {
+                const auto del_res_ok = DiskFileSystem::DeleteDir(output_dir);
+                RUNTIME_ASSERT(del_res_ok);
                         }
-                        final_writer.Write<uint>(map_cr_count);
-                        final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
-                        final_writer.Write<uint>(map_item_count);
-                        final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-                        auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("Maps/{}.fomapb", proto_map->GetName())), true);
-                        RUNTIME_ASSERT(map_bin_file);
-                        auto map_bin_file_write_ok = map_bin_file.Write(map_data);
-                        RUNTIME_ASSERT(map_bin_file_write_ok);
-                    }
+            DiskFileSystem::MakeDirTree(output_dir);
 
-                    // Client side
-                    {
-                        vector<uint8> map_data;
-                        auto final_writer = DataWriter(map_data);
-                        final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
-                        for (const auto& hstr : client_str_hashes) {
-                            const auto& str = hstr.as_str();
-                            final_writer.Write<uint>(static_cast<uint>(str.length()));
-                            final_writer.WritePtr(str.c_str(), str.length());
-                        }
-                        final_writer.Write<uint>(map_client_item_count);
-                        final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
+            // Bake files
+            std::atomic_int baked_files = 0;
+            unordered_set<string> actual_resource_names;
 
-                        auto map_bin_file = DiskFileSystem::OpenFile(thiz.MakeOutputPath(strex("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
-                        RUNTIME_ASSERT(map_bin_file);
-                        auto map_bin_file_write_ok = map_bin_file.Write(map_data);
-                        RUNTIME_ASSERT(map_bin_file_write_ok);
-                    }
+            const auto exclude_all_ext = [](string_view path) -> string {
+                size_t pos = path.rfind('/');
+                pos = path.find('.', pos != string::npos ? pos : 0);
+                return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
                 };
 
-                vector<std::future<void>> map_bakings;
-
-                for (const auto& proto_entry : proto_mngr.GetProtoMaps()) {
-                    auto map_baking = std::async(async_mode, [&] { bake_map(proto_entry.second); });
-                    map_bakings.emplace_back(std::move(map_baking));
-                }
-
-                for (auto& map_baking : map_bakings) {
-                    try {
-                        map_baking.get();
-                    }
-                    catch (const std::exception& ex) {
-                        ReportExceptionAndContinue(ex);
-                        proto_errors++;
-                    }
-                    catch (...) {
-                        UNKNOWN_EXCEPTION();
-                    }
-                }
-
-                if (proto_errors != 0) {
-                    throw GenericException("Proto maps verification failed");
-                }
-
-                // Write protos
-                const auto write_protos = [this](const ProtoManager& protos, string_view fname) {
-                    const auto data = protos.GetProtosBinaryData();
-                    RUNTIME_ASSERT(!data.empty());
-                    auto protos_file = DiskFileSystem::OpenFile(MakeOutputPath(fname), true);
-                    RUNTIME_ASSERT(protos_file);
-                    const auto protos_write_ok = protos_file.Write(data.data(), data.size());
-                    RUNTIME_ASSERT(protos_write_ok);
-                };
-
-                WriteLog("Write protos");
-                write_protos(proto_mngr, "FullProtos/FullProtos.foprob");
-                write_protos(server_proto_mngr, "ServerProtos/ServerProtos.foprob");
-                write_protos(client_proto_mngr, "ClientProtos/ClientProtos.foprob");
-            }
-
-            WriteLog("Bake protos complete");
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-
-        // Dialogs
-        auto dialog_mngr = DialogManager(&baker_engine);
-
-        try {
-            WriteLog("Bake dialogs");
-
-            if (_settings.ForceBaking) {
-                auto del_dialogs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Dialogs"));
-                RUNTIME_ASSERT(del_dialogs_ok);
-            }
-
-            dialog_mngr.LoadFromResources();
-
-            int dlg_errors = 0;
-
-            for (const auto* dlg_pack : dialog_mngr.GetDialogs()) {
-                for (const auto& dlg : dlg_pack->Dialogs) {
-                    if (dlg.DlgScriptFuncName) {
-                        if (!script_sys.CheckFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
-                            !script_sys.CheckFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
-                            //WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
-                            //dlg_errors++;
-                        }
-                    }
-
-                    for (const auto& answer : dlg.Answers) {
-                        for (const auto& demand : answer.Demands) {
-                            if (demand.Type == DR_SCRIPT) {
-                                if ((demand.ValuesCount == 0 && !script_sys.CheckFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 1 && !script_sys.CheckFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 2 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 3 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 4 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName)) || //
-                                    (demand.ValuesCount == 5 && !script_sys.CheckFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName))) {
-                                    WriteLog("Dialog {} answer demand invalid function {}", dlg_pack->PackName, demand.AnswerScriptFuncName);
-                                    dlg_errors++;
-                                }
-                            }
-                        }
-
-                        for (const auto& result : answer.Results) {
-                            if (result.Type == DR_SCRIPT) {
-                                int not_found_count = 0;
-
-                                if ((result.ValuesCount == 0 && !script_sys.CheckFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 1 && !script_sys.CheckFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 2 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 3 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 4 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 5 && !script_sys.CheckFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
-                                    not_found_count++;
-                                }
-
-                                if ((result.ValuesCount == 0 && !script_sys.CheckFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 1 && !script_sys.CheckFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 2 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 3 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 4 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
-                                    (result.ValuesCount == 5 && !script_sys.CheckFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
-                                    not_found_count++;
-                                }
-
-                                if (not_found_count != 1) {
-                                    WriteLog("Dialog {} answer result invalid function {}", dlg_pack->PackName, result.AnswerScriptFuncName);
-                                    dlg_errors++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (dlg_errors == 0) {
-                auto dialogs = baker_engine.Resources.FilterFiles("fodlg");
-                WriteLog("Dialogs count {}", dialogs.GetFilesCount());
-
-                while (dialogs.MoveNext()) {
-                    auto file = dialogs.GetCurFile();
-                    auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(strex("Dialogs/{}.fodlg", file.GetName())), true);
-                    RUNTIME_ASSERT(dlg_file);
-                    auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
-                    RUNTIME_ASSERT(dlg_file_write_ok);
-                }
-
-                WriteLog("Bake dialogs complete");
-            }
-            else {
-                errors++;
-            }
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-        catch (...) {
-            UNKNOWN_EXCEPTION();
-        }
-
-        // Texts
-        try {
-            WriteLog("Bake texts");
-
-            const auto del_texts_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Texts"));
-            RUNTIME_ASSERT(del_texts_ok);
-
-            if (_settings.BakeLanguages.empty()) {
-                throw GenericException("No languages specified");
-            }
-
-            // Find languages
-            const auto& default_lang = _settings.BakeLanguages.front();
-            set<string> languages;
-            set<string> all_languages;
-
-            for (auto txt_files = baker_engine.Resources.FilterFiles("fotxt"); txt_files.MoveNext();) {
-                const auto file = txt_files.GetCurFileHeader();
-                const auto& file_name = file.GetName();
-
-                const auto sep = file_name.find('.');
-                RUNTIME_ASSERT(sep != string::npos);
-
-                string lang_name = file_name.substr(sep + 1);
-                RUNTIME_ASSERT(!lang_name.empty());
-
-                if (all_languages.emplace(lang_name).second) {
-                    if (std::find(_settings.BakeLanguages.begin(), _settings.BakeLanguages.end(), lang_name) == _settings.BakeLanguages.end()) {
-                        WriteLog("Unsupported language: {}. Skip", lang_name);
-                    }
-                    else {
-                        WriteLog("Language: {}{}", lang_name, lang_name == default_lang ? " (default)" : "");
-                        languages.emplace(lang_name);
-                    }
-                }
-            }
-
-            if (languages.count(default_lang) == 0) {
-                throw GenericException("Default language not found");
-            }
-
-            // Parse texts
-            vector<LanguagePack> lang_packs;
-
-            for (const auto& lang_name : languages) {
-                auto lang_pack = LanguagePack {lang_name, baker_engine};
-                lang_pack.ParseTexts(baker_engine.Resources, baker_engine);
-
-                if (lang_name == default_lang) {
-                    // Default language should be first
-                    lang_packs.insert(lang_packs.begin(), std::move(lang_pack));
+            const auto bake_checker = [&](const string& path, uint64 write_time) -> bool {
+                if (!force_baking_) {
+                    actual_resource_names.emplace(exclude_all_ext(path));
+                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combinePath(path));
                 }
                 else {
-                    lang_packs.emplace_back(std::move(lang_pack));
-                }
-            }
-
-            // Dialog texts
-            for (auto* pack : dialog_mngr.GetDialogs()) {
-                for (size_t i = 0; i < pack->Texts.size(); i++) {
-                    for (auto& lang : lang_packs) {
-                        if (pack->Texts[i].first != lang.GetName()) {
-                            continue;
-                        }
-
-                        auto& text_pack = lang.GetTextPackForEdit(TextPackName::Dialogs);
-
-                        if (text_pack.CheckIntersections(pack->Texts[i].second)) {
-                            throw GenericException("Dialog text intersection detected", pack->PackName);
-                        }
-
-                        text_pack.Merge(pack->Texts[i].second);
+                    return true;
                     }
-                }
-            }
-
-            // Proto texts
-            bool text_intersected = false;
-
-            const auto fill_proto_texts = [&parsed_texts = proto_mngr.GetParsedTexts(), &lang_packs, &text_intersected](const auto& protos, TextPackName pack_name) {
-                for (auto&& [pid, proto] : protos) {
-                    for (const auto& proto_text : parsed_texts.at(proto->GetTypeName()).at(pid)) {
-                        const auto lang_predicate = [&lang_name = proto_text.first](const LanguagePack& lang) { return lang.GetName() == lang_name; };
-                        const auto it_lang = std::find_if(lang_packs.begin(), lang_packs.end(), lang_predicate);
-
-                        if (it_lang != lang_packs.end()) {
-                            auto& text_pack = it_lang->GetTextPackForEdit(pack_name);
-
-                            if (text_pack.CheckIntersections(proto_text.second)) {
-                                WriteLog("Proto text intersection detected for proto {} and pack {}", proto->GetName(), pack_name);
-                                text_intersected = true;
-                            }
-
-                            text_pack.Merge(proto_text.second);
-                        }
-                        else {
-                            throw GenericException("Unsupported language in proto", proto->GetName(), proto_text.first);
-                        }
-                    }
-                }
             };
 
-            fill_proto_texts(proto_mngr.GetProtoCritters(), TextPackName::Dialogs);
-            fill_proto_texts(proto_mngr.GetProtoItems(), TextPackName::Items);
-            fill_proto_texts(proto_mngr.GetProtoMaps(), TextPackName::Maps);
-            fill_proto_texts(proto_mngr.GetProtoLocations(), TextPackName::Locations);
+            const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
+                auto res_file = DiskFileSystem::OpenFile(strex(output_dir).combinePath(path), true);
+                RUNTIME_ASSERT(res_file);
+                const auto res_file_write_ok = res_file.Write(baked_data);
+                RUNTIME_ASSERT(res_file_write_ok);
 
-            for (auto&& [type_name, entity_info] : baker_engine.GetEntityTypesInfo()) {
-                if (!entity_info.Exported && entity_info.HasProtos) {
-                    fill_proto_texts(proto_mngr.GetProtoEntities(type_name), TextPackName::Protos);
-                }
-            }
+                ++baked_files;
+                };
 
-            if (text_intersected) {
-                throw GenericException("Proto text intersection detected");
-            }
+            auto bakers = BaseBaker::SetupBakers(res_pack.Name, settings, bake_checker, write_data, &baking_output_);
 
-            // Fix for missing texts in packs
-            for (size_t i = 1; i < lang_packs.size(); i++) {
-                lang_packs[i].FixTexts(lang_packs[0]);
-            }
-
-            // Save parsed packs
-            for (const auto& lang_pack : lang_packs) {
-                lang_pack.SaveTextsToDisk(MakeOutputPath("Texts"));
-            }
-
-            WriteLog("Bake texts complete");
-
-            // Engine restore info
-            WriteLog("Bake engine restore info");
-
-            {
-                const auto restore_info_bin = BakerEngine::GetRestoreInfo();
-                const auto del_restore_info_ok = DiskFileSystem::DeleteDir(MakeOutputPath("EngineData"));
-                RUNTIME_ASSERT(del_restore_info_ok);
-                auto restore_info_file = DiskFileSystem::OpenFile(MakeOutputPath("EngineData/RestoreInfo.fobin"), true);
-                RUNTIME_ASSERT(restore_info_file);
-                const auto restore_info_file_write_ok = restore_info_file.Write(restore_info_bin);
-                RUNTIME_ASSERT(restore_info_file_write_ok);
-            }
-
-            WriteLog("Bake engine restore info complete");
+            for (auto& baker : bakers) {
+                baker->BakeFiles(filtered_files.Copy());
         }
+
+            // Delete outdated
+            if (!force_baking_) {
+                DiskFileSystem::IterateDir(output_dir, "", true, [&](string_view path, size_t size, uint64 write_time) {
+                    UNUSED_VARIABLE(size);
+                    UNUSED_VARIABLE(write_time);
+
+                    if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
+                        DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
+                        WriteLog("Delete outdated file {}", path);
+            }
+                });
+                        }
+
+            if (baked_files != 0) {
+                res_baked_ = true;
+                                }
+
+            WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
+        };
+
+        int errors = 0;
+
+        for (int bake_order = 0; bake_order <= _settings.MaxBakeOrder; bake_order++) {
+            vector<std::future<void>> res_bakings;
+            vector<string> res_baking_outputs;
+
+            for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+                if (res_pack.BakeOrder == bake_order) {
+                    WriteLog("Bake {}", res_pack.Name);
+                    const auto res_baking_output = MakeOutputPath(res_pack.Name);
+                    const auto async_mode = _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
+                    auto res_baking = std::async(async_mode, [&, res_baking_output] { bake_resource_pack(res_pack, res_baking_output); });
+                    res_bakings.emplace_back(std::move(res_baking));
+                    res_baking_outputs.emplace_back(res_baking_output);
+                                }
+                            }
+
+            for (auto& res_baking : res_bakings) {
+                try {
+                    res_baking.get();
+                }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+                    WriteLog("{}", ex.what());
             errors++;
         }
         catch (...) {
             UNKNOWN_EXCEPTION();
         }
+            }
 
-        WriteLog("Bake content complete");
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
-        errors++;
-    }
-    catch (...) {
-        UNKNOWN_EXCEPTION();
-    }
+            if (errors != 0) {
+                ExitApp(false);
+                    }
 
-    WriteLog("Time {}", bake_time.GetDuration());
+            for (const auto& res_baking_output : res_baking_outputs) {
+                baking_output.AddDataSource(res_baking_output);
+            }
+
+            if (res_baked) {
+                force_baking = true;
+                }
+                }
+
+        // Copy engine data to Core pack
+        const auto copy_engine_data_ok = DiskFileSystem::CopyFile(MakeOutputPath("EngineData/EngineData.fobin"), MakeOutputPath("Core/EngineData.fobin"));
+        RUNTIME_ASSERT(copy_engine_data_ok);
+                        }
 
     // Finalize
-    if (errors != 0) {
-        WriteLog("Baking failed!");
-        ExitApp(false);
-    }
-
+    WriteLog("Time {}", bake_time.GetDuration());
     WriteLog("Baking complete!");
 
     {
@@ -1134,18 +416,26 @@ void Baker::BakeAll()
     }
 }
 
-static unordered_map<string, std::function<bool(hstring, const ScriptSystem&)>> ScriptFuncVerify = {
-    {"ItemInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Item*, bool>(func_name); }},
-    {"ItemStatic", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<bool, Critter*, StaticItem*, Item*, any_t>(func_name); }},
-    {"ItemTrigger", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-    {"CritterInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Critter*, bool>(func_name); }},
-    {"MapInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Map*, bool>(func_name); }},
-    {"LocationInit", [](hstring func_name, const ScriptSystem& script_sys) { return script_sys.CheckFunc<void, Location*, bool>(func_name); }},
-};
+class Item;
+using StaticItem = Item;
+class Critter;
+class Map;
+class Location;
 
-auto Baker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem& script_sys, const unordered_set<hstring>& resource_hashes) const -> int
+auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> int
 {
     STACK_TRACE_ENTRY();
+
+    static unordered_map<string, std::function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
+        {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Item*, bool>(func_name); }},
+        {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, Critter*, StaticItem*, Item*, any_t>(func_name); }},
+        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
+        {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Critter*, bool>(func_name); }},
+        {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Map*, bool>(func_name); }},
+        {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Location*, bool>(func_name); }},
+    };
+
+    RUNTIME_ASSERT(_bakedFiles);
 
     int errors = 0;
 
@@ -1158,7 +448,7 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
             if (prop->IsPlainData()) {
                 const auto res_name = props.GetValue<hstring>(prop);
 
-                if (res_name && resource_hashes.count(res_name) == 0) {
+                if (res_name && !_bakedFiles->ReadFileHeader(res_name)) {
                     WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
                 }
@@ -1171,7 +461,7 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
                 const auto res_names = props.GetValue<vector<hstring>>(prop);
 
                 for (const auto res_name : res_names) {
-                    if (res_name && resource_hashes.count(res_name) == 0) {
+                    if (res_name && !_bakedFiles->ReadFileHeader(res_name)) {
                         WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
                     }
@@ -1183,15 +473,15 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
             }
         }
 
-        if (!prop->GetBaseScriptFuncType().empty()) {
+        if (script_sys != nullptr && !prop->GetBaseScriptFuncType().empty()) {
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
 
-                if (ScriptFuncVerify.count(prop->GetBaseScriptFuncType()) == 0) {
+                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
-                else if (func_name && !ScriptFuncVerify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
+                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
                     WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
@@ -1212,7 +502,7 @@ BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& set
 {
     STACK_TRACE_ENTRY();
 
-    _bakers = BaseBaker::SetupBakers(_settings, nullptr, [this](string_view baked_path, const_span<uint8> baked_data) { WriteData(baked_path, baked_data); });
+    _bakers = BaseBaker::SetupBakers("Baker", _settings, nullptr, [this](string_view baked_path, const_span<uint8> baked_data) { WriteData(baked_path, baked_data); }, nullptr);
 }
 
 void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_data)
@@ -1221,15 +511,17 @@ void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_
 
     NON_CONST_METHOD_HINT();
 
+    auto locker = std::scoped_lock(_bakedCacheLocker);
+
     auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
-    _bakedFiles[baked_path] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
+    _bakedCache[baked_path] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
 }
 
 auto BakerDataSource::FindFile(string_view path) const -> File*
 {
     STACK_TRACE_ENTRY();
 
-    if (const auto it = _bakedFiles.find(path); it != _bakedFiles.end()) {
+    if (const auto it = _bakedCache.find(path); it != _bakedCache.end()) {
         return it->second ? it->second.get() : nullptr;
     }
 
@@ -1240,13 +532,13 @@ auto BakerDataSource::FindFile(string_view path) const -> File*
 
         for (auto& baker : _bakers) {
             if (baker->IsExtSupported(ext)) {
-                baker->BakeFiles(FileCollection({file.Duplicate()}));
+                baker->BakeFiles(FileCollection({file.Copy()}));
                 file_baked = true;
             }
         }
 
         if (!file_baked) {
-            _bakedFiles[path] = SafeAlloc::MakeUnique<File>(std::move(file));
+            _bakedCache[path] = SafeAlloc::MakeUnique<File>(std::move(file));
         }
     }
     else {
@@ -1254,10 +546,10 @@ auto BakerDataSource::FindFile(string_view path) const -> File*
     }
 
     if (!file_baked) {
-        _bakedFiles[path] = nullptr;
+        _bakedCache[path] = nullptr;
     }
 
-    if (const auto it = _bakedFiles.find(path); it != _bakedFiles.end()) {
+    if (const auto it = _bakedCache.find(path); it != _bakedCache.end()) {
         return it->second ? it->second.get() : nullptr;
     }
     else {
@@ -1301,4 +593,33 @@ auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, strin
     UNUSED_VARIABLE(ext);
 
     throw NotImplementedException(LINE_STR);
+}
+
+BakerEngine::BakerEngine(PropertiesRelationType props_relation) :
+    EngineData(props_relation, [this] {
+        extern void Baker_RegisterData(EngineData*);
+        Baker_RegisterData(this);
+    })
+{
+    STACK_TRACE_ENTRY();
+}
+
+auto BakerEngine::GetRestoreInfo() -> vector<uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    extern auto Baker_GetRestoreInfo() -> vector<uint8>;
+    return Baker_GetRestoreInfo();
+}
+
+BakerScriptSystem::BakerScriptSystem(BakerEngine& engine, const FileSystem& resources)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(engine.GetPropertiesRelation() == PropertiesRelationType::ServerRelative);
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    extern void Init_AngelScriptCompiler_ServerScriptSystem_Validation(EngineData*, ScriptSystem&, const FileSystem&);
+    Init_AngelScriptCompiler_ServerScriptSystem_Validation(&engine, *this, resources);
+#endif
 }

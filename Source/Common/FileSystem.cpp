@@ -44,13 +44,8 @@ FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 w
     _dataSource {ds}
 {
     STACK_TRACE_ENTRY();
-}
 
-FileHeader::operator bool() const
-{
-    STACK_TRACE_ENTRY();
-
-    return _isLoaded;
+    RUNTIME_ASSERT(_dataSource);
 }
 
 auto FileHeader::GetName() const -> const string&
@@ -76,6 +71,8 @@ auto FileHeader::GetPath() const -> const string&
 auto FileHeader::GetFullPath() const -> string
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_isLoaded);
 
     return strex(_dataSource->GetPackName()).combinePath(_filePath);
 }
@@ -104,16 +101,16 @@ auto FileHeader::GetDataSource() const -> const DataSource*
 
     RUNTIME_ASSERT(_isLoaded);
 
-    return _dataSource;
+    return _dataSource.get();
 }
 
-auto FileHeader::Duplicate() const -> FileHeader
+auto FileHeader::Copy() const -> FileHeader
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
 
-    return {_fileName, _filePath, _fileSize, _writeTime, _dataSource};
+    return {_fileName, _filePath, _fileSize, _writeTime, _dataSource.get()};
 }
 
 File::File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf) :
@@ -236,9 +233,10 @@ auto File::FindFragment(string_view fragment) -> bool
         return false;
     }
 
-    for (auto i = _curPos; i < _fileSize - fragment.size(); i++) {
+    for (size_t i = _curPos; i < _fileSize - fragment.size(); i++) {
         if (_fileBuf.get()[i] == static_cast<uint8>(fragment[0])) {
-            auto not_match = false;
+            bool not_match = false;
+
             for (uint j = 1; j < fragment.size(); j++) {
                 if (_fileBuf.get()[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
                     not_match = true;
@@ -285,6 +283,7 @@ auto File::GetStrNT() -> string
     }
 
     uint len = 0;
+
     while (*(_fileBuf.get() + _curPos + len) != 0) {
         len++;
     }
@@ -360,9 +359,11 @@ auto File::GetBEUInt() -> uint
 
     uint res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
+
     for (auto i = 3; i >= 0; i--) {
         cres[i] = _fileBuf.get()[_curPos++];
     }
+
     return res;
 }
 
@@ -380,9 +381,11 @@ auto File::GetLEUInt() -> uint
 
     uint res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
+
     for (auto i = 0; i <= 3; i++) {
         cres[i] = _fileBuf.get()[_curPos++];
     }
+
     return res;
 }
 
@@ -393,7 +396,7 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
     _allFiles.reserve(files.size());
 
     for (const auto& file : files) {
-        _allFiles.emplace_back(file.Duplicate());
+        _allFiles.emplace_back(file.Copy());
     }
 }
 
@@ -508,6 +511,20 @@ auto FileCollection::GetFilesCount() const -> size_t
     return _allFiles.size();
 }
 
+auto FileCollection::Copy() const -> FileCollection
+{
+    STACK_TRACE_ENTRY();
+
+    vector<FileHeader> files;
+    files.reserve(_allFiles.size());
+
+    for (const auto& file : _allFiles) {
+        files.emplace_back(file.Copy());
+    }
+
+    return FileCollection(std::move(files));
+}
+
 void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
     STACK_TRACE_ENTRY();
@@ -599,6 +616,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
     for (const auto& ds : _dataSources) {
         size_t size = 0;
         uint64 write_time = 0;
+
         if (ds->IsFilePresent(path, size, write_time)) {
             return {strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get()};
         }

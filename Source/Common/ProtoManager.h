@@ -40,21 +40,19 @@
 
 DECLARE_EXCEPTION(ProtoManagerException);
 
-class FOEngineBase;
+class EngineData;
 
 class ProtoManager final
 {
 public:
-    explicit ProtoManager(FOEngineBase* engine);
+    explicit ProtoManager(EngineData& engine);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
     auto operator=(ProtoManager&&) noexcept = delete;
     ~ProtoManager() = default;
 
-    [[nodiscard]] auto GetProtosBinaryData() const -> vector<uint8>;
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
-    [[nodiscard]] auto GetParsedTexts() const -> const auto& { return _parsedTexts; }
 
     [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoItem*;
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoCritter*;
@@ -74,13 +72,12 @@ public:
     [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _locProtos; }
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
-    void ParseProtos(const FileSystem& resources);
-    void LoadFromResources();
+    void LoadFromResources(const FileSystem& resources);
 
 private:
     auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;
 
-    FOEngineBase* _engine;
+    raw_ptr<EngineData> _engine;
     const hstring _migrationRuleName;
     const hstring _itemTypeName;
     const hstring _crTypeName;
@@ -92,5 +89,4 @@ private:
     unordered_map<hstring, const ProtoLocation*> _locProtos {};
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> _protos {};
     const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
-    unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> _parsedTexts {};
 };

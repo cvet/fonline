@@ -59,10 +59,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _startTime = nanotime::now();
 
     _resources.AddDataSource(_settings.EmbeddedResources);
-    _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
+    _resources.AddDataSource(_settings.ClientResources, DataSourceType::DirRoot);
 
     if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddDataSource(strex(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+        _resources.AddDataSource(strex(_settings.ClientResources).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -208,7 +208,7 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 {
     STACK_TRACE_ENTRY();
 
-    return strex(_settings.ResourcesDir).combinePath(fname);
+    return strex(_settings.ClientResources).combinePath(fname);
 }
 
 void Updater::AddText(string_view text)
@@ -253,7 +253,7 @@ void Updater::Net_OnInitData()
     if (!data.empty()) {
         FileSystem resources;
 
-        resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
+        resources.AddDataSource(_settings.ClientResources, DataSourceType::DirRoot);
 
         auto reader = DataReader(data);
 

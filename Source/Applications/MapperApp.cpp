@@ -97,7 +97,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv, true);
+        InitApp(argc, argv, AppInitFlags::ClientMode);
 
 #if FO_IOS
         MapperEntry(nullptr);

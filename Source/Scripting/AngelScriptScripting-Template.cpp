@@ -59,7 +59,6 @@
 #endif
 
 #include "Application.h"
-#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "Entity.h"
 #include "EntityProperties.h"
@@ -131,6 +130,8 @@ static constexpr size_t SCRIPT_BACKEND_INDEX = 1;
 #endif
 
 #if COMPILER_MODE
+#define BaseEngine EngineData
+
 class BaseEntity;
 class CustomEntity;
 class CustomEntityWithProto;
@@ -141,46 +142,49 @@ class CustomEntityWithProtoView;
 #define ENTITY_VERIFY(e)
 #define ENTITY_VERIFY_RETURN(e, ret)
 
-static GlobalSettings DummySettings {};
-
 #define COMPILER_ENGINE_CLASS CONCAT(FOCompilerEngine_, SCRIPT_BACKEND_CLASS)
 
-class COMPILER_ENGINE_CLASS : public FOEngineBase
+class COMPILER_ENGINE_CLASS : public EngineData
 {
 public:
 #if SERVER_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
+        EngineData(PropertiesRelationType::ServerRelative, [this] {
+            extern void AngelScript_ServerCompiler_RegisterData(EngineData*);
+            AngelScript_ServerCompiler_RegisterData(this);
+        })
     {
-        extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
-        AngelScript_ServerCompiler_RegisterData(this);
     }
 #elif CLIENT_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
+        EngineData(PropertiesRelationType::ClientRelative, [this] {
+            extern void AngelScript_ClientCompiler_RegisterData(EngineData*);
+            AngelScript_ClientCompiler_RegisterData(this);
+        })
     {
-        extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
-        AngelScript_ClientCompiler_RegisterData(this);
     }
 #elif MAPPER_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
+        EngineData(PropertiesRelationType::BothRelative, [this] {
+            extern void AngelScript_MapperCompiler_RegisterData(EngineData*);
+            AngelScript_MapperCompiler_RegisterData(this);
+        })
     {
-        extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
-        AngelScript_MapperCompiler_RegisterData(this);
     }
 #endif
+
+    ScriptSystem ScriptSys {};
 };
 #endif
 
 #if !COMPILER_MODE
-#define GET_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<FOEngineBase*>(as_engine->GetUserData())
+#define GET_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<BaseEngine*>(as_engine->GetUserData())
 #define GET_AS_ENGINE_FROM_SELF() GET_AS_ENGINE_FROM_ENTITY(self)
 #define GET_AS_ENGINE_FROM_ENTITY(entity) GET_AS_ENGINE_FROM_ENGINE(entity->GetEngine())
-#define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys->GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine
+#define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys.GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine
 #define GET_SCRIPT_BACKEND_FROM_SELF() GET_SCRIPT_BACKEND_FROM_ENTITY(self)
 #define GET_SCRIPT_BACKEND_FROM_ENTITY(entity) GET_SCRIPT_BACKEND_FROM_ENGINE(entity->GetEngine())
-#define GET_SCRIPT_BACKEND_FROM_ENGINE(engine) engine->ScriptSys->GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)
+#define GET_SCRIPT_BACKEND_FROM_ENGINE(engine) engine->ScriptSys.GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)
 
 #define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
@@ -280,10 +284,10 @@ public:
     struct EnumInfo
     {
         string EnumName {};
-        FOEngineBase* Engine {};
+        BaseEngine* Engine {};
     };
 
-    void Init(FOEngineBase* engine, const FileSystem* resources);
+    void Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources);
 
     ~SCRIPT_BACKEND_CLASS() override
     {
@@ -504,7 +508,7 @@ public:
         }
     }
 
-    FOEngineBase* Engine {};
+    BaseEngine* Engine {};
     asIScriptEngine* ASEngine {};
     set<CScriptArray*> EnumArrays {};
     map<string, EnumInfo> EnumInfos {};
@@ -659,7 +663,9 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
 class SCRIPT_BACKEND_CLASS : public ScriptSystemBackend
 {
 public:
-    void Init(FOEngineBase* engine, const FileSystem* resources);
+    void Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources);
+
+    vector<uint8> CompiledScriptData {};
 };
 #endif
 
@@ -1037,10 +1043,10 @@ template<typename TRet, typename... Args>
         RUNTIME_ASSERT(inserted);
 
         auto& func_desc = it_inserted->second;
-        func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_backend->Engine) : hstring();
+        func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, script_backend->Engine->Hashes) : hstring();
         func_desc.CallSupported = true;
-        func_desc.RetType = script_backend->Engine->ScriptSys->ResolveEngineType(typeid(TRet));
-        func_desc.ArgsType = {script_backend->Engine->ScriptSys->ResolveEngineType(typeid(Args))...};
+        func_desc.RetType = script_backend->Engine->ScriptSys.ResolveEngineType(typeid(TRet));
+        func_desc.ArgsType = {script_backend->Engine->ScriptSys.ResolveEngineType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
         func_desc.Call = [script_backend, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
             return AngelScriptFuncCall(script_backend, &func_desc, as_func.get(), args, ret);
@@ -1062,7 +1068,7 @@ template<typename TRet, typename... Args>
         throw ScriptException("Function must be global (not delegate)");
     }
 
-    return GetASFuncName(func, *script_backend->Engine);
+    return GetASFuncName(func, script_backend->Engine->Hashes);
 }
 #endif
 
@@ -2233,7 +2239,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
+    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
@@ -2317,7 +2323,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
+    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
@@ -2790,8 +2796,8 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
-    auto hstr = engine->ToHashedString(*str);
+    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
+    auto hstr = engine->Hashes.ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
 
 #else
@@ -2806,9 +2812,9 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
+    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     bool failed = false;
-    auto hstr = engine->ResolveHash(hash, &failed);
+    auto hstr = engine->Hashes.ResolveHash(hash, &failed);
     UNUSED_VARIABLE(hstr);
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
 
@@ -2824,8 +2830,8 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
-    auto hstr = engine->ResolveHash(hash);
+    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
+    auto hstr = engine->Hashes.ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 
 #else
@@ -3077,8 +3083,8 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
         auto* self = static_cast<any_t*>(gen->GetObject());
-        auto* engine = static_cast<FOEngineBase*>(gen->GetAuxiliary());
-        auto hstr = engine->ToHashedString(*self);
+        auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
+        auto hstr = engine->Hashes.ToHashedString(*self);
         new (gen->GetAddressOfReturnLocation()) hstring(hstr);
     }
 
@@ -3443,12 +3449,12 @@ static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 }
 
 template<typename T>
-static auto Game_GetProtoCustomEntity(FOEngineBase* engine, hstring pid) -> const ProtoCustomEntity*
+static auto Game_GetProtoCustomEntity(BaseEngine* engine, hstring pid) -> const ProtoCustomEntity*
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
+    const auto entity_type = engine->Hashes.ToHashedString(T::ENTITY_TYPE_NAME);
     const auto* proto = engine->ProtoMngr.GetProtoEntitySafe(entity_type, pid);
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
@@ -3464,12 +3470,12 @@ static auto Game_GetProtoCustomEntity(FOEngineBase* engine, hstring pid) -> cons
 }
 
 template<typename T>
-static auto Game_GetProtoCustomEntities(FOEngineBase* engine) -> CScriptArray*
+static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto entity_type = engine->ToHashedString(T::ENTITY_TYPE_NAME);
+    const auto entity_type = engine->Hashes.ToHashedString(T::ENTITY_TYPE_NAME);
     const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
 
     vector<const ProtoCustomEntity*> result;
@@ -3492,7 +3498,7 @@ static auto Game_GetProtoCustomEntities(FOEngineBase* engine) -> CScriptArray*
 }
 
 template<typename T>
-static void Game_DestroyOne(FOEngineBase* engine, T* entity)
+static void Game_DestroyOne(BaseEngine* engine, T* entity)
 {
     STACK_TRACE_ENTRY();
 
@@ -3513,7 +3519,7 @@ static void Game_DestroyOne(FOEngineBase* engine, T* entity)
 }
 
 template<typename T>
-static void Game_DestroyAll(FOEngineBase* engine, CScriptArray* as_entities)
+static void Game_DestroyAll(BaseEngine* engine, CScriptArray* as_entities)
 {
     STACK_TRACE_ENTRY();
 
@@ -3521,6 +3527,7 @@ static void Game_DestroyAll(FOEngineBase* engine, CScriptArray* as_entities)
 #if SERVER_SCRIPTING
     auto* as_engine = GET_AS_ENGINE_FROM_ENGINE(engine);
     const auto entities = MarshalArray<T*>(as_engine, as_entities);
+
     for (auto* entity : entities) {
         if (entity != nullptr) {
             static_cast<FOServer*>(engine)->EntityMngr.DestroyEntity(entity);
@@ -3692,9 +3699,8 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(param);
-
     const char* type = "error";
+
     if (msg->type == asMSGTYPE_WARNING) {
         type = "warning";
     }
@@ -3702,15 +3708,26 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
         type = "info";
     }
 
-    const auto formatted_message = strex("{}({},{}): {} : {}", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message).str();
+    auto* as_engine = static_cast<asIScriptEngine*>(param);
+    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
+    const auto& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
+    const auto orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
+
+    const auto formatted_message = strex("{}({},{}): {} : {}", orig_file, orig_line, msg->col, type, msg->message).str();
 
 #if COMPILER_MODE
-    extern unordered_set<string> CompilerPassedMessages;
-    if (CompilerPassedMessages.count(formatted_message) == 0) {
-        CompilerPassedMessages.insert(formatted_message);
-    }
-    else {
-        return;
+    {
+        static std::mutex locker;
+        std::scoped_lock<std::mutex> lock(locker);
+
+        extern unordered_set<string> CompilerPassedMessages;
+
+        if (CompilerPassedMessages.count(formatted_message) == 0) {
+            CompilerPassedMessages.insert(formatted_message);
+        }
+        else {
+            return;
+        }
     }
 #endif
 
@@ -3718,12 +3735,12 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* resources);
+static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& script_files) -> vector<uint8>;
 #else
 static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin);
 #endif
 
-void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resources)
+void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources)
 {
     STACK_TRACE_ENTRY();
 
@@ -3731,23 +3748,23 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
     static int dummy = 0;
 #endif
 
-#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
+    // Maybe unused
+    UNUSED_VARIABLE(script_files);
     UNUSED_VARIABLE(resources);
-#endif
 
 #if COMPILER_MODE
 #if SERVER_SCRIPTING
-    engine->ScriptSys->MapEngineEntityType<Player>("Player");
-    engine->ScriptSys->MapEngineEntityType<Item>("Item");
-    engine->ScriptSys->MapEngineEntityType<Critter>("Critter");
-    engine->ScriptSys->MapEngineEntityType<Map>("Map");
-    engine->ScriptSys->MapEngineEntityType<Location>("Location");
+    script_sys.MapEngineEntityType<Player>("Player");
+    script_sys.MapEngineEntityType<Item>("Item");
+    script_sys.MapEngineEntityType<Critter>("Critter");
+    script_sys.MapEngineEntityType<Map>("Map");
+    script_sys.MapEngineEntityType<Location>("Location");
 #else
-    engine->ScriptSys->MapEngineEntityType<PlayerView>("Player");
-    engine->ScriptSys->MapEngineEntityType<ItemView>("Item");
-    engine->ScriptSys->MapEngineEntityType<CritterView>("Critter");
-    engine->ScriptSys->MapEngineEntityType<MapView>("Map");
-    engine->ScriptSys->MapEngineEntityType<LocationView>("Location");
+    script_sys.MapEngineEntityType<PlayerView>("Player");
+    script_sys.MapEngineEntityType<ItemView>("Item");
+    script_sys.MapEngineEntityType<CritterView>("Critter");
+    script_sys.MapEngineEntityType<MapView>("Map");
+    script_sys.MapEngineEntityType<LocationView>("Location");
 #endif
 #endif
 
@@ -3768,7 +3785,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
 #endif
 
     int as_result;
-    AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
+    AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(CallbackMessage), as_engine, asCALL_CDECL));
 
     AS_VERIFY(as_engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
     AS_VERIFY(as_engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
@@ -4144,7 +4161,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
 
 #define REGISTER_ENTITY_HOLDER(holder_class_name, class_name, holder_real_class, real_class, entity_info, entry_name) \
     { \
-        const hstring& entry_name_hash = *hashed_strings.emplace(engine->ToHashedString(entry_name)).first; \
+        const hstring& entry_name_hash = *hashed_strings.emplace(engine->Hashes.ToHashedString(entry_name)).first; \
         if constexpr (SERVER_SCRIPTING) { \
             if (entity_has_protos.count(class_name) != 0) { \
                 AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "(hstring pid)", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
@@ -4212,7 +4229,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     if (auto* func = as_engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        engine->ScriptSys->BindRemoteCallReceiver(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
+        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4311,7 +4328,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
         }
     }
 
-    AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<FOEngineBase*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Engine)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<BaseEngine*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Engine)));
 
 #if SERVER_SCRIPTING
     AS_VERIFY(as_engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
@@ -4329,27 +4346,20 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-    CompileRootModule(as_engine, resources);
+    CompiledScriptData = CompileRootModule(as_engine, *script_files);
     as_engine->ShutDownAndRelease();
 #else
-#if COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
-    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
+    FileCollection script_bin_files = resources->FilterFiles("fosb-server");
 #elif CLIENT_SCRIPTING
-    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
+    FileCollection script_bin_files = resources->FilterFiles("fosb-client");
 #elif MAPPER_SCRIPTING
-    engine->Resources.AddDataSource(strex(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
+    FileCollection script_bin_files = resources->FilterFiles("fosb-mapper");
 #endif
-#endif
-#if SERVER_SCRIPTING
-    File script_file = engine->Resources.ReadFile("ServerRootModule.fosb");
-#elif CLIENT_SCRIPTING
-    File script_file = engine->Resources.ReadFile("ClientRootModule.fosb");
-#elif MAPPER_SCRIPTING
-    File script_file = engine->Resources.ReadFile("MapperRootModule.fosb");
-#endif
-    RUNTIME_ASSERT(script_file);
-    RestoreRootModule(as_engine, {script_file.GetBuf(), script_file.GetSize()});
+    RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
+    script_bin_files.MoveNext();
+    auto script_bin_file = script_bin_files.GetCurFile();
+    RestoreRootModule(as_engine, {script_bin_file.GetBuf(), script_bin_file.GetSize()});
 #endif
 
 #if !COMPILER_MODE || COMPILER_VALIDATION_MODE
@@ -4358,8 +4368,8 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
         RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
         auto* mod = as_engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [this, engine, as_engine](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
-            const auto& engine_type_map = engine->ScriptSys->GetEngineTypeMap();
+        const auto as_type_to_type_info = [&](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
+            const auto& engine_type_map = script_sys.GetEngineTypeMap();
             auto* as_type_info = as_engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
@@ -4461,8 +4471,8 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
             auto* func = mod->GetFunctionByIndex(i);
 
             // Bind
-            const auto func_name = GetASFuncName(func, *engine);
-            auto* func_desc = engine->ScriptSys->AddScriptFunc(func_name);
+            const auto func_name = GetASFuncName(func, engine->Hashes);
+            auto* func_desc = script_sys.AddScriptFunc(func_name);
 
             func_desc->Name = func_name;
             func_desc->Declaration = func->GetDeclaration(true, true, true);
@@ -4493,7 +4503,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
                 const auto func_name_ex = strex(func->GetName());
 
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
-                    engine->ScriptSys->AddInitFunc(func_desc);
+                    script_sys.AddInitFunc(func_desc);
                 }
             }
         }
@@ -4505,7 +4515,7 @@ void SCRIPT_BACKEND_CLASS::Init(FOEngineBase* engine, const FileSystem* resource
 #endif
 
 #if !COMPILER_MODE
-    engine->ScriptSys->AddLoopCallback([this] { ResumeSuspendedContexts(); });
+    script_sys.AddLoopCallback([this] { ResumeSuspendedContexts(); });
 #endif
 }
 
@@ -4547,7 +4557,7 @@ private:
 };
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* resources)
+static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& script_files) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -4608,13 +4618,10 @@ static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* reso
         int _includeDeep {};
     };
 
-    auto script_files = resources->FilterFiles("fos");
-
     map<string, string> final_script_files;
     vector<tuple<int, string, string>> final_script_files_order;
 
-    while (script_files.MoveNext()) {
-        auto script_file = script_files.GetCurFile();
+    for (const auto& script_file : script_files) {
         string script_name = string(script_file.GetName());
         string script_path = string(script_file.GetFullPath());
         string script_content = script_file.GetStr();
@@ -4651,21 +4658,24 @@ static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* reso
         root_script.append("\"\n");
     }
 
-    Preprocessor::UndefAll();
-    Preprocessor::Define("SERVER 0");
-    Preprocessor::Define("CLIENT 0");
-    Preprocessor::Define("MAPPER 0");
+    auto* preprocessor_context = Preprocessor::CreateContext();
+    auto delete_preprocessor_context = ScopeCallback([&]() noexcept { Preprocessor::DeleteContext(preprocessor_context); });
+
+    Preprocessor::UndefAll(preprocessor_context);
+    Preprocessor::Define(preprocessor_context, "SERVER 0");
+    Preprocessor::Define(preprocessor_context, "CLIENT 0");
+    Preprocessor::Define(preprocessor_context, "MAPPER 0");
 #if SERVER_SCRIPTING
-    Preprocessor::Define("SERVER 1");
+    Preprocessor::Define(preprocessor_context, "SERVER 1");
 #elif CLIENT_SCRIPTING
-    Preprocessor::Define("CLIENT 1");
+    Preprocessor::Define(preprocessor_context, "CLIENT 1");
 #elif MAPPER_SCRIPTING
-    Preprocessor::Define("MAPPER 1");
+    Preprocessor::Define(preprocessor_context, "MAPPER 1");
 #endif
 
     auto loader = ScriptLoader(&root_script, &final_script_files);
     Preprocessor::StringOutStream result, errors;
-    const auto errors_count = Preprocessor::Preprocess("", result, &errors, &loader);
+    const auto errors_count = Preprocessor::Preprocess(preprocessor_context, "", result, &errors, &loader);
 
     while (!errors.String.empty() && errors.String.back() == '\n') {
         errors.String.pop_back();
@@ -4677,6 +4687,9 @@ static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* reso
     else if (!errors.String.empty()) {
         WriteLog("Preprocessor message: {}", errors.String);
     }
+
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context);
+    as_engine->SetUserData(lnt, 5);
 
     asIScriptModule* mod = as_engine->GetModule("Root", asGM_ALWAYS_CREATE);
 
@@ -4704,7 +4717,6 @@ static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* reso
         throw ScriptCompilerException("Unable to save byte code", as_result);
     }
 
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
     std::vector<uint8> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
@@ -4715,22 +4727,7 @@ static void CompileRootModule(asIScriptEngine* as_engine, const FileSystem* reso
     writer.Write<uint>(static_cast<uint>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-#if SERVER_SCRIPTING
-    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ServerAngelScript/ServerRootModule.fosb");
-#elif CLIENT_SCRIPTING
-    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("ClientAngelScript/ClientRootModule.fosb");
-#elif MAPPER_SCRIPTING
-    const string script_out_path = strex(App->Settings.BakeOutput).combinePath("MapperAngelScript/MapperRootModule.fosb");
-#endif
-
-    auto file = DiskFileSystem::OpenFile(script_out_path, true);
-
-    if (!file) {
-        throw ScriptCompilerException("Can't write binary to file", script_out_path);
-    }
-    if (!file.Write(data)) {
-        throw ScriptCompilerException("Can't write binary to file", script_out_path);
-    }
+    return data;
 }
 
 #else
@@ -4742,15 +4739,19 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
     RUNTIME_ASSERT(!script_bin.empty());
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
+
     vector<asBYTE> buf(reader.Read<uint>());
     MemCopy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
+
     std::vector<uint8> lnt_data(reader.Read<uint>());
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
+
     reader.VerifyEnd();
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 
     asIScriptModule* mod = as_engine->GetModule("Root", asGM_ALWAYS_CREATE);
+
     if (mod == nullptr) {
         throw ScriptException("Create root module fail");
     }
@@ -4760,28 +4761,36 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);
+
     if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);
     }
 }
 #endif
 
-#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
-void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(FOEngineBase* engine)
+#if !COMPILER_MODE
+void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine)
+#elif COMPILER_VALIDATION_MODE
+void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine, ScriptSystem& script_sys, const FileSystem& resources)
 #else
-void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const FileSystem* resources)
+auto CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const vector<File>& script_files) -> vector<uint8>
 #endif
 {
     STACK_TRACE_ENTRY();
 
     auto script_backend = SafeAlloc::MakeShared<SCRIPT_BACKEND_CLASS>();
 
-#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
-    engine->ScriptSys->RegisterBackend(SCRIPT_BACKEND_INDEX, script_backend);
-    script_backend->Init(engine, nullptr);
+#if !COMPILER_MODE
+    engine->ScriptSys.RegisterBackend(SCRIPT_BACKEND_INDEX, script_backend);
+    script_backend->Init(engine, engine->ScriptSys, nullptr, &engine->Resources);
+
+#elif COMPILER_VALIDATION_MODE
+    script_sys.RegisterBackend(SCRIPT_BACKEND_INDEX, script_backend);
+    script_backend->Init(engine, script_sys, nullptr, &resources);
 
 #else
-    auto engine = SafeAlloc::MakeRefCounted<COMPILER_ENGINE_CLASS>();
-    script_backend->Init(engine.get(), resources);
+    auto engine = SafeAlloc::MakeUnique<COMPILER_ENGINE_CLASS>();
+    script_backend->Init(engine.get(), engine->ScriptSys, &script_files, nullptr);
+    return std::move(script_backend->CompiledScriptData);
 #endif
 }

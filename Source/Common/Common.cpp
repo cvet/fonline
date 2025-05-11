@@ -584,8 +584,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
         file.Write(strex("{}\n", message));
         file.Write(strex("\n"));
         file.Write(strex("Application\n"));
-        file.Write(strex("\tName        {}\n", FO_DEV_NAME));
-        file.Write(strex("\tVersion     {}\n", FO_GAME_VERSION));
+        file.Write(strex("\tName        {}\n", FO_NICE_NAME));
         file.Write(strex("\tOS          Windows\n"));
         file.Write(strex("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", time.year, time.month, time.day, time.hour, time.minute, time.second));
         file.Write(strex("\n"));

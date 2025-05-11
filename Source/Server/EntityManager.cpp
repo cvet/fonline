@@ -43,17 +43,17 @@
 
 EntityManager::EntityManager(FOServer* engine) :
     _engine {engine},
-    _playerTypeName {engine->ToHashedString(Player::ENTITY_TYPE_NAME)},
-    _locationTypeName {engine->ToHashedString(Location::ENTITY_TYPE_NAME)},
-    _mapTypeName {engine->ToHashedString(Map::ENTITY_TYPE_NAME)},
-    _critterTypeName {engine->ToHashedString(Critter::ENTITY_TYPE_NAME)},
-    _itemTypeName {engine->ToHashedString(Item::ENTITY_TYPE_NAME)},
-    _playerCollectionName {engine->ToHashedString(strex("{}s", Player::ENTITY_TYPE_NAME))},
-    _locationCollectionName {engine->ToHashedString(strex("{}s", Location::ENTITY_TYPE_NAME))},
-    _mapCollectionName {engine->ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
-    _critterCollectionName {engine->ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
-    _itemCollectionName {engine->ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
-    _removeMigrationRuleName {engine->ToHashedString("Remove")}
+    _playerTypeName {engine->Hashes.ToHashedString(Player::ENTITY_TYPE_NAME)},
+    _locationTypeName {engine->Hashes.ToHashedString(Location::ENTITY_TYPE_NAME)},
+    _mapTypeName {engine->Hashes.ToHashedString(Map::ENTITY_TYPE_NAME)},
+    _critterTypeName {engine->Hashes.ToHashedString(Critter::ENTITY_TYPE_NAME)},
+    _itemTypeName {engine->Hashes.ToHashedString(Item::ENTITY_TYPE_NAME)},
+    _playerCollectionName {engine->Hashes.ToHashedString(strex("{}s", Player::ENTITY_TYPE_NAME))},
+    _locationCollectionName {engine->Hashes.ToHashedString(strex("{}s", Location::ENTITY_TYPE_NAME))},
+    _mapCollectionName {engine->Hashes.ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
+    _critterCollectionName {engine->Hashes.ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
+    _itemCollectionName {engine->Hashes.ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
+    _removeMigrationRuleName {engine->Hashes.ToHashedString("Remove")}
 {
     STACK_TRACE_ENTRY();
 }
@@ -192,7 +192,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
 
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return nullptr;
@@ -273,7 +273,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
     auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
-    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return nullptr;
@@ -377,7 +377,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
 
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return nullptr;
@@ -451,7 +451,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
 
-    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return nullptr;
@@ -626,7 +626,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
             return {};
         }
 
-        auto proto_id = _engine->ToHashedString(proto_name);
+        auto proto_id = _engine->Hashes.ToHashedString(proto_name);
 
         if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id).has_value()) {
             return {};
@@ -659,7 +659,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
     _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), loc, loc->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), first_time);
     }
 
     if (!loc->IsDestroyed()) {
@@ -688,7 +688,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
     _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), map, map->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), first_time);
     }
 
     if (!map->IsDestroyed()) {
@@ -725,7 +725,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
     _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), cr, cr->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), first_time);
     }
 
     if (!cr->IsDestroyed()) {
@@ -754,7 +754,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys.get(), item, item->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), first_time);
     }
 
     if (!item->IsDestroyed() && item->HasInnerItems()) {
@@ -899,14 +899,14 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
         if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
             const auto* proto = entity_with_proto->GetProto();
-            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
+            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), _engine->Hashes, *_engine);
 
             doc.Emplace("_Proto", string(proto->GetName()));
 
             _engine->DbStorage.Insert(collection_name, id, doc);
         }
         else {
-            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
+            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
 
             _engine->DbStorage.Insert(collection_name, id, doc);
         }
@@ -917,7 +917,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
 
-    _engine->TimeEventMngr->InitPersistentTimeEvents(entity);
+    _engine->TimeEventMngr.InitPersistentTimeEvents(entity);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
@@ -1083,7 +1083,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
 
         RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
 
-        const auto collection_name = _engine->ToHashedString(strex("{}s", type_name));
+        const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {
@@ -1100,7 +1100,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
                 proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
             }
             else {
-                proto = _engine->ProtoMngr.GetProtoEntity(type_name, _engine->ToHashedString("Default"));
+                proto = _engine->ProtoMngr.GetProtoEntity(type_name, _engine->Hashes.ToHashedString("Default"));
             }
 
             if (proto == nullptr) {
@@ -1120,7 +1120,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator, nullptr);
         }
 
-        if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, *_engine, *_engine)) {
+        if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
             WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
             return nullptr;

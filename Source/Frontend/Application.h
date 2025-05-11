@@ -358,12 +358,19 @@ private:
     int _nonConstHelper {};
 };
 
+enum class AppInitFlags : uint8
+{
+    None = 0,
+    ClientMode = 1 << 0,
+    DisableLogTags = 1 << 1,
+};
+
 class Application final
 {
-    friend void InitApp(int argc, char** argv, bool client_mode);
+    friend void InitApp(int argc, char** argv, AppInitFlags flags);
     friend class SafeAlloc;
 
-    Application(int argc, char** argv, bool client_mode);
+    Application(int argc, char** argv, AppInitFlags flags);
 
 public:
     Application(const Application&) = delete;
@@ -432,5 +439,5 @@ public:
 };
 
 extern Application* App;
-extern void InitApp(int argc, char** argv, bool client_mode = false);
+extern void InitApp(int argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 [[noreturn]] extern void ExitApp(bool success) noexcept;
