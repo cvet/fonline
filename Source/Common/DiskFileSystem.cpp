@@ -35,17 +35,14 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#if !FO_IOS
 #include <filesystem>
-#endif
 
-#if FO_WINDOWS
-#include <io.h>
-#else
+#if !FO_WINDOWS
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
+
 #if FO_ANDROID
 #include "SDL3/SDL_filesystem.h"
 #include "SDL3/SDL_iostream.h"
@@ -878,7 +875,6 @@ auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
     return 0;
 }
 
-#if !FO_IOS
 static auto MakeFilesystemPath(string_view path)
 {
 #if CPLUSPLUS_20
@@ -979,141 +975,6 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 
     return !std::filesystem::exists(MakeFilesystemPath(dir), ec) && !ec;
 }
-
-#else
-
-auto DiskFileSystem::IsExists(string_view path) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    struct stat st;
-
-    return ::stat(string(path).c_str(), &st) == 0;
-}
-
-auto DiskFileSystem::IsDir(string_view path) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    struct stat st;
-
-    if (::stat(string(path).c_str(), &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-auto DiskFileSystem::DeleteFile(string_view fname) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return remove(string(fname).c_str()) != 0;
-}
-
-auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    bool ok = false;
-    FILE* from = fopen(string(fname).c_str(), "rb");
-
-    if (from) {
-        FILE* to = fopen(string(copy_fname).c_str(), "wb");
-
-        if (to) {
-            ok = true;
-            char buf[BUFSIZ];
-
-            while (!feof(from)) {
-                size_t rb = fread(buf, 1, BUFSIZ, from);
-                size_t rw = fwrite(buf, 1, rb, to);
-
-                if (!rb || rb != rw) {
-                    ok = false;
-                    break;
-                }
-            }
-
-            fclose(to);
-
-            if (!ok) {
-                DeleteFile(copy_fname);
-            }
-        }
-    }
-
-    fclose(from);
-
-    return ok;
-}
-
-auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
-}
-
-auto DiskFileSystem::ResolvePath(string_view path) -> string
-{
-    STACK_TRACE_ENTRY();
-
-    string result;
-
-    char* buf = realpath(string(path).c_str(), nullptr);
-
-    if (buf != nullptr) {
-        result = buf;
-        free(buf);
-    }
-    else {
-        result = path;
-    }
-
-    return result;
-}
-
-void DiskFileSystem::MakeDirTree(string_view path)
-{
-    STACK_TRACE_ENTRY();
-
-    const string work = strex(path).normalizePathSlashes();
-
-    for (size_t i = 0; i < work.length(); i++) {
-        if (work[i] == '/') {
-            auto path_part = work.substr(0, i);
-
-            mkdir(path_part.c_str(), 0777);
-        }
-    }
-}
-
-auto DiskFileSystem::DeleteDir(string_view dir) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    MakeDirTree(dir);
-
-    vector<string> file_paths;
-
-    for (auto find = DiskFind(dir, ""); find; find++) {
-        if (!find.IsDir()) {
-            file_paths.emplace_back(find.GetPath());
-        }
-    }
-
-    for (auto& fp : file_paths) {
-        if (!DeleteFile(fp)) {
-            return false;
-        }
-    }
-
-    return rmdir(string(dir).c_str()) == 0;
-}
-#endif
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
 {
