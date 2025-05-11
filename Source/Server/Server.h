@@ -280,7 +280,6 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    unique_ptr<DiskFile> _healthFile {};
     map<uint, nanotime> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};

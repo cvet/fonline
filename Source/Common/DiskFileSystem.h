@@ -49,29 +49,27 @@ class DiskFile final
 public:
     DiskFile() = delete;
     DiskFile(const DiskFile&) = delete;
-    DiskFile(DiskFile&&) noexcept;
+    DiskFile(DiskFile&&) noexcept = default;
     auto operator=(const DiskFile&) -> DiskFile& = delete;
     auto operator=(DiskFile&&) -> DiskFile& = delete;
     explicit operator bool() const;
-    ~DiskFile();
+    ~DiskFile() = default;
 
-    [[nodiscard]] auto GetReadPos() const -> size_t;
-    [[nodiscard]] auto GetWriteTime() const -> uint64;
-    [[nodiscard]] auto GetSize() const -> size_t;
+    [[nodiscard]] auto GetReadPos() -> size_t;
+    [[nodiscard]] auto GetSize() -> size_t;
 
     auto Read(void* buf, size_t len) -> bool;
     auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
     auto Write(const_span<uint8> data) -> bool;
     auto SetReadPos(int offset, DiskFileSeek origin) -> bool;
-    auto Clear() -> bool;
 
 private:
     DiskFile(string_view fname, bool write, bool write_through);
 
-    struct Impl;
-    unique_ptr<Impl> _impl;
+    std::fstream _file {};
     bool _openedForWriting {};
+    bool _writeThrough {};
 };
 
 class DiskFileSystem final
@@ -87,9 +85,9 @@ public:
     static auto GetWriteTime(string_view path) -> uint64;
     static auto IsExists(string_view path) -> bool;
     static auto IsDir(string_view path) -> bool;
-    static auto DeleteFile(string_view fname) -> bool;
-    static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
-    static auto RenameFile(string_view fname, string_view new_fname) -> bool;
+    static auto DeleteFile(string_view path) -> bool;
+    static auto CopyFile(string_view path, string_view copy_path) -> bool;
+    static auto RenameFile(string_view path, string_view new_path) -> bool;
     static auto ResolvePath(string_view path) -> string;
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;

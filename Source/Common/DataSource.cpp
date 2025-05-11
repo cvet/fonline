@@ -360,14 +360,15 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
+    const string full_path = strex(_basePath).combinePath(path);
+    auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
         return false;
     }
 
     size = file.GetSize();
-    write_time = file.GetWriteTime();
+    write_time = DiskFileSystem::GetWriteTime(full_path);
     return true;
 }
 
@@ -375,21 +376,21 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     STACK_TRACE_ENTRY();
 
-    auto file = DiskFileSystem::OpenFile(strex("{}{}", _basePath, path), false);
+    const string full_path = strex(_basePath).combinePath(path);
+    auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
         return nullptr;
     }
 
     size = file.GetSize();
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file from non cached dir", _basePath, path);
     }
 
-    write_time = file.GetWriteTime();
-    buf[size] = 0;
+    write_time = DiskFileSystem::GetWriteTime(full_path);
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
@@ -463,13 +464,12 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     size = fe.FileSize;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (!file.Read(buf.get(), size)) {
         return nullptr;
     }
 
-    buf[size] = 0;
     write_time = fe.WriteTime;
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
@@ -493,7 +493,7 @@ FalloutDat::FalloutDat(string_view fname) :
         throw DataSourceException("Cannot open fallout dat file", fname);
     }
 
-    _writeTime = _datFile.GetWriteTime();
+    _writeTime = DiskFileSystem::GetWriteTime(fname);
 
     if (!ReadTree()) {
         throw DataSourceException("Read fallout dat file tree failed");
@@ -697,7 +697,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     size = real_size;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (type == 0) {
         // Plane data
@@ -755,7 +755,6 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     write_time = _writeTime;
-    buf[size] = 0;
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
@@ -774,7 +773,7 @@ ZipFile::ZipFile(string_view fname)
             throw DataSourceException("Can't open zip file", fname);
         }
 
-        _writeTime = p_file->GetWriteTime();
+        _writeTime = DiskFileSystem::GetWriteTime(fname);
 
         ffunc.zopen_file = [](voidpf opaque, const char*, int) -> voidpf { return opaque; };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
@@ -783,7 +782,7 @@ ZipFile::ZipFile(string_view fname)
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-            const auto* file = static_cast<DiskFile*>(stream);
+            auto* file = static_cast<DiskFile*>(stream);
             return static_cast<long>(file->GetReadPos());
         };
         ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
@@ -994,7 +993,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         throw DataSourceException("Can't read file from zip (2)", path);
     }
 
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(static_cast<size_t>(info.UncompressedSize) + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(static_cast<size_t>(info.UncompressedSize));
     const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
@@ -1003,7 +1002,6 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
 
     write_time = _writeTime;
     size = info.UncompressedSize;
-    buf[size] = 0;
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
@@ -1040,7 +1038,7 @@ AndroidAssets::AndroidAssets()
         FileEntry fe;
         fe.FileName = name;
         fe.FileSize = file.GetSize();
-        fe.WriteTime = file.GetWriteTime();
+        fe.WriteTime = DiskFileSystem::GetWriteTime(name);
 
         _filesTree.emplace(name, std::move(fe));
         _filesTreeNames.emplace_back(std::move(name));
@@ -1083,13 +1081,12 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     }
 
     size = fe.FileSize;
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size + 1);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (!file.Read(buf.get(), size)) {
         throw DataSourceException("Can't read file in android assets", path);
     }
 
-    buf[size] = 0;
     write_time = fe.WriteTime;
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
