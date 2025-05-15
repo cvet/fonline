@@ -520,9 +520,13 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
+
+            if (strex(path).getFileExtension() != "json") {
+                return;
+            }
 
             static_assert(sizeof(ident_t) == sizeof(int64));
 

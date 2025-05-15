@@ -12,7 +12,7 @@ export FO_ENGINE_ROOT=$(cd $FO_ENGINE_ROOT; pwd)
 export EMSCRIPTEN_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/emscripten")
 export ANDROID_NDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-ndk")
 export ANDROID_SDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")
-export ANDROID_NATIVE_API_LEVEL_NUMBER=23
+export ANDROID_NATIVE_API_LEVEL_NUMBER=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-api")
 export FO_DOTNET_RUNTIME=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/dotnet-runtime")
 
 if [[ -d "/usr/lib/android-sdk" ]]; then

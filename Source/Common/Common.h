@@ -94,6 +94,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <deque>
+#include <fstream>
 #include <functional>
 #include <future>
 #include <iostream>
