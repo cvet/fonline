@@ -74,28 +74,29 @@ FOServer::FOServer(GlobalSettings& settings) :
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
             const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
-            auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true);
 
-            if (health_file) {
-                _healthFile = SafeAlloc::MakeUnique<DiskFile>(std::move(health_file));
-                _healthFile->Write("Starting...");
+            const auto write_health_file = [health_file_name](string_view text) {
+                if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
+                    return health_file.Write(text);
+                }
+                else {
+                    return false;
+                }
+            };
 
-                _mainWorker.AddJob([this] {
+            if (write_health_file("Starting...")) {
+                _mainWorker.AddJob([this, write_health_file] {
                     STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([this, health_info = GetHealthInfo()] {
+                        _healthWriter.AddJob([this, health_info = GetHealthInfo(), write_health_file] {
                             STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
-                            if (_healthFile->Clear()) {
-                                string buf;
-                                buf.reserve(health_info.size() + 128);
-
-                                buf += strex("{} v{}\n\n", App->Settings.GameName, App->Settings.GameVersion);
-                                buf += health_info;
-
-                                _healthFile->Write(buf);
-                            }
+                            string buf;
+                            buf.reserve(health_info.size() + 128);
+                            buf += strex("{} v{}\n\n", App->Settings.GameName, App->Settings.GameVersion);
+                            buf += health_info;
+                            write_health_file(buf);
 
                             return std::nullopt;
                         });
@@ -105,7 +106,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 });
             }
             else {
-                WriteLog("Can't health file '{}'", health_file_name);
+                WriteLog("Can't write health file '{}'", health_file_name);
             }
         }
 
@@ -714,11 +715,6 @@ FOServer::~FOServer()
         }
 
         _started = false;
-
-        if (_healthFile) {
-            _healthFile->Write("\nSTOPPED\n");
-            _healthFile.reset();
-        }
 
         // Shutdown servers
         for (auto& conn_server : _connectionServers) {

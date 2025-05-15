@@ -338,7 +338,7 @@ void MasterBaker::BakeAll()
 
             // Delete outdated
             if (!force_baking_) {
-                DiskFileSystem::IterateDir(output_dir, "", true, [&](string_view path, size_t size, uint64 write_time) {
+                DiskFileSystem::IterateDir(output_dir, true, [&](string_view path, size_t size, uint64 write_time) {
                     UNUSED_VARIABLE(size);
                     UNUSED_VARIABLE(write_time);
 
