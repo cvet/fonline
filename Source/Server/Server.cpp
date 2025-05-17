@@ -3002,7 +3002,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    // IsHidden, AlwaysView, IsTrap, TrapValue
+    // Hidden, AlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {

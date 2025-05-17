@@ -468,7 +468,7 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
     }
 
     if (errors != 0) {
-        throw PropertiesException("Error parsing properties", errors);
+        throw PropertiesException("Failed to parse properties");
     }
 }
 
