@@ -173,6 +173,35 @@ set(FO_MONO_ASSEMBLIES "")
 set(FO_MONO_SOURCE "")
 set(FO_PACKAGES "")
 set(FO_RC_FILE "")
+set(FO_CONFIG_VAR_LIST "")
+
+# Configuration duplication
+execute_process(COMMAND ${CMAKE_COMMAND} --help-variable-list OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake_var_full_list.txt")
+file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/cmake_var_full_list.txt" varFullList)
+
+foreach(var ${varFullList})
+	if("${var}" MATCHES "<CONFIG>")
+		if("${var}" MATCHES "<LANG>")
+			foreach(lang C CXX CSharp CUDA OBJC OBJCXX Fortran HIP ISPC Swift ASM ASM_NASM ASM_MARMASM ASM_MASM ASM-ATT)
+				string(REPLACE "<LANG>" "${lang}" langVar "${var}")
+				list(APPEND FO_CONFIG_VAR_LIST "${langVar}")
+			endforeach()
+		else()
+			list(APPEND FO_CONFIG_VAR_LIST "${var}")
+		endif()
+	endif()
+endforeach()
+
+function(CopyConfigurationType configFrom configTo)
+	string(TOUPPER "${configFrom}" configFrom)
+	string(TOUPPER "${configTo}" configTo)
+
+	foreach(configVar ${FO_CONFIG_VAR_LIST})
+		string(REPLACE "<CONFIG>" "${configFrom}" configVarFrom "${configVar}")
+		string(REPLACE "<CONFIG>" "${configTo}" configVarTo "${configVar}")
+		set("${configVarTo}" "${${configVarFrom}}" PARENT_SCOPE)
+	endforeach()
+endfunction()
 
 # Evaluate engine root
 get_filename_component(FO_ENGINE_ROOT ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)

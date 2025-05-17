@@ -107,11 +107,7 @@ macro(AddConfiguration name parent)
 		set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES};${name}" CACHE STRING "Forced by FOnline" FORCE)
 	endif()
 
-	set(CMAKE_CXX_FLAGS_${nameUpper} ${CMAKE_CXX_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
-	set(CMAKE_C_FLAGS_${nameUpper} ${CMAKE_C_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
-	set(CMAKE_EXE_LINKER_FLAGS_${nameUpper} ${CMAKE_EXE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
-	set(CMAKE_MODULE_LINKER_FLAGS_${nameUpper} ${CMAKE_MODULE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
-	set(CMAKE_SHARED_LINKER_FLAGS_${nameUpper} ${CMAKE_SHARED_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE)
+	CopyConfigurationType(${parent} ${name})
 endmacro()
 
 if(FO_MULTICONFIG)
