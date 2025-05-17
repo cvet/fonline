@@ -100,9 +100,6 @@ public:
     ///@ MigrationRule Property Item ScriptId InitScript
     ///@ ExportProperty ScriptFuncType = ItemInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ MigrationRule Property Item SceneryScript StaticScript
-    ///@ ExportProperty ScriptFuncType = ItemStatic
-    ENTITY_PROPERTY(PrivateServer, hstring, StaticScript);
     ///@ MigrationRule Property Item IsStatic Static
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, Static);
@@ -182,6 +179,9 @@ public:
     ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
 
     // Todo: exclude item properties from engine:
+    ///@ MigrationRule Property Item SceneryScript StaticScript
+    ///@ ExportProperty ScriptFuncType = ItemStatic
+    ENTITY_PROPERTY(PrivateCommon, hstring, StaticScript);
     ///@ ExportProperty ScriptFuncType = ItemTrigger
     ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
     ///@ ExportProperty
