@@ -124,6 +124,10 @@ AddConfiguration(Debug_Profiling_Total Debug)
 AddConfiguration(Debug_Profiling_OnDemand Debug)
 AddConfiguration(Release_Ext Release)
 
+if(MSVC)
+	AddConfiguration(Release_Debugging Release)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	AddConfiguration(San_Address RelWithDebInfo)
 	AddConfiguration(San_Memory RelWithDebInfo)
@@ -171,6 +175,11 @@ set(expr_PrefixConfig $<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CO
 set(expr_TracyEnabled $<OR:$<CONFIG:Profiling_Total>,$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_Total>,$<CONFIG:Debug_Profiling_OnDemand>>)
 set(expr_TracyOnDemand $<OR:$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_OnDemand>>)
 set(expr_StandaloneRpmallocEnabled $<NOT:${expr_TracyEnabled}>)
+
+if(MSVC)
+	add_compile_options_C_CXX($<$<CONFIG:Release_Debugging>:/dynamicdeopt>)
+	add_link_options($<$<CONFIG:Release_Debugging>:/DYNAMICDEOPT>)
+endif()
 
 # Engine settins
 add_compile_definitions(FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>)
