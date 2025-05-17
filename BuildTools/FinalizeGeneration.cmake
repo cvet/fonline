@@ -1066,7 +1066,7 @@ list(APPEND FO_GEN_DEPENDENCIES CodeGeneration)
 
 add_custom_target(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
-    COMMAND ${CMAKE_COMMAND} -E touch ${FO_CODEGEN_OUTPUT}
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 
@@ -1334,6 +1334,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
 
         add_custom_target(CompileAngelScript
             COMMAND ${compileASScripts}
+            DEPENDS ForceCodeGeneration
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Compile AngelScript scripts")
         list(APPEND FO_COMMANDS_GROUP CompileAngelScript)
@@ -1365,12 +1366,14 @@ list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CO
 
 add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
+    DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
 list(APPEND FO_COMMANDS_GROUP BakeResources)
 
 add_custom_target(ForceBakeResources
     COMMAND ${bakeResources} -ForceBaking True
+    DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
 list(APPEND FO_COMMANDS_GROUP ForceBakeResources)
