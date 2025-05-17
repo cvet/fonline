@@ -531,7 +531,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
             const auto& struct_layout = *base_type_info.StructLayout;
 
             if (struct_value.Size() != struct_layout.size()) {
-                throw PropertySerializationException("Wrong struct size");
+                throw PropertySerializationException("Wrong struct size", struct_value.Size(), struct_layout.size());
             }
 
             for (size_t i = 0; i < struct_layout.size(); i++) {
