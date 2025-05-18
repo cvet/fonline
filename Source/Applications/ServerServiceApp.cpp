@@ -201,12 +201,20 @@ int main(int argc, char** argv)
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
-        // Todo: convert argv from wchar_t** to char**
-        UNUSED_VARIABLE(argc);
-        UNUSED_VARIABLE(argv);
-        InitApp(0, nullptr);
+        static std::vector<std::string> args_holder;
+        static std::vector<char*> args;
+        args_holder.resize(argc);
+        args.resize(argc);
+
+        for (DWORD i = 0; i < argc; ++i) {
+            args_holder[i] = strex().parseWideChar(argv[i]);
+            args[i] = args_holder.back().data();
+        }
+
+        InitApp(static_cast<int>(argc), args.data());
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
+
         if (Data->FOServiceStatusHandle == nullptr) {
             return;
         }
