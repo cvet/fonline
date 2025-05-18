@@ -381,17 +381,20 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     STACK_TRACE_ENTRY();
 
-    auto file = _sprMngr.GetResources().ReadFile(path);
+    const auto file = _sprMngr.GetResources().ReadFile(path);
+
     if (!file) {
         return nullptr;
     }
 
-    const auto check_number = file.GetUChar();
+    auto reader = file.GetReader();
+
+    const auto check_number = reader.GetUChar();
     RUNTIME_ASSERT(check_number == 42);
-    const auto frames_count = file.GetLEUShort();
+    const auto frames_count = reader.GetLEUShort();
     RUNTIME_ASSERT(frames_count != 0);
-    const auto ticks = file.GetLEUShort();
-    const auto dirs = file.GetUChar();
+    const auto ticks = reader.GetLEUShort();
+    const auto dirs = reader.GetUChar();
     RUNTIME_ASSERT(dirs != 0);
 
     if (frames_count > 1 || dirs > 1) {
@@ -399,20 +402,21 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         for (uint16 dir = 0; dir < dirs; dir++) {
             auto* dir_anim = anim->GetDir(dir);
-            const auto ox = file.GetLEShort();
-            const auto oy = file.GetLEShort();
+            const auto ox = reader.GetLEShort();
+            const auto oy = reader.GetLEShort();
 
             dir_anim->Offset.x = ox;
             dir_anim->Offset.y = oy;
 
             for (uint16 i = 0; i < frames_count; i++) {
-                const auto is_spr_ref = file.GetUChar();
+                const auto is_spr_ref = reader.GetUChar();
+
                 if (is_spr_ref == 0) {
-                    const auto width = file.GetLEUShort();
-                    const auto height = file.GetLEUShort();
-                    const auto nx = file.GetLEShort();
-                    const auto ny = file.GetLEShort();
-                    const auto* data = file.GetCurBuf();
+                    const auto width = reader.GetLEUShort();
+                    const auto height = reader.GetLEUShort();
+                    const auto nx = reader.GetLEShort();
+                    const auto ny = reader.GetLEShort();
+                    const auto* data = reader.GetCurBuf();
 
                     auto spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
@@ -432,10 +436,10 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     dir_anim->Spr[i] = spr;
 
-                    file.GoForward(static_cast<size_t>(width) * height * 4);
+                    reader.GoForward(static_cast<size_t>(width) * height * 4);
                 }
                 else {
-                    const auto index = file.GetLEUShort();
+                    const auto index = reader.GetLEUShort();
 
                     dir_anim->Spr[i] = dir_anim->GetSpr(index)->MakeCopy();
                     dir_anim->SprOffset[i] = dir_anim->SprOffset[index];
@@ -443,23 +447,23 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             }
         }
 
-        const auto check_number2 = file.GetUChar();
+        const auto check_number2 = reader.GetUChar();
         RUNTIME_ASSERT(check_number2 == 42);
 
         return anim;
     }
     else {
-        const auto ox = file.GetLEShort();
-        const auto oy = file.GetLEShort();
+        const auto ox = reader.GetLEShort();
+        const auto oy = reader.GetLEShort();
 
-        const auto is_spr_ref = file.GetUChar();
+        const auto is_spr_ref = reader.GetUChar();
         RUNTIME_ASSERT(is_spr_ref == 0);
 
-        const auto width = file.GetLEUShort();
-        const auto height = file.GetLEUShort();
-        const auto nx = file.GetLEShort();
-        const auto ny = file.GetLEShort();
-        const auto* data = file.GetCurBuf();
+        const auto width = reader.GetLEUShort();
+        const auto height = reader.GetLEUShort();
+        const auto nx = reader.GetLEShort();
+        const auto ny = reader.GetLEShort();
+        const auto* data = reader.GetCurBuf();
 
         UNUSED_VARIABLE(nx);
         UNUSED_VARIABLE(ny);
@@ -473,9 +477,9 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         FillAtlas(spr.get(), atlas_type, reinterpret_cast<const ucolor*>(data));
 
-        file.GoForward(static_cast<size_t>(width) * height * 4);
+        reader.GoForward(static_cast<size_t>(width) * height * 4);
 
-        const auto check_number2 = file.GetUChar();
+        const auto check_number2 = reader.GetUChar();
         RUNTIME_ASSERT(check_number2 == 42);
 
         return spr;

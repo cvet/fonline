@@ -43,7 +43,7 @@ class FileHeader
 {
 public:
     FileHeader() noexcept = default;
-    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds);
+    explicit FileHeader(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -68,25 +68,22 @@ protected:
     raw_ptr<const DataSource> _dataSource {};
 };
 
-class File final : public FileHeader
+class FileReader final
 {
 public:
-    File() = default;
-    File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf);
-    File(string_view name, string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy);
-    File(const File&) = delete;
-    File(File&&) noexcept = default;
-    auto operator=(const File&) = delete;
-    auto operator=(File&&) noexcept -> File& = default;
-    ~File() = default;
+    explicit FileReader(const_span<uint8> buf);
+    FileReader(const FileReader&) = delete;
+    FileReader(FileReader&&) noexcept = default;
+    auto operator=(const FileReader&) = delete;
+    auto operator=(FileReader&&) noexcept -> FileReader& = default;
+    ~FileReader() = default;
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8>;
     [[nodiscard]] auto GetBuf() const -> const uint8*;
+    [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetCurBuf() const -> const uint8*;
     [[nodiscard]] auto GetCurPos() const -> size_t;
-
-    [[nodiscard]] auto FindFragment(string_view fragment) -> bool;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
     [[nodiscard]] auto GetUChar() -> uint8;
@@ -101,14 +98,37 @@ public:
     [[nodiscard]] auto GetLEInt() -> int { return static_cast<int>(GetLEUInt()); }
     // ReSharper restore CppInconsistentNaming
 
+    auto SeekFragment(string_view fragment) -> bool;
     void CopyData(void* ptr, size_t size);
     void SetCurPos(size_t pos);
     void GoForward(size_t offs);
     void GoBack(size_t offs);
 
 private:
-    unique_del_ptr<const uint8> _fileBuf {};
+    const_span<uint8> _buf;
     size_t _curPos {};
+};
+
+class File final : public FileHeader
+{
+public:
+    File() noexcept = default;
+    explicit File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf);
+    explicit File(string_view name, string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy);
+    File(const File&) = delete;
+    File(File&&) noexcept = default;
+    auto operator=(const File&) = delete;
+    auto operator=(File&&) noexcept -> File& = default;
+    ~File() = default;
+
+    [[nodiscard]] auto GetStr() const -> string;
+    [[nodiscard]] auto GetData() const -> vector<uint8>;
+    [[nodiscard]] auto GetBuf() const -> const uint8*;
+    [[nodiscard]] auto GetSize() const -> size_t;
+    [[nodiscard]] auto GetReader() const -> FileReader;
+
+protected:
+    unique_del_ptr<const uint8> _fileBuf {};
 };
 
 class FileCollection final
@@ -142,11 +162,12 @@ private:
 class FileSystem final
 {
 public:
-    FileSystem() = default;
+    FileSystem() noexcept = default;
     FileSystem(const FileSystem&) = delete;
     FileSystem(FileSystem&&) noexcept = default;
     auto operator=(const FileSystem&) = delete;
     auto operator=(FileSystem&&) noexcept = delete;
+    ~FileSystem() = default;
 
     [[nodiscard]] auto GetAllFiles() const -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool include_subdirs = true) const -> FileCollection;

@@ -1597,8 +1597,9 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     }
 
     // Load font data
-    string fname = strex("Fonts/{}.fofnt", font_name);
-    auto file = _resources.ReadFile(fname);
+    const string fname = strex("Fonts/{}.fofnt", font_name);
+    const auto file = _resources.ReadFile(fname);
+
     if (!file) {
         WriteLog("File '{}' not found", fname);
         return false;
@@ -1615,16 +1616,20 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     string letter_buf;
     FontData::Letter* cur_letter = nullptr;
     auto version = -1;
+
     while (!str.eof() && !str.fail()) {
         // Get key
         str >> key;
 
         // Cut off comments
         auto comment = key.find('#');
+
         if (comment != string::npos) {
             key.erase(comment);
         }
+
         comment = key.find(';');
+
         if (comment != string::npos) {
             key.erase(comment);
         }
@@ -1635,11 +1640,14 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
                 WriteLog("Font '{}' 'Version' signature not found (used deprecated format of 'fofnt')", fname);
                 return false;
             }
+
             str >> version;
+
             if (version > 2) {
                 WriteLog("Font '{}' version {} not supported (try update client)", fname, version);
                 return false;
             }
+
             continue;
         }
 
@@ -1705,11 +1713,13 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
         }
     }
 
-    auto make_gray = false;
+    bool make_gray = false;
+
     if (image_name.back() == '*') {
         make_gray = true;
         image_name = image_name.substr(0, image_name.size() - 1);
     }
+
     font->MakeGray = make_gray;
 
     // Load image
@@ -1742,6 +1752,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     if (index >= static_cast<int>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
+
     _allFonts[index] = std::move(font);
 
     BuildFont(index);
@@ -1766,67 +1777,73 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     auto font = SafeAlloc::MakeUnique<FontData>();
     font->DrawEffect = _effectMngr.Effects.Font;
 
-    auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));
+    const auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));
+
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
         return false;
     }
 
-    const auto signature = file.GetLEUInt();
+    auto reader = file.GetReader();
+
+    const auto signature = reader.GetLEUInt();
+
     if (signature != MAKEUINT('B', 'M', 'F', 3)) {
         WriteLog("Invalid signature of font '{}'", font_name);
         return false;
     }
 
     // Info
-    file.GoForward(1);
-    auto block_len = file.GetLEUInt();
-    auto next_block = block_len + file.GetCurPos() + 1;
+    reader.GoForward(1);
+    auto block_len = reader.GetLEUInt();
+    auto next_block = block_len + reader.GetCurPos() + 1;
 
-    file.GoForward(7);
-    if (file.GetBEUInt() != 0x01010101u) {
+    reader.GoForward(7);
+
+    if (reader.GetBEUInt() != 0x01010101u) {
         WriteLog("Wrong padding in font '{}'", font_name);
         return false;
     }
 
     // Common
-    file.SetCurPos(next_block);
-    block_len = file.GetLEUInt();
-    next_block = block_len + file.GetCurPos() + 1;
+    reader.SetCurPos(next_block);
+    block_len = reader.GetLEUInt();
+    next_block = block_len + reader.GetCurPos() + 1;
 
-    const int line_height = file.GetLEUShort();
-    const int base_height = file.GetLEUShort();
-    file.GoForward(2); // Texture width
-    file.GoForward(2); // Texture height
+    const int line_height = reader.GetLEUShort();
+    const int base_height = reader.GetLEUShort();
+    reader.GoForward(2); // Texture width
+    reader.GoForward(2); // Texture height
 
-    if (file.GetLEUShort() != 1) {
+    if (reader.GetLEUShort() != 1) {
         WriteLog("Texture for font '{}' must be one", font_name);
         return false;
     }
 
     // Pages
-    file.SetCurPos(next_block);
-    block_len = file.GetLEUInt();
-    next_block = block_len + file.GetCurPos() + 1;
+    reader.SetCurPos(next_block);
+    block_len = reader.GetLEUInt();
+    next_block = block_len + reader.GetCurPos() + 1;
 
     // Image name
-    auto image_name = file.GetStrNT();
+    auto image_name = reader.GetStrNT();
     image_name.insert(0, "Fonts/");
 
     // Chars
-    file.SetCurPos(next_block);
-    const auto count = file.GetLEUInt() / 20;
+    reader.SetCurPos(next_block);
+    const auto count = reader.GetLEUInt() / 20;
+
     for ([[maybe_unused]] const auto i : xrange(count)) {
         // Read data
-        const auto id = file.GetLEUInt();
-        const auto x = file.GetLEUShort();
-        const auto y = file.GetLEUShort();
-        const auto w = file.GetLEUShort();
-        const auto h = file.GetLEUShort();
-        const auto ox = file.GetLEUShort();
-        const auto oy = file.GetLEUShort();
-        const auto xa = file.GetLEUShort();
-        file.GoForward(2);
+        const auto id = reader.GetLEUInt();
+        const auto x = reader.GetLEUShort();
+        const auto y = reader.GetLEUShort();
+        const auto w = reader.GetLEUShort();
+        const auto h = reader.GetLEUShort();
+        const auto ox = reader.GetLEUShort();
+        const auto oy = reader.GetLEUShort();
+        const auto xa = reader.GetLEUShort();
+        reader.GoForward(2);
 
         // Fill data
         auto& let = font->Letters[id];
@@ -1871,6 +1888,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     if (index >= static_cast<int>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
+
     _allFonts[index] = std::move(font);
 
     BuildFont(index);

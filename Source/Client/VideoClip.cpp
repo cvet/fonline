@@ -290,8 +290,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Data offsets
-    char di;
-    char dj;
+    int di;
+    int dj;
 
     switch (_impl->VideoInfo.pixel_fmt) {
     case TH_PF_420:

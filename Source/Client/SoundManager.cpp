@@ -240,36 +240,38 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    auto file = _resources.ReadFile(fname);
+    const auto file = _resources.ReadFile(fname);
 
     if (!file) {
         return false;
     }
 
-    auto dw_buf = file.GetLEUInt();
+    auto reader = file.GetReader();
+
+    auto dw_buf = reader.GetLEUInt();
 
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
         return false;
     }
 
-    file.GoForward(4);
+    reader.GoForward(4);
 
-    dw_buf = file.GetLEUInt();
+    dw_buf = reader.GetLEUInt();
 
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
         WriteLog("'WAVE' not found");
         return false;
     }
 
-    dw_buf = file.GetLEUInt();
+    dw_buf = reader.GetLEUInt();
 
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
         WriteLog("'fmt ' not found");
         return false;
     }
 
-    dw_buf = file.GetLEUInt();
+    dw_buf = reader.GetLEUInt();
 
     if (dw_buf == 0) {
         WriteLog("Unknown format");
@@ -287,21 +289,21 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         uint16 CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
-    file.CopyData(&waveformatex, 16);
+    reader.CopyData(&waveformatex, 16);
 
     if (waveformatex.WFormatTag != 1) {
         WriteLog("Compressed files not supported");
         return false;
     }
 
-    file.GoForward(dw_buf - 16);
+    reader.GoForward(dw_buf - 16);
 
-    dw_buf = file.GetLEUInt();
+    dw_buf = reader.GetLEUInt();
 
     if (dw_buf == MAKEUINT('f', 'a', 'c', 't')) {
-        dw_buf = file.GetLEUInt();
-        file.GoForward(dw_buf);
-        dw_buf = file.GetLEUInt();
+        dw_buf = reader.GetLEUInt();
+        reader.GoForward(dw_buf);
+        dw_buf = reader.GetLEUInt();
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
@@ -309,7 +311,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    dw_buf = file.GetLEUInt();
+    dw_buf = reader.GetLEUInt();
     sound->BaseBuf.resize(dw_buf);
     sound->BaseBufLen = dw_buf;
 
@@ -330,7 +332,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     // Convert
-    file.CopyData(sound->BaseBuf.data(), sound->BaseBufLen);
+    reader.CopyData(sound->BaseBuf.data(), sound->BaseBufLen);
 
     return ConvertData(sound);
 }
@@ -378,36 +380,47 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return false;
     }
 
+    struct OggFileContext
+    {
+        explicit OggFileContext(File&& file) :
+            Holder {std::move(file)},
+            Reader {Holder.GetReader()}
+        {
+        }
+        File Holder;
+        FileReader Reader;
+    };
+
     ov_callbacks callbacks;
 
     callbacks.read_func = [](void* ptr, size_t size, size_t count, void* datasource) -> size_t {
-        auto* file2 = static_cast<File*>(datasource);
-        const auto bytes_read = std::min(file2->GetSize() - file2->GetCurPos(), size * count);
+        auto* file_context = static_cast<OggFileContext*>(datasource);
+        const auto bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
-            file2->CopyData(ptr, bytes_read);
+            file_context->Reader.CopyData(ptr, bytes_read);
         }
 
         return bytes_read;
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
-        auto* file2 = static_cast<File*>(datasource);
+        auto* file_context = static_cast<OggFileContext*>(datasource);
 
         switch (whence) {
         case SEEK_SET:
-            file2->SetCurPos(static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(static_cast<uint>(offset));
             break;
         case SEEK_CUR:
             if (offset >= 0) {
-                file2->GoForward(static_cast<uint>(offset));
+                file_context->Reader.GoForward(static_cast<uint>(offset));
             }
             else {
-                file2->GoBack(static_cast<uint>(-offset));
+                file_context->Reader.GoBack(static_cast<uint>(-offset));
             }
             break;
         case SEEK_END:
-            file2->SetCurPos(file2->GetSize() - static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - static_cast<uint>(offset));
             break;
         default:
             return -1;
@@ -417,14 +430,14 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     };
 
     callbacks.close_func = [](void* datasource) -> int {
-        const auto* file2 = static_cast<File*>(datasource);
-        delete file2;
+        const auto* file_context = static_cast<OggFileContext*>(datasource);
+        delete file_context;
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        const auto* file2 = static_cast<File*>(datasource);
-        return static_cast<long>(file2->GetCurPos());
+        const auto* file_context = static_cast<OggFileContext*>(datasource);
+        return static_cast<long>(file_context->Reader.GetCurPos());
     };
 
     sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) {
@@ -432,7 +445,8 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         delete vf;
     });
 
-    const auto error = ov_open_callbacks(SafeAlloc::MakeRaw<File>(std::move(file)), sound->OggStream.get(), nullptr, 0, callbacks);
+    auto file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
+    const auto error = ov_open_callbacks(file_context.release(), sound->OggStream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);

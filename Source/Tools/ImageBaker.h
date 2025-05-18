@@ -75,7 +75,7 @@ public:
         string NewName {};
     };
 
-    using LoadFunc = std::function<FrameCollection(string_view, string_view, File&)>;
+    using LoadFunc = std::function<FrameCollection(string_view, string_view, FileReader)>;
 
     ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
     ImageBaker(const ImageBaker&) = delete;
@@ -93,18 +93,18 @@ private:
     void BakeCollection(string_view fname, const FrameCollection& collection);
 
     [[nodiscard]] auto LoadAny(string_view fname_with_opt) -> FrameCollection;
-    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
 
     unordered_map<string, LoadFunc> _fileLoaders {};
     unordered_map<string, File> _cachedFiles {};
