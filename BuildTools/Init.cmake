@@ -176,8 +176,8 @@ set(FO_RC_FILE "")
 set(FO_CONFIG_VAR_LIST "")
 
 # Configuration duplication
-execute_process(COMMAND ${CMAKE_COMMAND} --help-variable-list OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake_var_full_list.txt")
-file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/cmake_var_full_list.txt" varFullList)
+execute_process(COMMAND ${CMAKE_COMMAND} --help-variable-list OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt")
+file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt" varFullList)
 
 foreach(var ${varFullList})
 	if("${var}" MATCHES "<CONFIG>")
@@ -199,7 +199,10 @@ function(CopyConfigurationType configFrom configTo)
 	foreach(configVar ${FO_CONFIG_VAR_LIST})
 		string(REPLACE "<CONFIG>" "${configFrom}" configVarFrom "${configVar}")
 		string(REPLACE "<CONFIG>" "${configTo}" configVarTo "${configVar}")
-		set("${configVarTo}" "${${configVarFrom}}" PARENT_SCOPE)
+
+		if(NOT "${${configVarFrom}}" STREQUAL "")
+			set("${configVarTo}" "${${configVarFrom}}" PARENT_SCOPE)
+		endif()
 	endforeach()
 endfunction()
 
