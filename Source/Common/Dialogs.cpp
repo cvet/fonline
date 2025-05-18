@@ -170,7 +170,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
     pack->PackName = pack_name;
     pack->Comment = fodlg.GetSectionContent("comment");
 
-    const auto lang_key = fodlg.GetStr("data", "lang", "");
+    const auto lang_key = fodlg.GetAsStr("data", "lang");
 
     if (lang_key.empty()) {
         throw DialogParseException("Lang app not found", pack_name);

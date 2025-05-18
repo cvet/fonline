@@ -176,8 +176,8 @@ void FOMapper::InitIface()
     const auto& ini = *IfaceIni;
 
     // Interface
-    IntX = ini.GetInt("", "IntX", -1);
-    IntY = ini.GetInt("", "IntY", -1);
+    IntX = ini.GetAsInt("", "IntX", -1);
+    IntY = ini.GetAsInt("", "IntY", -1);
 
     IfaceLoadRect(IntWMain, "IntMain");
     if (IntX == -1) {
@@ -234,7 +234,7 @@ void FOMapper::InitIface()
     IntFix = true;
     IntMode = INT_MODE_MESS;
     SelectType = SELECT_TYPE_NEW;
-    ProtoWidth = ini.GetInt("", "ProtoWidth", 50);
+    ProtoWidth = ini.GetAsInt("", "ProtoWidth", 50);
     ProtosOnScreen = (IntWWork[2] - IntWWork[0]) / ProtoWidth;
     MemFill(TabIndex, 0, sizeof(TabIndex));
     NpcDir = 3;
@@ -252,30 +252,30 @@ void FOMapper::InitIface()
     ObjVisible = true;
 
     // Console
-    ConsolePicX = ini.GetInt("", "ConsolePicX", 0);
-    ConsolePicY = ini.GetInt("", "ConsolePicY", 0);
-    ConsoleTextX = ini.GetInt("", "ConsoleTextX", 0);
-    ConsoleTextY = ini.GetInt("", "ConsoleTextY", 0);
+    ConsolePicX = ini.GetAsInt("", "ConsolePicX", 0);
+    ConsolePicY = ini.GetAsInt("", "ConsolePicY", 0);
+    ConsoleTextX = ini.GetAsInt("", "ConsoleTextX", 0);
+    ConsoleTextY = ini.GetAsInt("", "ConsoleTextY", 0);
 
     // Cursor
-    CurPDef = SprMngr.LoadSprite(ini.GetStr("", "CurDefault", "actarrow.frm"), AtlasType::IfaceSprites);
-    CurPHand = SprMngr.LoadSprite(ini.GetStr("", "CurHand", "hand.frm"), AtlasType::IfaceSprites);
+    CurPDef = SprMngr.LoadSprite(ini.GetAsStr("", "CurDefault", "actarrow.frm"), AtlasType::IfaceSprites);
+    CurPHand = SprMngr.LoadSprite(ini.GetAsStr("", "CurHand", "hand.frm"), AtlasType::IfaceSprites);
 
     // Iface
-    IntMainPic = SprMngr.LoadSprite(ini.GetStr("", "IntMainPic", "error"), AtlasType::IfaceSprites);
-    IntPTab = SprMngr.LoadSprite(ini.GetStr("", "IntTabPic", "error"), AtlasType::IfaceSprites);
-    IntPSelect = SprMngr.LoadSprite(ini.GetStr("", "IntSelectPic", "error"), AtlasType::IfaceSprites);
-    IntPShow = SprMngr.LoadSprite(ini.GetStr("", "IntShowPic", "error"), AtlasType::IfaceSprites);
+    IntMainPic = SprMngr.LoadSprite(ini.GetAsStr("", "IntMainPic", "error"), AtlasType::IfaceSprites);
+    IntPTab = SprMngr.LoadSprite(ini.GetAsStr("", "IntTabPic", "error"), AtlasType::IfaceSprites);
+    IntPSelect = SprMngr.LoadSprite(ini.GetAsStr("", "IntSelectPic", "error"), AtlasType::IfaceSprites);
+    IntPShow = SprMngr.LoadSprite(ini.GetAsStr("", "IntShowPic", "error"), AtlasType::IfaceSprites);
 
     // Object
-    ObjWMainPic = SprMngr.LoadSprite(ini.GetStr("", "ObjMainPic", "error"), AtlasType::IfaceSprites);
-    ObjPbToAllDn = SprMngr.LoadSprite(ini.GetStr("", "ObjToAllPicDn", "error"), AtlasType::IfaceSprites);
+    ObjWMainPic = SprMngr.LoadSprite(ini.GetAsStr("", "ObjMainPic", "error"), AtlasType::IfaceSprites);
+    ObjPbToAllDn = SprMngr.LoadSprite(ini.GetAsStr("", "ObjToAllPicDn", "error"), AtlasType::IfaceSprites);
 
     // Sub tabs
-    SubTabsPic = SprMngr.LoadSprite(ini.GetStr("", "SubTabsPic", "error"), AtlasType::IfaceSprites);
+    SubTabsPic = SprMngr.LoadSprite(ini.GetAsStr("", "SubTabsPic", "error"), AtlasType::IfaceSprites);
 
     // Console
-    ConsolePic = SprMngr.LoadSprite(ini.GetStr("", "ConsolePic", "error"), AtlasType::IfaceSprites);
+    ConsolePic = SprMngr.LoadSprite(ini.GetAsStr("", "ConsolePic", "error"), AtlasType::IfaceSprites);
 
     WriteLog("Init interface complete");
 }
@@ -284,7 +284,8 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto res = IfaceIni->GetStr("", name);
+    const auto res = string(IfaceIni->GetAsStr("", name));
+
     if (res.empty()) {
         WriteLog("Signature '{}' not found", name);
         return false;

@@ -184,12 +184,12 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     const auto fofx = ConfigFile(name, fofx_content, nullptr, ConfigFileOption::CollectContent);
     RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
-    const auto passes = fofx.GetInt("Effect", "Passes", 1);
+    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
     RUNTIME_ASSERT(passes >= 1);
     RUNTIME_ASSERT(passes <= static_cast<int>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
-    const auto shadow_pass = fofx.GetInt("Effect", "ShadowPass", -1);
+    const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
     RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= static_cast<int>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
@@ -262,53 +262,53 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         throw GenericException("Unknown blend equation type", s);
     };
 
-    const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
-    const auto blend_equation_default = fofx.GetStr("Effect", "BlendEquation", "FuncAdd");
-    const auto depth_write_default = fofx.GetStr("Effect", "DepthWrite", "True");
+    const auto blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
+    const auto blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
+    const auto depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
 
-        auto blend_func = strex(fofx.GetStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
+        auto blend_func = strex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
         RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
-        _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
+        _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
-        _depthWrite[pass] = strex(fofx.GetStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).toBool();
+        _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).toBool();
 
         const auto pass_info_content = loader(strex("{}.{}.info", strex(name).eraseFileExtension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
         RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 
-        const_cast<int&>(_posMainTex[pass]) = pass_info.GetInt("EffectInfo", "MainTex", -1);
+        const_cast<int&>(_posMainTex[pass]) = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         const_cast<bool&>(NeedMainTex) |= _posMainTex[pass] != -1;
-        const_cast<int&>(_posEggTex[pass]) = pass_info.GetInt("EffectInfo", "EggTex", -1);
+        const_cast<int&>(_posEggTex[pass]) = pass_info.GetAsInt("EffectInfo", "EggTex", -1);
         const_cast<bool&>(NeedEggTex) |= _posEggTex[pass] != -1;
-        const_cast<int&>(_posProjBuf[pass]) = pass_info.GetInt("EffectInfo", "ProjBuf", -1);
+        const_cast<int&>(_posProjBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
         const_cast<bool&>(NeedProjBuf) |= _posProjBuf[pass] != -1;
-        const_cast<int&>(_posMainTexBuf[pass]) = pass_info.GetInt("EffectInfo", "MainTexBuf", -1);
+        const_cast<int&>(_posMainTexBuf[pass]) = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);
         const_cast<bool&>(NeedMainTexBuf) |= _posMainTexBuf[pass] != -1;
-        const_cast<int&>(_posContourBuf[pass]) = pass_info.GetInt("EffectInfo", "ContourBuf", -1);
+        const_cast<int&>(_posContourBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ContourBuf", -1);
         const_cast<bool&>(NeedContourBuf) |= _posContourBuf[pass] != -1;
-        const_cast<int&>(_posTimeBuf[pass]) = pass_info.GetInt("EffectInfo", "TimeBuf", -1);
+        const_cast<int&>(_posTimeBuf[pass]) = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
         const_cast<bool&>(NeedTimeBuf) |= _posTimeBuf[pass] != -1;
-        const_cast<int&>(_posRandomValueBuf[pass]) = pass_info.GetInt("EffectInfo", "RandomValueBuf", -1);
+        const_cast<int&>(_posRandomValueBuf[pass]) = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);
         const_cast<bool&>(NeedRandomValueBuf) |= _posRandomValueBuf[pass] != -1;
-        const_cast<int&>(_posScriptValueBuf[pass]) = pass_info.GetInt("EffectInfo", "ScriptValueBuf", -1);
+        const_cast<int&>(_posScriptValueBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ScriptValueBuf", -1);
         const_cast<bool&>(NeedScriptValueBuf) |= _posScriptValueBuf[pass] != -1;
 #if FO_ENABLE_3D
-        const_cast<int&>(_posModelBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelBuf", -1);
+        const_cast<int&>(_posModelBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);
         const_cast<bool&>(NeedModelBuf) |= _posModelBuf[pass] != -1;
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
-            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetInt("EffectInfo", strex("ModelTex{}", i), -1);
+            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetAsInt("EffectInfo", strex("ModelTex{}", i), -1);
             const_cast<bool&>(NeedModelTex[i]) |= _posModelTex[pass][i] != -1;
             const_cast<bool&>(NeedAnyModelTex) |= NeedModelTex[i];
         }
-        const_cast<int&>(_posModelTexBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelTexBuf", -1);
+        const_cast<int&>(_posModelTexBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelTexBuf", -1);
         const_cast<bool&>(NeedModelTexBuf) |= _posModelTexBuf[pass] != -1;
-        const_cast<int&>(_posModelAnimBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelAnimBuf", -1);
+        const_cast<int&>(_posModelAnimBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelAnimBuf", -1);
         const_cast<bool&>(NeedModelAnimBuf) |= _posModelAnimBuf[pass] != -1;
 #endif
     }

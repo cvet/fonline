@@ -454,7 +454,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetName(FOMapper* mapper, int tab, string_view
 ///@ ExportMethod
 FO_SCRIPT_API string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
 {
-    return mapper->IfaceIni->GetStr("", key, "");
+    return string(mapper->IfaceIni->GetAsStr("", key));
 }
 
 ///@ ExportMethod

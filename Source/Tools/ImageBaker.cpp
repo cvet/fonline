@@ -313,19 +313,19 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
     ConfigFile fofrm("Image.fofrm", reader.GetStr());
 
-    int frm_fps = fofrm.GetInt("", "fps", 10);
-    frm_fps = fofrm.GetInt("", "Fps", frm_fps);
-    int frm_count = fofrm.GetInt("", "count", 1);
-    frm_count = fofrm.GetInt("", "Count", frm_count);
+    int frm_fps = fofrm.GetAsInt("", "fps", 10);
+    frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
+    int frm_count = fofrm.GetAsInt("", "count", 1);
+    frm_count = fofrm.GetAsInt("", "Count", frm_count);
     RUNTIME_ASSERT(frm_count > 0);
 
-    int ox = fofrm.GetInt("", "offs_x", 0);
-    ox = fofrm.GetInt("", "OffsetX", ox);
-    int oy = fofrm.GetInt("", "offs_y", 0);
-    oy = fofrm.GetInt("", "OffsetY", oy);
+    int ox = fofrm.GetAsInt("", "offs_x", 0);
+    ox = fofrm.GetAsInt("", "OffsetX", ox);
+    int oy = fofrm.GetAsInt("", "offs_y", 0);
+    oy = fofrm.GetAsInt("", "OffsetY", oy);
 
-    collection.EffectName = fofrm.GetStr("", "effect");
-    collection.EffectName = fofrm.GetStr("", "Effect", collection.EffectName);
+    collection.EffectName = fofrm.GetAsStr("", "effect");
+    collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
 
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         vector<tuple<FrameCollection, int, int>> sub_collections;
@@ -351,10 +351,10 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
             }
         }
         else {
-            ox = fofrm.GetInt(dir_str, "offs_x", ox);
-            ox = fofrm.GetInt(dir_str, "OffsetX", ox);
-            oy = fofrm.GetInt(dir_str, "offs_y", oy);
-            oy = fofrm.GetInt(dir_str, "OffsetY", oy);
+            ox = fofrm.GetAsInt(dir_str, "offs_x", ox);
+            ox = fofrm.GetAsInt(dir_str, "OffsetX", ox);
+            oy = fofrm.GetAsInt(dir_str, "offs_y", oy);
+            oy = fofrm.GetAsInt(dir_str, "OffsetY", oy);
         }
 
         string frm_dir = strex(fname).extractDir();
@@ -364,17 +364,17 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
         bool load_fail = false;
 
         for (int frm = 0; frm < frm_count; frm++) {
-            string frm_name = fofrm.GetStr(dir_str, strex("frm_{}", frm));
+            auto frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
 
             if (frm_name.empty()) {
-                frm_name = fofrm.GetStr(dir_str, strex("Frm_{}", frm), frm_name);
+                frm_name = fofrm.GetAsStr(dir_str, strex("Frm_{}", frm), frm_name);
             }
 
             if (frm_name.empty() && frm == 0) {
-                frm_name = fofrm.GetStr(dir_str, "frm");
+                frm_name = fofrm.GetAsStr(dir_str, "frm");
 
                 if (frm_name.empty()) {
-                    frm_name = fofrm.GetStr(dir_str, "Frm");
+                    frm_name = fofrm.GetAsStr(dir_str, "Frm");
                 }
             }
 
@@ -386,10 +386,10 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
             auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name));
             frames += sub_collection.SequenceSize;
 
-            int next_x = fofrm.GetInt(dir_str, strex("next_x_{}", frm), 0);
-            next_x = fofrm.GetInt(dir_str, strex("NextX_{}", frm), next_x);
-            int next_y = fofrm.GetInt(dir_str, strex("next_y_{}", frm), 0);
-            next_y = fofrm.GetInt(dir_str, strex("NextY_{}", frm), next_y);
+            int next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
+            next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
+            int next_y = fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0);
+            next_y = fofrm.GetAsInt(dir_str, strex("NextY_{}", frm), next_y);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
