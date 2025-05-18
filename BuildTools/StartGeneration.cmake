@@ -507,7 +507,6 @@ set(FO_MAPPER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}$<${
 set(FO_ASCOMPILER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
 set(FO_BAKER_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
 set(FO_TESTS_OUTPUT "${FO_OUTPUT_PATH}/Binaries/Tests-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
-file(MAKE_DIRECTORY "${FO_OUTPUT_PATH}/Binaries")
 
 # Contributions
 macro(ResolveContributedFiles)
