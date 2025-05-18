@@ -91,7 +91,7 @@ FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view
 {
     UNUSED_VARIABLE(engine);
 
-    return !!engine->Resources.ReadFile(resourcePath);
+    return !!engine->Resources.ReadFileHeader(resourcePath);
 }
 
 ///@ ExportMethod

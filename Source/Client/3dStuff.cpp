@@ -2133,7 +2133,8 @@ auto ModelInformation::Load(string_view name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        auto fo3d = _modelMngr._resources.ReadFile(name);
+        const auto fo3d = _modelMngr._resources.ReadFile(name);
+
         if (!fo3d) {
             return false;
         }
@@ -2167,23 +2168,28 @@ auto ModelInformation::Load(string_view name) -> bool
             string FileName;
             string Name;
         };
+
         vector<AnimEntry> anims;
 
         while (!istr->eof()) {
             *istr >> token;
+
             if (istr->fail()) {
                 break;
             }
 
             auto comment = token.find(';');
+
             if (comment == string::npos) {
                 comment = token.find('#');
             }
+
             if (comment != string::npos) {
                 token = token.substr(0, comment);
 
                 string line;
                 std::getline(*istr, line, '\n');
+
                 if (token.empty()) {
                     continue;
                 }
@@ -2193,6 +2199,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 if (token == "ContinueParsing") {
                     closed = false;
                 }
+
                 continue;
             }
 
@@ -2209,6 +2216,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 string line;
                 std::getline(*istr, line, '\n');
                 templates = strex(line).trim().split(' ');
+
                 if (templates.empty()) {
                     continue;
                 }
@@ -2218,8 +2226,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Include file path
-                string fname = strex(name).extractDir().combinePath(templates[0]);
-                auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
+                const string fname = strex(name).extractDir().combinePath(templates[0]);
+                const auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
+
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found", fname);
                     continue;
@@ -2227,6 +2236,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 // Words swapping
                 string new_content = fo3d_ex.GetStr();
+
                 if (templates.size() > 2) {
                     for (size_t i = 1; i < templates.size() - 1; i += 2) {
                         new_content = strex(new_content).replace(templates[i], templates[i + 1]);
@@ -2241,6 +2251,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Mesh") {
                 *istr >> buf;
+
                 if (buf != "All") {
                     mesh = _modelMngr.GetBoneHashedString(buf);
                 }
@@ -2254,6 +2265,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Layer" || token == "Value") {
                 *istr >> buf;
+
                 if (token == "Layer") {
                     layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
@@ -2283,6 +2295,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Attach") {
                 *istr >> buf;
+
                 if (layer < 0 || layer_val == 0) {
                     continue;
                 }
@@ -2300,6 +2313,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AttachParticles") {
                 *istr >> buf;
+
                 if (layer < 0 || layer_val == 0) {
                     continue;
                 }
@@ -2316,6 +2330,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Link") {
                 *istr >> buf;
+
                 if (link->Id != 0) {
                     link->LinkBone = _modelMngr.GetBoneHashedString(buf);
                 }
@@ -2324,6 +2339,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
                 string fname = strex(name).extractDir().combinePath(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
+
                 if (area != nullptr) {
                     // Add cut
                     auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
@@ -2362,9 +2378,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     *istr >> buf;
                     hstring unskin_shape_name;
                     cut->RevertUnskinShape = false;
+
                     if (cut->UnskinBone1 && cut->UnskinBone2) {
                         cut->RevertUnskinShape = !buf.empty() && buf[0] == '~';
                         unskin_shape_name = _modelMngr.GetBoneHashedString(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
+
                         for (auto* bone : area->_allDrawBones) {
                             if (unskin_shape_name == bone->Name) {
                                 cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
@@ -2375,9 +2393,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     // Parse shapes
                     for (auto& shape : shapes) {
                         auto shape_name = _modelMngr.GetBoneHashedString(shape);
+
                         if (shape == "All") {
                             shape_name = hstring();
                         }
+
                         for (auto* bone : area->_allDrawBones) {
                             if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
                                 cut->Shapes.emplace_back(CreateCutShape(bone->AttachedMesh.get()));
@@ -2605,9 +2625,11 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
+
                 if (_animLayerValues.count(index) == 0) {
                     _animLayerValues.emplace(index, vector<pair<int, int>>());
                 }
+
                 _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
             }
             else if (token == "FastTransitionBone") {
@@ -2694,6 +2716,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Load x file
         auto* hierarchy = _modelMngr.GetHierarchy(model);
+
         if (hierarchy == nullptr) {
             return false;
         }
@@ -2777,6 +2800,7 @@ auto ModelInformation::Load(string_view name) -> bool
     else {
         // Load just model
         auto* hierarchy = _modelMngr.GetHierarchy(name);
+
         if (hierarchy == nullptr) {
             return false;
         }

@@ -125,24 +125,25 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor.Settings);
 
     _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
-        auto file = editor.BakedResources.ReadFile(path);
+        const auto file = editor.BakedResources.ReadFile(path);
         RUNTIME_ASSERT(file);
+        auto reader = file.GetReader();
 
-        const auto check_number = file.GetUChar();
+        const auto check_number = reader.GetUChar();
         RUNTIME_ASSERT(check_number == 42);
 
-        (void)file.GetLEUShort();
-        (void)file.GetLEUShort();
-        (void)file.GetUChar();
-        (void)file.GetLEShort();
-        (void)file.GetLEShort();
-        (void)file.GetUChar();
-        const auto w = file.GetLEUShort();
-        const auto h = file.GetLEUShort();
-        (void)file.GetLEShort();
-        (void)file.GetLEShort();
+        (void)reader.GetLEUShort();
+        (void)reader.GetLEUShort();
+        (void)reader.GetUChar();
+        (void)reader.GetLEShort();
+        (void)reader.GetLEShort();
+        (void)reader.GetUChar();
+        const auto w = reader.GetLEUShort();
+        const auto h = reader.GetLEUShort();
+        (void)reader.GetLEShort();
+        (void)reader.GetLEShort();
 
-        const auto* data = file.GetCurBuf();
+        const auto* data = reader.GetCurBuf();
 
         auto tex = App->Render.CreateTexture({w, h}, true, false);
         tex->UpdateTextureRegion({}, {w, h}, reinterpret_cast<const ucolor*>(data));

@@ -110,7 +110,7 @@ auto FileHeader::Copy() const -> FileHeader
 
     RUNTIME_ASSERT(_isLoaded);
 
-    return {_fileName, _filePath, _fileSize, _writeTime, _dataSource.get()};
+    return FileHeader(_fileName, _filePath, _fileSize, _writeTime, _dataSource.get());
 }
 
 File::File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf) :
@@ -168,77 +168,120 @@ auto File::GetBuf() const -> const uint8*
     return _fileBuf.get();
 }
 
-auto File::GetCurBuf() const -> const uint8*
+auto File::GetSize() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    return _fileBuf.get() + _curPos;
+    return _fileSize;
 }
 
-auto File::GetCurPos() const -> size_t
+auto File::GetReader() const -> FileReader
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
+
+    return FileReader({_fileBuf.get(), _fileSize});
+}
+
+FileReader::FileReader(const_span<uint8> buf) :
+    _buf {buf}
+{
+    STACK_TRACE_ENTRY();
+}
+
+auto FileReader::GetStr() const -> string
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
+}
+
+auto FileReader::GetData() const -> vector<uint8>
+{
+    NO_STACK_TRACE_ENTRY();
+
+    vector<uint8> result;
+    result.resize(_buf.size());
+    MemCopy(result.data(), _buf.data(), _buf.size());
+    return result;
+}
+
+auto FileReader::GetBuf() const -> const uint8*
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _buf.data();
+}
+
+auto FileReader::GetSize() const -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _buf.size();
+}
+
+auto FileReader::GetCurBuf() const -> const uint8*
+{
+    NO_STACK_TRACE_ENTRY();
+
+    return _buf.data() + _curPos;
+}
+
+auto FileReader::GetCurPos() const -> size_t
+{
+    NO_STACK_TRACE_ENTRY();
 
     return _curPos;
 }
 
-void File::SetCurPos(size_t pos)
+void FileReader::SetCurPos(size_t pos)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-    RUNTIME_ASSERT(pos <= _fileSize);
+    RUNTIME_ASSERT(pos <= _buf.size());
 
     _curPos = pos;
 }
 
-void File::GoForward(size_t offs)
+void FileReader::GoForward(size_t offs)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-    RUNTIME_ASSERT(_curPos + offs <= _fileSize);
+    RUNTIME_ASSERT(_curPos + offs <= _buf.size());
 
     _curPos += offs;
 }
 
-void File::GoBack(size_t offs)
+void FileReader::GoBack(size_t offs)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(offs <= _curPos);
 
     _curPos -= offs;
 }
 
-auto File::FindFragment(string_view fragment) -> bool
+auto FileReader::SeekFragment(string_view fragment) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(!fragment.empty());
 
-    if (_curPos + fragment.size() > _fileSize) {
+    if (_curPos + fragment.size() > _buf.size()) {
         return false;
     }
 
-    for (size_t i = _curPos; i < _fileSize - fragment.size(); i++) {
-        if (_fileBuf.get()[i] == static_cast<uint8>(fragment[0])) {
+    for (size_t i = _curPos; i < _buf.size() - fragment.size(); i++) {
+        if (_buf[i] == static_cast<uint8>(fragment[0])) {
             bool not_match = false;
 
             for (uint j = 1; j < fragment.size(); j++) {
-                if (_fileBuf.get()[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
+                if (_buf[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
                     not_match = true;
                     break;
                 }
@@ -254,136 +297,117 @@ auto File::FindFragment(string_view fragment) -> bool
     return false;
 }
 
-void File::CopyData(void* ptr, size_t size)
+void FileReader::CopyData(void* ptr, size_t size)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-    RUNTIME_ASSERT(size);
-
-    if (_curPos + size > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (size == 0) {
+        return;
+    }
+    if (_curPos + size > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
-    MemCopy(ptr, _fileBuf.get() + _curPos, size);
+    MemCopy(ptr, _buf.data() + _curPos, size);
     _curPos += size;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetStrNT() -> string
+auto FileReader::GetStrNT() -> string
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + 1 > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + 1 > _buf.size()) {
+        throw FileSystemExeption("Invalid read pos");
     }
 
     uint len = 0;
 
-    while (*(_fileBuf.get() + _curPos + len) != 0) {
+    while (*(_buf.data() + _curPos + len) != 0) {
         len++;
     }
 
-    string str(reinterpret_cast<const char*>(&_fileBuf.get()[_curPos]), len);
+    string str(reinterpret_cast<const char*>(_buf.data() + _curPos), len);
     _curPos += len + 1;
     return str;
 }
 
-auto File::GetUChar() -> uint8
+auto FileReader::GetUChar() -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uint8) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + sizeof(uint8) > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
-    return _fileBuf.get()[_curPos++];
+    return _buf[_curPos++];
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetBEUShort() -> uint16
+auto FileReader::GetBEUShort() -> uint16
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uint16) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + sizeof(uint16) > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
     uint16 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
-    cres[1] = _fileBuf.get()[_curPos++];
-    cres[0] = _fileBuf.get()[_curPos++];
+    cres[1] = _buf[_curPos++];
+    cres[0] = _buf[_curPos++];
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetLEUShort() -> uint16
+auto FileReader::GetLEUShort() -> uint16
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uint16) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + sizeof(uint16) > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
     uint16 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
-    cres[0] = _fileBuf.get()[_curPos++];
-    cres[1] = _fileBuf.get()[_curPos++];
+    cres[0] = _buf[_curPos++];
+    cres[1] = _buf[_curPos++];
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetBEUInt() -> uint
+auto FileReader::GetBEUInt() -> uint
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uint) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + sizeof(uint) > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
     uint res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 3; i >= 0; i--) {
-        cres[i] = _fileBuf.get()[_curPos++];
+        cres[i] = _buf[_curPos++];
     }
 
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetLEUInt() -> uint
+auto FileReader::GetLEUInt() -> uint
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uint) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
+    if (_curPos + sizeof(uint) > _buf.size()) {
+        throw FileSystemExeption("Invalid read size");
     }
 
     uint res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 0; i <= 3; i++) {
-        cres[i] = _fileBuf.get()[_curPos++];
+        cres[i] = _buf[_curPos++];
     }
 
     return res;
@@ -434,7 +458,7 @@ auto FileCollection::GetCurFile() const -> File
     auto wt = fh.GetWriteTime();
     auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
     RUNTIME_ASSERT(buf);
-    return {fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf)};
+    return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
 }
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
@@ -445,7 +469,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
-    return {fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource()};
+    return FileHeader(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());
 }
 
 auto FileCollection::FindFileByName(string_view name) const -> File
@@ -470,7 +494,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
         RUNTIME_ASSERT(buf);
-        return {fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf)};
+        return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
     return {};
@@ -498,7 +522,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
         RUNTIME_ASSERT(buf);
-        return {fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf)};
+        return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
     return {};
@@ -591,7 +615,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
         uint64 write_time = 0;
 
         if (auto buf = ds->OpenFile(path, size, write_time)) {
-            return {strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf)};
+            return File(strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf));
         }
     }
 
@@ -618,7 +642,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
         uint64 write_time = 0;
 
         if (ds->IsFilePresent(path, size, write_time)) {
-            return {strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get()};
+            return FileHeader(strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get());
         }
     }
 
