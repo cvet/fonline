@@ -35,9 +35,8 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds) :
+FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const DataSource* ds) :
     _isLoaded {true},
-    _fileName {name},
     _filePath {path},
     _fileSize {size},
     _writeTime {write_time},
@@ -48,14 +47,27 @@ FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 w
     RUNTIME_ASSERT(_dataSource);
 }
 
-auto FileHeader::GetName() const -> const string&
+auto FileHeader::GetName() const -> string_view
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(!_fileName.empty());
+    RUNTIME_ASSERT(!_filePath.empty());
 
-    return _fileName;
+    string_view name = _filePath;
+    auto pos = name.find_last_of("/\\");
+
+    if (pos != string::npos) {
+        name = name.substr(pos + 1);
+    }
+
+    pos = name.find_last_of('.');
+
+    if (pos != string::npos) {
+        name = name.substr(0, pos);
+    }
+
+    return name;
 }
 
 auto FileHeader::GetPath() const -> const string&
@@ -73,6 +85,7 @@ auto FileHeader::GetFullPath() const -> string
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(!_filePath.empty());
 
     return strex(_dataSource->GetPackName()).combinePath(_filePath);
 }
@@ -110,18 +123,18 @@ auto FileHeader::Copy() const -> FileHeader
 
     RUNTIME_ASSERT(_isLoaded);
 
-    return FileHeader(_fileName, _filePath, _fileSize, _writeTime, _dataSource.get());
+    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.get());
 }
 
-File::File(string_view name, string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf) :
-    FileHeader(name, path, size, write_time, ds),
+File::File(string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf) :
+    FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
 {
     STACK_TRACE_ENTRY();
 }
 
-File::File(string_view name, string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
-    FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
+File::File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
+    FileHeader(path, static_cast<uint>(buf.size()), write_time, ds)
 {
     STACK_TRACE_ENTRY();
 
@@ -458,7 +471,7 @@ auto FileCollection::GetCurFile() const -> File
     auto wt = fh.GetWriteTime();
     auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
     RUNTIME_ASSERT(buf);
-    return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
+    return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
 }
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
@@ -469,7 +482,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
-    return FileHeader(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());
+    return FileHeader(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());
 }
 
 auto FileCollection::FindFileByName(string_view name) const -> File
@@ -482,6 +495,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
 
     if (_nameToIndex.empty()) {
         size_t index = 0;
+
         for (const auto& fh : _allFiles) {
             _nameToIndex.emplace(fh.GetName(), index);
             ++index;
@@ -494,7 +508,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
         RUNTIME_ASSERT(buf);
-        return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
+        return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
     return {};
@@ -510,6 +524,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 
     if (_pathToIndex.empty()) {
         size_t index = 0;
+
         for (const auto& fh : _allFiles) {
             _pathToIndex.emplace(fh.GetPath(), index);
             ++index;
@@ -522,7 +537,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
         RUNTIME_ASSERT(buf);
-        return File(fh.GetName(), fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
+        return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
     return {};
@@ -585,17 +600,16 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
     unordered_set<string> processed_files;
 
     for (const auto& ds : _dataSources) {
-        for (const auto& fname : ds->GetFileNames(dir, include_subdirs, ext)) {
-            if (!processed_files.insert(fname).second) {
+        for (const auto& path : ds->GetFileNames(dir, include_subdirs, ext)) {
+            if (!processed_files.insert(path).second) {
                 continue;
             }
 
             size_t size = 0;
             uint64 write_time = 0;
-            const auto ok = ds->IsFilePresent(fname, size, write_time);
+            const auto ok = ds->IsFilePresent(path, size, write_time);
             RUNTIME_ASSERT(ok);
-            const string name = strex(fname).extractFileName().eraseFileExtension();
-            auto file_header = FileHeader(name, fname, size, write_time, ds.get());
+            auto file_header = FileHeader(path, size, write_time, ds.get());
             files.emplace_back(std::move(file_header));
         }
     }
@@ -615,7 +629,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
         uint64 write_time = 0;
 
         if (auto buf = ds->OpenFile(path, size, write_time)) {
-            return File(strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get(), std::move(buf));
+            return File(path, size, write_time, ds.get(), std::move(buf));
         }
     }
 
@@ -642,7 +656,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
         uint64 write_time = 0;
 
         if (ds->IsFilePresent(path, size, write_time)) {
-            return FileHeader(strex(path).extractFileName().eraseFileExtension(), path, size, write_time, ds.get());
+            return FileHeader(path, size, write_time, ds.get());
         }
     }
 

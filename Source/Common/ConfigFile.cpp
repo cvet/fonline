@@ -245,7 +245,7 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
     return &it_key->second;
 }
 
-auto ConfigFile::GetStr(string_view section_name, string_view key_name) const noexcept -> const string&
+auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view
 {
     STACK_TRACE_ENTRY();
 
@@ -254,7 +254,7 @@ auto ConfigFile::GetStr(string_view section_name, string_view key_name) const no
     return str != nullptr ? *str : _emptyStr;
 }
 
-auto ConfigFile::GetStr(string_view section_name, string_view key_name, const string& def_val) const noexcept -> const string&
+auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
     STACK_TRACE_ENTRY();
 
@@ -263,7 +263,7 @@ auto ConfigFile::GetStr(string_view section_name, string_view key_name, const st
     return str != nullptr ? *str : def_val;
 }
 
-auto ConfigFile::GetInt(string_view section_name, string_view key_name) const noexcept -> int
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -279,7 +279,7 @@ auto ConfigFile::GetInt(string_view section_name, string_view key_name) const no
     return str != nullptr ? strex(*str).toInt() : 0;
 }
 
-auto ConfigFile::GetInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int
 {
     STACK_TRACE_ENTRY();
 
@@ -293,37 +293,6 @@ auto ConfigFile::GetInt(string_view section_name, string_view key_name, int def_
     }
 
     return str != nullptr ? strex(*str).toInt() : def_val;
-}
-
-void ConfigFile::SetStr(string_view section_name, string_view key_name, string_view val)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it_section = _sectionKeyValues.find(section_name);
-
-    if (it_section == _sectionKeyValues.end()) {
-        map<string, string> key_values;
-        key_values.emplace(key_name, val);
-
-        _sectionKeyValues.emplace(section_name, key_values);
-    }
-    else {
-        const auto it_key = it_section->second.find(key_name);
-
-        if (it_key == it_section->second.end()) {
-            it_section->second.emplace(key_name, val);
-        }
-        else {
-            it_key->second = val;
-        }
-    }
-}
-
-void ConfigFile::SetInt(string_view section_name, string_view key_name, int val)
-{
-    STACK_TRACE_ENTRY();
-
-    SetStr(section_name, key_name, strex("{}", val));
 }
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&
@@ -358,15 +327,6 @@ auto ConfigFile::GetSections() noexcept -> multimap<string, map<string, string>>
     STACK_TRACE_ENTRY();
 
     return _sectionKeyValues;
-}
-
-auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
-
-    return it->second;
 }
 
 auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool

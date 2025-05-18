@@ -444,13 +444,13 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
 
     while (text_files.MoveNext()) {
         auto text_file = text_files.GetCurFile();
-        const auto& file_name = text_file.GetName();
+        const auto file_name = text_file.GetName();
 
         const auto sep = file_name.find('.');
         RUNTIME_ASSERT(sep != string::npos);
 
-        string pack_name_str = file_name.substr(0, sep);
-        string lang_name = file_name.substr(sep + 1);
+        const auto pack_name_str = file_name.substr(0, sep);
+        const auto lang_name = file_name.substr(sep + 1);
         RUNTIME_ASSERT(!pack_name_str.empty());
         RUNTIME_ASSERT(!lang_name.empty());
 

@@ -96,9 +96,9 @@ void MapBaker::BakeFiles(FileCollection files)
     const auto bake_map = [&](const File& file) {
         const string& file_content = file.GetStr();
 
-        string map_name = [&] {
+        string map_name = [&]() -> string {
             const auto fomap = ConfigFile(file.GetPath(), file_content, nullptr, ConfigFileOption::ReadFirstSection);
-            return fomap.GetStr("Header", "$Name", file.GetName());
+            return string(fomap.GetAsStr("Header", "$Name", file.GetName()));
         }();
 
         vector<uint8> props_data;

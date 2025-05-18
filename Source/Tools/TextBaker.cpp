@@ -82,12 +82,12 @@ void TextBaker::BakeFiles(FileCollection files)
     set<string> all_languages;
 
     for (const auto& file : filtered_files) {
-        const auto& file_name = file.GetName();
+        const auto file_name = file.GetName();
 
         const auto sep = file_name.find('.');
         RUNTIME_ASSERT(sep != string::npos);
 
-        string lang_name = file_name.substr(sep + 1);
+        const auto lang_name = file_name.substr(sep + 1);
         RUNTIME_ASSERT(!lang_name.empty());
 
         if (all_languages.emplace(lang_name).second) {
@@ -112,13 +112,13 @@ void TextBaker::BakeFiles(FileCollection files)
         map<string, TextPack> lang_pack;
 
         for (const auto& file : filtered_files) {
-            const auto& file_name = file.GetName();
+            const auto file_name = file.GetName();
 
             const auto sep = file_name.find('.');
             RUNTIME_ASSERT(sep != string::npos);
 
-            string text_pack_name = file_name.substr(0, sep);
-            string lang_name = file_name.substr(sep + 1);
+            const auto text_pack_name = file_name.substr(0, sep);
+            const auto lang_name = file_name.substr(sep + 1);
             RUNTIME_ASSERT(!text_pack_name.empty());
             RUNTIME_ASSERT(!lang_name.empty());
 

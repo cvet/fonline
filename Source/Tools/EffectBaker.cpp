@@ -122,9 +122,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
     constexpr bool old_code_profile = false;
 
-    const auto passes = fofx.GetInt("Effect", "Passes", 1);
+    const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
     const auto shader_common_content = fofx.GetSectionContent("ShaderCommon");
-    const auto shader_version = fofx.GetInt("Effect", "Version", 310);
+    const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
     const auto shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
     const auto shader_defines = strex("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();

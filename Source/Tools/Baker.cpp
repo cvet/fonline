@@ -513,7 +513,7 @@ void BakerDataSource::WriteData(string_view baked_path, const_span<uint8> baked_
 
     auto locker = std::scoped_lock(_bakedCacheLocker);
 
-    auto baked_file = File(strex(baked_path).extractFileName().eraseFileExtension(), baked_path, 0, this, baked_data, true);
+    auto baked_file = File(baked_path, 0, this, baked_data, true);
     _bakedCache[baked_path] = SafeAlloc::MakeUnique<File>(std::move(baked_file));
 }
 

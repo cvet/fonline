@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-enum class ConfigFileOption
+enum class ConfigFileOption : uint8
 {
     None = 0,
     CollectContent = 0x1,
@@ -49,31 +49,27 @@ public:
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept = delete;
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
     ~ConfigFile() = default;
 
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const noexcept -> const string&;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, const string& def_val) const noexcept -> const string&;
-    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const noexcept -> int;
-    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int;
+    [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;
+    [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
     [[nodiscard]] auto GetSections() noexcept -> multimap<string, map<string, string>>&;
     [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> const map<string, string>*;
     [[nodiscard]] auto GetSectionContent(string_view section_name) -> const string&;
 
-    void SetStr(string_view section_name, string_view key_name, string_view val);
-    void SetInt(string_view section_name, string_view key_name, int val);
-    auto CreateSection(string_view section_name) -> map<string, string>&;
-
 private:
     [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string*;
 
     string _fileNameHint;
-    HashResolver* _hashResolver;
+    raw_ptr<HashResolver> _hashResolver;
     ConfigFileOption _options;
-    multimap<string, map<string, string>> _sectionKeyValues {};
-    const string _emptyStr {};
+    multimap<string, map<string, string>> _sectionKeyValues {}; // Todo: rework ConfigFile entries to string_view
+    string _emptyStr {};
 };
