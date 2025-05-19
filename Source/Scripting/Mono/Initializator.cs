@@ -1,7 +1,8 @@
 using System;
 using System.Reflection;
 
-BEGIN_FONLINE_NAMESPACE();
+namespace FOnline
+{
     public static class Initializator
     {
         static void Initialize()

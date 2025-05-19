@@ -1,6 +1,7 @@
 using System;
 
-BEGIN_FONLINE_NAMESPACE();
+namespace FOnline
+{
     public struct hash 
     {
         public uint Value { get; private set; }

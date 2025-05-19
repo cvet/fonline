@@ -1,7 +1,8 @@
 #if CLIENT || MAPPER
 using System;
 
-BEGIN_FONLINE_NAMESPACE();
+namespace FOnline
+{
     public class MapSprite { }
 }
 #endif
