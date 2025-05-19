@@ -1551,10 +1551,10 @@ using SourceLocationData = tracy::SourceLocationData;
 #if !FO_NO_MANUAL_STACK_TRACE
 #define FO_STACK_TRACE_ENTRY() \
     ZoneScoped; \
-    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
 #define FO_STACK_TRACE_ENTRY_NAMED(name) \
     ZoneScopedN(name); \
-    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
 #else
 #define FO_STACK_TRACE_ENTRY() ZoneScoped
 #define FO_STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)
@@ -1572,11 +1572,11 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 
 #if !FO_NO_MANUAL_STACK_TRACE
 #define FO_STACK_TRACE_ENTRY() \
-    static constexpr SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, static_cast<uint32_t>(__LINE__)}; \
-    auto ___fo_stack_entry = StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
+    static constexpr FO_NAMESPACE SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, static_cast<uint32_t>(__LINE__)}; \
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
 #define FO_STACK_TRACE_ENTRY_NAMED(name) \
-    static constexpr SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, name, __FILE__, static_cast<uint32_t>(__LINE__)}; \
-    auto ___fo_stack_entry = StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
+    static constexpr FO_NAMESPACE SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, name, __FILE__, static_cast<uint32_t>(__LINE__)}; \
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
 #else
 #define FO_STACK_TRACE_ENTRY()
 #define FO_STACK_TRACE_ENTRY_NAMED(name)
@@ -1616,7 +1616,7 @@ struct ExceptionStackTraceData
     string StackTrace {};
 };
 
-#define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, BaseEngineException)
+#define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
 // Todo: pass name to exceptions context args
 #define FO_DECLARE_EXCEPTION_EXT(exception_name, base_exception_name) \
@@ -1628,12 +1628,12 @@ struct ExceptionStackTraceData
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-        explicit exception_name(string_view message, Args&&... args) noexcept : \
+        explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(#exception_name, nullptr, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
-        exception_name(ExceptionStackTraceData data, string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE ExceptionStackTraceData data, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(#exception_name, &data, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -1727,15 +1727,15 @@ private:
 #if !FO_NO_EXTRA_ASSERTS
 #define FO_RUNTIME_ASSERT(expr) \
     if (!(expr)) { \
-        throw AssertationException(#expr, __FILE__, __LINE__); \
+        throw FO_NAMESPACE AssertationException(#expr, __FILE__, __LINE__); \
     }
 #define FO_RUNTIME_ASSERT_STR(expr, str) \
     if (!(expr)) { \
-        throw AssertationException(str, __FILE__, __LINE__); \
+        throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
     }
 #define FO_RUNTIME_VERIFY(expr, ...) \
     if (!(expr)) { \
-        ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
         return __VA_ARGS__; \
     }
 #else
@@ -1747,14 +1747,14 @@ private:
 #if FO_DEBUG
 #define FO_STRONG_ASSERT(expr) \
     if (!(expr)) { \
-        ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
     }
 #else
 #define FO_STRONG_ASSERT(expr)
 #endif
 
-#define FO_UNREACHABLE_PLACE() throw UnreachablePlaceException(__FILE__, __LINE__)
-#define FO_UNKNOWN_EXCEPTION() ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
+#define FO_UNREACHABLE_PLACE() throw FO_NAMESPACE UnreachablePlaceException(__FILE__, __LINE__)
+#define FO_UNKNOWN_EXCEPTION() FO_NAMESPACE ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
 
 // Common exceptions
 FO_DECLARE_EXCEPTION(GenericException);
@@ -3587,10 +3587,10 @@ extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback
     { \
         FO_CONCAT(Register_, class_name)() \
         { \
-            assert(GlobalDataCallbacksCount < MAX_GLOBAL_DATA_CALLBACKS); \
-            CreateGlobalDataCallbacks[GlobalDataCallbacksCount] = FO_CONCAT(Create_, class_name); \
-            DeleteGlobalDataCallbacks[GlobalDataCallbacksCount] = FO_CONCAT(Delete_, class_name); \
-            GlobalDataCallbacksCount++; \
+            assert(FO_NAMESPACE GlobalDataCallbacksCount < FO_NAMESPACE MAX_GLOBAL_DATA_CALLBACKS); \
+            FO_NAMESPACE CreateGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Create_, class_name); \
+            FO_NAMESPACE DeleteGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Delete_, class_name); \
+            FO_NAMESPACE GlobalDataCallbacksCount++; \
         } \
     }; \
     static FO_CONCAT(Register_, class_name) FO_CONCAT(Register_Instance_, class_name)
