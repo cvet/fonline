@@ -1270,6 +1270,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 }
 
-#endif
-
 FO_END_NAMESPACE();
+
+#endif

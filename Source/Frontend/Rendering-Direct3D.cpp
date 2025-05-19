@@ -1461,6 +1461,6 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
     }
 }
 
-#endif
-
 FO_END_NAMESPACE();
+
+#endif
