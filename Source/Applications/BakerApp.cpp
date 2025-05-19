@@ -36,13 +36,15 @@
 #include "Application.h"
 #include "Baker.h"
 
+FO_USING_NAMESPACE();
+
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv);
@@ -55,6 +57,6 @@ int main(int argc, char** argv)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

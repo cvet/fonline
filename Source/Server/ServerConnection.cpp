@@ -35,12 +35,14 @@
 #include "Log.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
     _owner {owner},
     _outBuf {&_owner->_outBuf},
     _msg {msg}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _owner->_outBufLocker.lock();
 
@@ -51,7 +53,7 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, option
 
 ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_outBuf != nullptr) {
         if (!_isStackUnwinding) {
@@ -79,30 +81,30 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 ServerConnection::InBufAccessor::InBufAccessor(ServerConnection* owner) :
     _owner {owner}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Lock();
 }
 
 ServerConnection::InBufAccessor::~InBufAccessor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Unlock();
 }
 
 void ServerConnection::InBufAccessor::Lock()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_inBuf);
+    FO_RUNTIME_ASSERT(!_inBuf);
     _owner->_inBufLocker.lock();
     _inBuf = &_owner->_inBuf;
 }
 
 void ServerConnection::InBufAccessor::Unlock() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_inBuf != nullptr) {
         _owner->_inBufLocker.unlock();
@@ -116,7 +118,7 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
     _inBuf(_settings.NetBufferSize),
     _outBuf(_settings.NetBufferSize)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto send = [this]() -> const_span<uint8> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8> buf) { AsyncReceiveData(buf); };
@@ -128,56 +130,56 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 
 ServerConnection::~ServerConnection()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
 }
 
 auto ServerConnection::GetIp() const noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetIp();
 }
 
 auto ServerConnection::GetHost() const noexcept -> string_view
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetHost();
 }
 
 auto ServerConnection::GetPort() const noexcept -> uint16
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _netConnection->GetPort();
 }
 
 auto ServerConnection::IsHardDisconnected() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _netConnection->IsDisconnected();
 }
 
 auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
 }
 
 void ServerConnection::StartAsyncSend()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _netConnection->Dispatch();
 }
 
 auto ServerConnection::AsyncSendData() -> const_span<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(_outBufLocker);
 
@@ -196,13 +198,13 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8>
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
 
-    RUNTIME_ASSERT(!_sendBuf.empty());
+    FO_RUNTIME_ASSERT(!_sendBuf.empty());
     return _sendBuf;
 }
 
 void ServerConnection::AsyncReceiveData(const_span<uint8> buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(_inBufLocker);
 
@@ -211,16 +213,18 @@ void ServerConnection::AsyncReceiveData(const_span<uint8> buf)
 
 void ServerConnection::HardDisconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
 }
 
 void ServerConnection::GracefulDisconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _gracefulDisconnected = true;
 
     WriteMsg(NetMessage::Disconnect);
 }
+
+FO_END_NAMESPACE();

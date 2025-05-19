@@ -39,6 +39,8 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Map;
 class Location;
 
@@ -65,8 +67,10 @@ public:
     void AddMap(Map* map);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
 
 private:
     vector<refcount_ptr<Map>> _locMaps {};
 };
+
+FO_END_NAMESPACE();

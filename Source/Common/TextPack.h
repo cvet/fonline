@@ -37,7 +37,9 @@
 
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(LanguagePackException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(LanguagePackException);
 
 ///@ ExportEnum
 enum class TextPackName : uint8
@@ -114,3 +116,5 @@ private:
     vector<unique_ptr<TextPack>> _textPacks {};
     TextPack _emptyPack {};
 };
+
+FO_END_NAMESPACE();

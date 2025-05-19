@@ -37,17 +37,19 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int16 sort_value = 0;
     for (const auto* item : items) {
@@ -65,7 +67,7 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
 
 auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_innerItems) {
         return nullptr;
@@ -82,7 +84,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 
 auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_innerItems) {
         return nullptr;
@@ -99,7 +101,7 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Ite
 
 auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_innerItems) {
         return {};
@@ -117,34 +119,34 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 
 auto Item::HasInnerItems() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _innerItems && !_innerItems->empty();
 }
 
 auto Item::GetAllInnerItems() -> const vector<Item*>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_innerItems);
+    FO_RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
 }
 
 auto Item::GetRawInnerItems() -> vector<Item*>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_innerItems);
+    FO_RUNTIME_ASSERT(_innerItems);
 
     return *_innerItems;
 }
 
 void Item::SetItemToContainer(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(item);
 
     make_if_not_exists(_innerItems);
     vec_add_unique_value(*_innerItems, item);
@@ -155,9 +157,9 @@ void Item::SetItemToContainer(Item* item)
 
 auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetStackable()) {
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
@@ -187,10 +189,10 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 
 void Item::RemoveItemFromContainer(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_innerItems);
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(_innerItems);
+    FO_RUNTIME_ASSERT(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId({});
@@ -235,3 +237,5 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
     return true;
 }
+
+FO_END_NAMESPACE();

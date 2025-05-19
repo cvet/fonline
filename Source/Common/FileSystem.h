@@ -37,7 +37,9 @@
 
 #include "DataSource.h"
 
-DECLARE_EXCEPTION(FileSystemExeption);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(FileSystemExeption);
 
 class FileHeader
 {
@@ -123,7 +125,6 @@ public:
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8>;
     [[nodiscard]] auto GetBuf() const -> const uint8*;
-    [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetReader() const -> FileReader;
 
 protected:
@@ -182,3 +183,5 @@ private:
     string _rootPath {};
     vector<unique_ptr<DataSource>> _dataSources {};
 };
+
+FO_END_NAMESPACE();

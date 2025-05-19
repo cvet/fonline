@@ -41,6 +41,8 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
@@ -48,9 +50,9 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _staticMap {static_map},
     _mapLocation {location}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    STRONG_ASSERT(_staticMap);
+    FO_STRONG_ASSERT(_staticMap);
 
     _mapSize = GetSize();
 
@@ -64,19 +66,19 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
 
 Map::~Map()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Map::SetLocation(Location* loc) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _mapLocation = loc;
 }
 
 auto Map::FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<mpos>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsHexesMovable(hex, multihex) && !(skip_unsafe && (IsStaticItemTrigger(hex) || IsItemTrigger(hex)))) {
         return hex;
@@ -125,9 +127,9 @@ auto Map::FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsa
 
 void Map::AddCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_crittersMap.count(cr->GetId()));
+    FO_RUNTIME_ASSERT(!_crittersMap.count(cr->GetId()));
 
     _crittersMap.emplace(cr->GetId(), cr);
     vec_add_unique_value(_critters, cr);
@@ -144,10 +146,10 @@ void Map::AddCritter(Critter* cr)
 
 void Map::RemoveCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _crittersMap.find(cr->GetId());
-    RUNTIME_ASSERT(it != _crittersMap.end());
+    FO_RUNTIME_ASSERT(it != _crittersMap.end());
     _crittersMap.erase(it);
 
     vec_remove_unique_value(_critters, cr);
@@ -164,10 +166,10 @@ void Map::RemoveCritter(Critter* cr)
 
 void Map::AddCritterToField(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -178,10 +180,10 @@ void Map::AddCritterToField(Critter* cr)
 
 void Map::RemoveCritterFromField(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -192,7 +194,7 @@ void Map::RemoveCritterFromField(Critter* cr)
 
 void Map::SetMultihexCritter(Critter* cr, bool set)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const uint multihex = cr->GetMultihex();
 
@@ -222,11 +224,11 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
 
 void Map::AddItem(Item* item, mpos hex, Critter* dropper)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(!item->GetStatic());
-    RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
+    FO_RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(!item->GetStatic());
+    FO_RUNTIME_ASSERT(_mapSize.IsValidPos(hex));
 
     item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
@@ -275,9 +277,9 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
 
 void Map::SetItem(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
+    FO_RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
 
     _itemsMap.emplace(item->GetId(), item);
     vec_add_unique_value(_items, item);
@@ -300,14 +302,14 @@ void Map::SetItem(Item* item)
 
 void Map::RemoveItem(ident_t item_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Item* item;
 
     {
-        RUNTIME_ASSERT(item_id);
+        FO_RUNTIME_ASSERT(item_id);
         const auto it = _itemsMap.find(item_id);
-        RUNTIME_ASSERT(it != _itemsMap.end());
+        FO_RUNTIME_ASSERT(it != _itemsMap.end());
         item = it->second;
         _itemsMap.erase(it);
     }
@@ -333,7 +335,7 @@ void Map::RemoveItem(ident_t item_id)
         GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hex, _mapSize, [this, item](mpos block_hex) {
             auto& block_field = _hexField->GetCellForWriting(block_hex);
             const auto it = std::find(block_field.BlockLines.begin(), block_field.BlockLines.end(), item);
-            RUNTIME_ASSERT(it != block_field.BlockLines.end());
+            FO_RUNTIME_ASSERT(it != block_field.BlockLines.end());
             block_field.BlockLines.erase(it);
             RecacheHexFlags(block_field);
         });
@@ -354,11 +356,11 @@ void Map::RemoveItem(ident_t item_id)
 
 void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (type == NetProperty::Map) {
         const auto* map = dynamic_cast<Map*>(entity);
-        RUNTIME_ASSERT(map == this);
+        FO_RUNTIME_ASSERT(map == this);
         for (auto* cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
         }
@@ -373,13 +375,13 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         }
     }
     else {
-        RUNTIME_ASSERT(false);
+        FO_RUNTIME_ASSERT(false);
     }
 }
 
 auto Map::IsHexMovable(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
@@ -389,7 +391,7 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
 
 auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
@@ -399,7 +401,7 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 
 auto Map::IsHexesMovable(mpos hex, uint radius) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     // Base
     if (!IsHexMovable(hex)) {
@@ -428,7 +430,7 @@ auto Map::IsHexesMovable(mpos hex, uint radius) const -> bool
 
 auto Map::IsHexesMovable(mpos hex, uint radius, Critter* skip_cr) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_engine->Settings.CritterBlockHex) {
         if (skip_cr != nullptr && !skip_cr->IsDead()) {
@@ -445,7 +447,7 @@ auto Map::IsHexesMovable(mpos hex, uint radius, Critter* skip_cr) -> bool
 
 void Map::ChangeViewItem(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto* cr : copy_hold_ref(GetCritters())) {
         if (cr->IsDestroyed()) {
@@ -510,9 +512,9 @@ void Map::ChangeViewItem(Item* item)
 
 void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
         if (cr->CountIdVisItem(item->GetId())) {
@@ -523,7 +525,7 @@ void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
 
 auto Map::IsBlockItem(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -532,7 +534,7 @@ auto Map::IsBlockItem(mpos hex) const noexcept -> bool
 
 auto Map::IsItemTrigger(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -541,7 +543,7 @@ auto Map::IsItemTrigger(mpos hex) const noexcept -> bool
 
 auto Map::IsItemGag(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -550,7 +552,7 @@ auto Map::IsItemGag(mpos hex) const noexcept -> bool
 
 auto Map::GetItem(ident_t item_id) noexcept -> Item*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto it = _itemsMap.find(item_id);
 
@@ -559,7 +561,7 @@ auto Map::GetItem(ident_t item_id) noexcept -> Item*
 
 auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -574,7 +576,7 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 
 auto Map::GetItemGag(mpos hex) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -589,14 +591,14 @@ auto Map::GetItemGag(mpos hex) noexcept -> Item*
 
 auto Map::GetItems() noexcept -> const vector<Item*>&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _items;
 }
 
 auto Map::GetItems(mpos hex) noexcept -> const vector<Item*>&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -605,9 +607,9 @@ auto Map::GetItems(mpos hex) noexcept -> const vector<Item*>&
 
 auto Map::GetItemsInRadius(mpos hex, uint radius, hstring pid) -> vector<Item*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
 
@@ -623,9 +625,9 @@ auto Map::GetItemsInRadius(mpos hex, uint radius, hstring pid) -> vector<Item*>
 
 auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
 
@@ -640,7 +642,7 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 
 auto Map::GetItemsTrigger(mpos hex) -> vector<Item*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -651,7 +653,7 @@ auto Map::GetItemsTrigger(mpos hex) -> vector<Item*>
 
 auto Map::IsPlaceForProtoItem(mpos hex, const ProtoItem* proto_item) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!IsHexMovable(hex)) {
         return false;
@@ -664,7 +666,7 @@ auto Map::IsPlaceForProtoItem(mpos hex, const ProtoItem* proto_item) const -> bo
 
 void Map::RecacheHexFlags(mpos hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -673,9 +675,9 @@ void Map::RecacheHexFlags(mpos hex)
 
 void Map::RecacheHexFlags(Field& field)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     field.HasCritter = false;
     field.HasBlockCritter = false;
@@ -733,7 +735,7 @@ void Map::RecacheHexFlags(Field& field)
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -745,7 +747,7 @@ void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
 
 auto Map::IsCritter(mpos hex, CritterFindType find_type) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -772,9 +774,9 @@ auto Map::IsCritter(mpos hex, CritterFindType find_type) const -> bool
 
 auto Map::IsCritter(mpos hex, const Critter* cr) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(cr);
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -797,7 +799,7 @@ auto Map::IsCritter(mpos hex, const Critter* cr) const -> bool
 
 auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
         return it->second;
@@ -808,7 +810,7 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 
 auto Map::GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -831,9 +833,9 @@ auto Map::GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*
 
 auto Map::GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // Todo: optimize critters radius search by using GetHexOffsets
     return vec_filter(_critters, [&](const Critter* cr) -> bool { //
@@ -843,7 +845,7 @@ auto Map::GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vecto
 
 auto Map::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<Critter*> critters;
     const auto& field = _hexField->GetCellForReading(hex);
@@ -869,9 +871,9 @@ auto Map::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>
 
 void Map::SendEffect(hstring eff_pid, mpos hex, uint16 radius)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
         if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
@@ -882,9 +884,9 @@ void Map::SendEffect(hstring eff_pid, mpos hex, uint16 radius)
 
 void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
         if (GenericUtils::IntersectCircleLine(cr->GetHex().x, cr->GetHex().y, static_cast<int>(cr->GetLookDistance()), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
@@ -895,7 +897,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, m
 
 auto Map::IsStaticItemTrigger(mpos hex) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
@@ -904,9 +906,9 @@ auto Map::IsStaticItemTrigger(mpos hex) const noexcept -> bool
 
 auto Map::GetStaticItem(ident_t id) noexcept -> StaticItem*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (const auto it = _staticMap->StaticItemsById.find(id); it != _staticMap->StaticItemsById.end()) {
         return it->second;
@@ -917,9 +919,9 @@ auto Map::GetStaticItem(ident_t id) noexcept -> StaticItem*
 
 auto Map::GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
@@ -934,9 +936,9 @@ auto Map::GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*
 
 auto Map::GetStaticItemsHex(mpos hex) noexcept -> const vector<StaticItem*>&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
@@ -945,9 +947,9 @@ auto Map::GetStaticItemsHex(mpos hex) noexcept -> const vector<StaticItem*>&
 
 auto Map::GetStaticItemsHexEx(mpos hex, uint radius, hstring pid) -> vector<StaticItem*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> items;
 
@@ -962,9 +964,9 @@ auto Map::GetStaticItemsHexEx(mpos hex, uint radius, hstring pid) -> vector<Stat
 
 auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> items;
 
@@ -979,11 +981,13 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 
 auto Map::GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     return static_field.TriggerItems;
 }
+
+FO_END_NAMESPACE();

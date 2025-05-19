@@ -55,6 +55,8 @@
 #include <signal.h>
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 Application* App;
 
 #if FO_WINDOWS && FO_DEBUG
@@ -81,7 +83,7 @@ static void SignalHandler(int sig)
 
 void InitApp(int argc, char** argv, AppInitFlags flags)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetThisThreadName("Main");
 
@@ -145,7 +147,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
 
 void ExitApp(bool success) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
@@ -157,9 +159,9 @@ void ExitApp(bool success) noexcept
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(other);
+    ignore_unused(other);
 
     return false;
 }
@@ -167,20 +169,20 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 Application::Application(int argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(flags);
-    UNUSED_VARIABLE(_time);
-    UNUSED_VARIABLE(_timeFrequency);
-    UNUSED_VARIABLE(_isTablet);
-    UNUSED_VARIABLE(_mouseCanUseGlobalState);
-    UNUSED_VARIABLE(_pendingMouseLeaveFrame);
-    UNUSED_VARIABLE(_mouseButtonsDown);
-    UNUSED_VARIABLE(_imguiDrawBuf);
-    UNUSED_VARIABLE(_imguiEffect);
-    UNUSED_VARIABLE(_nonConstHelper);
-    UNUSED_VARIABLE(MainWindow._windowHandle);
-    UNUSED_VARIABLE(MainWindow._grabbed);
+    ignore_unused(flags);
+    ignore_unused(_time);
+    ignore_unused(_timeFrequency);
+    ignore_unused(_isTablet);
+    ignore_unused(_mouseCanUseGlobalState);
+    ignore_unused(_pendingMouseLeaveFrame);
+    ignore_unused(_mouseButtonsDown);
+    ignore_unused(_imguiDrawBuf);
+    ignore_unused(_imguiEffect);
+    ignore_unused(_nonConstHelper);
+    ignore_unused(MainWindow._windowHandle);
+    ignore_unused(MainWindow._grabbed);
 
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
@@ -190,40 +192,40 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
 
 void Application::OpenLink(string_view link)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(link);
+    ignore_unused(link);
 }
 
 void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(effect);
+    ignore_unused(effect);
 }
 
 auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 
     return nullptr;
 }
 
 auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 
     return nullptr;
 }
@@ -231,20 +233,20 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 #endif
 
 void Application::BeginFrame()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _onFrameBeginDispatcher();
 }
 
 void Application::EndFrame()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _onFrameEndDispatcher();
 
@@ -255,7 +257,7 @@ void Application::EndFrame()
 
 void Application::RequestQuit() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
         WriteLog("Quit requested");
@@ -266,7 +268,7 @@ void Application::RequestQuit() noexcept
 
 void Application::WaitForRequestedQuit()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto locker = std::unique_lock {_quitLocker};
 
@@ -277,7 +279,7 @@ void Application::WaitForRequestedQuit()
 
 auto AppWindow::GetSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto width = 1000;
     constexpr auto height = 1000;
@@ -287,32 +289,32 @@ auto AppWindow::GetSize() const -> isize
 
 void AppWindow::SetSize(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 }
 
 auto AppWindow::GetScreenSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return {1000, 1000};
 }
 
 void AppWindow::SetScreenSize(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 }
 
 auto AppWindow::GetPosition() const -> ipos
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto x = 0;
     constexpr auto y = 0;
@@ -322,187 +324,187 @@ auto AppWindow::GetPosition() const -> ipos
 
 void AppWindow::SetPosition(ipos pos)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(pos);
+    ignore_unused(pos);
 }
 
 auto AppWindow::IsFocused() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return true;
 }
 
 void AppWindow::Minimize()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 }
 
 auto AppWindow::IsFullscreen() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return false;
 }
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(enable);
+    ignore_unused(enable);
 
     return false;
 }
 
 void AppWindow::Blink()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(enable);
+    ignore_unused(enable);
 }
 
 void AppWindow::GrabInput(bool enable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(enable);
+    ignore_unused(enable);
 }
 
 void AppWindow::Destroy()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 }
 
 auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
-    UNUSED_VARIABLE(linear_filtered);
-    UNUSED_VARIABLE(with_depth);
+    ignore_unused(size);
+    ignore_unused(linear_filtered);
+    ignore_unused(with_depth);
 
     return nullptr;
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(tex);
+    ignore_unused(tex);
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return nullptr;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(color);
-    UNUSED_VARIABLE(depth);
-    UNUSED_VARIABLE(stencil);
+    ignore_unused(color);
+    ignore_unused(depth);
+    ignore_unused(stencil);
 }
 
 void AppRender::EnableScissor(irect rect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(rect);
+    ignore_unused(rect);
 }
 
 void AppRender::DisableScissor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(is_static);
+    ignore_unused(is_static);
 
     return nullptr;
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(usage);
-    UNUSED_VARIABLE(name);
-    UNUSED_VARIABLE(file_loader);
+    ignore_unused(usage);
+    ignore_unused(name);
+    ignore_unused(file_loader);
 
     return nullptr;
 }
 
 auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(left);
-    UNUSED_VARIABLE(right);
-    UNUSED_VARIABLE(bottom);
-    UNUSED_VARIABLE(top);
-    UNUSED_VARIABLE(nearp);
-    UNUSED_VARIABLE(farp);
+    ignore_unused(left);
+    ignore_unused(right);
+    ignore_unused(bottom);
+    ignore_unused(top);
+    ignore_unused(nearp);
+    ignore_unused(farp);
 
     return {};
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return false;
 }
 
 auto AppInput::GetMousePosition() const -> ipos
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto x = 100;
     constexpr auto y = 100;
@@ -512,129 +514,131 @@ auto AppInput::GetMousePosition() const -> ipos
 
 void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(pos);
-    UNUSED_VARIABLE(relative_to);
+    ignore_unused(pos);
+    ignore_unused(relative_to);
 }
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(ev);
+    ignore_unused(ev);
 
     return false;
 }
 
 void AppInput::ClearEvents()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(ev);
-    UNUSED_VARIABLE(push_to_this_frame);
+    ignore_unused(ev);
+    ignore_unused(push_to_this_frame);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(text);
+    ignore_unused(text);
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return false;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     [[maybe_unused]] auto unused = std::move(stream_callback);
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 }
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(format);
-    UNUSED_VARIABLE(channels);
-    UNUSED_VARIABLE(rate);
-    UNUSED_VARIABLE(buf);
+    ignore_unused(format);
+    ignore_unused(channels);
+    ignore_unused(rate);
+    ignore_unused(buf);
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     return true;
 }
 
 void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(output);
-    UNUSED_VARIABLE(buf);
-    UNUSED_VARIABLE(len);
-    UNUSED_VARIABLE(volume);
+    ignore_unused(output);
+    ignore_unused(buf);
+    ignore_unused(len);
+    ignore_unused(volume);
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 }
 
 void AppAudio::LockDevice()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 }
 
 void AppAudio::UnlockDevice()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 }
 
 void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(message);
-    UNUSED_VARIABLE(traceback);
-    UNUSED_VARIABLE(fatal_error);
+    ignore_unused(message);
+    ignore_unused(traceback);
+    ignore_unused(fatal_error);
 }
+
+FO_END_NAMESPACE();

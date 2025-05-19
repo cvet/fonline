@@ -43,13 +43,15 @@
 #include "SDL3/SDL_main.h"
 #endif
 
+FO_USING_NAMESPACE();
+
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);
@@ -73,6 +75,6 @@ int main(int argc, char** argv) // Handled by SDL
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

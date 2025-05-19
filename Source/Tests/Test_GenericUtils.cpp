@@ -35,6 +35,8 @@
 
 #include "GenericUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 TEST_CASE("GenericUtils")
 {
     SECTION("MurmurHash2")
@@ -112,3 +114,5 @@ TEST_CASE("GenericUtils")
         CHECK(!is_float_equal(1.0f, -1.0f));
     }
 }
+
+FO_END_NAMESPACE();

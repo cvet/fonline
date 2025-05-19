@@ -38,6 +38,8 @@
 #include "NetBuffer.h"
 #include "NetworkServer.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ServerConnection final
 {
 public:
@@ -51,8 +53,8 @@ public:
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor() noexcept(false);
-        FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
-        FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
+        FO_FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
+        FO_FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
         raw_ptr<ServerConnection> _owner;
@@ -71,8 +73,8 @@ public:
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor();
-        FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
-        FORCE_INLINE auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
+        FO_FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
+        FO_FORCE_INLINE auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock();
         void Unlock() noexcept;
 
@@ -125,3 +127,5 @@ private:
     StreamCompressor _compressor {};
     bool _gracefulDisconnected {};
 };
+
+FO_END_NAMESPACE();

@@ -58,6 +58,8 @@
 #endif
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 #if FO_MAC && !FO_OPENGL_ES
 #undef glGenVertexArrays
 #undef glBindVertexArray
@@ -73,13 +75,13 @@
         expr; \
         if (RenderDebug) { \
             GLenum err__ = glGetError(); \
-            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, strex(#expr " error {}", ErrCodeToString(err__))); \
+            FO_RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, strex(#expr " error {}", ErrCodeToString(err__))); \
         } \
     } while (0)
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #define ERR_CODE_CASE(err_code_variant) \
     case err_code_variant: \
@@ -190,7 +192,7 @@ public:
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Used OpenGL rendering");
 
@@ -202,10 +204,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Create context
 #if !FO_WEB
     GlContext = SDL_GL_CreateContext(SdlWindow);
-    RUNTIME_ASSERT_STR(GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
+    FO_RUNTIME_ASSERT_STR(GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
 
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
-    RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
+    FO_RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
 
     if (settings.VSync) {
         if (!SDL_GL_SetSwapInterval(-1)) {
@@ -234,10 +236,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
-    RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
+    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
-    RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
+    FO_RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
 
     GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
 #endif
@@ -246,7 +248,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Todo: remove GLEW and bind OpenGL functions manually
 #if !FO_OPENGL_ES
     const auto glew_result = glewInit();
-    RUNTIME_ASSERT_STR(glew_result == GLEW_OK, strex("GLEW not initialized, result {}", glew_result));
+    FO_RUNTIME_ASSERT_STR(glew_result == GLEW_OK, strex("GLEW not initialized, result {}", glew_result));
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
     OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0; // >= 2.0
     OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0; // >= 3.0
@@ -287,7 +289,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     if (!GL_HAS(framebuffer_object)) {
         CHECK_EXTENSION(framebuffer_object_ext, true);
     }
-    RUNTIME_ASSERT(!extension_errors);
+    FO_RUNTIME_ASSERT(!extension_errors);
 #undef CHECK_EXTENSION
 
     // Map framebuffer_object_ext to framebuffer_object
@@ -336,8 +338,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     auto atlas_h = atlas_w;
     atlas_w = std::min(max_viewport_size[0], atlas_w);
     atlas_h = std::min(max_viewport_size[1], atlas_h);
-    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
     const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
@@ -364,7 +366,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
 void OpenGL_Renderer::Present()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !FO_WEB
     SDL_GL_SwapWindow(SdlWindow);
@@ -377,7 +379,7 @@ void OpenGL_Renderer::Present()
 
 auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth);
 
@@ -410,7 +412,7 @@ auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_
 
     GLenum status;
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, strex("Framebuffer not created, status {:#X}", status));
+    FO_RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, strex("Framebuffer not created, status {:#X}", status));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
 
@@ -419,7 +421,7 @@ auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_
 
 auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static);
 
@@ -428,7 +430,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
 
 auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader);
 
@@ -444,10 +446,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         const string vert_fname = strex("{}.{}.vert.{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
-        RUNTIME_ASSERT(!vert_content.empty());
+        FO_RUNTIME_ASSERT(!vert_content.empty());
         const string frag_fname = strex("{}.{}.frag.{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
-        RUNTIME_ASSERT(!frag_content.empty());
+        FO_RUNTIME_ASSERT(!frag_content.empty());
 
         // Create shaders
         GLuint vs;
@@ -564,7 +566,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto r_l = right - left;
     const auto t_b = top - bottom;
@@ -600,14 +602,14 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, f
 
 auto OpenGL_Renderer::GetViewPort() -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return ViewPortRect;
 }
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int vp_ox;
     int vp_oy;
@@ -656,7 +658,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     GLbitfield clear_flags = 0;
 
@@ -686,7 +688,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
 void OpenGL_Renderer::EnableScissor(irect rect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int l;
     int t;
@@ -715,7 +717,7 @@ void OpenGL_Renderer::EnableScissor(irect rect)
 
 void OpenGL_Renderer::DisableScissor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     GL(glDisable(GL_SCISSOR_TEST));
 }
@@ -731,7 +733,7 @@ void OpenGL_Renderer::OnResizeWindow(isize size)
 
 OpenGL_Texture::~OpenGL_Texture()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (DepthBuffer != 0) {
         glDeleteRenderbuffers(1, &DepthBuffer);
@@ -746,9 +748,9 @@ OpenGL_Texture::~OpenGL_Texture()
 
 auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(Size.IsValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.IsValidPos(pos));
 
     ucolor result;
 
@@ -765,14 +767,14 @@ auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
 
 auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(size.width > 0);
-    RUNTIME_ASSERT(size.height > 0);
-    RUNTIME_ASSERT(pos.x >= 0);
-    RUNTIME_ASSERT(pos.y >= 0);
-    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_RUNTIME_ASSERT(size.width > 0);
+    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_RUNTIME_ASSERT(pos.x >= 0);
+    FO_RUNTIME_ASSERT(pos.y >= 0);
+    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
     result.resize(static_cast<size_t>(size.width) * size.height);
@@ -790,12 +792,12 @@ auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucol
 
 void OpenGL_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(pos.x >= 0);
-    RUNTIME_ASSERT(pos.y >= 0);
-    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_RUNTIME_ASSERT(pos.x >= 0);
+    FO_RUNTIME_ASSERT(pos.y >= 0);
+    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
     GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
@@ -804,9 +806,9 @@ void OpenGL_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* dat
 
 static void EnableVertAtribs(EffectUsage usage)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(usage);
+    ignore_unused(usage);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -840,9 +842,9 @@ static void EnableVertAtribs(EffectUsage usage)
 
 static void DisableVertAtribs(EffectUsage usage)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(usage);
+    ignore_unused(usage);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -862,7 +864,7 @@ static void DisableVertAtribs(EffectUsage usage)
 OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) :
     RenderDrawBuffer(is_static)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     GL(glGenBuffers(1, &VertexBufObj));
     GL(glGenBuffers(1, &IndexBufObj));
@@ -870,7 +872,7 @@ OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) :
 
 OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (VertexArrObj != 0) {
         glDeleteVertexArrays(1, &VertexArrObj);
@@ -882,7 +884,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -899,12 +901,12 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        RUNTIME_ASSERT(Vertices.empty());
+        FO_RUNTIME_ASSERT(Vertices.empty());
         upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
-        RUNTIME_ASSERT(Vertices3D.empty());
+        FO_RUNTIME_ASSERT(Vertices3D.empty());
         upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
     }
@@ -937,7 +939,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (name) {
     case BlendFuncType::Zero:
@@ -968,12 +970,12 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
         return 0x0308;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (name) {
     case BlendEquationType::FuncAdd:
@@ -988,12 +990,12 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
         return 0x8007;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 OpenGL_Effect::~OpenGL_Effect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < _passCount; i++) {
         if (Program[i] != 0) {
@@ -1023,7 +1025,7 @@ OpenGL_Effect::~OpenGL_Effect()
 
 void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
@@ -1269,3 +1271,5 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 }
 
 #endif
+
+FO_END_NAMESPACE();

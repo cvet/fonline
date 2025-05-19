@@ -44,6 +44,7 @@
 #include "Common.h"
 
 using namespace std;
+FO_USING_NAMESPACE();
 
 BEGIN_AS_NAMESPACE
 
@@ -71,17 +72,17 @@ struct SDictCache
             engine->SetEngineUserDataCleanupCallback(SDictCache::Cleanup, DICT_CACHE);
 
             cache->StringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("string");
-            RUNTIME_ASSERT(cache->StringTypeId > 0);
+            FO_RUNTIME_ASSERT(cache->StringTypeId > 0);
             cache->HStringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
-            RUNTIME_ASSERT(cache->HStringTypeId > 0);
-            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(IDENT_NAME);
-            RUNTIME_ASSERT(cache->IdentTypeId > 0);
-            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TIMESPAN_NAME);
-            RUNTIME_ASSERT(cache->TimespanTypeId > 0);
-            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(NANOTIME_NAME);
-            RUNTIME_ASSERT(cache->NanotimeTypeId > 0);
-            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(SYNCTIME_NAME);
-            RUNTIME_ASSERT(cache->SynctimeTypeId > 0);
+            FO_RUNTIME_ASSERT(cache->HStringTypeId > 0);
+            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_IDENT_NAME);
+            FO_RUNTIME_ASSERT(cache->IdentTypeId > 0);
+            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_TIMESPAN_NAME);
+            FO_RUNTIME_ASSERT(cache->TimespanTypeId > 0);
+            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_NANOTIME_NAME);
+            FO_RUNTIME_ASSERT(cache->NanotimeTypeId > 0);
+            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_SYNCTIME_NAME);
+            FO_RUNTIME_ASSERT(cache->SynctimeTypeId > 0);
         }
         return cache;
     }
@@ -916,7 +917,7 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         return a < b;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
@@ -984,7 +985,7 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         return a == b;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 static CScriptDict* CScriptDict_Create(asITypeInfo* ti)

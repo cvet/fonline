@@ -33,32 +33,34 @@
 
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _protoId {proto_id}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    STRONG_ASSERT(_protoId);
+    FO_STRONG_ASSERT(_protoId);
 }
 
 auto ProtoEntity::GetName() const noexcept -> string_view
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const noexcept -> hstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _protoId;
 }
 
 void ProtoEntity::EnableComponent(hstring component)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _components.emplace(component);
     _componentHashes.emplace(component.as_hash());
@@ -66,14 +68,14 @@ void ProtoEntity::EnableComponent(hstring component)
 
 auto ProtoEntity::HasComponent(hstring name) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _components.find(name) != _components.end();
 }
 
 auto ProtoEntity::HasComponent(hstring::hash_t hash) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _componentHashes.find(hash) != _componentHashes.end();
 }
@@ -81,26 +83,26 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const noexcept -> bool
 EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
     _proto {proto}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    STRONG_ASSERT(_proto);
+    FO_STRONG_ASSERT(_proto);
 }
 
 EntityWithProto::~EntityWithProto()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto EntityWithProto::GetProtoId() const noexcept -> hstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _proto->GetProtoId();
 }
 
 auto EntityWithProto::GetProto() const noexcept -> const ProtoEntity*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _proto.get();
 }
@@ -109,33 +111,35 @@ ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, c
     ProtoEntity(proto_id, registrator, props),
     ItemProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     ProtoEntity(proto_id, registrator, props),
     CritterProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     ProtoEntity(proto_id, registrator, props),
     MapProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     ProtoEntity(proto_id, registrator, props),
     LocationProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
     ProtoEntity(proto_id, registrator, props),
     EntityProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
+
+FO_END_NAMESPACE();

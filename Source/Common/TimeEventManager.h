@@ -39,7 +39,9 @@
 #include "ScriptSystem.h"
 #include "Timer.h"
 
-DECLARE_EXCEPTION(TimeEventException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(TimeEventException);
 
 class TimeEventManager
 {
@@ -77,3 +79,5 @@ private:
     const any_t _emptyAnyValue {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

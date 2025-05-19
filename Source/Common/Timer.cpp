@@ -34,10 +34,12 @@
 #include "Timer.h"
 #include "WinApi-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 GameTimer::GameTimer(TimerSettings& settings) :
     _settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _frameTime = nanotime::now();
     _fpsMeasureTime = _frameTime;
@@ -45,7 +47,7 @@ GameTimer::GameTimer(TimerSettings& settings) :
 
 void GameTimer::SetSynchronizedTime(synctime time) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _syncTimeBase = time;
     _syncTimeSet = _frameTime;
@@ -53,7 +55,7 @@ void GameTimer::SetSynchronizedTime(synctime time) noexcept
 
 void GameTimer::FrameAdvance()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto prev_frame_time = _frameTime;
     const auto now_time = nanotime::now();
@@ -87,7 +89,7 @@ void GameTimer::FrameAdvance()
 
 auto GameTimer::GetSynchronizedTime() const -> synctime
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_syncTimeBase) {
         throw TimeNotSyncException("Time is not synchronized yet");
@@ -95,3 +97,5 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
 
     return _syncTimeBase + (_frameTime - _syncTimeSet);
 }
+
+FO_END_NAMESPACE();

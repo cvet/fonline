@@ -35,6 +35,8 @@
 
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
@@ -59,7 +61,7 @@ private:
 
 auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
 }
@@ -67,7 +69,7 @@ auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings&
 NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientNetworkSettings& settings) :
     NetworkClientConnection(settings)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _interthreadReceived.clear();
 
@@ -92,7 +94,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
 
 auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_interthreadRequestDisconnect) {
         Disconnect();
@@ -106,7 +108,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
 
 auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8> buf) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _interthreadSend(buf);
 
@@ -115,11 +117,11 @@ auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8> buf) ->
 
 auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8>& buf) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto locker = std::unique_lock {_interthreadReceivedLocker};
 
-    RUNTIME_ASSERT(!_interthreadReceived.empty());
+    FO_RUNTIME_ASSERT(!_interthreadReceived.empty());
     const auto recv_size = _interthreadReceived.size();
 
     while (buf.size() < recv_size) {
@@ -134,7 +136,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8>& buf) ->
 
 void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     InterthreadDataCallback interthread_send;
 
@@ -149,3 +151,5 @@ void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
         safe_call([&] { interthread_send({}); });
     }
 }
+
+FO_END_NAMESPACE();

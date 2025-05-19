@@ -37,6 +37,10 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 class FOServer;
 
 extern void InitAdminManager(FOServer* server, uint16 port);
+
+FO_END_NAMESPACE();

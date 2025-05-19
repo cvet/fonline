@@ -43,6 +43,8 @@
 #include "Settings.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Updater final
 {
 public:
@@ -96,3 +98,5 @@ private:
     vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
+
+FO_END_NAMESPACE();

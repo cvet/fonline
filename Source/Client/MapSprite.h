@@ -37,6 +37,8 @@
 
 #include "Entity.h"
 
+FO_BEGIN_NAMESPACE();
+
 constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
@@ -99,7 +101,7 @@ enum class EggAppearenceType : uint8
 ///@ ExportRefType Client HasFactory
 struct MapSpriteData
 {
-    SCRIPTABLE_OBJECT_BEGIN();
+    FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Valid {};
     uint SprId {};
@@ -119,7 +121,7 @@ struct MapSpriteData
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
 
-    SCRIPTABLE_OBJECT_END();
+    FO_SCRIPTABLE_OBJECT_END();
 };
 static_assert(std::is_standard_layout_v<MapSpriteData>);
 
@@ -217,3 +219,5 @@ private:
     vector<MapSprite*> _invalidatedSprites {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

@@ -35,21 +35,23 @@
 #include "EngineBase.h"
 #include "ScriptSystem.h"
 
+FO_BEGIN_NAMESPACE();
+
 const timespan TimeEventManager::MIN_REPEAT_TIME = timespan(std::chrono::milliseconds {1});
 
 TimeEventManager::TimeEventManager(GameTimer& game_time, ScriptSystem& script_sys) :
     _gameTime {&game_time},
     _scriptSys {&script_sys}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_gameTime);
-    RUNTIME_ASSERT(_scriptSys);
+    FO_RUNTIME_ASSERT(_gameTime);
+    FO_RUNTIME_ASSERT(_scriptSys);
 }
 
 void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
     persistentTimeEvents.reset();
@@ -62,9 +64,9 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
             const auto te_fire_time = props.GetTE_FireTime();
             const auto te_repeat_duration = props.GetTE_RepeatDuration();
             auto te_data = props.GetTE_Data();
-            RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
-            RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
-            RUNTIME_ASSERT(te_func_name.size() == te_data.size());
+            FO_RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
+            FO_RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
+            FO_RUNTIME_ASSERT(te_func_name.size() == te_data.size());
 
             make_if_not_exists(persistentTimeEvents);
 
@@ -76,31 +78,31 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
             }
         }
         else {
-            RUNTIME_ASSERT(!props.IsNonEmptyTE_FireTime());
-            RUNTIME_ASSERT(!props.IsNonEmptyTE_RepeatDuration());
-            RUNTIME_ASSERT(!props.IsNonEmptyTE_Data());
+            FO_RUNTIME_ASSERT(!props.IsNonEmptyTE_FireTime());
+            FO_RUNTIME_ASSERT(!props.IsNonEmptyTE_RepeatDuration());
+            FO_RUNTIME_ASSERT(!props.IsNonEmptyTE_Data());
         }
     }
 }
 
 auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto fire_time = _gameTime->GetFrameTime() + std::max(delay, MIN_REPEAT_TIME);
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>(Entity::TimeEventData {++_timeEventCounter, func_name, fire_time, repeat, std::move(data)});
 
     if (persistent) {
-        RUNTIME_ASSERT(te->Data.size() <= 1);
+        FO_RUNTIME_ASSERT(te->Data.size() <= 1);
 
         auto props = EntityProperties(entity->GetPropertiesForEdit());
         auto te_func_name = props.GetTE_FuncName();
         auto te_fire_time = props.GetTE_FireTime();
         auto te_repeat_duration = props.GetTE_RepeatDuration();
         auto te_data = props.GetTE_Data();
-        RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
-        RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
-        RUNTIME_ASSERT(te_func_name.size() == te_data.size());
+        FO_RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
+        FO_RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
+        FO_RUNTIME_ASSERT(te_func_name.size() == te_data.size());
 
         te_func_name.emplace_back(te->FuncName);
         te_fire_time.emplace_back(_gameTime->GetSynchronizedTime() + (te->FireTime - _gameTime->GetFrameTime()));
@@ -128,13 +130,13 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
 
 auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& timeEvents = entity->GetRawTimeEvents();
     const auto& persistentTimeEvents = entity->GetRawPeristentTimeEvents();
 
     if (id != 0) {
-        RUNTIME_ASSERT(!func_name);
+        FO_RUNTIME_ASSERT(!func_name);
 
         if (timeEvents && !timeEvents->empty()) {
             for (const auto& te : *timeEvents) {
@@ -180,9 +182,9 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id
 
 void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto fire_time = repeat.has_value() ? _gameTime->GetFrameTime() + std::max(repeat.value(), MIN_REPEAT_TIME) : nanotime::zero;
 
@@ -237,7 +239,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
                 te->RepeatDuration = repeat.value();
             }
             if (data.has_value()) {
-                RUNTIME_ASSERT(data.value().size() <= 1);
+                FO_RUNTIME_ASSERT(data.value().size() <= 1);
                 te->Data = data.value();
             }
 
@@ -246,12 +248,12 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
                 te_fire_time = props.GetTE_FireTime();
                 te_repeat_duration = props.GetTE_RepeatDuration();
                 te_data = props.GetTE_Data();
-                RUNTIME_ASSERT(te_fire_time.size() == te_repeat_duration.size());
-                RUNTIME_ASSERT(te_fire_time.size() == te_data.size());
+                FO_RUNTIME_ASSERT(te_fire_time.size() == te_repeat_duration.size());
+                FO_RUNTIME_ASSERT(te_fire_time.size() == te_data.size());
                 te_loaded = true;
             }
 
-            RUNTIME_ASSERT(i < te_fire_time.size());
+            FO_RUNTIME_ASSERT(i < te_fire_time.size());
             te_fire_time[i] = _gameTime->GetSynchronizedTime() + (te->FireTime - _gameTime->GetFrameTime());
             te_repeat_duration[i] = te->RepeatDuration;
             te_data[i] = !te->Data.empty() ? te->Data.front() : any_t {};
@@ -273,9 +275,9 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
 
 void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         for (size_t i = 0; i < timeEvents->size();) {
@@ -326,11 +328,11 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
                 te_fire_time = props.GetTE_FireTime();
                 te_repeat_duration = props.GetTE_RepeatDuration();
                 te_data = props.GetTE_Data();
-                RUNTIME_ASSERT(te_func_name.size() == persistentTimeEvents->size());
-                RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
-                RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
-                RUNTIME_ASSERT(te_func_name.size() == te_name.size());
-                RUNTIME_ASSERT(te_func_name.size() == te_data.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == persistentTimeEvents->size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_name.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_data.size());
                 te_loaded = true;
             }
 
@@ -361,21 +363,21 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
 
 void TimeEventManager::AddEntityTimeEventPolling(Entity* entity)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     _timeEventEntities.emplace(entity);
 }
 
 void TimeEventManager::RemoveEntityTimeEventPolling(Entity* entity)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     _timeEventEntities.erase(entity);
 }
 
 void TimeEventManager::ProcessTimeEvents()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto& entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
@@ -393,7 +395,7 @@ void TimeEventManager::ProcessTimeEvents()
 
 void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (auto& timeEvents = entity->GetRawTimeEvents(); timeEvents && !timeEvents->empty()) {
         const auto time = _gameTime->GetFrameTime();
@@ -431,7 +433,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
             else {
                 // Remove event
                 const auto it = std::find_if(timeEvents->begin(), timeEvents->end(), [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
-                RUNTIME_ASSERT(it != timeEvents->end());
+                FO_RUNTIME_ASSERT(it != timeEvents->end());
                 const auto actual_index = static_cast<size_t>(std::distance(timeEvents->begin(), it));
 
                 timeEvents->erase(timeEvents->begin() + static_cast<ptrdiff_t>(actual_index));
@@ -468,7 +470,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
             }
 
             const auto it = std::find_if(persistentTimeEvents->begin(), persistentTimeEvents->end(), [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
-            RUNTIME_ASSERT(it != persistentTimeEvents->end());
+            FO_RUNTIME_ASSERT(it != persistentTimeEvents->end());
             const auto actual_index = static_cast<size_t>(std::distance(persistentTimeEvents->begin(), it));
 
             if (te->RepeatDuration) {
@@ -477,7 +479,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 
                 auto props = EntityProperties(entity->GetPropertiesForEdit());
                 auto te_fire_time = props.GetTE_FireTime();
-                RUNTIME_ASSERT(te_fire_time.size() == persistentTimeEvents->size());
+                FO_RUNTIME_ASSERT(te_fire_time.size() == persistentTimeEvents->size());
 
                 te_fire_time[actual_index] = _gameTime->GetSynchronizedTime() + (next_fire_time - time);
 
@@ -492,10 +494,10 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 auto te_fire_time = props.GetTE_FireTime();
                 auto te_repeat_duration = props.GetTE_RepeatDuration();
                 auto te_data = props.GetTE_Data();
-                RUNTIME_ASSERT(te_func_name.size() == persistentTimeEvents->size());
-                RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
-                RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
-                RUNTIME_ASSERT(te_func_name.size() == te_data.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == persistentTimeEvents->size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_fire_time.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
+                FO_RUNTIME_ASSERT(te_func_name.size() == te_data.size());
 
                 te_func_name.erase(te_func_name.begin() + static_cast<ptrdiff_t>(actual_index));
                 te_fire_time.erase(te_fire_time.begin() + static_cast<ptrdiff_t>(actual_index));
@@ -516,7 +518,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 
 void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) // NOLINT(performance-unnecessary-value-param)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curTimeEventEntity = entity;
     auto revert_cur_entity = ScopeCallback([this]() noexcept { _curTimeEventEntity = nullptr; });
@@ -554,3 +556,5 @@ void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
         }
     }
 }
+
+FO_END_NAMESPACE();

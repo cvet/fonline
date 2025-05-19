@@ -37,6 +37,8 @@
 
 #if FO_ENABLE_3D
 
+FO_BEGIN_NAMESPACE();
+
 class ModelAnimation final
 {
 public:
@@ -173,5 +175,7 @@ private:
     float _curTime {};
     bool _interpolationDisabled {};
 };
+
+FO_END_NAMESPACE();
 
 #endif

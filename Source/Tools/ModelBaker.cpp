@@ -43,12 +43,14 @@
 
 extern "C" void* ufbx_malloc(size_t size)
 {
+    FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8> allocator;
     return allocator.allocate(size);
 }
 
 extern "C" void* ufbx_realloc(void* ptr, size_t old_size, size_t new_size)
 {
+    FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8> allocator;
     auto* new_ptr = allocator.allocate(new_size);
     MemCopy(new_ptr, ptr, std::min(old_size, new_size));
@@ -58,15 +60,18 @@ extern "C" void* ufbx_realloc(void* ptr, size_t old_size, size_t new_size)
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
+    FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8> allocator;
     allocator.deallocate(static_cast<uint8*>(ptr), old_size);
 }
+
+FO_BEGIN_NAMESPACE();
 
 struct BakerMeshData
 {
     void Save(DataWriter& writer) const
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
@@ -101,7 +106,7 @@ struct BakerBone
 {
     auto Find(const string& name) -> BakerBone*
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         if (Name == name) {
             return this;
@@ -118,7 +123,7 @@ struct BakerBone
 
     void Save(DataWriter& writer) const
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         writer.Write<uint>(static_cast<uint>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
@@ -163,7 +168,7 @@ struct BakerAnimSet
 
     void Save(DataWriter& writer) const
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto len = static_cast<uint>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
@@ -214,17 +219,17 @@ struct BakerAnimSet
 ModelBaker::ModelBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ModelBaker::~ModelBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void ModelBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<std::future<void>> file_bakings;
 
@@ -262,7 +267,7 @@ void ModelBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -281,9 +286,9 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44;
 
 auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     ufbx_load_opts opts = {};
     opts.ignore_embedded = true;
@@ -325,7 +330,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint
 
 static auto ConvertFbxHierarchy(const ufbx_node* fbx_node) -> unique_ptr<BakerBone>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto bone = SafeAlloc::MakeUnique<BakerBone>();
 
@@ -344,13 +349,13 @@ static auto ConvertFbxHierarchy(const ufbx_node* fbx_node) -> unique_ptr<BakerBo
 
 static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_node* fbx_node)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (fbx_node->mesh != nullptr && fbx_node->mesh->num_faces != 0) {
         bone->AttachedMesh = SafeAlloc::MakeUnique<BakerMeshData>();
         BakerMeshData* mesh = bone->AttachedMesh.get();
         const auto* fbx_mesh = fbx_node->mesh;
-        RUNTIME_ASSERT(fbx_mesh->num_faces == fbx_mesh->num_triangles);
+        FO_RUNTIME_ASSERT(fbx_mesh->num_faces == fbx_mesh->num_triangles);
         const auto* fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
@@ -365,7 +370,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices.data(), triangle_indices.size(), fbx_mesh, fbx_face);
 
                 mesh_triangles_count += triangles_count;
-                RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
+                FO_RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
 
                 for (size_t i = 0; i < static_cast<size_t>(triangles_count) * 3; i++) {
                     const uint32_t index = triangle_indices[i];
@@ -419,7 +424,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 }
             }
 
-            RUNTIME_ASSERT(mesh_triangles_count == fbx_mesh_part.num_triangles);
+            FO_RUNTIME_ASSERT(mesh_triangles_count == fbx_mesh_part.num_triangles);
         }
 
 #if 1
@@ -429,7 +434,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         ufbx_error fbx_generate_indices_error;
         const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh->Vertices.data(), mesh->Vertices.size(), sizeof(Vertex3D)}};
         const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
-        RUNTIME_ASSERT(fbx_generate_indices_error.type == UFBX_ERROR_NONE);
+        FO_RUNTIME_ASSERT(fbx_generate_indices_error.type == UFBX_ERROR_NONE);
         mesh->Vertices.resize(result_vertices);
 
         mesh->Indices.resize(indices.size());
@@ -442,7 +447,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
 #endif
 
         if (fbx_skin != nullptr) {
-            RUNTIME_ASSERT(fbx_skin->clusters.count <= MODEL_MAX_BONES);
+            FO_RUNTIME_ASSERT(fbx_skin->clusters.count <= MODEL_MAX_BONES);
 
             mesh->SkinBones.reserve(fbx_skin->clusters.count);
             mesh->SkinBoneOffsets.reserve(fbx_skin->clusters.count);
@@ -499,7 +504,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
 
 static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BakerAnimSet>> result;
 
@@ -510,7 +515,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         fbx_bake_opts.trim_start_time = true;
         ufbx_error fbx_error;
         ufbx_baked_anim* fbx_baked_anim = ufbx_bake_anim(fbx_scene, fbx_anim, &fbx_bake_opts, &fbx_error);
-        RUNTIME_ASSERT(fbx_baked_anim);
+        FO_RUNTIME_ASSERT(fbx_baked_anim);
 
         auto fbx_baked_anim_cleanup = ScopeCallback([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
 
@@ -567,7 +572,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
 
 static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     vec3 result;
 
@@ -580,7 +585,7 @@ static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3
 
 static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     quaternion result;
 
@@ -594,7 +599,7 @@ static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion
 
 static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ucolor color;
 
@@ -608,7 +613,7 @@ static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
 
 static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     mat44 result;
 
@@ -631,5 +636,7 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
 
     return result;
 }
+
+FO_END_NAMESPACE();
 
 #endif

@@ -35,6 +35,8 @@
 
 #include "AnyData.h"
 
+FO_BEGIN_NAMESPACE();
+
 TEST_CASE("AnyData")
 {
     SECTION("Int 1")
@@ -185,3 +187,5 @@ TEST_CASE("AnyData")
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, true, AnyData::ValueType::String).AsDict());
     }
 }
+
+FO_END_NAMESPACE();

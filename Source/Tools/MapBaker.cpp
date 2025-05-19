@@ -39,20 +39,22 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 MapBaker::MapBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 MapBaker::~MapBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void MapBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Collect map files
     vector<File> filtered_files;
@@ -223,7 +225,7 @@ void MapBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -231,3 +233,5 @@ void MapBaker::BakeFiles(FileCollection files)
         throw MapBakerException("Errors during map baking");
     }
 }
+
+FO_END_NAMESPACE();

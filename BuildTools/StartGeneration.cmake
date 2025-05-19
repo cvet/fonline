@@ -31,6 +31,7 @@ DeclareOption(FO_DISABLE_MONGO "Force disable using of Mongo" OFF)
 DeclareOption(FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF)
 DeclareOption(FO_DISABLE_ASIO "Force disable using of Asio" OFF)
 DeclareOption(FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF)
+DeclareOption(FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF)
 
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Client binaries" OFF)
@@ -188,6 +189,7 @@ add_compile_definitions(FO_NO_EXTRA_ASSERTS=0) # Todo: FO_NO_EXTRA_ASSERTS=$<CON
 add_compile_definitions(FO_NO_TEXTURE_LOOKUP=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_DIRECT_SPRITES_DRAW=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_RENDER_32BIT_INDEX=0)
+add_compile_definitions(FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 
 # Basic includes
 include_directories("${FO_ENGINE_ROOT}/Source/Common")

@@ -38,23 +38,25 @@
 #include "ParticleEditor.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 EditorView::EditorView(string_view view_name, FOEditor& editor) :
     _viewName {view_name},
     _editor {editor}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto EditorView::GetViewName() const -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _viewName;
 }
 
 void EditorView::Draw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     OnPreDraw();
 
@@ -78,14 +80,14 @@ void EditorView::Draw()
 
 void EditorView::BringToFront()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _bringToFront = true;
 }
 
 void EditorView::Close()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _requestClose = true;
 }
@@ -94,28 +96,28 @@ EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_v
     EditorView(asset_path, data),
     _assetPath {asset_path}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(view_name);
+    ignore_unused(view_name);
 }
 
 auto EditorAssetView::GetAssetPath() const -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _assetPath;
 }
 
 auto EditorAssetView::IsChanged() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _changed;
 }
 
 void EditorAssetView::OnPreDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ImGui::SetNextWindowPos({300.0f, 0.0f}, ImGuiCond_Once);
     ImGui::SetNextWindowSize({500.0f, static_cast<float>(App->MainWindow.GetSize().height)}, ImGuiCond_Once);
@@ -123,7 +125,7 @@ void EditorAssetView::OnPreDraw()
 
 void EditorAssetView::OnDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     /*if (ImGui::TreeNode("Dependencies")) {
         ImGui::TreePop();
@@ -136,7 +138,7 @@ void EditorAssetView::OnDraw()
 FOEditor::FOEditor(GlobalSettings& settings) :
     Settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto& res_pack : settings.GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDir) {
@@ -148,7 +150,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 
     auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
         const auto file = BakedResources.ReadFile(path);
-        RUNTIME_ASSERT_STR(file, "Post load ImGui_Default effect not found");
+        FO_RUNTIME_ASSERT_STR(file, "Post load ImGui_Default effect not found");
         return file.GetStr();
     });
 
@@ -159,7 +161,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 
 auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<EditorAssetView*> result;
 
@@ -174,7 +176,7 @@ auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
 
 void FOEditor::OpenAsset(string_view path)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto& view : _views) {
         if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr && asset_view->GetAssetPath() == path) {
@@ -192,7 +194,7 @@ void FOEditor::OpenAsset(string_view path)
 
 void FOEditor::MainLoop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto& view : _newViews) {
         _views.emplace_back(std::move(view));
@@ -220,7 +222,9 @@ void FOEditor::MainLoop()
             ReportExceptionAndContinue(ex);
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 }
+
+FO_END_NAMESPACE();

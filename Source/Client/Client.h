@@ -62,17 +62,19 @@
 #include "TextPack.h"
 #include "VideoClip.h"
 
-DECLARE_EXCEPTION(EngineDataNotFoundException);
-DECLARE_EXCEPTION(ResourcesOutdatedException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(EngineDataNotFoundException);
+FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
 ///@ ExportRefType Client
 struct VideoPlayback
 {
-    SCRIPTABLE_OBJECT_BEGIN();
+    FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Stopped {};
 
-    SCRIPTABLE_OBJECT_END();
+    FO_SCRIPTABLE_OBJECT_END();
 
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
@@ -167,87 +169,87 @@ public:
     auto CustomCall(string_view command, string_view separator) -> string;
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnStart);
+    FO_ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnConnecting);
+    FO_ENTITY_EVENT(OnConnecting);
     ///@ ExportEvent
-    ENTITY_EVENT(OnConnectingFailed);
+    FO_ENTITY_EVENT(OnConnectingFailed);
     ///@ ExportEvent
-    ENTITY_EVENT(OnConnected);
+    FO_ENTITY_EVENT(OnConnected);
     ///@ ExportEvent
-    ENTITY_EVENT(OnDisconnected);
+    FO_ENTITY_EVENT(OnDisconnected);
     ///@ ExportEvent
-    ENTITY_EVENT(OnRegistrationSuccess);
+    FO_ENTITY_EVENT(OnRegistrationSuccess);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLoginSuccess);
+    FO_ENTITY_EVENT(OnLoginSuccess);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
+    FO_ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLoop);
+    FO_ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
+    FO_ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnRenderIface);
+    FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    ENTITY_EVENT(OnRenderMap);
+    FO_ENTITY_EVENT(OnRenderMap);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
+    FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
+    FO_ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMouseMove, ipos /*offsetPos*/);
+    FO_ENTITY_EVENT(OnMouseMove, ipos /*offsetPos*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
+    FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
+    FO_ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInputLost);
+    FO_ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    FO_ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    FO_ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCustomEntityIn, ClientEntity* /*entity*/);
+    FO_ENTITY_EVENT(OnCustomEntityIn, ClientEntity* /*entity*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
+    FO_ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapLoad);
+    FO_ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapLoaded);
+    FO_ENTITY_EVENT(OnMapLoaded);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapUnload);
+    FO_ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
-    ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
+    FO_ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*pass*/, uint& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*pass*/, uint& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
+    FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
+    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenSizeChanged);
+    FO_ENTITY_EVENT(OnScreenSizeChanged);
     ///@ ExportEvent
-    ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint /*dialogTime*/);
+    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint /*dialogTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapView, mpos /*hex*/);
+    FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -416,3 +418,5 @@ protected:
     bool _videoCanInterrupt {};
     vector<tuple<string, bool>> _videoQueue {};
 };
+
+FO_END_NAMESPACE();

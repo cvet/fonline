@@ -41,20 +41,22 @@
 #include "StringUtils.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 ProtoBaker::ProtoBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoBaker::~ProtoBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ProtoBaker::IsExtSupported(string_view ext) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
 
@@ -67,7 +69,7 @@ auto ProtoBaker::IsExtSupported(string_view ext) const -> bool
 
 void ProtoBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<File> filtered_files;
     uint64 max_write_time = 0;
@@ -136,7 +138,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -147,7 +149,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
 
 auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files, bool write_texts) const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto proto_rule_name = engine->Hashes.ToHashedString("Proto");
     const auto component_rule_name = engine->Hashes.ToHashedString("Component");
@@ -211,7 +213,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
-            RUNTIME_ASSERT(!key.empty());
+            FO_RUNTIME_ASSERT(!key.empty());
 
             if (key.front() != '$' || strex(key).startsWith("$Text")) {
                 to_kv[key] = value;
@@ -225,7 +227,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
-            RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
+            FO_RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
 
             // Fill content from parents
             map<string, string> proto_kv;
@@ -264,7 +266,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
             auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, property_registrator, &props);
             const auto inserted = all_protos[type_name].emplace(pid, proto).second;
-            RUNTIME_ASSERT(inserted);
+            FO_RUNTIME_ASSERT(inserted);
 
             // Components
             for (auto&& [key, value] : proto_kv) {
@@ -274,7 +276,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
                 bool is_component;
                 const auto* prop = property_registrator->FindProperty(key, &is_component);
-                UNUSED_VARIABLE(prop);
+                ignore_unused(prop);
 
                 if (!is_component) {
                     continue;
@@ -298,7 +300,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
             // Texts
             if (write_texts) {
-                RUNTIME_ASSERT(!_settings->BakeLanguages.empty());
+                FO_RUNTIME_ASSERT(!_settings->BakeLanguages.empty());
                 const string& default_lang = _settings->BakeLanguages.front();
 
                 all_proto_texts[type_name][pid] = {};
@@ -443,3 +445,5 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
     return final_data;
 }
+
+FO_END_NAMESPACE();

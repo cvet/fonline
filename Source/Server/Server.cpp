@@ -42,24 +42,29 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
+extern void Server_RegisterData(EngineData*);
+extern void InitServerEngine(FOServer*);
+
+#if FO_ANGELSCRIPT_SCRIPTING
+extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
+#endif
+
 FOServer::FOServer(GlobalSettings& settings) :
-    BaseEngine(settings, PropertiesRelationType::ServerRelative,
-        [this] {
-            extern void Server_RegisterData(EngineData*);
-            Server_RegisterData(this);
-        }),
+    BaseEngine(settings, PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
     ItemMngr(this),
     DlgMngr(*this)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Start server");
 
     _starter.SetExceptionHandler([this](const std::exception& ex) {
-        UNUSED_VARIABLE(ex);
+        ignore_unused(ex);
 
         _startingError = true;
 
@@ -69,7 +74,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Health file
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
@@ -86,11 +91,11 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             if (write_health_file("Starting...")) {
                 _mainWorker.AddJob([this, write_health_file] {
-                    STACK_TRACE_ENTRY_NAMED("HealthFileJob");
+                    FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
                         _healthWriter.AddJob([this, health_info = GetHealthInfo(), write_health_file] {
-                            STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
+                            FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
                             string buf;
                             buf.reserve(health_info.size() + 128);
@@ -115,7 +120,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Mount resources
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
 
         WriteLog("Mount data packs");
 
@@ -130,7 +135,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Script system
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
 
         WriteLog("Initialize script system");
 
@@ -141,7 +146,6 @@ FOServer::FOServer(GlobalSettings& settings) :
         ScriptSys.MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
 
 #if FO_ANGELSCRIPT_SCRIPTING
-        extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
         Init_AngelScript_ServerScriptSystem(this);
 #endif
 
@@ -150,7 +154,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Network
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
         WriteLog("Start networking");
 
@@ -174,7 +178,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Data base
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitStorageJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
         DbStorage = ConnectToDataBase(Settings, Settings.DbStorage);
         if (!DbStorage) {
@@ -186,7 +190,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Engine data
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitEngineDataJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitEngineDataJob");
 
         WriteLog("Setup engine data");
 
@@ -303,7 +307,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Dialogs
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitDialogsJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitDialogsJob");
 
         WriteLog("Load dialogs data");
 
@@ -314,7 +318,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Protos
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitProtosJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitProtosJob");
 
         WriteLog("Load protos data");
 
@@ -328,7 +332,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Maps
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitMapsJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitMapsJob");
 
         WriteLog("Load maps data");
 
@@ -339,7 +343,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Resource packs for client
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
         if (Settings.DataSynchronization) {
             WriteLog("Load client data packs for synchronization");
@@ -378,7 +382,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Admin manager
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitAdminPanelJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitAdminPanelJob");
 
         if (Settings.AdminPanelPort != 0) {
             WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
@@ -391,7 +395,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Game logic
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
 
         WriteLog("Start game logic");
 
@@ -416,7 +420,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             // Scripting
             WriteLog("Init script modules");
 
-            extern void InitServerEngine(FOServer * server);
             InitServerEngine(this);
 
             ScriptSys.InitModules();
@@ -476,7 +479,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Done, fill regular jobs
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("InitDoneJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitDoneJob");
 
         WriteLog("Start server complete!");
 
@@ -490,7 +493,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Sync point
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("SyncPointJob");
+            FO_STACK_TRACE_ENTRY_NAMED("SyncPointJob");
 
             SyncPoint();
 
@@ -499,7 +502,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Advance time
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
+            FO_STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
 
             FrameAdvance();
 
@@ -508,7 +511,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Script subsystems update
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
+            FO_STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
 
             ScriptSys.Process();
 
@@ -517,7 +520,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process unlogined players
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
+            FO_STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
             {
                 std::scoped_lock locker(_newConnectionsLocker);
@@ -550,7 +553,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
-                    UNKNOWN_EXCEPTION();
+                    FO_UNKNOWN_EXCEPTION();
                 }
             }
 
@@ -562,13 +565,13 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process players
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("PlayersJob");
+            FO_STACK_TRACE_ENTRY_NAMED("PlayersJob");
 
             for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
                 auto* connection = player->GetConnection();
 
                 try {
-                    RUNTIME_ASSERT(!player->IsDestroyed());
+                    FO_RUNTIME_ASSERT(!player->IsDestroyed());
 
                     ProcessConnection(connection);
                     ProcessPlayer(player);
@@ -581,7 +584,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
-                    UNKNOWN_EXCEPTION();
+                    FO_UNKNOWN_EXCEPTION();
                 }
             }
 
@@ -590,7 +593,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process critters
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("CrittersJob");
+            FO_STACK_TRACE_ENTRY_NAMED("CrittersJob");
 
             for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
                 if (cr->IsDestroyed()) {
@@ -604,7 +607,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
-                    UNKNOWN_EXCEPTION();
+                    FO_UNKNOWN_EXCEPTION();
                 }
             }
 
@@ -613,7 +616,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Time events
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
+            FO_STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
 
             TimeEventMngr.ProcessTimeEvents();
 
@@ -622,7 +625,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Commit data to storage
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
+            FO_STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
 
             DbStorage.CommitChanges(false);
 
@@ -631,7 +634,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Clients log
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
+            FO_STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
 
             DispatchLogToClients();
 
@@ -640,7 +643,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Loop stats
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("LoopJob");
+            FO_STACK_TRACE_ENTRY_NAMED("LoopJob");
 
             _loopBalancer.EndLoop();
             _loopBalancer.StartLoop();
@@ -689,7 +692,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
 FOServer::~FOServer()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         WriteLog("Stop server");
@@ -759,13 +762,13 @@ FOServer::~FOServer()
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
 auto FOServer::Lock(optional<timespan> max_wait_time) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     while (!_started) {
         std::this_thread::yield();
@@ -794,12 +797,12 @@ auto FOServer::Lock(optional<timespan> max_wait_time) -> bool
 
 void FOServer::Unlock()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
         std::unique_lock locker {_syncLocker};
 
-        RUNTIME_ASSERT(_syncRequest > 0);
+        FO_RUNTIME_ASSERT(_syncRequest > 0);
 
         _syncRequest--;
 
@@ -810,7 +813,7 @@ void FOServer::Unlock()
 
 void FOServer::SyncPoint()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::unique_lock locker {_syncLocker};
 
@@ -831,7 +834,7 @@ void FOServer::SyncPoint()
 
 void FOServer::DrawGui(string_view server_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto default_buf_size = 1000000; // ~1mb
     string buf;
@@ -924,7 +927,7 @@ auto FOServer::GetHealthInfo() const -> string
 
 auto FOServer::GetIngamePlayersStatistics() -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& players = EntityMngr.GetPlayers();
     const auto conn_count = _unloginedPlayers.size() + players.size();
@@ -944,7 +947,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 
 void FOServer::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_started) {
         net_connection->Disconnect();
@@ -958,13 +961,13 @@ void FOServer::OnNewConnection(shared_ptr<NetworkServerConnection> net_connectio
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
-        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
         unlogined_player->MarkAsDestroyed();
         return;
@@ -1026,7 +1029,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 
 void FOServer::ProcessPlayer(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
 
@@ -1103,9 +1106,9 @@ void FOServer::ProcessPlayer(Player* player)
 
 void FOServer::ProcessConnection(ServerConnection* connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (connection->IsHardDisconnected()) {
         return;
@@ -1138,7 +1141,7 @@ void FOServer::ProcessConnection(ServerConnection* connection)
 
 void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetLogCallback("Process_Command", logcb);
     Process_CommandReal(buf, logcb, player, admin_panel);
@@ -1147,7 +1150,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
 void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* player_cr = player->GetControlledCritter();
 
@@ -1545,7 +1548,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
 void FOServer::LogToClients(string_view str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!str.empty() && str.back() == '\n') {
         _logLines.emplace_back(str, 0, str.length() - 1);
@@ -1557,7 +1560,7 @@ void FOServer::LogToClients(string_view str)
 
 void FOServer::DispatchLogToClients()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_logLines.empty()) {
         return;
@@ -1584,7 +1587,7 @@ void FOServer::DispatchLogToClients()
 
 void FOServer::ProcessCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Moving
     if (!cr->IsDestroyed()) {
@@ -1599,7 +1602,7 @@ void FOServer::ProcessCritter(Critter* cr)
 
 auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog(LogType::Info, "Create critter {}", pid);
 
@@ -1627,9 +1630,9 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
 
 auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(cr_id);
+    FO_RUNTIME_ASSERT(cr_id);
 
     WriteLog(LogType::Info, "Load critter {}", cr_id);
 
@@ -1651,7 +1654,7 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         throw GenericException("Critter data base loading error");
     }
 
-    RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(cr);
 
     if (for_player) {
         cr->MarkIsForPlayer();
@@ -1676,10 +1679,10 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 
 void FOServer::UnloadCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(cr);
-    RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
 
@@ -1693,15 +1696,15 @@ void FOServer::UnloadCritter(Critter* cr)
     cr->MarkAsDestroying();
 
     OnCritterUnload.Fire(cr);
-    RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto* map = EntityMngr.GetMap(cr->GetMapId());
-    RUNTIME_ASSERT(!cr->GetMapId() || map);
+    FO_RUNTIME_ASSERT(!cr->GetMapId() || map);
 
     MapMngr.RemoveCritterFromMap(cr, map);
-    RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
@@ -1720,7 +1723,7 @@ void FOServer::UnloadCritter(Critter* cr)
 
 void FOServer::UnloadCritterInnerEntities(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::function<void(Entity*)> unload_inner_entities;
 
@@ -1732,7 +1735,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
                 }
 
                 auto* custom_entity = dynamic_cast<CustomEntity*>(entity.get());
-                RUNTIME_ASSERT(custom_entity);
+                FO_RUNTIME_ASSERT(custom_entity);
 
                 EntityMngr.UnregisterCustomEntity(custom_entity, false);
                 custom_entity->MarkAsDestroyed();
@@ -1778,12 +1781,12 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 
 void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(player);
-    RUNTIME_ASSERT(!player->IsDestroyed());
-    RUNTIME_ASSERT(cr);
-    RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(player);
+    FO_RUNTIME_ASSERT(!player->IsDestroyed());
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
 
@@ -1809,9 +1812,9 @@ void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
 
 void FOServer::DestroyUnloadedCritter(ident_t cr_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(cr_id);
+    FO_RUNTIME_ASSERT(cr_id);
 
     WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
 
@@ -1867,7 +1870,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_AddCritter(cr);
 
     if (map == nullptr) {
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
+        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         for (const auto* group_cr : *cr->GlobalMapGroup) {
             if (group_cr != cr) {
@@ -1910,7 +1913,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (map->IsStaticItemTrigger(from_hex)) {
         for (auto* item : map->GetStaticItemsTrigger(from_hex)) {
@@ -1983,7 +1986,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
 
 void FOServer::Process_Handshake(ServerConnection* connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto in_buf = connection->ReadBuf();
 
@@ -1993,7 +1996,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint>();
-    RUNTIME_ASSERT(in_encrypt_key != 0);
+    FO_RUNTIME_ASSERT(in_encrypt_key != 0);
     in_buf->SetEncryptKey(in_encrypt_key);
 
     in_buf.Unlock();
@@ -2031,9 +2034,9 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
 void FOServer::Process_Ping(ServerConnection* connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     auto in_buf = connection->ReadBuf();
 
@@ -2054,7 +2057,7 @@ void FOServer::Process_Ping(ServerConnection* connection)
 
 void FOServer::Process_UpdateFile(ServerConnection* connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto in_buf = connection->ReadBuf();
 
@@ -2076,9 +2079,9 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
 
 void FOServer::Process_UpdateFileData(ServerConnection* connection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (connection->UpdateFileIndex == -1) {
         WriteLog("Wrong update call, client host '{}'", connection->GetHost());
@@ -2106,7 +2109,7 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
 
 void FOServer::Process_Register(Player* unlogined_player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Register player");
 
@@ -2196,7 +2199,7 @@ void FOServer::Process_Register(Player* unlogined_player)
 
 void FOServer::Process_Login(Player* unlogined_player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Login player");
 
@@ -2271,7 +2274,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
 
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
-        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
         player = unlogined_player;
@@ -2287,7 +2290,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         // Kick previous
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
-        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
         player->SwapConnection(unlogined_player);
@@ -2305,7 +2308,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         auto conn_ip = player->GetConnectionIp();
         auto conn_port = player->GetConnectionPort();
-        RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
+        FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
 
         auto ip_found = false;
         for (uint i = 0; i < conn_ip.size(); i++) {
@@ -2347,7 +2350,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             auto* cr = EntityMngr.GetCritter(cr_id);
 
             if (cr != nullptr) {
-                RUNTIME_ASSERT(cr->GetControlledByPlayer());
+                FO_RUNTIME_ASSERT(cr->GetControlledByPlayer());
 
                 // Already attached to another player
                 if (cr->GetPlayer() != nullptr) {
@@ -2381,7 +2384,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
 void FOServer::Process_Move(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -2448,8 +2451,8 @@ void FOServer::Process_Move(Player* player)
         auto hx = next_start_hx;
         auto hy = next_start_hy;
 
-        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
             const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
             if (!move_ok || !map->IsHexMovable(hx, hy)) {
@@ -2516,7 +2519,7 @@ void FOServer::Process_Move(Player* player)
 
 void FOServer::Process_StopMove(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -2568,7 +2571,7 @@ void FOServer::Process_StopMove(Player* player)
 
 void FOServer::Process_Dir(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -2605,7 +2608,7 @@ void FOServer::Process_Dir(Player* player)
 
 void FOServer::Process_Property(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -2782,7 +2785,7 @@ void FOServer::Process_Property(Player* player)
 
 void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* server_entity = dynamic_cast<ServerEntity*>(entity);
 
@@ -2833,9 +2836,9 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(entity);
+    ignore_unused(entity);
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto&& [id, player] : EntityMngr.GetPlayers()) {
@@ -2846,9 +2849,9 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     auto* player = dynamic_cast<Player*>(entity);
 
@@ -2857,9 +2860,9 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -2876,7 +2879,7 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
@@ -2925,9 +2928,9 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
@@ -2938,9 +2941,9 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -2953,10 +2956,10 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
-    RUNTIME_ASSERT(custom_entity);
+    FO_RUNTIME_ASSERT(custom_entity);
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](Player* player, bool owner) {
         if (owner || IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
@@ -2967,7 +2970,7 @@ void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // LookDistance, InSneakMode, SneakCoefficient
     auto* cr = dynamic_cast<Critter*>(entity);
@@ -2981,10 +2984,10 @@ void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-    UNUSED_VARIABLE(prop);
+    FO_NON_CONST_METHOD_HINT();
+    ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
@@ -3000,7 +3003,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
 void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Hidden, AlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
@@ -3034,9 +3037,9 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
@@ -3052,9 +3055,9 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
@@ -3064,14 +3067,14 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
-            throw NotImplementedException(LINE_STR);
+            throw NotImplementedException(FO_LINE_STR);
         }
     }
 }
 
 void FOServer::ProcessCritterMoving(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Moving
     if (cr->IsMoving()) {
@@ -3233,12 +3236,12 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
 void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
     const auto validate_moving = [cr, expected_uid = cr->Moving.Uid, expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
         const auto validate_moving_inner = [&]() -> bool {
@@ -3282,11 +3285,11 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
         auto hex = next_start_hex;
 
-        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], map->GetSize());
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
         }
 
         auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
@@ -3314,14 +3317,14 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             // Evaluate current hex
             const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));
             const auto step_index = control_step_begin + static_cast<int>(step_index_f);
-            RUNTIME_ASSERT(step_index >= control_step_begin);
-            RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
+            FO_RUNTIME_ASSERT(step_index >= control_step_begin);
+            FO_RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
 
             auto hex2 = next_start_hex;
 
             for (int j2 = control_step_begin; j2 < step_index; j2++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j2], map->GetSize());
-                RUNTIME_ASSERT(move_ok);
+                FO_RUNTIME_ASSERT(move_ok);
             }
 
             const auto old_hex = cr->GetHex();
@@ -3335,7 +3338,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                     cr->SetHex(hex2);
                     map->AddCritterToField(cr);
 
-                    RUNTIME_ASSERT(!cr->IsDestroyed());
+                    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
                     VerifyTrigger(map, cr, old_hex, hex2, dir);
                     if (!validate_moving(hex2)) {
@@ -3402,7 +3405,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             break;
         }
 
-        RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
+        FO_RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
 
         control_step_begin = cr->Moving.ControlSteps[i];
         next_start_hex = hex;
@@ -3423,7 +3426,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
 void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
@@ -3432,7 +3435,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->ClearMove();
 
     const auto* map = EntityMngr.GetMap(cr->GetMapId());
-    RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map);
 
     const auto start_hex = cr->GetHex();
 
@@ -3448,7 +3451,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->Moving.WholeTime = 0.0f;
     cr->Moving.WholeDist = 0.0f;
 
-    RUNTIME_ASSERT(cr->Moving.Speed > 0);
+    FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
     const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
     auto next_start_hex = start_hex;
@@ -3457,11 +3460,11 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
         auto hex = next_start_hex;
 
-        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], map->GetSize());
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
         }
 
         auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
@@ -3490,10 +3493,10 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
     cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
-    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
     cr->SetMovingSpeed(speed);
 
@@ -3502,9 +3505,9 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
 
 void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (!cr->IsMoving()) {
         return;
@@ -3536,7 +3539,7 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (base_dlg.Id < 2) {
         WriteLog("Wrong dialog id {}", base_dlg.Id);
@@ -3565,7 +3568,7 @@ auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, 
 
 auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (answer.Demands.empty()) {
         return true;
@@ -3732,7 +3735,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
 
 auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (answer.Results.empty()) {
         return 0;
@@ -3864,7 +3867,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
 
 void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos dlg_hex, bool ignore_distance)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cl->Talk.Locked) {
         WriteLog("Dialog locked, client '{}'", cl->GetName());
@@ -4084,7 +4087,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
 void FOServer::Process_Dialog(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -4306,7 +4309,7 @@ void FOServer::Process_Dialog(Player* player)
 
 void FOServer::Process_RemoteCall(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -4320,7 +4323,7 @@ void FOServer::Process_RemoteCall(Player* player)
 
 auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (count == 0) {
         throw GenericException("Item count is zero");
@@ -4352,7 +4355,7 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Prop
 
 auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     bool result = false;
 
@@ -4370,13 +4373,13 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
     case 5:
         return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
     default:
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (result.ValuesCount) {
     case 0:
@@ -4410,7 +4413,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     switch (result.ValuesCount) {
@@ -4445,7 +4448,7 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     default:
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     return 0;
@@ -4453,10 +4456,12 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 
 auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!player_name.empty());
+    FO_RUNTIME_ASSERT(!player_name.empty());
     const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint>(player_name.length()));
-    RUNTIME_ASSERT(hash_value);
+    FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }
+
+FO_END_NAMESPACE();

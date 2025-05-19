@@ -35,16 +35,18 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 template<typename TCell, typename TPos, typename TSize>
 class TwoDimensionalGrid
 {
 public:
     explicit TwoDimensionalGrid(TSize size) noexcept
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_VERIFY(size.width >= 0);
-        RUNTIME_VERIFY(size.height >= 0);
+        FO_RUNTIME_VERIFY(size.width >= 0);
+        FO_RUNTIME_VERIFY(size.height >= 0);
 
         _size = size;
     }
@@ -74,14 +76,14 @@ public:
     explicit DynamicTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
 
         const auto it = _cells.find(pos);
 
@@ -95,9 +97,9 @@ public:
 
     [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(base::_size.IsValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
 
         const auto it = _cells.find(pos);
 
@@ -111,10 +113,10 @@ public:
 
     void Resize(TSize size) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(size.width >= 0);
-        RUNTIME_ASSERT(size.height >= 0);
+        FO_RUNTIME_ASSERT(size.width >= 0);
+        FO_RUNTIME_ASSERT(size.height >= 0);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;
@@ -148,16 +150,16 @@ public:
     explicit StaticTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         _preallocatedCells.resize(static_cast<int64>(base::_size.width) * base::_size.height);
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
 
         auto& cell = _preallocatedCells[static_cast<int64>(pos.y) * base::_size.width + pos.x];
 
@@ -170,9 +172,9 @@ public:
 
     [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(base::_size.IsValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
 
         auto& cell = _preallocatedCells[static_cast<int64>(pos.y) * base::_size.width + pos.x];
 
@@ -185,10 +187,10 @@ public:
 
     void Resize(TSize size) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(size.width >= 0);
-        RUNTIME_ASSERT(size.height >= 0);
+        FO_RUNTIME_ASSERT(size.width >= 0);
+        FO_RUNTIME_ASSERT(size.height >= 0);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;
@@ -214,3 +216,5 @@ private:
     vector<unique_ptr<TCell>> _preallocatedCells {};
     const TCell _emptyCell {};
 };
+
+FO_END_NAMESPACE();

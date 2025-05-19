@@ -38,13 +38,15 @@
 #include "Server.h"
 #include "Settings.h"
 
+FO_USING_NAMESPACE();
+
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ServerDaemonApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         Platform::ForkProcess();
@@ -63,6 +65,6 @@ int main(int argc, char** argv)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

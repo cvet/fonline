@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 class HashStorage : public HashResolver
 {
 public:
@@ -130,3 +132,5 @@ private:
     struct Impl;
     unique_ptr<Impl> _impl;
 };
+
+FO_END_NAMESPACE();

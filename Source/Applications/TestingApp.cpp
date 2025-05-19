@@ -46,9 +46,11 @@
 #include "Application.h"
 #include "GenericUtils.h"
 
+FO_USING_NAMESPACE();
+
 int main(int argc, char** argv)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         InitApp(-1, nullptr);
@@ -59,6 +61,6 @@ int main(int argc, char** argv)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

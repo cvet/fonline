@@ -33,6 +33,8 @@
 
 #include "TwoDimensionalGrid.h"
 
+FO_BEGIN_NAMESPACE();
+
 [[maybe_unused]] static void TestSpecializations()
 {
     if constexpr (FO_DEBUG) {
@@ -40,3 +42,5 @@
         [[maybe_unused]] auto grid2 = DynamicTwoDimensionalGrid<int, ipos, isize>({100, 100});
     }
 }
+
+FO_END_NAMESPACE();

@@ -38,12 +38,14 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
     _settings {settings},
     _netIn(_settings.NetBufferSize),
     _netOut(_settings.NetBufferSize)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _connectCallback = [](auto&&) {};
     _disconnectCallback = [] {};
@@ -55,32 +57,32 @@ ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
 
 void ClientConnection::SetConnectHandler(ConnectCallback handler)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _connectCallback = handler ? std::move(handler) : [](auto&&) {};
 }
 
 void ClientConnection::SetDisconnectHandler(DisconnectCallback handler)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _disconnectCallback = handler ? std::move(handler) : [] {};
 }
 
 void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_handlers.count(msg) == 0);
+    FO_RUNTIME_ASSERT(_handlers.count(msg) == 0);
 
     _handlers.emplace(msg, std::move(handler));
 }
 
 void ClientConnection::Connect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_netConnection);
+    FO_RUNTIME_ASSERT(!_netConnection);
 
     try {
         // First try interthread communication
@@ -113,7 +115,7 @@ void ClientConnection::Connect()
 
 void ClientConnection::Process()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         ProcessConnection();
@@ -138,7 +140,7 @@ void ClientConnection::Process()
 
 void ClientConnection::ProcessConnection()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_netConnection) {
         return;
@@ -230,7 +232,7 @@ void ClientConnection::ProcessConnection()
 
 void ClientConnection::Disconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_netConnection) {
         return;
@@ -258,7 +260,7 @@ void ClientConnection::Disconnect()
 
 void ClientConnection::SendData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     while (true) {
         if (_netOut.IsEmpty()) {
@@ -278,11 +280,11 @@ void ClientConnection::SendData()
 
 auto ClientConnection::ReceiveData() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_netConnection->CheckStatus(false)) {
         const auto recv_buf = _netConnection->ReceiveData();
-        RUNTIME_ASSERT(!recv_buf.empty());
+        FO_RUNTIME_ASSERT(!recv_buf.empty());
 
         _netIn.ShrinkReadBuf();
 
@@ -306,7 +308,7 @@ auto ClientConnection::ReceiveData() -> bool
 
 void ClientConnection::Net_SendHandshake()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     constexpr auto comp_version = static_cast<uint>(FO_COMPATIBILITY_VERSION);
@@ -321,7 +323,7 @@ void ClientConnection::Net_SendHandshake()
 
 void ClientConnection::Net_OnHandshakeAnswer()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto outdated = _netIn.Read<bool>();
     const auto encrypt_key = _netIn.Read<uint>();
@@ -334,7 +336,7 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
 void ClientConnection::Net_OnPing()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto answer = _netIn.Read<bool>();
 
@@ -350,3 +352,5 @@ void ClientConnection::Net_OnPing()
         _netOut.EndMsg();
     }
 }
+
+FO_END_NAMESPACE();

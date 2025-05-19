@@ -38,6 +38,8 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
+FO_BEGIN_NAMESPACE();
+
 class SoundManager final
 {
 public:
@@ -74,3 +76,5 @@ private:
     vector<uint8> _outputBuf {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

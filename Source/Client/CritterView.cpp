@@ -35,12 +35,14 @@
 #include "Client.h"
 #include "ItemView.h"
 
+FO_BEGIN_NAMESPACE();
+
 CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = strex("{}_{}", proto->GetName(), id);
 
@@ -54,7 +56,7 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
 
 void CritterView::OnDestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto& item : _invItems) {
         item->DestroySelf();
@@ -65,14 +67,14 @@ void CritterView::OnDestroySelf()
 
 void CritterView::SetName(string_view name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = name;
 }
 
 auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
 
@@ -86,7 +88,7 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
 
 auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
 
@@ -101,9 +103,9 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
 
 auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
 {
-    RUNTIME_ASSERT(!item->GetStatic());
-    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
-    RUNTIME_ASSERT(item->GetCritterId() == GetId());
+    FO_RUNTIME_ASSERT(!item->GetStatic());
+    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
+    FO_RUNTIME_ASSERT(item->GetCritterId() == GetId());
 
     vec_add_unique_value(_invItems, item);
     std::stable_sort(_invItems.begin(), _invItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
@@ -113,9 +115,9 @@ auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
 
 void CritterView::DeleteInvItem(ItemView* item, bool animate)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(animate);
+    ignore_unused(animate);
 
     vec_remove_unique_value(_invItems, item);
 
@@ -124,7 +126,7 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 
 void CritterView::DeleteAllInvItems()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     while (!_invItems.empty()) {
         DeleteInvItem(_invItems.front().get(), false);
@@ -133,9 +135,9 @@ void CritterView::DeleteAllInvItems()
 
 auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
         if (item->GetId() == item_id) {
@@ -148,9 +150,9 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
         if (item->GetProtoId() == item_pid) {
@@ -163,7 +165,7 @@ auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 
 auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (find_type == CritterFindType::Any) {
         return true;
@@ -186,7 +188,7 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
 
 auto CritterView::GetStateAnim() const noexcept -> CritterStateAnim
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     switch (GetCondition()) {
     case CritterCondition::Alive:
@@ -199,3 +201,5 @@ auto CritterView::GetStateAnim() const noexcept -> CritterStateAnim
 
     return CritterStateAnim::Unarmed;
 }
+
+FO_END_NAMESPACE();

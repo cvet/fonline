@@ -38,9 +38,11 @@
 
 #include "zlib.h"
 
+FO_BEGIN_NAMESPACE();
+
 auto HashStorage::ToHashedString(string_view s) -> hstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
@@ -49,7 +51,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     }
 
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
-    RUNTIME_ASSERT(hash_value != 0);
+    FO_RUNTIME_ASSERT(hash_value != 0);
 
     {
         auto locker = std::shared_lock {_hashStorageLocker};
@@ -74,7 +76,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         auto locker = std::unique_lock {_hashStorageLocker};
 
         const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
-        UNUSED_VARIABLE(inserted); // Do not assert because somebody else can insert it already
+        ignore_unused(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(&it->second);
     }
@@ -82,7 +84,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
 auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (h == 0) {
         return {};
@@ -103,7 +105,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
 
 auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (h == 0) {
         return {};
@@ -128,7 +130,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
 
 auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return 0;
@@ -181,7 +183,7 @@ auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
 
 auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return 0;
@@ -244,14 +246,14 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
 
 auto Compressor::CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return initial_size * 110 / 100 + 12;
 }
 
 auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto buf_len = static_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
     auto buf = vector<uint8>(buf_len);
@@ -267,7 +269,7 @@ auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 
 auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
     auto buf = vector<uint8>(buf_len);
@@ -295,10 +297,10 @@ auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector
 
 void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto file = DiskFileSystem::OpenFile(fname, true);
-    RUNTIME_ASSERT(file);
+    FO_RUNTIME_ASSERT(file);
 
     const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
         static_cast<uint8>(size.width % 256), static_cast<uint8>(size.width / 256), //
@@ -312,30 +314,30 @@ void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> 
 static std::mt19937 RandomGenerator(std::random_device {}());
 void GenericUtils::SetRandomSeed(int seed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RandomGenerator = std::mt19937(seed);
 }
 
 auto GenericUtils::Random(int minimum, int maximum) -> int
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return std::uniform_int_distribution {minimum, maximum}(RandomGenerator);
 }
 
 auto GenericUtils::Random(uint minimum, uint maximum) -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return static_cast<uint>(Random(static_cast<int>(minimum), static_cast<int>(maximum)));
 }
 
 auto GenericUtils::Percent(int full, int peace) -> int
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(full >= 0);
+    FO_RUNTIME_ASSERT(full >= 0);
 
     if (full == 0) {
         return 0;
@@ -348,7 +350,7 @@ auto GenericUtils::Percent(int full, int peace) -> int
 
 auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (full == 0) {
         return 0;
@@ -361,7 +363,7 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
 
 auto GenericUtils::NumericalNumber(uint num) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (num % 2 != 0) {
         return num * (num / 2 + 1);
@@ -372,7 +374,7 @@ auto GenericUtils::NumericalNumber(uint num) noexcept -> uint
 
 auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto x01 = x1 - cx;
     const auto y01 = y1 - cy;
@@ -396,10 +398,10 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
 
 auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(day_time.size() == 4);
-    RUNTIME_ASSERT(colors.size() == 12);
+    FO_RUNTIME_ASSERT(day_time.size() == 4);
+    FO_RUNTIME_ASSERT(colors.size() == 12);
 
     uint8 result[3];
     const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
@@ -457,7 +459,7 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
 
 auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto dx = pos1.x - pos2.x;
     const auto dy = pos1.y - pos2.y;
@@ -467,7 +469,7 @@ auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint
 
 auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto dx = static_cast<float>(std::abs(to_pos.x - from_pos.x));
     const auto dy = static_cast<float>(std::abs(to_pos.y - from_pos.y));
@@ -489,7 +491,7 @@ auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 
 auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto rad = deq * PI_FLOAT / 180.0f;
     const auto x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
@@ -504,7 +506,7 @@ static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool
 
 auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     float in[4];
     in[0] = objx;
@@ -540,7 +542,7 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
 
 auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     float final_matrix[16];
     MultMatricesf(model_matrix, proj_matrix, final_matrix);
@@ -581,7 +583,7 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
 
 static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < 4; i++) {
         for (auto j = 0; j < 4; j++) {
@@ -592,7 +594,7 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16]) noe
 
 static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < 4; i++) {
         out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
@@ -601,7 +603,7 @@ static void MultMatrixVecf(const float matrix[16], const float in[4], float out[
 
 static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     float inv[16];
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
@@ -647,14 +649,14 @@ auto StreamCompressor::operator=(StreamCompressor&&) noexcept -> StreamCompresso
 
 StreamCompressor::~StreamCompressor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Reset();
 }
 
 void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl) {
         _impl = SafeAlloc::MakeUnique<Impl>();
@@ -670,7 +672,7 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
         };
 
         const auto deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
-        RUNTIME_ASSERT(deflate_init == Z_OK);
+        FO_RUNTIME_ASSERT(deflate_init == Z_OK);
     }
 
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
@@ -681,10 +683,10 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
     _impl->ZStream.avail_out = static_cast<uInt>(result.size());
 
     const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    RUNTIME_ASSERT(deflate_result == Z_OK);
+    FO_RUNTIME_ASSERT(deflate_result == Z_OK);
 
     const auto writed_len = static_cast<size_t>(_impl->ZStream.next_in - buf.data());
-    RUNTIME_ASSERT(writed_len == buf.size());
+    FO_RUNTIME_ASSERT(writed_len == buf.size());
 
     const auto compr_len = static_cast<size_t>(_impl->ZStream.next_out - result.data());
     result.resize(compr_len);
@@ -692,7 +694,7 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 
 void StreamCompressor::Reset() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_impl) {
         deflateEnd(&_impl->ZStream);
@@ -711,14 +713,14 @@ auto StreamDecompressor::operator=(StreamDecompressor&&) noexcept -> StreamDecom
 
 StreamDecompressor::~StreamDecompressor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Reset();
 }
 
 void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl) {
         _impl = SafeAlloc::MakeUnique<Impl>();
@@ -734,7 +736,7 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
         };
 
         const auto inflate_init = inflateInit(&_impl->ZStream);
-        RUNTIME_ASSERT(inflate_init == Z_OK);
+        FO_RUNTIME_ASSERT(inflate_init == Z_OK);
     }
 
     result.resize(std::max(result.capacity(), buf.size() * 2));
@@ -745,7 +747,7 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    RUNTIME_ASSERT(first_inflate == Z_OK);
+    FO_RUNTIME_ASSERT(first_inflate == Z_OK);
 
     auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
 
@@ -756,7 +758,7 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
         _impl->ZStream.avail_out = numeric_cast<uInt>(result.size() - uncompr_len);
 
         const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-        RUNTIME_ASSERT(next_inflate == Z_OK);
+        FO_RUNTIME_ASSERT(next_inflate == Z_OK);
 
         uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
     }
@@ -766,10 +768,12 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
 
 void StreamDecompressor::Reset() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_impl) {
         inflateEnd(&_impl->ZStream);
         _impl.reset();
     }
 }
+
+FO_END_NAMESPACE();

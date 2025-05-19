@@ -41,6 +41,8 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(FOClient* client)
 {
@@ -74,7 +76,7 @@ FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (cr1 == nullptr) {
         throw ScriptException("Critter 1 arg is null");
@@ -99,7 +101,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, C
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (item1 == nullptr) {
         throw ScriptException("Item 1 arg is null");
@@ -123,7 +125,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, It
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -148,7 +150,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, It
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -173,7 +175,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, Cri
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -194,7 +196,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mp
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -215,7 +217,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterVi
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -235,7 +237,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView*
 ///@ ExportMethod
 FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -412,7 +414,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(FOClient* client, hst
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* client, const vector<CritterView*>& critters)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     vector<CritterView*> sorted_critters = critters;
 
@@ -575,7 +577,7 @@ FO_SCRIPT_API bool Client_Game_IsTextPresent(FOClient* client, TextPackName text
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text, string_view from, string_view to)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     return strex(text).replace(from, to);
 }
@@ -583,7 +585,7 @@ FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text,
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text, string_view from, int64 to)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     return strex(text).replace(from, strex("{}", to));
 }
@@ -601,7 +603,7 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<str
 {
 #if FO_ENABLE_3D
     auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
-    RUNTIME_ASSERT(model_spr_factory);
+    FO_RUNTIME_ASSERT(model_spr_factory);
 
     for (const auto& fname : fnames) {
         model_spr_factory->GetModelMngr()->PreloadModel(fname);
@@ -742,11 +744,11 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, MouseButton button)
 {
-    UNUSED_VARIABLE(client);
-    UNUSED_VARIABLE(pos);
-    UNUSED_VARIABLE(button);
+    ignore_unused(client);
+    ignore_unused(pos);
+    ignore_unused(button);
 
-    throw NotImplementedException(LINE_STR);
+    throw NotImplementedException(FO_LINE_STR);
 
     /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
 
@@ -1220,14 +1222,14 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hs
     }
 
 #else
-    UNUSED_VARIABLE(client);
-    UNUSED_VARIABLE(instance);
-    UNUSED_VARIABLE(modelName);
-    UNUSED_VARIABLE(stateAnim);
-    UNUSED_VARIABLE(actionAnim);
-    UNUSED_VARIABLE(layers);
-    UNUSED_VARIABLE(position);
-    UNUSED_VARIABLE(color);
+    ignore_unused(client);
+    ignore_unused(instance);
+    ignore_unused(modelName);
+    ignore_unused(stateAnim);
+    ignore_unused(actionAnim);
+    ignore_unused(layers);
+    ignore_unused(position);
+    ignore_unused(color);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
@@ -1376,10 +1378,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
 {
-    UNUSED_VARIABLE(client);
-    UNUSED_VARIABLE(filePath);
+    ignore_unused(client);
+    ignore_unused(filePath);
 
-    throw NotImplementedException(LINE_STR);
+    throw NotImplementedException(FO_LINE_STR);
 
     // client->SprMngr.SaveTexture(nullptr, strex(filePath).formatPath(), true);
 }
@@ -1387,7 +1389,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(FOClient* client, string_view file
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
-    UNUSED_VARIABLE(client);
+    ignore_unused(client);
 
     auto file = DiskFileSystem::OpenFile(strex(filePath).formatPath(), true);
 
@@ -1533,7 +1535,7 @@ FO_SCRIPT_API string Client_Game_BuiltInCommand(FOClient* client, string_view co
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
 {
-    UNUSED_VARIABLE(client, enabled);
+    ignore_unused(client, enabled);
 
     // Todo: improve SetScreenKeyboard
     /*if (SDL_HasScreenKeyboardSupport()) {
@@ -1547,3 +1549,5 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
         }
     }*/
 }
+
+FO_END_NAMESPACE();

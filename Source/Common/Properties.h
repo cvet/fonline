@@ -38,8 +38,10 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(PropertyRegistrationException);
-DECLARE_EXCEPTION(PropertiesException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(PropertyRegistrationException);
+FO_DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
 class Property;
@@ -77,7 +79,7 @@ public:
     template<typename T>
     [[nodiscard]] auto GetAs() noexcept -> T
     {
-        STRONG_ASSERT(sizeof(T) == _dataSize);
+        FO_STRONG_ASSERT(sizeof(T) == _dataSize);
         return *static_cast<T*>(GetPtr());
     }
 
@@ -276,7 +278,7 @@ public:
     ~Properties() = default;
 
     [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
-    [[nodiscard]] auto GetEntity() noexcept -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
+    [[nodiscard]] auto GetEntity() noexcept -> Entity* { FO_NON_CONST_METHOD_HINT_ONELINE() return _entity; }
     [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
@@ -312,14 +314,14 @@ public:
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-        RUNTIME_ASSERT(prop->IsPlainData());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+        FO_RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(_entity);
 
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
@@ -331,7 +333,7 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
         return result;
     }
@@ -339,15 +341,15 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        RUNTIME_ASSERT(prop->IsPlainData());
-        RUNTIME_ASSERT(prop->IsBaseTypeHash());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+        FO_RUNTIME_ASSERT(prop->IsPlainData());
+        FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(_entity);
 
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
@@ -360,7 +362,7 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
@@ -369,13 +371,13 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsString());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(_entity);
 
             if (prop->_getter) {
                 PropertyRawData prop_data = prop->_getter(_entity, prop);
@@ -387,7 +389,7 @@ public:
             }
         }
 
-        RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
         auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
@@ -396,22 +398,22 @@ public:
     template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsArray());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(_entity);
 
             if (prop->_getter) {
                 prop_data = prop->_getter(_entity, prop);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
             const auto& complex_data = _complexData[prop->_complexDataIndex];
             prop_data.Pass({complex_data.first.get(), complex_data.second});
         }
@@ -423,7 +425,7 @@ public:
 
         if (data_size != 0) {
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
-                RUNTIME_ASSERT(prop->IsArrayOfString());
+                FO_RUNTIME_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
@@ -446,8 +448,8 @@ public:
                 }
             }
             else if constexpr (std::is_same_v<T, vector<hstring>>) {
-                RUNTIME_ASSERT(prop->IsBaseTypeHash());
-                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+                FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+                FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
                 result.resize(arr_size);
@@ -459,7 +461,7 @@ public:
                 }
             }
             else {
-                RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+                FO_RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
                 result.resize(data_size / prop->GetBaseSize());
                 MemCopy(result.data(), data, data_size);
             }
@@ -471,14 +473,14 @@ public:
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        STRONG_ASSERT(!prop->IsDisabled());
-        STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
-        STRONG_ASSERT(prop->IsPlainData());
-        STRONG_ASSERT(!prop->IsVirtual());
+        FO_STRONG_ASSERT(!prop->IsDisabled());
+        FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
+        FO_STRONG_ASSERT(prop->IsPlainData());
+        FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        FO_STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
         return result;
     }
@@ -486,15 +488,15 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        STRONG_ASSERT(!prop->IsDisabled());
-        STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        STRONG_ASSERT(prop->IsPlainData());
-        STRONG_ASSERT(prop->IsBaseTypeHash());
-        STRONG_ASSERT(!prop->IsVirtual());
+        FO_STRONG_ASSERT(!prop->IsDisabled());
+        FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+        FO_STRONG_ASSERT(prop->IsPlainData());
+        FO_STRONG_ASSERT(prop->IsBaseTypeHash());
+        FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+        FO_STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash, nullptr);
         return result;
@@ -503,13 +505,13 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        STRONG_ASSERT(!prop->IsDisabled());
-        STRONG_ASSERT(prop->IsString());
-        STRONG_ASSERT(!prop->IsVirtual());
+        FO_STRONG_ASSERT(!prop->IsDisabled());
+        FO_STRONG_ASSERT(prop->IsString());
+        FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        FO_STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
         const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
@@ -518,15 +520,15 @@ public:
     template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        STRONG_ASSERT(!prop->IsDisabled());
-        STRONG_ASSERT(prop->IsArray());
-        STRONG_ASSERT(!prop->IsVirtual());
+        FO_STRONG_ASSERT(!prop->IsDisabled());
+        FO_STRONG_ASSERT(prop->IsArray());
+        FO_STRONG_ASSERT(!prop->IsVirtual());
 
         PropertyRawData prop_data;
 
-        STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+        FO_STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
         const auto& complex_data = _complexData[prop->_complexDataIndex];
         prop_data.Pass({complex_data.first.get(), complex_data.second});
 
@@ -537,7 +539,7 @@ public:
 
         if (data_size != 0) {
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
-                STRONG_ASSERT(prop->IsArrayOfString());
+                FO_STRONG_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
@@ -560,8 +562,8 @@ public:
                 }
             }
             else if constexpr (std::is_same_v<T, vector<hstring>>) {
-                STRONG_ASSERT(prop->IsBaseTypeHash());
-                STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+                FO_STRONG_ASSERT(prop->IsBaseTypeHash());
+                FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
                 result.resize(arr_size);
@@ -573,7 +575,7 @@ public:
                 }
             }
             else {
-                STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
+                FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
                 result.resize(data_size / prop->GetBaseSize());
                 MemCopy(result.data(), data, data_size);
             }
@@ -585,15 +587,15 @@ public:
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-        RUNTIME_ASSERT(prop->IsPlainData());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+        FO_RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
-            RUNTIME_ASSERT(!prop->_setters.empty());
+            FO_RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
             PropertyRawData prop_data;
             prop_data.SetAs<T>(new_value);
@@ -603,7 +605,7 @@ public:
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
 
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
@@ -632,16 +634,16 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        RUNTIME_ASSERT(prop->IsPlainData());
-        RUNTIME_ASSERT(prop->IsBaseTypeHash());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+        FO_RUNTIME_ASSERT(prop->IsPlainData());
+        FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
-            RUNTIME_ASSERT(!prop->_setters.empty());
+            FO_RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
             PropertyRawData prop_data;
             prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
@@ -651,7 +653,7 @@ public:
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
             const auto new_value_hash = new_value.as_hash();
 
             if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset])) {
@@ -681,14 +683,14 @@ public:
     template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     void SetValue(const Property* prop, const T& new_value)
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsString());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->IsString());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
-            RUNTIME_ASSERT(!prop->_setters.empty());
+            FO_RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
             PropertyRawData prop_data;
             prop_data.Pass(new_value.c_str(), new_value.length());
@@ -698,7 +700,7 @@ public:
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
 
             if (!prop->_setters.empty() && _entity != nullptr) {
                 PropertyRawData prop_data;
@@ -725,10 +727,10 @@ public:
     template<typename T>
     void SetValue(const Property* prop, const vector<T>& new_value)
     {
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->IsArray());
+        FO_RUNTIME_ASSERT(!prop->IsDisabled());
+        FO_RUNTIME_ASSERT(prop->IsArray());
 
         PropertyRawData prop_data;
 
@@ -759,7 +761,7 @@ public:
             }
         }
         else if constexpr (std::is_same_v<T, hstring>) {
-            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
             if (!new_value.empty()) {
                 auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
@@ -772,7 +774,7 @@ public:
             }
         }
         else {
-            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
 
             if (!new_value.empty()) {
                 prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
@@ -780,15 +782,15 @@ public:
         }
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(_entity);
-            RUNTIME_ASSERT(!prop->_setters.empty());
+            FO_RUNTIME_ASSERT(_entity);
+            FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
 
             if (!prop->_setters.empty() && _entity != nullptr) {
                 for (const auto& setter : prop->_setters) {
@@ -884,3 +886,5 @@ private:
     vector<uint16> _protectedComplexDataProps {};
     vector<uint16> _publicProtectedComplexDataProps {};
 };
+
+FO_END_NAMESPACE();

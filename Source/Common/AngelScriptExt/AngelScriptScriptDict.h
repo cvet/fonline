@@ -31,8 +31,7 @@
 // SOFTWARE.
 //
 
-#ifndef SCRIPTDICT_H
-#define SCRIPTDICT_H
+#pragma once
 
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
@@ -111,5 +110,3 @@ protected:
 void RegisterScriptDict(asIScriptEngine* engine);
 
 END_AS_NAMESPACE
-
-#endif

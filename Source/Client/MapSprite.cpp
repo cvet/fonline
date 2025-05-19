@@ -35,9 +35,11 @@
 #include "ModelSprites.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 void MapSprite::Invalidate()
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -96,10 +98,10 @@ void MapSprite::Invalidate()
 
 auto MapSprite::GetDrawRect() const -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* spr = PSpr != nullptr ? *PSpr : Spr;
-    RUNTIME_ASSERT(spr);
+    FO_RUNTIME_ASSERT(spr);
 
     auto x = HexOffset.x - spr->Size.width / 2 + spr->Offset.x + PHexOffset->x;
     auto y = HexOffset.y - spr->Size.height + spr->Offset.y + PHexOffset->y;
@@ -114,12 +116,12 @@ auto MapSprite::GetDrawRect() const -> IRect
 
 auto MapSprite::GetViewRect() const -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto rect = GetDrawRect();
 
     const auto* spr = PSpr != nullptr ? *PSpr : Spr;
-    RUNTIME_ASSERT(spr);
+    FO_RUNTIME_ASSERT(spr);
 
     if (const auto view_rect = spr->GetViewSize(); view_rect.has_value()) {
         const auto view_width = view_rect->Left;
@@ -138,7 +140,7 @@ auto MapSprite::GetViewRect() const -> IRect
 
 auto MapSprite::CheckHit(ipos pos, bool check_transparent) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (pos.x < 0 || pos.y < 0) {
         return false;
@@ -149,21 +151,21 @@ auto MapSprite::CheckHit(ipos pos, bool check_transparent) const -> bool
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     EggAppearence = egg_appearence;
 }
 
 void MapSprite::SetContour(ContourType contour)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
 }
 
 void MapSprite::SetContour(ContourType contour, ucolor color)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     Contour = contour;
     ContourColor = color;
@@ -171,21 +173,21 @@ void MapSprite::SetContour(ContourType contour, ucolor color)
 
 void MapSprite::SetColor(ucolor color)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     Color = color;
 }
 
 void MapSprite::SetAlpha(const uint8* alpha)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     Alpha = alpha;
 }
 
 void MapSprite::SetFixedAlpha(uint8 alpha)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
     *color_alpha = alpha;
@@ -194,7 +196,7 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
 
 void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (Hex.x >= 1 && Hex.x < size.width - 1 && Hex.y >= 1 && Hex.y < size.height - 1) {
         Light = &light[Hex.y * size.width + Hex.x];
@@ -229,7 +231,7 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
 
 void MapSprite::SetHidden(bool hidden)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     _hidden = hidden;
 }
@@ -237,12 +239,12 @@ void MapSprite::SetHidden(bool hidden)
 MapSpriteList::MapSpriteList(SpriteManager& spr_mngr) :
     _sprMngr {spr_mngr}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 MapSpriteList::~MapSpriteList()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         Invalidate();
@@ -251,7 +253,7 @@ MapSpriteList::~MapSpriteList()
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 
     for (const auto* spr : _invalidatedSprites) {
@@ -264,7 +266,7 @@ MapSpriteList::~MapSpriteList()
 
 void MapSpriteList::GrowPool()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
@@ -275,16 +277,16 @@ void MapSpriteList::GrowPool()
 
 auto MapSpriteList::RootSprite() noexcept -> MapSprite*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return _rootSprite;
 }
 
 auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _spriteCount++;
 
@@ -344,7 +346,7 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
         }
 
         if (mspr->ChainParent == nullptr) {
-            RUNTIME_ASSERT(child->ChainRoot);
+            FO_RUNTIME_ASSERT(child->ChainRoot);
             _rootSprite = mspr;
             mspr->ChainRoot = &_rootSprite;
             child->ChainRoot = nullptr;
@@ -387,14 +389,14 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
 
 auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hex, hex_offset, phex_offset, spr, pspr, spr_offset, alpha, effect, callback);
 }
 
 auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Find place
     uint order_pos;
@@ -424,7 +426,7 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
 
 void MapSpriteList::Invalidate()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     while (_rootSprite != nullptr) {
         _rootSprite->Invalidate();
@@ -436,7 +438,7 @@ void MapSpriteList::Invalidate()
 
 void MapSpriteList::Sort()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_rootSprite == nullptr) {
         return;
@@ -480,3 +482,5 @@ void MapSpriteList::Sort()
 
     _sortSprites.clear();
 }
+
+FO_END_NAMESPACE();

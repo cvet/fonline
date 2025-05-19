@@ -40,6 +40,8 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Properties;
 class ScriptSystem;
 
@@ -132,3 +134,5 @@ class BakerScriptSystem final : public ScriptSystem
 public:
     explicit BakerScriptSystem(BakerEngine& engine, const FileSystem& resources);
 };
+
+FO_END_NAMESPACE();

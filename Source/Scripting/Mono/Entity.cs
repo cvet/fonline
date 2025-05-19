@@ -1,7 +1,6 @@
 using System;
 
-namespace FOnline
-{
+BEGIN_FONLINE_NAMESPACE();
     public partial class Entity
     {
         public uint Id { get { return 0; } }

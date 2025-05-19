@@ -42,20 +42,22 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 CritterManager::CritterManager(FOServer* engine) :
     _engine {engine}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(cr);
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetStackable()) {
         auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
@@ -100,12 +102,12 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
 void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(cr);
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(item);
 
     cr->RemoveItem(item);
 
@@ -132,10 +134,10 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
 
 auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(map);
-    RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
@@ -199,7 +201,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     _engine->EntityMngr.RegisterCritter(cr.get());
 
     const auto* loc = map->GetLocation();
-    RUNTIME_ASSERT(loc);
+    FO_RUNTIME_ASSERT(loc);
 
     _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, final_dir, ident_t {});
 
@@ -215,9 +217,9 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
 void CritterManager::DestroyCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!cr->GetControlledByPlayer());
+    FO_RUNTIME_ASSERT(!cr->GetControlledByPlayer());
 
     // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
@@ -237,11 +239,11 @@ void CritterManager::DestroyCritter(Critter* cr)
         for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountInvItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             if (cr->GetMapId()) {
                 auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
-                RUNTIME_ASSERT(map);
+                FO_RUNTIME_ASSERT(map);
                 _engine->MapMngr.RemoveCritterFromMap(cr, map);
             }
             else {
-                RUNTIME_ASSERT(cr->GlobalMapGroup);
+                FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
                 _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
             }
 
@@ -272,9 +274,9 @@ void CritterManager::DestroyCritter(Critter* cr)
 
 void CritterManager::DestroyInventory(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (InfinityLoopDetector detector {cr->_invItems.size()}; !cr->_invItems.empty(); detector.AddLoop()) {
         _engine->ItemMngr.DestroyItem(cr->_invItems.front());
@@ -283,9 +285,9 @@ void CritterManager::DestroyInventory(Critter* cr)
 
 auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
 
@@ -303,9 +305,9 @@ auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
 
 auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
 
@@ -323,9 +325,9 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
 
 auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
 
@@ -343,9 +345,9 @@ auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<C
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
@@ -377,7 +379,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
 
 void CritterManager::ProcessTalk(Critter* cr, bool force)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cr->Talk.Type == TalkType::None) {
         return;
@@ -442,9 +444,9 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
 void CritterManager::CloseTalk(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (cr->Talk.Type != TalkType::None) {
         Critter* talker = nullptr;
@@ -483,3 +485,5 @@ void CritterManager::CloseTalk(Critter* cr)
     cr->Talk = TalkData();
     cr->Send_Talk();
 }
+
+FO_END_NAMESPACE();

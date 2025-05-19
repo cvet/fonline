@@ -58,6 +58,8 @@
 #define SD_BOTH SHUT_RDWR
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 static constexpr size_t MAX_SESSIONS = 10;
 
 struct Session
@@ -74,14 +76,14 @@ static void AdminWork(FOServer* server, Session* session);
 
 void InitAdminManager(FOServer* server, uint16 port)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::thread(AdminManager, server, port).detach();
 }
 
 static void AdminManager(FOServer* server, uint16 port)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     WSADATA wsa;
@@ -207,7 +209,7 @@ static void AdminManager(FOServer* server, uint16 port)
 
 static void AdminWork(FOServer* server, Session* session)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* event_unsubscriber = SafeAlloc::MakeRaw<EventUnsubscriber>();
     *event_unsubscriber += server->OnWillFinish += [&server, &event_unsubscriber]() {
@@ -344,3 +346,5 @@ label_Finish:
         delete session;
     }
 }
+
+FO_END_NAMESPACE();

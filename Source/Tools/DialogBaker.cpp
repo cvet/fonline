@@ -37,22 +37,24 @@
 #include "ScriptSystem.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Critter;
 
 DialogBaker::DialogBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 DialogBaker::~DialogBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void DialogBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<File> filtered_files;
     uint64 max_write_time = 0;
@@ -210,3 +212,5 @@ void DialogBaker::BakeFiles(FileCollection files)
         _writeData(file.GetPath(), file.GetData());
     }
 }
+
+FO_END_NAMESPACE();

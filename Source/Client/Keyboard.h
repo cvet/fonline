@@ -41,6 +41,8 @@
 #include "Settings.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 // Keyboard input flags
 static constexpr uint KIF_NO_SPEC_SYMBOLS = 1; // Ignore \n \r \t
 static constexpr uint KIF_ONLY_NUMBERS = 2; // Only 0..9
@@ -72,3 +74,5 @@ private:
     InputSettings& _settings;
     SpriteManager& _sprMngr;
 };
+
+FO_END_NAMESPACE();

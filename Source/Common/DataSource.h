@@ -35,7 +35,9 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(DataSourceException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(DataSourceException);
 
 enum class DataSourceType
 {
@@ -63,3 +65,5 @@ public:
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
 };
+
+FO_END_NAMESPACE();

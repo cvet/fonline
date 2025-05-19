@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 class AnyData final
 {
 public:
@@ -182,3 +184,5 @@ private:
     [[nodiscard]] static auto DecodeString(string_view str) -> string;
     [[nodiscard]] static auto ReadToken(const char* str, string& result) -> const char*;
 };
+
+FO_END_NAMESPACE();

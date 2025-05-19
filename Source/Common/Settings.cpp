@@ -42,10 +42,12 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!append) {
         entry = {};
@@ -88,7 +90,7 @@ static void SetEntry(T& entry, string_view value, bool append)
 template<typename T>
 static void SetEntry(vector<T>& entry, string_view value, bool append)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!append) {
         entry.clear();
@@ -139,7 +141,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
 template<typename T>
 static void DrawEntry(string_view name, const T& entry)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(strex("{}: {}", name, entry).c_str());
 }
@@ -147,7 +149,7 @@ static void DrawEntry(string_view name, const T& entry)
 template<typename T>
 static void DrawEditableEntry(string_view name, T& entry)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Todo: improve editable entries
     DrawEntry(name, entry);
@@ -155,7 +157,7 @@ static void DrawEditableEntry(string_view name, T& entry)
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Unit tests
     if (argc == -1) {
@@ -334,7 +336,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
 GlobalSettings::GlobalSettings(string_view config_path, string_view sub_config)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _bakingMode = true;
 
@@ -390,7 +392,7 @@ GlobalSettings::GlobalSettings(string_view config_path, string_view sub_config)
 
 void GlobalSettings::ApplyConfigPath(string_view config_name, string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (config_name.empty()) {
         return;
@@ -417,7 +419,7 @@ void GlobalSettings::ApplyConfigPath(string_view config_name, string_view config
 
 void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : config.GetSection("")) {
         SetValue(key, value, config_dir);
@@ -433,7 +435,7 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
 
 void GlobalSettings::ApplySettingsConfig(string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ApplyConfig.empty()) {
         return;
@@ -451,7 +453,7 @@ void GlobalSettings::ApplySettingsConfig(string_view config_dir)
 
 void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto* res_pack : res_packs) {
         const auto get_map_value = [&](string_view key) -> string {
@@ -516,7 +518,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
 
 void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto* sub_config : sub_configs) {
         const auto get_map_value = [&](string_view key) -> string {
@@ -557,7 +559,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
 void GlobalSettings::ApplyAutoSettings()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
     const_cast<bool&>(WebBuild) = true;
@@ -611,7 +613,7 @@ void GlobalSettings::ApplyAutoSettings()
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (name.empty() || name == "NONE") {
         return;
@@ -631,7 +633,7 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
 
 auto GlobalSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_resourcePacks.empty()) {
         throw SettingsException("No information about resource packs found");
@@ -653,14 +655,14 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const string&
 
 void GlobalSettings::SetCustomSetting(string_view name, string value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _customSettings[name] = std::move(value);
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const bool append = !setting_value.empty() && setting_value[0] == '+';
     string_view value = append ? string_view(setting_value).substr(1) : setting_value;
@@ -763,9 +765,9 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
 auto GlobalSettings::Save() const -> map<string, string>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_bakingMode);
+    FO_RUNTIME_ASSERT(_bakingMode);
 
     map<string, string> result;
 
@@ -792,7 +794,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 
 void GlobalSettings::Draw(bool editable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #define FIXED_SETTING(type, name, ...) \
     if (editable) { \
@@ -812,3 +814,5 @@ void GlobalSettings::Draw(bool editable)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
 }
+
+FO_END_NAMESPACE();

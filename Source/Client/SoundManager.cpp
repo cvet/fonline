@@ -42,6 +42,8 @@
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
+FO_BEGIN_NAMESPACE();
+
 struct SoundManager::Sound
 {
     vector<uint8> BaseBuf {};
@@ -66,12 +68,12 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     _settings {settings},
     _resources {resources}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
-    UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
-    UNUSED_VARIABLE(OV_CALLBACKS_STREAMONLY);
-    UNUSED_VARIABLE(OV_CALLBACKS_STREAMONLY_NOCLOSE);
+    ignore_unused(OV_CALLBACKS_DEFAULT);
+    ignore_unused(OV_CALLBACKS_NOCLOSE);
+    ignore_unused(OV_CALLBACKS_STREAMONLY);
+    ignore_unused(OV_CALLBACKS_STREAMONLY_NOCLOSE);
 
     if (!App->Audio.IsEnabled()) {
         return;
@@ -92,7 +94,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
 
 SoundManager::~SoundManager()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_isActive) {
         App->Audio.SetSource(nullptr);
@@ -105,7 +107,7 @@ SoundManager::~SoundManager()
 
 void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (output.size() > _outputBuf.size()) {
         _outputBuf.resize(output.size());
@@ -127,7 +129,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 
 auto SoundManager::ProcessSound(Sound* sound, uint8 silence, span<uint8> output) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Playing
     if (sound->ConvertedBufCur < sound->ConvertedBuf.size()) {
@@ -203,7 +205,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8 silence, span<uint8> output)
 
 auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto fixed_fname = string(fname);
     string ext = strex(fname).getFileExtension();
@@ -238,7 +240,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
 
 auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto file = _resources.ReadFile(fname);
 
@@ -339,7 +341,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto file = _resources.ReadFile(fname);
 
@@ -372,7 +374,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
 auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto file = _resources.ReadFile(fname);
 
@@ -474,7 +476,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     }
 
     const auto* vi = ov_info(sound->OggStream.get(), -1);
-    RUNTIME_ASSERT(vi != nullptr);
+    FO_RUNTIME_ASSERT(vi != nullptr);
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
@@ -516,7 +518,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::StreamOgg(Sound* sound) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     long result;
     uint decoded = 0;
@@ -547,9 +549,9 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 
 auto SoundManager::ConvertData(Sound* sound) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
@@ -565,7 +567,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
 
 auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view name) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isActive || _settings.SoundVolume == 0) {
         return true;
@@ -597,7 +599,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
 
 auto SoundManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return true;
@@ -610,7 +612,7 @@ auto SoundManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 
 void SoundManager::StopSounds()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return;
@@ -623,7 +625,7 @@ void SoundManager::StopSounds()
 
 void SoundManager::StopMusic()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return;
@@ -633,3 +635,5 @@ void SoundManager::StopMusic()
     _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }
+
+FO_END_NAMESPACE();

@@ -36,6 +36,8 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 struct CmdDef
 {
     char Name[20];
@@ -65,7 +67,7 @@ static constexpr CmdDef CMD_LIST[] = {
 
 auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& hash_resolver) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     string args = strex(str).trim();
     auto cmd_str = args;
@@ -88,7 +90,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
     auto msg = NetMessage::SendCommand;
 
-    RUNTIME_ASSERT(pbuf);
+    FO_RUNTIME_ASSERT(pbuf);
     auto& buf = *pbuf;
 
     switch (cmd) {
@@ -302,3 +304,5 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
     return true;
 }
+
+FO_END_NAMESPACE();

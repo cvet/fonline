@@ -47,24 +47,26 @@
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 
+FO_BEGIN_NAMESPACE();
+
 EffectBaker::EffectBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     glslang::InitializeProcess();
 }
 
 EffectBaker::~EffectBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     glslang::FinalizeProcess();
 }
 
 void EffectBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<std::future<void>> file_bakings;
 
@@ -102,7 +104,7 @@ void EffectBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -113,7 +115,7 @@ void EffectBaker::BakeFiles(FileCollection files)
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
     if (!fofx.HasSection("Effect")) {
@@ -252,9 +254,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
@@ -343,3 +345,5 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         file_baking.get();
     }
 }
+
+FO_END_NAMESPACE();

@@ -35,39 +35,41 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
 RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* window, FlushCallback flush) :
     _settings {settings},
     _flush {std::move(flush)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
 auto RenderTargetManager::GetRenderTargetStack() -> const vector<RenderTarget*>&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _rtStack;
 }
 
 auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return !_rtStack.empty() ? _rtStack.back() : nullptr;
 }
 
 auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(base_size.width >= 0);
-    RUNTIME_ASSERT(base_size.height >= 0);
+    FO_RUNTIME_ASSERT(base_size.width >= 0);
+    FO_RUNTIME_ASSERT(base_size.height >= 0);
 
     _flush();
 
@@ -85,7 +87,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::Size
 
 void RenderTargetManager::OnScreenSizeChanged()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Reallocate fullscreen render targets
     for (auto& rt : _rtAll) {
@@ -97,9 +99,9 @@ void RenderTargetManager::OnScreenSizeChanged()
 
 void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     isize tex_size = rt->BaseSize;
 
@@ -115,8 +117,8 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
 
-    RUNTIME_ASSERT(tex_size.width > 0);
-    RUNTIME_ASSERT(tex_size.height > 0);
+    FO_RUNTIME_ASSERT(tex_size.width > 0);
+    FO_RUNTIME_ASSERT(tex_size.height > 0);
 
     rt->MainTex = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
 
@@ -130,7 +132,7 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 
 void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto redundant = !_rtStack.empty() && _rtStack.back() == rt;
 
@@ -146,7 +148,7 @@ void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
 
 void RenderTargetManager::PopRenderTarget()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
 
@@ -166,12 +168,12 @@ void RenderTargetManager::PopRenderTarget()
 
 auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos pos) const -> ucolor
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_NO_TEXTURE_LOOKUP
-    UNUSED_VARIABLE(rt);
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
+    ignore_unused(rt);
+    ignore_unused(x);
+    ignore_unused(y);
 
     return ucolor {255, 255, 255, 255};
 
@@ -199,32 +201,32 @@ auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos pos) const
 
 void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     App->Render.ClearRenderTarget(color, with_depth);
 }
 
 void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
-    RUNTIME_ASSERT(it != _rtAll.end());
+    FO_RUNTIME_ASSERT(it != _rtAll.end());
     _rtAll.erase(it);
 }
 
 void RenderTargetManager::ClearStack()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _rtStack.clear();
 }
 
 void RenderTargetManager::DumpTextures() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     uint atlases_memory_size = 0;
 
@@ -252,3 +254,5 @@ void RenderTargetManager::DumpTextures() const
         cnt++;
     }
 }
+
+FO_END_NAMESPACE();
