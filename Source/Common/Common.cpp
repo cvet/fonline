@@ -999,26 +999,8 @@ extern auto GetThisThreadName() -> const string&
 
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
-void* SDL_LoadObject(const char* sofile)
-{
-    FO_STACK_TRACE_ENTRY();
 
-    FO_UNREACHABLE_PLACE();
-}
-
-void* SDL_LoadFunction(void* handle, const char* name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
-
-void SDL_UnloadObject(void* handle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
+FO_END_NAMESPACE();
 
 void emscripten_sleep(unsigned int ms)
 {
@@ -1026,6 +1008,9 @@ void emscripten_sleep(unsigned int ms)
 
     FO_UNREACHABLE_PLACE();
 }
+
+FO_BEGIN_NAMESPACE();
+
 #endif
 
 // Replace memory allocator
