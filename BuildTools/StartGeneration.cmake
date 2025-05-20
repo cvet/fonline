@@ -122,7 +122,7 @@ AddConfiguration(Debug_Profiling_OnDemand Debug)
 AddConfiguration(Release_Ext Release)
 
 if(MSVC)
-	AddConfiguration(Release_Debugging Release)
+	AddConfiguration(Release_Debugging RelWithDebInfo)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -321,10 +321,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	add_link_options(-no-pie)
 	add_link_options(-rdynamic)
 
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-		add_compile_options_C_CXX(-stdlib=libc++)
-		add_link_options(-stdlib=libc++)
-	endif()
+	# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
+	# Bug somehow connected with rpmalloc new operators overloading
+	#if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	#	add_compile_options_C_CXX(-stdlib=libc++)
+	#	add_link_options(-stdlib=libc++)
+	#endif()
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 	if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -348,7 +350,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)
 	add_link_options($<${expr_FullOptimization}:-flto>)
-	add_compile_options_C_CXX(-stdlib=libc++)
 	add_link_options(-rdynamic)
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
@@ -397,7 +398,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
 		unset(COREMOTION)
 	endif()
 
-	add_compile_options_C_CXX(-stdlib=libc++)
 	add_compile_options_C_CXX($<${expr_DebugInfo}:-g>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)

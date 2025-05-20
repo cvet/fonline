@@ -322,11 +322,11 @@ public:
     {
     }
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr raw_ptr(nullptr_t) noexcept :
+    FO_FORCE_INLINE constexpr raw_ptr(std::nullptr_t) noexcept :
         _ptr(nullptr)
     {
     }
-    FO_FORCE_INLINE auto operator=(nullptr_t) noexcept -> raw_ptr&
+    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> raw_ptr&
     {
         _ptr = nullptr;
         return *this;
@@ -464,11 +464,11 @@ public:
     }
 
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr refcount_ptr(nullptr_t) noexcept :
+    FO_FORCE_INLINE constexpr refcount_ptr(std::nullptr_t) noexcept :
         _ptr(nullptr)
     {
     }
-    FO_FORCE_INLINE auto operator=(nullptr_t) noexcept -> refcount_ptr&
+    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr&
     {
         safe_release();
         _ptr = nullptr;
@@ -610,11 +610,11 @@ public:
     {
     }
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr propagate_const(nullptr_t) noexcept :
+    FO_FORCE_INLINE constexpr propagate_const(std::nullptr_t) noexcept :
         _smartPtr(nullptr)
     {
     }
-    FO_FORCE_INLINE auto operator=(nullptr_t) noexcept -> propagate_const&
+    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> propagate_const&
     {
         _smartPtr = nullptr;
         return *this;
