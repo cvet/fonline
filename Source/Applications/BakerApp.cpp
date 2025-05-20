@@ -52,6 +52,8 @@ int main(int argc, char** argv)
         auto baker = MasterBaker(App->Settings);
 
         baker.BakeAll();
+        
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

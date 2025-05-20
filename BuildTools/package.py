@@ -94,7 +94,7 @@ def patchData(filePath, mark, data, maxSize):
 	pos = file.find(mark)
 	assert pos != -1
 	padding = b'#' * (maxSize - len(data))
-	file = file[0:pos] + data + padding + file[pos + maxSize:]
+	file = file[:pos] + data + padding + file[pos + maxSize:]
 	with open(filePath, 'wb') as f:
 		f.write(file)
 	assert fileSize == os.path.getsize(filePath)
@@ -211,7 +211,7 @@ def build():
 	
 	def patchConfig(filePath, additionalConfigData=None):
 		resultData = configData + (str.encode('\n' + additionalConfigData) if additionalConfigData else b'')
-		patchData(filePath, b'###InternalConfig###', resultData, 10044)
+		patchData(filePath, b'###InternalConfig###1234', resultData, 10048)
 	log('Embedded config length', len(configData))
 
 	if args.platform == 'Windows':

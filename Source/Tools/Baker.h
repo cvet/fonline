@@ -98,7 +98,7 @@ class BakerDataSource final : public DataSource
 public:
     BakerDataSource(FileSystem& input_resources, BakerSettings& settings);
     BakerDataSource(const BakerDataSource&) = delete;
-    BakerDataSource(BakerDataSource&&) noexcept = default;
+    BakerDataSource(BakerDataSource&&) noexcept = delete;
     auto operator=(const BakerDataSource&) = delete;
     auto operator=(BakerDataSource&&) noexcept = delete;
     ~BakerDataSource() override = default;
