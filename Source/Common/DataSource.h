@@ -57,13 +57,13 @@ public:
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
 
-    static auto Create(string_view path, DataSourceType type) -> unique_ptr<DataSource>;
+    static auto Mount(string_view path, DataSourceType type) -> unique_ptr<DataSource>;
 
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> = 0;
-    [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
+    [[nodiscard]] virtual auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> = 0;
 };
 
 FO_END_NAMESPACE();

@@ -170,7 +170,7 @@ public:
     ~FileSystem() = default;
 
     [[nodiscard]] auto GetAllFiles() const -> FileCollection;
-    [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool include_subdirs = true) const -> FileCollection;
+    [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool recursive = true) const -> FileCollection;
     [[nodiscard]] auto ReadFile(string_view path) const -> File;
     [[nodiscard]] auto ReadFileText(string_view path) const -> string;
     [[nodiscard]] auto ReadFileHeader(string_view path) const -> FileHeader;

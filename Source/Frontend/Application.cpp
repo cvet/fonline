@@ -1234,14 +1234,12 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
     if (!is_fullscreen && enable) {
         if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), true)) {
-            FO_RUNTIME_ASSERT(IsFullscreen());
-            return true;
+            return IsFullscreen();
         }
     }
     else if (is_fullscreen && !enable) {
         if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), false)) {
-            FO_RUNTIME_ASSERT(!IsFullscreen());
-            return true;
+            return !IsFullscreen();
         }
     }
 

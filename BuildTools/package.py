@@ -437,7 +437,7 @@ def build():
 		assert os.path.isfile(filePackagerPath), 'No emscripten tools/file_packager.py found'
 		
 		packagerArgs = ['python3', filePackagerPath, os.path.join(targetOutputPath, 'Resources.data').replace('\\', '/'),
-				'--preload', os.path.join(targetOutputPath, baseClientResName).replace('\\', '/') + '@Resources/',
+				'--preload', os.path.join(targetOutputPath, baseClientResName).replace('\\', '/') + '@' + baseClientResName,
 				'--js-output=' + os.path.join(targetOutputPath, 'Resources.js').replace('\\', '/')]
 		log('Call emscripten packager:')
 		for arg in packagerArgs:

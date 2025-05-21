@@ -595,12 +595,12 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
     return nullptr;
 }
 
-auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
+auto BakerDataSource::GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(path);
-    ignore_unused(include_subdirs);
+    ignore_unused(recursive);
     ignore_unused(ext);
 
     throw NotImplementedException(FO_LINE_STR);

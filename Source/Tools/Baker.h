@@ -107,7 +107,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
     [[nodiscard]] auto FindFile(string_view path) const -> File*;

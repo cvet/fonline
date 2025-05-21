@@ -560,7 +560,9 @@ void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _dataSources.emplace(_dataSources.begin(), DataSource::Create(path, type));
+    auto ds = DataSource::Mount(path, type);
+
+    _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
 void FileSystem::AddDataSource(unique_ptr<DataSource> data_source)
@@ -584,7 +586,7 @@ auto FileSystem::GetAllFiles() const -> FileCollection
     return FilterFiles("");
 }
 
-auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) const -> FileCollection
+auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) const -> FileCollection
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -592,7 +594,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
     unordered_set<string> processed_files;
 
     for (const auto& ds : _dataSources) {
-        for (const auto& path : ds->GetFileNames(dir, include_subdirs, ext)) {
+        for (const auto& path : ds->GetFileNames(dir, recursive, ext)) {
             if (!processed_files.insert(path).second) {
                 continue;
             }
