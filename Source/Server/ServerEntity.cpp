@@ -33,17 +33,21 @@
 
 #include "ServerEntity.h"
 
+FO_BEGIN_NAMESPACE();
+
 ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _engine {engine},
     _id {id}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void ServerEntity::SetId(ident_t id) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _id = id;
 }
+
+FO_END_NAMESPACE();

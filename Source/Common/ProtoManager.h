@@ -38,7 +38,9 @@
 #include "EntityProtos.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(ProtoManagerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ProtoManagerException);
 
 class EngineData;
 
@@ -54,11 +56,11 @@ public:
 
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
 
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept(false) -> NON_NULL const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> NON_NULL const ProtoEntity*;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoEntity*;
 
     [[nodiscard]] auto GetProtoItemSafe(hstring proto_id) const noexcept -> const ProtoItem*;
     [[nodiscard]] auto GetProtoCritterSafe(hstring proto_id) const noexcept -> const ProtoCritter*;
@@ -90,3 +92,5 @@ private:
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> _protos {};
     const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
 };
+
+FO_END_NAMESPACE();

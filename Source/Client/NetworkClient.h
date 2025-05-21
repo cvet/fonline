@@ -37,7 +37,9 @@
 
 #include "Settings.h"
 
-DECLARE_EXCEPTION(NetworkClientException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(NetworkClientException);
 
 class NetworkClientConnection
 {
@@ -77,3 +79,5 @@ private:
     size_t _bytesReceived {};
     vector<uint8> _incomeBuf {};
 };
+
+FO_END_NAMESPACE();

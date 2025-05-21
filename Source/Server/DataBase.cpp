@@ -44,14 +44,16 @@
 #include "unqlite.h"
 #endif
 
-DISABLE_WARNINGS_PUSH()
+FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_MONGO
 #include "mongoc/mongoc.h"
 #endif
 #include "bson/bson.h"
-DISABLE_WARNINGS_POP()
+FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
+
+FO_BEGIN_NAMESPACE();
 
 class DataBaseImpl
 {
@@ -105,68 +107,68 @@ DataBase::~DataBase() = default;
 DataBase::DataBase(DataBaseImpl* impl) :
     _impl {impl}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 DataBase::operator bool() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl != nullptr;
 }
 
 auto DataBase::GetCommitJobsCount() const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->GetCommitJobsCount();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->GetAllRecordIds(collection_name);
 }
 
 auto DataBase::Get(hstring collection_name, ident_t id) const -> AnyData::Document
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::Valid(hstring collection_name, ident_t id) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return !_impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(hstring collection_name, ident_t id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->Delete(collection_name, id);
 }
 
 void DataBase::CommitChanges(bool wait_commit_complete)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->CommitChanges();
 
@@ -177,14 +179,14 @@ void DataBase::CommitChanges(bool wait_commit_complete)
 
 void DataBase::ClearChanges() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->ClearChanges();
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
         if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), value.AsInt64())) {
@@ -243,13 +245,13 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         }
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto&& [doc_key, doc_value] : doc) {
         ValueToBson(doc_key, doc_value, bson);
@@ -258,7 +260,7 @@ static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 
 static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* value = bson_iter_value(iter);
 
@@ -317,7 +319,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
 static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     bson_iter_t iter;
 
@@ -344,14 +346,14 @@ DataBaseImpl::DataBaseImpl(ServerSettings& settings) :
 
 auto DataBaseImpl::GetCommitJobsCount() const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _commitThread.GetJobsCount();
 }
 
 auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_deletedRecords.count(collection_name) != 0 && _deletedRecords.at(collection_name).count(id) != 0) {
         return {};
@@ -378,10 +380,10 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
 
 void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_newRecords[collection_name].count(id));
-    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
+    FO_RUNTIME_ASSERT(!_newRecords[collection_name].count(id));
+    FO_RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
     _newRecords[collection_name].emplace(id);
 
@@ -394,18 +396,18 @@ void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Do
 
 void DataBaseImpl::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
+    FO_RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
     _recordChanges[collection_name][id].Assign(string(key), value.Copy());
 }
 
 void DataBaseImpl::Delete(hstring collection_name, ident_t id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
+    FO_RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
     if (_newRecords[collection_name].count(id) != 0) {
         _newRecords[collection_name].erase(id);
@@ -419,7 +421,7 @@ void DataBaseImpl::Delete(hstring collection_name, ident_t id)
 
 void DataBaseImpl::CommitChanges()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_changes_empty = [](const auto& collection) noexcept {
         for (auto&& [key, value] : collection) {
@@ -453,7 +455,7 @@ void DataBaseImpl::CommitChanges()
     _deletedRecords.clear();
 
     _commitThread.AddJob([this, job_data_ = job_data] {
-        STACK_TRACE_ENTRY_NAMED("CommitJob");
+        FO_STACK_TRACE_ENTRY_NAMED("CommitJob");
 
         for (auto&& [key, value] : job_data_->RecordChanges) {
             for (auto&& [key2, value2] : value) {
@@ -482,7 +484,7 @@ void DataBaseImpl::CommitChanges()
 
 void DataBaseImpl::ClearChanges() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _recordChanges.clear();
     _newRecords.clear();
@@ -491,7 +493,7 @@ void DataBaseImpl::ClearChanges() noexcept
 
 void DataBaseImpl::WaitCommitThread() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _commitThread.Wait();
 }
@@ -516,13 +518,13 @@ public:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         vector<ident_t> ids;
 
         DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
-            UNUSED_VARIABLE(size);
-            UNUSED_VARIABLE(write_time);
+            ignore_unused(size);
+            ignore_unused(write_time);
 
             if (strex(path).getFileExtension() != "json") {
                 return;
@@ -546,7 +548,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -580,9 +582,9 @@ protected:
 
     void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -619,9 +621,9 @@ protected:
 
     void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -673,7 +675,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, ident_t id) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -684,7 +686,7 @@ protected:
 
     void CommitRecords() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -707,7 +709,7 @@ public:
     DbUnQLite(ServerSettings& settings, string_view storage_dir) :
         DataBaseImpl(settings)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         DiskFileSystem::MakeDirTree(storage_dir);
 
@@ -733,7 +735,7 @@ public:
 
     ~DbUnQLite() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             unqlite_close(value);
@@ -742,7 +744,7 @@ public:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
 
@@ -772,7 +774,7 @@ public:
                 cursor,
                 [](const void* output, unsigned int output_len, void* user_data) {
                     static_assert(sizeof(ident_t) == sizeof(int64));
-                    RUNTIME_ASSERT(output_len == sizeof(int64));
+                    FO_RUNTIME_ASSERT(output_len == sizeof(int64));
                     *static_cast<int64*>(user_data) = *static_cast<const int64*>(output);
                     return UNQLITE_OK;
                 },
@@ -800,7 +802,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
 
@@ -835,9 +837,9 @@ protected:
 
     void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto* db = GetCollection(collection_name);
 
@@ -873,9 +875,9 @@ protected:
 
     void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto* db = GetCollection(collection_name);
 
@@ -915,7 +917,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, ident_t id) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
 
@@ -932,7 +934,7 @@ protected:
 
     void CommitRecords() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             const auto commit = unqlite_commit(value);
@@ -946,7 +948,7 @@ protected:
 private:
     [[nodiscard]] auto GetCollection(hstring collection_name) const -> unqlite*
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         unqlite* db;
 
@@ -987,7 +989,7 @@ public:
     DbMongo(ServerSettings& settings, string_view uri, string_view db_name) :
         DataBaseImpl(settings)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         mongoc_init();
 
@@ -1028,7 +1030,7 @@ public:
 
     ~DbMongo() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             mongoc_collection_destroy(value);
@@ -1041,7 +1043,7 @@ public:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
 
@@ -1099,7 +1101,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
 
@@ -1149,9 +1151,9 @@ protected:
 
     void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto* collection = GetCollection(collection_name);
 
@@ -1181,9 +1183,9 @@ protected:
 
     void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto* collection = GetCollection(collection_name);
 
@@ -1227,7 +1229,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, ident_t id) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
 
@@ -1255,7 +1257,7 @@ protected:
 
     void CommitRecords() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -1263,7 +1265,7 @@ protected:
 private:
     [[nodiscard]] auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         mongoc_collection_t* collection;
 
@@ -1308,7 +1310,7 @@ public:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         if (_collections.count(collection_name) == 0) {
             return {};
@@ -1329,7 +1331,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         if (_collections.count(collection_name) == 0) {
             return {};
@@ -1343,26 +1345,26 @@ protected:
 
     void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto& collection = _collections[collection_name];
-        RUNTIME_ASSERT(!collection.count(id));
+        FO_RUNTIME_ASSERT(!collection.count(id));
 
         collection.emplace(id, doc.Copy());
     }
 
     void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(!doc.Empty());
+        FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto& collection = _collections[collection_name];
 
         const auto it_collection = collection.find(id);
-        RUNTIME_ASSERT(it_collection != collection.end());
+        FO_RUNTIME_ASSERT(it_collection != collection.end());
 
         for (auto&& [doc_key, doc_value] : doc) {
             it_collection->second.Assign(doc_key, doc_value.Copy());
@@ -1371,19 +1373,19 @@ protected:
 
     void DeleteRecord(hstring collection_name, ident_t id) override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto& collection = _collections[collection_name];
 
         const auto it = collection.find(id);
-        RUNTIME_ASSERT(it != collection.end());
+        FO_RUNTIME_ASSERT(it != collection.end());
 
         collection.erase(it);
     }
 
     void CommitRecords() override
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -1394,7 +1396,7 @@ private:
 
 auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto options = strex(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
@@ -1421,3 +1423,5 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 
     throw DataBaseException("Wrong storage options", connection_info);
 }
+
+FO_END_NAMESPACE();

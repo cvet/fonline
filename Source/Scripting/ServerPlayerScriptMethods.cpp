@@ -35,6 +35,8 @@
 
 #include "Server.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 {
@@ -78,3 +80,5 @@ FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int access)
 
     return allow;
 }
+
+FO_END_NAMESPACE();

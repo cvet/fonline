@@ -58,7 +58,9 @@
 #include "SpriteManager.h"
 #include "TextPack.h"
 
-DECLARE_EXCEPTION(MapperException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(MapperException);
 
 class FOMapper final : public FOClient
 {
@@ -219,13 +221,13 @@ public:
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapperMessage, string& /*text*/);
+    FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
+    FO_ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
+    FO_ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     FileSystem ContentFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
@@ -349,3 +351,5 @@ public:
     bool SpritesCanDraw {};
     uint8 SelectAlpha {100};
 };
+
+FO_END_NAMESPACE();

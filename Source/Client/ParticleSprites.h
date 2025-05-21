@@ -40,6 +40,8 @@
 #include "DefaultSprites.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ParticleSpriteFactory;
 
 class ParticleSprite final : public AtlasSprite
@@ -57,7 +59,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
-    [[nodiscard]] auto GetParticle() -> ParticleSystem* { NON_CONST_METHOD_HINT_ONELINE() return _particle.get(); }
+    [[nodiscard]] auto GetParticle() -> ParticleSystem* { FO_NON_CONST_METHOD_HINT_ONELINE() return _particle.get(); }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     void Prewarm() override;
@@ -101,3 +103,5 @@ private:
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedParticleTextures {};
     vector<RenderTarget*> _rtIntermediate {};
 };
+
+FO_END_NAMESPACE();

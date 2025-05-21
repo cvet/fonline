@@ -37,6 +37,8 @@
 
 #include "Settings.h"
 
+FO_BEGIN_NAMESPACE();
+
 constexpr auto MAX_HEX_OFFSET = 50; // Todo: remove hex offset limit
 
 class GeometryHelper final
@@ -89,3 +91,5 @@ private:
     mutable unique_ptr<int16[]> _sxOdd {};
     mutable unique_ptr<int16[]> _syOdd {};
 };
+
+FO_END_NAMESPACE();

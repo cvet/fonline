@@ -37,6 +37,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
@@ -83,7 +85,7 @@ FO_SCRIPT_API void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 di
     }
 
     auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-    RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map);
 
     if (!map->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
@@ -352,7 +354,7 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter*
         throw ScriptException("Critter is not on global map");
     }
 
-    RUNTIME_ASSERT(self->GlobalMapGroup);
+    FO_RUNTIME_ASSERT(self->GlobalMapGroup);
 
     vector<Critter*> critters;
     critters.reserve(self->GlobalMapGroup->size());
@@ -619,7 +621,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 
     if (self->GetMapId()) {
         map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
-        RUNTIME_ASSERT(map);
+        FO_RUNTIME_ASSERT(map);
 
         map->RemoveCritterFromField(self);
     }
@@ -861,3 +863,5 @@ FO_SCRIPT_API void Server_Critter_RefreshDialogTime(Critter* self)
     self->Talk.StartTime = self->GetEngine()->GameTime.GetFrameTime();
     self->Talk.TalkTime = std::chrono::milliseconds {self->Talk.Barter ? self->GetEngine()->Settings.DlgBarterMaxTime : self->GetEngine()->Settings.DlgTalkMaxTime};
 }
+
+FO_END_NAMESPACE();

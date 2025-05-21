@@ -39,6 +39,8 @@
 #include "ItemView.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ItemHexView final : public ItemView, public HexView
 {
 public:
@@ -53,7 +55,7 @@ public:
     [[nodiscard]] auto IsDrawContour() const noexcept -> bool { return !GetIsWall() && !GetIsScenery() && !GetNoHighlight() && !GetBadItem(); }
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return (_isEffect && !IsFinishing()) || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
-    [[nodiscard]] auto GetAnim() -> Sprite* { NON_CONST_METHOD_HINT_ONELINE() return _anim.get(); }
+    [[nodiscard]] auto GetAnim() -> Sprite* { FO_NON_CONST_METHOD_HINT_ONELINE() return _anim.get(); }
 
     void Init();
     void Process();
@@ -77,3 +79,5 @@ private:
     uint8 _effDir {};
     vector<mpos> _effSteps {};
 };
+
+FO_END_NAMESPACE();

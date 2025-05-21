@@ -37,6 +37,8 @@
 
 #include "Entity.h"
 
+FO_BEGIN_NAMESPACE();
+
 class LineTracer final
 {
 public:
@@ -65,3 +67,5 @@ private:
     float _dx {};
     float _dy {};
 };
+
+FO_END_NAMESPACE();

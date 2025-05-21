@@ -34,68 +34,70 @@
 #include "ParticleSprites.h"
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 ParticleSprite::ParticleSprite(SpriteManager& spr_mngr) :
     AtlasSprite(spr_mngr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSprite::IsHitTest(ipos pos) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(pos);
+    ignore_unused(pos);
 
     return false;
 }
 
 void ParticleSprite::Prewarm()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _particle->Prewarm();
 }
 
 void ParticleSprite::SetTime(float normalized_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(normalized_time);
+    ignore_unused(normalized_time);
 }
 
 void ParticleSprite::SetDir(uint8 dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(dir);
+    ignore_unused(dir);
 }
 
 void ParticleSprite::SetDirAngle(short dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(dir_angle);
+    ignore_unused(dir_angle);
 }
 
 void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(anim_name);
-    UNUSED_VARIABLE(looped);
-    UNUSED_VARIABLE(reversed);
+    ignore_unused(anim_name);
+    ignore_unused(looped);
+    ignore_unused(reversed);
 
     StartUpdate();
 }
 
 void ParticleSprite::Stop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSprite::Update() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_particle->NeedForceDraw() || _particle->NeedDraw()) {
         DrawToAtlas();
@@ -106,7 +108,7 @@ auto ParticleSprite::Update() -> bool
 
 void ParticleSprite::DrawToAtlas()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _factory->DrawParticleToAtlas(this);
 }
@@ -115,7 +117,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSett
     _sprMngr {spr_mngr},
     _settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _particleMngr = SafeAlloc::MakeUnique<ParticleManager>(settings, effect_mngr, spr_mngr.GetResources(), game_time, //
         [this, &hash_resolver](string_view path) { return LoadTexture(hash_resolver.ToHashedString(path)); });
@@ -123,7 +125,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSett
 
 auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto particle = _particleMngr->CreateParticle(path);
 
@@ -163,7 +165,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
 auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto result = pair<RenderTexture*, FRect>();
 
@@ -190,9 +192,9 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FR
 
 void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_particleMngr);
+    FO_RUNTIME_ASSERT(_particleMngr);
 
     // Find place for render
     const auto frame_size = particle_spr->Size;
@@ -245,3 +247,5 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     _sprMngr.DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
     _sprMngr.GetRtMngr().PopRenderTarget();
 }
+
+FO_END_NAMESPACE();

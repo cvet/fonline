@@ -37,6 +37,10 @@
 
 #include "NetBuffer.h"
 
+FO_BEGIN_NAMESPACE();
+
 using LogCallback = std::function<void(string_view)>;
 
 extern auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& hash_resolver) -> bool;
+
+FO_END_NAMESPACE();

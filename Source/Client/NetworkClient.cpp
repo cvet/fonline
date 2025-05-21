@@ -34,10 +34,12 @@
 #include "NetworkClient.h"
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings) :
     _settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _incomeBuf.resize(_settings.NetBufferSize);
     _isConnecting = true;
@@ -45,7 +47,7 @@ NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings
 
 auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isConnecting && !_isConnected) {
         return false;
@@ -62,7 +64,7 @@ auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
 
 auto NetworkClientConnection::SendData(const_span<uint8> buf) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isConnecting && !_isConnected) {
         return 0;
@@ -98,7 +100,7 @@ auto NetworkClientConnection::ReceiveData() -> const_span<uint8>
 
 void NetworkClientConnection::Disconnect() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_isConnecting && !_isConnected) {
         return;
@@ -118,3 +120,5 @@ void NetworkClientConnection::Disconnect() noexcept
 
     DisconnectImpl();
 }
+
+FO_END_NAMESPACE();

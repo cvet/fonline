@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 enum class ConfigFileOption : uint8
 {
     None = 0,
@@ -73,3 +75,5 @@ private:
     multimap<string, map<string, string>> _sectionKeyValues {}; // Todo: rework ConfigFile entries to string_view
     string _emptyStr {};
 };
+
+FO_END_NAMESPACE();

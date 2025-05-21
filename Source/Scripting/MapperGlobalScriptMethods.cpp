@@ -39,6 +39,8 @@
 #include "Mapper.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, mpos hex)
 {
@@ -462,3 +464,5 @@ FO_SCRIPT_API void Mapper_Game_AddMessage(FOMapper* mapper, string_view message)
 {
     mapper->AddMess(message);
 }
+
+FO_END_NAMESPACE();

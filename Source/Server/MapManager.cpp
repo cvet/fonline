@@ -43,15 +43,17 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 MapManager::MapManager(FOServer* engine) :
     _engine {engine}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto MapManager::GridAt(mpos pos) -> int16&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
     return _mapGrid[((max_path_find_len + 1) + pos.y - _mapGridOffset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + pos.x - _mapGridOffset.x)];
@@ -59,7 +61,7 @@ auto MapManager::GridAt(mpos pos) -> int16&
 
 void MapManager::LoadFromResources()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto map_files = _engine->Resources.FilterFiles("fomapb-server");
 
@@ -103,7 +105,7 @@ void MapManager::LoadFromResources()
                     str.resize(str_len);
                     reader.ReadPtr(str.data(), str.length());
                     const auto hstr = _engine->Hashes.ToHashedString(str);
-                    UNUSED_VARIABLE(hstr);
+                    ignore_unused(hstr);
                 }
             }
 
@@ -118,7 +120,7 @@ void MapManager::LoadFromResources()
                     static_map->CritterBillets.reserve(cr_count);
 
                     for (const auto i : xrange(cr_count)) {
-                        UNUSED_VARIABLE(i);
+                        ignore_unused(i);
 
                         const auto cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
@@ -154,7 +156,7 @@ void MapManager::LoadFromResources()
                     static_map->StaticItemsById.reserve(item_count);
 
                     for (const auto i : xrange(item_count)) {
-                        UNUSED_VARIABLE(i);
+                        ignore_unused(i);
 
                         const auto item_id = ident_t {reader.Read<ident_t::underlying_type>()};
 
@@ -198,7 +200,7 @@ void MapManager::LoadFromResources()
 
                         // Sort
                         if (item->GetStatic()) {
-                            RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+                            FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
                             const auto hex = item->GetHex();
 
@@ -218,7 +220,7 @@ void MapManager::LoadFromResources()
                                 static_map->HexItemBillets.emplace_back(item_id, item.get());
                             }
                             else {
-                                RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer);
+                                FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer);
                                 static_map->ChildItemBillets.emplace_back(item_id, item.get());
                             }
                         }
@@ -304,19 +306,19 @@ void MapManager::LoadFromResources()
 
 auto MapManager::GetStaticMap(const ProtoMap* proto) const -> const StaticMap*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _staticMaps.find(proto);
-    RUNTIME_ASSERT(it != _staticMaps.end());
+    FO_RUNTIME_ASSERT(it != _staticMaps.end());
 
     return it->second.get();
 }
 
 void MapManager::GenerateMapContent(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     unordered_map<ident_t, ident_t> id_map;
 
@@ -352,7 +354,7 @@ void MapManager::GenerateMapContent(Map* map)
             owner_id = base_item->GetContainerId();
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
 
         if (id_map.count(owner_id) == 0) {
@@ -367,25 +369,25 @@ void MapManager::GenerateMapContent(Map* map)
         // Add to parent
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
             auto* cr_cont = map->GetCritter(owner_id);
-            RUNTIME_ASSERT(cr_cont);
+            FO_RUNTIME_ASSERT(cr_cont);
 
             _engine->CrMngr.AddItemToCritter(cr_cont, item, false);
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(owner_id);
-            RUNTIME_ASSERT(item_cont);
+            FO_RUNTIME_ASSERT(item_cont);
 
             item_cont->AddItemToContainer(item, {});
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
 }
 
 void MapManager::DestroyMapContent(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (InfinityLoopDetector detector; !map->_critters.empty() || !map->_items.empty(); detector.AddLoop()) {
         KickPlayersToGlobalMap(map);
@@ -398,12 +400,12 @@ void MapManager::DestroyMapContent(Map* map)
         }
     }
 
-    RUNTIME_ASSERT(map->_itemsMap.empty());
+    FO_RUNTIME_ASSERT(map->_itemsMap.empty());
 }
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& locations = _engine->EntityMngr.GetLocations();
     const auto& maps = _engine->EntityMngr.GetMaps();
@@ -429,7 +431,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
 
 auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Location*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto, props);
@@ -480,7 +482,7 @@ auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Lo
 
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
     const auto* static_map = GetStaticMap(proto);
@@ -496,9 +498,9 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 
 void MapManager::RegenerateMap(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     auto map_holder = RefCountHolder(map);
 
@@ -538,9 +540,9 @@ void MapManager::RegenerateMap(Map* map)
 
 auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto&& [id, map] : _engine->EntityMngr.GetMaps()) {
         if (map->GetProtoId() == map_pid) {
@@ -557,9 +559,9 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
 
 auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto&& [id, loc] : _engine->EntityMngr.GetLocations()) {
         if (loc->GetProtoId() == loc_pid) {
@@ -576,7 +578,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> 
 
 void MapManager::KickPlayersToGlobalMap(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayerCritters()) {
         TransitToGlobal(cl, {});
@@ -585,7 +587,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
 
 void MapManager::DestroyLocation(Location* loc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Start deleting
     auto loc_holder = RefCountHolder(loc);
@@ -652,9 +654,9 @@ void MapManager::DestroyLocation(Location* loc)
 
 void MapManager::TraceBullet(TraceData& trace)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     auto* map = trace.TraceMap;
     const auto map_size = map->GetSize();
@@ -727,7 +729,7 @@ void MapManager::TraceBullet(TraceData& trace)
 
 auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     FindPathOutput output;
 
@@ -1040,7 +1042,7 @@ label_FindOk:
             const auto prev_check_hex = check_hex;
 
             const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
 
             if (input.CheckGagItems && map->IsItemGag(check_hex)) {
                 Item* item = map->GetItemGag(check_hex);
@@ -1082,7 +1084,7 @@ label_FindOk:
 
         for (size_t i = 0; i < raw_steps.size(); i++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
 
             if (map->IsItemGag(check_hex)) {
                 trace_seq[i + 2 - 2] += 1;
@@ -1103,7 +1105,7 @@ label_FindOk:
 
             for (size_t i = 0; i < raw_steps.size() - 1; i++) {
                 const auto move_ok2 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i], map_size);
-                RUNTIME_ASSERT(move_ok2);
+                FO_RUNTIME_ASSERT(move_ok2);
 
                 if (k < 4 && trace_seq[i + 2] != k) {
                     continue;
@@ -1124,7 +1126,7 @@ label_FindOk:
                     trace_ok = true;
                     raw_steps.resize(i + 1);
                     const auto move_ok3 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i + 1], map_size);
-                    RUNTIME_ASSERT(move_ok3);
+                    FO_RUNTIME_ASSERT(move_ok3);
                     to_hex = check_hex2;
 
                     goto label_TraceOk;
@@ -1176,7 +1178,7 @@ label_FindOk:
                 }
 
                 if (failed) {
-                    RUNTIME_ASSERT(i > 0);
+                    FO_RUNTIME_ASSERT(i > 0);
                     GeometryHelper::MoveHexByDir(trace_hex2, GeometryHelper::ReverseDir(raw_steps[i]), map_size);
                     continue;
                 }
@@ -1215,8 +1217,8 @@ label_FindOk:
         }
     }
 
-    RUNTIME_ASSERT(!output.Steps.empty());
-    RUNTIME_ASSERT(!output.ControlSteps.empty());
+    FO_RUNTIME_ASSERT(!output.Steps.empty());
+    FO_RUNTIME_ASSERT(!output.ControlSteps.empty());
 
     output.Result = FindPathOutput::ResultType::Ok;
     output.NewToHex = to_hex;
@@ -1226,24 +1228,24 @@ label_FindOk:
 
 void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(map);
-    RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
     Transit(cr, map, hex, dir, safe_radius, {});
 }
 
 void MapManager::TransitToGlobal(Critter* cr, ident_t global_cr_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Transit(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
 }
 
 void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cr->LockMapTransfers != 0) {
         throw GenericException("Critter transfers locked");
@@ -1254,7 +1256,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<ui
 
     const auto prev_map_id = cr->GetMapId();
     auto* prev_map = prev_map_id ? _engine->EntityMngr.GetMap(prev_map_id) : nullptr;
-    RUNTIME_ASSERT(!prev_map_id || !!prev_map);
+    FO_RUNTIME_ASSERT(!prev_map_id || !!prev_map);
 
     cr->ClearMove();
 
@@ -1275,7 +1277,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<ui
     if (map == prev_map) {
         // Between one map
         if (map != nullptr) {
-            RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+            FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
             const auto multihex = cr->GetMultihex();
 
@@ -1387,15 +1389,15 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<ui
 
 void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
-        RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+        FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
 
         cr->SetMapId(map->GetId());
         cr->SetHex(hex);
@@ -1412,7 +1414,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
         _engine->OnMapCritterIn.Fire(map, cr);
     }
     else {
-        RUNTIME_ASSERT(!cr->GlobalMapGroup);
+        FO_RUNTIME_ASSERT(!cr->GlobalMapGroup);
 
         const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : nullptr;
 
@@ -1426,7 +1428,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
             cr->GlobalMapGroup = SafeAlloc::MakeShared<vector<Critter*>>();
         }
         else {
-            RUNTIME_ASSERT(global_cr->GlobalMapGroup);
+            FO_RUNTIME_ASSERT(global_cr->GlobalMapGroup);
 
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
@@ -1445,15 +1447,15 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
 
 void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
-        RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
         _engine->OnMapCritterOut.Fire(map, cr);
 
@@ -1472,8 +1474,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
     }
     else {
-        RUNTIME_ASSERT(!cr->GetMapId());
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
+        FO_RUNTIME_ASSERT(!cr->GetMapId());
+        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
 
@@ -1493,7 +1495,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
 void MapManager::ProcessVisibleCritters(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cr->IsDestroyed()) {
         return;
@@ -1501,7 +1503,7 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
 
     if (const auto map_id = cr->GetMapId()) {
         auto* map = _engine->EntityMngr.GetMap(map_id);
-        RUNTIME_ASSERT(map);
+        FO_RUNTIME_ASSERT(map);
 
         for (auto* target : copy_hold_ref(map->GetCritters())) {
             optional<bool> trace_result;
@@ -1510,15 +1512,15 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
         }
     }
     else {
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
+        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
     }
 }
 
 void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(map && cr && target);
+    FO_RUNTIME_ASSERT(map && cr && target);
 
     if (cr == target) {
         return;
@@ -1537,7 +1539,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
 
     if (!is_see && !target->AttachedCritters.empty()) {
         for (auto* attached_cr : target->AttachedCritters) {
-            RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
+            FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
             optional<bool> dummy_trace_result;
             is_see = IsCritterSeeCritter(map, cr, attached_cr, dummy_trace_result);
@@ -1608,11 +1610,11 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
 
 auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
-    RUNTIME_ASSERT(!cr->IsDestroyed());
-    RUNTIME_ASSERT(!target->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(!target->IsDestroyed());
 
     bool is_see;
 
@@ -1694,9 +1696,9 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
 
 void MapManager::ProcessVisibleItems(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (cr->IsDestroyed()) {
         return;
@@ -1709,7 +1711,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 
     auto* map = _engine->EntityMngr.GetMap(map_id);
-    RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map);
 
     const int look = static_cast<int>(cr->GetLookDistance());
 
@@ -1761,7 +1763,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
 
 void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Critters
     constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
@@ -1881,3 +1883,5 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
         }
     }
 }
+
+FO_END_NAMESPACE();

@@ -38,49 +38,51 @@
 #include "MapSprite.h"
 #include "MapView.h"
 
+FO_BEGIN_NAMESPACE();
+
 HexView::HexView(MapView* map) :
     _map {map}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_mapSprValid);
+    FO_RUNTIME_ASSERT(!_mapSprValid);
 
     const auto hex_offset = ipos {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
     auto& mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
-    RUNTIME_ASSERT(_mapSpr == &mspr);
-    RUNTIME_ASSERT(_mapSprValid);
+    FO_RUNTIME_ASSERT(_mapSpr == &mspr);
+    FO_RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
 }
 
 auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_mapSprValid);
+    FO_RUNTIME_ASSERT(!_mapSprValid);
 
     const auto hex_offset = ipos {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
     auto& mspr = list.InsertSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
 
     SetupSprite(&mspr);
 
-    RUNTIME_ASSERT(_mapSpr == &mspr);
-    RUNTIME_ASSERT(_mapSprValid);
+    FO_RUNTIME_ASSERT(_mapSpr == &mspr);
+    FO_RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
 }
 
 void HexView::SetupSprite(MapSprite* mspr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _mapSpr = mspr;
     _mapSpr->SetHidden(_mapSprHidden || IsFullyTransparent());
@@ -88,7 +90,7 @@ void HexView::SetupSprite(MapSprite* mspr)
 
 void HexView::Finish()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetFade(false);
 
@@ -98,28 +100,28 @@ void HexView::Finish()
 
 auto HexView::IsFinished() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
 void HexView::ProcessFading()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     EvaluateCurAlpha();
 }
 
 void HexView::FadeUp()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetFade(true);
 }
 
 void HexView::SetFade(bool fade_up)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto time = _map->GetEngine()->GameTime.GetFrameTime();
 
@@ -132,7 +134,7 @@ void HexView::SetFade(bool fade_up)
 
 void HexView::EvaluateCurAlpha()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GetFrameTime();
@@ -151,7 +153,7 @@ void HexView::EvaluateCurAlpha()
 
 void HexView::SetTargetAlpha(uint8 alpha)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _targetAlpha = alpha;
     EvaluateCurAlpha();
@@ -159,7 +161,7 @@ void HexView::SetTargetAlpha(uint8 alpha)
 
 void HexView::SetDefaultAlpha(uint8 alpha)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_defaultAlpha == _targetAlpha) {
         _defaultAlpha = alpha;
@@ -173,7 +175,7 @@ void HexView::SetDefaultAlpha(uint8 alpha)
 
 void HexView::RestoreAlpha()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _targetAlpha = _defaultAlpha;
     EvaluateCurAlpha();
@@ -181,7 +183,7 @@ void HexView::RestoreAlpha()
 
 void HexView::RefreshSprite()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_mapSprValid) {
         SetupSprite(_mapSpr);
@@ -190,38 +192,38 @@ void HexView::RefreshSprite()
 
 auto HexView::GetSprite() const -> const MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_mapSprValid);
+    FO_RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
 }
 
 auto HexView::GetSprite() -> MapSprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_mapSprValid);
+    FO_RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
 }
 
 void HexView::InvalidateSprite()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_mapSpr);
-    RUNTIME_ASSERT(_mapSprValid);
+    FO_RUNTIME_ASSERT(_mapSpr);
+    FO_RUNTIME_ASSERT(_mapSprValid);
 
     _mapSpr->Invalidate();
     _mapSpr = nullptr;
 
-    RUNTIME_ASSERT(!_mapSprValid);
+    FO_RUNTIME_ASSERT(!_mapSprValid);
 }
 
 void HexView::SetSpriteVisiblity(bool enabled)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hidden = !enabled;
 
@@ -235,3 +237,5 @@ void HexView::SetSpriteVisiblity(bool enabled)
         SetupSprite(_mapSpr);
     }
 }
+
+FO_END_NAMESPACE();

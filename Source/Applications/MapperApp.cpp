@@ -43,15 +43,17 @@
 #include "SDL3/SDL_main.h"
 #endif
 
+FO_USING_NAMESPACE();
+
 struct MapperAppData
 {
     refcount_ptr<FOMapper> Mapper {};
 };
-GLOBAL_DATA(MapperAppData, Data);
+FO_GLOBAL_DATA(MapperAppData, Data);
 
 static void MapperEntry([[maybe_unused]] void* data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
     // Wait file system synchronization
@@ -71,7 +73,7 @@ static void MapperEntry([[maybe_unused]] void* data)
                 ReportExceptionAndExit(ex);
             }
             catch (...) {
-                UNKNOWN_EXCEPTION();
+                FO_UNKNOWN_EXCEPTION();
             }
         }
 
@@ -83,7 +85,7 @@ static void MapperEntry([[maybe_unused]] void* data)
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -93,7 +95,7 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);
@@ -129,6 +131,6 @@ int main(int argc, char** argv) // Handled by SDL
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

@@ -37,6 +37,8 @@
 #include "CritterHexView.h"
 #include "CritterView.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetName(CritterView* self, string_view name)
 {
@@ -321,11 +323,11 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 #endif
     {
         // Todo: improve run particles for 2D animations
-        UNUSED_VARIABLE(particleName);
-        UNUSED_VARIABLE(boneName);
-        UNUSED_VARIABLE(moveX);
-        UNUSED_VARIABLE(moveY);
-        UNUSED_VARIABLE(moveZ);
+        ignore_unused(particleName);
+        ignore_unused(boneName);
+        ignore_unused(moveX);
+        ignore_unused(moveY);
+        ignore_unused(moveZ);
     }
 }
 
@@ -344,7 +346,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
                                                               if (!self->IsDestroyed()) {
                                                                   const auto func_name = static_cast<hstring>(animCallback);
                                                                   const auto result = self->GetEngine()->ScriptSys.CallFunc<void, CritterView*>(func_name, self);
-                                                                  UNUSED_VARIABLE(result);
+                                                                  ignore_unused(result);
                                                               }
                                                           }});
     }
@@ -352,10 +354,10 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
 #endif
     {
         // Todo: improve animation callbacks for 2D animations
-        UNUSED_VARIABLE(stateAnim);
-        UNUSED_VARIABLE(actionAnim);
-        UNUSED_VARIABLE(normalizedTime);
-        UNUSED_VARIABLE(animCallback);
+        ignore_unused(stateAnim);
+        ignore_unused(actionAnim);
+        ignore_unused(normalizedTime);
+        ignore_unused(animCallback);
     }
 }
 
@@ -385,9 +387,9 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
     return true;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(boneName);
-    UNUSED_VARIABLE(boneOffset);
+    ignore_unused(self);
+    ignore_unused(boneName);
+    ignore_unused(boneOffset);
 
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
@@ -543,3 +545,5 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
 
     old_item->MarkAsDestroyed();
 }
+
+FO_END_NAMESPACE();

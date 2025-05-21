@@ -35,111 +35,113 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(size);
-    UNUSED_VARIABLE(linear_filtered);
-    UNUSED_VARIABLE(with_depth);
+    ignore_unused(size);
+    ignore_unused(linear_filtered);
+    ignore_unused(with_depth);
 
     return nullptr;
 }
 
 auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(is_static);
+    ignore_unused(is_static);
 
     return nullptr;
 }
 
 auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(usage);
-    UNUSED_VARIABLE(name);
-    UNUSED_VARIABLE(loader);
+    ignore_unused(usage);
+    ignore_unused(name);
+    ignore_unused(loader);
 
     return nullptr;
 }
 
 auto Null_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(left);
-    UNUSED_VARIABLE(right);
-    UNUSED_VARIABLE(bottom);
-    UNUSED_VARIABLE(top);
-    UNUSED_VARIABLE(nearp);
-    UNUSED_VARIABLE(farp);
+    ignore_unused(left);
+    ignore_unused(right);
+    ignore_unused(bottom);
+    ignore_unused(top);
+    ignore_unused(nearp);
+    ignore_unused(farp);
 
     return {};
 }
 
 auto Null_Renderer::GetViewPort() -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return {};
 }
 
 auto Null_Renderer::IsRenderTargetFlipped() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return false;
 }
 
 void Null_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(settings);
-    UNUSED_VARIABLE(window);
+    ignore_unused(settings);
+    ignore_unused(window);
 }
 
 void Null_Renderer::Present()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Null_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(tex);
+    ignore_unused(tex);
 }
 
 void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(color);
-    UNUSED_VARIABLE(depth);
-    UNUSED_VARIABLE(stencil);
+    ignore_unused(color);
+    ignore_unused(depth);
+    ignore_unused(stencil);
 }
 
 void Null_Renderer::EnableScissor(irect rect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(rect);
+    ignore_unused(rect);
 }
 
 void Null_Renderer::DisableScissor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Null_Renderer::OnResizeWindow(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 }
 
 RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
@@ -148,16 +150,16 @@ RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) 
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(Size.width > 0);
-    RUNTIME_ASSERT(Size.height > 0);
+    FO_RUNTIME_ASSERT(Size.width > 0);
+    FO_RUNTIME_ASSERT(Size.height > 0);
 }
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
     IsStatic {is_static}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
@@ -166,7 +168,7 @@ void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
         Vertices.resize(VertCount + std::max(vcount, static_cast<size_t>(1024)));
 
         if constexpr (sizeof(vindex_t) == 2) {
-            RUNTIME_ASSERT(Vertices.size() <= 0xFFFF);
+            FO_RUNTIME_ASSERT(Vertices.size() <= 0xFFFF);
         }
     }
     if (IndCount + icount >= Indices.size()) {
@@ -178,19 +180,19 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     Name {name},
     Usage {usage}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto fofx_content = loader(name);
     const auto fofx = ConfigFile(name, fofx_content, nullptr, ConfigFileOption::CollectContent);
-    RUNTIME_ASSERT(fofx.HasSection("Effect"));
+    FO_RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-    RUNTIME_ASSERT(passes >= 1);
-    RUNTIME_ASSERT(passes <= static_cast<int>(EFFECT_MAX_PASSES));
+    FO_RUNTIME_ASSERT(passes >= 1);
+    FO_RUNTIME_ASSERT(passes <= static_cast<int>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
-    RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= static_cast<int>(EFFECT_MAX_PASSES)));
+    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= static_cast<int>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
@@ -270,7 +272,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         const string pass_str = strex("_Pass{}", pass + 1);
 
         auto blend_func = strex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
-        RUNTIME_ASSERT(blend_func.size() == 2);
+        FO_RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
@@ -280,7 +282,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         const auto pass_info_content = loader(strex("{}.{}.info", strex(name).eraseFileExtension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
-        RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
+        FO_RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 
         const_cast<int&>(_posMainTex[pass]) = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         const_cast<bool&>(NeedMainTex) |= _posMainTex[pass] != -1;
@@ -313,3 +315,5 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 #endif
     }
 }
+
+FO_END_NAMESPACE();

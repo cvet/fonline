@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 enum class DiskFileSeek : uint8
 {
     Set = 0,
@@ -94,3 +96,5 @@ public:
     static void IterateDir(string_view dir, bool recursive, FileVisitor visitor);
     static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
 };
+
+FO_END_NAMESPACE();

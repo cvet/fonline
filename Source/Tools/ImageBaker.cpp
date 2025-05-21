@@ -42,6 +42,8 @@
 
 #include "png.h"
 
+FO_BEGIN_NAMESPACE();
+
 [[nodiscard]] static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>;
 [[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>;
 
@@ -104,7 +106,7 @@ static_assert(sizeof(FoPalette) == 1024);
 ImageBaker::ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Fill default loaders
     AddLoader(std::bind(&ImageBaker::LoadFofrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"fofrm"});
@@ -123,7 +125,7 @@ ImageBaker::ImageBaker(const BakerSettings& settings, string pack_name, BakeChec
 
 auto ImageBaker::IsExtSupported(string_view ext) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto locker = std::unique_lock {_filesLocker};
 
@@ -137,7 +139,7 @@ auto ImageBaker::IsExtSupported(string_view ext) const -> bool
 
 void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string_view>& file_extensions)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto locker = std::unique_lock {_filesLocker};
 
@@ -148,7 +150,7 @@ void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string_view>& fi
 
 void ImageBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<pair<File, LoadFunc>> files_to_bake;
     files_to_bake.reserve(files.GetFilesCount());
@@ -199,7 +201,7 @@ void ImageBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -210,9 +212,9 @@ void ImageBaker::BakeFiles(FileCollection files)
 
 void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     vector<uint8> data;
     auto writer = DataWriter(data);
@@ -240,7 +242,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 writer.Write<int16>(shot.NextX);
                 writer.Write<int16>(shot.NextY);
                 writer.WritePtr(shot.Data.data(), shot.Data.size());
-                RUNTIME_ASSERT(shot.Data.size() == static_cast<size_t>(shot.Width) * shot.Height * 4);
+                FO_RUNTIME_ASSERT(shot.Data.size() == static_cast<size_t>(shot.Width) * shot.Height * 4);
             }
             else {
                 writer.Write<uint16>(shot.SharedIndex);
@@ -260,7 +262,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
 auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const string ext = strex(fname_with_opt).getFileExtension();
     const string dir = strex(fname_with_opt).extractDir();
@@ -305,9 +307,9 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 
 auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     FrameCollection collection;
 
@@ -317,7 +319,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
     frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
     int frm_count = fofrm.GetAsInt("", "count", 1);
     frm_count = fofrm.GetAsInt("", "Count", frm_count);
-    RUNTIME_ASSERT(frm_count > 0);
+    FO_RUNTIME_ASSERT(frm_count > 0);
 
     int ox = fofrm.GetAsInt("", "offs_x", 0);
     ox = fofrm.GetAsInt("", "OffsetX", ox);
@@ -442,18 +444,18 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
 auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     reader.SetCurPos(0x4);
     auto frm_fps = reader.GetBEUShort();
 
     reader.SetCurPos(0x8);
     auto frm_count = reader.GetBEUShort();
-    RUNTIME_ASSERT(frm_count > 0);
+    FO_RUNTIME_ASSERT(frm_count > 0);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -705,11 +707,11 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     File dir_file;
 
@@ -719,7 +721,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
 
     reader.SetCurPos(0x8);
     auto frm_count = reader.GetBEUShort();
-    RUNTIME_ASSERT(frm_count > 0);
+    FO_RUNTIME_ASSERT(frm_count > 0);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -992,12 +994,12 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(fname);
-    UNUSED_VARIABLE(opt);
+    ignore_unused(fname);
+    ignore_unused(opt);
 
     reader.SetCurPos(0x4);
     uint16 w = 0;
@@ -1032,9 +1034,9 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     auto palette_index = 0; // 0..3
     auto transparent = false;
@@ -1144,7 +1146,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader) 
 
     auto frm_fps = header.FrameRate;
     auto frm_count = header.FrameCount;
-    RUNTIME_ASSERT(frm_count > 0);
+    FO_RUNTIME_ASSERT(frm_count > 0);
 
     if (frm_from >= frm_count) {
         frm_from = frm_count - 1;
@@ -1307,9 +1309,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     FrameCollection collection;
 
@@ -1395,7 +1397,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
 
         auto dimension_left = static_cast<float>(reader.GetUChar()) * 6.7f;
         auto dimension_up = static_cast<float>(reader.GetUChar()) * 7.6f;
-        UNUSED_VARIABLE(dimension_up);
+        ignore_unused(dimension_up);
         auto dimension_right = static_cast<float>(reader.GetUChar()) * 6.7f;
         int center_x = static_cast<int>(reader.GetLEUInt());
         int center_y = static_cast<int>(reader.GetLEUInt());
@@ -1651,7 +1653,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
 
                 auto w = fm_images.GetLEUInt();
                 auto h = fm_images.GetLEUInt();
-                UNUSED_VARIABLE(h);
+                ignore_unused(h);
                 auto palette_present = fm_images.GetUChar();
                 auto rle_size = fm_images.GetLEUInt();
                 const auto* rle_buf = fm_images.GetCurBuf();
@@ -1748,11 +1750,11 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     // Read header
     char head[6];
@@ -1850,11 +1852,11 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     // Read header
     char head[7];
@@ -1870,9 +1872,9 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader) 
     reader.GoForward(7 + 4); // Unknown
 
     const auto w = reader.GetLEUInt();
-    UNUSED_VARIABLE(w);
+    ignore_unused(w);
     const auto h = reader.GetLEUInt();
-    UNUSED_VARIABLE(h);
+    ignore_unused(h);
 
     if (!reader.SeekFragment("<tiledata>")) {
         throw ImageBakerException("Tiledata in TIL file not found", fname);
@@ -1983,11 +1985,11 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(opt);
+    ignore_unused(opt);
 
     // Read signature
     char head[8];
@@ -2027,7 +2029,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) 
     const uint col = reader.GetLEUShort(); // Columns (blocks)
     const uint row = reader.GetLEUShort(); // Rows (blocks)
     const auto block_size = reader.GetLEUInt(); // Block size (pixels)
-    UNUSED_VARIABLE(block_size);
+    ignore_unused(block_size);
     const auto palette_offset = reader.GetLEUInt(); // Offset (from start of file) to palettes
     const auto tiles_offset = palette_offset + col * row * 256 * 4;
     const auto data_offset = tiles_offset + col * row * 4;
@@ -2098,9 +2100,9 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // Format: fileName$5-6.spr
     auto opt_str = string(opt);
@@ -2254,12 +2256,12 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(fname);
-    UNUSED_VARIABLE(opt);
+    ignore_unused(fname);
+    ignore_unused(opt);
 
     uint w = 0;
     uint h = 0;
@@ -2278,12 +2280,12 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader) 
 
 auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader) -> FrameCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(fname);
-    UNUSED_VARIABLE(opt);
+    ignore_unused(fname);
+    ignore_unused(opt);
 
     uint w = 0;
     uint h = 0;
@@ -2302,24 +2304,24 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader) 
 
 static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    RUNTIME_ASSERT(png_ptr);
+    FO_RUNTIME_ASSERT(png_ptr);
 
     try {
         struct PngMessage
         {
             [[noreturn]] static void Error(png_structp png_ptr, png_const_charp error_msg)
             {
-                UNUSED_VARIABLE(png_ptr);
+                ignore_unused(png_ptr);
                 throw ImageBakerException("PNG loading error", error_msg);
             }
 
             static void Warning(png_structp png_ptr, png_const_charp error_msg)
             {
-                UNUSED_VARIABLE(png_ptr);
-                UNUSED_VARIABLE(error_msg);
+                ignore_unused(png_ptr);
+                ignore_unused(error_msg);
                 // WriteLog("PNG loading warning: {}", error_msg);
             }
         };
@@ -2327,7 +2329,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) 
         png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
 
         auto* info_ptr = png_create_info_struct(png_ptr);
-        RUNTIME_ASSERT(info_ptr);
+        FO_RUNTIME_ASSERT(info_ptr);
 
         struct PngReader
         {
@@ -2395,7 +2397,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) 
 
 static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uint& result_height) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     size_t cur_pos = 0;
 
@@ -2516,3 +2518,5 @@ static auto TgaLoad(const uint8* data, size_t data_size, uint& result_width, uin
 
     return result;
 }
+
+FO_END_NAMESPACE();

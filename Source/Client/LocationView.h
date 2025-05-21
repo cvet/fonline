@@ -39,6 +39,8 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 class LocationView final : public ClientEntity, public EntityWithProto, public LocationProperties
 {
 public:
@@ -52,3 +54,5 @@ public:
 private:
     void OnDestroySelf() override;
 };
+
+FO_END_NAMESPACE();

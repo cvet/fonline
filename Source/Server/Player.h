@@ -40,6 +40,8 @@
 #include "ServerConnection.h"
 #include "ServerEntity.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Item;
 class Critter;
 class Map;
@@ -98,11 +100,11 @@ public:
     void Send_RemoveCustomEntity(ident_t id);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnGetAccess, int /*arg1*/, string& /*arg2*/);
+    FO_ENTITY_EVENT(OnGetAccess, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8 /*arg2*/);
+    FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8 /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLogout);
+    FO_ENTITY_EVENT(OnLogout);
 
     // Todo: incapsulate Player data
     uint8 Access {ACCESS_CLIENT};
@@ -119,3 +121,5 @@ private:
     Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
     nanotime _talkNextTime {};
 };
+
+FO_END_NAMESPACE();

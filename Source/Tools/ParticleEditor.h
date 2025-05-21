@@ -37,6 +37,8 @@
 
 #include "Editor.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ParticleEditor final : public EditorAssetView
 {
 public:
@@ -55,3 +57,5 @@ private:
     float _dirAngle {};
     bool _autoReplay {};
 };
+
+FO_END_NAMESPACE();

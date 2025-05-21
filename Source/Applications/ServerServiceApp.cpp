@@ -38,6 +38,8 @@
 #include "Settings.h"
 #include "WinApi-Include.h"
 
+FO_USING_NAMESPACE();
+
 #if FO_WINDOWS
 static wchar_t ServiceName[32] = L"FOnlineServer";
 #endif
@@ -52,7 +54,7 @@ struct ServerServiceAppData
     SERVICE_STATUS_HANDLE FOServiceStatusHandle {};
 #endif
 };
-GLOBAL_DATA(ServerServiceAppData, Data);
+FO_GLOBAL_DATA(ServerServiceAppData, Data);
 
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv);
@@ -62,7 +64,7 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         Data->Server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
@@ -75,7 +77,7 @@ static void ServerEntry()
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -184,14 +186,14 @@ int main(int argc, char** argv)
             }
         }
 #else
-        RUNTIME_ASSERT_STR(false, "Invalid OS");
+        FO_RUNTIME_ASSERT_STR(false, "Invalid OS");
 #endif
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 
     return 0;
@@ -238,7 +240,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -264,7 +266,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 

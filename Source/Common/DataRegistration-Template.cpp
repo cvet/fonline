@@ -63,6 +63,8 @@
 #endif
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 ///@ CodeGen Global
 
 #if !COMPILER_MODE
@@ -70,7 +72,7 @@
 
 void Server_RegisterData(EngineData* engine)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ///@ CodeGen ServerRegister
 
@@ -81,7 +83,7 @@ void Server_RegisterData(EngineData* engine)
 
 void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_bin)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ///@ CodeGen ClientRegister
 
@@ -91,7 +93,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
 
     const auto info_size = reader.Read<uint>();
     for (const auto i : xrange(info_size)) {
-        UNUSED_VARIABLE(i);
+        ignore_unused(i);
 
         const auto name_size = reader.Read<uint>();
         auto name = string();
@@ -103,7 +105,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
         data.reserve(data_size);
 
         for (const auto e : xrange(data_size)) {
-            UNUSED_VARIABLE(e);
+            ignore_unused(e);
 
             const auto entry_size = reader.Read<uint>();
             auto entry = string();
@@ -127,7 +129,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
         unordered_map<string, int> key_values;
         for (size_t i = 2; i < tokens.size(); i++) {
             const auto kv = strex(tokens[i]).split('=');
-            RUNTIME_ASSERT(kv.size() == 2);
+            FO_RUNTIME_ASSERT(kv.size() == 2);
             const auto key = kv[0];
             const auto value = strex(kv[1]).toInt();
             key_values.emplace(key, value);
@@ -164,7 +166,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
 
 void Mapper_RegisterData(EngineData* engine)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ///@ CodeGen MapperRegister
 
@@ -175,7 +177,7 @@ void Mapper_RegisterData(EngineData* engine)
 
 void Baker_RegisterData(EngineData* engine)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ///@ CodeGen BakerRegister
 
@@ -184,7 +186,7 @@ void Baker_RegisterData(EngineData* engine)
 
 auto Baker_GetRestoreInfo() -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     map<string, vector<string>> restore_info;
 
@@ -232,7 +234,7 @@ void AngelScript_ClientCompiler_RegisterData(EngineData* engine)
 void AngelScript_MapperCompiler_RegisterData(EngineData* engine)
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ///@ CodeGen CompilerRegister
 
@@ -240,3 +242,5 @@ void AngelScript_MapperCompiler_RegisterData(EngineData* engine)
 }
 
 #endif
+
+FO_END_NAMESPACE();

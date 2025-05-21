@@ -46,6 +46,8 @@
 
 #include "WinApiUndef-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Direct3D_Texture final : public RenderTexture
 {
 public:
@@ -158,7 +160,7 @@ static isize TargetSize {};
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (blend) {
     case BlendFuncType::Zero:
@@ -189,12 +191,12 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
         return D3D11_BLEND_SRC_ALPHA_SAT;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -209,12 +211,12 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
         return D3D11_BLEND_OP_MIN;
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Used DirectX rendering");
 
@@ -424,11 +426,11 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         atlas_h = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
-    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
 
     const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
@@ -436,10 +438,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     // Back buffer view
     ID3D11Texture2D* back_buf = nullptr;
     const auto d3d_get_back_buf = SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
-    RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
-    RUNTIME_ASSERT(back_buf);
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
+    FO_RUNTIME_ASSERT(back_buf);
     const auto d3d_create_back_buf_rt_view = D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
 
     BackBufSize = {settings.ScreenWidth, settings.ScreenHeight};
@@ -459,7 +461,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     one_pix_staging_desc.MiscFlags = 0;
 
     const auto d3d_create_one_pix_staging_tex = D3DDevice->CreateTexture2D(&one_pix_staging_desc, nullptr, &OnePixStagingTex);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_one_pix_staging_tex));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_one_pix_staging_tex));
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
@@ -473,10 +475,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
 void Direct3D_Renderer::Present()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto d3d_swap_chain = SwapChain->Present(VSync ? 1 : 0, 0);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_swap_chain));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_swap_chain));
 
     if (D3DDeviceContext1 != nullptr) {
         D3DDeviceContext1->DiscardView(CurRenderTarget);
@@ -487,7 +489,7 @@ void Direct3D_Renderer::Present()
 
 auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth);
 
@@ -505,7 +507,7 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
     tex_desc.MiscFlags = 0;
 
     const auto d3d_create_texure_2d = D3DDevice->CreateTexture2D(&tex_desc, nullptr, &d3d_tex->TexHandle);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_texure_2d));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_texure_2d));
 
     if (with_depth) {
         D3D11_TEXTURE2D_DESC depth_tex_desc = {};
@@ -522,7 +524,7 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
         depth_tex_desc.MiscFlags = 0;
 
         const auto d3d_create_texure_depth = D3DDevice->CreateTexture2D(&depth_tex_desc, nullptr, &d3d_tex->DepthStencil);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_create_texure_depth));
+        FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_texure_depth));
 
         D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc = {};
         depth_view_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -530,11 +532,11 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
         depth_view_desc.Texture2D.MipSlice = 0;
 
         const auto d3d_create_depth_view = D3DDevice->CreateDepthStencilView(d3d_tex->DepthStencil, &depth_view_desc, &d3d_tex->DepthStencilView);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_create_depth_view));
+        FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_depth_view));
     }
 
     const auto d3d_create_tex_rt_view = D3DDevice->CreateRenderTargetView(d3d_tex->TexHandle, nullptr, &d3d_tex->RenderTargetView);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_tex_rt_view));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_tex_rt_view));
 
     D3D11_SHADER_RESOURCE_VIEW_DESC tex_view_desc = {};
     tex_view_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -542,14 +544,14 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
     tex_view_desc.Texture2D.MipLevels = 1;
     tex_view_desc.Texture2D.MostDetailedMip = 0;
     const auto d3d_create_shader_res_view = D3DDevice->CreateShaderResourceView(d3d_tex->TexHandle, &tex_view_desc, &d3d_tex->ShaderTexView);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_shader_res_view));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_shader_res_view));
 
     return std::move(d3d_tex);
 }
 
 auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static);
 
@@ -558,7 +560,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
 
 auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader);
 
@@ -567,7 +569,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
         {
             const string vertex_shader_fname = strex("{}.{}.vert.hlsl", strex(name).eraseFileExtension(), pass + 1);
             string vertex_shader_content = loader(vertex_shader_fname);
-            RUNTIME_ASSERT(!vertex_shader_content.empty());
+            FO_RUNTIME_ASSERT(!vertex_shader_content.empty());
 
             ID3DBlob* vertex_shader_blob = nullptr;
             ScopeCallback vertex_shader_blob_release {[&vertex_shader_blob]() noexcept {
@@ -641,7 +643,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
         {
             const string pixel_shader_fname = strex("{}.{}.frag.hlsl", strex(name).eraseFileExtension(), pass + 1);
             string pixel_shader_content = loader(pixel_shader_fname);
-            RUNTIME_ASSERT(!pixel_shader_content.empty());
+            FO_RUNTIME_ASSERT(!pixel_shader_content.empty());
 
             ID3DBlob* pixel_shader_blob = nullptr;
             ScopeCallback vertex_shader_blob_release {[&pixel_shader_blob]() noexcept {
@@ -743,7 +745,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
 auto Direct3D_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& l = left;
     const auto& t = top;
@@ -779,14 +781,14 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float left, float right, float bottom,
 
 auto Direct3D_Renderer::GetViewPort() -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return ViewPortRect;
 }
 
 void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int vp_ox;
     int vp_oy;
@@ -850,7 +852,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
 void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
         const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
@@ -878,7 +880,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
 
 void Direct3D_Renderer::EnableScissor(irect rect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
@@ -901,7 +903,7 @@ void Direct3D_Renderer::EnableScissor(irect rect)
 
 void Direct3D_Renderer::DisableScissor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ScissorEnabled = false;
 }
@@ -912,7 +914,7 @@ void Direct3D_Renderer::OnResizeWindow(isize size)
 
     if (is_cur_rt) {
         CurRenderTarget = nullptr;
-        RUNTIME_ASSERT(!CurDepthStencil);
+        FO_RUNTIME_ASSERT(!CurDepthStencil);
         D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
     }
 
@@ -920,14 +922,14 @@ void Direct3D_Renderer::OnResizeWindow(isize size)
     MainRenderTarget = nullptr;
 
     const auto d3d_resize_buffers = SwapChain->ResizeBuffers(0, size.width, size.height, DXGI_FORMAT_UNKNOWN, 0);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_resize_buffers));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_resize_buffers));
 
     ID3D11Texture2D* back_buf = nullptr;
     const auto d3d_get_back_buf = SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
-    RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
-    RUNTIME_ASSERT(back_buf);
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
+    FO_RUNTIME_ASSERT(back_buf);
     const auto d3d_create_back_buf_rt_view = D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
 
     BackBufSize = size;
@@ -939,7 +941,7 @@ void Direct3D_Renderer::OnResizeWindow(isize size)
 
 Direct3D_Texture::~Direct3D_Texture()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (TexHandle != nullptr) {
         TexHandle->Release();
@@ -960,9 +962,9 @@ Direct3D_Texture::~Direct3D_Texture()
 
 auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(Size.IsValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.IsValidPos(pos));
 
     D3D11_BOX src_box;
     src_box.left = pos.x;
@@ -976,7 +978,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(OnePixStagingTex, 0, D3D11_MAP_READ, 0, &tex_resource);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     const auto result = *static_cast<ucolor*>(tex_resource.pData);
 
@@ -987,14 +989,14 @@ auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
 
 auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(size.width > 0);
-    RUNTIME_ASSERT(size.height > 0);
-    RUNTIME_ASSERT(pos.x >= 0);
-    RUNTIME_ASSERT(pos.y >= 0);
-    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_RUNTIME_ASSERT(size.width > 0);
+    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_RUNTIME_ASSERT(pos.x >= 0);
+    FO_RUNTIME_ASSERT(pos.y >= 0);
+    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
     result.resize(static_cast<size_t>(size.width) * size.height);
@@ -1014,7 +1016,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
 
     ID3D11Texture2D* staging_tex = nullptr;
     const auto d3d_create_staging_tex = D3DDevice->CreateTexture2D(&staging_desc, nullptr, &staging_tex);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_staging_tex));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_staging_tex));
 
     D3D11_BOX src_box;
     src_box.left = pos.x;
@@ -1028,7 +1030,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     for (int i = 0; i < size.height; i++) {
         const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
@@ -1043,12 +1045,12 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
 
 void Direct3D_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(pos.x >= 0);
-    RUNTIME_ASSERT(pos.y >= 0);
-    RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_RUNTIME_ASSERT(pos.x >= 0);
+    FO_RUNTIME_ASSERT(pos.y >= 0);
+    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     D3D11_BOX dest_box;
     dest_box.left = pos.x;
@@ -1063,7 +1065,7 @@ void Direct3D_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* d
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (VertexBuf != nullptr) {
         VertexBuf->Release();
@@ -1075,7 +1077,7 @@ Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 
 void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1089,18 +1091,18 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        RUNTIME_ASSERT(Vertices.empty());
+        FO_RUNTIME_ASSERT(Vertices.empty());
         upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex3D);
     }
     else {
-        RUNTIME_ASSERT(Vertices3D.empty());
+        FO_RUNTIME_ASSERT(Vertices3D.empty());
         upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex2D);
     }
 
 #else
-    UNUSED_VARIABLE(usage);
+    ignore_unused(usage);
     upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
     vert_size = sizeof(Vertex2D);
 #endif
@@ -1121,12 +1123,12 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         vbuf_desc.MiscFlags = 0;
 
         const auto d3d_create_vertex_buffer = D3DDevice->CreateBuffer(&vbuf_desc, nullptr, &VertexBuf);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_create_vertex_buffer));
+        FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_vertex_buffer));
     }
 
     D3D11_MAPPED_SUBRESOURCE vertices_resource;
     const auto d3d_map_vertex_buffer = D3DDeviceContext->Map(VertexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &vertices_resource);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_map_vertex_buffer));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_vertex_buffer));
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -1160,12 +1162,12 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         ibuf_desc.MiscFlags = 0;
 
         const auto d3d_create_index_buffer = D3DDevice->CreateBuffer(&ibuf_desc, nullptr, &IndexBuf);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
+        FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
     }
 
     D3D11_MAPPED_SUBRESOURCE indices_resource;
     const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
+    FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
 
     MemCopy(indices_resource.pData, Indices.data(), upload_indices * sizeof(vindex_t));
 
@@ -1174,7 +1176,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
 Direct3D_Effect::~Direct3D_Effect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #define SAFE_RELEASE(ptr) \
     if (ptr != nullptr) { \
@@ -1207,7 +1209,7 @@ Direct3D_Effect::~Direct3D_Effect()
 
 void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
@@ -1250,12 +1252,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
             cbuf_desc.MiscFlags = 0;
 
             const auto d3d_create_cbuffer = D3DDevice->CreateBuffer(&cbuf_desc, nullptr, &buf_handle);
-            RUNTIME_ASSERT(SUCCEEDED(d3d_create_cbuffer));
+            FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_cbuffer));
         }
 
         D3D11_MAPPED_SUBRESOURCE cbuffer_resource;
         const auto d3d_map_cbuffer = D3DDeviceContext->Map(buf_handle, 0, D3D11_MAP_WRITE_DISCARD, 0, &cbuffer_resource);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_map_cbuffer));
+        FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_cbuffer));
 
 #if FO_ENABLE_3D
         if constexpr (std::is_same_v<std::decay_t<decltype(buf)>, ModelBuffer>) {
@@ -1265,7 +1267,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         else
 #endif
         {
-            UNUSED_VARIABLE(this);
+            ignore_unused(this);
             MemCopy(cbuffer_resource.pData, &buf, sizeof(buf));
         }
 
@@ -1393,7 +1395,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         D3DDeviceContext->RSSetScissorRects(1, ScissorEnabled ? &ScissorRect : &DisabledScissorRect);
 
         if (FeatureLevel <= D3D_FEATURE_LEVEL_9_3 && draw_mode == D3D11_PRIMITIVE_TOPOLOGY_POINTLIST) {
-            RUNTIME_ASSERT(start_index == 0);
+            FO_RUNTIME_ASSERT(start_index == 0);
             D3DDeviceContext->Draw(draw_count, 0);
         }
         else {
@@ -1458,5 +1460,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         D3DDeviceContext->PSSetShader(nullptr, nullptr, 0);
     }
 }
+
+FO_END_NAMESPACE();
 
 #endif

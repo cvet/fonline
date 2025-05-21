@@ -40,9 +40,11 @@
 #include "Application.h"
 #include "Rendering.h"
 
+FO_BEGIN_NAMESPACE();
+
 struct RenderTarget
 {
-    enum class SizeKindType
+    enum class SizeKindType : uint8
     {
         Custom,
         Screen,
@@ -92,3 +94,5 @@ private:
     EventUnsubscriber _eventUnsubscriber {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

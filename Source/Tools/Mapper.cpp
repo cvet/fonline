@@ -38,13 +38,18 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
+extern void Mapper_RegisterData(EngineData*);
+
+#if FO_ANGELSCRIPT_SCRIPTING
+extern void Init_AngelScript_MapperScriptSystem(BaseEngine*);
+#endif
+
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOClient(settings, window, [this] {
-        extern void Mapper_RegisterData(EngineData*);
-        Mapper_RegisterData(this);
-    })
+    FOClient(settings, window, [this] { Mapper_RegisterData(this); })
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto& entry : Settings.MapperResourceEntries) {
         Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
@@ -57,7 +62,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    extern void Init_AngelScript_MapperScriptSystem(BaseEngine*);
     Init_AngelScript_MapperScriptSystem(this);
 #endif
 
@@ -81,7 +85,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         load_fonts_ok = false;
     }
 
-    RUNTIME_ASSERT(load_fonts_ok);
+    FO_RUNTIME_ASSERT(load_fonts_ok);
     SprMngr.SetDefaultFont(FONT_DEFAULT);
 
     SprMngr.BeginScene();
@@ -91,6 +95,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     // Initialize tabs
     const auto& cr_protos = ProtoMngr.GetProtoCritters();
+
     for (auto&& [pid, proto] : cr_protos) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.emplace_back(proto);
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
@@ -100,6 +105,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
+
     for (auto&& [pid, proto] : item_protos) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.emplace_back(proto);
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.emplace_back(proto);
@@ -119,6 +125,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     for (auto i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++) {
         TabsName[i] = "-";
     }
+
     TabsName[INT_MODE_ITEM] = "Item";
     TabsName[INT_MODE_TILE] = "Tile";
     TabsName[INT_MODE_CRIT] = "Crit";
@@ -151,22 +158,26 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     const auto history_str = Cache.GetString("mapper_console.txt");
     size_t pos = 0;
     size_t prev = 0;
+
     while ((pos = history_str.find('\n', prev)) != std::string::npos) {
         string history_part;
         history_part.assign(&history_str.c_str()[prev], pos - prev);
         ConsoleHistory.emplace_back(history_part);
         prev = pos + 1;
     }
+
     ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
+
     while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
+
     ConsoleHistoryCur = static_cast<int>(ConsoleHistory.size());
 }
 
 void FOMapper::InitIface()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Init interface");
 
@@ -282,7 +293,7 @@ void FOMapper::InitIface()
 
 auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto res = string(IfaceIni->GetAsStr("", name));
 
@@ -302,7 +313,7 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 
 auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto it = IfaceSpr.find(fname); it != IfaceSpr.end()) {
         return it->second.get();
@@ -319,7 +330,7 @@ auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
 
 void FOMapper::ProcessMapperInput()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Settings.MousePos = App->Input.GetMousePosition();
 
@@ -701,7 +712,7 @@ void FOMapper::ProcessMapperInput()
 
 void FOMapper::MapperMainLoop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     FrameAdvance();
 
@@ -739,7 +750,7 @@ void FOMapper::MapperMainLoop()
 
 void FOMapper::IntDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!IntVisible) {
         return;
@@ -940,7 +951,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto& inner_item = inner_items[i];
-            RUNTIME_ASSERT(inner_item);
+            FO_RUNTIME_ASSERT(inner_item);
 
             auto* spr = GetIfaceSpr(inner_item->GetPicInv());
 
@@ -1046,7 +1057,7 @@ void FOMapper::IntDraw()
 
 void FOMapper::ObjDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!ObjVisible) {
         return;
@@ -1097,7 +1108,7 @@ void FOMapper::ObjDraw()
         DrawLine("Type", "", "Static Item", true, r);
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     for (const auto* prop : ShowProps) {
@@ -1114,7 +1125,7 @@ void FOMapper::ObjDraw()
 
 void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto x = r.Left;
     const auto y = r.Top;
@@ -1149,12 +1160,12 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
 void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ObjCurLineInitValue != ObjCurLineValue) {
             auto* entity = GetInspectorEntity();
-            RUNTIME_ASSERT(entity);
+            FO_RUNTIME_ASSERT(entity);
             ObjKeyDownApply(entity);
 
             if (!SelectedEntities.empty() && SelectedEntities[0] == entity && ObjToAll) {
@@ -1188,9 +1199,9 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 
 void FOMapper::ObjKeyDownApply(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     constexpr auto start_line = 3;
 
@@ -1202,7 +1213,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
                 entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineValue);
             }
             catch (const std::exception& ex) {
-                UNUSED_VARIABLE(ex);
+                ignore_unused(ex);
                 entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, ObjCurLineInitValue);
             }
 
@@ -1220,7 +1231,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 
 void FOMapper::SelectEntityProp(int line)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto start_line = 3;
 
@@ -1242,7 +1253,7 @@ void FOMapper::SelectEntityProp(int line)
 
 auto FOMapper::GetInspectorEntity() -> ClientEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* entity = IntMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities[0] : nullptr);
 
@@ -1268,7 +1279,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 
 void FOMapper::IntLMouseDown()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     IntHold = INT_NONE;
 
@@ -1466,16 +1477,16 @@ void FOMapper::IntLMouseDown()
                     // Delete child
                     if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
                         auto* owner = _curMap->GetCritter(InContItem->GetCritterId());
-                        RUNTIME_ASSERT(owner);
+                        FO_RUNTIME_ASSERT(owner);
                         owner->DeleteInvItem(InContItem.get(), true);
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = _curMap->GetItem(InContItem->GetContainerId());
-                        RUNTIME_ASSERT(owner);
+                        FO_RUNTIME_ASSERT(owner);
                         owner->DestroyInnerItem(InContItem.get());
                     }
                     else {
-                        UNREACHABLE_PLACE();
+                        FO_UNREACHABLE_PLACE();
                     }
 
                     InContItem = nullptr;
@@ -1700,7 +1711,7 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntHold == INT_SELECT && _curMap->GetHexAtScreenPos(Settings.MousePos, SelectHex2, nullptr)) {
         if (CurMode == CUR_MODE_DEFAULT) {
@@ -1800,7 +1811,7 @@ void FOMapper::IntLMouseUp()
 
 void FOMapper::IntMouseMove()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntHold == INT_SELECT) {
         _curMap->ClearHexTrack();
@@ -1862,7 +1873,7 @@ void FOMapper::IntMouseMove()
 
 auto FOMapper::GetTabIndex() const -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntMode < TAB_COUNT) {
         return TabsActive[IntMode]->Index;
@@ -1872,7 +1883,7 @@ auto FOMapper::GetTabIndex() const -> uint
 
 void FOMapper::SetTabIndex(uint index)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntMode < TAB_COUNT) {
         TabsActive[IntMode]->Index = index;
@@ -1882,7 +1893,7 @@ void FOMapper::SetTabIndex(uint index)
 
 void FOMapper::RefreshCurProtos()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Select protos and scroll
     CurItemProtos = nullptr;
@@ -1925,7 +1936,7 @@ void FOMapper::RefreshCurProtos()
 
 void FOMapper::IntSetMode(int mode)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (SubTabsActive && mode == SubTabsActiveTab) {
         SubTabsActive = false;
@@ -1963,7 +1974,7 @@ void FOMapper::IntSetMode(int mode)
             SubTabsY = IntBIgnore.Top;
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
 
         SubTabsX += IntX - SubTabsRect.Width() / 2;
@@ -1996,9 +2007,9 @@ void FOMapper::IntSetMode(int mode)
 
 void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (!_curMap->GetSize().IsValidPos(hex)) {
         return;
@@ -2014,7 +2025,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
 
 void FOMapper::DeleteEntity(ClientEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
 
@@ -2032,7 +2043,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
 
 void FOMapper::SelectClear()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Delete intersected tiles
     for (auto* entity : SelectedEntities) {
@@ -2059,23 +2070,23 @@ void FOMapper::SelectClear()
 
 void FOMapper::SelectAddItem(ItemHexView* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(item);
     SelectAdd(item);
 }
 
 void FOMapper::SelectAddCrit(CritterView* npc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(npc);
+    FO_RUNTIME_ASSERT(npc);
     SelectAdd(npc);
 }
 
 void FOMapper::SelectAddTile(mpos hex, bool is_roof)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& field = _curMap->GetField(hex);
     const auto& tiles = is_roof ? field.RoofTiles : field.GroundTiles;
@@ -2087,7 +2098,7 @@ void FOMapper::SelectAddTile(mpos hex, bool is_roof)
 
 void FOMapper::SelectAdd(ClientEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
 
@@ -2102,7 +2113,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
 
 void FOMapper::SelectErase(ClientEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
 
@@ -2117,7 +2128,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
 
 void FOMapper::SelectAll()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SelectClear();
 
@@ -2154,7 +2165,7 @@ void FOMapper::SelectAll()
 
 auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!hex_move && offs_x == 0 && offs_y == 0) {
         return false;
@@ -2309,7 +2320,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 
 void FOMapper::SelectDelete()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_curMap) {
         return;
@@ -2328,9 +2339,9 @@ void FOMapper::SelectDelete()
 
 auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curMap);
+    FO_RUNTIME_ASSERT(_curMap);
 
     if (!_curMap->GetSize().IsValidPos(hex)) {
         return nullptr;
@@ -2354,9 +2365,9 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
 auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curMap);
+    FO_RUNTIME_ASSERT(_curMap);
 
     // Checks
     const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -2407,9 +2418,9 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
 auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curMap);
+    FO_RUNTIME_ASSERT(_curMap);
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
@@ -2446,7 +2457,7 @@ void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 
 void FOMapper::BufferCopy()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_curMap) {
         return;
@@ -2500,7 +2511,7 @@ void FOMapper::BufferCopy()
 
 void FOMapper::BufferCut()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_curMap) {
         return;
@@ -2512,7 +2523,7 @@ void FOMapper::BufferCut()
 
 void FOMapper::BufferPaste()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_curMap) {
         return;
@@ -2567,14 +2578,14 @@ void FOMapper::BufferPaste()
 
 void FOMapper::DrawStr(const IRect& rect, string_view str, uint flags, ucolor color, int num_font)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SprMngr.DrawText({rect.Left, rect.Top, rect.Width(), rect.Height()}, str, flags, color, num_font);
 }
 
 void FOMapper::CurDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (CurMode) {
     case CUR_MODE_DEFAULT:
@@ -2656,7 +2667,7 @@ void FOMapper::CurDraw()
 
 void FOMapper::CurRMouseUp()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntHold == INT_NONE) {
         if (CurMode == CUR_MODE_MOVE_SELECTION) {
@@ -2678,7 +2689,7 @@ void FOMapper::CurRMouseUp()
 
 void FOMapper::CurMMouseDown()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (SelectedEntities.empty()) {
         NpcDir++;
@@ -2703,28 +2714,28 @@ void FOMapper::CurMMouseDown()
 
 auto FOMapper::IsCurInRect(const IRect& rect, int ax, int ay) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return Settings.MousePos.x >= rect[0] + ax && Settings.MousePos.y >= rect[1] + ay && Settings.MousePos.x <= rect[2] + ax && Settings.MousePos.y <= rect[3] + ay;
 }
 
 auto FOMapper::IsCurInRect(const IRect& rect) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return Settings.MousePos.x >= rect[0] && Settings.MousePos.y >= rect[1] && Settings.MousePos.x <= rect[2] && Settings.MousePos.y <= rect[3];
 }
 
 auto FOMapper::IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int ax, int ay) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.Left - ax, Settings.MousePos.y - rect.Top - ay}, false);
 }
 
 auto FOMapper::IsCurInInterface() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic.get(), SubTabsRect, SubTabsX, SubTabsY)) {
         return true;
@@ -2740,9 +2751,9 @@ auto FOMapper::IsCurInInterface() const -> bool
 
 auto FOMapper::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     hex = {};
 
@@ -2754,7 +2765,7 @@ auto FOMapper::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 
 void FOMapper::ConsoleDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ConsoleEdit) {
         SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
@@ -2767,7 +2778,7 @@ void FOMapper::ConsoleDraw()
 
 void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ConsoleEdit) {
@@ -2847,7 +2858,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 
 void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ConsoleLastKey = KeyCode::None;
     ConsoleLastKeyText = "";
@@ -2855,7 +2866,7 @@ void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
 
 void FOMapper::ConsoleProcess()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ConsoleLastKey == KeyCode::None) {
         return;
@@ -2870,7 +2881,7 @@ void FOMapper::ConsoleProcess()
 
 void FOMapper::ParseCommand(string_view command)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (command.empty()) {
         return;
@@ -3037,7 +3048,7 @@ void FOMapper::ParseCommand(string_view command)
 
 auto FOMapper::LoadMap(string_view map_name) -> MapView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto map_files = ContentFileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
@@ -3078,12 +3089,12 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
 void FOMapper::ShowMap(MapView* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
-    RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     if (_curMap != map) {
         SelectClear();
@@ -3094,12 +3105,12 @@ void FOMapper::ShowMap(MapView* map)
 
 void FOMapper::SaveMap(MapView* map, string_view custom_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
-    RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     const auto map_errors = map->ValidateForSave();
 
@@ -3114,7 +3125,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     const auto fomap_content = map->SaveToText();
 
     const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
-    RUNTIME_ASSERT(!fomap_name.empty());
+    FO_RUNTIME_ASSERT(!fomap_name.empty());
 
     string fomap_path;
     {
@@ -3135,18 +3146,18 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     }
 
     auto fomap_file = DiskFileSystem::OpenFile(fomap_path, true);
-    RUNTIME_ASSERT(fomap_file);
+    FO_RUNTIME_ASSERT(fomap_file);
     const auto fomap_file_ok = fomap_file.Write(fomap_content);
-    RUNTIME_ASSERT(fomap_file_ok);
+    FO_RUNTIME_ASSERT(fomap_file_ok);
 
     OnEditMapSave.Fire(map);
 }
 
 void FOMapper::UnloadMap(MapView* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     if (_curMap == map) {
         SelectClear();
@@ -3154,7 +3165,7 @@ void FOMapper::UnloadMap(MapView* map)
     }
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
-    RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     map->MarkAsDestroyed();
     LoadedMaps.erase(it);
@@ -3162,9 +3173,9 @@ void FOMapper::UnloadMap(MapView* map)
 
 void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     const auto corrected_width = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);
     const auto corrected_height = std::clamp(height, MAXHEX_MIN, MAXHEX_MAX);
@@ -3185,7 +3196,7 @@ void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
 
 void FOMapper::AddMess(string_view message_text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
     const auto time = nanotime::now().desc(true);
@@ -3222,7 +3233,7 @@ void FOMapper::AddMess(string_view message_text)
 
 void FOMapper::MessBoxDraw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!IntVisible) {
         return;
@@ -3236,9 +3247,9 @@ void FOMapper::MessBoxDraw()
 
 void FOMapper::DrawIfaceLayer(uint layer)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(layer);
+    ignore_unused(layer);
 
     SpritesCanDraw = true;
     OnRenderIface.Fire(); // Todo: mapper render iface layer
@@ -3247,7 +3258,7 @@ void FOMapper::DrawIfaceLayer(uint layer)
 
 auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
         return cr->GetInvItems();
@@ -3258,3 +3269,5 @@ auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcoun
 
     return {};
 }
+
+FO_END_NAMESPACE();

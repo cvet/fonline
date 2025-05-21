@@ -35,9 +35,11 @@
 
 #if FO_ENABLE_3D
 
+FO_BEGIN_NAMESPACE();
+
 void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     string tmp;
     uint len = 0;
@@ -94,7 +96,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 
 ModelAnimationController::ModelAnimationController(uint track_count)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (track_count != 0) {
         _sets = SafeAlloc::MakeShared<vector<ModelAnimation*>>();
@@ -105,7 +107,7 @@ ModelAnimationController::ModelAnimationController(uint track_count)
 
 auto ModelAnimationController::Clone() const -> unique_ptr<ModelAnimationController>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
     clone->_cloned = true;
@@ -119,7 +121,7 @@ auto ModelAnimationController::Clone() const -> unique_ptr<ModelAnimationControl
 
 void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& o = _outputs->emplace_back();
     o.BoneName = bone_name;
@@ -133,14 +135,14 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
 
 void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _sets->emplace_back(animation);
 }
 
 auto ModelAnimationController::GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (index >= _sets->size()) {
         return nullptr;
@@ -151,7 +153,7 @@ auto ModelAnimationController::GetAnimationSet(size_t index) const noexcept -> c
 
 auto ModelAnimationController::GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto* set : *_sets) {
         if (set->GetName() == name) {
@@ -164,28 +166,28 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const noe
 
 auto ModelAnimationController::GetTrackEnable(uint track) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _tracks[track].Enabled;
 }
 
 auto ModelAnimationController::GetTrackPosition(uint track) const noexcept -> float
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _tracks[track].Position;
 }
 
 auto ModelAnimationController::GetAnimationSetCount() const noexcept -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _sets->size();
 }
 
 void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Anim = anim;
     const auto& outputs = anim->GetBoneOutputs();
@@ -210,7 +212,7 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
 
 void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
@@ -231,7 +233,7 @@ void ModelAnimationController::ResetBonesTransition(uint skip_track, const vecto
 
 void ModelAnimationController::Reset()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curTime = 0.0f;
 
@@ -242,49 +244,49 @@ void ModelAnimationController::Reset()
 
 void ModelAnimationController::AddEventEnable(uint track, bool enable, float start_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
 void ModelAnimationController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
 void ModelAnimationController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Weight, weight, start_time, smooth_time});
 }
 
 void ModelAnimationController::SetTrackEnable(uint track, bool enable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Enabled = enable;
 }
 
 void ModelAnimationController::SetTrackPosition(uint track, float position)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Position = position;
 }
 
 void ModelAnimationController::SetInterpolation(bool enabled)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _interpolationDisabled = !enabled;
 }
 
 void ModelAnimationController::AdvanceTime(float time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Animation time
     _curTime += time;
@@ -409,7 +411,7 @@ void ModelAnimationController::AdvanceTime(float time)
 
 void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float factor) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_interpolationDisabled) {
         quaternion::Interpolate(q1, q1, q2, factor);
@@ -421,7 +423,7 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
 
 void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float factor) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_interpolationDisabled) {
         v1.x = v1.x + (v2.x - v1.x) * factor;
@@ -432,5 +434,7 @@ void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float facto
         v1 = v2;
     }
 }
+
+FO_END_NAMESPACE();
 
 #endif

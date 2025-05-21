@@ -42,7 +42,9 @@
 #include "NetworkClient.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(ClientConnectionException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ClientConnectionException);
 
 class ClientConnection final
 {
@@ -113,3 +115,5 @@ private:
     vector<NetMessage> _msgHistory {};
 #endif
 };
+
+FO_END_NAMESPACE();

@@ -39,7 +39,9 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(ImageBakerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ImageBakerException);
 
 class ImageBaker final : public BaseBaker
 {
@@ -112,3 +114,5 @@ private:
     mutable std::mutex _filesLocker {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

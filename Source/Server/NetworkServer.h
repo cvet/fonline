@@ -39,7 +39,9 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(NetworkServerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(NetworkServerException);
 
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
@@ -112,3 +114,5 @@ public:
 
     [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>;
 };
+
+FO_END_NAMESPACE();

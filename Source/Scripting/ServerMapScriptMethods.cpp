@@ -37,6 +37,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_SetupScript(Map* self, InitFunc<Map*> initFunc)
 {
@@ -664,7 +666,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, Critter* cr, bool lookOnThem, CritterFindType findType)
 {
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
 
     vector<Critter*> result_critters;
 
@@ -680,7 +682,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, Critter* 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, CritterFindType findType)
 {
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
 
     vector<Critter*> result_critters;
 
@@ -991,3 +993,5 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, ui
         self->GetEngine()->VerifyTrigger(self, cr, from_hex, hex, dir);
     }
 }
+
+FO_END_NAMESPACE();

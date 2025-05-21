@@ -35,16 +35,18 @@
 #include "GenericUtils.h"
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
     _settings {settings},
     _resources {resources}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
         return it->second.get();
@@ -68,7 +70,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto&& [name, effect] : _loadedEffects) {
         PerFrameEffectUpdate(effect.get(), game_time);
@@ -77,9 +79,9 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 
 void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (effect->NeedTimeBuf) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
@@ -112,7 +114,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 
 void EffectManager::LoadMinimalEffects()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto effect_errors = 0;
 
@@ -128,7 +130,7 @@ void EffectManager::LoadMinimalEffects()
 
 void EffectManager::LoadDefaultEffects()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto effect_errors = 0;
 
@@ -158,7 +160,9 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.ContourStrictSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.ContourDynamicSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
 
-    UNUSED_VARIABLE(effect_errors);
+    ignore_unused(effect_errors);
 }
 
 #undef LOAD_DEFAULT_EFFECT
+
+FO_END_NAMESPACE();

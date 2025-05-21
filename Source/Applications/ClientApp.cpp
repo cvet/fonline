@@ -44,17 +44,19 @@
 #include "SDL3/SDL_main.h"
 #endif
 
+FO_USING_NAMESPACE();
+
 struct ClientAppData
 {
     refcount_ptr<FOClient> Client {};
     bool ResourcesSynced {};
     unique_ptr<Updater> ResourceUpdater {};
 };
-GLOBAL_DATA(ClientAppData, Data);
+FO_GLOBAL_DATA(ClientAppData, Data);
 
 static void MainEntry([[maybe_unused]] void* data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
 #if FO_WEB
@@ -97,7 +99,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 ReportExceptionAndExit(ex);
             }
             catch (...) {
-                UNKNOWN_EXCEPTION();
+                FO_UNKNOWN_EXCEPTION();
             }
         }
 
@@ -121,7 +123,7 @@ static void MainEntry([[maybe_unused]] void* data)
             }
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
 
         App->EndFrame();
@@ -130,7 +132,7 @@ static void MainEntry([[maybe_unused]] void* data)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -140,7 +142,7 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);
@@ -154,7 +156,7 @@ int main(int argc, char** argv) // Handled by SDL
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
 
         emscripten_set_click_callback("#fullscreen", nullptr, 1, [](int event_type, const EmscriptenMouseEvent* mouse_event, void* user_data) -> bool {
-            UNUSED_VARIABLE(event_type, mouse_event, user_data);
+            ignore_unused(event_type, mouse_event, user_data);
             if (Data->Client != nullptr) {
                 Data->Client->SprMngr.ToggleFullscreen();
             }
@@ -188,6 +190,6 @@ int main(int argc, char** argv) // Handled by SDL
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

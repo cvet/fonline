@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 // ReSharper disable CppInconsistentNaming
 
 class strex final
@@ -68,17 +70,17 @@ public:
     }
 
     template<typename... Args>
-    explicit strex(FMTNS::format_string<Args...>&& format, Args&&... args) :
-        _s {FMTNS::format(std::move(format), std::forward<Args>(args)...)},
+    explicit strex(FO_FORMAT_NAMESPACE format_string<Args...>&& format, Args&&... args) :
+        _s {FO_FORMAT_NAMESPACE format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
 
     template<typename... Args>
-    explicit strex(safe_format_tag /*tag*/, FMTNS::format_string<Args...>&& format, Args&&... args) noexcept
+    explicit strex(safe_format_tag /*tag*/, FO_FORMAT_NAMESPACE format_string<Args...>&& format, Args&&... args) noexcept
     {
         try {
-            _s = FMTNS::format(std::move(format), std::forward<Args>(args)...);
+            _s = FO_FORMAT_NAMESPACE format(std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
             BreakIntoDebugger(ex.what());
@@ -92,7 +94,7 @@ public:
             }
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
 
         _sv = _s;
@@ -100,7 +102,7 @@ public:
 
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        _s {FMTNS::vformat(format, FMTNS::make_format_args(std::forward<Args>(args)...))},
+        _s {FO_FORMAT_NAMESPACE vformat(format, FO_FORMAT_NAMESPACE make_format_args(std::forward<Args>(args)...))},
         _sv {_s}
     {
     }
@@ -197,13 +199,15 @@ namespace utf8
     auto Upper(uint ucs) noexcept -> uint;
 }
 
+FO_END_NAMESPACE();
+
 template<>
-struct FMTNS::formatter<strex> : formatter<string_view>
+struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     // ReSharper disable once CppInconsistentNaming
-    auto format(const strex& value, FormatContext& ctx) const
+    auto format(const FO_NAMESPACE strex& value, FormatContext& ctx) const
     {
-        return formatter<string_view>::format(value.strv(), ctx);
+        return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);
     }
 };

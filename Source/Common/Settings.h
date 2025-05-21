@@ -38,7 +38,9 @@
 // ReSharper disable once CppUnusedIncludeDirective
 #include "Entity.h"
 
-DECLARE_EXCEPTION(SettingsException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(SettingsException);
 
 class ConfigFile;
 
@@ -109,3 +111,5 @@ private:
     unordered_set<string> _appliedSettings {};
     string _empty {};
 };
+
+FO_END_NAMESPACE();

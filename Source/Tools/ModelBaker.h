@@ -40,7 +40,9 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(ModelBakerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ModelBakerException);
 
 class ModelBaker final : public BaseBaker
 {
@@ -61,5 +63,7 @@ private:
 
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();
 
 #endif

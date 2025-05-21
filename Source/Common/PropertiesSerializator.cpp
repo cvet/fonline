@@ -35,11 +35,13 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!base || props->GetRegistrator() == base->GetRegistrator());
+    FO_RUNTIME_ASSERT(!base || props->GetRegistrator() == base->GetRegistrator());
 
     AnyData::Document doc;
 
@@ -96,7 +98,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
 auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     bool is_error = false;
 
@@ -117,7 +119,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             else {
                 // Todo: maybe need some optional warning for unknown/wrong properties
                 // WriteLog("Skip unknown property {}", key);
-                UNUSED_VARIABLE(is_component);
+                ignore_unused(is_component);
             }
         }
         catch (const std::exception& ex) {
@@ -126,7 +128,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             is_error = true;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -135,11 +137,11 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
 
 auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!prop->IsDisabled());
-    RUNTIME_ASSERT(!prop->IsVirtual());
-    RUNTIME_ASSERT(!prop->IsTemporary());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_RUNTIME_ASSERT(!prop->IsTemporary());
 
     props->ValidateForRawData(prop);
 
@@ -202,7 +204,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
             return static_cast<bool>(*reinterpret_cast<const bool*>(pdata - base_type_info.Size));
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
     else if (base_type_info.IsStruct) {
@@ -218,17 +220,17 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
         return std::move(struct_value);
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_span<uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!prop->IsDisabled());
-    RUNTIME_ASSERT(!prop->IsVirtual());
-    RUNTIME_ASSERT(!prop->IsTemporary());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_RUNTIME_ASSERT(!prop->IsTemporary());
 
     const BaseTypeInfo& base_type_info = prop->GetBaseTypeInfo();
     const auto* pdata = raw_data.data();
@@ -237,14 +239,14 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
     if (prop->IsPlainData()) {
         auto value = RawDataToValue(base_type_info, hash_resolver, name_resolver, pdata);
 
-        RUNTIME_ASSERT(pdata == pdata_end);
+        FO_RUNTIME_ASSERT(pdata == pdata_end);
         return value;
     }
     else if (prop->IsString()) {
         const auto* pstr = reinterpret_cast<const char*>(pdata);
         pdata += raw_data.size();
 
-        RUNTIME_ASSERT(pdata == pdata_end);
+        FO_RUNTIME_ASSERT(pdata == pdata_end);
         return string(pstr, raw_data.size());
     }
     else if (prop->IsArray()) {
@@ -269,7 +271,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
             }
         }
 
-        RUNTIME_ASSERT(pdata == pdata_end);
+        FO_RUNTIME_ASSERT(pdata == pdata_end);
         return std::move(arr);
     }
     else if (prop->IsDict()) {
@@ -323,7 +325,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                     return strex("{}", *reinterpret_cast<const bool*>(p));
                 }
                 else {
-                    UNREACHABLE_PLACE();
+                    FO_UNREACHABLE_PLACE();
                 }
             };
 
@@ -370,20 +372,20 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
             }
         }
 
-        RUNTIME_ASSERT(pdata == pdata_end);
+        FO_RUNTIME_ASSERT(pdata == pdata_end);
         return std::move(dict);
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!prop->IsDisabled());
-    RUNTIME_ASSERT(!prop->IsVirtual());
-    RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
 
     const auto set_data = [props, prop](const_span<uint8> raw_data) { props->SetRawData(prop, raw_data); };
 
@@ -392,7 +394,7 @@ void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 static auto ConvertToString(const AnyData::Value& value, string& buf) -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (value.Type()) {
     case AnyData::ValueType::String:
@@ -411,7 +413,7 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> const s
 template<typename T>
 static void ConvertToNumber(const AnyData::Value& value, T& result_value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
         result_value = numeric_cast<T>(value.AsInt64());
@@ -436,7 +438,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
                 result_value = numeric_cast<T>(strex(str).toBool());
             }
             else {
-                UNREACHABLE_PLACE();
+                FO_UNREACHABLE_PLACE();
             }
         }
         else if (strex(str).isExplicitBool()) {
@@ -453,7 +455,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
 
 static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (base_type_info.IsHash) {
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
@@ -474,7 +476,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         else if (value.Type() == AnyData::ValueType::Int64) {
             enum_value = numeric_cast<int>(value.AsInt64());
             const auto& enum_value_name = name_resolver.ResolveEnumValueName(base_type_info.TypeName, enum_value);
-            UNUSED_VARIABLE(enum_value_name);
+            ignore_unused(enum_value_name);
         }
         else {
             throw PropertySerializationException("Wrong enum value type (not string or int)");
@@ -522,7 +524,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
             ConvertToNumber(value, *reinterpret_cast<bool*>(pdata));
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
     else if (base_type_info.IsStruct) {
@@ -545,7 +547,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         }
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     pdata += base_type_info.Size;
@@ -553,11 +555,11 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
 
 void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const std::function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!prop->IsDisabled());
-    RUNTIME_ASSERT(!prop->IsVirtual());
-    RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
 
     const auto& base_type_info = prop->GetBaseTypeInfo();
 
@@ -573,7 +575,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             set_data({struct_data.GetPtrAs<uint8>(), base_type_info.Size});
         }
         else {
-            RUNTIME_ASSERT(base_type_info.Size <= sizeof(size_t));
+            FO_RUNTIME_ASSERT(base_type_info.Size <= sizeof(size_t));
             uint8 primitive_data[sizeof(size_t)];
             auto* pdata = primitive_data;
 
@@ -624,7 +626,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += str.length();
             }
 
-            RUNTIME_ASSERT(pdata == data.get() + data_size);
+            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
             set_data({data.get(), data_size});
         }
         else {
@@ -636,7 +638,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 ConvertFixedValue(base_type_info, hash_resolver, name_resolver, arr_entry, pdata);
             }
 
-            RUNTIME_ASSERT(pdata == data.get() + data_size);
+            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
             set_data({data.get(), data_size});
         }
     }
@@ -752,7 +754,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 *reinterpret_cast<bool*>(pdata) = numeric_cast<bool>(strex(dict_key).toBool());
             }
             else {
-                UNREACHABLE_PLACE();
+                FO_UNREACHABLE_PLACE();
             }
 
             if (!dickt_key_type_info.IsString) {
@@ -793,10 +795,12 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             }
         }
 
-        RUNTIME_ASSERT(pdata == data.get() + data_size);
+        FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
         set_data({data.get(), data_size});
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
+
+FO_END_NAMESPACE();

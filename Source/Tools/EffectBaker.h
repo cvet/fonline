@@ -38,12 +38,14 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(EffectBakerException);
-
 namespace glslang
 {
     class TIntermediate;
 }
+
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(EffectBakerException);
 
 class EffectBaker final : public BaseBaker
 {
@@ -65,3 +67,5 @@ private:
 
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

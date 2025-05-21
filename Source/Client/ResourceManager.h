@@ -40,6 +40,8 @@
 #include "ModelSprites.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ResourceManager final
 {
 public:
@@ -82,3 +84,5 @@ private:
     unordered_map<hstring, shared_ptr<ModelSprite>> _critterModels {};
 #endif
 };
+
+FO_END_NAMESPACE();

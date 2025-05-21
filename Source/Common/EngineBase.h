@@ -45,7 +45,9 @@
 #include "TimeEventManager.h"
 #include "Timer.h"
 
-DECLARE_EXCEPTION(DataRegistrationException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(DataRegistrationException);
 
 class EngineData : public NameResolver
 {
@@ -127,3 +129,5 @@ protected:
     BaseEngine(GlobalSettings& settings, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
     ~BaseEngine() override = default;
 };
+
+FO_END_NAMESPACE();

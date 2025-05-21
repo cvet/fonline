@@ -38,6 +38,8 @@
 #include "EngineBase.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 enum class TalkType
 {
     None,
@@ -124,8 +126,8 @@ struct TalkData
     bool Locked {};
 };
 
-DECLARE_EXCEPTION(DialogManagerException);
-DECLARE_EXCEPTION(DialogParseException);
+FO_DECLARE_EXCEPTION(DialogManagerException);
+FO_DECLARE_EXCEPTION(DialogParseException);
 
 class DialogManager final
 {
@@ -155,3 +157,5 @@ private:
     raw_ptr<EngineData> _engine;
     map<hstring, unique_ptr<DialogPack>> _dialogPacks {};
 };
+
+FO_END_NAMESPACE();

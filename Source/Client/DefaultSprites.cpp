@@ -35,15 +35,17 @@
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
 
+FO_BEGIN_NAMESPACE();
+
 AtlasSprite::AtlasSprite(SpriteManager& spr_mngr) :
     Sprite(spr_mngr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 AtlasSprite::~AtlasSprite()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if 0 // For debug purposes
     if constexpr (FO_DEBUG) {
@@ -71,7 +73,7 @@ AtlasSprite::~AtlasSprite()
 
 auto AtlasSprite::IsHitTest(ipos pos) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (!Size.IsValidPos(pos)) {
         return false;
@@ -87,14 +89,14 @@ auto AtlasSprite::IsHitTest(ipos pos) const -> bool
 
 auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return const_cast<AtlasSprite*>(this)->shared_from_this();
 }
 
 auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     dbuf->CheckAllocBuf(4, 6);
 
@@ -148,10 +150,10 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
 SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint dirs) :
     Sprite(spr_mngr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(frames > 0);
-    RUNTIME_ASSERT(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT);
+    FO_RUNTIME_ASSERT(frames > 0);
+    FO_RUNTIME_ASSERT(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT);
 
     Spr.resize(frames);
     SprOffset.resize(frames);
@@ -167,28 +169,28 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
 
 auto SpriteSheet::IsHitTest(ipos pos) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return GetCurSpr()->IsHitTest(pos);
 }
 
 auto SpriteSheet::GetBatchTex() const -> RenderTexture*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return GetCurSpr()->GetBatchTex();
 }
 
 auto SpriteSheet::GetCurSpr() const -> const Sprite*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return const_cast<SpriteSheet*>(this)->GetCurSpr();
 }
 
 auto SpriteSheet::GetCurSpr() -> Sprite*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     auto* dir_sheet = _curDir == 0 || !Dirs[_curDir - 1] ? this : Dirs[_curDir - 1].get();
 
@@ -197,7 +199,7 @@ auto SpriteSheet::GetCurSpr() -> Sprite*
 
 auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, CntFrm, WholeTicks, DirCount);
 
@@ -222,7 +224,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
 auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* dir_sheet = _curDir == 0 || !Dirs[_curDir - 1] ? this : Dirs[_curDir - 1].get();
     const auto* spr = dir_sheet->Spr[_curIndex].get();
@@ -232,7 +234,7 @@ auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
 
 void SpriteSheet::Prewarm()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curIndex = GenericUtils::Random(0u, CntFrm - 1);
 
@@ -241,7 +243,7 @@ void SpriteSheet::Prewarm()
 
 void SpriteSheet::SetTime(float normalized_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curIndex = CntFrm > 1 ? iround(normalized_time * static_cast<float>(CntFrm - 1)) : 0;
 
@@ -250,23 +252,23 @@ void SpriteSheet::SetTime(float normalized_time)
 
 void SpriteSheet::SetDir(uint8 dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curDir = dir;
 }
 
 void SpriteSheet::SetDirAngle(short dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curDir = GeometryHelper::AngleToDir(dir_angle);
 }
 
 void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(anim_name);
+    ignore_unused(anim_name);
 
     if (CntFrm == 1 || WholeTicks == 0) {
         return;
@@ -282,14 +284,14 @@ void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
 
 void SpriteSheet::Stop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _playing = false;
 }
 
 auto SpriteSheet::Update() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_playing) {
         const auto cur_tick = _sprMngr.GetTimer().GetFrameTime();
@@ -319,7 +321,7 @@ auto SpriteSheet::Update() -> bool
                 }
             }
 
-            RUNTIME_ASSERT(index >= 0 && index < frm_count);
+            FO_RUNTIME_ASSERT(index >= 0 && index < frm_count);
             _curIndex = static_cast<uint>(index);
 
             RefreshParams();
@@ -333,7 +335,7 @@ auto SpriteSheet::Update() -> bool
 
 void SpriteSheet::RefreshParams()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* cur_spr = GetCurSpr();
 
@@ -343,28 +345,28 @@ void SpriteSheet::RefreshParams()
 
 auto SpriteSheet::GetSpr(uint num_frm) const -> const Sprite*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
 auto SpriteSheet::GetSpr(uint num_frm) -> Sprite*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
 auto SpriteSheet::GetDir(uint dir) const -> const SpriteSheet*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
 }
 
 auto SpriteSheet::GetDir(uint dir) -> SpriteSheet*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
 }
@@ -372,14 +374,14 @@ auto SpriteSheet::GetDir(uint dir) -> SpriteSheet*
 DefaultSpriteFactory::DefaultSpriteFactory(SpriteManager& spr_mngr) :
     _sprMngr {spr_mngr}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _borderBuf.resize(AppRender::MAX_ATLAS_SIZE);
 }
 
 auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto file = _sprMngr.GetResources().ReadFile(path);
 
@@ -390,12 +392,12 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     auto reader = file.GetReader();
 
     const auto check_number = reader.GetUChar();
-    RUNTIME_ASSERT(check_number == 42);
+    FO_RUNTIME_ASSERT(check_number == 42);
     const auto frames_count = reader.GetLEUShort();
-    RUNTIME_ASSERT(frames_count != 0);
+    FO_RUNTIME_ASSERT(frames_count != 0);
     const auto ticks = reader.GetLEUShort();
     const auto dirs = reader.GetUChar();
-    RUNTIME_ASSERT(dirs != 0);
+    FO_RUNTIME_ASSERT(dirs != 0);
 
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
@@ -448,7 +450,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         }
 
         const auto check_number2 = reader.GetUChar();
-        RUNTIME_ASSERT(check_number2 == 42);
+        FO_RUNTIME_ASSERT(check_number2 == 42);
 
         return anim;
     }
@@ -457,7 +459,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         const auto oy = reader.GetLEShort();
 
         const auto is_spr_ref = reader.GetUChar();
-        RUNTIME_ASSERT(is_spr_ref == 0);
+        FO_RUNTIME_ASSERT(is_spr_ref == 0);
 
         const auto width = reader.GetLEUShort();
         const auto height = reader.GetLEUShort();
@@ -465,8 +467,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         const auto ny = reader.GetLEShort();
         const auto* data = reader.GetCurBuf();
 
-        UNUSED_VARIABLE(nx);
-        UNUSED_VARIABLE(ny);
+        ignore_unused(nx);
+        ignore_unused(ny);
 
         auto spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
 
@@ -480,7 +482,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         reader.GoForward(static_cast<size_t>(width) * height * 4);
 
         const auto check_number2 = reader.GetUChar();
-        RUNTIME_ASSERT(check_number2 == 42);
+        FO_RUNTIME_ASSERT(check_number2 == 42);
 
         return spr;
     }
@@ -488,14 +490,14 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
 void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const ucolor* data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(atlas_spr);
+    FO_RUNTIME_ASSERT(atlas_spr);
 
     const auto size = atlas_spr->Size;
 
-    RUNTIME_ASSERT(size.width > 0);
-    RUNTIME_ASSERT(size.height > 0);
+    FO_RUNTIME_ASSERT(size.width > 0);
+    FO_RUNTIME_ASSERT(size.height > 0);
 
     auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, size);
 
@@ -547,3 +549,5 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
     atlas_spr->AtlasRect.Right = static_cast<float>(pos.x + size.width) / static_cast<float>(atlas->Size.width);
     atlas_spr->AtlasRect.Bottom = static_cast<float>(pos.y + size.height) / static_cast<float>(atlas->Size.height);
 }
+
+FO_END_NAMESPACE();

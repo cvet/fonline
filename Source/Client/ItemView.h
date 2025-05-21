@@ -39,6 +39,8 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ItemView : public ClientEntity, public EntityWithProto, public ItemProperties
 {
 public:
@@ -64,3 +66,5 @@ protected:
 
     vector<refcount_ptr<ItemView>> _innerItems {};
 };
+
+FO_END_NAMESPACE();

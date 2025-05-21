@@ -38,7 +38,9 @@
 #include "AnyData.h"
 #include "Properties.h"
 
-DECLARE_EXCEPTION(PropertySerializationException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(PropertySerializationException);
 
 class PropertiesSerializator final
 {
@@ -52,3 +54,5 @@ public:
     static void LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver);
     static void LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const std::function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver);
 };
+
+FO_END_NAMESPACE();

@@ -38,6 +38,8 @@
 #include "Entity.h"
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 class FOClient;
 
 class ClientEntity : public Entity
@@ -51,7 +53,7 @@ public:
     ~ClientEntity() override = default;
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { NON_CONST_METHOD_HINT_ONELINE() return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { FO_NON_CONST_METHOD_HINT_ONELINE() return _engine.get(); }
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
 
     void SetId(ident_t id, bool register_entity);
@@ -91,3 +93,5 @@ public:
     {
     }
 };
+
+FO_END_NAMESPACE();

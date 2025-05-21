@@ -56,11 +56,13 @@
 #include <android/log.h>
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 #if FO_WINDOWS
 template<typename T>
 static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (auto* hmod = ::GetModuleHandleA(mod); hmod != nullptr) {
         return reinterpret_cast<T>(::GetProcAddress(hmod, name)); // NOLINT(clang-diagnostic-cast-function-type-strict)
@@ -72,7 +74,7 @@ static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 
 void Platform::InfoLog(const string& str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     ::OutputDebugStringW(strex(str).toWideChar().c_str());
@@ -83,7 +85,7 @@ void Platform::InfoLog(const string& str)
 
 void Platform::SetThreadName(const string& str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
@@ -97,7 +99,7 @@ void Platform::SetThreadName(const string& str)
 
 auto Platform::GetExePath() -> optional<string>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     vector<wchar_t> path;
@@ -151,7 +153,7 @@ auto Platform::GetExePath() -> optional<string>
 
 void Platform::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_LINUX || FO_MAC
     const pid_t pid = ::fork();
@@ -175,3 +177,5 @@ void Platform::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
     WriteLog(LogType::Warning, "Can't fork() on this platform");
 #endif
 }
+
+FO_END_NAMESPACE();

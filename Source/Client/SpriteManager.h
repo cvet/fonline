@@ -47,6 +47,8 @@
 #include "TextureAtlas.h"
 #include "VisualParticles.h"
 
+FO_BEGIN_NAMESPACE();
+
 // Font flags
 // Todo: convert FT_ font flags to enum
 static constexpr uint FT_NOBREAK = 0x0001;
@@ -96,16 +98,16 @@ public:
     [[nodiscard]] virtual auto GetViewSize() const -> optional<IRect> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
-    [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(LINE_STR); }
+    [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
 
     virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float normalized_time) { UNUSED_VARIABLE(normalized_time); }
-    virtual void SetDir(uint8 dir) { UNUSED_VARIABLE(dir); }
-    virtual void SetDirAngle(short dir_angle) { UNUSED_VARIABLE(dir_angle); }
+    virtual void SetTime(float normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetDir(uint8 dir) { ignore_unused(dir); }
+    virtual void SetDirAngle(short dir_angle) { ignore_unused(dir_angle); }
     virtual void PlayDefault() { Play({}, true, false); }
-    virtual void Play(hstring anim_name, bool looped, bool reversed) { UNUSED_VARIABLE(anim_name, looped, reversed); }
+    virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
     virtual auto Update() -> bool { return false; }
 
@@ -166,12 +168,12 @@ public:
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager();
 
-    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { NON_CONST_METHOD_HINT_ONELINE() return _hashResolver.ToHashedString(str); }
-    [[nodiscard]] auto GetResources() -> FileSystem& { NON_CONST_METHOD_HINT_ONELINE() return _resources; }
+    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { FO_NON_CONST_METHOD_HINT_ONELINE() return _hashResolver.ToHashedString(str); }
+    [[nodiscard]] auto GetResources() -> FileSystem& { FO_NON_CONST_METHOD_HINT_ONELINE() return _resources; }
     [[nodiscard]] auto GetRtMngr() -> RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetAtlasMngr() -> TextureAtlasManager& { return _atlasMngr; }
     [[nodiscard]] auto GetTimer() const -> GameTimer& { return _gameTimer; }
-    [[nodiscard]] auto GetWindow() -> AppWindow* { NON_CONST_METHOD_HINT_ONELINE() return _window; }
+    [[nodiscard]] auto GetWindow() -> AppWindow* { FO_NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> isize;
     [[nodiscard]] auto GetScreenSize() const -> isize;
     [[nodiscard]] auto IsFullscreen() const -> bool;
@@ -353,3 +355,5 @@ private:
     int _defFontIndex {};
     FontFormatInfo _fontFormatInfoBuf {};
 };
+
+FO_END_NAMESPACE();

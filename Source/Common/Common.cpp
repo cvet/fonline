@@ -56,6 +56,8 @@
 
 #include "WinApiUndef-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 static bool ExceptionMessageBox = false;
 
 const timespan timespan::zero;
@@ -85,12 +87,14 @@ static thread_local StackTraceData StackTrace;
 
 static StackTraceData* CrashStackTrace;
 
+FO_END_NAMESPACE();
 extern void SetCrashStackTrace() noexcept // Called in backward.hpp
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    CrashStackTrace = &StackTrace;
+    FO_NAMESPACE CrashStackTrace = &FO_NAMESPACE StackTrace;
 }
+FO_BEGIN_NAMESPACE();
 
 template<typename T>
 static char* ItoA(T num, char buf[64], int base) noexcept
@@ -142,7 +146,7 @@ static char* ItoA(T num, char buf[64], int base) noexcept
 
 static void SafeWriteStackTrace(const StackTraceData* st) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     WriteLogFatalMessage("Stack trace (most recent call first):\n");
 
@@ -215,13 +219,21 @@ private:
     bool _firstCall = true;
 };
 
-static BackwardOStreamBuffer BackwardOStreamBuf;
-extern std::ostream BackwardOStream;
-std::ostream BackwardOStream = std::ostream(&BackwardOStreamBuf); // Passed to Printer::print in backward.hpp
+static BackwardOStreamBuffer CrashStreamBuf;
+static auto CrashStream = std::ostream(&CrashStreamBuf); // Passed to Printer::print in backward.hpp
+
+FO_END_NAMESPACE();
+extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::print in backward.hpp
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return FO_NAMESPACE CrashStream;
+}
+FO_BEGIN_NAMESPACE();
 
 extern void CreateGlobalData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         CreateGlobalDataCallbacks[i]();
@@ -232,7 +244,7 @@ extern void CreateGlobalData()
 
 extern void DeleteGlobalData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
@@ -241,7 +253,7 @@ extern void DeleteGlobalData()
 
 static auto InsertCatchedMark(const string& st) -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto catched_st = GetStackTrace();
 
@@ -266,7 +278,7 @@ static auto InsertCatchedMark(const string& st) -> string
 
 extern void ReportExceptionAndExit(const std::exception& ex) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
         const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
@@ -300,7 +312,7 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
 
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
         const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
@@ -332,14 +344,14 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
 
 extern void ShowExceptionMessageBox(bool enabled) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ExceptionMessageBox = enabled;
 }
 
 extern void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
         throw StrongAssertationException(message, file, line);
@@ -351,7 +363,7 @@ extern void ReportStrongAssertAndExit(string_view message, const char* file, int
 
 extern void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
         throw VerifyFailedException(message, file, line);
@@ -363,7 +375,7 @@ extern void ReportVerifyFailed(string_view message, const char* file, int line) 
 
 extern void PushStackTrace(const SourceLocationData& loc) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
     auto& st = StackTrace;
@@ -378,7 +390,7 @@ extern void PushStackTrace(const SourceLocationData& loc) noexcept
 
 extern void PopStackTrace() noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
     auto& st = StackTrace;
@@ -391,7 +403,7 @@ extern void PopStackTrace() noexcept
 
 extern auto GetStackTrace() -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
     std::ostringstream ss;
@@ -425,7 +437,7 @@ extern auto GetStackTrace() -> string
 
 extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
     const auto& st = StackTrace;
@@ -445,7 +457,7 @@ extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData
 
 extern auto GetRealStackTrace() -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
@@ -500,7 +512,7 @@ static std::once_flag RunInDebuggerOnce;
 
 extern auto IsRunInDebugger() noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
@@ -537,7 +549,7 @@ extern auto IsRunInDebugger() noexcept -> bool
     });
 
 #else
-    UNUSED_VARIABLE(RunInDebuggerOnce);
+    ignore_unused(RunInDebuggerOnce);
 #endif
 
     return RunInDebugger;
@@ -545,7 +557,7 @@ extern auto IsRunInDebugger() noexcept -> bool
 
 extern auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
@@ -573,7 +585,7 @@ extern auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexce
 
 extern void CreateDumpMessage(string_view appendix, string_view message)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto traceback = GetStackTrace();
     const auto time = nanotime::now().desc(true);
@@ -593,7 +605,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-#if !CPLUSPLUS_20
+#if !FO_CPLUSPLUS_20
 static auto ToLocalTime(std::chrono::time_point<std::chrono::system_clock> now) -> std::chrono::time_point<std::chrono::system_clock>
 {
     const auto t = std::chrono::system_clock::to_time_t(now);
@@ -616,7 +628,7 @@ static auto ToLocalTime(std::chrono::time_point<std::chrono::system_clock> now) 
 
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     time_desc_t result;
 
@@ -659,7 +671,7 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 
 auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, bool local) -> timespan
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto ymd = date::year_month_day {date::year {year}, date::month {numeric_cast<uint>(month)}, date::day {numeric_cast<uint>(day)}};
 
@@ -681,12 +693,12 @@ FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
     _sleep {sleep},
     _fixedFps {fixed_fps}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void FrameBalancer::StartLoop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_enabled) {
         return;
@@ -697,7 +709,7 @@ void FrameBalancer::StartLoop()
 
 void FrameBalancer::EndLoop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_enabled) {
         return;
@@ -738,7 +750,7 @@ void FrameBalancer::EndLoop()
 
 WorkThread::WorkThread(string_view name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = name;
     _thread = std::thread(&WorkThread::ThreadEntry, this);
@@ -746,7 +758,7 @@ WorkThread::WorkThread(string_view name)
 
 WorkThread::~WorkThread()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     {
         std::unique_lock locker(_dataLocker);
@@ -763,13 +775,13 @@ WorkThread::~WorkThread()
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
 auto WorkThread::GetJobsCount() const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::unique_lock locker(_dataLocker);
 
@@ -778,7 +790,7 @@ auto WorkThread::GetJobsCount() const -> size_t
 
 void WorkThread::SetExceptionHandler(ExceptionHandler handler)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::unique_lock locker(_dataLocker);
 
@@ -787,21 +799,21 @@ void WorkThread::SetExceptionHandler(ExceptionHandler handler)
 
 void WorkThread::AddJob(Job job)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
 }
 
 void WorkThread::AddJob(timespan delay, Job job)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     AddJobInternal(delay, std::move(job), false);
 }
 
 void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     {
         std::unique_lock locker(_dataLocker);
@@ -828,7 +840,7 @@ void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
 
 void WorkThread::Clear()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::unique_lock locker(_dataLocker);
 
@@ -845,7 +857,7 @@ void WorkThread::Clear()
 
 void WorkThread::Wait() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::unique_lock locker(_dataLocker);
 
@@ -856,7 +868,7 @@ void WorkThread::Wait() const
 
 void WorkThread::ThreadEntry() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         SetThisThreadName(_name);
@@ -943,7 +955,7 @@ void WorkThread::ThreadEntry() noexcept
                     }
                 }
                 catch (...) {
-                    UNKNOWN_EXCEPTION();
+                    FO_UNKNOWN_EXCEPTION();
                 }
             }
         }
@@ -952,7 +964,7 @@ void WorkThread::ThreadEntry() noexcept
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -960,7 +972,7 @@ static thread_local string ThreadName;
 
 extern void SetThisThreadName(const string& name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ThreadName = name;
 
@@ -973,7 +985,7 @@ extern void SetThisThreadName(const string& name)
 
 extern auto GetThisThreadName() -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ThreadName.empty()) {
         static size_t thread_counter = 0;
@@ -987,37 +999,24 @@ extern auto GetThisThreadName() -> const string&
 
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
-void* SDL_LoadObject(const char* sofile)
-{
-    STACK_TRACE_ENTRY();
 
-    UNREACHABLE_PLACE();
-}
-
-void* SDL_LoadFunction(void* handle, const char* name)
-{
-    STACK_TRACE_ENTRY();
-
-    UNREACHABLE_PLACE();
-}
-
-void SDL_UnloadObject(void* handle)
-{
-    STACK_TRACE_ENTRY();
-
-    UNREACHABLE_PLACE();
-}
+FO_END_NAMESPACE();
 
 void emscripten_sleep(unsigned int ms)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
+
+FO_BEGIN_NAMESPACE();
+
 #endif
 
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
+
+FO_END_NAMESPACE();
 
 #if FO_TRACY
 #include "client/tracy_rpmalloc.hpp"
@@ -1035,6 +1034,8 @@ void emscripten_sleep(unsigned int ms)
 
 extern void CRTDECL operator delete(void* p) noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1045,6 +1046,8 @@ extern void CRTDECL operator delete(void* p) noexcept
 
 extern void CRTDECL operator delete[](void* p) noexcept
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1055,6 +1058,8 @@ extern void CRTDECL operator delete[](void* p) noexcept
 
 extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpmalloc(size);
@@ -1070,6 +1075,8 @@ extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 
 extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpmalloc(size);
@@ -1083,9 +1090,10 @@ extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
     return p;
 }
 
-extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
-    UNUSED_VARIABLE(tag);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpmalloc(size);
@@ -1096,9 +1104,10 @@ extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) n
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
-    UNUSED_VARIABLE(tag);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpmalloc(size);
@@ -1109,9 +1118,10 @@ extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag)
     return p;
 }
 
-extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
+extern void CRTDECL operator delete(void* p, std::size_t /*size*/) noexcept
 {
-    UNUSED_VARIABLE(size);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1120,9 +1130,10 @@ extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
+extern void CRTDECL operator delete[](void* p, std::size_t /*size*/) noexcept
 {
-    UNUSED_VARIABLE(size);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1131,9 +1142,10 @@ extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
+extern void CRTDECL operator delete(void* p, std::align_val_t /*align*/) noexcept
 {
-    UNUSED_VARIABLE(align);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1142,9 +1154,10 @@ extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
+extern void CRTDECL operator delete[](void* p, std::align_val_t /*align*/) noexcept
 {
-    UNUSED_VARIABLE(align);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1153,10 +1166,10 @@ extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
 #endif
 }
 
-extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
+extern void CRTDECL operator delete(void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
 {
-    UNUSED_VARIABLE(size);
-    UNUSED_VARIABLE(align);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1165,10 +1178,10 @@ extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t 
 #endif
 }
 
-extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
+extern void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_val_t /*align*/) noexcept
 {
-    UNUSED_VARIABLE(size);
-    UNUSED_VARIABLE(align);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     TracyFree(p);
     tracy::rpfree(p);
@@ -1179,6 +1192,8 @@ extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_
 
 extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -1194,6 +1209,8 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noex
 
 extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -1207,9 +1224,10 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) no
     return p;
 }
 
-extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
-    UNUSED_VARIABLE(tag);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -1220,9 +1238,10 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, cons
     return p;
 }
 
-extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
-    UNUSED_VARIABLE(tag);
+    FO_NO_STACK_TRACE_ENTRY();
+
 #if FO_TRACY
     tracy::InitRpmalloc();
     auto* p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -1234,12 +1253,13 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 }
 
 #undef CRTDECL
+FO_BEGIN_NAMESPACE();
 
 #endif
 
 extern auto MemMalloc(size_t size) noexcept -> void*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
@@ -1255,7 +1275,7 @@ extern auto MemMalloc(size_t size) noexcept -> void*
 
 extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
@@ -1271,7 +1291,7 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
 
 extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
@@ -1288,7 +1308,7 @@ extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*
 
 extern void MemFree(void* ptr) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     TracyFree(ptr);
@@ -1302,7 +1322,7 @@ extern void MemFree(void* ptr) noexcept
 
 extern void MemCopy(void* dest, const void* src, size_t size) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
     // So check size first
@@ -1313,7 +1333,7 @@ extern void MemCopy(void* dest, const void* src, size_t size) noexcept
 
 extern void MemFill(void* ptr, int value, size_t size) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (size != 0) {
         std::memset(ptr, value, size);
@@ -1322,7 +1342,7 @@ extern void MemFill(void* ptr, int value, size_t size) noexcept
 
 extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (size != 0) {
         return std::memcmp(ptr1, ptr2, size) == 0;
@@ -1338,7 +1358,7 @@ static std::atomic_size_t BackupMemoryChunksCount;
 
 extern void InitBackupMemoryChunks()
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     BackupMemoryChunks = std::make_unique<unique_ptr<uint8[]>[]>(BACKUP_MEMORY_CHUNKS);
 
@@ -1351,7 +1371,7 @@ extern void InitBackupMemoryChunks()
 
 extern auto FreeBackupMemoryChunk() noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     while (true) {
         size_t cur_size = BackupMemoryChunksCount.load();
@@ -1369,7 +1389,7 @@ extern auto FreeBackupMemoryChunk() noexcept -> bool
 
 extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     char itoa_buf[64] = {};
 
@@ -1394,8 +1414,10 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
 
 extern void ReportAndExit(string_view message) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     WriteLogFatalMessage(message);
     ExitApp(false);
 }
+
+FO_END_NAMESPACE();

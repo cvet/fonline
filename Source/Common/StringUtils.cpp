@@ -36,11 +36,13 @@
 #include "UcsTables-Include.h"
 #include "WinApi-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 // ReSharper disable CppInconsistentNaming
 
 strex::operator string&&()
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -51,7 +53,7 @@ strex::operator string&&()
 
 auto strex::str() -> string&&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -62,7 +64,7 @@ auto strex::str() -> string&&
 
 auto strex::c_str() -> const char*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -71,7 +73,7 @@ auto strex::c_str() -> const char*
 
 void strex::ownStorage()
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.data() < _s.data() || _sv.data() >= _s.data() + _s.size()) {
         _s = _sv;
@@ -91,21 +93,21 @@ void strex::ownStorage()
 
 auto strex::length() const noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _sv.length();
 }
 
 auto strex::empty() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _sv.empty();
 }
 
 auto strex::compareIgnoreCase(string_view other) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.length() != other.length()) {
         return false;
@@ -122,7 +124,7 @@ auto strex::compareIgnoreCase(string_view other) const noexcept -> bool
 
 auto strex::compareIgnoreCaseUtf8(string_view other) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.length() != other.length()) {
         return false;
@@ -133,35 +135,35 @@ auto strex::compareIgnoreCaseUtf8(string_view other) const -> bool
 
 auto strex::startsWith(char r) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return !_sv.empty() && _sv.front() == r;
 }
 
 auto strex::startsWith(string_view r) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= r.length() && _sv.compare(0, r.length(), r) == 0;
 }
 
 auto strex::endsWith(char r) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return !_sv.empty() && _sv.back() == r;
 }
 
 auto strex::endsWith(string_view r) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _sv.length() >= r.length() && _sv.compare(_sv.length() - r.length(), r.length(), r) == 0;
 }
 
 auto strex::isValidUtf8() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.empty()) {
         return true;
@@ -183,7 +185,7 @@ auto strex::isValidUtf8() const noexcept -> bool
 
 auto strex::lengthUtf8() const noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     size_t length = 0;
 
@@ -196,7 +198,7 @@ auto strex::lengthUtf8() const noexcept -> size_t
 
 auto strex::substringUntil(char separator) noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto pos = _sv.find(separator);
 
@@ -209,7 +211,7 @@ auto strex::substringUntil(char separator) noexcept -> strex&
 
 auto strex::substringUntil(string_view separator) noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto pos = _sv.find(separator);
 
@@ -222,7 +224,7 @@ auto strex::substringUntil(string_view separator) noexcept -> strex&
 
 auto strex::substringAfter(char separator) noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto pos = _sv.find(separator);
 
@@ -238,7 +240,7 @@ auto strex::substringAfter(char separator) noexcept -> strex&
 
 auto strex::substringAfter(string_view separator) noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto pos = _sv.find(separator);
 
@@ -254,7 +256,7 @@ auto strex::substringAfter(string_view separator) noexcept -> strex&
 
 auto strex::trim() noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     // Left trim
     const auto l = _sv.find_first_not_of(" \n\r\t");
@@ -280,7 +282,7 @@ auto strex::trim() noexcept -> strex&
 
 auto strex::erase(char what) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -293,7 +295,7 @@ auto strex::erase(char what) -> strex&
 
 auto strex::erase(char begin, char end) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -320,7 +322,7 @@ auto strex::erase(char begin, char end) -> strex&
 
 auto strex::replace(char from, char to) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -331,7 +333,7 @@ auto strex::replace(char from, char to) -> strex&
 
 auto strex::replace(char from1, char from2, char to) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const char from_buf[3] = {from1, from2, 0};
     const char to_buf[2] = {to, 0};
@@ -343,7 +345,7 @@ auto strex::replace(char from1, char from2, char to) -> strex&
 
 auto strex::replace(string_view from, string_view to) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -361,7 +363,7 @@ auto strex::replace(string_view from, string_view to) -> strex&
 
 auto strex::lower() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -372,7 +374,7 @@ auto strex::lower() -> strex&
 
 auto strex::upper() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -383,7 +385,7 @@ auto strex::upper() -> strex&
 
 auto strex::lowerUtf8() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -408,7 +410,7 @@ auto strex::lowerUtf8() -> strex&
 
 auto strex::upperUtf8() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -433,7 +435,7 @@ auto strex::upperUtf8() -> strex&
 
 auto strex::split(char delimiter) const -> vector<string>
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     vector<string> result;
 
@@ -462,7 +464,7 @@ auto strex::split(char delimiter) const -> vector<string>
 
 auto strex::splitToInt(char delimiter) const -> vector<int>
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     vector<int> result;
 
@@ -498,7 +500,7 @@ auto strex::splitToInt(char delimiter) const -> vector<int>
 template<typename T>
 static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const size_t len = sv.length();
 
@@ -670,7 +672,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 
 auto strex::isNumber() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.empty()) {
         return false;
@@ -678,14 +680,14 @@ auto strex::isNumber() const noexcept -> bool
 
     double value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
-    UNUSED_VARIABLE(value);
+    ignore_unused(value);
 
     return success;
 }
 
 auto strex::isExplicitBool() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
@@ -699,7 +701,7 @@ auto strex::isExplicitBool() const noexcept -> bool
 
 auto strex::toInt() const noexcept -> int
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
@@ -709,7 +711,7 @@ auto strex::toInt() const noexcept -> int
 
 auto strex::toUInt() const noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
@@ -719,7 +721,7 @@ auto strex::toUInt() const noexcept -> uint
 
 auto strex::toInt64() const noexcept -> int64
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
@@ -729,7 +731,7 @@ auto strex::toInt64() const noexcept -> int64
 
 auto strex::toFloat() const noexcept -> float
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     double value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
@@ -739,7 +741,7 @@ auto strex::toFloat() const noexcept -> float
 
 auto strex::toDouble() const noexcept -> double
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     double value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
@@ -749,7 +751,7 @@ auto strex::toDouble() const noexcept -> double
 
 auto strex::toBool() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (strex(_sv).trim().compareIgnoreCase("true")) {
         return true;
@@ -763,7 +765,7 @@ auto strex::toBool() const noexcept -> bool
 
 auto strex::formatPath() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     trim();
     normalizePathSlashes();
@@ -824,7 +826,7 @@ auto strex::formatPath() -> strex&
 
 auto strex::extractDir() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     formatPath();
 
@@ -842,7 +844,7 @@ auto strex::extractDir() -> strex&
 
 auto strex::extractFileName() noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto pos = _sv.find_last_of("/\\");
 
@@ -855,7 +857,7 @@ auto strex::extractFileName() noexcept -> strex&
 
 auto strex::getFileExtension() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto dot = _sv.find_last_of('.');
     lower();
@@ -869,7 +871,7 @@ auto strex::getFileExtension() -> strex&
 
 auto strex::eraseFileExtension() noexcept -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto dot = _sv.find_last_of('.');
 
@@ -882,7 +884,7 @@ auto strex::eraseFileExtension() noexcept -> strex&
 
 auto strex::changeFileName(string_view new_name) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -903,7 +905,7 @@ auto strex::changeFileName(string_view new_name) -> strex&
 
 auto strex::combinePath(string_view path) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (!path.empty()) {
         ownStorage();
@@ -924,7 +926,7 @@ auto strex::combinePath(string_view path) -> strex&
 
 auto strex::normalizePathSlashes() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -935,7 +937,7 @@ auto strex::normalizePathSlashes() -> strex&
 
 auto strex::normalizeLineEndings() -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     replace('\r', '\n', '\n');
     replace('\r', '\n');
@@ -946,7 +948,7 @@ auto strex::normalizeLineEndings() -> strex&
 #if FO_WINDOWS
 auto strex::parseWideChar(const wchar_t* str) -> strex&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
@@ -968,7 +970,7 @@ auto strex::parseWideChar(const wchar_t* str) -> strex&
 
 auto strex::toWideChar() const -> std::wstring
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (_sv.empty()) {
         return L"";
@@ -992,14 +994,14 @@ static constexpr uint UNICODE_BAD_CHAR = 0xFFFD;
 
 auto utf8::IsValid(uint ucs) noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
 }
 
 auto utf8::DecodeStrNtLen(const char* str) noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     size_t length = 0;
 
@@ -1024,14 +1026,14 @@ auto utf8::DecodeStrNtLen(const char* str) noexcept -> size_t
 
 auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (length == 0) {
         return UNICODE_BAD_CHAR;
     }
 
     const auto make_result = [&length](uint ch, size_t ch_lenght) -> uint {
-        STRONG_ASSERT(ch_lenght <= length);
+        FO_STRONG_ASSERT(ch_lenght <= length);
         length = ch_lenght;
         return ch;
     };
@@ -1128,7 +1130,7 @@ auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
 
 auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (ucs < 0x000080u) {
         buf[0] = static_cast<char>(ucs);
@@ -1166,7 +1168,7 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
 
 auto utf8::Lower(uint ucs) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     uint ret;
 
@@ -1265,7 +1267,7 @@ struct Utf8Data
 {
     Utf8Data()
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         UpperTable.resize(0x10000);
 
@@ -1284,11 +1286,11 @@ struct Utf8Data
 
     vector<uint16> UpperTable {};
 };
-GLOBAL_DATA(Utf8Data, Data);
+FO_GLOBAL_DATA(Utf8Data, Data);
 
 auto utf8::Upper(uint ucs) noexcept -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (ucs >= 0x10000) {
         return ucs;
@@ -1296,3 +1298,5 @@ auto utf8::Upper(uint ucs) noexcept -> uint
 
     return Data->UpperTable[ucs];
 }
+
+FO_END_NAMESPACE();

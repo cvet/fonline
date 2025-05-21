@@ -33,6 +33,8 @@
 
 #include "NetworkServer.h"
 
+FO_BEGIN_NAMESPACE();
+
 class NetworkServerConnection_Interthread : public NetworkServerConnection
 {
 public:
@@ -71,7 +73,7 @@ private:
 
 auto NetworkServer::StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
 }
@@ -80,12 +82,12 @@ NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ServerN
     NetworkServerConnection(settings),
     _send {std::move(send)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!buf.empty()) {
         ReceiveCallback(buf);
@@ -98,7 +100,7 @@ void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
 
 void NetworkServerConnection_Interthread::DispatchImpl()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto buf = SendCallback();
 
@@ -109,7 +111,7 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
 void NetworkServerConnection_Interthread::DisconnectImpl()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_send) {
         _send({});
@@ -120,7 +122,7 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _virtualPort {static_cast<uint16>(settings.ServerPort)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (InterthreadListeners.count(_virtualPort) != 0) {
         throw NetworkServerException("Port is busy", _virtualPort);
@@ -135,8 +137,10 @@ InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnect
 
 void InterthreadServer::Shutdown()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
+    FO_RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
     InterthreadListeners.erase(_virtualPort);
 }
+
+FO_END_NAMESPACE();

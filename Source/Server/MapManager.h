@@ -41,7 +41,9 @@
 #include "Location.h"
 #include "Map.h"
 
-DECLARE_EXCEPTION(MapManagerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(MapManagerException);
 
 class FOServer;
 class ProtoManager;
@@ -122,14 +124,14 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> NON_NULL const StaticMap*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> FO_NON_NULL const StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, const Properties* props) -> NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, const Properties* props) -> FO_NON_NULL Location*;
     void DestroyLocation(Location* loc);
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
@@ -143,10 +145,10 @@ public:
     void ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir);
 
 private:
-    [[nodiscard]] FORCE_INLINE auto GridAt(mpos pos) -> int16&;
+    [[nodiscard]] FO_FORCE_INLINE auto GridAt(mpos pos) -> int16&;
     [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
-    auto CreateMap(hstring proto_id, Location* loc) -> NON_NULL Map*;
+    auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
     void Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
@@ -158,3 +160,5 @@ private:
     mpos _mapGridOffset {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

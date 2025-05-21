@@ -37,19 +37,21 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto Location::GetMapByIndex(uint index) noexcept -> Map*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (index >= _locMaps.size()) {
         return nullptr;
@@ -60,9 +62,9 @@ auto Location::GetMapByIndex(uint index) noexcept -> Map*
 
 auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
@@ -75,7 +77,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
 
 auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     size_t index = 0;
 
@@ -92,11 +94,13 @@ auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
 
 void Location::AddMap(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(map);
 
     _locMaps.emplace_back(map);
     map->SetLocId(GetId());
     map->SetLocMapIndex(static_cast<uint>(_locMaps.size()));
 }
+
+FO_END_NAMESPACE();

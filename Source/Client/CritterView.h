@@ -39,6 +39,8 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ItemView;
 
 class CritterView : public ClientEntity, public EntityWithProto, public CritterProperties
@@ -77,3 +79,5 @@ protected:
 
     vector<refcount_ptr<ItemView>> _invItems {};
 };
+
+FO_END_NAMESPACE();

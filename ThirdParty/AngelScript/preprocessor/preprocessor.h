@@ -36,8 +36,7 @@
  * http://github.com/rotators/angelscript-preprocessor/
  */
 
-#ifndef PREPROCESSOR_H
-#define PREPROCESSOR_H
+#pragma once
 
 #include <stdio.h>
 #include <string>
@@ -160,5 +159,3 @@ public:
         virtual void CallPragma( const PragmaInstance& pragma ) = 0;
     };
 };
-
-#endif // PREPROCESSOR_H

@@ -33,18 +33,20 @@
 
 #include "ImGuiStuff.h"
 
+FO_USING_NAMESPACE();
+
 void ImGuiRaiseAssert(const char* message)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     throw ImGuiAssertationException(message);
 }
 
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(user_data);
+    ignore_unused(user_data);
 
     constexpr SafeAllocator<uint8> allocator;
     return allocator.allocate(sz);
@@ -52,9 +54,9 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
 static void ImGuiFree(void* ptr, void* user_data)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(user_data);
+    ignore_unused(user_data);
 
     constexpr SafeAllocator<uint8> allocator;
     allocator.deallocate(static_cast<uint8*>(ptr), 0);
@@ -62,7 +64,7 @@ static void ImGuiFree(void* ptr, void* user_data)
 
 void ImGuiExt::Init()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     IMGUI_CHECKVERSION();
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);

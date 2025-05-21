@@ -44,6 +44,8 @@
 #include "SDL3/SDL_main.h"
 #endif
 
+FO_USING_NAMESPACE();
+
 struct ServerAppData
 {
     refcount_ptr<FOServer> Server {};
@@ -51,7 +53,7 @@ struct ServerAppData
     bool AutoStartTriggered {};
     bool HideControls {};
 };
-GLOBAL_DATA(ServerAppData, Data);
+FO_GLOBAL_DATA(ServerAppData, Data);
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
@@ -59,7 +61,7 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv);
@@ -140,7 +142,7 @@ int main(int argc, char** argv) // Handled by SDL
                             ReportExceptionAndContinue(ex);
                         }
                         catch (...) {
-                            UNKNOWN_EXCEPTION();
+                            FO_UNKNOWN_EXCEPTION();
                         }
                     }
 
@@ -190,7 +192,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ReportExceptionAndContinue(ex);
                     }
                     catch (...) {
-                        UNKNOWN_EXCEPTION();
+                        FO_UNKNOWN_EXCEPTION();
                     }
                 }
             }
@@ -253,7 +255,7 @@ int main(int argc, char** argv) // Handled by SDL
                     ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
-                    UNKNOWN_EXCEPTION();
+                    FO_UNKNOWN_EXCEPTION();
                 }
             }
 
@@ -277,6 +279,6 @@ int main(int argc, char** argv) // Handled by SDL
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

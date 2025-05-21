@@ -35,17 +35,21 @@
 #include "Client.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void LocationView::OnDestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
+
+FO_END_NAMESPACE();
