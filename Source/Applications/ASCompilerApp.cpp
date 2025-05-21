@@ -40,7 +40,15 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 
+FO_USING_NAMESPACE();
+
+FO_BEGIN_NAMESPACE();
+extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
+extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
+extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
+
 unordered_set<string> CompilerPassedMessages;
+FO_END_NAMESPACE();
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -48,12 +56,12 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv, AppInitFlags::DisableLogTags);
 
-        RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
+        FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 
         bool something_failed = false;
 
@@ -83,15 +91,14 @@ int main(int argc, char** argv)
             const auto write_file = [&](const_span<uint8> data, string_view ext) {
                 const string path = strex("{}/{}.{}", res_pack.Name, res_pack.Name, ext);
                 auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combinePath(path), true);
-                RUNTIME_ASSERT(file);
+                FO_RUNTIME_ASSERT(file);
                 const auto write_ok = file.Write(data);
-                RUNTIME_ASSERT(write_ok);
+                FO_RUNTIME_ASSERT(write_ok);
             };
 
             WriteLog("Compile server scripts");
 
             try {
-                extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
                 auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
                 write_file(data, "fosb-server");
             }
@@ -106,7 +113,6 @@ int main(int argc, char** argv)
             WriteLog("Compile client scripts");
 
             try {
-                extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
                 auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
                 write_file(data, "fosb-client");
             }
@@ -121,7 +127,6 @@ int main(int argc, char** argv)
             WriteLog("Compile mapper scripts");
 
             try {
-                extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
                 auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
                 write_file(data, "fosb-mapper");
             }
@@ -148,6 +153,6 @@ int main(int argc, char** argv)
         ReportExceptionAndExit(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }

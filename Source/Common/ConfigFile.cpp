@@ -34,12 +34,17 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
+extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
+extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
+
 ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* hash_resolver, ConfigFileOption options) :
     _fileNameHint {fname_hint},
     _hashResolver {hash_resolver},
     _options {options}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     map<string, string>* cur_section;
     string section_name_hint;
@@ -108,7 +113,6 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
             section_name_hint = section_name;
             map<string, string> section_kv;
 
-            extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
             ConfigSectionParseHook(_fileNameHint, section_name, section_kv);
 
             if (section_name.empty()) {
@@ -181,8 +185,6 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                 const auto separator = line.find('=');
 
                 if (separator != string::npos && separator > 0) {
-                    extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
-
                     if (line[separator - 1] == '+') {
                         string key = strex(line.substr(0, separator - 1)).trim();
                         string value = strex(line.substr(separator + 1)).trim();
@@ -217,7 +219,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
     }
 
     if (!IsEnumSet(_options, ConfigFileOption::ReadFirstSection)) {
-        RUNTIME_ASSERT(istr.eof());
+        FO_RUNTIME_ASSERT(istr.eof());
     }
 
     // Store current section content
@@ -228,7 +230,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it_section = _sectionKeyValues.find(section_name);
 
@@ -247,7 +249,7 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* str = GetRawValue(section_name, key_name);
 
@@ -256,7 +258,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const 
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* str = GetRawValue(section_name, key_name);
 
@@ -265,7 +267,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* str = GetRawValue(section_name, key_name);
 
@@ -281,7 +283,7 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* str = GetRawValue(section_name, key_name);
 
@@ -297,17 +299,17 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int de
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _sectionKeyValues.find(section_name);
-    RUNTIME_ASSERT(it != _sectionKeyValues.end());
+    FO_RUNTIME_ASSERT(it != _sectionKeyValues.end());
 
     return it->second;
 }
 
 auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, string>*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto count = _sectionKeyValues.count(section_name);
     auto it = _sectionKeyValues.find(section_name);
@@ -324,14 +326,14 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
 
 auto ConfigFile::GetSections() noexcept -> multimap<string, map<string, string>>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _sectionKeyValues;
 }
 
 auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it_section = _sectionKeyValues.find(section_name);
 
@@ -340,7 +342,7 @@ auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
 
 auto ConfigFile::HasKey(string_view section_name, string_view key_name) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it_section = _sectionKeyValues.find(section_name);
 
@@ -359,7 +361,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
 
 auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const map<string, string>*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it_section = _sectionKeyValues.find(section_name);
 
@@ -372,9 +374,9 @@ auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const
 
 auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(IsEnumSet(_options, ConfigFileOption::CollectContent));
+    FO_RUNTIME_ASSERT(IsEnumSet(_options, ConfigFileOption::CollectContent));
 
     const auto it_section = _sectionKeyValues.find(section_name);
 
@@ -390,3 +392,5 @@ auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
 
     return it_key->second;
 }
+
+FO_END_NAMESPACE();

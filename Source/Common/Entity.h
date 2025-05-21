@@ -38,6 +38,8 @@
 #include "Properties.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView HasTimeEvents
 ///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents
@@ -45,7 +47,7 @@
 ///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
 ///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
 
-#define ENTITY_PROPERTY(access_type, prop_type, prop) \
+#define FO_ENTITY_PROPERTY(access_type, prop_type, prop) \
     static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
     inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
@@ -65,7 +67,7 @@
     } \
     static uint16 prop##_RegIndex
 
-#define ENTITY_EVENT(event_name, ...) \
+#define FO_ENTITY_EVENT(event_name, ...) \
     EntityEvent<__VA_ARGS__> event_name \
     { \
         this, #event_name \
@@ -192,9 +194,9 @@ struct mpos
 };
 static_assert(std::is_standard_layout_v<mpos>);
 static_assert(sizeof(mpos) == 4);
-DECLARE_TYPE_FORMATTER(mpos, "{} {}", value.x, value.y);
-DECLARE_TYPE_PARSER(mpos, sstr >> value.x, sstr >> value.y);
-DECLARE_TYPE_HASHER(mpos);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
 ///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
 struct msize
@@ -217,19 +219,19 @@ struct msize
     template<typename T>
     [[nodiscard]] constexpr auto ClampPos(T pos) const -> mpos
     {
-        RUNTIME_ASSERT(width > 0);
-        RUNTIME_ASSERT(height > 0);
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
         return {static_cast<uint16>(std::clamp(static_cast<int>(pos.x), 0, width - 1)), static_cast<uint16>(std::clamp(static_cast<int>(pos.y), 0, height - 1))};
     }
     template<typename T>
     [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
     {
-        RUNTIME_ASSERT(width > 0);
-        RUNTIME_ASSERT(height > 0);
-        RUNTIME_ASSERT(pos.x >= 0);
-        RUNTIME_ASSERT(pos.y >= 0);
-        RUNTIME_ASSERT(pos.x < width);
-        RUNTIME_ASSERT(pos.y < height);
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
+        FO_RUNTIME_ASSERT(pos.x >= 0);
+        FO_RUNTIME_ASSERT(pos.y >= 0);
+        FO_RUNTIME_ASSERT(pos.x < width);
+        FO_RUNTIME_ASSERT(pos.y < height);
         return {static_cast<uint16>(pos.x), static_cast<uint16>(pos.y)};
     }
 
@@ -238,9 +240,9 @@ struct msize
 };
 static_assert(std::is_standard_layout_v<msize>);
 static_assert(sizeof(msize) == 4);
-DECLARE_TYPE_FORMATTER(msize, "{} {}", value.width, value.height);
-DECLARE_TYPE_PARSER(msize, sstr >> value.width, sstr >> value.height);
-DECLARE_TYPE_HASHER(msize);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, sstr >> value.width, sstr >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 
 class AnimationResolver
 {
@@ -255,17 +257,17 @@ class EntityProperties
 {
 public:
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
+    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
+    FO_ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
+    FO_ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<synctime>, TE_FireTime);
+    FO_ENTITY_PROPERTY(PrivateServer, vector<synctime>, TE_FireTime);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<timespan>, TE_RepeatDuration);
+    FO_ENTITY_PROPERTY(PrivateServer, vector<timespan>, TE_RepeatDuration);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
+    FO_ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -273,7 +275,7 @@ protected:
     Properties& _propsRef;
 };
 
-enum class EntityHolderEntryAccess
+enum class EntityHolderEntryAccess : uint8
 {
     Private,
     Protected,
@@ -296,7 +298,7 @@ public:
     using EventCallback = std::function<bool(const initializer_list<void*>&)>;
 
     ///@ ExportEnum
-    enum class EventExceptionPolicy
+    enum class EventExceptionPolicy : uint8
     {
         IgnoreAndContinueChain,
         StopChainAndReturnTrue,
@@ -304,7 +306,7 @@ public:
     };
 
     ///@ ExportEnum
-    enum class EventPriority
+    enum class EventPriority : uint
     {
         Lowest = 0,
         Low = 1000000,
@@ -416,7 +418,7 @@ protected:
 
     [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const noexcept -> bool
     {
-        STRONG_ASSERT(_callbacks);
+        FO_STRONG_ASSERT(_callbacks);
 
         return _entity->FireEvent(*_callbacks, args_list);
     }
@@ -445,3 +447,5 @@ public:
         return FireEx(args_list);
     }
 };
+
+FO_END_NAMESPACE();

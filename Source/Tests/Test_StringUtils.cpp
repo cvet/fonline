@@ -35,6 +35,8 @@
 
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 TEST_CASE("StringUtils")
 {
     SECTION("Storage")
@@ -289,3 +291,5 @@ TEST_CASE("StringUtils")
     }
 #endif
 }
+
+FO_END_NAMESPACE();

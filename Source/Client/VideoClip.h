@@ -35,7 +35,9 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(VideoClipException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(VideoClipException);
 
 class VideoClip
 {
@@ -68,3 +70,5 @@ private:
 
     unique_ptr<Impl> _impl;
 };
+
+FO_END_NAMESPACE();

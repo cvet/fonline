@@ -37,9 +37,11 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->FindProperty(str);
     const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->FindProperty(str);
@@ -100,12 +102,12 @@ static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_
 DialogManager::DialogManager(EngineData& engine) :
     _engine {&engine}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void DialogManager::LoadFromResources(const FileSystem& resources)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int errors = 0;
     auto files = resources.FilterFiles("fodlg");
@@ -129,7 +131,7 @@ void DialogManager::LoadFromResources(const FileSystem& resources)
 
 void DialogManager::AddDialog(unique_ptr<DialogPack> pack)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_dialogPacks.count(pack->PackId) != 0) {
         throw DialogManagerException("Dialog already added", pack->PackName);
@@ -140,7 +142,7 @@ void DialogManager::AddDialog(unique_ptr<DialogPack> pack)
 
 auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _dialogPacks.find(pack_id);
     return it != _dialogPacks.end() ? it->second.get() : nullptr;
@@ -148,7 +150,7 @@ auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
 
 auto DialogManager::GetDialogs() -> vector<DialogPack*>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<DialogPack*> result;
 
@@ -161,7 +163,7 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -> unique_ptr<DialogPack>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto pack = SafeAlloc::MakeUnique<DialogPack>();
     auto fodlg = ConfigFile(strex("{}.fodlg", pack_name), string(data), &_engine->Hashes, ConfigFileOption::CollectContent);
@@ -354,7 +356,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const -> DialogAnswerReq
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     uint8 who = DR_WHO_PLAYER;
     uint8 oper = '=';
@@ -510,7 +512,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const
 
 auto DialogManager::GetDrType(string_view str) const -> uint8
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (str == "Property" || str == "_param") {
         return DR_PROP_CRITTER;
@@ -532,7 +534,7 @@ auto DialogManager::GetDrType(string_view str) const -> uint8
 
 auto DialogManager::GetWho(uint8 who) const -> uint8
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (who == 'P' || who == 'p') {
         return DR_WHO_PLAYER;
@@ -545,7 +547,9 @@ auto DialogManager::GetWho(uint8 who) const -> uint8
 
 auto DialogManager::CheckOper(uint8 oper) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '!' || oper == '}' || oper == '{';
 }
+
+FO_END_NAMESPACE();

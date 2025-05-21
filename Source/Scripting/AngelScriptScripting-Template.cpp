@@ -91,6 +91,8 @@
 // Reset garbage from WinApi
 #include "WinApiUndef-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 static constexpr size_t SCRIPT_BACKEND_INDEX = 1;
 
 #if SERVER_SCRIPTING
@@ -142,33 +144,28 @@ class CustomEntityWithProtoView;
 #define ENTITY_VERIFY(e)
 #define ENTITY_VERIFY_RETURN(e, ret)
 
-#define COMPILER_ENGINE_CLASS CONCAT(FOCompilerEngine_, SCRIPT_BACKEND_CLASS)
+#define COMPILER_ENGINE_CLASS FO_CONCAT(FOCompilerEngine_, SCRIPT_BACKEND_CLASS)
+
+extern void AngelScript_ServerCompiler_RegisterData(EngineData*);
+extern void AngelScript_ClientCompiler_RegisterData(EngineData*);
+extern void AngelScript_MapperCompiler_RegisterData(EngineData*);
 
 class COMPILER_ENGINE_CLASS : public EngineData
 {
 public:
 #if SERVER_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        EngineData(PropertiesRelationType::ServerRelative, [this] {
-            extern void AngelScript_ServerCompiler_RegisterData(EngineData*);
-            AngelScript_ServerCompiler_RegisterData(this);
-        })
+        EngineData(PropertiesRelationType::ServerRelative, [this] { AngelScript_ServerCompiler_RegisterData(this); })
     {
     }
 #elif CLIENT_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        EngineData(PropertiesRelationType::ClientRelative, [this] {
-            extern void AngelScript_ClientCompiler_RegisterData(EngineData*);
-            AngelScript_ClientCompiler_RegisterData(this);
-        })
+        EngineData(PropertiesRelationType::ClientRelative, [this] { AngelScript_ClientCompiler_RegisterData(this); })
     {
     }
 #elif MAPPER_SCRIPTING
     COMPILER_ENGINE_CLASS() :
-        EngineData(PropertiesRelationType::BothRelative, [this] {
-            extern void AngelScript_MapperCompiler_RegisterData(EngineData*);
-            AngelScript_MapperCompiler_RegisterData(this);
-        })
+        EngineData(PropertiesRelationType::BothRelative, [this] { AngelScript_MapperCompiler_RegisterData(this); })
     {
     }
 #endif
@@ -261,18 +258,20 @@ struct AngelscriptAllocator
 #define GET_CONTEXT_EXT(ctx) *static_cast<asCContext*>(ctx)->Ext
 #define GET_CONTEXT_EXT2(ctx) static_cast<asCContext*>(ctx)->Ext2
 
+FO_END_NAMESPACE();
 struct ASContextExtendedData
 {
     bool ExecutionActive {};
     size_t ExecutionCalls {};
     std::string Info {};
     asIScriptContext* Parent {};
-    nanotime SuspendEndTime {};
-    Entity* ValidCheck {};
+    FO_NAMESPACE nanotime SuspendEndTime {};
+    FO_NAMESPACE Entity* ValidCheck {};
 #if FO_TRACY
-    vector<TracyCZoneCtx> TracyExecutionCalls {};
+    FO_NAMESPACE vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
 };
+FO_BEGIN_NAMESPACE();
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos);
 static void AngelScriptEndCall(asIScriptContext* ctx);
@@ -298,10 +297,10 @@ public:
 
     void CreateContext()
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto* ctx = ASEngine->CreateContext();
-        RUNTIME_ASSERT(ctx);
+        FO_RUNTIME_ASSERT(ctx);
 
         static_cast<asCContext*>(ctx)->Ext = SafeAlloc::MakeRaw<ASContextExtendedData>();
 #if FO_TRACY
@@ -316,17 +315,17 @@ public:
 #endif
 
         int r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
-        RUNTIME_ASSERT(r >= 0);
+        FO_RUNTIME_ASSERT(r >= 0);
 
         FreeContexts.push_back(ctx);
     }
 
     void FinishContext(asIScriptContext* ctx)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto it = std::find(FreeContexts.begin(), FreeContexts.end(), ctx);
-        RUNTIME_ASSERT(it != FreeContexts.end());
+        FO_RUNTIME_ASSERT(it != FreeContexts.end());
         FreeContexts.erase(it);
 
         delete static_cast<asCContext*>(ctx)->Ext;
@@ -336,7 +335,7 @@ public:
 
     auto RequestContext() -> asIScriptContext*
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         if (FreeContexts.empty()) {
             CreateContext();
@@ -350,12 +349,12 @@ public:
 
     void ReturnContext(asIScriptContext* ctx)
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         ctx->Unprepare();
 
         auto it = std::find(BusyContexts.begin(), BusyContexts.end(), ctx);
-        RUNTIME_ASSERT(it != BusyContexts.end());
+        FO_RUNTIME_ASSERT(it != BusyContexts.end());
         BusyContexts.erase(it);
         FreeContexts.push_back(ctx);
 
@@ -368,9 +367,9 @@ public:
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
-        RUNTIME_ASSERT(func);
+        FO_RUNTIME_ASSERT(func);
 
         auto* ctx = RequestContext();
         const auto as_result = ctx->Prepare(func);
@@ -386,7 +385,7 @@ public:
 
     auto RunContext(asIScriptContext* ctx, bool can_suspend) -> bool
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = asGetActiveContext();
@@ -419,7 +418,7 @@ public:
 #if !FO_DEBUG
                 WriteLog("Script execution overrun: {} ({}{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended at start" : "");
 #else
-                UNUSED_VARIABLE(is_suspended_execution);
+                ignore_unused(is_suspended_execution);
 #endif
             }
 
@@ -469,7 +468,7 @@ public:
 
     void ResumeSuspendedContexts()
     {
-        STACK_TRACE_ENTRY();
+        FO_STACK_TRACE_ENTRY();
 
         if (BusyContexts.empty()) {
             return;
@@ -535,14 +534,14 @@ struct StackTraceEntryStorage
     SourceLocationData SrcLoc {};
 };
 
-struct CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
+struct FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
 {
     unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
 #if SERVER_SCRIPTING
     std::mutex ScriptCallCacheEntriesLocker {};
 #endif
 };
-GLOBAL_DATA(CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), StackTraceData);
+FO_GLOBAL_DATA(FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), StackTraceData);
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {
@@ -672,7 +671,7 @@ public:
 template<typename T>
 static T* ScriptableObject_Factory()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto obj = SafeAlloc::MakeRefCounted<T>();
     obj->AddRef();
@@ -683,24 +682,24 @@ static T* ScriptableObject_Factory()
 // Arrays stuff
 [[maybe_unused]] static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(as_engine);
+    FO_RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
-    RUNTIME_ASSERT(type_id);
+    FO_RUNTIME_ASSERT(type_id);
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(as_type_info);
+    FO_RUNTIME_ASSERT(as_type_info);
     auto* as_array = CScriptArray::Create(as_type_info);
-    RUNTIME_ASSERT(as_array);
+    FO_RUNTIME_ASSERT(as_array);
     return as_array;
 }
 
 template<typename T, typename T2 = T>
 [[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(as_engine);
+    ignore_unused(as_engine);
 
     if (as_array == nullptr || as_array->GetSize() == 0) {
         return {};
@@ -723,9 +722,9 @@ template<typename T, typename T2 = T>
 template<typename T, typename T2 = T>
 [[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, CScriptArray* as_array)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(as_engine);
+    ignore_unused(as_engine);
 
     as_array->Resize(0);
 
@@ -748,7 +747,7 @@ template<typename T, typename T2 = T>
 template<typename T, typename T2 = T>
 [[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto* as_array = CreateASArray(as_engine, type);
 
@@ -761,24 +760,24 @@ template<typename T, typename T2 = T>
 
 [[maybe_unused]] static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(as_engine);
+    FO_RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
-    RUNTIME_ASSERT(type_id);
+    FO_RUNTIME_ASSERT(type_id);
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(as_type_info);
+    FO_RUNTIME_ASSERT(as_type_info);
     auto* as_dict = CScriptDict::Create(as_type_info);
-    RUNTIME_ASSERT(as_dict);
+    FO_RUNTIME_ASSERT(as_dict);
     return as_dict;
 }
 
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(as_engine);
+    ignore_unused(as_engine);
 
     static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
     static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
@@ -804,9 +803,9 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(as_engine);
+    ignore_unused(as_engine);
 
     static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
     static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
@@ -825,7 +824,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
     static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
@@ -841,7 +840,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
 [[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int type_id) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (type_id) {
     case asTYPEID_VOID:
@@ -874,10 +873,10 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     // Todo: GetASObjectInfo add detailed info about object
     auto* ctx = asGetActiveContext();
-    RUNTIME_ASSERT(ctx);
+    FO_RUNTIME_ASSERT(ctx);
     auto* as_engine = ctx->GetEngine();
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    RUNTIME_ASSERT(as_type_info);
+    FO_RUNTIME_ASSERT(as_type_info);
     const string type_name = as_type_info->GetName();
     auto* engine = GET_ENGINE_FROM_AS_ENGINE(as_engine);
 
@@ -890,17 +889,17 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     if (type_name == "any") {
         return strex("any: {}", *static_cast<const any_t*>(ptr));
     }
-    if (type_name == IDENT_NAME) {
-        return strex(IDENT_NAME ": {}", *static_cast<const ident_t*>(ptr));
+    if (type_name == FO_IDENT_NAME) {
+        return strex(FO_IDENT_NAME ": {}", *static_cast<const ident_t*>(ptr));
     }
-    if (type_name == TIMESPAN_NAME) {
-        return strex(TIMESPAN_NAME ": {}", *static_cast<const timespan*>(ptr));
+    if (type_name == FO_TIMESPAN_NAME) {
+        return strex(FO_TIMESPAN_NAME ": {}", *static_cast<const timespan*>(ptr));
     }
-    if (type_name == NANOTIME_NAME) {
-        return strex(NANOTIME_NAME ": {}", *static_cast<const nanotime*>(ptr));
+    if (type_name == FO_NANOTIME_NAME) {
+        return strex(FO_NANOTIME_NAME ": {}", *static_cast<const nanotime*>(ptr));
     }
-    if (type_name == SYNCTIME_NAME) {
-        return strex(SYNCTIME_NAME ": {}", *static_cast<const synctime*>(ptr));
+    if (type_name == FO_SYNCTIME_NAME) {
+        return strex(FO_SYNCTIME_NAME ": {}", *static_cast<const synctime*>(ptr));
     }
 
     if (asUINT enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
@@ -934,9 +933,9 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
 [[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, HashResolver& hash_resolver) -> hstring
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(func);
+    FO_RUNTIME_ASSERT(func);
 
     if (func->GetDelegateObject() != nullptr) {
         throw ScriptException("Function can't be delegate", func->GetDelegateFunction()->GetName());
@@ -957,22 +956,22 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 #if !COMPILER_MODE
 static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
-        RUNTIME_ASSERT(func);
-        RUNTIME_ASSERT(func_desc);
-        RUNTIME_ASSERT(func_desc->CallSupported);
-        RUNTIME_ASSERT(func_desc->ArgsType.size() == args.size());
-        RUNTIME_ASSERT(func_desc->ArgsType.size() == func->GetParamCount());
+        FO_RUNTIME_ASSERT(func);
+        FO_RUNTIME_ASSERT(func_desc);
+        FO_RUNTIME_ASSERT(func_desc->CallSupported);
+        FO_RUNTIME_ASSERT(func_desc->ArgsType.size() == args.size());
+        FO_RUNTIME_ASSERT(func_desc->ArgsType.size() == func->GetParamCount());
 
         if (ret != nullptr) {
-            RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-            RUNTIME_ASSERT(func_desc->RetType->Accessor);
+            FO_RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
+            FO_RUNTIME_ASSERT(func_desc->RetType->Accessor);
         }
         else {
-            RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-            RUNTIME_ASSERT(!func_desc->RetType->Accessor);
+            FO_RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
+            FO_RUNTIME_ASSERT(!func_desc->RetType->Accessor);
         }
 
         auto* ctx = script_backend->PrepareContext(func);
@@ -1005,14 +1004,14 @@ static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFunc
                     MemCopy(ctx->GetAddressOfArg(i), arg_type->Accessor->GetData(arg), arg_type->Accessor->GetDataSize());
                 }
                 else {
-                    UNREACHABLE_PLACE();
+                    FO_UNREACHABLE_PLACE();
                 }
             }
         }
 
         if (script_backend->RunContext(ctx, ret == nullptr)) {
             if (ret != nullptr) {
-                RUNTIME_ASSERT(func_desc->RetType->Accessor->IsPlainData());
+                FO_RUNTIME_ASSERT(func_desc->RetType->Accessor->IsPlainData());
                 MemCopy(ret, ctx->GetAddressOfReturnValue(), func_desc->RetType->Accessor->GetDataSize());
             }
 
@@ -1025,7 +1024,7 @@ static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFunc
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 
     return false;
@@ -1034,13 +1033,13 @@ static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFunc
 template<typename TRet, typename... Args>
 [[maybe_unused]] static auto GetASScriptFunc(asIScriptFunction* func, SCRIPT_BACKEND_CLASS* script_backend) -> ScriptFunc<TRet, Args...>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = script_backend->FuncMap.find(func);
 
     if (it == script_backend->FuncMap.end()) {
         const auto [it_inserted, inserted] = script_backend->FuncMap.emplace(func, ScriptFuncDesc());
-        RUNTIME_ASSERT(inserted);
+        FO_RUNTIME_ASSERT(inserted);
 
         auto& func_desc = it_inserted->second;
         func_desc.Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, script_backend->Engine->Hashes) : hstring();
@@ -1062,7 +1061,7 @@ template<typename TRet, typename... Args>
 template<typename TRet, typename... Args>
 [[maybe_unused]] static auto GetASScriptFuncName(asIScriptFunction* func, SCRIPT_BACKEND_CLASS* script_backend) -> ScriptFuncName<TRet, Args...>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (func->GetDelegateObject() != nullptr) {
         throw ScriptException("Function must be global (not delegate)");
@@ -1075,7 +1074,7 @@ template<typename TRet, typename... Args>
 #if !COMPILER_MODE
 static auto CalcConstructAddrSpace(const Property* prop) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
@@ -1091,7 +1090,7 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
             return prop->GetBaseSize();
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
     else if (prop->IsString()) {
@@ -1104,13 +1103,13 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
         return sizeof(CScriptDict*);
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
@@ -1127,13 +1126,13 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
         (*static_cast<CScriptDict**>(construct_addr))->Release();
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* construct_addr, asIScriptEngine* as_engine)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
@@ -1151,25 +1150,25 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
-            RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            FO_RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
             new (construct_addr) hstring(resolve_hash(data));
         }
         else if (prop->IsBaseTypeEnum()) {
-            RUNTIME_ASSERT(data_size != 0);
-            RUNTIME_ASSERT(data_size <= sizeof(int));
+            FO_RUNTIME_ASSERT(data_size != 0);
+            FO_RUNTIME_ASSERT(data_size <= sizeof(int));
             MemFill(construct_addr, 0, sizeof(int));
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
-            RUNTIME_ASSERT(data_size != 0);
+            FO_RUNTIME_ASSERT(data_size != 0);
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypeStruct()) {
-            RUNTIME_ASSERT(data_size != 0);
+            FO_RUNTIME_ASSERT(data_size != 0);
             MemCopy(construct_addr, data, data_size);
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
     else if (prop->IsString()) {
@@ -1248,7 +1247,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
 
         *static_cast<CScriptArray**>(construct_addr) = arr;
@@ -1331,7 +1330,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                         }
                         else {
-                            UNREACHABLE_PLACE();
+                            FO_UNREACHABLE_PLACE();
                         }
                     }
 
@@ -1461,20 +1460,20 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         *static_cast<CScriptDict**>(construct_addr) = dict;
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 }
 
 static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     PropertyRawData prop_data;
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
             const auto hash = static_cast<const hstring*>(as_obj)->as_hash();
-            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
+            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
         }
         else {
@@ -1560,7 +1559,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
                 }
                 else {
-                    UNREACHABLE_PLACE();
+                    FO_UNREACHABLE_PLACE();
                 }
             }
         }
@@ -1679,7 +1678,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             }
                         }
                         else {
-                            UNREACHABLE_PLACE();
+                            FO_UNREACHABLE_PLACE();
                         }
                     }
                 }
@@ -1829,7 +1828,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         }
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     return prop_data;
@@ -1838,7 +1837,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, any_t>) {
         out_buf.Write<string>(value);
@@ -1851,7 +1850,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     out_buf.Write(numeric_cast<uint>(value.size()));
 
@@ -1866,7 +1865,7 @@ template<typename T, typename U,
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     out_buf.Write(numeric_cast<uint>(value.size()));
 
@@ -1879,7 +1878,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, any_t>) {
         value = any_t {in_buf.Read<string>()};
@@ -1895,7 +1894,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolve
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto inner_values_count = in_buf.Read<uint>();
     value.reserve(inner_values_count);
@@ -1913,7 +1912,7 @@ template<typename T, typename U,
         int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto inner_values_count = in_buf.Read<uint>();
 
@@ -1928,7 +1927,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 
 [[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint rpc_num)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     out_buf.StartMsg(NetMessage::RemoteCall);
     out_buf.Write(rpc_num);
@@ -1936,7 +1935,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 
 [[maybe_unused]] static void WriteRpcFooter(NetOutBuffer& out_buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     out_buf.EndMsg();
 }
@@ -1945,13 +1944,13 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 template<typename T>
 static void Entity_AddRef(const T* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->AddRef();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1959,13 +1958,13 @@ static void Entity_AddRef(const T* self)
 template<typename T>
 static void Entity_Release(const T* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->Release();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1973,14 +1972,14 @@ static void Entity_Release(const T* self)
 template<typename T>
 static auto Entity_IsDestroyed(const T* self) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroyed();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1988,14 +1987,14 @@ static auto Entity_IsDestroyed(const T* self) -> bool
 template<typename T>
 static auto Entity_IsDestroying(const T* self) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroying();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2003,7 +2002,7 @@ static auto Entity_IsDestroying(const T* self) -> bool
 template<typename T>
 static auto Entity_Name(const T* self) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -2011,7 +2010,7 @@ static auto Entity_Name(const T* self) -> string
     return string(self->GetName());
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2019,7 +2018,7 @@ static auto Entity_Name(const T* self) -> string
 template<typename T>
 static auto Entity_Id(const T* self) -> ident_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -2027,7 +2026,7 @@ static auto Entity_Id(const T* self) -> ident_t
     return self->GetId();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2035,7 +2034,7 @@ static auto Entity_Id(const T* self) -> ident_t
 template<typename T>
 static auto Entity_ProtoId(const T* self) -> hstring
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -2043,7 +2042,7 @@ static auto Entity_ProtoId(const T* self) -> hstring
     return self->GetProtoId();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2051,7 +2050,7 @@ static auto Entity_ProtoId(const T* self) -> hstring
 template<>
 auto Entity_ProtoId(const Entity* self) -> hstring
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -2067,7 +2066,7 @@ auto Entity_ProtoId(const Entity* self) -> hstring
     return {};
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2075,7 +2074,7 @@ auto Entity_ProtoId(const Entity* self) -> hstring
 template<typename T>
 static auto Entity_Proto(const T* self) -> const ProtoEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -2084,7 +2083,7 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
     return self->GetProto();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2094,7 +2093,7 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
 template<int Args>
 static void Global_Assert(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto condition = *static_cast<bool*>(gen->GetAddressOfArg(0));
@@ -2146,11 +2145,11 @@ static void Global_Assert(asIScriptGeneric* gen)
         throw ScriptException("Assertion failed", obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8], obj_infos[9]);
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2158,7 +2157,7 @@ static void Global_Assert(asIScriptGeneric* gen)
 template<int Args>
 static void Global_ThrowException(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& message = *static_cast<string*>(gen->GetAddressOfArg(0));
@@ -2206,29 +2205,29 @@ static void Global_ThrowException(asIScriptGeneric* gen)
         throw ScriptException(message, obj_infos[0], obj_infos[1], obj_infos[2], obj_infos[3], obj_infos[4], obj_infos[5], obj_infos[6], obj_infos[7], obj_infos[8], obj_infos[9]);
     }
     else {
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Global_Yield(uint time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* ctx = asGetActiveContext();
-    RUNTIME_ASSERT(ctx);
+    FO_RUNTIME_ASSERT(ctx);
     auto* engine = GET_ENGINE_FROM_AS_ENGINE(ctx->GetEngine());
     auto& ctx_ext = GET_CONTEXT_EXT(ctx);
     ctx_ext.SuspendEndTime = engine->GameTime.GetFrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 
 #else
-    UNUSED_VARIABLE(time);
+    ignore_unused(time);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2236,7 +2235,7 @@ static void Global_Yield(uint time)
 template<typename T>
 static void ASPropertyGetter(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
@@ -2290,7 +2289,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
 
         if constexpr (std::is_standard_layout_v<T>) {
             auto* actual_entity = dynamic_cast<BaseEntity*>(entity);
-            RUNTIME_ASSERT(actual_entity);
+            FO_RUNTIME_ASSERT(actual_entity);
             ctx->SetArgObject(0, actual_entity);
         }
         else {
@@ -2303,7 +2302,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         }
 
         const auto run_ok = script_backend->RunContext(ctx, false);
-        RUNTIME_ASSERT(run_ok);
+        FO_RUNTIME_ASSERT(run_ok);
 
         auto prop_data = ASToProps(prop, ctx->GetAddressOfReturnValue());
         prop_data.StoreIfPassed();
@@ -2312,7 +2311,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     });
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2320,7 +2319,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
 template<typename T, typename Deferred>
 static void ASPropertySetter(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
@@ -2400,12 +2399,12 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 
         if constexpr (std::is_standard_layout_v<T>) {
             auto* actual_entity = dynamic_cast<BaseEntity*>(entity);
-            RUNTIME_ASSERT(actual_entity);
+            FO_RUNTIME_ASSERT(actual_entity);
             ctx->SetArgObject(0, actual_entity);
         }
         else {
             auto* actual_entity = dynamic_cast<T*>(entity);
-            RUNTIME_ASSERT(actual_entity);
+            FO_RUNTIME_ASSERT(actual_entity);
             ctx->SetArgObject(0, actual_entity);
         }
 
@@ -2421,7 +2420,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
                 ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
 
                 const auto run_ok = script_backend->RunContext(ctx, false);
-                RUNTIME_ASSERT(run_ok);
+                FO_RUNTIME_ASSERT(run_ok);
 
                 prop_data = ASToProps(prop, construct_addr);
                 prop_data.StoreIfPassed();
@@ -2437,13 +2436,13 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         }
         else {
             // Will be run from scheduler
-            UNUSED_VARIABLE(has_value_ref);
-            UNUSED_VARIABLE(prop_data);
+            ignore_unused(has_value_ref);
+            ignore_unused(prop_data);
         }
     });
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2451,14 +2450,14 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 template<typename T>
 static void Global_Get(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& value = *static_cast<T*>(gen->GetAuxiliary());
     *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2466,7 +2465,7 @@ static void Global_Get(asIScriptGeneric* gen)
 template<typename T>
 static void Global_GetExt(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& getter = *static_cast<std::function<void*()>*>(gen->GetAuxiliary());
@@ -2474,7 +2473,7 @@ static void Global_GetExt(asIScriptGeneric* gen)
     *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2482,7 +2481,7 @@ static void Global_GetExt(asIScriptGeneric* gen)
 template<typename T>
 static auto Entity_GetSelfForEvent(T* entity) -> T*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // Don't verify entity for destroying
@@ -2490,7 +2489,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
     return entity;
 
 #else
-    UNUSED_VARIABLE(entity);
+    ignore_unused(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2498,7 +2497,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
 template<typename T>
 static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2509,7 +2508,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    RUNTIME_ASSERT(prop);
+    FO_RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2521,8 +2520,8 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
     return entity->GetValueAsInt(prop);
 
 #else
-    UNUSED_VARIABLE(entity);
-    UNUSED_VARIABLE(prop_index);
+    ignore_unused(entity);
+    ignore_unused(prop_index);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2530,7 +2529,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 template<typename T>
 static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2541,7 +2540,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    RUNTIME_ASSERT(prop);
+    FO_RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2556,9 +2555,9 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
     entity->SetValueAsInt(prop, value);
 
 #else
-    UNUSED_VARIABLE(entity);
-    UNUSED_VARIABLE(prop_index);
-    UNUSED_VARIABLE(value);
+    ignore_unused(entity);
+    ignore_unused(prop_index);
+    ignore_unused(value);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2566,7 +2565,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 template<typename T>
 static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2577,7 +2576,7 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    RUNTIME_ASSERT(prop);
+    FO_RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2589,8 +2588,8 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
     return entity->GetValueAsAny(prop);
 
 #else
-    UNUSED_VARIABLE(entity);
-    UNUSED_VARIABLE(prop_index);
+    ignore_unused(entity);
+    ignore_unused(prop_index);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2598,7 +2597,7 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 template<typename T>
 static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2609,7 +2608,7 @@ static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
     }
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    RUNTIME_ASSERT(prop);
+    FO_RUNTIME_ASSERT(prop);
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2624,9 +2623,9 @@ static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
     entity->SetValueAsAny(prop, value);
 
 #else
-    UNUSED_VARIABLE(entity);
-    UNUSED_VARIABLE(prop_index);
-    UNUSED_VARIABLE(value);
+    ignore_unused(entity);
+    ignore_unused(prop_index);
+    ignore_unused(value);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2634,7 +2633,7 @@ static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
 template<typename T>
 static void Property_GetComponent(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
@@ -2656,7 +2655,7 @@ static void Property_GetComponent(asIScriptGeneric* gen)
     *(T**)gen->GetAddressOfReturnLocation() = nullptr;
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2664,7 +2663,7 @@ static void Property_GetComponent(asIScriptGeneric* gen)
 template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
@@ -2695,7 +2694,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
     PropsToAS(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2703,7 +2702,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
 template<typename T>
 static void Property_SetValue(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
@@ -2738,7 +2737,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2746,7 +2745,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 template<typename T>
 static auto EntityDownCast(T* a) -> Entity*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
@@ -2758,7 +2757,7 @@ static auto EntityDownCast(T* a) -> Entity*
     return static_cast<Entity*>(a);
 
 #else
-    UNUSED_VARIABLE(a);
+    ignore_unused(a);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2766,7 +2765,7 @@ static auto EntityDownCast(T* a) -> Entity*
 template<typename T>
 static auto EntityUpCast(Entity* a) -> T*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
@@ -2778,21 +2777,21 @@ static auto EntityUpCast(Entity* a) -> T*
     return dynamic_cast<T*>(a);
 
 #else
-    UNUSED_VARIABLE(a);
+    ignore_unused(a);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void HashedString_Construct(hstring* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) hstring();
 }
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
@@ -2801,32 +2800,32 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
     new (gen->GetObject()) hstring(hstr);
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void HashedString_IsValidHash(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     bool failed = false;
     auto hstr = engine->Hashes.ResolveHash(hash, &failed);
-    UNUSED_VARIABLE(hstr);
+    ignore_unused(hstr);
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -2835,154 +2834,154 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) hstring(other);
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self = other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self == other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.as_str() == other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_StringCast(const hstring& self) -> const string&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.as_str();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_StringConv(const hstring& self) -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.as_str();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_GetString(const hstring& self) -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return string(self.as_str());
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_GetHash(const hstring& self) -> int
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.as_int();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto HashedString_GetUHash(const hstring& self) -> uint
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.as_uint();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Any_Construct(any_t* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) any_t();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Any_Destruct(any_t* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->~any_t();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2990,56 +2989,56 @@ static void Any_Destruct(any_t* self)
 template<typename T>
 static void Any_ConstructFrom(any_t* self, const T& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) any_t {strex("{}", other).str()};
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) any_t(other);
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Any_Assign(any_t& self, const any_t& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self = other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self == other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3047,7 +3046,7 @@ static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 template<typename T>
 static auto Any_Conv(const any_t& self) -> T
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, bool>) {
@@ -3070,7 +3069,7 @@ static auto Any_Conv(const any_t& self) -> T
     }
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3078,7 +3077,7 @@ static auto Any_Conv(const any_t& self) -> T
 template<typename T>
 static void Any_ConvGen(asIScriptGeneric* gen)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
@@ -3089,7 +3088,7 @@ static void Any_ConvGen(asIScriptGeneric* gen)
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3097,13 +3096,13 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 template<typename T>
 static auto Any_ConvFrom(const T& self) -> any_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return any_t {strex("{}", self).str()};
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3111,13 +3110,13 @@ static auto Any_ConvFrom(const T& self) -> any_t
 template<typename T>
 static void StrongType_Construct(T* self)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) T();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3125,14 +3124,14 @@ static void StrongType_Construct(T* self)
 template<typename T>
 static void StrongType_ConstructCopy(T* self, const T& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) T(other);
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3140,14 +3139,14 @@ static void StrongType_ConstructCopy(T* self, const T& other)
 template<typename T>
 static void StrongType_ConstructFromUnderlying(T* self, const typename T::underlying_type& other)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) T(other);
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3155,14 +3154,14 @@ static void StrongType_ConstructFromUnderlying(T* self, const typename T::underl
 template<typename T>
 static auto StrongType_Equals(const T& self, const T& other) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self == other;
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(other);
+    ignore_unused(self);
+    ignore_unused(other);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3170,13 +3169,13 @@ static auto StrongType_Equals(const T& self, const T& other) -> bool
 template<typename T>
 static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_type
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return self.underlying_value();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3184,13 +3183,13 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 template<typename T>
 static auto StrongType_GetStr(const T& self) -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return strex("{}", self).str();
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3198,34 +3197,34 @@ static auto StrongType_GetStr(const T& self) -> string
 template<typename T>
 static auto StrongType_AnyConv(const T& self) -> any_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     return any_t {strex("{}", self).str()};
 
 #else
-    UNUSED_VARIABLE(self);
+    ignore_unused(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     new (self) ucolor {rgba};
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(rgba);
+    ignore_unused(self);
+    ignore_unused(rgba);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
@@ -3236,8 +3235,8 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(r, g, b, a);
+    ignore_unused(self);
+    ignore_unused(r, g, b, a);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3245,7 +3244,7 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 template<typename T>
 static void Time_ConstructWithPlace(T* self, int64 value, int place)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (place == 0) {
@@ -3265,22 +3264,22 @@ static void Time_ConstructWithPlace(T* self, int64 value, int place)
     }
 
 #else
-    UNUSED_VARIABLE(self);
-    UNUSED_VARIABLE(value, place);
+    ignore_unused(self);
+    ignore_unused(value, place);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Ipos_ConstructXandY(ipos* self, int x, int y)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) ipos {x, y};
 }
 
 static auto Ipos_AddAssignIpos(ipos& self, const ipos& pos) -> ipos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x += pos.x;
     self.y += pos.y;
@@ -3289,7 +3288,7 @@ static auto Ipos_AddAssignIpos(ipos& self, const ipos& pos) -> ipos&
 
 static auto Ipos_SubAssignIpos(ipos& self, const ipos& pos) -> ipos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x -= pos.x;
     self.y -= pos.y;
@@ -3298,28 +3297,28 @@ static auto Ipos_SubAssignIpos(ipos& self, const ipos& pos) -> ipos&
 
 static auto Ipos_AddIpos(const ipos& self, const ipos& pos) -> ipos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ipos {self.x + pos.x, self.y + pos.y};
 }
 
 static auto Ipos_SubIpos(const ipos& self, const ipos& pos) -> ipos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ipos {self.x - pos.x, self.y - pos.y};
 }
 
 static auto Ipos_NegIpos(const ipos& self) -> ipos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ipos {-self.x, -self.y};
 }
 
 static auto Ipos_AddAssignIsize(ipos& self, const isize& size) -> ipos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x += size.width;
     self.y += size.height;
@@ -3328,7 +3327,7 @@ static auto Ipos_AddAssignIsize(ipos& self, const isize& size) -> ipos&
 
 static auto Ipos_SubAssignIsize(ipos& self, const isize& size) -> ipos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x -= size.width;
     self.y -= size.height;
@@ -3337,56 +3336,56 @@ static auto Ipos_SubAssignIsize(ipos& self, const isize& size) -> ipos&
 
 static auto Ipos_AddIsize(const ipos& self, const isize& size) -> ipos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ipos {self.x + size.width, self.y + size.height};
 }
 
 static auto Ipos_SubIsize(const ipos& self, const isize& size) -> ipos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return ipos {self.x - size.width, self.y - size.height};
 }
 
 static auto Ipos_FitToSize(const ipos& self, isize size) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
 
 static auto Ipos_FitToRect(const ipos& self, irect rect) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
 static void Isize_ConstructWandH(isize* self, int width, int height)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) isize {width, height};
 }
 
 static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, int height)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) irect {x, y, width, height};
 }
 
 static void Fpos_ConstructXandY(fpos* self, float x, float y)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) fpos {x, y};
 }
 
 static auto Fpos_AddAssignFpos(fpos& self, const fpos& pos) -> fpos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x += pos.x;
     self.y += pos.y;
@@ -3395,7 +3394,7 @@ static auto Fpos_AddAssignFpos(fpos& self, const fpos& pos) -> fpos&
 
 static auto Fpos_SubAssignFpos(fpos& self, const fpos& pos) -> fpos&
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     self.x -= pos.x;
     self.y -= pos.y;
@@ -3404,35 +3403,35 @@ static auto Fpos_SubAssignFpos(fpos& self, const fpos& pos) -> fpos&
 
 static auto Fpos_AddFpos(const fpos& self, const fpos& pos) -> fpos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return fpos {self.x + pos.x, self.y + pos.y};
 }
 
 static auto Fpos_SubFpos(const fpos& self, const fpos& pos) -> fpos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return fpos {self.x - pos.x, self.y - pos.y};
 }
 
 static auto Fpos_NegFpos(const fpos& self) -> fpos
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return fpos {-self.x, -self.y};
 }
 
 static void Fsize_ConstructWandH(isize* self, float width, float height)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     new (self) fsize {width, height};
 }
 
 static void Mpos_ConstructXandY(mpos* self, int x, int y)
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (x < 0 || x > 0xFFFF || y < 0 || y > 0xFFFF) {
         throw ScriptException("Invalid mpos values", x, y);
@@ -3443,7 +3442,7 @@ static void Mpos_ConstructXandY(mpos* self, int x, int y)
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
@@ -3451,20 +3450,20 @@ static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 template<typename T>
 static auto Game_GetProtoCustomEntity(BaseEngine* engine, hstring pid) -> const ProtoCustomEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto entity_type = engine->Hashes.ToHashedString(T::ENTITY_TYPE_NAME);
     const auto* proto = engine->ProtoMngr.GetProtoEntitySafe(entity_type, pid);
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
-        RUNTIME_ASSERT(casted_proto);
+        FO_RUNTIME_ASSERT(casted_proto);
         return casted_proto;
     }
     return nullptr;
 
 #else
-    UNUSED_VARIABLE(engine, pid);
+    ignore_unused(engine, pid);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3472,7 +3471,7 @@ static auto Game_GetProtoCustomEntity(BaseEngine* engine, hstring pid) -> const 
 template<typename T>
 static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto entity_type = engine->Hashes.ToHashedString(T::ENTITY_TYPE_NAME);
@@ -3483,7 +3482,7 @@ static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
 
     for (auto&& [pid, proto] : protos) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto.get());
-        RUNTIME_ASSERT(casted_proto);
+        FO_RUNTIME_ASSERT(casted_proto);
         result.emplace_back(casted_proto);
     }
 
@@ -3492,7 +3491,7 @@ static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
     return result_arr;
 
 #else
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3500,7 +3499,7 @@ static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
 template<typename T>
 static void Game_DestroyOne(BaseEngine* engine, T* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
@@ -3508,12 +3507,12 @@ static void Game_DestroyOne(BaseEngine* engine, T* entity)
         static_cast<FOServer*>(engine)->EntityMngr.DestroyEntity(entity);
     }
 #else
-    UNUSED_VARIABLE(engine, entity);
+    ignore_unused(engine, entity);
 #endif
 
 #else
-    UNUSED_VARIABLE(engine);
-    UNUSED_VARIABLE(entity);
+    ignore_unused(engine);
+    ignore_unused(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3521,7 +3520,7 @@ static void Game_DestroyOne(BaseEngine* engine, T* entity)
 template<typename T>
 static void Game_DestroyAll(BaseEngine* engine, CScriptArray* as_entities)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
@@ -3534,12 +3533,12 @@ static void Game_DestroyAll(BaseEngine* engine, CScriptArray* as_entities)
         }
     }
 #else
-    UNUSED_VARIABLE(engine, as_entities);
+    ignore_unused(engine, as_entities);
 #endif
 
 #else
-    UNUSED_VARIABLE(engine);
-    UNUSED_VARIABLE(as_entities);
+    ignore_unused(engine);
+    ignore_unused(as_entities);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3547,7 +3546,7 @@ static void Game_DestroyAll(BaseEngine* engine, CScriptArray* as_entities)
 template<typename H, typename T, typename T2>
 static void CustomEntity_Add(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
 #if SERVER_SCRIPTING
@@ -3555,14 +3554,14 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
     H* holder = static_cast<H*>(gen->GetObject());
     const hstring pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
     CustomEntity* entity = static_cast<FOServer*>(holder->GetEngine())->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
-    RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+    FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
     new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
 #endif
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3570,7 +3569,7 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
 template<typename H, typename T, typename T2>
 static void CustomEntity_GetAll(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
@@ -3583,9 +3582,9 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
 
         for (auto& entity : *entities) {
             ENTITY_VERIFY(entity);
-            RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+            FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
             auto* casted_entity = dynamic_cast<T*>(entity.get());
-            RUNTIME_ASSERT(casted_entity);
+            FO_RUNTIME_ASSERT(casted_entity);
             casted_entities.emplace_back(casted_entity);
         }
 
@@ -3598,7 +3597,7 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3606,7 +3605,7 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
 template<typename H, typename T, typename T2>
 static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
@@ -3619,9 +3618,9 @@ static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
 
         for (auto& entity : *entities) {
             ENTITY_VERIFY(entity);
-            RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+            FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
             auto* casted_entity = dynamic_cast<T*>(entity.get());
-            RUNTIME_ASSERT(casted_entity);
+            FO_RUNTIME_ASSERT(casted_entity);
             ids.emplace_back(casted_entity->GetId());
         }
 
@@ -3634,14 +3633,14 @@ static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
     }
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Enum_Parse(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
@@ -3662,14 +3661,14 @@ static void Enum_Parse(asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) int(enum_value);
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void Enum_ToString(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
@@ -3690,14 +3689,14 @@ static void Enum_ToString(asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) string(std::move(enum_value_name));
 
 #else
-    UNUSED_VARIABLE(gen);
+    ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const char* type = "error";
 
@@ -3742,15 +3741,15 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
 
 void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if COMPILER_MODE
     static int dummy = 0;
 #endif
 
     // Maybe unused
-    UNUSED_VARIABLE(script_files);
-    UNUSED_VARIABLE(resources);
+    ignore_unused(script_files);
+    ignore_unused(resources);
 
 #if COMPILER_MODE
 #if SERVER_SCRIPTING
@@ -3769,7 +3768,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
     asIScriptEngine* as_engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    RUNTIME_ASSERT(as_engine);
+    FO_RUNTIME_ASSERT(as_engine);
 
     as_engine->SetUserData(engine);
 
@@ -3953,7 +3952,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
 
     // Register timespan
-    REGISTER_HARD_STRONG_TYPE(TIMESPAN_NAME, timespan);
+    REGISTER_HARD_STRONG_TYPE(FO_TIMESPAN_NAME, timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
@@ -3966,7 +3965,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_PR(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
 
     // Register nanotime
-    REGISTER_HARD_STRONG_TYPE(NANOTIME_NAME, nanotime);
+    REGISTER_HARD_STRONG_TYPE(FO_NANOTIME_NAME, nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
@@ -3981,7 +3980,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register synctime
-    REGISTER_HARD_STRONG_TYPE(SYNCTIME_NAME, synctime);
+    REGISTER_HARD_STRONG_TYPE(FO_SYNCTIME_NAME, synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
@@ -4096,7 +4095,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, FO_IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -4106,7 +4105,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
-    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, FO_IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
@@ -4145,7 +4144,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, IDENT_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, FO_IDENT_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \
@@ -4321,7 +4320,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
             const auto it_enum = EnumArrays.emplace(MarshalBackArray<int>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
-            RUNTIME_ASSERT(it_enum.second);
+            FO_RUNTIME_ASSERT(it_enum.second);
 #endif
             AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(as_engine->SetDefaultNamespace(""));
@@ -4356,7 +4355,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #elif MAPPER_SCRIPTING
     FileCollection script_bin_files = resources->FilterFiles("fosb-mapper");
 #endif
-    RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
+    FO_RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
     script_bin_files.MoveNext();
     auto script_bin_file = script_bin_files.GetCurFile();
     RestoreRootModule(as_engine, {script_bin_file.GetBuf(), script_bin_file.GetSize()});
@@ -4365,7 +4364,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #if !COMPILER_MODE || COMPILER_VALIDATION_MODE
     // Index all functions
     {
-        RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
+        FO_RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
         auto* mod = as_engine->GetModuleByIndex(0);
 
         const auto as_type_to_type_info = [&](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
@@ -4404,7 +4403,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 }
 
                 auto* ti = as_engine->GetTypeInfoById(tid);
-                RUNTIME_ASSERT(ti);
+                FO_RUNTIME_ASSERT(ti);
                 string_view name = ti->GetName();
 
                 if (name == "StaticItem") {
@@ -4438,7 +4437,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             if (type_id == asTYPEID_VOID) {
-                RUNTIME_ASSERT(is_ret);
+                FO_RUNTIME_ASSERT(is_ret);
                 return engine_type_map.at(typeid(void).name());
             }
 
@@ -4499,7 +4498,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
             // Check for special module init function
             if (func_desc->ArgsType.empty() && func_desc->RetType && func_desc->RetType->Name == "void") {
-                RUNTIME_ASSERT(func_desc->CallSupported);
+                FO_RUNTIME_ASSERT(func_desc->CallSupported);
                 const auto func_name_ex = strex(func->GetName());
 
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
@@ -4559,9 +4558,9 @@ private:
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& script_files) -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
+    FO_RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
 
     // File loader
     class ScriptLoader : public Preprocessor::FileLoader
@@ -4571,14 +4570,14 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
             _rootScript {root},
             _scriptFiles {files}
         {
-            STACK_TRACE_ENTRY();
+            FO_STACK_TRACE_ENTRY();
 
             //
         }
 
         auto LoadFile(const std::string& dir, const std::string& file_name, std::vector<char>& data, std::string& file_path) -> bool override
         {
-            STACK_TRACE_ENTRY();
+            FO_STACK_TRACE_ENTRY();
 
             if (_rootScript != nullptr) {
                 data.resize(_rootScript->size());
@@ -4595,7 +4594,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 
             if (_includeDeep == 1) {
                 const auto it = _scriptFiles->find(string(file_name));
-                RUNTIME_ASSERT(it != _scriptFiles->end());
+                FO_RUNTIME_ASSERT(it != _scriptFiles->end());
 
                 data.resize(it->second.size());
                 MemCopy(data.data(), it->second.data(), it->second.size());
@@ -4607,7 +4606,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 
         void FileLoaded() override
         {
-            STACK_TRACE_ENTRY();
+            FO_STACK_TRACE_ENTRY();
 
             _includeDeep--;
         }
@@ -4733,10 +4732,10 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 #else
 static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
-    RUNTIME_ASSERT(!script_bin.empty());
+    FO_RUNTIME_ASSERT(as_engine->GetModuleCount() == 0);
+    FO_RUNTIME_ASSERT(!script_bin.empty());
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
@@ -4747,8 +4746,8 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
 
     reader.VerifyEnd();
-    RUNTIME_ASSERT(!buf.empty());
-    RUNTIME_ASSERT(!lnt_data.empty());
+    FO_RUNTIME_ASSERT(!buf.empty());
+    FO_RUNTIME_ASSERT(!lnt_data.empty());
 
     asIScriptModule* mod = as_engine->GetModule("Root", asGM_ALWAYS_CREATE);
 
@@ -4769,14 +4768,14 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
 #endif
 
 #if !COMPILER_MODE
-void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine)
+void FO_CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine)
 #elif COMPILER_VALIDATION_MODE
-void CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine, ScriptSystem& script_sys, const FileSystem& resources)
+void FO_CONCAT(Init_, SCRIPT_BACKEND_CLASS)(BaseEngine* engine, ScriptSystem& script_sys, const FileSystem& resources)
 #else
-auto CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const vector<File>& script_files) -> vector<uint8>
+auto FO_CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const vector<File>& script_files) -> vector<uint8>
 #endif
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto script_backend = SafeAlloc::MakeShared<SCRIPT_BACKEND_CLASS>();
 
@@ -4794,3 +4793,5 @@ auto CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const vector<File>& script_files) -> ve
     return std::move(script_backend->CompiledScriptData);
 #endif
 }
+
+FO_END_NAMESPACE();

@@ -36,6 +36,8 @@
 #include "Client.h"
 #include "MapSprite.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 {
@@ -752,3 +754,5 @@ FO_SCRIPT_API isize Client_Map_GetHexContentSize(MapView* self, mpos hex)
 {
     return self->GetHexContentSize(hex);
 }
+
+FO_END_NAMESPACE();

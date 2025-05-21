@@ -35,19 +35,21 @@
 #include "Client.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void ItemView::OnDestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetOwnership(ItemOwnership::Nowhere);
     SetCritterId(ident_t {});
@@ -62,7 +64,7 @@ void ItemView::OnDestroySelf()
 
 auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), ident_t {}, dynamic_cast<const ProtoItem*>(_proto.get()), &GetProperties());
 
@@ -73,7 +75,7 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 
 auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const Properties* props) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
 
@@ -87,7 +89,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_
 
 auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
 
@@ -99,11 +101,11 @@ auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const an
 
 auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!item->GetStatic());
-    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
-    RUNTIME_ASSERT(item->GetContainerId() == GetId());
+    FO_RUNTIME_ASSERT(!item->GetStatic());
+    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
+    FO_RUNTIME_ASSERT(item->GetContainerId() == GetId());
 
     vec_add_unique_value(_innerItems, refcount_ptr {item});
     std::stable_sort(_innerItems.begin(), _innerItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
@@ -113,9 +115,11 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
 
 void ItemView::DestroyInnerItem(ItemView* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vec_remove_unique_value(_innerItems, refcount_ptr {item});
 
     item->DestroySelf();
 }
+
+FO_END_NAMESPACE();

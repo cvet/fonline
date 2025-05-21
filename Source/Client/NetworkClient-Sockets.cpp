@@ -54,6 +54,8 @@
 #define SD_BOTH SHUT_RDWR
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 // Proxy types
 constexpr auto PROXY_SOCKS4 = 1;
 constexpr auto PROXY_SOCKS5 = 2;
@@ -87,7 +89,7 @@ private:
 
 auto NetworkClientConnection::CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Sockets>(settings);
 }
@@ -95,7 +97,7 @@ auto NetworkClientConnection::CreateSocketsConnection(ClientNetworkSettings& set
 NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSettings& settings) :
     NetworkClientConnection(settings)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     string_view host = _settings.ServerHost;
     auto port = numeric_cast<uint16>(_settings.ServerPort);
@@ -162,7 +164,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
 #else
         int flags = ::fcntl(_netSock, F_GETFL, 0);
-        RUNTIME_ASSERT(flags >= 0);
+        FO_RUNTIME_ASSERT(flags >= 0);
 
         if (::fcntl(_netSock, F_SETFL, flags | O_NONBLOCK)) {
             throw NetworkClientException("Can't set non-blocking mode to socket", GetLastSocketError());
@@ -212,7 +214,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         vector<uint8> recv_buf;
         uint8 b1 = 0;
         uint8 b2 = 0;
-        UNUSED_VARIABLE(b1);
+        ignore_unused(b1);
 
         // Authentication
         if (_settings.ProxyType == PROXY_SOCKS4) {
@@ -338,7 +340,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
 NetworkClientConnection_Sockets::~NetworkClientConnection_Sockets()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_netSock != INVALID_SOCKET) {
         closesocket(_netSock);
@@ -348,7 +350,7 @@ NetworkClientConnection_Sockets::~NetworkClientConnection_Sockets()
 
 auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // ReSharper disable once CppLocalVariableMayBeConst
     timeval tv = {0, 0};
@@ -390,7 +392,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 
 auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     WSABUF sock_buf;
@@ -415,9 +417,9 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> siz
 
 auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_netSock != INVALID_SOCKET);
+    FO_RUNTIME_ASSERT(_netSock != INVALID_SOCKET);
 
 #if FO_WINDOWS
     DWORD flags = 0;
@@ -484,7 +486,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
 
 void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_netSock != INVALID_SOCKET) {
         ::closesocket(_netSock);
@@ -494,7 +496,7 @@ void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
 
 void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
@@ -515,7 +517,7 @@ void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_vi
 
 auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     const auto error_code = ::WSAGetLastError();
@@ -533,3 +535,5 @@ auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
     return strex("{} ({})", error_str, errno);
 #endif
 }
+
+FO_END_NAMESPACE();

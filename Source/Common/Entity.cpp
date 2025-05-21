@@ -34,10 +34,12 @@
 #include "Entity.h"
 #include "Application.h"
 
+FO_BEGIN_NAMESPACE();
+
 Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
     _props {registrator}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
 
@@ -48,14 +50,14 @@ Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) 
 
 void Entity::AddRef() const noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     ++_refCounter;
 }
 
 void Entity::Release() const noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (--_refCounter == 0) {
         delete this;
@@ -64,7 +66,7 @@ void Entity::Release() const noexcept
 
 auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     make_if_not_exists(_events);
 
@@ -77,14 +79,14 @@ auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackDa
 
 void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
 
 void Entity::UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
@@ -95,7 +97,7 @@ void Entity::UnsubscribeEvent(string_view event_name, const void* subscription_p
 
 void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
@@ -106,7 +108,7 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
 
 auto Entity::FireEvent(string_view event_name, const initializer_list<void*>& args) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
@@ -119,9 +121,9 @@ auto Entity::FireEvent(string_view event_name, const initializer_list<void*>& ar
 
 void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
         throw GenericException("Highest callback already added");
@@ -141,9 +143,9 @@ void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackD
 
 void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (const auto it = std::find_if(callbacks.begin(), callbacks.end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
         callbacks.erase(it);
@@ -152,9 +154,9 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* 
 
 auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (callbacks.empty()) {
         return true;
@@ -186,7 +188,7 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
             }
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -195,19 +197,19 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
 
 void Entity::MarkAsDestroying() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_VERIFY(!_isDestroying);
-    RUNTIME_VERIFY(!_isDestroyed);
+    FO_RUNTIME_VERIFY(!_isDestroying);
+    FO_RUNTIME_VERIFY(!_isDestroyed);
 
     _isDestroying = true;
 }
 
 void Entity::MarkAsDestroyed() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_VERIFY(!_isDestroyed);
+    FO_RUNTIME_VERIFY(!_isDestroyed);
 
     _isDestroying = true;
     _isDestroyed = true;
@@ -215,84 +217,84 @@ void Entity::MarkAsDestroyed() noexcept
 
 void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
 void Entity::RestoreData(const vector<vector<uint8>>& props_data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.RestoreData(props_data);
 }
 
 void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetValueFromData(prop, prop_data);
 }
 
 auto Entity::GetValueAsInt(const Property* prop) const -> int
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsInt(prop);
 }
 
 auto Entity::GetValueAsInt(int prop_index) const -> int
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsInt(prop_index);
 }
 
 auto Entity::GetValueAsAny(const Property* prop) const -> any_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsAny(prop);
 }
 
 auto Entity::GetValueAsAny(int prop_index) const -> any_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsAny(prop_index);
 }
 
 void Entity::SetValueAsInt(const Property* prop, int value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
 void Entity::SetValueAsInt(int prop_index, int value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetValueAsInt(prop_index, value);
 }
 
 void Entity::SetValueAsAny(const Property* prop, const any_t& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
 void Entity::SetValueAsAny(int prop_index, const any_t& value)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _props.SetValueAsAny(prop_index, value);
 }
 
 auto Entity::GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_innerEntities) {
         return nullptr;
@@ -309,7 +311,7 @@ auto Entity::GetInnerEntities(hstring entry) const noexcept -> const vector<refc
 
 auto Entity::GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_innerEntities) {
         return nullptr;
@@ -326,7 +328,7 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Ent
 
 void Entity::AddInnerEntity(hstring entry, Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     make_if_not_exists(_innerEntities);
 
@@ -340,11 +342,11 @@ void Entity::AddInnerEntity(hstring entry, Entity* entity)
 
 void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_innerEntities);
-    RUNTIME_ASSERT(entry);
-    RUNTIME_ASSERT(_innerEntities->count(entry));
+    FO_RUNTIME_ASSERT(_innerEntities);
+    FO_RUNTIME_ASSERT(entry);
+    FO_RUNTIME_ASSERT(_innerEntities->count(entry));
 
     auto& entities = _innerEntities->at(entry);
 
@@ -359,14 +361,14 @@ void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 
 void Entity::ClearInnerEntities()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _innerEntities.reset();
 }
 
 auto Entity::HasTimeEvents() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return (_timeEvents && !_timeEvents->empty()) || (_persistentTimeEvents && !_persistentTimeEvents->empty());
 }
@@ -375,12 +377,12 @@ EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) noex
     _entity {entity},
     _callbackName {callback_name}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_callbacks == nullptr) {
         _callbacks = &_entity->GetEventCallbacks(_callbackName);
@@ -392,7 +394,7 @@ void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
 // ReSharper disable once CppMemberFunctionMayBeConst
 void EntityEventBase::Unsubscribe(const void* subscription_ptr) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_callbacks == nullptr) {
         return;
@@ -403,7 +405,7 @@ void EntityEventBase::Unsubscribe(const void* subscription_ptr) noexcept
 
 void EntityEventBase::UnsubscribeAll() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_callbacks == nullptr) {
         return;
@@ -412,3 +414,5 @@ void EntityEventBase::UnsubscribeAll() noexcept
     _entity->UnsubscribeAllEvent(_callbackName);
     _callbacks = nullptr;
 }
+
+FO_END_NAMESPACE();

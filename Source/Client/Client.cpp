@@ -41,19 +41,27 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
+extern void Client_RegisterData(EngineData*, const vector<uint8>&);
+extern void InitClientEngine(FOClient*);
+
+#if FO_ANGELSCRIPT_SCRIPTING
+extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
+#endif
+
 static void InitClientEngineData(EngineData* engine, const GlobalSettings& settings)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
     resources.AddDataSource(strex(settings.ClientResources).combinePath("Core"));
 
     if (const auto restore_info = resources.ReadFile("EngineData.fobin")) {
-        extern void Client_RegisterData(EngineData*, const vector<uint8>&);
         Client_RegisterData(engine, restore_info.GetData());
     }
     else {
-        throw EngineDataNotFoundException(LINE_STR);
+        throw EngineDataNotFoundException(FO_LINE_STR);
     }
 }
 
@@ -70,7 +78,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     Cache(strex(Settings.ClientResources).combinePath("Cache.fobin")),
     _conn(Settings)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Resources.AddDataSource(Settings.EmbeddedResources);
 
@@ -113,7 +121,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
     Init_AngelScript_ClientScriptSystem(this);
 #endif
 
@@ -123,7 +130,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     ProtoMngr.LoadFromResources(Resources);
 
     // Modules initialization
-    extern void InitClientEngine(FOClient * client);
     InitClientEngine(this);
 
     ScriptSys.InitModules();
@@ -230,7 +236,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
 
 FOClient::~FOClient()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     safe_call([] { App->Render.SetRenderTarget(nullptr); });
 
@@ -270,42 +276,42 @@ FOClient::~FOClient()
 
 auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimation.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
 }
 
 auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
 auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
 }
 
 auto FOClient::IsConnecting() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnecting();
 }
 
 auto FOClient::IsConnected() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnected();
 }
 
 auto FOClient::GetChosen() noexcept -> CritterView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_chosen && _chosen->IsDestroyed()) {
         _chosen = nullptr;
@@ -316,14 +322,14 @@ auto FOClient::GetChosen() noexcept -> CritterView*
 
 auto FOClient::GetMapChosen() noexcept -> CritterHexView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
 auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
     return it != _globalMapCritters.end() ? it->get() : nullptr;
@@ -331,7 +337,7 @@ auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 
 void FOClient::MainLoop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     FrameAdvance();
 
@@ -385,7 +391,7 @@ void FOClient::MainLoop()
 
 void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!push_back || _screenFadingEffects.empty()) {
         _screenFadingEffects.push_back({GameTime.GetFrameTime(), time, from_color, to_color});
@@ -405,7 +411,7 @@ void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, boo
 
 void FOClient::ProcessScreenEffectFading()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SprMngr.Flush();
 
@@ -446,7 +452,7 @@ void FOClient::ProcessScreenEffectFading()
 
 void FOClient::ScreenQuake(int noise, timespan time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
     Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
@@ -463,7 +469,7 @@ void FOClient::ScreenQuake(int noise, timespan time)
 
 void FOClient::ProcessScreenEffectQuake()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
         Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
@@ -495,7 +501,7 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
@@ -513,7 +519,7 @@ void FOClient::ProcessInputEvents()
 
 void FOClient::ProcessInputEvent(const InputEvent& ev)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_video && !_video->IsStopped() && _videoCanInterrupt) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent) {
@@ -577,7 +583,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
 
 void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (result == ClientConnection::ConnectResult::Success) {
         // After connect things
@@ -591,10 +597,10 @@ void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
             // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         }
         else if (_initNetReason != INIT_NET_REASON_CUSTOM) {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
 
-        RUNTIME_ASSERT(!_curPlayer);
+        FO_RUNTIME_ASSERT(!_curPlayer);
         _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
 
         OnConnected.Fire();
@@ -609,7 +615,7 @@ void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
 
 void FOClient::Net_OnDisconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     UnloadMap();
 
@@ -626,9 +632,9 @@ void FOClient::Net_OnDisconnect()
 
 void FOClient::Net_SendLogIn()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     WriteLog("Player login");
 
@@ -640,9 +646,9 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     WriteLog("Player registration");
 
@@ -654,9 +660,9 @@ void FOClient::Net_SendCreatePlayer()
 
 void FOClient::Net_SendDir(CritterHexView* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NetMessage::SendCritterDir);
     _conn.OutBuf.Write(_curMap->GetId());
@@ -667,11 +673,11 @@ void FOClient::Net_SendDir(CritterHexView* cr)
 
 void FOClient::Net_SendMove(CritterHexView* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
 
     if (cr->Moving.Steps.size() > 500) {
         BreakIntoDebugger();
@@ -698,9 +704,9 @@ void FOClient::Net_SendMove(CritterHexView* cr)
 
 void FOClient::Net_SendStopMove(CritterHexView* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NetMessage::SendStopCritterMove);
     _conn.OutBuf.Write(_curMap->GetId());
@@ -713,10 +719,10 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-    RUNTIME_ASSERT(entity);
+    FO_NON_CONST_METHOD_HINT();
+    FO_RUNTIME_ASSERT(entity);
 
     const auto& props = entity->GetProperties();
     props.ValidateForRawData(prop);
@@ -729,23 +735,23 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     switch (type) {
     case NetProperty::CritterItem: {
         auto* client_entity = dynamic_cast<ClientEntity*>(entity);
-        RUNTIME_ASSERT(client_entity);
+        FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(dynamic_cast<ItemView*>(client_entity)->GetCritterId());
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
         const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
-        RUNTIME_ASSERT(client_entity);
+        FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
         const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
-        RUNTIME_ASSERT(client_entity);
+        FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
         const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
-        RUNTIME_ASSERT(client_entity);
+        FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     default:
@@ -759,9 +765,9 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
 void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NetMessage::SendTalkNpc);
     _conn.OutBuf.Write(cr_id);
@@ -772,7 +778,7 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
 
 void FOClient::Net_OnInitData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -800,12 +806,12 @@ void FOClient::Net_OnInitData()
                 break;
             }
 
-            RUNTIME_ASSERT(name_len > 0);
+            FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
             const auto size = reader.Read<uint>();
             const auto hash = reader.Read<uint>();
 
-            UNUSED_VARIABLE(hash);
+            ignore_unused(hash);
 
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
@@ -823,7 +829,7 @@ void FOClient::Net_OnInitData()
 
 void FOClient::Net_OnRegisterSuccess()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Registration success");
 
@@ -832,7 +838,7 @@ void FOClient::Net_OnRegisterSuccess()
 
 void FOClient::Net_OnLoginSuccess()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Authentication success");
 
@@ -842,12 +848,12 @@ void FOClient::Net_OnLoginSuccess()
 
     RestoreData(_globalsPropertiesData);
 
-    RUNTIME_ASSERT(_curPlayer);
-    RUNTIME_ASSERT(!_curPlayer->GetId());
+    FO_RUNTIME_ASSERT(_curPlayer);
+    FO_RUNTIME_ASSERT(!_curPlayer->GetId());
     _curPlayer->SetId(player_id, true);
     _curPlayer->RestoreData(_playerPropertiesData);
 
-    RUNTIME_ASSERT(!HasInnerEntities());
+    FO_RUNTIME_ASSERT(!HasInnerEntities());
     ReceiveCustomEntities(this);
 
     OnLoginSuccess.Fire();
@@ -855,7 +861,7 @@ void FOClient::Net_OnLoginSuccess()
 
 void FOClient::Net_OnAddCritter()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(Hashes);
@@ -879,7 +885,7 @@ void FOClient::Net_OnAddCritter()
 
     if (_curMap != nullptr) {
         hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
-        RUNTIME_ASSERT(hex_cr);
+        FO_RUNTIME_ASSERT(hex_cr);
 
         if (_mapLoaded) {
             hex_cr->FadeUp();
@@ -1003,7 +1009,7 @@ void FOClient::Net_OnAddCritter()
 
 void FOClient::Net_OnRemoveCritter()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
 
@@ -1046,7 +1052,7 @@ void FOClient::Net_OnRemoveCritter()
 
 void FOClient::Net_OnInfoMessage()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto info_message = _conn.InBuf.Read<EngineInfoMessage>();
     const auto extra_text = _conn.InBuf.Read<string>();
@@ -1056,9 +1062,9 @@ void FOClient::Net_OnInfoMessage()
 
 void FOClient::Net_OnCritterDir()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
@@ -1077,9 +1083,9 @@ void FOClient::Net_OnCritterDir()
 
 void FOClient::Net_OnCritterMove()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     auto* cr = _curMap->GetCritter(cr_id);
@@ -1093,9 +1099,9 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnCritterMoveSpeed()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto speed = _conn.InBuf.Read<uint16>();
@@ -1131,7 +1137,7 @@ void FOClient::Net_OnCritterMoveSpeed()
 
 void FOClient::Net_OnCritterAction()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
@@ -1173,7 +1179,7 @@ void FOClient::Net_OnCritterAction()
 
 void FOClient::Net_OnCritterMoveItem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
@@ -1225,7 +1231,7 @@ void FOClient::Net_OnCritterMoveItem()
     const auto items_count = _conn.InBuf.Read<uint>();
 
     if (items_count != 0) {
-        RUNTIME_ASSERT(!cr->GetIsChosen());
+        FO_RUNTIME_ASSERT(!cr->GetIsChosen());
 
         cr->DeleteAllInvItems();
 
@@ -1262,7 +1268,7 @@ void FOClient::Net_OnCritterMoveItem()
 
 void FOClient::Net_OnCritterAnimate()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
@@ -1310,7 +1316,7 @@ void FOClient::Net_OnCritterAnimate()
 
 void FOClient::Net_OnCritterSetAnims()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto cond = _conn.InBuf.Read<CritterCondition>();
@@ -1351,9 +1357,9 @@ void FOClient::Net_OnCritterSetAnims()
 
 void FOClient::Net_OnCritterTeleport()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto to_hex = _conn.InBuf.Read<mpos>();
@@ -1381,9 +1387,9 @@ void FOClient::Net_OnCritterTeleport()
 
 void FOClient::Net_OnCritterPos()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto hex = _conn.InBuf.Read<mpos>();
@@ -1395,7 +1401,7 @@ void FOClient::Net_OnCritterPos()
         return;
     }
 
-    RUNTIME_ASSERT(_curMap->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(_curMap->GetSize().IsValidPos(hex));
 
     auto* cr = _curMap->GetCritter(cr_id);
 
@@ -1427,7 +1433,7 @@ void FOClient::Net_OnCritterPos()
 
 void FOClient::Net_OnCritterAttachments()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto is_attached = _conn.InBuf.Read<bool>();
@@ -1483,7 +1489,7 @@ void FOClient::Net_OnCritterAttachments()
 
 void FOClient::Net_OnChosenAddItem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
@@ -1524,7 +1530,7 @@ void FOClient::Net_OnChosenAddItem()
 
 void FOClient::Net_OnChosenRemoveItem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
@@ -1558,7 +1564,7 @@ void FOClient::Net_OnChosenRemoveItem()
 
 void FOClient::Net_OnAddItemOnMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
@@ -1575,7 +1581,7 @@ void FOClient::Net_OnAddItemOnMap()
     }
 
     auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
-    RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(item);
 
     ReceiveCustomEntities(item);
 
@@ -1588,7 +1594,7 @@ void FOClient::Net_OnAddItemOnMap()
 
 void FOClient::Net_OnRemoveItemFromMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
@@ -1612,9 +1618,9 @@ void FOClient::Net_OnRemoveItemFromMap()
 
 void FOClient::Net_OnAnimateItem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto anim_name = _conn.InBuf.Read<hstring>(Hashes);
@@ -1635,14 +1641,14 @@ void FOClient::Net_OnAnimateItem()
 
 void FOClient::Net_OnEffect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto hex = _conn.InBuf.Read<mpos>();
     const auto radius = _conn.InBuf.Read<uint16>();
-    RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
+    FO_RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
 
     if (_curMap == nullptr) {
         BreakIntoDebugger();
@@ -1666,9 +1672,9 @@ void FOClient::Net_OnEffect()
 
 void FOClient::Net_OnFlyEffect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
     const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
@@ -1697,7 +1703,7 @@ void FOClient::Net_OnFlyEffect()
 
 void FOClient::Net_OnPlaySound()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Todo: synchronize effects showing (for example shot and kill)
     [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<ident_t>();
@@ -1708,7 +1714,7 @@ void FOClient::Net_OnPlaySound()
 
 void FOClient::Net_OnPlaceToGameComplete()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _mapLoaded = true;
 
@@ -1730,7 +1736,7 @@ void FOClient::Net_OnPlaceToGameComplete()
 
 void FOClient::Net_OnProperty()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto data_size = _conn.InBuf.Read<uint>();
     const auto type = _conn.InBuf.Read<NetProperty>();
@@ -1805,7 +1811,7 @@ void FOClient::Net_OnProperty()
         entity = GetEntity(entity_id);
         break;
     default:
-        UNREACHABLE_PLACE();
+        FO_UNREACHABLE_PLACE();
     }
 
     if (entity == nullptr) {
@@ -1820,8 +1826,8 @@ void FOClient::Net_OnProperty()
         return;
     }
 
-    RUNTIME_ASSERT(!prop->IsDisabled());
-    RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
 
     {
         _sendIgnoreEntity = entity;
@@ -1850,7 +1856,7 @@ void FOClient::Net_OnProperty()
 
 void FOClient::Net_OnChosenTalk()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_npc = _conn.InBuf.Read<bool>();
     const auto talk_cr_id = _conn.InBuf.Read<ident_t>();
@@ -1891,7 +1897,7 @@ void FOClient::Net_OnChosenTalk()
 
 void FOClient::Net_OnTimeSync()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto time = _conn.InBuf.Read<synctime>();
 
@@ -1901,7 +1907,7 @@ void FOClient::Net_OnTimeSync()
 
 void FOClient::Net_OnLoadMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Change map");
 
@@ -1945,7 +1951,7 @@ void FOClient::Net_OnLoadMap()
 
 void FOClient::Net_OnSomeItems()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto context_param = any_t {_conn.InBuf.Read<string>()};
     const auto items_count = _conn.InBuf.Read<uint>();
@@ -1957,7 +1963,7 @@ void FOClient::Net_OnSomeItems()
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
-        RUNTIME_ASSERT(item_id);
+        FO_RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
         auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1974,7 +1980,7 @@ void FOClient::Net_OnSomeItems()
 
 void FOClient::Net_OnViewMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hex = _conn.InBuf.Read<mpos>();
 
@@ -1988,9 +1994,9 @@ void FOClient::Net_OnViewMap()
 
 void FOClient::Net_OnRemoteCall()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto rpc_num = _conn.InBuf.Read<uint>();
 
@@ -1999,7 +2005,7 @@ void FOClient::Net_OnRemoteCall()
 
 void FOClient::Net_OnAddCustomEntity()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto holder_id = _conn.InBuf.Read<ident_t>();
     const auto holder_entry = _conn.InBuf.Read<hstring>(Hashes);
@@ -2028,7 +2034,7 @@ void FOClient::Net_OnAddCustomEntity()
 
 void FOClient::Net_OnRemoveCustomEntity()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto id = _conn.InBuf.Read<ident_t>();
 
@@ -2069,7 +2075,7 @@ void FOClient::Net_OnRemoveCustomEntity()
 
 void FOClient::ReceiveCustomEntities(Entity* holder)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto entries_count = _conn.InBuf.Read<uint16>();
 
@@ -2100,22 +2106,22 @@ void FOClient::ReceiveCustomEntities(Entity* holder)
 
 auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto type_name = std::get<0>(GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
 
-    RUNTIME_ASSERT(IsValidEntityType(type_name));
+    FO_RUNTIME_ASSERT(IsValidEntityType(type_name));
 
     const bool has_protos = GetEntityTypeInfo(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
-        RUNTIME_ASSERT(has_protos);
+        FO_RUNTIME_ASSERT(has_protos);
         proto = ProtoMngr.GetProtoEntity(type_name, pid);
-        RUNTIME_ASSERT(proto);
+        FO_RUNTIME_ASSERT(proto);
     }
     else {
-        RUNTIME_ASSERT(!has_protos);
+        FO_RUNTIME_ASSERT(!has_protos);
     }
 
     const auto* registrator = GetPropertyRegistrator(type_name);
@@ -2135,7 +2141,7 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
-        RUNTIME_ASSERT(holder == this);
+        FO_RUNTIME_ASSERT(holder == this);
     }
 
     entity->SetCustomHolderEntry(entry);
@@ -2147,9 +2153,9 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
 
 void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto whole_time = _conn.InBuf.Read<uint>();
     const auto offset_time = _conn.InBuf.Read<uint>();
@@ -2207,11 +2213,11 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
         auto hex = next_start_hex;
 
-        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], _curMap->GetSize());
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
         }
 
         auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
@@ -2239,15 +2245,15 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
     cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
-    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 }
 
 auto FOClient::GetEntity(ident_t id) -> ClientEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allEntities.find(id);
 
@@ -2256,27 +2262,27 @@ auto FOClient::GetEntity(ident_t id) -> ClientEntity*
 
 void FOClient::RegisterEntity(ClientEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity);
-    RUNTIME_ASSERT(entity->GetId());
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity->GetId());
 
     _allEntities[entity->GetId()] = entity;
 }
 
 void FOClient::UnregisterEntity(ClientEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity);
-    RUNTIME_ASSERT(entity->GetId());
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity->GetId());
 
     _allEntities.erase(entity->GetId());
 }
 
 auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
         auto& iface_anim = it->second;
@@ -2310,7 +2316,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
 
 void FOClient::AnimFree(uint anim_id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
         auto& iface_anim = it->second;
@@ -2324,7 +2330,7 @@ void FOClient::AnimFree(uint anim_id)
 
 auto FOClient::AnimGetSpr(uint anim_id) -> Sprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (anim_id == 0) {
         return nullptr;
@@ -2339,9 +2345,9 @@ auto FOClient::AnimGetSpr(uint anim_id) -> Sprite*
 
 void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == this);
+    FO_RUNTIME_ASSERT(entity == this);
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2357,9 +2363,9 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curPlayer.get());
+    FO_RUNTIME_ASSERT(entity == _curPlayer.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2374,7 +2380,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2394,7 +2400,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2429,9 +2435,9 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curMap.get());
+    FO_RUNTIME_ASSERT(entity == _curMap.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2447,9 +2453,9 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity == _curLocation.get());
+    FO_RUNTIME_ASSERT(entity == _curLocation.get());
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2465,11 +2471,11 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
         cr->GetMap()->RefreshMap();
@@ -2479,11 +2485,11 @@ void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
 #if FO_ENABLE_3D
@@ -2500,11 +2506,11 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
         cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
@@ -2513,11 +2519,11 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         cr->SetSpriteVisiblity(!cr->GetHideSprite());
@@ -2526,9 +2532,9 @@ void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // Colorize, ColorizeColor, BadItem, ShootThru, LightThru, NoBlock
 
@@ -2562,14 +2568,14 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
-    UNUSED_VARIABLE(entity);
-    UNUSED_VARIABLE(prop);
+    ignore_unused(entity);
+    ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->GetMap()->UpdateItemLightSource(item);
@@ -2578,11 +2584,11 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->RefreshAnim();
@@ -2591,11 +2597,11 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->RefreshOffs();
@@ -2605,11 +2611,11 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         if (item->GetCanOpen()) {
@@ -2625,11 +2631,11 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(prop);
+    ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->SetSpriteVisiblity(!item->GetHideSprite());
@@ -2638,7 +2644,7 @@ void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
 
 void FOClient::ChangeLanguage(string_view lang_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto lang_pack = LanguagePack {lang_name, *this};
     lang_pack.LoadFromResources(Resources);
@@ -2650,9 +2656,9 @@ void FOClient::ChangeLanguage(string_view lang_name)
 // Todo: move targs formatting to scripts
 void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (text == "error") {
         text = "Text not found!";
@@ -2789,7 +2795,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
 
 void FOClient::UnloadMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     OnMapUnload.Fire();
 
@@ -2818,7 +2824,7 @@ void FOClient::UnloadMap()
 
 void FOClient::LmapPrepareMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _lmapPrepPix.clear();
 
@@ -2896,7 +2902,7 @@ void FOClient::LmapPrepareMap()
 
 void FOClient::CleanupSpriteCache()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ResMngr.CleanupCritterFrames();
     SprMngr.CleanupSpriteCache();
@@ -2904,13 +2910,13 @@ void FOClient::CleanupSpriteCache()
 
 void FOClient::DestroyInnerEntities()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (HasInnerEntities()) {
         for (auto&& [entry, entities] : GetInnerEntities()) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                RUNTIME_ASSERT(custom_entity);
+                FO_RUNTIME_ASSERT(custom_entity);
 
                 custom_entity->DestroySelf();
             }
@@ -2922,7 +2928,7 @@ void FOClient::DestroyInnerEntities()
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Parse command
     vector<string> args;
@@ -3040,9 +3046,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
 void FOClient::Connect(string_view login, string_view password, int reason)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
+    FO_RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
 
     if (reason == _initNetReason) {
         return;
@@ -3064,7 +3070,7 @@ void FOClient::Connect(string_view login, string_view password, int reason)
 
 void FOClient::Disconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _initNetReason = INIT_NET_REASON_NONE;
     _conn.Disconnect();
@@ -3072,7 +3078,7 @@ void FOClient::Disconnect()
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (cr->GetIsAttached()) {
         return;
@@ -3128,7 +3134,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         cr->Moving.WholeTime = {};
         cr->Moving.WholeDist = {};
 
-        RUNTIME_ASSERT(cr->Moving.Speed > 0);
+        FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
         const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
         auto next_start_hex = cr->Moving.StartHex;
@@ -3137,11 +3143,11 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
             auto hex2 = next_start_hex;
 
-            RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-            RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+            FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+            FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
             for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j], cr->GetMap()->GetSize());
-                RUNTIME_ASSERT(move_ok);
+                FO_RUNTIME_ASSERT(move_ok);
             }
 
             auto offset2 = Geometry.GetHexInterval(next_start_hex, hex2);
@@ -3165,17 +3171,17 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
             next_start_hex = hex2;
 
             if (i == cr->Moving.ControlSteps.size() - 1) {
-                RUNTIME_ASSERT(hex2 == cr->Moving.EndHex);
+                FO_RUNTIME_ASSERT(hex2 == cr->Moving.EndHex);
             }
         }
 
         cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
         cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
 
-        RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-        RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-        RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-        RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+        FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+        FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+        FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+        FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
         cr->AnimateStay();
         Net_SendMove(cr);
@@ -3190,7 +3196,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
 
 void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto prev_dir_angle = cr->GetDirAngle();
 
@@ -3208,7 +3214,7 @@ void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_an
 
 void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueue)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_video && enqueue) {
         _videoQueue.emplace_back(string(video_name), can_interrupt);
@@ -3225,7 +3231,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
     }
 
     const auto names = strex(video_name).split('|');
-    RUNTIME_ASSERT(!names.empty());
+    FO_RUNTIME_ASSERT(!names.empty());
     const auto file = Resources.ReadFile(names.front());
 
     if (!file) {
@@ -3246,7 +3252,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
 
 void FOClient::ProcessVideo()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_video) {
         _videoTex->UpdateTextureRegion({}, _videoTex->Size, _video->RenderFrame().data());
@@ -3268,3 +3274,5 @@ void FOClient::ProcessVideo()
         _videoQueue = queue;
     }
 }
+
+FO_END_NAMESPACE();

@@ -41,16 +41,18 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
     CritterView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void CritterHexView::Init()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
     RefreshModel();
@@ -66,7 +68,7 @@ void CritterHexView::Init()
 
 void CritterHexView::OnDestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     CritterView::OnDestroySelf();
 
@@ -80,7 +82,7 @@ void CritterHexView::OnDestroySelf()
 
 void CritterHexView::SetupSprite(MapSprite* mspr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     HexView::SetupSprite(mspr);
 
@@ -93,14 +95,14 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
 ItemView* CritterHexView::AddRawInvItem(ItemView* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     CritterView::AddRawInvItem(item);
 
@@ -113,7 +115,7 @@ ItemView* CritterHexView::AddRawInvItem(ItemView* item)
 
 void CritterHexView::DeleteInvItem(ItemView* item, bool animate)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     CritterView::DeleteInvItem(item, animate);
 
@@ -124,7 +126,7 @@ void CritterHexView::DeleteInvItem(ItemView* item, bool animate)
 
 void CritterHexView::ClearMove()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Moving.Steps = {};
     Moving.ControlSteps = {};
@@ -141,9 +143,9 @@ void CritterHexView::ClearMove()
 
 void CritterHexView::MoveAttachedCritters()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     const auto hex = GetHex();
     const auto hex_offset = GetHexOffset();
@@ -164,7 +166,7 @@ void CritterHexView::MoveAttachedCritters()
 
 void CritterHexView::Action(CritterAction action, int action_data, Entity* context_item, bool local_call /* = true */)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _engine->OnCritterAction.Fire(local_call, this, action, action_data, context_item);
 
@@ -220,7 +222,7 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
 
 void CritterHexView::NextAnim(bool erase_front)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_animSequence.empty()) {
         return;
@@ -253,7 +255,7 @@ void CritterHexView::NextAnim(bool erase_front)
 
 void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto dir = GetDir();
 
@@ -271,7 +273,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
             resolved_context_item = proto;
         }
         else {
-            UNREACHABLE_PLACE();
+            FO_UNREACHABLE_PLACE();
         }
     }
 
@@ -313,7 +315,7 @@ void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim acti
 
 void CritterHexView::AnimateStay()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ClearAnim();
 
@@ -388,28 +390,28 @@ void CritterHexView::AnimateStay()
 
 void CritterHexView::ClearAnim()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _animSequence.clear();
 }
 
 auto CritterHexView::IsNeedReset() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _needReset && _engine->GameTime.GetFrameTime() >= _resetTime;
 }
 
 void CritterHexView::ResetOk()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _needReset = false;
 }
 
 auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     switch (GetCondition()) {
     case CritterCondition::Alive:
@@ -454,7 +456,7 @@ auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
 
 auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (state_anim == CritterStateAnim::None) {
         state_anim = GetStateAnim();
@@ -472,16 +474,16 @@ auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionA
 #if FO_ENABLE_3D
 auto CritterHexView::GetModelLayersData() const -> const int*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
-    RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int) * MODEL_LAYERS_COUNT);
+    FO_RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int) * MODEL_LAYERS_COUNT);
     return reinterpret_cast<const int*>(prop_raw_data.data());
 }
 
 void CritterHexView::RefreshModel()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto animCallbacks = _model != nullptr ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
 
@@ -523,14 +525,14 @@ void CritterHexView::RefreshModel()
 
 void CritterHexView::ChangeDir(uint8 dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ChangeDirAngle(GeometryHelper::DirToAngle(dir));
 }
 
 void CritterHexView::ChangeDirAngle(int dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ChangeLookDirAngle(dir_angle);
     ChangeMoveDirAngle(dir_angle);
@@ -538,7 +540,7 @@ void CritterHexView::ChangeDirAngle(int dir_angle)
 
 void CritterHexView::ChangeLookDirAngle(int dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
     const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
@@ -563,9 +565,9 @@ void CritterHexView::ChangeLookDirAngle(int dir_angle)
 
 void CritterHexView::ChangeMoveDirAngle(int dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
@@ -574,13 +576,13 @@ void CritterHexView::ChangeMoveDirAngle(int dir_angle)
     else
 #endif
     {
-        UNUSED_VARIABLE(dir_angle);
+        ignore_unused(dir_angle);
     }
 }
 
 void CritterHexView::Process()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsFading()) {
         ProcessFading();
@@ -686,12 +688,12 @@ void CritterHexView::Process()
 
 void CritterHexView::ProcessMoving()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!Moving.Steps.empty());
-    RUNTIME_ASSERT(!Moving.ControlSteps.empty());
-    RUNTIME_ASSERT(Moving.WholeTime > 0.0f);
-    RUNTIME_ASSERT(Moving.WholeDist > 0.0f);
+    FO_RUNTIME_ASSERT(!Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(!Moving.ControlSteps.empty());
+    FO_RUNTIME_ASSERT(Moving.WholeTime > 0.0f);
+    FO_RUNTIME_ASSERT(Moving.WholeDist > 0.0f);
 
     if (!IsAlive()) {
         ClearMove();
@@ -712,11 +714,11 @@ void CritterHexView::ProcessMoving()
     for (size_t i = 0; i < Moving.ControlSteps.size(); i++) {
         auto hex = start_hex;
 
-        RUNTIME_ASSERT(control_step_begin <= Moving.ControlSteps[i]);
-        RUNTIME_ASSERT(Moving.ControlSteps[i] <= Moving.Steps.size());
+        FO_RUNTIME_ASSERT(control_step_begin <= Moving.ControlSteps[i]);
+        FO_RUNTIME_ASSERT(Moving.ControlSteps[i] <= Moving.Steps.size());
         for (auto j = control_step_begin; j < Moving.ControlSteps[i]; j++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(hex, Moving.Steps[j], _map->GetSize());
-            RUNTIME_ASSERT(move_ok);
+            FO_RUNTIME_ASSERT(move_ok);
         }
 
         auto&& [ox, oy] = _engine->Geometry.GetHexInterval(start_hex, hex);
@@ -746,14 +748,14 @@ void CritterHexView::ProcessMoving()
             // Evaluate current hex
             const auto step_index_f = std::round(normalized_dist * static_cast<float>(Moving.ControlSteps[i] - control_step_begin));
             const auto step_index = control_step_begin + static_cast<int>(step_index_f);
-            RUNTIME_ASSERT(step_index >= control_step_begin);
-            RUNTIME_ASSERT(step_index <= Moving.ControlSteps[i]);
+            FO_RUNTIME_ASSERT(step_index >= control_step_begin);
+            FO_RUNTIME_ASSERT(step_index <= Moving.ControlSteps[i]);
 
             auto hex2 = start_hex;
 
             for (auto j2 = control_step_begin; j2 < step_index; j2++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(hex2, Moving.Steps[j2], _map->GetSize());
-                RUNTIME_ASSERT(move_ok);
+                FO_RUNTIME_ASSERT(move_ok);
             }
 
             const auto prev_hex = GetHex();
@@ -823,7 +825,7 @@ void CritterHexView::ProcessMoving()
             break;
         }
 
-        RUNTIME_ASSERT(i < Moving.ControlSteps.size() - 1);
+        FO_RUNTIME_ASSERT(i < Moving.ControlSteps.size() - 1);
 
         control_step_begin = Moving.ControlSteps[i];
         start_hex = hex;
@@ -838,16 +840,16 @@ void CritterHexView::ProcessMoving()
 
 auto CritterHexView::GetViewRect() const -> IRect
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(IsSpriteValid());
+    FO_RUNTIME_ASSERT(IsSpriteValid());
 
     return GetSprite()->GetViewRect();
 }
 
 void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint frm_index)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curFrmIndex = frm_index;
 
@@ -870,7 +872,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint frm_index)
 
 void CritterHexView::AddExtraOffs(ipos offset)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _offsExt.x += static_cast<float>(offset.x);
     _offsExt.y += static_cast<float>(offset.y);
@@ -886,7 +888,7 @@ void CritterHexView::AddExtraOffs(ipos offset)
 
 void CritterHexView::RefreshOffs()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto hex_offset = GetHexOffset();
 
@@ -899,7 +901,7 @@ void CritterHexView::RefreshOffs()
 
 auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsSpriteValid()) {
         const auto rect = GetViewRect();
@@ -913,3 +915,5 @@ auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
 
     return false;
 }
+
+FO_END_NAMESPACE();

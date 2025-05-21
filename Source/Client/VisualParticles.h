@@ -51,6 +51,8 @@ namespace SPK
     }
 }
 
+FO_BEGIN_NAMESPACE();
+
 class ParticleSystem;
 
 class ParticleManager final
@@ -124,3 +126,5 @@ private:
     bool _forceDraw {};
     nanotime _lastDrawTime {};
 };
+
+FO_END_NAMESPACE();

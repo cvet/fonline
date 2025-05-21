@@ -35,6 +35,8 @@
 
 #include "Client.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 {
@@ -151,3 +153,5 @@ FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
         hex_item->SetTargetAlpha(alpha);
     }
 }
+
+FO_END_NAMESPACE();

@@ -46,7 +46,9 @@
 #include "SpriteManager.h"
 #include "TwoDimensionalGrid.h"
 
-DECLARE_EXCEPTION(MapViewLoadException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(MapViewLoadException);
 
 class FOClient;
 class ItemHexView;
@@ -61,7 +63,7 @@ struct FindPathResult
 ///@ ExportRefType Client
 struct SpritePattern
 {
-    SCRIPTABLE_OBJECT_BEGIN();
+    FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Finished {};
     string SprName {};
@@ -72,9 +74,9 @@ struct SpritePattern
     ItemProperty TileProperty {};
     int ExpectedTilePropertyValue {};
 
-    void Finish() { NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
+    void Finish() { FO_NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
 
-    SCRIPTABLE_OBJECT_END();
+    FO_SCRIPTABLE_OBJECT_END();
 
     std::function<void()> FinishCallback {};
     vector<shared_ptr<Sprite>> Sprites {};
@@ -163,7 +165,7 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(mpos pos) noexcept -> const Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(pos); }
+    [[nodiscard]] auto GetField(mpos pos) noexcept -> const Field& { FO_NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(pos); }
     [[nodiscard]] auto IsHexToDraw(mpos pos) const noexcept -> bool { return _hexField->GetCellForReading(pos).IsView; }
     [[nodiscard]] auto GetHexTrack(mpos pos) noexcept -> char& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
@@ -415,3 +417,5 @@ private:
 
     vector<refcount_ptr<SpritePattern>> _spritePatterns {};
 };
+
+FO_END_NAMESPACE();

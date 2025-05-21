@@ -40,7 +40,9 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(AngelScriptBakerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(AngelScriptBakerException);
 
 class AngelScriptBaker final : public BaseBaker
 {
@@ -56,5 +58,7 @@ public:
 
     void BakeFiles(FileCollection files) override;
 };
+
+FO_END_NAMESPACE();
 
 #endif

@@ -38,23 +38,25 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 void TextPack::AddStr(TextPackKey num, string_view str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _strData.emplace(num, string(str));
 }
 
 void TextPack::AddStr(TextPackKey num, string&& str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _strData.emplace(num, std::move(str));
 }
 
 auto TextPack::GetStr(TextPackKey num) const -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const size_t str_count = _strData.count(num);
     auto it = _strData.find(num);
@@ -81,7 +83,7 @@ auto TextPack::GetStr(TextPackKey num) const -> const string&
 
 auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const size_t str_count = _strData.count(num);
     auto it = _strData.find(num);
@@ -99,7 +101,7 @@ auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
 
 auto TextPack::GetStrNumUpper(TextPackKey num) const -> TextPackKey
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _strData.upper_bound(num);
 
@@ -112,7 +114,7 @@ auto TextPack::GetStrNumUpper(TextPackKey num) const -> TextPackKey
 
 auto TextPack::GetStrNumLower(TextPackKey num) const -> TextPackKey
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _strData.lower_bound(num);
 
@@ -125,21 +127,21 @@ auto TextPack::GetStrNumLower(TextPackKey num) const -> TextPackKey
 
 auto TextPack::GetStrCount(TextPackKey num) const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _strData.count(num);
 }
 
 void TextPack::EraseStr(TextPackKey num)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _strData.erase(num);
 }
 
 void TextPack::Merge(const TextPack& other)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : other._strData) {
         AddStr(key, value);
@@ -148,7 +150,7 @@ void TextPack::Merge(const TextPack& other)
 
 void TextPack::FixStr(const TextPack& base_pack)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Add keys that are in the base pack but not in this pack
     for (auto&& [key, value] : base_pack._strData) {
@@ -170,14 +172,14 @@ void TextPack::FixStr(const TextPack& base_pack)
 
 auto TextPack::GetSize() const noexcept -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _strData.size();
 }
 
 auto TextPack::CheckIntersections(const TextPack& other) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     bool result = false;
 
@@ -193,7 +195,7 @@ auto TextPack::CheckIntersections(const TextPack& other) const -> bool
 
 auto TextPack::GetBinaryData() const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<uint8> data;
     auto writer = DataWriter {data};
@@ -211,7 +213,7 @@ auto TextPack::GetBinaryData() const -> vector<uint8>
 
 auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
 
@@ -239,7 +241,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
 
 auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto failed = false;
 
@@ -295,7 +297,7 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
 
 void TextPack::LoadFromMap(const map<string, string>& kv)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
         const TextPackKey num = strex(key).toUInt();
@@ -308,16 +310,16 @@ void TextPack::LoadFromMap(const map<string, string>& kv)
 
 void TextPack::Clear()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _strData.clear();
 }
 
 void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!bake_languages.empty());
+    FO_RUNTIME_ASSERT(!bake_languages.empty());
 
     // Add default language
     if (lang_packs.empty() || lang_packs.front().first != bake_languages.front()) {
@@ -364,12 +366,12 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
             }
         }
 
-        RUNTIME_ASSERT(lang_pack.size() == base_lang_pack.size());
+        FO_RUNTIME_ASSERT(lang_pack.size() == base_lang_pack.size());
 
         // Normalize texts to the base language
         for (auto&& [pack_name, text_pack] : lang_pack) {
             const auto it = base_lang_pack.find(pack_name);
-            RUNTIME_ASSERT(it != base_lang_pack.end());
+            FO_RUNTIME_ASSERT(it != base_lang_pack.end());
             text_pack.FixStr(it->second);
         }
     }
@@ -379,7 +381,7 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
     _langName {lang_name},
     _nameResolver {&name_resolver}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
     _textPacks[static_cast<size_t>(TextPackName::Game)] = SafeAlloc::MakeUnique<TextPack>();
@@ -390,27 +392,27 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
 
 auto LanguagePack::GetName() const noexcept -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _langName;
 }
 
 auto LanguagePack::GetTextPack(TextPackName pack_name) const -> const TextPack&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto pack_index = static_cast<size_t>(pack_name);
-    RUNTIME_ASSERT(pack_index < _textPacks.size());
+    FO_RUNTIME_ASSERT(pack_index < _textPacks.size());
 
     return _textPacks[pack_index] ? *_textPacks[pack_index] : _emptyPack;
 }
 
 auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto pack_index = static_cast<size_t>(pack_name);
-    RUNTIME_ASSERT(pack_index < _textPacks.size());
+    FO_RUNTIME_ASSERT(pack_index < _textPacks.size());
 
     if (!_textPacks[pack_index]) {
         _textPacks[pack_index] = SafeAlloc::MakeUnique<TextPack>();
@@ -421,7 +423,7 @@ auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
 
 auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) const -> TextPackName
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         return static_cast<TextPackName>(_nameResolver->ResolveEnumValue(string("TextPackName"), string(pack_name_str)));
@@ -438,7 +440,7 @@ auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) 
 
 void LanguagePack::LoadFromResources(FileSystem& resources)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto text_files = resources.FilterFiles("fotxtb");
 
@@ -447,12 +449,12 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
         const auto file_name = text_file.GetName();
 
         const auto sep = file_name.find('.');
-        RUNTIME_ASSERT(sep != string::npos);
+        FO_RUNTIME_ASSERT(sep != string::npos);
 
         const auto pack_name_str = file_name.substr(0, sep);
         const auto lang_name = file_name.substr(sep + 1);
-        RUNTIME_ASSERT(!pack_name_str.empty());
-        RUNTIME_ASSERT(!lang_name.empty());
+        FO_RUNTIME_ASSERT(!pack_name_str.empty());
+        FO_RUNTIME_ASSERT(!lang_name.empty());
 
         if (lang_name == _langName) {
             const auto pack_name = ResolveTextPackName(pack_name_str);
@@ -468,3 +470,5 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
         throw LanguagePackException("Unable to load game texts from file", _langName);
     }
 }
+
+FO_END_NAMESPACE();

@@ -40,6 +40,8 @@
 #include "DefaultSprites.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ModelSpriteFactory;
 
 class ModelSprite final : public AtlasSprite
@@ -58,7 +60,7 @@ public:
     [[nodiscard]] auto GetViewSize() const -> optional<IRect> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { FO_NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
     void Prewarm() override;
@@ -91,7 +93,7 @@ public:
     ~ModelSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ModelManager* { NON_CONST_METHOD_HINT_ONELINE() return _modelMngr.get(); }
+    [[nodiscard]] auto GetModelMngr() -> ModelManager* { FO_NON_CONST_METHOD_HINT_ONELINE() return _modelMngr.get(); }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
@@ -105,5 +107,7 @@ private:
     vector<RenderTarget*> _rtIntermediate {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();
 
 #endif

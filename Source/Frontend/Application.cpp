@@ -59,6 +59,8 @@
 
 #include "WinApiUndef-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 Application* App;
 
 #if FO_WINDOWS && FO_DEBUG
@@ -114,7 +116,7 @@ static auto ScreenPosToWindowPos(ipos pos) -> ipos
 
 void InitApp(int argc, char** argv, AppInitFlags flags)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetThisThreadName("Main");
 
@@ -173,7 +175,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
 
 void ExitApp(bool success) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
@@ -185,7 +187,7 @@ void ExitApp(bool success) noexcept
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_name != other->_name) {
         return false;
@@ -205,7 +207,7 @@ static unique_ptr<unordered_map<int, MouseButton>> MouseButtonsMap {};
 Application::Application(int argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
@@ -355,8 +357,8 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
             AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
 
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
-                UNUSED_VARIABLE(userdata);
-                UNUSED_VARIABLE(total_amount);
+                ignore_unused(userdata);
+                ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
                     if (static_cast<size_t>(additional_amount) > AudioStreamBuf->size()) {
@@ -419,13 +421,13 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
 #if FO_HAVE_METAL
     else if (Settings.ForceMetal) {
         ActiveRendererType = RenderType::Metal;
-        throw NotImplementedException(LINE_STR);
+        throw NotImplementedException(FO_LINE_STR);
     }
 #endif
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         ActiveRendererType = RenderType::Vulkan;
-        throw NotImplementedException(LINE_STR);
+        throw NotImplementedException(FO_LINE_STR);
     }
 #endif
 
@@ -581,7 +583,7 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
         int height;
         int bytes_per_pixel;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
-        RUNTIME_ASSERT(bytes_per_pixel == 4);
+        FO_RUNTIME_ASSERT(bytes_per_pixel == 4);
 
         auto font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
         font_tex->UpdateTextureRegion({}, {width, height}, reinterpret_cast<const ucolor*>(pixels));
@@ -596,7 +598,7 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
             if (base_fs.ReadFileHeader("Effects/ImGui_Default.fofx")) {
                 _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
                     const auto file = base_fs.ReadFile(path);
-                    RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+                    FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
                     return file.GetStr();
                 });
             }
@@ -612,16 +614,16 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
 
 void Application::OpenLink(string_view link)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     SDL_OpenURL(string(link).c_str());
 }
 
 void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _imguiEffect = std::move(effect);
 }
@@ -629,7 +631,7 @@ void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SDL_SetiOSAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
@@ -637,13 +639,13 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 
 auto Application::CreateChildWindow(isize size) -> AppWindow*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    UNUSED_VARIABLE(size);
+    ignore_unused(size);
 
-    throw NotImplementedException(LINE_STR);
+    throw NotImplementedException(FO_LINE_STR);
 
     /*auto* sdl_window = CreateInternalWindow(width, height);
     auto* window = SafeAlloc::MakeRaw<AppWindow>();
@@ -654,9 +656,9 @@ auto Application::CreateChildWindow(isize size) -> AppWindow*
 
 auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     // Dummy window pointer
     if (Settings.NullRenderer) {
@@ -743,9 +745,9 @@ auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
 
 void Application::BeginFrame()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(RenderTargetTex == nullptr);
+    FO_RUNTIME_ASSERT(RenderTargetTex == nullptr);
     ActiveRenderer->ClearRenderTarget(ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -928,7 +930,7 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
             auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
-            RUNTIME_ASSERT(resized_window);
+            FO_RUNTIME_ASSERT(resized_window);
 
             int width = 0;
             int height = 0;
@@ -1020,9 +1022,9 @@ void Application::BeginFrame()
 
 void Application::EndFrame()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(RenderTargetTex == nullptr);
+    FO_RUNTIME_ASSERT(RenderTargetTex == nullptr);
 
     // Skip unprocessed events
     EventsQueue->clear();
@@ -1068,7 +1070,7 @@ void Application::EndFrame()
 
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
+                FO_RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
 
                 const auto clip_rect_l = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
                 const auto clip_rect_t = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
@@ -1096,7 +1098,7 @@ void Application::EndFrame()
 
 void Application::RequestQuit() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
         WriteLog("Quit requested");
@@ -1107,7 +1109,7 @@ void Application::RequestQuit() noexcept
 
 void Application::WaitForRequestedQuit()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto locker = std::unique_lock {_quitLocker};
 
@@ -1118,7 +1120,7 @@ void Application::WaitForRequestedQuit()
 
 auto AppWindow::GetSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int width = 1000;
     int height = 1000;
@@ -1132,9 +1134,9 @@ auto AppWindow::GetSize() const -> isize
 
 void AppWindow::SetSize(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), size.width, size.height);
@@ -1143,14 +1145,14 @@ void AppWindow::SetSize(isize size)
 
 auto AppWindow::GetScreenSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
 void AppWindow::SetScreenSize(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
         App->Settings.ScreenWidth = size.width;
@@ -1162,7 +1164,7 @@ void AppWindow::SetScreenSize(isize size)
 
 auto AppWindow::GetPosition() const -> ipos
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int x = 0;
     int y = 0;
@@ -1176,9 +1178,9 @@ auto AppWindow::GetPosition() const -> ipos
 
 void AppWindow::SetPosition(ipos pos)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), pos.x, pos.y);
@@ -1187,7 +1189,7 @@ void AppWindow::SetPosition(ipos pos)
 
 auto AppWindow::IsFocused() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
@@ -1198,9 +1200,9 @@ auto AppWindow::IsFocused() const -> bool
 
 void AppWindow::Minimize()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_MinimizeWindow(static_cast<SDL_Window*>(_windowHandle));
@@ -1209,7 +1211,7 @@ void AppWindow::Minimize()
 
 auto AppWindow::IsFullscreen() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_FULLSCREEN) != 0;
@@ -1220,9 +1222,9 @@ auto AppWindow::IsFullscreen() const -> bool
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
         return false;
@@ -1232,14 +1234,12 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
     if (!is_fullscreen && enable) {
         if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), true)) {
-            RUNTIME_ASSERT(IsFullscreen());
-            return true;
+            return IsFullscreen();
         }
     }
     else if (is_fullscreen && !enable) {
         if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), false)) {
-            RUNTIME_ASSERT(!IsFullscreen());
-            return true;
+            return !IsFullscreen();
         }
     }
 
@@ -1248,9 +1248,9 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
 void AppWindow::Blink()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
         return;
@@ -1261,9 +1261,9 @@ void AppWindow::Blink()
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
         return;
@@ -1274,14 +1274,14 @@ void AppWindow::AlwaysOnTop(bool enable)
 
 void AppWindow::GrabInput(bool enable)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _grabbed = enable;
 }
 
 void AppWindow::Destroy()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType == RenderType::Null) {
         return;
@@ -1295,18 +1295,18 @@ void AppWindow::Destroy()
 
 auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
@@ -1314,79 +1314,79 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(irect rect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     ActiveRenderer->EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     ActiveRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->IsRenderTargetFlipped();
 }
 
 auto AppInput::GetMousePosition() const -> ipos
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     float x = 100;
     float y = 100;
@@ -1400,9 +1400,9 @@ auto AppInput::GetMousePosition() const -> ipos
 
 void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MousePos = pos;
@@ -1424,9 +1424,9 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (!EventsQueue->empty()) {
         ev = EventsQueue->front();
@@ -1438,18 +1438,18 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
 void AppInput::ClearEvents()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (push_to_this_frame) {
         EventsQueue->emplace_back(ev);
@@ -1461,16 +1461,16 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 
 void AppInput::SetClipboardText(string_view text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     SDL_SetClipboardText(string(text).c_str());
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _clipboardTextStorage = SDL_GetClipboardText();
     return _clipboardTextStorage;
@@ -1478,16 +1478,16 @@ auto AppInput::GetClipboardText() -> const string&
 
 auto AppAudio::IsEnabled() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return AudioStream != nullptr;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     LockDevice();
     *AudioStreamWriter = std::move(stream_callback);
@@ -1496,11 +1496,11 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     SDL_AudioSpec spec;
     spec.format = static_cast<SDL_AudioFormat>(format);
@@ -1524,11 +1524,11 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
 
 void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     const float vlume_01 = static_cast<float>(std::clamp(volume, 0, 100)) / 100.0f;
     SDL_MixAudio(output, buf, AudioSpec.format, static_cast<Uint32>(len), vlume_01);
@@ -1536,29 +1536,29 @@ void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
 
 void AppAudio::LockDevice()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     SDL_LockAudioStream(AudioStream);
 }
 
 void AppAudio::UnlockDevice()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(IsEnabled());
+    FO_RUNTIME_ASSERT(IsEnabled());
 
     SDL_UnlockAudioStream(AudioStream);
 }
 
 void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const char* title = fatal_error ? "Fatal Error" : "Error";
 
@@ -1636,7 +1636,7 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (keycode) {
     case SDLK_TAB:
@@ -1855,3 +1855,5 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
 
     return ImGuiKey_None;
 }
+
+FO_END_NAMESPACE();

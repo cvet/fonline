@@ -37,7 +37,9 @@
 
 #include "ProtoManager.h"
 
-DECLARE_EXCEPTION(MapLoaderException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(MapLoaderException);
 
 class MapLoader final
 {
@@ -49,3 +51,5 @@ public:
 
     static void Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
 };
+
+FO_END_NAMESPACE();

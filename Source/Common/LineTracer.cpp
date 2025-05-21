@@ -34,11 +34,13 @@
 #include "LineTracer.h"
 #include "GeometryHelper.h"
 
+FO_BEGIN_NAMESPACE();
+
 constexpr auto BIAS_FLOAT = 0.02f;
 
 LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _mapSize = map_size;
 
@@ -118,7 +120,7 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float an
 
 auto LineTracer::GetNextHex(mpos& pos) const -> uint8
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto t1_pos = pos;
     auto t2_pos = pos;
@@ -145,7 +147,7 @@ auto LineTracer::GetNextHex(mpos& pos) const -> uint8
 
 void LineTracer::GetNextSquare(mpos& pos)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _x1 += _dx;
     _y1 += _dy;
@@ -156,7 +158,7 @@ void LineTracer::GetNextSquare(mpos& pos)
 
 void LineTracer::NormalizeDir()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_dir <= 0.0f) {
         _dir = 360.0f - std::fmod(-_dir, 360.0f);
@@ -165,3 +167,5 @@ void LineTracer::NormalizeDir()
         _dir = std::fmod(_dir, 360.0f);
     }
 }
+
+FO_END_NAMESPACE();

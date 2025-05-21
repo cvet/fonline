@@ -38,7 +38,9 @@
 #include "Rendering.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(AppInitException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(AppInitException);
 
 ///@ ExportEnum
 enum class KeyCode : uint8
@@ -441,3 +443,5 @@ public:
 extern Application* App;
 extern void InitApp(int argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 [[noreturn]] extern void ExitApp(bool success) noexcept;
+
+FO_END_NAMESPACE();

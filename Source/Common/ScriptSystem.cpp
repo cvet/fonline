@@ -35,9 +35,11 @@
 #include "Application.h"
 #include "EngineBase.h"
 
+FO_BEGIN_NAMESPACE();
+
 ScriptSystem::ScriptSystem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _engineToScriptType.emplace(typeid(void).name(), SafeAlloc::MakeShared<ScriptTypeInfo>("void", nullptr));
     MapEnginePlainType<bool>("bool");
@@ -51,10 +53,10 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<uint64>("uint64");
     MapEnginePlainType<float>("float");
     MapEnginePlainType<double>("double");
-    MapEnginePlainType<ident_t>(IDENT_NAME);
-    MapEnginePlainType<timespan>(TIMESPAN_NAME);
-    MapEnginePlainType<nanotime>(NANOTIME_NAME);
-    MapEnginePlainType<synctime>(SYNCTIME_NAME);
+    MapEnginePlainType<ident_t>(FO_IDENT_NAME);
+    MapEnginePlainType<timespan>(FO_TIMESPAN_NAME);
+    MapEnginePlainType<nanotime>(FO_NANOTIME_NAME);
+    MapEnginePlainType<synctime>(FO_SYNCTIME_NAME);
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize>("isize");
     MapEnginePlainType<ipos>("ipos");
@@ -75,17 +77,17 @@ ScriptSystem::ScriptSystem()
 
 void ScriptSystem::RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _backends.resize(index + 1);
-    RUNTIME_ASSERT(!_backends[index]);
+    FO_RUNTIME_ASSERT(!_backends[index]);
 
     _backends[index] = std::move(backend);
 }
 
 auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _engineToScriptType.find(ti.name());
 
@@ -98,7 +100,7 @@ auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<Scr
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!func_desc.CallSupported) {
         return false;
@@ -110,7 +112,7 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
 
     const auto check_type = [this](const shared_ptr<ScriptTypeInfo>& left, const std::type_index& right) -> bool {
         const auto it = _engineToScriptType.find(right.name());
-        RUNTIME_VERIFY(it != _engineToScriptType.end(), false);
+        FO_RUNTIME_VERIFY(it != _engineToScriptType.end(), false);
         return it->second == left;
     };
 
@@ -133,9 +135,9 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
 
 void ScriptSystem::InitModules()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (const auto* func : _initFunc) {
         if (!func->Call({}, nullptr)) {
@@ -146,7 +148,7 @@ void ScriptSystem::InitModules()
 
 void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _rpcReceivers.find(rpc_num);
 
@@ -159,9 +161,9 @@ void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 
 void ScriptSystem::Process()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     for (auto& callback : _loopCallbacks) {
         try {
@@ -171,17 +173,17 @@ void ScriptSystem::Process()
             ReportExceptionAndContinue(ex);
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 }
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
-    RUNTIME_ASSERT(prop_reg);
+    FO_RUNTIME_ASSERT(prop_reg);
     const auto* prop = prop_reg->GetPropertyByIndex(static_cast<int>(prop_index));
 
     if (prop == nullptr) {
@@ -196,3 +198,5 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, st
 
     return prop;
 }
+
+FO_END_NAMESPACE();

@@ -34,9 +34,11 @@
 #include "AnyData.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 auto AnyData::Value::operator==(const Value& other) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (Type() != other.Type()) {
         return false;
@@ -57,12 +59,12 @@ auto AnyData::Value::operator==(const Value& other) const -> bool
         return AsDict() == other.AsDict();
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 auto AnyData::Value::Copy() const -> Value
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (Type()) {
     case ValueType::Int64:
@@ -79,12 +81,12 @@ auto AnyData::Value::Copy() const -> Value
         return AsDict().Copy();
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 auto AnyData::Array::Copy() const -> Array
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Array arr;
 
@@ -97,7 +99,7 @@ auto AnyData::Array::Copy() const -> Array
 
 auto AnyData::Dict::Copy() const -> Dict
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Dict dict;
 
@@ -110,7 +112,7 @@ auto AnyData::Dict::Copy() const -> Dict
 
 auto AnyData::Document::Copy() const -> Document
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Document doc;
 
@@ -123,7 +125,7 @@ auto AnyData::Document::Copy() const -> Document
 
 auto AnyData::ValueToCodedString(const Value& value) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     constexpr auto default_buf_size = 1024;
 
@@ -178,12 +180,12 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     }
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 auto AnyData::ValueToString(const Value& value) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto str = ValueToCodedString(value);
 
@@ -198,9 +200,9 @@ auto AnyData::ValueToString(const Value& value) -> string
 
 auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Double || value_type == ValueType::Bool || value_type == ValueType::String);
+    FO_RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Double || value_type == ValueType::Bool || value_type == ValueType::String);
 
     if (as_dict) {
         Dict dict;
@@ -232,7 +234,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                         dict_arr.EmplaceBack(DecodeString(arr_entry));
                         break;
                     default:
-                        UNREACHABLE_PLACE();
+                        FO_UNREACHABLE_PLACE();
                     }
                 }
 
@@ -253,7 +255,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                     dict.Emplace(dict_key_entry, DecodeString(dict_value_entry));
                     break;
                 default:
-                    UNREACHABLE_PLACE();
+                    FO_UNREACHABLE_PLACE();
                 }
             }
         }
@@ -281,7 +283,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 arr.EmplaceBack(DecodeString(arr_entry));
                 break;
             default:
-                UNREACHABLE_PLACE();
+                FO_UNREACHABLE_PLACE();
             }
         }
 
@@ -302,12 +304,12 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         }
     }
 
-    UNREACHABLE_PLACE();
+    FO_UNREACHABLE_PLACE();
 }
 
 auto AnyData::CodeString(string_view str) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     string result;
     result.reserve(str.length() * 2);
@@ -357,7 +359,7 @@ auto AnyData::CodeString(string_view str) -> string
 
 auto AnyData::DecodeString(string_view str) -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (str.empty()) {
         return {};
@@ -416,7 +418,7 @@ auto AnyData::DecodeString(string_view str) -> string
 
 auto AnyData::ReadToken(const char* str, string& result) -> const char*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (str[0] == 0) {
         return nullptr;
@@ -492,3 +494,5 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
     result.assign(&str[begin], pos - begin);
     return str[pos] != 0 ? &str[pos + 1] : &str[pos];
 }
+
+FO_END_NAMESPACE();

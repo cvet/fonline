@@ -40,6 +40,8 @@
 #include "unqlite.h"
 #endif
 
+FO_BEGIN_NAMESPACE();
+
 class CacheStorageImpl
 {
 public:
@@ -130,28 +132,28 @@ CacheStorage::~CacheStorage() = default;
 
 auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->HasEntry(entry_name);
 }
 
 auto CacheStorage::GetString(string_view entry_name) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->GetString(entry_name);
 }
 
 auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->GetData(entry_name);
 }
 
 void CacheStorage::SetString(string_view entry_name, string_view str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl->CacheCreated.has_value()) {
         _impl->CacheCreated = _impl->CreateCacheStorage();
@@ -164,7 +166,7 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
 
 void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl->CacheCreated.has_value()) {
         _impl->CacheCreated = _impl->CreateCacheStorage();
@@ -177,14 +179,14 @@ void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 
 void CacheStorage::RemoveEntry(string_view entry_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->RemoveEntry(entry_name);
 }
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return strex(work_path).combinePath(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
@@ -192,7 +194,7 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
 FileCacheStorage::FileCacheStorage(string_view real_path) :
     _workPath {strex(real_path).eraseFileExtension()}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _workPath = DiskFileSystem::ResolvePath(_workPath);
 }
@@ -200,7 +202,7 @@ FileCacheStorage::FileCacheStorage(string_view real_path) :
 // ReSharper disable once CppMemberFunctionMayBeConst
 auto FileCacheStorage::CreateCacheStorage() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!DiskFileSystem::IsDir(_workPath)) {
         DiskFileSystem::MakeDirTree(_workPath);
@@ -216,7 +218,7 @@ auto FileCacheStorage::CreateCacheStorage() -> bool
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     return !!DiskFileSystem::OpenFile(path, false);
@@ -224,7 +226,7 @@ auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
@@ -246,7 +248,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
@@ -267,7 +269,7 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -285,7 +287,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
 void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -303,7 +305,7 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 
 void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     DiskFileSystem::DeleteFile(path);
@@ -312,7 +314,7 @@ void FileCacheStorage::RemoveEntry(string_view entry_name)
 #if FO_HAVE_UNQLITE
 UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _workPath = real_path;
     _workPath = DiskFileSystem::ResolvePath(_workPath);
@@ -320,7 +322,7 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 
 auto UnqliteCacheStorage::CreateCacheStorage() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         DiskFileSystem::MakeDirTree(_workPath);
@@ -340,7 +342,7 @@ auto UnqliteCacheStorage::CreateCacheStorage() -> bool
 
 auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return false;
@@ -359,7 +361,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
 
 void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return;
@@ -383,7 +385,7 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
 
 auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return {};
@@ -417,7 +419,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 
 auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return {};
@@ -451,7 +453,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 
 void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return;
@@ -473,7 +475,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 
 void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
         return;
@@ -493,3 +495,5 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data
     }
 }
 #endif
+
+FO_END_NAMESPACE();

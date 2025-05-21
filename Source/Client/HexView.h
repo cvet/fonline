@@ -37,6 +37,8 @@
 
 #include "MapSprite.h"
 
+FO_BEGIN_NAMESPACE();
+
 class MapView;
 
 class HexView
@@ -106,3 +108,5 @@ private:
     bool _finishing {};
     nanotime _finishingTime {};
 };
+
+FO_END_NAMESPACE();

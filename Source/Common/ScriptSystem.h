@@ -37,11 +37,13 @@
 
 #include "Entity.h"
 
-DECLARE_EXCEPTION(ScriptSystemException);
-DECLARE_EXCEPTION(ScriptException);
-DECLARE_EXCEPTION(ScriptInitException);
-DECLARE_EXCEPTION(ScriptCallException);
-DECLARE_EXCEPTION(ScriptCompilerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ScriptSystemException);
+FO_DECLARE_EXCEPTION(ScriptException);
+FO_DECLARE_EXCEPTION(ScriptInitException);
+FO_DECLARE_EXCEPTION(ScriptCallException);
+FO_DECLARE_EXCEPTION(ScriptCompilerException);
 
 // ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8
@@ -112,10 +114,10 @@ struct ScriptTypeInfo
         [[nodiscard]] virtual auto IsObject() const noexcept -> bool { return false; }
         [[nodiscard]] virtual auto IsEntity() const noexcept -> bool { return false; }
         [[nodiscard]] virtual auto IsPlainData() const noexcept -> bool { return false; }
-        [[nodiscard]] virtual auto GetData(void* /*data*/) -> void* { throw InvalidCallException(LINE_STR); }
-        [[nodiscard]] virtual auto GetDataSize() -> size_t { throw InvalidCallException(LINE_STR); }
-        [[nodiscard]] virtual auto GetArraySize(void* /*data*/) -> size_t { throw InvalidCallException(LINE_STR); }
-        [[nodiscard]] virtual auto GetArrayElement(void* /*data*/, size_t /*index*/) -> void* { throw InvalidCallException(LINE_STR); }
+        [[nodiscard]] virtual auto GetData(void* /*data*/) -> void* { throw InvalidCallException(FO_LINE_STR); }
+        [[nodiscard]] virtual auto GetDataSize() -> size_t { throw InvalidCallException(FO_LINE_STR); }
+        [[nodiscard]] virtual auto GetArraySize(void* /*data*/) -> size_t { throw InvalidCallException(FO_LINE_STR); }
+        [[nodiscard]] virtual auto GetArrayElement(void* /*data*/, size_t /*index*/) -> void* { throw InvalidCallException(FO_LINE_STR); }
     };
 
     template<typename T>
@@ -240,7 +242,7 @@ public:
     void RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend);
 
     template<typename T>
-    [[nodiscard]] FORCE_INLINE auto GetBackend(size_t index) noexcept -> T*
+    [[nodiscard]] FO_FORCE_INLINE auto GetBackend(size_t index) noexcept -> T*
     {
         static_assert(std::is_base_of_v<ScriptSystemBackend, T>);
         return static_cast<T*>(_backends[index].get());
@@ -366,7 +368,7 @@ public:
 
     void BindRemoteCallReceiver(uint hash, std::function<void(Entity*)> func)
     {
-        RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
+        FO_RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
         _rpcReceivers.emplace(hash, std::move(func));
     }
 
@@ -410,3 +412,5 @@ public:
         return true;
     }
 };
+
+FO_END_NAMESPACE();

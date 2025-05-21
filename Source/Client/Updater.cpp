@@ -39,6 +39,8 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 static auto* StrCheckUpdates = "Check updates";
 static auto* StrConnectToServer = "Connect to the server";
 static auto* StrCantConnectToServer = "Can't connect to the server!";
@@ -54,7 +56,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _effectMngr(_settings, _resources),
     _sprMngr(_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _startTime = nanotime::now();
 
@@ -104,7 +106,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
 void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (result == ClientConnection::ConnectResult::Success) {
         AddText(StrConnectionEstablished);
@@ -120,7 +122,7 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 
 void Updater::Net_OnDisconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
         Abort(StrConnectionFailure);
@@ -129,7 +131,7 @@ void Updater::Net_OnDisconnect()
 
 auto Updater::Process() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _gameTime.FrameAdvance();
 
@@ -206,21 +208,21 @@ auto Updater::Process() -> bool
 
 auto Updater::MakeWritePath(string_view fname) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return strex(_settings.ClientResources).combinePath(fname);
 }
 
 void Updater::AddText(string_view text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _messages.emplace_back(text);
 }
 
 void Updater::Abort(string_view text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _aborted = true;
 
@@ -234,7 +236,7 @@ void Updater::Abort(string_view text)
 
 void Updater::Net_OnInitData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -247,7 +249,7 @@ void Updater::Net_OnInitData()
 
     _gameTime.SetSynchronizedTime(time);
 
-    RUNTIME_ASSERT(!_fileListReceived);
+    FO_RUNTIME_ASSERT(!_fileListReceived);
     _fileListReceived = true;
 
     if (!data.empty()) {
@@ -263,7 +265,7 @@ void Updater::Net_OnInitData()
                 break;
             }
 
-            RUNTIME_ASSERT(name_len > 0);
+            FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
             const auto size = reader.Read<uint>();
             const auto hash = reader.Read<uint>();
@@ -304,7 +306,7 @@ void Updater::Net_OnInitData()
 
 void Updater::Net_OnUpdateFileData()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto data_size = _conn.InBuf.Read<uint>();
 
@@ -320,7 +322,7 @@ void Updater::Net_OnUpdateFileData()
     }
 
     // Get next portion or finalize data
-    RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
+    FO_RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
     update_file.RemaningSize -= data_size;
 
     if (update_file.RemaningSize > 0u) {
@@ -335,7 +337,7 @@ void Updater::Net_OnUpdateFileData()
 
 void Updater::GetNextFile()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_tempFile) {
         _tempFile = nullptr;
@@ -371,3 +373,5 @@ void Updater::GetNextFile()
 
     _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
 }
+
+FO_END_NAMESPACE();

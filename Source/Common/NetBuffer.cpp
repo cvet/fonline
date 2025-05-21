@@ -36,9 +36,11 @@
 #include "GenericUtils.h"
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 NetBuffer::NetBuffer(size_t buf_len)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _defaultBufLen = buf_len;
     _bufData.resize(buf_len);
@@ -46,7 +48,7 @@ NetBuffer::NetBuffer(size_t buf_len)
 
 auto NetBuffer::GenerateEncryptKey() -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return // Random 4 byte
         (GenericUtils::Random(1, 255) << 24) | //
@@ -57,7 +59,7 @@ auto NetBuffer::GenerateEncryptKey() -> uint
 
 void NetBuffer::SetEncryptKey(uint seed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (seed == 0) {
         _encryptActive = false;
@@ -76,7 +78,7 @@ void NetBuffer::SetEncryptKey(uint seed)
 
 auto NetBuffer::EncryptKey(int move) noexcept -> uint8
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     uint8 key = 0;
 
@@ -98,7 +100,7 @@ auto NetBuffer::EncryptKey(int move) noexcept -> uint8
 
 void NetBuffer::ResetBuf() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _bufEndPos = 0;
 
@@ -110,7 +112,7 @@ void NetBuffer::ResetBuf() noexcept
 
 void NetBuffer::GrowBuf(size_t len)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_bufEndPos + len <= _bufData.size()) {
         return;
@@ -127,7 +129,7 @@ void NetBuffer::GrowBuf(size_t len)
 
 void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* from_ = static_cast<const uint8*>(from);
     auto* to_ = static_cast<uint8*>(to);
@@ -139,7 +141,7 @@ void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len)
 
 void NetOutBuffer::Push(const void* buf, size_t len)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return;
@@ -152,7 +154,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
 
 void NetOutBuffer::Push(const_span<uint8> buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (buf.empty()) {
         return;
@@ -165,7 +167,7 @@ void NetOutBuffer::Push(const_span<uint8> buf)
 
 void NetOutBuffer::DiscardWriteBuf(size_t len)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return;
@@ -187,10 +189,10 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
 
 void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(props_data->size() == props_data_sizes->size());
-    RUNTIME_ASSERT(props_data->size() <= 0xFFFF);
+    FO_RUNTIME_ASSERT(props_data->size() == props_data_sizes->size());
+    FO_RUNTIME_ASSERT(props_data->size() <= 0xFFFF);
     Write<uint16>(static_cast<uint16>(props_data->size()));
 
     for (size_t i = 0; i < props_data->size(); i++) {
@@ -202,9 +204,9 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
 
 void NetOutBuffer::StartMsg(NetMessage msg)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_msgStarted);
+    FO_RUNTIME_ASSERT(!_msgStarted);
 
     _msgStarted = true;
     _startedBufPos = _bufEndPos;
@@ -220,10 +222,10 @@ void NetOutBuffer::StartMsg(NetMessage msg)
 
 void NetOutBuffer::EndMsg()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_msgStarted);
-    RUNTIME_ASSERT(_bufEndPos > _startedBufPos);
+    FO_RUNTIME_ASSERT(_msgStarted);
+    FO_RUNTIME_ASSERT(_bufEndPos > _startedBufPos);
 
     _msgStarted = false;
 
@@ -234,7 +236,7 @@ void NetOutBuffer::EndMsg()
     // Verify signature
     uint msg_signature;
     CopyBuf(_bufData.data() + _startedBufPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
-    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+    FO_RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
 
     // Write actual message length
     CopyBuf(&msg_len, _bufData.data() + _startedBufPos + sizeof(msg_signature), EncryptKey(0), sizeof(msg_len));
@@ -245,7 +247,7 @@ void NetOutBuffer::EndMsg()
 
 void NetInBuffer::ResetBuf() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     NetBuffer::ResetBuf();
 
@@ -254,7 +256,7 @@ void NetInBuffer::ResetBuf() noexcept
 
 void NetInBuffer::AddData(const_span<uint8> buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (buf.empty()) {
         return;
@@ -267,7 +269,7 @@ void NetInBuffer::AddData(const_span<uint8> buf)
 
 void NetInBuffer::SetEndPos(size_t pos)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (pos > _bufData.size()) {
         throw NetBufferException("Invalid set end pos", pos, _bufData.size(), _bufEndPos);
@@ -278,7 +280,7 @@ void NetInBuffer::SetEndPos(size_t pos)
 
 void NetInBuffer::Pop(void* buf, size_t len)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (len == 0) {
         return;
@@ -295,7 +297,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
 
 void NetInBuffer::ShrinkReadBuf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_bufReadPos > _bufEndPos) {
         ResetBuf();
@@ -319,7 +321,7 @@ void NetInBuffer::ShrinkReadBuf()
 
 void NetInBuffer::ReadPropsData(vector<vector<uint8>>& props_data)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto data_count = Read<uint16>();
     props_data.resize(data_count);
@@ -333,7 +335,7 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8>>& props_data)
 
 auto NetInBuffer::ReadMsg() -> NetMessage
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_bufReadPos + sizeof(uint) + sizeof(uint) + sizeof(NetMessage) > _bufEndPos) {
         throw NetBufferException("Invalid msg read length", _bufReadPos, _bufEndPos);
@@ -342,12 +344,12 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     uint msg_signature;
     CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
     _bufReadPos += sizeof(msg_signature);
-    RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+    FO_RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
 
     uint msg_len;
     CopyBuf(_bufData.data() + _bufReadPos, &msg_len, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
     _bufReadPos += sizeof(msg_len);
-    RUNTIME_ASSERT(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
+    FO_RUNTIME_ASSERT(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
 
     NetMessage msg;
     CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));
@@ -358,7 +360,7 @@ auto NetInBuffer::ReadMsg() -> NetMessage
 
 auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto h = Read<hstring::hash_t>();
 
@@ -375,7 +377,7 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 
 auto NetInBuffer::NeedProcess() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Check signature
     if (_bufReadPos + sizeof(uint) > _bufEndPos) {
@@ -407,3 +409,5 @@ auto NetInBuffer::NeedProcess() -> bool
 
     return _bufReadPos + msg_len <= _bufEndPos;
 }
+
+FO_END_NAMESPACE();

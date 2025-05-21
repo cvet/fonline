@@ -41,6 +41,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 EntityManager::EntityManager(FOServer* engine) :
     _engine {engine},
     _playerTypeName {engine->Hashes.ToHashedString(Player::ENTITY_TYPE_NAME)},
@@ -55,12 +57,12 @@ EntityManager::EntityManager(FOServer* engine) :
     _itemCollectionName {engine->Hashes.ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
     _removeMigrationRuleName {engine->Hashes.ToHashedString("Remove")}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return it->second.get();
@@ -71,7 +73,7 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
 
 auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second;
@@ -82,7 +84,7 @@ auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
 
 auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
@@ -93,7 +95,7 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
 
 auto EntityManager::GetMap(ident_t id) noexcept -> Map*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second;
@@ -104,7 +106,7 @@ auto EntityManager::GetMap(ident_t id) noexcept -> Map*
 
 auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second;
@@ -115,7 +117,7 @@ auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
 
 auto EntityManager::GetItem(ident_t id) noexcept -> Item*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
@@ -126,7 +128,7 @@ auto EntityManager::GetItem(ident_t id) noexcept -> Item*
 
 void EntityManager::LoadEntities()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Load entities");
 
@@ -172,7 +174,7 @@ void EntityManager::LoadEntities()
 
 auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Location*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
@@ -216,7 +218,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
             auto* map = LoadMap(map_id, is_error);
 
             if (map != nullptr) {
-                RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
+                FO_RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
 
                 const auto loc_map_index = map->GetLocMapIndex();
                 auto& loc_maps = loc->GetMaps();
@@ -252,7 +254,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
 
 auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
@@ -298,7 +300,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
             auto* cr = LoadCritter(cr_id, is_error);
 
             if (cr != nullptr) {
-                RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+                FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
                 if (const auto hex = cr->GetHex(); !map->GetSize().IsValidPos(hex)) {
                     cr->SetHex(map->GetSize().ClampPos(hex));
@@ -324,8 +326,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
             auto* item = LoadItem(item_id, is_error);
 
             if (item != nullptr) {
-                RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-                RUNTIME_ASSERT(item->GetMapId() == map->GetId());
+                FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+                FO_RUNTIME_ASSERT(item->GetMapId() == map->GetId());
 
                 if (const auto hex = item->GetHex(); !map->GetSize().IsValidPos(hex)) {
                     item->SetHex(map->GetSize().ClampPos(hex));
@@ -357,7 +359,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
 
 auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critter*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
@@ -402,8 +404,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
             auto* inv_item = LoadItem(item_id, is_error);
 
             if (inv_item != nullptr) {
-                RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
-                RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
+                FO_RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
+                FO_RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
 
                 cr->SetItem(inv_item);
             }
@@ -431,7 +433,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
 
 auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
@@ -477,8 +479,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
             auto* inner_item = LoadItem(inner_item_id, is_error);
 
             if (inner_item != nullptr) {
-                RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
-                RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
+                FO_RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
+                FO_RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
 
                 item->SetItemToContainer(inner_item);
             }
@@ -511,7 +513,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
 
 void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
@@ -529,7 +531,7 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
 
 void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
@@ -554,7 +556,7 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
             auto* custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
             if (custom_entity != nullptr) {
-                RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
+                FO_RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
 
                 holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
 
@@ -588,10 +590,10 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
 
 auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
-        RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
 
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
@@ -644,9 +646,9 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
 void EntityManager::CallInit(Location* loc, bool first_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!loc->IsDestroyed());
+    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
 
     if (loc->IsInitCalled()) {
         return;
@@ -673,9 +675,9 @@ void EntityManager::CallInit(Location* loc, bool first_time)
 
 void EntityManager::CallInit(Map* map, bool first_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     if (map->IsInitCalled()) {
         return;
@@ -710,9 +712,9 @@ void EntityManager::CallInit(Map* map, bool first_time)
 
 void EntityManager::CallInit(Critter* cr, bool first_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     if (cr->IsInitCalled()) {
         return;
@@ -739,9 +741,9 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
 
 void EntityManager::CallInit(Item* item, bool first_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!item->IsDestroyed());
+    FO_RUNTIME_ASSERT(!item->IsDestroyed());
 
     if (item->IsInitCalled()) {
         return;
@@ -768,132 +770,132 @@ void EntityManager::CallInit(Item* item, bool first_time)
 
 void EntityManager::RegisterPlayer(Player* player, ident_t id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id);
+    FO_RUNTIME_ASSERT(id);
     player->SetId(id);
     RegisterEntity(player);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterPlayer(Player* player)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allPlayers.find(player->GetId());
-    RUNTIME_ASSERT(it != _allPlayers.end());
+    FO_RUNTIME_ASSERT(it != _allPlayers.end());
     _allPlayers.erase(it);
     UnregisterEntity(player, false);
 }
 
 void EntityManager::RegisterLocation(Location* loc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RegisterEntity(loc);
     const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterLocation(Location* loc)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allLocations.find(loc->GetId());
-    RUNTIME_ASSERT(it != _allLocations.end());
+    FO_RUNTIME_ASSERT(it != _allLocations.end());
     _allLocations.erase(it);
     UnregisterEntity(loc, true);
 }
 
 void EntityManager::RegisterMap(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RegisterEntity(map);
     const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterMap(Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allMaps.find(map->GetId());
-    RUNTIME_ASSERT(it != _allMaps.end());
+    FO_RUNTIME_ASSERT(it != _allMaps.end());
     _allMaps.erase(it);
     UnregisterEntity(map, true);
 }
 
 void EntityManager::RegisterCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RegisterEntity(cr);
     const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allCritters.find(cr->GetId());
-    RUNTIME_ASSERT(it != _allCritters.end());
+    FO_RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
     UnregisterEntity(cr, !cr->GetControlledByPlayer());
 }
 
 void EntityManager::RegisterItem(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RegisterEntity(item);
     const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterItem(Item* item, bool delete_from_db)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _allItems.find(item->GetId());
-    RUNTIME_ASSERT(it != _allItems.end());
+    FO_RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
     UnregisterEntity(item, delete_from_db);
 }
 
 void EntityManager::RegisterCustomEntity(CustomEntity* custom_entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     RegisterEntity(custom_entity);
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto it = custom_entities.find(custom_entity->GetId());
-    RUNTIME_ASSERT(it != custom_entities.end());
+    FO_RUNTIME_ASSERT(it != custom_entities.end());
     custom_entities.erase(it);
     UnregisterEntity(custom_entity, delete_from_db);
 }
 
 void EntityManager::RegisterEntity(ServerEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!entity->GetId()) {
         const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
         const auto id = ident_t {id_num};
         const auto collection_name = entity->GetTypeNamePlural();
 
-        RUNTIME_ASSERT(_allEntities.count(id) == 0);
+        FO_RUNTIME_ASSERT(_allEntities.count(id) == 0);
 
         _engine->SetLastEntityId(id);
 
@@ -915,19 +917,19 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     }
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
-    RUNTIME_ASSERT(inserted);
+    FO_RUNTIME_ASSERT(inserted);
 
     _engine->TimeEventMngr.InitPersistentTimeEvents(entity);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity->GetId());
+    FO_RUNTIME_ASSERT(entity->GetId());
 
     const auto it = _allEntities.find(entity->GetId());
-    RUNTIME_ASSERT(it != _allEntities.end());
+    FO_RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it);
 
     if (delete_from_db) {
@@ -939,9 +941,9 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 
 void EntityManager::DestroyEntity(Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity);
 
     if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
         _engine->MapMngr.DestroyLocation(loc);
@@ -962,7 +964,7 @@ void EntityManager::DestroyEntity(Entity* entity)
 
 void EntityManager::DestroyInnerEntities(Entity* holder)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (InfinityLoopDetector detector; holder->HasInnerEntities(); detector.AddLoop()) {
         for (auto&& [entry, entities] : copy(holder->GetInnerEntities())) {
@@ -975,7 +977,7 @@ void EntityManager::DestroyInnerEntities(Entity* holder)
 
 void EntityManager::DestroyAllEntities()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto destroy_entities = [this](auto& entities) {
         for (auto&& [id, entity] : copy(entities)) {
@@ -984,7 +986,7 @@ void EntityManager::DestroyAllEntities()
             _allEntities.erase(id);
         }
 
-        RUNTIME_ASSERT(entities.empty());
+        FO_RUNTIME_ASSERT(entities.empty());
     };
 
     destroy_entities(_allPlayers);
@@ -996,27 +998,27 @@ void EntityManager::DestroyAllEntities()
         destroy_entities(custom_entities.second);
     }
 
-    RUNTIME_ASSERT(_allEntities.empty());
+    FO_RUNTIME_ASSERT(_allEntities.empty());
 }
 
 auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(holder);
-    RUNTIME_ASSERT(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.count(entry));
+    FO_RUNTIME_ASSERT(holder);
+    FO_RUNTIME_ASSERT(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.count(entry));
 
     const hstring type_name = std::get<0>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
 
     auto* entity = CreateCustomEntity(type_name, pid);
-    RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity);
 
     if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
-        RUNTIME_ASSERT(holder_with_id->GetId());
+        FO_RUNTIME_ASSERT(holder_with_id->GetId());
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
-        RUNTIME_ASSERT(holder == _engine);
+        FO_RUNTIME_ASSERT(holder == _engine);
     }
 
     entity->SetCustomHolderEntry(entry);
@@ -1036,20 +1038,20 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
 
 auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
+    FO_RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
 
     const bool has_protos = _engine->GetEntityTypeInfo(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
-        RUNTIME_ASSERT(has_protos);
+        FO_RUNTIME_ASSERT(has_protos);
         proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
-        RUNTIME_ASSERT(proto);
+        FO_RUNTIME_ASSERT(proto);
     }
     else {
-        RUNTIME_ASSERT(!has_protos);
+        FO_RUNTIME_ASSERT(!has_protos);
     }
 
     const auto* registrator = _engine->GetPropertyRegistrator(type_name);
@@ -1070,10 +1072,10 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
 
 auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
-        RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
 
         if (!_engine->IsValidEntityType(type_name)) {
             WriteLog("Custom entity {} type {} not valid", id, type_name);
@@ -1081,7 +1083,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             return nullptr;
         }
 
-        RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
+        FO_RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
 
         const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
@@ -1140,7 +1142,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
 
 auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto& custom_entities = _allCustomEntities[type_name];
     const auto it = custom_entities.find(id);
@@ -1150,7 +1152,7 @@ auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> CustomEnti
 
 void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (entity->IsDestroying() || entity->IsDestroyed()) {
         return;
@@ -1166,14 +1168,14 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 
     if (const auto id = entity->GetCustomHolderId()) {
         holder = GetEntity(id);
-        RUNTIME_ASSERT(holder);
+        FO_RUNTIME_ASSERT(holder);
     }
     else {
         holder = _engine;
     }
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) {
-        UNUSED_VARIABLE(owner);
+        ignore_unused(owner);
         player->Send_RemoveCustomEntity(entity->GetId());
     });
 
@@ -1192,7 +1194,7 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 
 void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto view_callback = [&](Player* player, bool owner) {
         if (player != nullptr) {
@@ -1272,3 +1274,5 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::fun
 
     find_players_recursively(entity, EntityHolderEntryAccess::Public);
 }
+
+FO_END_NAMESPACE();

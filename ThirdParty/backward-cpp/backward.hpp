@@ -28,7 +28,7 @@
 #error "It's not going to compile without a C++ compiler..."
 #endif
 
-extern std::ostream BackwardOStream; // (FOnline Patch)
+extern auto GetCrashStream() noexcept -> std::ostream&; // (FOnline Patch)
 extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
 
 #if defined(BACKWARD_CXX11)
@@ -4249,7 +4249,7 @@ public:
 
     Printer printer;
     printer.address = true;
-    printer.print(st, BackwardOStream /*stderr*/); // (FOnline Patch)
+    printer.print(st, GetCrashStream() /*stderr*/); // (FOnline Patch)
 
 #if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
     psiginfo(info, nullptr);
@@ -4449,7 +4449,7 @@ private:
     st.skip_n_firsts(skip_frames);
 
     printer.address = true;
-    printer.print(st, BackwardOStream /*std::cerr*/); // (FOnline Patch)
+    printer.print(st, GetCrashStream() /*std::cerr*/); // (FOnline Patch)
   }
 };
 

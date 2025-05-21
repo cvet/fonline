@@ -38,16 +38,18 @@
 #include "MapSprite.h"
 #include "MapView.h"
 
+FO_BEGIN_NAMESPACE();
+
 ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
     ItemView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void ItemHexView::Init()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (GetIsTile()) {
         DrawEffect = GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile;
@@ -62,7 +64,7 @@ void ItemHexView::Init()
 
 void ItemHexView::SetupSprite(MapSprite* mspr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     HexView::SetupSprite(mspr);
 
@@ -84,7 +86,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
 void ItemHexView::Process()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (IsFading()) {
         ProcessFading();
@@ -135,7 +137,7 @@ void ItemHexView::Process()
 
 void ItemHexView::SetEffect(mpos to_hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _isEffect = true;
     _isDynamicEffect = false;
@@ -163,14 +165,14 @@ void ItemHexView::SetEffect(mpos to_hex)
 
 void ItemHexView::RefreshAlpha()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetDefaultAlpha(GetColorize() ? GetColorizeColor().comp.a : 0xFF);
 }
 
 void ItemHexView::RefreshAnim()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto pic_name = GetPicMap();
 
@@ -213,7 +215,7 @@ void ItemHexView::RefreshAnim()
 
 auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (GetDisableEgg() || GetDrawFlatten()) {
         return EggAppearenceType::None;
@@ -237,7 +239,7 @@ auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 
 void ItemHexView::RefreshOffs()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto offset = GetOffset();
 
@@ -259,3 +261,5 @@ void ItemHexView::RefreshOffs()
         SprOffset.y += iround(_effCurOffset.y);
     }
 }
+
+FO_END_NAMESPACE();

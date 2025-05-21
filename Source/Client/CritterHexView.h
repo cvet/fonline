@@ -43,6 +43,8 @@
 #include "ModelSprites.h"
 #include "SpriteManager.h"
 
+FO_BEGIN_NAMESPACE();
+
 class ItemView;
 
 class CritterHexView final : public CritterView, public HexView
@@ -147,3 +149,5 @@ private:
     raw_ptr<ModelInstance> _model {};
 #endif
 };
+
+FO_END_NAMESPACE();

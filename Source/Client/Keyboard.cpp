@@ -34,18 +34,20 @@
 #include "Keyboard.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) :
     _settings {settings},
     _sprMngr {spr_mngr}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(_settings);
+    ignore_unused(_settings);
 }
 
 void Keyboard::Lost()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     CtrlDwn = false;
     AltDwn = false;
@@ -54,7 +56,7 @@ void Keyboard::Lost()
 
 void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (AltDwn) {
         return;
@@ -168,7 +170,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
 
 void Keyboard::RemoveInvalidChars(string& str, uint flags) const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < str.length();) {
         uint length = 0;
@@ -184,7 +186,7 @@ void Keyboard::RemoveInvalidChars(string& str, uint flags) const
 
 auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     size_t decode_length = utf8::DecodeStrNtLen(str);
     const auto ucs = utf8::Decode(str, decode_length);
@@ -226,3 +228,5 @@ auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const ->
 
     return !_sprMngr.HaveLetter(-1, ucs);
 }
+
+FO_END_NAMESPACE();

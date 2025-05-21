@@ -37,6 +37,8 @@
 
 #include "SPARK.h"
 
+FO_BEGIN_NAMESPACE();
+
 struct ParticleManager::Impl
 {
     unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
@@ -56,7 +58,7 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     _gameTime {game_time},
     _textureLoader {std::move(tex_loader)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     static std::once_flag once;
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
@@ -68,12 +70,12 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
 
 ParticleManager::~ParticleManager()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSystem>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SPK::Ref<SPK::System> base_system;
 
@@ -116,7 +118,7 @@ ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
     _impl {SafeAlloc::MakeUnique<Impl>()},
     _particleMngr {particle_mngr}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _forceDraw = true;
     _lastDrawTime = GetTime();
@@ -124,40 +126,40 @@ ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
 
 ParticleSystem::~ParticleSystem()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 bool ParticleSystem::IsActive() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->System->isActive();
 }
 
 auto ParticleSystem::GetElapsedTime() const -> float
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return static_cast<float>(_elapsedTime);
 }
 
 auto ParticleSystem::GetBaseSystem() -> SPK::System*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _impl->BaseSystem.get();
 }
 
 void ParticleSystem::SetBaseSystem(SPK::System* system)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->BaseSystem = system;
 }
 
 auto ParticleSystem::GetDrawSize() const -> isize
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int max_draw_width = 0;
     int max_draw_height = 0;
@@ -182,21 +184,21 @@ auto ParticleSystem::GetDrawSize() const -> isize
 
 auto ParticleSystem::GetTime() const -> nanotime
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _particleMngr._gameTime.GetFrameTime();
 }
 
 auto ParticleSystem::NeedDraw() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_particleMngr._animUpdateThreshold} && _impl->System->isActive();
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float look_dir_angle, const vec3& view_offset)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl->System->isActive()) {
         return;
@@ -244,7 +246,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
 
 void ParticleSystem::Prewarm()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_impl->System->isActive()) {
         return;
@@ -263,7 +265,7 @@ void ParticleSystem::Prewarm()
 
 void ParticleSystem::Respawn()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _impl->System = SPK::SPKObject::copy(_impl->BaseSystem);
     _impl->System->initialize();
@@ -273,7 +275,7 @@ void ParticleSystem::Respawn()
 
 void ParticleSystem::Draw()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
     const auto dt = (time - _lastDrawTime).to_ms<float>() * 0.001f;
@@ -308,3 +310,5 @@ void ParticleSystem::Draw()
 
     _impl->System->renderParticles();
 }
+
+FO_END_NAMESPACE();

@@ -37,15 +37,17 @@
 
 #include "Log.h"
 
+FO_BEGIN_NAMESPACE();
+
 ModelSprite::ModelSprite(SpriteManager& spr_mngr) :
     AtlasSprite(spr_mngr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ModelSprite::IsHitTest(ipos pos) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
@@ -64,7 +66,7 @@ auto ModelSprite::IsHitTest(ipos pos) const -> bool
 
 auto ModelSprite::GetViewSize() const -> optional<IRect>
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     auto&& [view_width, view_height] = _model->GetViewSize();
 
@@ -73,28 +75,28 @@ auto ModelSprite::GetViewSize() const -> optional<IRect>
 
 void ModelSprite::Prewarm()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _model->PrewarmParticles();
 }
 
 void ModelSprite::SetTime(float normalized_time)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(normalized_time);
+    ignore_unused(normalized_time);
 }
 
 void ModelSprite::SetDir(uint8 dir)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     SetDirAngle(GeometryHelper::DirToAngle(dir));
 }
 
 void ModelSprite::SetDirAngle(short dir_angle)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _model->SetLookDirAngle(dir_angle);
     _model->SetMoveDirAngle(dir_angle, true);
@@ -102,23 +104,23 @@ void ModelSprite::SetDirAngle(short dir_angle)
 
 void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(anim_name);
-    UNUSED_VARIABLE(looped);
-    UNUSED_VARIABLE(reversed);
+    ignore_unused(anim_name);
+    ignore_unused(looped);
+    ignore_unused(reversed);
 
     StartUpdate();
 }
 
 void ModelSprite::Stop()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ModelSprite::Update() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_model->NeedForceDraw() || _model->NeedDraw()) {
         DrawToAtlas();
@@ -129,10 +131,10 @@ auto ModelSprite::Update() -> bool
 
 void ModelSprite::SetSize(isize size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(size.width > 0);
-    RUNTIME_ASSERT(size.height > 0);
+    FO_RUNTIME_ASSERT(size.width > 0);
+    FO_RUNTIME_ASSERT(size.height > 0);
 
     if (size == Size) {
         return;
@@ -160,7 +162,7 @@ void ModelSprite::SetSize(isize size)
 
 void ModelSprite::DrawToAtlas()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _factory->DrawModelToAtlas(this);
 }
@@ -168,7 +170,7 @@ void ModelSprite::DrawToAtlas()
 ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) :
     _sprMngr {spr_mngr}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr.GetResources(), effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver, //
         [this, &hash_resolver](string_view path) { return LoadTexture(hash_resolver.ToHashedString(path)); });
@@ -176,7 +178,7 @@ ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& 
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto model = _modelMngr->CreateModel(path);
 
@@ -198,7 +200,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
 
 auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto result = pair<RenderTexture*, FRect>();
 
@@ -225,9 +227,9 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect
 
 void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_modelMngr);
+    FO_RUNTIME_ASSERT(_modelMngr);
 
     // Find place for render
     const auto frame_size = isize {model_spr->Size.width * ModelInstance::FRAME_SCALE, model_spr->Size.height * ModelInstance::FRAME_SCALE};
@@ -282,3 +284,5 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
 }
 
 #endif
+
+FO_END_NAMESPACE();

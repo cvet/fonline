@@ -40,6 +40,8 @@
 #include "ScriptSystem.h"
 #include "ServerEntity.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Item;
 class Critter;
 using StaticItem = Item;
@@ -73,9 +75,9 @@ public:
     void EvaluateSortValue(const vector<Item*>& items);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
+    FO_ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
 
     ScriptFunc<bool, Critter*, StaticItem*, Item*, any_t> StaticScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uint8> TriggerScriptFunc {};
@@ -83,3 +85,5 @@ public:
 private:
     unique_ptr<vector<Item*>> _innerItems {};
 };
+
+FO_END_NAMESPACE();

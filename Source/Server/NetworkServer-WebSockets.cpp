@@ -37,7 +37,7 @@
 
 #include "Log.h"
 
-DISABLE_WARNINGS_PUSH()
+FO_DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
 // ReSharper disable once CppInconsistentNaming
 #define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
@@ -57,7 +57,9 @@ DISABLE_WARNINGS_PUSH()
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
-DISABLE_WARNINGS_POP()
+FO_DISABLE_WARNINGS_POP()
+
+FO_BEGIN_NAMESPACE();
 
 template<bool Secured>
 class NetworkServerConnection_WebSockets final : public NetworkServerConnection
@@ -117,7 +119,7 @@ private:
 
 auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (settings.SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
@@ -137,7 +139,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     _server {server},
     _connection {std::move(connection)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& address = _connection->get_raw_socket().remote_endpoint().address();
     _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
@@ -158,7 +160,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
 template<bool Secured>
 NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         std::error_code error;
@@ -168,14 +170,14 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& msg)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& payload = msg->get_payload();
 
@@ -187,9 +189,9 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(hdl);
+    ignore_unused(hdl);
 
     WriteLog("Failed: {}", _connection->get_ec().message());
     Disconnect();
@@ -198,9 +200,9 @@ void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::conn
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnClose(const websocketpp::connection_hdl& hdl)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(hdl);
+    ignore_unused(hdl);
 
     Disconnect();
 }
@@ -208,9 +210,9 @@ void NetworkServerConnection_WebSockets<Secured>::OnClose(const websocketpp::con
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::connection_hdl& hdl)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(hdl);
+    ignore_unused(hdl);
 
     // Prevent use this feature
     Disconnect();
@@ -219,7 +221,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::conn
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto buf = SendCallback();
 
@@ -238,7 +240,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::error_code error;
     _connection->terminate(error);
@@ -248,7 +250,7 @@ template<bool Secured>
 NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if constexpr (Secured) {
         if (settings.WssPrivateKey.empty()) {
@@ -278,7 +280,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::Shutdown()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _server.stop();
     _runThread.join();
@@ -287,7 +289,7 @@ void NetworkServer_WebSockets<Secured>::Shutdown()
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::Run()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         _server.run();
@@ -296,14 +298,14 @@ void NetworkServer_WebSockets<Secured>::Run()
         ReportExceptionAndContinue(ex);
     }
     catch (...) {
-        UNKNOWN_EXCEPTION();
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl& hdl)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::error_code error;
     auto&& connection = _server.get_con_from_hdl(hdl, error);
@@ -316,7 +318,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
 template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::error_code error;
     auto&& connection = _server.get_con_from_hdl(hdl, error);
@@ -332,9 +334,9 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
 template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(hdl);
+    ignore_unused(hdl);
 
     auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
@@ -342,5 +344,7 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
     ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
     return ctx;
 }
+
+FO_END_NAMESPACE();
 
 #endif

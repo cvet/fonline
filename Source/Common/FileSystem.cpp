@@ -35,6 +35,8 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const DataSource* ds) :
     _isLoaded {true},
     _filePath {path},
@@ -42,17 +44,17 @@ FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const D
     _writeTime {write_time},
     _dataSource {ds}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_dataSource);
+    FO_RUNTIME_ASSERT(_dataSource);
 }
 
 auto FileHeader::GetName() const -> string_view
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(!_filePath.empty());
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(!_filePath.empty());
 
     string_view name = _filePath;
     auto pos = name.find_last_of("/\\");
@@ -72,56 +74,56 @@ auto FileHeader::GetName() const -> string_view
 
 auto FileHeader::GetPath() const -> const string&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(!_filePath.empty());
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(!_filePath.empty());
 
     return _filePath;
 }
 
 auto FileHeader::GetFullPath() const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(!_filePath.empty());
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(!_filePath.empty());
 
     return strex(_dataSource->GetPackName()).combinePath(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_isLoaded);
 
     return _fileSize;
 }
 
 auto FileHeader::GetWriteTime() const -> uint64
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_isLoaded);
 
     return _writeTime;
 }
 
 auto FileHeader::GetDataSource() const -> const DataSource*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_isLoaded);
 
     return _dataSource.get();
 }
 
 auto FileHeader::Copy() const -> FileHeader
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_isLoaded);
 
     return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.get());
 }
@@ -130,13 +132,13 @@ File::File(string_view path, size_t size, uint64 write_time, const DataSource* d
     FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 File::File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
     FileHeader(path, static_cast<uint>(buf.size()), write_time, ds)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (make_copy) {
         auto buf_copy = SafeAlloc::MakeUniqueArr<uint8>(buf.size());
@@ -144,26 +146,26 @@ File::File(string_view path, uint64 write_time, const DataSource* ds, const_span
         _fileBuf = unique_del_ptr<const uint8> {buf_copy.release(), [](const uint8* p) { delete[] p; }};
     }
     else {
-        _fileBuf = unique_del_ptr<const uint8> {buf.data(), [](const uint8* p) { UNUSED_VARIABLE(p); }};
+        _fileBuf = unique_del_ptr<const uint8> {buf.data(), [](const uint8* p) { ignore_unused(p); }};
     }
 }
 
 auto File::GetStr() const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_fileBuf);
 
     return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
 
 auto File::GetData() const -> vector<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_fileBuf);
 
     vector<uint8> result;
     result.resize(_fileSize);
@@ -173,30 +175,20 @@ auto File::GetData() const -> vector<uint8>
 
 auto File::GetBuf() const -> const uint8*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_fileBuf);
 
     return _fileBuf.get();
 }
 
-auto File::GetSize() const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    return _fileSize;
-}
-
 auto File::GetReader() const -> FileReader
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
+    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_RUNTIME_ASSERT(_fileBuf);
 
     return FileReader({_fileBuf.get(), _fileSize});
 }
@@ -204,19 +196,19 @@ auto File::GetReader() const -> FileReader
 FileReader::FileReader(const_span<uint8> buf) :
     _buf {buf}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto FileReader::GetStr() const -> string
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
 }
 
 auto FileReader::GetData() const -> vector<uint8>
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     vector<uint8> result;
     result.resize(_buf.size());
@@ -226,64 +218,64 @@ auto FileReader::GetData() const -> vector<uint8>
 
 auto FileReader::GetBuf() const -> const uint8*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _buf.data();
 }
 
 auto FileReader::GetSize() const -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _buf.size();
 }
 
 auto FileReader::GetCurBuf() const -> const uint8*
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _buf.data() + _curPos;
 }
 
 auto FileReader::GetCurPos() const -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return _curPos;
 }
 
 void FileReader::SetCurPos(size_t pos)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(pos <= _buf.size());
+    FO_RUNTIME_ASSERT(pos <= _buf.size());
 
     _curPos = pos;
 }
 
 void FileReader::GoForward(size_t offs)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curPos + offs <= _buf.size());
+    FO_RUNTIME_ASSERT(_curPos + offs <= _buf.size());
 
     _curPos += offs;
 }
 
 void FileReader::GoBack(size_t offs)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(offs <= _curPos);
+    FO_RUNTIME_ASSERT(offs <= _curPos);
 
     _curPos -= offs;
 }
 
 auto FileReader::SeekFragment(string_view fragment) -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!fragment.empty());
+    FO_RUNTIME_ASSERT(!fragment.empty());
 
     if (_curPos + fragment.size() > _buf.size()) {
         return false;
@@ -312,7 +304,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
 
 void FileReader::CopyData(void* ptr, size_t size)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (size == 0) {
         return;
@@ -328,7 +320,7 @@ void FileReader::CopyData(void* ptr, size_t size)
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetStrNT() -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + 1 > _buf.size()) {
         throw FileSystemExeption("Invalid read pos");
@@ -347,7 +339,7 @@ auto FileReader::GetStrNT() -> string
 
 auto FileReader::GetUChar() -> uint8
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + sizeof(uint8) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
@@ -359,7 +351,7 @@ auto FileReader::GetUChar() -> uint8
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetBEUShort() -> uint16
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + sizeof(uint16) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
@@ -375,7 +367,7 @@ auto FileReader::GetBEUShort() -> uint16
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetLEUShort() -> uint16
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + sizeof(uint16) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
@@ -391,7 +383,7 @@ auto FileReader::GetLEUShort() -> uint16
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetBEUInt() -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + sizeof(uint) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
@@ -410,7 +402,7 @@ auto FileReader::GetBEUInt() -> uint
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetLEUInt() -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_curPos + sizeof(uint) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
@@ -428,7 +420,7 @@ auto FileReader::GetLEUInt() -> uint
 
 FileCollection::FileCollection(initializer_list<FileHeader> files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _allFiles.reserve(files.size());
 
@@ -440,46 +432,46 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
 FileCollection::FileCollection(vector<FileHeader> files) :
     _allFiles {std::move(files)}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto FileCollection::MoveNext() -> bool
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     return ++_curFileIndex < static_cast<int>(_allFiles.size());
 }
 
 void FileCollection::ResetCounter()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _curFileIndex = -1;
 }
 
 auto FileCollection::GetCurFile() const -> File
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curFileIndex >= 0);
-    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex >= 0);
+    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh.GetSize();
     auto wt = fh.GetWriteTime();
     auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-    RUNTIME_ASSERT(buf);
+    FO_RUNTIME_ASSERT(buf);
     return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
 }
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_curFileIndex >= 0);
-    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex >= 0);
+    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     return FileHeader(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());
@@ -487,7 +479,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
 
 auto FileCollection::FindFileByName(string_view name) const -> File
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_allFiles.empty()) {
         return {};
@@ -507,7 +499,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
         auto fs = fh.GetSize();
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-        RUNTIME_ASSERT(buf);
+        FO_RUNTIME_ASSERT(buf);
         return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
@@ -516,7 +508,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
 
 auto FileCollection::FindFileByPath(string_view path) const -> File
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_allFiles.empty()) {
         return {};
@@ -536,7 +528,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
         auto fs = fh.GetSize();
         auto wt = fh.GetWriteTime();
         auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-        RUNTIME_ASSERT(buf);
+        FO_RUNTIME_ASSERT(buf);
         return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
     }
 
@@ -545,14 +537,14 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 
 auto FileCollection::GetFilesCount() const -> size_t
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _allFiles.size();
 }
 
 auto FileCollection::Copy() const -> FileCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<FileHeader> files;
     files.reserve(_allFiles.size());
@@ -566,41 +558,43 @@ auto FileCollection::Copy() const -> FileCollection
 
 void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    _dataSources.emplace(_dataSources.begin(), DataSource::Create(path, type));
+    auto ds = DataSource::Mount(path, type);
+
+    _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
 void FileSystem::AddDataSource(unique_ptr<DataSource> data_source)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
 void FileSystem::CleanDataSources()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _dataSources.clear();
 }
 
 auto FileSystem::GetAllFiles() const -> FileCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return FilterFiles("");
 }
 
-auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) const -> FileCollection
+auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) const -> FileCollection
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<FileHeader> files;
     unordered_set<string> processed_files;
 
     for (const auto& ds : _dataSources) {
-        for (const auto& path : ds->GetFileNames(dir, include_subdirs, ext)) {
+        for (const auto& path : ds->GetFileNames(dir, recursive, ext)) {
             if (!processed_files.insert(path).second) {
                 continue;
             }
@@ -608,7 +602,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
             size_t size = 0;
             uint64 write_time = 0;
             const auto ok = ds->IsFilePresent(path, size, write_time);
-            RUNTIME_ASSERT(ok);
+            FO_RUNTIME_ASSERT(ok);
             auto file_header = FileHeader(path, size, write_time, ds.get());
             files.emplace_back(std::move(file_header));
         }
@@ -619,10 +613,10 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
 
 auto FileSystem::ReadFile(string_view path) const -> File
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_RUNTIME_ASSERT(!path.empty());
+    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;
@@ -638,7 +632,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
 
 auto FileSystem::ReadFileText(string_view path) const -> string
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto file = ReadFile(path);
     return file ? file.GetStr() : string();
@@ -646,10 +640,10 @@ auto FileSystem::ReadFileText(string_view path) const -> string
 
 auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_RUNTIME_ASSERT(!path.empty());
+    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;
@@ -662,3 +656,5 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 
     return {};
 }
+
+FO_END_NAMESPACE();

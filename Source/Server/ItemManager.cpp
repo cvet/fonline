@@ -40,17 +40,19 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ItemManager::ItemManager(FOServer* engine) :
     _engine {engine}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
@@ -68,12 +70,12 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 
 void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(holder);
+    FO_RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(holder);
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
@@ -109,7 +111,7 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 
 auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
@@ -143,14 +145,14 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         throw GenericException("Item destroyed during init", pid);
     }
 
-    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
+    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
 
     return item.get();
 }
 
 void ItemManager::DestroyItem(Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Redundant calls
     if (item->IsDestroying() || item->IsDestroyed()) {
@@ -186,24 +188,24 @@ void ItemManager::DestroyItem(Item* item)
 
 auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto item_count = item->GetCount();
-    RUNTIME_ASSERT(item->GetStackable());
-    RUNTIME_ASSERT(count > 0);
-    RUNTIME_ASSERT(count < item_count);
+    FO_RUNTIME_ASSERT(item->GetStackable());
+    FO_RUNTIME_ASSERT(count > 0);
+    FO_RUNTIME_ASSERT(count < item_count);
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
     item->SetCount(item_count - count);
-    RUNTIME_ASSERT(!new_item->IsDestroyed());
+    FO_RUNTIME_ASSERT(!new_item->IsDestroyed());
 
     return new_item;
 }
 
 auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
         return item;
@@ -223,7 +225,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
 
 auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
         return item;
@@ -245,7 +247,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> 
 
 auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return item;
@@ -265,9 +267,9 @@ auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, const any_t& s
 
 auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const any_t& stack_id) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(cont);
+    FO_RUNTIME_ASSERT(cont);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cont->GetInnerItemByPid(pid, stack_id);
@@ -310,9 +312,9 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const an
 
 auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(count > 0);
+    FO_RUNTIME_ASSERT(count > 0);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto* item = cr->GetInvItemByPid(pid);
@@ -344,7 +346,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 
 void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (count == 0) {
         return;
@@ -379,7 +381,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
 
 void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto cur_count = cr->CountInvItemPid(pid);
 
@@ -390,3 +392,5 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
         AddItemCritter(cr, pid, count - cur_count);
     }
 }
+
+FO_END_NAMESPACE();

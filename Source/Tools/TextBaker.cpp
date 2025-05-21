@@ -37,10 +37,12 @@
 #include "StringUtils.h"
 #include "TextPack.h"
 
+FO_BEGIN_NAMESPACE();
+
 TextBaker::TextBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_settings->BakeLanguages.empty()) {
         throw TextBakerException("No bake languages specified");
@@ -49,12 +51,12 @@ TextBaker::TextBaker(const BakerSettings& settings, string pack_name, BakeChecke
 
 TextBaker::~TextBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void TextBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<File> filtered_files;
 
@@ -85,10 +87,10 @@ void TextBaker::BakeFiles(FileCollection files)
         const auto file_name = file.GetName();
 
         const auto sep = file_name.find('.');
-        RUNTIME_ASSERT(sep != string::npos);
+        FO_RUNTIME_ASSERT(sep != string::npos);
 
         const auto lang_name = file_name.substr(sep + 1);
-        RUNTIME_ASSERT(!lang_name.empty());
+        FO_RUNTIME_ASSERT(!lang_name.empty());
 
         if (all_languages.emplace(lang_name).second) {
             if (std::find(_settings->BakeLanguages.begin(), _settings->BakeLanguages.end(), lang_name) == _settings->BakeLanguages.end()) {
@@ -115,12 +117,12 @@ void TextBaker::BakeFiles(FileCollection files)
             const auto file_name = file.GetName();
 
             const auto sep = file_name.find('.');
-            RUNTIME_ASSERT(sep != string::npos);
+            FO_RUNTIME_ASSERT(sep != string::npos);
 
             const auto text_pack_name = file_name.substr(0, sep);
             const auto lang_name = file_name.substr(sep + 1);
-            RUNTIME_ASSERT(!text_pack_name.empty());
-            RUNTIME_ASSERT(!lang_name.empty());
+            FO_RUNTIME_ASSERT(!text_pack_name.empty());
+            FO_RUNTIME_ASSERT(!lang_name.empty());
 
             if (lang_name == target_lang) {
                 TextPack text_pack;
@@ -151,3 +153,5 @@ void TextBaker::BakeFiles(FileCollection files)
         }
     }
 }
+
+FO_END_NAMESPACE();

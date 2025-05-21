@@ -38,6 +38,8 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
@@ -46,12 +48,12 @@ ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr,
     _sprMngr {spr_mngr},
     _animNameResolver {anim_name_resolver}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void ResourceManager::IndexFiles()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
         auto sounds = _resources.FilterFiles(sound_ext);
@@ -63,40 +65,40 @@ void ResourceManager::IndexFiles()
 
     auto any_spr = _sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites);
     auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
-    RUNTIME_ASSERT(atlas_spr);
+    FO_RUNTIME_ASSERT(atlas_spr);
     _critterDummyAnimFrames = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->Size = atlas_spr->Size;
     _critterDummyAnimFrames->Spr[0] = std::move(atlas_spr);
-    RUNTIME_ASSERT(_critterDummyAnimFrames);
+    FO_RUNTIME_ASSERT(_critterDummyAnimFrames);
 
     _itemHexDummyAnim = _sprMngr.LoadSprite("ItemStub.png", AtlasType::MapSprites);
-    RUNTIME_ASSERT(_itemHexDummyAnim);
+    FO_RUNTIME_ASSERT(_itemHexDummyAnim);
 }
 
 auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _itemHexDummyAnim;
 }
 
 auto ResourceManager::GetCritterDummyFrames() -> const SpriteSheet*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _critterDummyAnimFrames.get();
 }
 
 void ResourceManager::CleanupCritterFrames()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _critterFrames.clear();
 }
 
 static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
@@ -104,7 +106,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
 
 static auto FalloutAnimMapId(hstring model_name, uint state_anim, uint action_anim) -> uint
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), static_cast<uint>(-1)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
@@ -112,7 +114,7 @@ static auto FalloutAnimMapId(hstring model_name, uint state_anim, uint action_an
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Check already loaded
     const auto id = AnimMapId(model_name, state_anim, action_anim);
@@ -255,7 +257,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
 auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Convert from common to fallout specific
     uint f_state_anim = 0;
@@ -347,9 +349,9 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
 void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
         return;
@@ -371,9 +373,9 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
 
 void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
         return;
@@ -402,7 +404,7 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
 
 auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_anim, uint action_anim) -> const SpriteSheet*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #define LOADSPR_ADDOFFS(a1, a2) FixAnimFramesOffs(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
@@ -440,8 +442,8 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
     // Try load fofrm
     static constexpr char FRM_IND[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    RUNTIME_ASSERT(static_cast<uint>(state_anim) < sizeof(FRM_IND));
-    RUNTIME_ASSERT(static_cast<uint>(action_anim) < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(static_cast<uint>(state_anim) < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(static_cast<uint>(action_anim) < sizeof(FRM_IND));
 
     shared_ptr<SpriteSheet> anim;
 
@@ -542,7 +544,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
 auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const string ext = strex(model_name).getFileExtension();
 
@@ -555,7 +557,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
         const auto* model_spr = GetCritterPreviewModelSpr(model_name, state_anim, action_anim, dir, layers3d);
         return model_spr != nullptr ? static_cast<const Sprite*>(model_spr) : static_cast<const Sprite*>(_critterDummyAnimFrames.get());
 #else
-        UNUSED_VARIABLE(layers3d);
+        ignore_unused(layers3d);
         throw NotEnabled3DException("3D submodule not enabled");
 #endif
     }
@@ -564,7 +566,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 #if FO_ENABLE_3D
 auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _critterModels.find(model_name); it != _critterModels.end()) {
         auto& model_spr = it->second;
@@ -598,7 +600,9 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
 
 auto ResourceManager::GetSoundNames() const -> const map<string, string>&
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _soundNames;
 }
+
+FO_END_NAMESPACE();

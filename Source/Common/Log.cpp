@@ -39,6 +39,8 @@
 #include "Platform.h"
 #include "WinApi-Include.h"
 
+FO_BEGIN_NAMESPACE();
+
 [[maybe_unused]] static void FlushLogAtExit();
 
 struct LogData
@@ -48,10 +50,10 @@ struct LogData
         MainThreadId = std::this_thread::get_id();
 
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        NO_STACK_TRACE_ENTRY();
+        FO_NO_STACK_TRACE_ENTRY();
 
         const auto result = std::at_quick_exit(FlushLogAtExit);
-        UNUSED_VARIABLE(result);
+        ignore_unused(result);
 #endif
 
 #if FO_WINDOWS
@@ -66,11 +68,11 @@ struct LogData
     std::thread::id MainThreadId {};
     bool TagsDisabled {};
 };
-GLOBAL_DATA(LogData, Data);
+FO_GLOBAL_DATA(LogData, Data);
 
 static void FlushLogAtExit()
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (Data != nullptr && Data->LogLocker.try_lock()) {
         std::scoped_lock locker(std::adopt_lock, Data->LogLocker);
@@ -83,7 +85,7 @@ static void FlushLogAtExit()
 
 void LogToFile(string_view fname)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(Data->LogLocker);
 
@@ -104,7 +106,7 @@ void LogToFile(string_view fname)
 
 void SetLogCallback(string_view key, LogFunc callback)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(Data->LogLocker);
 
@@ -117,14 +119,14 @@ void SetLogCallback(string_view key, LogFunc callback)
         }
     }
     else {
-        RUNTIME_ASSERT(!callback);
+        FO_RUNTIME_ASSERT(!callback);
         Data->LogFunctions.clear();
     }
 }
 
 void LogDisableTags()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(Data->LogLocker);
 
@@ -133,7 +135,7 @@ void LogDisableTags()
 
 void WriteLogMessage(LogType type, string_view message) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     try {
         // Avoid recursive calls
@@ -213,7 +215,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 
 extern void WriteLogFatalMessage(string_view message) noexcept
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
         std::scoped_lock locker(Data->LogLocker);
@@ -229,3 +231,5 @@ extern void WriteLogFatalMessage(string_view message) noexcept
         BreakIntoDebugger();
     }
 }
+
+FO_END_NAMESPACE();

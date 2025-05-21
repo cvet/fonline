@@ -41,6 +41,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
 {
@@ -113,7 +115,7 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(FOServer* server, ident_t 
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (cr1 == nullptr) {
         throw ScriptException("Critter 1 arg is null");
@@ -136,7 +138,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critt
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item1, Item* item2)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (item1 == nullptr) {
         throw ScriptException("Item 1 arg is null");
@@ -158,7 +160,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item1, Item* 
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, Item* item)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -181,7 +183,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, Item* 
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, Critter* cr)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -204,7 +206,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, Critter
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, mpos hex)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -221,7 +223,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, mpos h
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Critter* cr)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -238,7 +240,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Critter* 
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, mpos hex)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -254,7 +256,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Item* item)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -629,7 +631,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(FOServer* server, const vector<id
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId, nullptr);
-    RUNTIME_ASSERT(loc);
+    FO_RUNTIME_ASSERT(loc);
 
     return loc;
 }
@@ -645,7 +647,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring pro
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, &props_);
-    RUNTIME_ASSERT(loc);
+    FO_RUNTIME_ASSERT(loc);
 
     return loc;
 }
@@ -957,7 +959,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
     }
 
     for (auto&& [id, item] : server->EntityMngr.GetItems()) {
-        RUNTIME_ASSERT(!item->IsDestroyed());
+        FO_RUNTIME_ASSERT(!item->IsDestroyed());
 
         if (!pid || pid == item->GetProtoId()) {
             items.emplace_back(item);
@@ -1018,7 +1020,7 @@ FO_SCRIPT_API void Server_Game_SetSynchronizedTime(FOServer* server, synctime ti
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, any_t param)
 {
-    UNUSED_VARIABLE(server);
+    ignore_unused(server);
 
     if (!staticItem->StaticScriptFunc) {
         return false;
@@ -1055,3 +1057,5 @@ FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName text
 {
     return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
+
+FO_END_NAMESPACE();

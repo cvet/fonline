@@ -41,47 +41,49 @@
 #include "Server.h"
 #include "Settings.h"
 
+FO_BEGIN_NAMESPACE();
+
 Player::Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
     _connection {std::move(connection)},
     _talkNextTime {_engine->GameTime.GetFrameTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 Player::~Player()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Player::SetName(string_view name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = name;
 }
 
 void Player::SetControlledCritter(Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _controlledCr = cr;
 }
 
 void Player::SwapConnection(Player* other) noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    STRONG_ASSERT(other);
-    STRONG_ASSERT(other != this);
+    FO_STRONG_ASSERT(other);
+    FO_STRONG_ASSERT(other != this);
 
     std::swap(_connection, other->_connection);
 }
 
 void Player::Send_LoginSuccess()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
@@ -101,7 +103,7 @@ void Player::Send_LoginSuccess()
 
 void Player::Send_AddCritter(const Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_chosen = cr == GetControlledCritter();
 
@@ -166,7 +168,7 @@ void Player::Send_AddCritter(const Critter* cr)
 
 void Player::Send_RemoveCritter(const Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCritter);
 
@@ -175,7 +177,7 @@ void Player::Send_RemoveCritter(const Critter* cr)
 
 void Player::Send_LoadMap(const Map* map)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const Location* loc = nullptr;
     hstring pid_map;
@@ -217,10 +219,10 @@ void Player::Send_LoadMap(const Map* map)
 
 void Player::Send_Property(NetProperty type, const Property* prop, const Entity* entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(entity);
-    RUNTIME_ASSERT(prop);
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(prop);
 
     if (SendIgnoreEntity == entity && SendIgnoreProperty == prop) {
         return;
@@ -262,7 +264,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 
 void Player::Send_Moving(const Critter* from_cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!from_cr->Moving.Steps.empty()) {
         auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
@@ -282,7 +284,7 @@ void Player::Send_Moving(const Critter* from_cr)
 
 void Player::Send_MovingSpeed(const Critter* from_cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
 
@@ -292,7 +294,7 @@ void Player::Send_MovingSpeed(const Critter* from_cr)
 
 void Player::Send_Dir(const Critter* from_cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterDir);
 
@@ -302,7 +304,7 @@ void Player::Send_Dir(const Critter* from_cr)
 
 void Player::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_chosen = from_cr == GetControlledCritter();
 
@@ -320,7 +322,7 @@ void Player::Send_Action(const Critter* from_cr, CritterAction action, int actio
 
 void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_chosen = from_cr == GetControlledCritter();
 
@@ -358,7 +360,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
 
 void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto is_chosen = from_cr == GetControlledCritter();
 
@@ -378,7 +380,7 @@ void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, C
 
 void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterSetAnims);
 
@@ -390,7 +392,7 @@ void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critte
 
 void Player::Send_AddItemOnMap(const Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::AddItemOnMap);
 
@@ -400,7 +402,7 @@ void Player::Send_AddItemOnMap(const Item* item)
 
 void Player::Send_RemoveItemFromMap(const Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveItemFromMap);
 
@@ -409,7 +411,7 @@ void Player::Send_RemoveItemFromMap(const Item* item)
 
 void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::AnimateItem);
 
@@ -421,7 +423,7 @@ void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, 
 
 void Player::Send_ChosenAddItem(const Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenAddItem);
 
@@ -430,7 +432,7 @@ void Player::Send_ChosenAddItem(const Item* item)
 
 void Player::Send_ChosenRemoveItem(const Item* item)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenRemoveItem);
 
@@ -439,7 +441,7 @@ void Player::Send_ChosenRemoveItem(const Item* item)
 
 void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterTeleport);
 
@@ -449,9 +451,9 @@ void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 
 void Player::Send_Talk()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_controlledCr);
+    FO_RUNTIME_ASSERT(_controlledCr);
 
     const auto close = _controlledCr->Talk.Type == TalkType::None;
     const auto is_npc = _controlledCr->Talk.Type == TalkType::Critter;
@@ -489,7 +491,7 @@ void Player::Send_Talk()
 
 void Player::Send_TimeSync()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
 
@@ -498,7 +500,7 @@ void Player::Send_TimeSync()
 
 void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::InfoMessage);
 
@@ -508,7 +510,7 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
 
 void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::Effect);
 
@@ -519,7 +521,7 @@ void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
 
 void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::FlyEffect);
 
@@ -532,7 +534,7 @@ void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_i
 
 void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::PlaySound);
 
@@ -542,9 +544,9 @@ void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 
 void Player::Send_ViewMap()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_controlledCr);
+    FO_RUNTIME_ASSERT(_controlledCr);
 
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
@@ -555,14 +557,14 @@ void Player::Send_ViewMap()
 
 void Player::Send_PlaceToGameComplete()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _connection->WriteMsg(NetMessage::PlaceToGameComplete);
 }
 
 void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
 
@@ -576,7 +578,7 @@ void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_in
 
 void Player::Send_Attachments(const Critter* from_cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
 
@@ -592,7 +594,7 @@ void Player::Send_Attachments(const Critter* from_cr)
 
 void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
@@ -606,11 +608,11 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
     out_buf->Write(entity->GetId());
 
     if (const auto* entity_with_proto = dynamic_cast<CustomEntityWithProto*>(entity); entity_with_proto != nullptr) {
-        RUNTIME_ASSERT(_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        FO_RUNTIME_ASSERT(_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
         out_buf->Write(entity_with_proto->GetProtoId());
     }
     else {
-        RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        FO_RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
         out_buf->Write(hstring());
     }
 
@@ -619,7 +621,7 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
 
 void Player::Send_RemoveCustomEntity(ident_t id)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCustomEntity);
 
@@ -628,7 +630,7 @@ void Player::Send_RemoveCustomEntity(ident_t id)
 
 void Player::SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool with_slot, bool with_inner_entities)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     out_buf.Write(item->GetId());
     out_buf.Write(item->GetProtoId());
@@ -652,7 +654,7 @@ void Player::SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool 
 
 void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool owned)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!holder->HasInnerEntities()) {
         out_buf.Write(static_cast<uint16>(0));
@@ -677,7 +679,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 
         for (const auto& entity : entities) {
             const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity.get());
-            RUNTIME_ASSERT(custom_entity);
+            FO_RUNTIME_ASSERT(custom_entity);
 
             vector<const uint8*>* data = nullptr;
             vector<uint>* data_sizes = nullptr;
@@ -702,9 +704,9 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 
 void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    FO_NON_CONST_METHOD_HINT();
 
     out_buf.Write(static_cast<uint>(std::ceil(cr->Moving.WholeTime)));
     out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint>());
@@ -724,3 +726,5 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     out_buf.Write(cr->Moving.EndHexOffset);
 }
+
+FO_END_NAMESPACE();

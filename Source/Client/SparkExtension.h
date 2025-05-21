@@ -37,14 +37,18 @@
 
 #include "Rendering.h"
 
-DISABLE_WARNINGS_PUSH()
+FO_DISABLE_WARNINGS_PUSH()
 #include "SPARK.h"
-DISABLE_WARNINGS_POP()
+FO_DISABLE_WARNINGS_POP()
 
+FO_BEGIN_NAMESPACE();
 class ParticleManager;
+FO_END_NAMESPACE();
 
 namespace SPK::FO
 {
+    FO_USING_NAMESPACE();
+
     class SparkRenderBuffer final : public RenderBuffer
     {
     public:

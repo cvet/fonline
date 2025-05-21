@@ -39,7 +39,9 @@
 #include "RenderTarget.h"
 #include "Rendering.h"
 
-enum class AtlasType
+FO_BEGIN_NAMESPACE();
+
+enum class AtlasType : uint8
 {
     IfaceSprites,
     MapSprites,
@@ -106,3 +108,5 @@ private:
     RenderTargetManager& _rtMngr;
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
 };
+
+FO_END_NAMESPACE();

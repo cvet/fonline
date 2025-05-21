@@ -31,8 +31,7 @@
 // SOFTWARE.
 //
 
-#ifndef SCRIPTTYPE_H
-#define SCRIPTTYPE_H
+#pragma once
 
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
@@ -95,5 +94,3 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine);
 void RegisterScriptReflection_Generic(asIScriptEngine* engine);
 
 END_AS_NAMESPACE
-
-#endif

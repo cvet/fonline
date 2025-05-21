@@ -36,11 +36,13 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 // Todo: restore supporting of the map old text format
 
 void MapLoader::Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Load from file
     const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
@@ -144,3 +146,5 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         throw MapLoaderException("Map load error", errors);
     }
 }
+
+FO_END_NAMESPACE();

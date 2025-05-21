@@ -38,7 +38,9 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(RawCopyBakerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(RawCopyBakerException);
 
 class RawCopyBaker final : public BaseBaker
 {
@@ -54,3 +56,5 @@ public:
 
     void BakeFiles(FileCollection files) override;
 };
+
+FO_END_NAMESPACE();

@@ -37,6 +37,8 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 static constexpr int ATLAS_SPRITES_PADDING = 1;
 
 TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
@@ -44,12 +46,12 @@ TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
     Pos {pos},
     Size {size}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     if (Busy) {
         return true;
@@ -66,7 +68,7 @@ auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
 
 auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (auto& child : Children) {
         if (auto* child_node = child->FindPosition(size); child_node != nullptr) {
@@ -100,7 +102,7 @@ auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
 
 void TextureAtlas::SpaceNode::Free() noexcept
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Busy = false;
 
@@ -145,7 +147,7 @@ TextureAtlasManager::TextureAtlasManager(RenderSettings& settings, RenderTargetM
 
 auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) -> TextureAtlas*
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Cleanup expired atlases
     for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
@@ -158,8 +160,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     }
 
     // Create new
-    RUNTIME_ASSERT(request_size.width > 0);
-    RUNTIME_ASSERT(request_size.height > 0);
+    FO_RUNTIME_ASSERT(request_size.width > 0);
+    FO_RUNTIME_ASSERT(request_size.height > 0);
 
     auto atlas = SafeAlloc::MakeUnique<TextureAtlas>();
     atlas->Type = atlas_type;
@@ -184,8 +186,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
         break;
     }
 
-    RUNTIME_ASSERT(result_size.width >= request_size.width);
-    RUNTIME_ASSERT(result_size.height >= request_size.height);
+    FO_RUNTIME_ASSERT(result_size.width >= request_size.width);
+    FO_RUNTIME_ASSERT(result_size.height >= request_size.height);
 
     atlas->RTarg = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Custom, result_size, _settings.AtlasLinearFiltration);
     atlas->MainTex = atlas->RTarg->MainTex.get();
@@ -199,7 +201,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
 
 auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
@@ -226,7 +228,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tu
     if (atlas == nullptr) {
         atlas = CreateAtlas(atlas_type, size_with_padding);
         atlas_node = atlas->RootNode->FindPosition(size_with_padding);
-        RUNTIME_ASSERT(atlas_node);
+        FO_RUNTIME_ASSERT(atlas_node);
     }
 
     const ipos pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
@@ -236,7 +238,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tu
 
 void TextureAtlasManager::DumpAtlases() const
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int atlases_memory_size = 0;
 
@@ -274,3 +276,5 @@ void TextureAtlasManager::DumpAtlases() const
         count++;
     }
 }
+
+FO_END_NAMESPACE();

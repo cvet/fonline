@@ -740,9 +740,9 @@ def parseTags():
                 methods = []
                 for line in tagContext[2:]:
                     line = line.lstrip()
-                    if 'SCRIPTABLE_OBJECT_BEGIN' in line:
+                    if 'FO_SCRIPTABLE_OBJECT_BEGIN' in line:
                         scriptableLines = True
-                    elif 'SCRIPTABLE_OBJECT_END' in line:
+                    elif 'FO_SCRIPTABLE_OBJECT_END' in line:
                         scriptableLines = False
                     elif scriptableLines:
                         commPos = line.find('//')
@@ -1413,7 +1413,6 @@ def genGenericCode():
     
     # Engine properties
     globalLines.append('// Engine property indices')
-    globalLines.append('#include "EntityProperties.h"')
     globalLines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(props) { }')
     commonParsed = set()
     for entity in gameEntities:
@@ -1974,7 +1973,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     (engineEntityType + '* self' + (', ' if params else '')) +
                     ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
             globalLines.append('{')
-            globalLines.append('    STACK_TRACE_ENTRY();')
+            globalLines.append('    FO_STACK_TRACE_ENTRY();')
             
             if not isASCompiler:
                 globalLines.append('    ENTITY_VERIFY_NULL(self);')
@@ -1996,9 +1995,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    return ' + marshalBack(ret, 'out_result', selfEntity=entity) + ';')
             else:
                 # Stub for compiler
-                globalLines.append('    UNUSED_VARIABLE(self);')
+                globalLines.append('    ignore_unused(self);')
                 for p in params:
-                    globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                    globalLines.append('    ignore_unused(' + p[1] + ');')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
             
             globalLines.append('}')
@@ -2064,10 +2063,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if not isASCompiler:
                         globalLines.append('static bool ' + funcEntry + '_Callback(' + entityArg + ', asIScriptFunction* func, const initializer_list<void*>& args)')
                         globalLines.append('{')
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY_RETURN(self, true);')
-                        globalLines.append('    UNUSED_VARIABLE(args);')
+                        globalLines.append('    ignore_unused(args);')
                         argIndex = 0
                         for p in evArgs:
                             argType = metaTypeToEngineType(p[0], target, False)
@@ -2102,7 +2101,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func, Entity::EventPriority priority)')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
@@ -2116,15 +2115,15 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         else:
                             globalLines.append('    self->SubscribeEvent(' + funcEntry + '_Name, std::move(event_data));')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
-                        globalLines.append('    UNUSED_VARIABLE(func);')
-                        globalLines.append('    UNUSED_VARIABLE(priority);')
+                        globalLines.append('    ignore_unused(self);')
+                        globalLines.append('    ignore_unused(func);')
+                        globalLines.append('    ignore_unused(priority);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
@@ -2132,14 +2131,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         else:
                             globalLines.append('    self->UnsubscribeEvent(' + funcEntry + '_Name, func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
-                        globalLines.append('    UNUSED_VARIABLE(func);')
+                        globalLines.append('    ignore_unused(self);')
+                        globalLines.append('    ignore_unused(func);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_UnsubscribeAll(' + entityArg + ')')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
@@ -2147,14 +2146,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         else:
                             globalLines.append('    self->UnsubscribeAllEvent(' + funcEntry + '_Name);')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    ignore_unused(self);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     if not isExported:
                         globalLines.append('static bool ' + funcEntry + '_Fire(' + entityArg + (', ' if evArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in evArgs]) + ')')
                         globalLines.append('{')
                         if not isASCompiler:
-                            globalLines.append('    STACK_TRACE_ENTRY();')
+                            globalLines.append('    FO_STACK_TRACE_ENTRY();')
                             globalLines.append('    ENTITY_VERIFY_NULL(self);')
                             globalLines.append('    ENTITY_VERIFY_RETURN(self, true);')
                             for p in evArgs:
@@ -2167,9 +2166,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             else:
                                 globalLines.append('    return self->FireEvent(' + funcEntry + '_Name, {' + ', '.join(['&in_' + p[1] for p in evArgs]) + '});')
                         else:
-                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            globalLines.append('    ignore_unused(self);')
                             for p in evArgs:
-                                globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                                globalLines.append('    ignore_unused(' + p[1] + ');')
                             globalLines.append('    throw ScriptCompilerException("Stub");')
                         globalLines.append('}')
                     globalLines.append('')
@@ -2186,21 +2185,21 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('static ' + metaTypeToASEngineType(keyType, True) + ' ASSetting_Get_' + keyName + '(' + settEntity + ')')
                 globalLines.append('{')
                 if not isASCompiler:
-                    globalLines.append('    STACK_TRACE_ENTRY();')
+                    globalLines.append('    FO_STACK_TRACE_ENTRY();')
                     globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
                 else:
-                    globalLines.append('    UNUSED_VARIABLE(self);')
+                    globalLines.append('    ignore_unused(self);')
                     globalLines.append('    throw ScriptCompilerException("Stub");')
                 globalLines.append('}')
                 if fixOrVar == 'var':
                     globalLines.append('static void ASSetting_Set_' + keyName + '(' + settEntity + ', ' + metaTypeToASEngineType(keyType, False) + ' value)')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
-                        globalLines.append('    UNUSED_VARIABLE(value);')
+                        globalLines.append('    ignore_unused(self);')
+                        globalLines.append('    ignore_unused(value);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                 globalLines.append('')
@@ -2211,7 +2210,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' ASSetting_Get_' + name + '(' + settEntity + ')')
             globalLines.append('{')
             if not isASCompiler:
-                globalLines.append('    STACK_TRACE_ENTRY();')
+                globalLines.append('    FO_STACK_TRACE_ENTRY();')
                 globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
                 globalLines.append('    auto&& value = script_backend->Engine->Settings.GetCustomSetting("' + name + '");')
                 if type == 'string':
@@ -2225,18 +2224,18 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 else:
                     globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
             else:
-                globalLines.append('    UNUSED_VARIABLE(self);')
+                globalLines.append('    ignore_unused(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
             globalLines.append('}')
             globalLines.append('static void ASSetting_Set_' + name + '(' + settEntity + ', ' + metaTypeToASEngineType(type, False) + ' value)')
             globalLines.append('{')
             if not isASCompiler:
-                globalLines.append('    STACK_TRACE_ENTRY();')
+                globalLines.append('    FO_STACK_TRACE_ENTRY();')
                 globalLines.append('    auto* script_backend = GET_SCRIPT_BACKEND_FROM_SELF();')
                 globalLines.append('    script_backend->Engine->Settings.SetCustomSetting("' + name + '", strex("{' + '}", ' + marshalIn(type, 'value') + '));')
             else:
-                globalLines.append('    UNUSED_VARIABLE(self);')
-                globalLines.append('    UNUSED_VARIABLE(value);')
+                globalLines.append('    ignore_unused(self);')
+                globalLines.append('    ignore_unused(value);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
             globalLines.append('}')
             globalLines.append('')
@@ -2251,7 +2250,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ASRemoteCall_Send_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    constexpr uint rpc_num = "' + rcName + '"_hash;')
@@ -2271,9 +2270,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 globalLines.append('    WriteNetBuf(conn.OutBuf, in_' + p[1] + ');')
                             globalLines.append('    WriteRpcFooter(conn.OutBuf);')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    ignore_unused(self);')
                         for p in rcArgs:
-                            globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                            globalLines.append('    ignore_unused(' + p[1] + ');')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
@@ -2281,7 +2280,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('static void ASRemoteCall_CritterSend_' + rcName + '(Critter* self' + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                         globalLines.append('{')
                         if not isASCompiler:
-                            globalLines.append('    STACK_TRACE_ENTRY();')
+                            globalLines.append('    FO_STACK_TRACE_ENTRY();')
                             globalLines.append('    ENTITY_VERIFY_NULL(self);')
                             globalLines.append('    ENTITY_VERIFY(self);')
                             globalLines.append('    Player* player = self->GetPlayer();')
@@ -2289,9 +2288,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             globalLines.append('        ASRemoteCall_Send_' + rcName + '(player' + (', ' if rcArgs else '') + ', '.join(['std::forward<' + metaTypeToASEngineType(p[0]) + '>(' + p[1] + ')' for p in rcArgs]) + ');')
                             globalLines.append('    }')
                         else:
-                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            globalLines.append('    ignore_unused(self);')
                             for p in rcArgs:
-                                globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                                globalLines.append('    ignore_unused(' + p[1] + ');')
                             globalLines.append('    throw ScriptCompilerException("Stub");')
                         globalLines.append('}')
                         globalLines.append('')
@@ -2305,7 +2304,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('[[maybe_unused]] static void ASRemoteCall_Receive_' + rcName + '(' + selfArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    STACK_TRACE_ENTRY();')
+                        globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if target == 'Server':
@@ -2337,8 +2336,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('        script_backend->ReturnContext(ctx);')
                         globalLines.append('    }')
                     else:
-                        globalLines.append('    UNUSED_VARIABLE(self);')
-                        globalLines.append('    UNUSED_VARIABLE(func);')
+                        globalLines.append('    ignore_unused(self);')
+                        globalLines.append('    ignore_unused(func);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
@@ -3336,7 +3335,7 @@ try:
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('volatile const uint8 EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
+    writeFile('volatile const uint8_t EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
     
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

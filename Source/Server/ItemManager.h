@@ -40,6 +40,8 @@
 #include "Item.h"
 #include "Map.h"
 
+FO_BEGIN_NAMESPACE();
+
 class FOServer;
 class ProtoManager;
 class EntityManager;
@@ -57,22 +59,24 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    auto CreateItem(hstring pid, uint count, const Properties* props) -> NON_NULL Item*;
-    auto SplitItem(Item* item, uint count) -> NON_NULL Item*;
-    auto AddItemContainer(Item* cont, hstring pid, uint count, const any_t& stack_id) -> NON_NULL Item*;
-    auto AddItemCritter(Critter* cr, hstring pid, uint count) -> NON_NULL Item*;
+    auto CreateItem(hstring pid, uint count, const Properties* props) -> FO_NON_NULL Item*;
+    auto SplitItem(Item* item, uint count) -> FO_NON_NULL Item*;
+    auto AddItemContainer(Item* cont, hstring pid, uint count, const any_t& stack_id) -> FO_NON_NULL Item*;
+    auto AddItemCritter(Critter* cr, hstring pid, uint count) -> FO_NON_NULL Item*;
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DestroyItem(Item* item);
-    auto MoveItem(Item* item, uint count, Critter* to_cr) -> NON_NULL Item*;
-    auto MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> NON_NULL Item*;
-    auto MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Critter* to_cr) -> FO_NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> FO_NON_NULL Item*;
+    auto MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> FO_NON_NULL Item*;
 
 private:
-    [[nodiscard]] auto GetItemHolder(Item* item) -> NON_NULL Entity*;
+    [[nodiscard]] auto GetItemHolder(Item* item) -> FO_NON_NULL Entity*;
 
     void RemoveItemHolder(Item* item, Entity* holder);
 
     raw_ptr<FOServer> _engine;
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();

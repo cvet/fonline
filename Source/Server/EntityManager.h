@@ -43,6 +43,8 @@
 #include "Map.h"
 #include "Player.h"
 
+FO_BEGIN_NAMESPACE();
+
 class EntityManager final
 {
 public:
@@ -154,3 +156,5 @@ private:
     const hstring _itemCollectionName {};
     const hstring _removeMigrationRuleName {};
 };
+
+FO_END_NAMESPACE();

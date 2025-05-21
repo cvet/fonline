@@ -33,6 +33,8 @@
 
 #include "Common.h"
 
+FO_BEGIN_NAMESPACE();
+
 struct Platform
 {
     Platform() = delete;
@@ -56,3 +58,5 @@ struct Platform
     // Other: warning log message
     static void ForkProcess();
 };
+
+FO_END_NAMESPACE();

@@ -38,7 +38,9 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-DECLARE_EXCEPTION(ProtoBakerException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ProtoBakerException);
 
 class EngineData;
 class ScriptSystem;
@@ -61,3 +63,5 @@ public:
 private:
     auto BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files, bool write_texts) const -> vector<uint8>;
 };
+
+FO_END_NAMESPACE();

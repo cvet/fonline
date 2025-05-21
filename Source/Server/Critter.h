@@ -40,6 +40,8 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Player;
 class MapManager;
 class Item;
@@ -174,33 +176,33 @@ public:
     void Send_Attachments(const Critter* from_cr);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAppearedDist1, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist1, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAppearedDist2, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist2, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAppearedDist3, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist3, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterDisappeared, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappeared, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterDisappearedDist1, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist1, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterDisappearedDist2, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist2, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
+    FO_ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
+    FO_ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
+    FO_ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
 
     // Todo: incapsulate Critter data
     int LockMapTransfers {};
@@ -260,3 +262,5 @@ private:
     vector<Item*> _invItems {};
     nanotime _talkNextTime {};
 };
+
+FO_END_NAMESPACE();

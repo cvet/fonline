@@ -37,7 +37,9 @@
 
 #include "imgui.h"
 
-DECLARE_EXCEPTION(ImGuiAssertationException);
+FO_BEGIN_NAMESPACE();
+FO_DECLARE_EXCEPTION(ImGuiAssertationException);
+FO_END_NAMESPACE();
 
 [[noreturn]] extern void ImGuiRaiseAssert(const char* message);
 

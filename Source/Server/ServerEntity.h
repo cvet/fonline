@@ -38,6 +38,8 @@
 #include "Entity.h"
 #include "EntityProtos.h"
 
+FO_BEGIN_NAMESPACE();
+
 class FOServer;
 
 class ServerEntity : public Entity
@@ -53,7 +55,7 @@ public:
     ~ServerEntity() override = default;
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
+    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { FO_NON_CONST_METHOD_HINT_ONELINE() return _engine; }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
@@ -93,3 +95,5 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
 };
+
+FO_END_NAMESPACE();

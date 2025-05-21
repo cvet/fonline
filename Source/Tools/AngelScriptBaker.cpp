@@ -39,22 +39,28 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
+extern vector<uint8> Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&);
+extern vector<uint8> Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&);
+extern vector<uint8> Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&);
+
 unordered_set<string> CompilerPassedMessages;
 
 AngelScriptBaker::AngelScriptBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 AngelScriptBaker::~AngelScriptBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void AngelScriptBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     vector<File> script_files;
     uint64 max_write_time = 0;
@@ -79,21 +85,18 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
 
     if (!_bakeChecker || _bakeChecker(_packName + ".fosb-server", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            extern vector<uint8> Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&);
             auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
             _writeData(_packName + ".fosb-server", data);
         }));
     }
     if (!_bakeChecker || _bakeChecker(_packName + ".fosb-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            extern vector<uint8> Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&);
             auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
             _writeData(_packName + ".fosb-client", data);
         }));
     }
     if (!_bakeChecker || _bakeChecker(_packName + ".fosb-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            extern vector<uint8> Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&);
             auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
             _writeData(_packName + ".fosb-mapper", data);
         }));
@@ -113,7 +116,7 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (...) {
-            UNKNOWN_EXCEPTION();
+            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -121,5 +124,7 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
         throw AngelScriptBakerException("Errors during scripts compilation");
     }
 }
+
+FO_END_NAMESPACE();
 
 #endif

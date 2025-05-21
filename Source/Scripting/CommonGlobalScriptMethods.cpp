@@ -45,10 +45,12 @@
 #include "sha1.h"
 #include "sha2.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     BreakIntoDebugger();
 }
@@ -56,7 +58,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine, string_view message)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     BreakIntoDebugger(message);
 }
@@ -64,7 +66,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine, string_view
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     const auto* st_entry = GetStackTraceEntry(1);
 
@@ -81,7 +83,7 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     App->RequestQuit();
 }
@@ -89,7 +91,7 @@ FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view resourcePath)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return !!engine->Resources.ReadFileHeader(resourcePath);
 }
@@ -97,7 +99,7 @@ FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view resourcePath)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return engine->Resources.ReadFileText(resourcePath);
 }
@@ -227,7 +229,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     auto prefix = command.substr(0, command.find(' '));
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
@@ -236,7 +238,7 @@ FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command
 ///@ ExportMethod
 FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command, string& output)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     output = "";
 
@@ -251,7 +253,7 @@ FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command
 ///@ ExportMethod
 FO_SCRIPT_API int Common_Game_Random(BaseEngine* engine, int minValue, int maxValue)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GenericUtils::Random(minValue, maxValue);
 }
@@ -259,7 +261,7 @@ FO_SCRIPT_API int Common_Game_Random(BaseEngine* engine, int minValue, int maxVa
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_DecodeUtf8(BaseEngine* engine, string_view text, uint& length)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     size_t decode_length = text.length();
     const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
@@ -271,7 +273,7 @@ FO_SCRIPT_API uint Common_Game_DecodeUtf8(BaseEngine* engine, string_view text, 
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_EncodeUtf8(BaseEngine* engine, uint ucs)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
@@ -281,7 +283,7 @@ FO_SCRIPT_API string Common_Game_EncodeUtf8(BaseEngine* engine, uint ucs)
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_Sha1(BaseEngine* engine, string_view text)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
@@ -301,7 +303,7 @@ FO_SCRIPT_API string Common_Game_Sha1(BaseEngine* engine, string_view text)
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_Sha2(BaseEngine* engine, string_view text)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     constexpr uint digest_size = 32;
     uint8 digest[digest_size];
@@ -318,7 +320,7 @@ FO_SCRIPT_API string Common_Game_Sha2(BaseEngine* engine, string_view text)
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_OpenLink(BaseEngine* engine, string_view link)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     App->OpenLink(link);
 }
@@ -326,7 +328,7 @@ FO_SCRIPT_API void Common_Game_OpenLink(BaseEngine* engine, string_view link)
 ///@ ExportMethod
 FO_SCRIPT_API uint64 Common_Game_GetUnixTime(BaseEngine* engine)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return static_cast<uint64>(::time(nullptr));
 }
@@ -334,7 +336,7 @@ FO_SCRIPT_API uint64 Common_Game_GetUnixTime(BaseEngine* engine)
 ///@ ExportMethod
 FO_SCRIPT_API uint Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos hex2)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GeometryHelper::DistGame(hex1, hex2);
 }
@@ -342,7 +344,7 @@ FO_SCRIPT_API uint Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos h
 ///@ ExportMethod
 FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GeometryHelper::GetFarDir(fromHex, toHex);
 }
@@ -350,7 +352,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 ///@ ExportMethod
 FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float offset)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GeometryHelper::GetFarDir(fromHex, toHex, offset);
 }
@@ -358,7 +360,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 ///@ ExportMethod
 FO_SCRIPT_API int16 Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mpos toHex)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return static_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHex, toHex)));
 }
@@ -366,7 +368,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mp
 ///@ ExportMethod
 FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos fromPos, ipos toPos)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return static_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
@@ -374,7 +376,7 @@ FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos fromPos
 ///@ ExportMethod
 FO_SCRIPT_API uint8 Common_Game_AngleToDir(BaseEngine* engine, int16 dirAngle)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GeometryHelper::AngleToDir(dirAngle);
 }
@@ -382,7 +384,7 @@ FO_SCRIPT_API uint8 Common_Game_AngleToDir(BaseEngine* engine, int16 dirAngle)
 ///@ ExportMethod
 FO_SCRIPT_API int16 Common_Game_DirToAngle(BaseEngine* engine, uint8 dir)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return GeometryHelper::DirToAngle(dir);
 }
@@ -390,7 +392,7 @@ FO_SCRIPT_API int16 Common_Game_DirToAngle(BaseEngine* engine, uint8 dir)
 ///@ ExportMethod
 FO_SCRIPT_API int16 Common_Game_RotateDirAngle(BaseEngine* engine, int16 dirAngle, bool clockwise, int16 step)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     auto rotated = static_cast<int>(dirAngle);
 
@@ -414,7 +416,7 @@ FO_SCRIPT_API int16 Common_Game_RotateDirAngle(BaseEngine* engine, int16 dirAngl
 ///@ ExportMethod
 FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, int16 dirAngle1, int16 dirAngle2)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return static_cast<int16>(iround(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
 }
@@ -422,7 +424,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, int16 dirAng
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, mpos toHex, ipos& hexOffset)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     hexOffset = engine->Geometry.GetHexInterval(fromHex, toHex);
 }
@@ -430,7 +432,7 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, 
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_GetClipboardText(BaseEngine* engine)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return App->Input.GetClipboardText();
 }
@@ -438,7 +440,7 @@ FO_SCRIPT_API string Common_Game_GetClipboardText(BaseEngine* engine)
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view text)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return App->Input.SetClipboardText(text);
 }
@@ -670,7 +672,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
 ///@ ExportMethod
 FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(BaseEngine* engine)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return nanotime::now();
 }
@@ -678,7 +680,7 @@ FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(BaseEngine* engine)
 ///@ ExportMethod
 FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return nanotime::now() + make_time_offset(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, true);
 }
@@ -686,7 +688,7 @@ FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int year, int mo
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond, int& microsecond, int& nanosecond)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     const auto time_desc = time.desc(true);
     year = time_desc.year;
@@ -703,7 +705,7 @@ FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int
 ///@ ExportMethod
 FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int year, int month, int day, int hour, int minute, int second, int millisecond)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0, true);
 }
@@ -711,7 +713,7 @@ FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, synctime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond)
 {
-    UNUSED_VARIABLE(engine);
+    ignore_unused(engine);
 
     const auto time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
     year = time_desc.year;
@@ -886,3 +888,5 @@ FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, const
         engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, std::nullopt, data);
     }
 }
+
+FO_END_NAMESPACE();

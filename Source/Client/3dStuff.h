@@ -45,6 +45,8 @@
 #include "Settings.h"
 #include "VisualParticles.h"
 
+FO_BEGIN_NAMESPACE();
+
 // Todo: remove unnecessary allocations from 3d
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
@@ -453,5 +455,7 @@ private:
     vector<ModelBone*> _allDrawBones {};
     bool _nonConstHelper {};
 };
+
+FO_END_NAMESPACE();
 
 #endif

@@ -37,8 +37,10 @@
 
 #include "Settings.h"
 
-DECLARE_EXCEPTION(EffectLoadException);
-DECLARE_EXCEPTION(RenderingException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(EffectLoadException);
+FO_DECLARE_EXCEPTION(RenderingException);
 
 using WindowInternalHandle = void;
 
@@ -449,3 +451,5 @@ public:
 };
 
 #endif
+
+FO_END_NAMESPACE();

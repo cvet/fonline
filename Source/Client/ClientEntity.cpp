@@ -35,12 +35,14 @@
 #include "Client.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
     Entity(registrator, props),
     _engine {engine},
     _id {id}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _name = GetTypeName();
 
@@ -52,10 +54,10 @@ ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrat
 
 void ClientEntity::SetId(ident_t id, bool register_entity)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_id);
-    RUNTIME_ASSERT(id);
+    FO_RUNTIME_ASSERT(!_id);
+    FO_RUNTIME_ASSERT(id);
 
     _id = id;
 
@@ -67,7 +69,7 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
 
 void ClientEntity::DestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     MarkAsDestroying();
 
@@ -81,7 +83,7 @@ void ClientEntity::DestroySelf()
         for (auto&& [entry, entities] : GetInnerEntities()) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                RUNTIME_ASSERT(custom_entity);
+                FO_RUNTIME_ASSERT(custom_entity);
 
                 custom_entity->DestroySelf();
             }
@@ -95,5 +97,7 @@ void ClientEntity::DestroySelf()
 
 void CustomEntityView::OnDestroySelf()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
+
+FO_END_NAMESPACE();

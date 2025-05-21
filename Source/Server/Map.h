@@ -42,6 +42,8 @@
 #include "ServerEntity.h"
 #include "TwoDimensionalGrid.h"
 
+FO_BEGIN_NAMESPACE();
+
 class Item;
 using StaticItem = Item;
 class Critter;
@@ -136,15 +138,15 @@ public:
     void RecacheHexFlags(mpos hex);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLoop);
+    FO_ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
+    FO_ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
+    FO_ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
+    FO_ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
 
 private:
     struct Field
@@ -179,3 +181,5 @@ private:
     unordered_map<ident_t, Item*> _itemsMap {};
     Location* _mapLocation {};
 };
+
+FO_END_NAMESPACE();

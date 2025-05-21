@@ -33,21 +33,23 @@
 
 #include "NetworkServer.h"
 
+FO_BEGIN_NAMESPACE();
+
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
     _settings {settings}
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_sendCallbackSet);
-    RUNTIME_ASSERT(!_disconnectCallbackSet);
-    RUNTIME_ASSERT(send);
-    RUNTIME_ASSERT(receive);
-    RUNTIME_ASSERT(disconnect);
+    FO_RUNTIME_ASSERT(!_sendCallbackSet);
+    FO_RUNTIME_ASSERT(!_disconnectCallbackSet);
+    FO_RUNTIME_ASSERT(send);
+    FO_RUNTIME_ASSERT(receive);
+    FO_RUNTIME_ASSERT(disconnect);
 
     if (_isDisconnected) {
         return;
@@ -74,7 +76,7 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 
 void NetworkServerConnection::Dispatch()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_isDisconnected) {
         return;
@@ -85,7 +87,7 @@ void NetworkServerConnection::Dispatch()
 
 void NetworkServerConnection::Disconnect()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     bool expected = false;
 
@@ -101,7 +103,7 @@ void NetworkServerConnection::Disconnect()
 // ReSharper disable once CppMemberFunctionMayBeConst
 auto NetworkServerConnection::SendCallback() -> const_span<uint8>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (!_sendCallbackSet) {
         return {};
@@ -112,7 +114,7 @@ auto NetworkServerConnection::SendCallback() -> const_span<uint8>
 
 void NetworkServerConnection::ReceiveCallback(const_span<uint8> buf)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     std::scoped_lock locker(_receiveLocker);
 
@@ -146,7 +148,9 @@ protected:
 
 auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeShared<DummyNetConnection>(settings);
 }
+
+FO_END_NAMESPACE();

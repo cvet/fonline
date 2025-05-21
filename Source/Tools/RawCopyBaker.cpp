@@ -36,20 +36,22 @@
 #include "Log.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 RawCopyBaker::RawCopyBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
     BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 RawCopyBaker::~RawCopyBaker()
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
 auto RawCopyBaker::IsExtSupported(string_view ext) const -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     const auto it = std::find(_settings->RawCopyFileExtensions.begin(), _settings->RawCopyFileExtensions.end(), ext);
 
@@ -62,7 +64,7 @@ auto RawCopyBaker::IsExtSupported(string_view ext) const -> bool
 
 void RawCopyBaker::BakeFiles(FileCollection files)
 {
-    STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
@@ -80,3 +82,5 @@ void RawCopyBaker::BakeFiles(FileCollection files)
         _writeData(file.GetPath(), file.GetData());
     }
 }
+
+FO_END_NAMESPACE();

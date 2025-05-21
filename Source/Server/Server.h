@@ -55,7 +55,9 @@
 #include "ServerConnection.h"
 #include "Settings.h"
 
-DECLARE_EXCEPTION(ServerInitException);
+FO_BEGIN_NAMESPACE();
+
+FO_DECLARE_EXCEPTION(ServerInitException);
 
 class FOServer final : public BaseEngine
 {
@@ -83,7 +85,7 @@ public:
     void Unlock();
     void DrawGui(string_view server_name);
 
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> NON_NULL Item*;
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> FO_NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
 
@@ -98,77 +100,77 @@ public:
     void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnInit);
+    FO_ENTITY_EVENT(OnInit);
     ///@ ExportEvent
-    ENTITY_EVENT(OnGenerateWorld);
+    FO_ENTITY_EVENT(OnGenerateWorld);
     ///@ ExportEvent
-    ENTITY_EVENT(OnStart);
+    FO_ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
+    FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/);
+    FO_ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
+    FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
+    FO_ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerEnter, Player* /*player*/);
+    FO_ENTITY_EVENT(OnPlayerEnter, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
+    FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
+    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnLocationFinish, Location* /*location*/);
+    FO_ENTITY_EVENT(OnLocationFinish, Location* /*location*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapInit, Map* /*map*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnMapInit, Map* /*map*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapFinish, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapFinish, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
+    FO_ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
+    FO_ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterLoad, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterLoad, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterSendInitialInfo, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterSendInitialInfo, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
+    FO_ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
+    FO_ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
+    FO_ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemFinish, Item* /*item*/);
+    FO_ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
+    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
 
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -293,3 +295,5 @@ private:
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };
+
+FO_END_NAMESPACE();

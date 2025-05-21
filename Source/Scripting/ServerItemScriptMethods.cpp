@@ -36,6 +36,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
+FO_BEGIN_NAMESPACE();
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
@@ -249,3 +251,5 @@ FO_SCRIPT_API void Server_Item_Animate(Item* self, hstring animName, bool looped
         break;
     }
 }
+
+FO_END_NAMESPACE();
