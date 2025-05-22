@@ -189,7 +189,7 @@ FO_DISABLE_WARNINGS_POP()
 
 // Namespace management
 #if FO_USE_NAMESPACE
-#define FO_NAMESPACE_NAME FOnline
+#define FO_NAMESPACE_NAME fo
 #define FO_NAMESPACE FO_NAMESPACE_NAME::
 #define FO_BEGIN_NAMESPACE() \
     namespace FO_NAMESPACE_NAME \
