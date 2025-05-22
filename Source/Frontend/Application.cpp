@@ -61,7 +61,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-Application* App;
+raw_ptr<Application> App;
 
 #if FO_WINDOWS && FO_DEBUG
 static _CrtMemState CrtMemState;
@@ -94,6 +94,10 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
+#if FO_WEB
+static const char* WebCanvasId = "#canvas";
+#endif
+
 static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
@@ -113,6 +117,23 @@ static auto ScreenPosToWindowPos(ipos pos) -> ipos
 
     return {win_x, win_y};
 }
+
+// Web wrappers
+#if FO_WEB
+FO_END_NAMESPACE();
+extern "C"
+{
+    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
+    {
+        return FO_NAMESPACE App->Input.GetClipboardText().c_str();
+    }
+    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
+    {
+        FO_NAMESPACE App->Input.SetClipboardText(text);
+    }
+}
+FO_BEGIN_NAMESPACE();
+#endif
 
 void InitApp(int argc, char** argv, AppInitFlags flags)
 {
@@ -171,6 +192,26 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
     WriteLog("Starting {}", FO_NICE_NAME);
 
     App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
+
+#if FO_WEB
+    // clang-format off
+    MAIN_THREAD_EM_ASM({
+        var canvas = document.querySelector(UTF8ToString($0));
+        if (canvas) {
+            canvas.addEventListener("copy", (event) => {
+                const text = _Emscripten_ClipboardGet();
+                event.clipboardData.setData("text/plain", UTF8ToString(text));
+                event.preventDefault();
+            });
+            canvas.addEventListener("paste", (event) => {
+                const text = event.clipboardData.getData('text/plain');
+                _Emscripten_ClipboardSet(text);
+                event.preventDefault();
+            });
+        }
+    }, WebCanvasId);
+    // clang-format on
+#endif
 }
 
 void ExitApp(bool success) noexcept
@@ -216,6 +257,8 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
 
+    SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
+
     if (Settings.NullRenderer) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
@@ -224,6 +267,10 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
     if constexpr (FO_ANDROID) {
         SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
     }
+
+#if FO_WEB
+    SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebCanvasId);
+#endif
 
     // Initialize input events
     if (!SDL_InitSubSystem(SDL_INIT_EVENTS)) {
@@ -508,6 +555,7 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
         // Fixed size
         int fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
         int fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
+
         if (fixed_w) {
             Settings.ScreenWidth = fixed_w;
         }
@@ -1472,7 +1520,10 @@ auto AppInput::GetClipboardText() -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    _clipboardTextStorage = SDL_GetClipboardText();
+    char* cb_text = SDL_GetClipboardText();
+    _clipboardTextStorage = cb_text;
+    SDL_free(cb_text);
+
     return _clipboardTextStorage;
 }
 

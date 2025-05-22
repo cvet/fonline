@@ -57,7 +57,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-Application* App;
+raw_ptr<Application> App;
 
 #if FO_WINDOWS && FO_DEBUG
 static _CrtMemState CrtMemState;
