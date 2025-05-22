@@ -154,15 +154,6 @@ int main(int argc, char** argv) // Handled by SDL
 
 #elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
-
-        emscripten_set_click_callback("#fullscreen", nullptr, 1, [](int event_type, const EmscriptenMouseEvent* mouse_event, void* user_data) -> bool {
-            ignore_unused(event_type, mouse_event, user_data);
-            if (Data->Client != nullptr) {
-                Data->Client->SprMngr.ToggleFullscreen();
-            }
-            return 1;
-        });
-
         emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID

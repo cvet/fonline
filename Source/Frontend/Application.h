@@ -440,7 +440,7 @@ public:
     static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
 };
 
-extern Application* App;
+extern raw_ptr<Application> App;
 extern void InitApp(int argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 

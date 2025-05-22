@@ -1407,7 +1407,7 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
     WriteLogFatalMessage("\n\n");
     SafeWriteStackTrace(&StackTrace);
 
-    if (App != nullptr) {
+    if (App) {
         App->RequestQuit();
     }
 }
