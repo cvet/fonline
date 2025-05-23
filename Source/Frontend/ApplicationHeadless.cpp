@@ -59,10 +59,6 @@ FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
 
-#if FO_WINDOWS && FO_DEBUG
-static _CrtMemState CrtMemState;
-#endif
-
 static constexpr int MAX_ATLAS_WIDTH_ = 1024;
 static constexpr int MAX_ATLAS_HEIGHT_ = 1024;
 static constexpr int MAX_BONES_ = 32;
@@ -150,6 +146,7 @@ void ExitApp(bool success) noexcept
     FO_STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
 #else
@@ -174,11 +171,6 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
     ignore_unused(_nonConstHelper);
     ignore_unused(MainWindow._windowHandle);
     ignore_unused(MainWindow._grabbed);
-
-    // Skip SDL allocations from profiling
-#if FO_WINDOWS && FO_DEBUG
-    ::_CrtMemCheckpoint(&CrtMemState);
-#endif
 }
 
 void Application::OpenLink(string_view link)

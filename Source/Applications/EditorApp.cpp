@@ -57,16 +57,18 @@ int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv);
 
-        auto editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);
+        {
+            auto editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);
 
-        while (!App->IsQuitRequested()) {
-            App->BeginFrame();
+            while (!App->IsQuitRequested()) {
+                App->BeginFrame();
 
-            editor->MainLoop();
+                editor->MainLoop();
 
-            App->EndFrame();
+                App->EndFrame();
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+                std::this_thread::sleep_for(std::chrono::milliseconds(0));
+            }
         }
 
         ExitApp(true);

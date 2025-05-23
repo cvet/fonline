@@ -63,10 +63,6 @@ FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
 
-#if FO_WINDOWS && FO_DEBUG
-static _CrtMemState CrtMemState;
-#endif
-
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 
 // Todo: move all these statics to App class fields
@@ -217,6 +213,7 @@ void ExitApp(bool success) noexcept
     FO_STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
 #else
@@ -237,8 +234,6 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
     SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
     SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
-    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
 
     if (Settings.NullRenderer) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
@@ -565,11 +560,6 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
         }
 
         SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle));
-
-        // Skip SDL allocations from profiling
-#if FO_WINDOWS && FO_DEBUG
-        ::_CrtMemCheckpoint(&CrtMemState);
-#endif
 
         // Init Dear ImGui
         ImGuiExt::Init();
@@ -988,14 +978,6 @@ void Application::BeginFrame()
             RequestQuit();
         } break;
         case SDL_EVENT_TERMINATING: {
-            _onQuitDispatcher();
-
-#if FO_WINDOWS && FO_DEBUG
-            DeleteGlobalData();
-
-            ::_CrtMemDumpAllObjectsSince(&CrtMemState);
-#endif
-
             ExitApp(true);
         }
         default:
@@ -1136,6 +1118,7 @@ void Application::RequestQuit() noexcept
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
         WriteLog("Quit requested");
 
+        _onQuitDispatcher();
         _quitEvent.notify_all();
     }
 }

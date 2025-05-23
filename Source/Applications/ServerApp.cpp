@@ -46,15 +46,6 @@
 
 FO_USING_NAMESPACE();
 
-struct ServerAppData
-{
-    refcount_ptr<FOServer> Server {};
-    vector<refcount_ptr<FOClient>> Clients {};
-    bool AutoStartTriggered {};
-    bool HideControls {};
-};
-FO_GLOBAL_DATA(ServerAppData, Data);
-
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
 #else
@@ -66,6 +57,11 @@ int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(argc, argv);
 
+        refcount_ptr<FOServer> server;
+        vector<refcount_ptr<FOClient>> clients;
+        bool auto_start_triggered = false;
+        bool hide_controls = false;
+
         list<vector<string>> log_buffer;
         std::mutex log_buffer_locker;
 
@@ -76,12 +72,8 @@ int main(int argc, char** argv) // Handled by SDL
             }
         });
 
-        const auto start_server = [] {
-            // Server actually started in separate thread
-            Data->Server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
-        };
-
-        const auto stop_server = [] { Data->Server.reset(); };
+        const auto start_server = [&server] { server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings); };
+        const auto stop_server = [&server] { server.reset(); };
 
         if (!App->Settings.NoStart) {
             WriteLog("Auto start server");
@@ -92,22 +84,22 @@ int main(int argc, char** argv) // Handled by SDL
             App->BeginFrame();
 
             // Autostart
-            if (!App->Settings.NoStart && !Data->Server && !Data->AutoStartTriggered) {
-                Data->AutoStartTriggered = true;
+            if (!App->Settings.NoStart && !server && !auto_start_triggered) {
+                auto_start_triggered = true;
                 start_server();
             }
 
-            if (Data->HideControls) {
+            if (hide_controls) {
                 if (ImGui::Begin("Restore controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
                     if (ImGui::Button("Restore controls")) {
-                        Data->HideControls = false;
+                        hide_controls = false;
                     }
                 }
 
                 ImGui::End();
             }
 
-            if (!Data->HideControls) {
+            if (!hide_controls) {
                 const auto& io = ImGui::GetIO();
 
                 // Control panel
@@ -121,11 +113,11 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::PopStyleColor();
                     };
 
-                    if (!Data->Server && ImGui::Button("Start server", control_btn_size)) {
+                    if (!server && ImGui::Button("Start server", control_btn_size)) {
                         start_server();
                     }
 
-                    if (Data->Server && ImGui::Button("Stop server", control_btn_size)) {
+                    if (server && ImGui::Button("Stop server", control_btn_size)) {
                         stop_server();
                     }
 
@@ -135,8 +127,8 @@ int main(int argc, char** argv) // Handled by SDL
 
                         try {
                             auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
-                            Data->Clients.emplace_back(std::move(client));
-                            Data->HideControls = true;
+                            clients.emplace_back(std::move(client));
+                            hide_controls = true;
                         }
                         catch (const std::exception& ex) {
                             ReportExceptionAndContinue(ex);
@@ -182,11 +174,11 @@ int main(int argc, char** argv) // Handled by SDL
             }
 
             // Main loop
-            if (Data->Server) {
-                if (!Data->HideControls) {
+            if (server) {
+                if (!hide_controls) {
                     try {
                         ImGui::SetNextWindowPos(ImVec2(10, 0), ImGuiCond_FirstUseEver);
-                        Data->Server->DrawGui("Server");
+                        server->DrawGui("Server");
                     }
                     catch (const std::exception& ex) {
                         ReportExceptionAndContinue(ex);
@@ -198,7 +190,7 @@ int main(int argc, char** argv) // Handled by SDL
             }
 
             // Log
-            if (!Data->HideControls) {
+            if (!hide_controls) {
                 ImGui::SetNextWindowCollapsed(App->Settings.CollapseLogOnStart, ImGuiCond_Once);
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
@@ -234,14 +226,14 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
 
-            for (auto& client : Data->Clients) {
+            for (auto& client : clients) {
                 ShowExceptionMessageBox(true);
                 auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                 try {
                     App->Input.ClearEvents();
 
-                    if (client == Data->Clients.back() && !ImGui::IsAnyItemHovered()) {
+                    if (client == clients.back() && !ImGui::IsAnyItemHovered()) {
                         for (const auto& ev : events) {
                             App->Input.PushEvent(ev, true);
                         }
@@ -263,15 +255,18 @@ int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->IsQuitRequested()) {
-                Data->Clients.clear();
+                clients.clear();
 
-                if (Data->Server) {
+                if (server) {
                     stop_server();
                 }
 
                 break;
             }
         }
+
+        clients.clear();
+        server.reset();
 
         ExitApp(true);
     }
