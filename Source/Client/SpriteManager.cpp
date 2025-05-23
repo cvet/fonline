@@ -367,7 +367,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
-    _flushDrawBuf->Upload(effect->Usage);
+    _flushDrawBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(_flushDrawBuf.get());
 }
 
@@ -554,7 +554,7 @@ void SpriteManager::Flush()
     size_t ipos = 0;
 
     for (const auto& dip : _dipQueue) {
-        FO_RUNTIME_ASSERT(dip.SourceEffect->Usage == EffectUsage::QuadSprite);
+        FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
 
         if (_sprEgg) {
             dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
@@ -1226,7 +1226,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     _primitiveDrawBuf->PrimType = prim;
     _primitiveDrawBuf->PrimZoomed = _spritesZoom != 1.0f;
 
-    _primitiveDrawBuf->Upload(effect->Usage, count, count);
+    _primitiveDrawBuf->Upload(effect->GetUsage(), count, count);
     EnableScissor();
     effect->DrawBuffer(_primitiveDrawBuf.get(), 0, count);
     DisableScissor();
@@ -1347,7 +1347,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
         vbuf[vpos].TexV = sr.Bottom;
         vbuf[vpos].EggTexU = 0.0f;
 
-        _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
+        _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->GetUsage());
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf.get());
 
         _rtMngr.PopRenderTarget();
@@ -1409,7 +1409,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     contour_buf->SpriteBorder[2] = sprite_border[2];
     contour_buf->SpriteBorder[3] = sprite_border[3];
 
-    _contourDrawBuf->Upload(contour_effect->Usage);
+    _contourDrawBuf->Upload(contour_effect->GetUsage());
     contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, static_cast<size_t>(-1), texture);
 
     _rtMngr.PopRenderTarget();

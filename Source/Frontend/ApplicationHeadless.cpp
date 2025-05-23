@@ -157,15 +157,6 @@ void ExitApp(bool success) noexcept
 #endif
 }
 
-auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(other);
-
-    return false;
-}
-
 Application::Application(int argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
 {

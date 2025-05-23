@@ -285,34 +285,37 @@ public:
     auto operator=(RenderEffect&&) noexcept = delete;
     virtual ~RenderEffect() = default;
 
+    [[nodiscard]] auto GetName() const -> const string& { return _name; }
+    [[nodiscard]] auto GetUsage() const -> EffectUsage { return _usage; }
+    [[nodiscard]] auto GetPassCount() const -> size_t { return _passCount; }
+
+    [[nodiscard]] auto IsNeedMainTex() const -> bool { return _needMainTex; }
+    [[nodiscard]] auto IsNeedEggTex() const -> bool { return _needEggTex; }
+    [[nodiscard]] auto IsNeedProjBuf() const -> bool { return _needProjBuf; }
+    [[nodiscard]] auto IsNeedMainTexBuf() const -> bool { return _needMainTexBuf; }
+    [[nodiscard]] auto IsNeedContourBuf() const -> bool { return _needContourBuf; }
+    [[nodiscard]] auto IsNeedTimeBuf() const -> bool { return _needTimeBuf; }
+    [[nodiscard]] auto IsNeedRandomValueBuf() const -> bool { return _needRandomValueBuf; }
+    [[nodiscard]] auto IsNeedScriptValueBuf() const -> bool { return _needScriptValueBuf; }
+#if FO_ENABLE_3D
+    [[nodiscard]] auto IsNeedModelBuf() const -> bool { return _needModelBuf; }
+    [[nodiscard]] auto IsNeedAnyModelTex() const -> bool { return _needAnyModelTex; }
+    [[nodiscard]] auto IsNeedModelTex(size_t index) const -> bool { return _needModelTex[index]; }
+    [[nodiscard]] auto IsNeedModelTexBuf() const -> bool { return _needModelTexBuf; }
+    [[nodiscard]] auto IsNeedModelAnimBuf() const -> bool { return _needModelAnimBuf; }
+#endif
+
     [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
-    const string Name;
-    const EffectUsage Usage;
-    const RenderTexture* MainTex {};
-    const RenderTexture* EggTex {};
+    // Input data
+    raw_ptr<const RenderTexture> MainTex {};
+    raw_ptr<const RenderTexture> EggTex {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
-    RenderTexture* ModelTex[MODEL_MAX_TEXTURES] {};
+    raw_ptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
     bool DisableShadow {};
     bool DisableCulling {};
     size_t MatrixCount {};
-#endif
-
-    const bool NeedMainTex {};
-    const bool NeedEggTex {};
-    const bool NeedProjBuf {};
-    const bool NeedMainTexBuf {};
-    const bool NeedContourBuf {};
-    const bool NeedTimeBuf {};
-    const bool NeedRandomValueBuf {};
-    const bool NeedScriptValueBuf {};
-#if FO_ENABLE_3D
-    const bool NeedModelBuf {};
-    const bool NeedAnyModelTex {};
-    const bool NeedModelTex[MODEL_MAX_TEXTURES] {};
-    const bool NeedModelTexBuf {};
-    const bool NeedModelAnimBuf {};
 #endif
 
     optional<ProjBuffer> ProjBuf {};
@@ -332,8 +335,25 @@ public:
 protected:
     RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);
 
-    string _effectName {};
-    hstring _name {};
+    string _name;
+    EffectUsage _usage;
+
+    bool _needMainTex {};
+    bool _needEggTex {};
+    bool _needProjBuf {};
+    bool _needMainTexBuf {};
+    bool _needContourBuf {};
+    bool _needTimeBuf {};
+    bool _needRandomValueBuf {};
+    bool _needScriptValueBuf {};
+#if FO_ENABLE_3D
+    bool _needModelBuf {};
+    bool _needAnyModelTex {};
+    bool _needModelTex[MODEL_MAX_TEXTURES] {};
+    bool _needModelTexBuf {};
+    bool _needModelAnimBuf {};
+#endif
+
     size_t _passCount {};
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
@@ -343,19 +363,19 @@ protected:
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif
 
-    const int _posMainTex[EFFECT_MAX_PASSES] {};
-    const int _posEggTex[EFFECT_MAX_PASSES] {};
-    const int _posProjBuf[EFFECT_MAX_PASSES] {};
-    const int _posMainTexBuf[EFFECT_MAX_PASSES] {};
-    const int _posContourBuf[EFFECT_MAX_PASSES] {};
-    const int _posTimeBuf[EFFECT_MAX_PASSES] {};
-    const int _posRandomValueBuf[EFFECT_MAX_PASSES] {};
-    const int _posScriptValueBuf[EFFECT_MAX_PASSES] {};
+    int _posMainTex[EFFECT_MAX_PASSES] {};
+    int _posEggTex[EFFECT_MAX_PASSES] {};
+    int _posProjBuf[EFFECT_MAX_PASSES] {};
+    int _posMainTexBuf[EFFECT_MAX_PASSES] {};
+    int _posContourBuf[EFFECT_MAX_PASSES] {};
+    int _posTimeBuf[EFFECT_MAX_PASSES] {};
+    int _posRandomValueBuf[EFFECT_MAX_PASSES] {};
+    int _posScriptValueBuf[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
-    const int _posModelBuf[EFFECT_MAX_PASSES] {};
-    const int _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
-    const int _posModelTexBuf[EFFECT_MAX_PASSES] {};
-    const int _posModelAnimBuf[EFFECT_MAX_PASSES] {};
+    int _posModelBuf[EFFECT_MAX_PASSES] {};
+    int _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
+    int _posModelTexBuf[EFFECT_MAX_PASSES] {};
+    int _posModelAnimBuf[EFFECT_MAX_PASSES] {};
 #endif
 };
 

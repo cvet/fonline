@@ -1030,14 +1030,14 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture.get())));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : DummyTexture.get())));
 #else
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture.get()));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : DummyTexture.get()));
 #endif
 
     GLenum draw_mode = GL_TRIANGLES;
 
-    if (Usage == EffectUsage::Primitive) {
+    if (_usage == EffectUsage::Primitive) {
         switch (opengl_dbuf->PrimType) {
         case RenderPrimitiveType::PointList:
             draw_mode = GL_POINTS;
@@ -1073,7 +1073,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 
 #if FO_ENABLE_3D
-    if (Usage == EffectUsage::Model) {
+    if (_usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
 
         if (!DisableCulling) {
@@ -1088,23 +1088,23 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     else {
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
-        EnableVertAtribs(Usage);
+        EnableVertAtribs(_usage);
     }
 
     // Uniforms
-    if (NeedProjBuf && !ProjBuf.has_value()) {
+    if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
         MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
-    if (NeedMainTexBuf && !MainTexBuf.has_value()) {
+    if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
     if (GL_HAS(uniform_buffer_object)) {
 #define UBO_UPLOAD_BUFFER(buf) \
-    if (Need##buf && buf.has_value()) { \
+    if (_need##buf && buf.has_value()) { \
         if (Ubo_##buf == 0) { \
             GL(glGenBuffers(1, &Ubo_##buf)); \
         } \
@@ -1127,7 +1127,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 #undef UBO_UPLOAD_BUFFER
     }
 
-    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture.get());
+    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex ? EggTex.get() : DummyTexture.get());
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
@@ -1172,10 +1172,10 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
 
 #if FO_ENABLE_3D
-        if (NeedModelTex[pass]) {
+        if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture.get());
+                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] ? ModelTex[i].get() : DummyTexture.get());
                     GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
                     GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
                     GL(glActiveTexture(GL_TEXTURE0));
@@ -1237,7 +1237,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         GL(glBindVertexArray(0));
     }
     else {
-        DisableVertAtribs(Usage);
+        DisableVertAtribs(_usage);
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
@@ -1247,7 +1247,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 
 #if FO_ENABLE_3D
-    if (Usage == EffectUsage::Model) {
+    if (_usage == EffectUsage::Model) {
         GL(glDisable(GL_DEPTH_TEST));
 
         if (!DisableCulling) {
@@ -1256,7 +1256,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 #endif
 
-    if (Usage == EffectUsage::Primitive) {
+    if (_usage == EffectUsage::Primitive) {
 #if !FO_OPENGL_ES
         if (opengl_dbuf->PrimZoomed) {
             if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
