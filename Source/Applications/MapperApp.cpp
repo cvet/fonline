@@ -107,7 +107,6 @@ int main(int argc, char** argv) // Handled by SDL
 
 #elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
-
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
@@ -124,6 +123,8 @@ int main(int argc, char** argv) // Handled by SDL
             balancer.EndLoop();
         }
 #endif
+
+        Data->Mapper.reset();
 
         ExitApp(true);
     }

@@ -173,6 +173,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
+        Data->ResourceUpdater.reset();
         Data->Client.reset();
 
         ExitApp(true);
