@@ -83,14 +83,14 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (effect->NeedTimeBuf) {
+    if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
         time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
         time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
     }
 
-    if (effect->NeedRandomValueBuf) {
+    if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
         random_value_buf->RandomValue[0] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
@@ -99,7 +99,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
         random_value_buf->RandomValue[3] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
     }
 
-    if (effect->NeedScriptValueBuf) {
+    if (effect->IsNeedScriptValueBuf()) {
         auto& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
 
         for (size_t i = 0; i < EFFECT_SCRIPT_VALUES; i++) {

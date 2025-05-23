@@ -643,7 +643,7 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
 {
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
-            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectPath);
+            auto* effect = client->EffectMngr.LoadEffect(def_effect->GetUsage(), effectPath);
             if (effect == nullptr) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }

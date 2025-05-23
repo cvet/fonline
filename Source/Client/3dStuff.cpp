@@ -2011,7 +2011,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
 
     MemCopy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
 
-    if (effect->NeedModelTexBuf) {
+    if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
 
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -2026,7 +2026,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
         }
     }
 
-    if (effect->NeedModelAnimBuf) {
+    if (effect->IsNeedModelAnimBuf()) {
         auto& anim_buf = effect->ModelAnimBuf = RenderEffect::ModelAnimBuffer();
 
         anim_buf->AnimNormalizedTime[0] = _animPosProc;
@@ -2036,7 +2036,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     effect->DisableCulling = _disableCulling;
     effect->DisableShadow = shadow_disabled;
 
-    combined_mesh->MeshBuf->Upload(effect->Usage);
+    combined_mesh->MeshBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(combined_mesh->MeshBuf.get());
 }
 

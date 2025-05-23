@@ -177,8 +177,8 @@ void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
 }
 
 RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
-    Name {name},
-    Usage {usage}
+    _name {name},
+    _usage {usage}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -284,36 +284,56 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         const auto pass_info = ConfigFile(name, pass_info_content);
         FO_RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 
-        const_cast<int&>(_posMainTex[pass]) = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
-        const_cast<bool&>(NeedMainTex) |= _posMainTex[pass] != -1;
-        const_cast<int&>(_posEggTex[pass]) = pass_info.GetAsInt("EffectInfo", "EggTex", -1);
-        const_cast<bool&>(NeedEggTex) |= _posEggTex[pass] != -1;
-        const_cast<int&>(_posProjBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
-        const_cast<bool&>(NeedProjBuf) |= _posProjBuf[pass] != -1;
-        const_cast<int&>(_posMainTexBuf[pass]) = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);
-        const_cast<bool&>(NeedMainTexBuf) |= _posMainTexBuf[pass] != -1;
-        const_cast<int&>(_posContourBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ContourBuf", -1);
-        const_cast<bool&>(NeedContourBuf) |= _posContourBuf[pass] != -1;
-        const_cast<int&>(_posTimeBuf[pass]) = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
-        const_cast<bool&>(NeedTimeBuf) |= _posTimeBuf[pass] != -1;
-        const_cast<int&>(_posRandomValueBuf[pass]) = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);
-        const_cast<bool&>(NeedRandomValueBuf) |= _posRandomValueBuf[pass] != -1;
-        const_cast<int&>(_posScriptValueBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ScriptValueBuf", -1);
-        const_cast<bool&>(NeedScriptValueBuf) |= _posScriptValueBuf[pass] != -1;
+        _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
+        _needMainTex |= _posMainTex[pass] != -1;
+        _posEggTex[pass] = pass_info.GetAsInt("EffectInfo", "EggTex", -1);
+        _needEggTex |= _posEggTex[pass] != -1;
+        _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
+        _needProjBuf |= _posProjBuf[pass] != -1;
+        _posMainTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);
+        _needMainTexBuf |= _posMainTexBuf[pass] != -1;
+        _posContourBuf[pass] = pass_info.GetAsInt("EffectInfo", "ContourBuf", -1);
+        _needContourBuf |= _posContourBuf[pass] != -1;
+        _posTimeBuf[pass] = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
+        _needTimeBuf |= _posTimeBuf[pass] != -1;
+        _posRandomValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);
+        _needRandomValueBuf |= _posRandomValueBuf[pass] != -1;
+        _posScriptValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "ScriptValueBuf", -1);
+        _needScriptValueBuf |= _posScriptValueBuf[pass] != -1;
+
 #if FO_ENABLE_3D
-        const_cast<int&>(_posModelBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);
-        const_cast<bool&>(NeedModelBuf) |= _posModelBuf[pass] != -1;
+        _posModelBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);
+        _needModelBuf |= _posModelBuf[pass] != -1;
+
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
-            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetAsInt("EffectInfo", strex("ModelTex{}", i), -1);
-            const_cast<bool&>(NeedModelTex[i]) |= _posModelTex[pass][i] != -1;
-            const_cast<bool&>(NeedAnyModelTex) |= NeedModelTex[i];
+            _posModelTex[pass][i] = pass_info.GetAsInt("EffectInfo", strex("ModelTex{}", i), -1);
+            _needModelTex[i] |= _posModelTex[pass][i] != -1;
+            _needAnyModelTex |= _needModelTex[i];
         }
-        const_cast<int&>(_posModelTexBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelTexBuf", -1);
-        const_cast<bool&>(NeedModelTexBuf) |= _posModelTexBuf[pass] != -1;
-        const_cast<int&>(_posModelAnimBuf[pass]) = pass_info.GetAsInt("EffectInfo", "ModelAnimBuf", -1);
-        const_cast<bool&>(NeedModelAnimBuf) |= _posModelAnimBuf[pass] != -1;
+
+        _posModelTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelTexBuf", -1);
+        _needModelTexBuf |= _posModelTexBuf[pass] != -1;
+        _posModelAnimBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelAnimBuf", -1);
+        _needModelAnimBuf |= _posModelAnimBuf[pass] != -1;
 #endif
     }
+}
+
+auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_name != other->_name) {
+        return false;
+    }
+    if (_usage != other->_usage) {
+        return false;
+    }
+    if (MainTex != other->MainTex) {
+        return false;
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE();

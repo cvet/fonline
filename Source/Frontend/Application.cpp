@@ -224,22 +224,6 @@ void ExitApp(bool success) noexcept
 #endif
 }
 
-auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_name != other->_name) {
-        return false;
-    }
-    if (Usage != other->Usage) {
-        return false;
-    }
-    if (MainTex != other->MainTex) {
-        return false;
-    }
-    return true;
-}
-
 static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
 static unique_ptr<unordered_map<int, MouseButton>> MouseButtonsMap {};
 
@@ -1115,7 +1099,7 @@ void Application::EndFrame()
                 _imguiDrawBuf->Indices[i] = static_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
 
-            _imguiDrawBuf->Upload(_imguiEffect->Usage);
+            _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
 
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];

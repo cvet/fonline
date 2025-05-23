@@ -1214,14 +1214,14 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
     const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #else
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #endif
 
     auto draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-    if (Usage == EffectUsage::Primitive) {
+    if (_usage == EffectUsage::Primitive) {
         switch (d3d_dbuf->PrimType) {
         case RenderPrimitiveType::PointList:
             draw_mode = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
@@ -1274,18 +1274,18 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         D3DDeviceContext->Unmap(buf_handle, 0);
     };
 
-    if (NeedProjBuf && !ProjBuf.has_value()) {
+    if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
         MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
-    if (NeedMainTexBuf && !MainTexBuf.has_value()) {
+    if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
 #define CBUF_UPLOAD_BUFFER(buf) \
-    if (Need##buf && buf.has_value()) { \
+    if (_need##buf && buf.has_value()) { \
         setup_cbuffer(*buf, Cb_##buf); \
         buf.reset(); \
     }
@@ -1302,7 +1302,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
 #undef CBUF_UPLOAD_BUFFER
 
-    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex ? EggTex.get() : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
     const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->IndCount : indices_to_draw);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
@@ -1313,7 +1313,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
         // Setup shader and vertex buffers
 #if FO_ENABLE_3D
-        UINT stride = Usage == EffectUsage::Model ? sizeof(Vertex3D) : sizeof(Vertex2D);
+        UINT stride = _usage == EffectUsage::Model ? sizeof(Vertex3D) : sizeof(Vertex2D);
 #else
         UINT stride = sizeof(Vertex2D);
 #endif
@@ -1372,10 +1372,10 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         }
 
 #if FO_ENABLE_3D
-        if (NeedModelTex[pass]) {
+        if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] ? ModelTex[i].get() : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
                     D3DDeviceContext->PSSetShaderResources(_posModelTex[pass][i], 1, &model_tex->ShaderTexView);
                     D3DDeviceContext->PSSetSamplers(_posModelTex[pass][i], 1, find_tex_sampler(model_tex));
                 }
@@ -1436,7 +1436,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         }
 
 #if FO_ENABLE_3D
-        if (NeedModelTex[pass]) {
+        if (_needModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
                     D3DDeviceContext->PSSetShaderResources(_posModelTex[pass][i], 0, &null_res);
