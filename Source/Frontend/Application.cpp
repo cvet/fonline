@@ -94,9 +94,7 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
-#if FO_WEB
-static const char* WebCanvasId = "#canvas";
-#endif
+static string_view_nt WebCanvasId = "#canvas";
 
 static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
@@ -209,7 +207,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
                 event.preventDefault();
             });
         }
-    }, WebCanvasId);
+    }, WebCanvasId.c_str());
     // clang-format on
 #endif
 }
@@ -252,12 +250,11 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
+    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
     SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
-
-    SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
 
     if (Settings.NullRenderer) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
@@ -268,9 +265,13 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
         SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
     }
 
-#if FO_WEB
-    SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebCanvasId);
-#endif
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "1");
+
+    if constexpr (FO_WEB) {
+        SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
+        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebCanvasId.c_str());
+    }
 
     // Initialize input events
     if (!SDL_InitSubSystem(SDL_INIT_EVENTS)) {
