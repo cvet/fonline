@@ -307,6 +307,19 @@ static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_spe
 template<typename T>
 static constexpr bool is_refcounted_v = has_addref_v<T> && has_release_v<T>;
 
+// String view for null terminated string
+class string_view_nt : public string_view
+{
+public:
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    constexpr string_view_nt(const char* str) noexcept :
+        string_view(str)
+    {
+    }
+
+    [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
+};
+
 // Smart pointers
 template<typename T>
 class raw_ptr
