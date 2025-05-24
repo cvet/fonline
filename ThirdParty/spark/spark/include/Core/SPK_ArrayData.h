@@ -44,7 +44,7 @@ namespace SPK
 		* @param nbParticles : the maximum number of particles
 		* @param sizePerParticle : the number of variable of type T per particle
 		*/
-		ArrayData<T>(size_t nbParticles,size_t sizePerParticle);
+		ArrayData(size_t nbParticles,size_t sizePerParticle);
 
 		/**
 		* @brief Gets the inner array of data
@@ -106,7 +106,7 @@ namespace SPK
 		size_t totalSize;
 		size_t sizePerParticle;
 
-		~ArrayData<T>();
+		~ArrayData();
 
         virtual void swap(size_t index0,size_t index1) override;
 	};

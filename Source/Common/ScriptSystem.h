@@ -289,7 +289,8 @@ public:
         return false;
     }
 
-    template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
+    template<typename TRet, typename... Args>
+        requires(!std::is_void_v<TRet>)
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
@@ -302,7 +303,8 @@ public:
         return false;
     }
 
-    template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
+    template<typename TRet = void, typename... Args>
+        requires(std::is_void_v<TRet>)
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);

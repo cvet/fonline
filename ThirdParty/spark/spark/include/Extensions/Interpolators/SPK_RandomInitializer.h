@@ -50,8 +50,8 @@ namespace SPK
 		T minValue;
 		T maxValue;
 
-		RandomInitializer<T>(const T& min = T(),const T& max = T());
-		RandomInitializer<T>(const RandomInitializer<T>& interpolator);
+		RandomInitializer(const T& min = T(),const T& max = T());
+		RandomInitializer(const RandomInitializer<T>& interpolator);
 
         virtual void interpolate(T* data,Group& group,DataSet* dataSet) const override {}
         virtual void init(T& data,Particle& particle,DataSet* dataSet) const override;

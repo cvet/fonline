@@ -99,4 +99,9 @@ namespace IO
 		for (std::vector<IO::Attribute>::iterator it = attributes.begin(); it != attributes.end(); ++it)
 			it->descriptor = this;
 	}
+	
+	size_t Descriptor::getNbAttributes() const
+	{
+		return attributes.size();
+	}
 }}

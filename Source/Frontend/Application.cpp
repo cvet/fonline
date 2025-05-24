@@ -54,7 +54,9 @@
 #define BACKWARD_HAS_BFD 1
 #endif
 #endif
+FO_DISABLE_WARNINGS_PUSH()
 #include "backward.hpp"
+FO_DISABLE_WARNINGS_POP()
 #endif
 
 #include "WinApiUndef-Include.h"

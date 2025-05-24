@@ -273,8 +273,8 @@ namespace SPK
 		float computeXParam(const Particle& particle) const;
 		float computeXVelocity(const Particle& particle) const;
 
-		GraphInterpolator<T>();
-		GraphInterpolator<T>(const GraphInterpolator<T>& interpolator);
+		GraphInterpolator();
+		GraphInterpolator(const GraphInterpolator<T>& interpolator);
 
         virtual void createData(DataSet& dataSet,const Group& group) const override;
 

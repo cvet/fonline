@@ -92,13 +92,15 @@ public:
     void Push(const void* buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
     void Write(T value)
     {
         Push(&value, sizeof(T));
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, string_view> || std::is_same_v<T, string>)
     void Write(T value)
     {
         const auto len = numeric_cast<uint>(value.length());
@@ -106,7 +108,8 @@ public:
         Push(value.data(), len);
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, hstring>)
     void Write(T value)
     {
         const auto hash = value.as_hash();
@@ -145,7 +148,8 @@ public:
     void Pop(void* buf, size_t len);
     void ResetBuf() noexcept override;
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
     [[nodiscard]] auto Read() -> T
     {
         T result = {};
@@ -153,7 +157,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, string>)
     [[nodiscard]] auto Read() -> string
     {
         string result;
@@ -164,7 +169,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, hstring>)
     [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
     {
         return ReadHashedString(hash_resolver);

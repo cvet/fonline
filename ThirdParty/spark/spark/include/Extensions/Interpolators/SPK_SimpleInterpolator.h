@@ -50,8 +50,8 @@ namespace SPK
 		T birthValue;
 		T deathValue;
 
-		SimpleInterpolator<T>(const T& birthValue = T(),const T& deathValue = T());
-		SimpleInterpolator<T>(const SimpleInterpolator<T>& interpolator);
+		SimpleInterpolator(const T& birthValue = T(),const T& deathValue = T());
+		SimpleInterpolator(const SimpleInterpolator<T>& interpolator);
 
         virtual void interpolate(T* data,Group& group,DataSet* dataSet) const override;
         virtual  void init(T& data,Particle& particle,DataSet* dataSet) const override;

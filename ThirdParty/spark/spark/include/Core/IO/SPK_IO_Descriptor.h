@@ -165,11 +165,6 @@ namespace IO
 		return const_cast<Descriptor*>(this)->getAttribute(index);
 	}
 
-	inline size_t Descriptor::getNbAttributes() const
-	{
-		return attributes.size();
-	}
-
 	inline uint32 Descriptor::getSignature() const
 	{
 		return signature;

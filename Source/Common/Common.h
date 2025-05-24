@@ -63,14 +63,8 @@
 #error "Multiple operating systems not allowed"
 #endif
 
-#if __cplusplus < 201703L
-#error "Invalid __cplusplus version, must be at least C++17 (201703)"
-#endif
-
-#if __cplusplus >= 202002L
-#define FO_CPLUSPLUS_20 1
-#else
-#define FO_CPLUSPLUS_20 0
+#if __cplusplus < 202002L
+#error "Invalid __cplusplus version, must be at least C++20 (202002)"
 #endif
 
 #define FO_SCRIPT_API extern
@@ -94,6 +88,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <deque>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <future>
@@ -107,6 +102,7 @@
 #include <random>
 #include <set>
 #include <shared_mutex>
+#include <span>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -158,30 +154,6 @@
 #define FO_FORCE_INLINE inline
 #endif
 
-// String formatting lib
-#if FO_CPLUSPLUS_20
-#include <format>
-#else
-FO_DISABLE_WARNINGS_PUSH()
-#include "fmt/chrono.h"
-#include "fmt/format.h"
-FO_DISABLE_WARNINGS_POP()
-#endif
-
-// Span
-#if FO_CPLUSPLUS_20
-#include <span>
-#else
-#include "span.hpp"
-#endif
-
-// Date
-#if !FO_CPLUSPLUS_20
-FO_DISABLE_WARNINGS_PUSH()
-#include "date/date.h"
-FO_DISABLE_WARNINGS_POP()
-#endif
-
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP
 #include "WinApiUndef-Include.h"
@@ -205,28 +177,6 @@ FO_DISABLE_WARNINGS_POP()
 #endif
 
 FO_BEGIN_NAMESPACE();
-
-// String formatting lib
-#if FO_CPLUSPLUS_20
-#define FO_FORMAT_NAMESPACE std::
-#else
-#define FO_FORMAT_NAMESPACE fmt::
-#endif
-
-// Span
-#if FO_CPLUSPLUS_20
-using std::span;
-#else
-using tcb::span;
-#endif
-
-template<typename T>
-using const_span = span<const T>;
-
-// Date
-#if FO_CPLUSPLUS_20
-using date = std::chrono;
-#endif
 
 // Base types
 using int8 = std::int8_t;
@@ -255,9 +205,13 @@ using std::array;
 using std::initializer_list;
 using std::optional;
 using std::pair;
+using std::span;
 using std::string_view;
 using std::tuple;
 using std::variant;
+
+template<typename T>
+using const_span = span<const T>;
 
 // Template helpers
 #define TEMPLATE_HAS_MEMBER(name, member) \
@@ -360,7 +314,8 @@ public:
         _ptr = p._ptr;
         p._ptr = nullptr;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr raw_ptr(raw_ptr<U>&& p) noexcept
     {
@@ -372,7 +327,8 @@ public:
         _ptr = std::move(p._ptr);
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(raw_ptr<U>&& p) noexcept -> raw_ptr&
     {
         _ptr = std::move(p._ptr);
@@ -384,7 +340,8 @@ public:
         _ptr(p._ptr)
     {
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept :
         _ptr(p._ptr)
@@ -395,7 +352,8 @@ public:
         _ptr = p._ptr;
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr&
     {
         _ptr = p._ptr;
@@ -403,11 +361,13 @@ public:
     }
 #else
     FO_FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept = delete;
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept = delete;
     FO_FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& = delete;
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr& = delete;
 #endif
 
@@ -505,14 +465,16 @@ public:
         _ptr = other._ptr;
         other._ptr = nullptr;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr refcount_ptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
         safe_addref();
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr refcount_ptr(refcount_ptr<U>&& other) noexcept
     {
@@ -532,7 +494,8 @@ public:
         }
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(const refcount_ptr<U>& other) noexcept -> refcount_ptr&
     {
         reset(other._ptr);
@@ -547,7 +510,8 @@ public:
         }
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr&
     {
         safe_release();
@@ -654,7 +618,8 @@ public:
         _smartPtr(std::move(p._smartPtr))
     {
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr propagate_const(propagate_const<U>&& p) noexcept :
         _smartPtr(std::move(p._smartPtr))
@@ -665,7 +630,8 @@ public:
         _smartPtr = std::move(p._smartPtr);
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(propagate_const<U>&& p) noexcept -> propagate_const&
     {
         _smartPtr = std::move(p._smartPtr);
@@ -677,7 +643,8 @@ public:
         _smartPtr(p._smartPtr)
     {
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr propagate_const(const propagate_const<U>& p) noexcept :
         _smartPtr(p._smartPtr)
@@ -688,7 +655,8 @@ public:
         _smartPtr = p._smartPtr;
         return *this;
     }
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(const propagate_const<U>& p) noexcept -> propagate_const&
     {
         _smartPtr = p._smartPtr;
@@ -696,11 +664,13 @@ public:
     }
 #else
     FO_FORCE_INLINE propagate_const(const propagate_const& p) noexcept = delete;
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr propagate_const(const propagate_const<U>& p) noexcept = delete;
     FO_FORCE_INLINE auto operator=(const propagate_const& p) noexcept -> propagate_const& = delete;
-    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
     FO_FORCE_INLINE auto operator=(const propagate_const<U>& p) noexcept -> propagate_const& = delete;
     [[nodiscard]] FO_FORCE_INLINE auto copy() noexcept -> T { return propagate_const(_smartPtr); }
 #endif
@@ -1023,7 +993,7 @@ inline void destroy_if_empty(unique_ptr<T>& ptr) noexcept
 // Vector formatter
 FO_END_NAMESPACE();
 template<typename T>
-struct FO_FORMAT_NAMESPACE formatter<T, std::enable_if_t<FO_NAMESPACE is_vector_v<T>, char>> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_vector_v<T>, char>> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -1055,7 +1025,7 @@ FO_BEGIN_NAMESPACE();
 // Todo: improve named enums
 FO_END_NAMESPACE();
 template<typename T>
-struct FO_FORMAT_NAMESPACE formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
+struct std::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -1133,7 +1103,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<typename T>
-struct FO_FORMAT_NAMESPACE formatter<T, std::enable_if_t<FO_NAMESPACE is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
+struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -1402,7 +1372,7 @@ static_assert(std::is_standard_layout_v<synctime>);
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE steady_time_point::duration& value, FormatContext& ctx) const
@@ -1412,30 +1382,30 @@ struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE steady_time_point::duration> :
         if (value < std::chrono::milliseconds {1}) {
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
             const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
+            std::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
             const auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
+            std::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
+            std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
+            std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
             const auto day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
             const auto hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
             const auto min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             const auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+            std::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
@@ -1445,7 +1415,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE steady_time_point& value, FormatContext& ctx) const
@@ -1453,7 +1423,7 @@ struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE steady_time_point> : formatter
         FO_NAMESPACE string buf;
 
         const auto td = FO_NAMESPACE nanotime(value).desc(true);
-        FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
+        std::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
@@ -1462,7 +1432,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE timespan> : formatter<FO_NAMESPACE steady_time_point::duration>
+struct std::formatter<FO_NAMESPACE timespan> : formatter<FO_NAMESPACE steady_time_point::duration>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE timespan& value, FormatContext& ctx) const
@@ -1474,7 +1444,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE nanotime> : formatter<FO_NAMESPACE steady_time_point>
+struct std::formatter<FO_NAMESPACE nanotime> : formatter<FO_NAMESPACE steady_time_point>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE nanotime& value, FormatContext& ctx) const
@@ -1486,7 +1456,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
+struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE synctime& value, FormatContext& ctx) const
@@ -1504,7 +1474,7 @@ class any_t : public string
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE any_t& value, FormatContext& ctx) const
@@ -1534,7 +1504,7 @@ auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
-struct FO_FORMAT_NAMESPACE formatter<T, std::enable_if_t<FO_NAMESPACE is_atomic_v<T>, char>> : formatter<decltype(std::declval<T>().load())>
+struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_atomic_v<T>, char>> : formatter<decltype(std::declval<T>().load())>
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
@@ -1677,7 +1647,7 @@ public:
             _message.append(": ");
             _message.append(message);
 
-            const vector<string> params = {string(FO_FORMAT_NAMESPACE format("{}", std::forward<Args>(args)))...};
+            const vector<string> params = {string(std::format("{}", std::forward<Args>(args)))...};
 
             for (const auto& param : params) {
                 _message.append("\n- ");
@@ -2028,13 +1998,15 @@ private:
 };
 
 // Float safe comparator
-template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_floating_point_v<T>)
 [[nodiscard]] constexpr auto float_abs(T f) noexcept -> T
 {
     return f < 0 ? -f : f;
 }
 
-template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_floating_point_v<T>)
 [[nodiscard]] constexpr auto is_float_equal(T f1, T f2) noexcept -> bool
 {
     if (float_abs(f1 - f2) <= 1.0e-5f) {
@@ -2062,31 +2034,36 @@ FO_FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 #define FO_NON_NULL // Pointer annotation
 
 // Bit operation helpers
-template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_unsigned_v<T>)
 constexpr auto IsBitSet(T x, T y) noexcept -> bool
 {
     return (x & y) != 0;
 }
 
-template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_unsigned_v<T>)
 constexpr void SetBit(T& x, T y) noexcept
 {
     x = x | y;
 }
 
-template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_unsigned_v<T>)
 constexpr void UnsetBit(T& x, T y) noexcept
 {
     x = (x | y) ^ y;
 }
 
-template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_enum_v<T>)
 constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 {
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
 
-template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_enum_v<T>)
 constexpr auto CombineEnum(T v1, T v2) noexcept -> T
 {
     return static_cast<T>(static_cast<size_t>(v1) | static_cast<size_t>(v2));
@@ -2107,13 +2084,13 @@ FO_BEGIN_NAMESPACE();
 #define FO_DECLARE_TYPE_FORMATTER(type, ...) \
     FO_END_NAMESPACE(); \
     template<> \
-    struct FO_FORMAT_NAMESPACE formatter<type> : formatter<FO_NAMESPACE string_view> \
+    struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
     { \
         template<typename FormatContext> \
         auto format(const type& value, FormatContext& ctx) const \
         { \
             FO_NAMESPACE string buf; \
-            FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), __VA_ARGS__); \
+            std::format_to(std::back_inserter(buf), __VA_ARGS__); \
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
     }; \
@@ -2179,7 +2156,8 @@ public:
     {
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T>)
     auto Read() -> T
     {
         if (_readPos + sizeof(T) > _dataBuf.size()) {
@@ -2252,7 +2230,8 @@ public:
         _dataBuf->reserve(BUF_RESERVE_SIZE);
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T>)
     void Write(std::enable_if_t<true, T> data) noexcept
     {
         ResizeBuf(sizeof(T));
@@ -2455,13 +2434,13 @@ FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE ucolor& value, FormatContext& ctx) const
     {
         FO_NAMESPACE string buf;
-        FO_FORMAT_NAMESPACE format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
+        std::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
 };
@@ -2510,7 +2489,7 @@ FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
 FO_END_NAMESPACE();
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     auto format(const FO_NAMESPACE hstring& value, FormatContext& ctx) const
@@ -3081,13 +3060,15 @@ private:
     T _toValue;
 };
 
-template<typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_integral_v<T>)
 constexpr auto xrange(T value) noexcept
 {
     return irange_loop<T> {0, value};
 }
 
-template<typename T, std::enable_if_t<has_size_v<T>, int> = 0>
+template<typename T>
+    requires(has_size_v<T>)
 constexpr auto xrange(T value) noexcept
 {
     return irange_loop<decltype(value.size())> {0, value.size()};
@@ -3393,24 +3374,28 @@ inline constexpr auto check_numeric_cast(U value) noexcept -> bool
 
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t) noexcept
+    requires(!std::is_integral_v<U>)
+constexpr U lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<std::is_integral_v<U> && std::is_signed_v<U>, U> lerp(T v1, T v2, float t) noexcept
+    requires(std::is_integral_v<U> && std::is_signed_v<U>)
+constexpr U lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
-constexpr std::enable_if_t<std::is_integral_v<U> && std::is_unsigned_v<U>, U> lerp(T v1, T v2, float t) noexcept
+    requires(std::is_integral_v<U> && std::is_unsigned_v<U>)
+constexpr U lerp(T v1, T v2, float t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
 }
 
-template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_floating_point_v<T>)
 constexpr auto iround(T value) noexcept -> int
 {
     return static_cast<int>(std::lround(value));

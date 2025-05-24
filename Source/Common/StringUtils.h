@@ -70,17 +70,17 @@ public:
     }
 
     template<typename... Args>
-    explicit strex(FO_FORMAT_NAMESPACE format_string<Args...>&& format, Args&&... args) :
-        _s {FO_FORMAT_NAMESPACE format(std::move(format), std::forward<Args>(args)...)},
+    explicit strex(std::format_string<Args...>&& format, Args&&... args) :
+        _s {std::format(std::move(format), std::forward<Args>(args)...)},
         _sv {_s}
     {
     }
 
     template<typename... Args>
-    explicit strex(safe_format_tag /*tag*/, FO_FORMAT_NAMESPACE format_string<Args...>&& format, Args&&... args) noexcept
+    explicit strex(safe_format_tag /*tag*/, std::format_string<Args...>&& format, Args&&... args) noexcept
     {
         try {
-            _s = FO_FORMAT_NAMESPACE format(std::move(format), std::forward<Args>(args)...);
+            _s = std::format(std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
             BreakIntoDebugger(ex.what());
@@ -102,7 +102,7 @@ public:
 
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        _s {FO_FORMAT_NAMESPACE vformat(format, FO_FORMAT_NAMESPACE make_format_args(std::forward<Args>(args)...))},
+        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))},
         _sv {_s}
     {
     }
@@ -202,7 +202,7 @@ namespace utf8
 FO_END_NAMESPACE();
 
 template<>
-struct FO_FORMAT_NAMESPACE formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
+struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
     // ReSharper disable once CppInconsistentNaming

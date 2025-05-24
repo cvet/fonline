@@ -58,7 +58,7 @@ namespace SPK
 
 		public :
 
-			~Array<T>() { SPK_DELETE_ARRAY(values); }
+			~Array() { SPK_DELETE_ARRAY(values); }
 
 			size_t size() const					{ return currentNb; }
 			size_t capacity() const				{ return maxNb; }
@@ -90,14 +90,14 @@ namespace SPK
 			size_t maxNb;
 			T* values;
 
-			Array<T>(size_t maxNb = 1) :
+			Array(size_t maxNb = 1) :
 				currentNb(0),
 				maxNb(maxNb)
 			{
 				values = SPK_NEW_ARRAY(T,maxNb);
 			}
 
-			Array<T>(const Array<T>& t) :
+			Array(const Array<T>& t) :
 				currentNb(t.currentNb),
 				maxNb(t.maxNb)
 			{

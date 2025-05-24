@@ -37,14 +37,13 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_JSON
 #include "json.hpp"
 #endif
 #if FO_HAVE_UNQLITE
 #include "unqlite.h"
 #endif
-
-FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_MONGO
 #include "mongoc/mongoc.h"
 #endif

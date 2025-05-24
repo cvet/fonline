@@ -247,15 +247,6 @@ else()
     add_compile_definitions(FO_HAVE_JSON=0)
 endif()
 
-# Fmt
-StatusMessage("+ Fmt")
-set(FO_FMT_DIR "${FO_ENGINE_ROOT}/ThirdParty/fmt")
-set(FMT_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_FMT_DIR}" EXCLUDE_FROM_ALL)
-include_directories("${FO_FMT_DIR}/include")
-list(APPEND FO_COMMON_LIBS fmt)
-DisableLibWarnings(fmt)
-
 # LibreSSL
 if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ LibreSSL")
@@ -487,14 +478,8 @@ endif()
 # small_vector
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
 
-# span
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")
-
 # unordered_dense
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
-
-# date
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/date/include")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
