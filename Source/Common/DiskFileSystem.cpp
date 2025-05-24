@@ -43,11 +43,7 @@ static auto MakeFilesystemPath(string_view path) -> std::filesystem::path
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_CPLUSPLUS_20
     return std::u8string(path.begin(), path.end());
-#else
-    return std::filesystem::u8path(path);
-#endif
 }
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
@@ -279,7 +275,8 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
     const auto resolved = std::filesystem::absolute(MakeFilesystemPath(path), ec);
 
     if (!ec) {
-        return string(resolved.u8string());
+        const auto u8_str = resolved.u8string();
+        return string(u8_str.begin(), u8_str.end());
     }
     else {
         return string(path);
@@ -313,7 +310,8 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
     const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
-        const auto path = string(dir_entry.path().filename().u8string());
+        const auto u8_str = dir_entry.path().filename().u8string();
+        const auto path = string(u8_str.begin(), u8_str.end());
         FO_RUNTIME_ASSERT(!path.empty());
 
         if (path.front() != '.' && path.front() != '~') {

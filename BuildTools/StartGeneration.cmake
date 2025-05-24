@@ -23,7 +23,7 @@ DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
 DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
-DeclareOption(FO_CPP_STANDARD "C++ standard for engine compilation (17 (default) or 20)" 17)
+DeclareOption(FO_CPP_STANDARD "C++ standard for project compilation" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
 DeclareOption(FO_DISABLE_JSON "Force disable using of Json" OFF)

@@ -934,14 +934,16 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 
     string result = strex("Players: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
+
     for (auto&& [id, player] : players) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
+        result += strex("{:<20} {:<10} {:<15} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
     }
+
     return result;
 }
 
