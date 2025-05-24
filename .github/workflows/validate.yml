@@ -33,7 +33,7 @@ jobs:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
   windows:
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
