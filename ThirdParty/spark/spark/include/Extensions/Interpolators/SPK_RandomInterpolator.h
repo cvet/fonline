@@ -61,13 +61,13 @@ namespace SPK
 		T minDeathValue;
 		T maxDeathValue;
 
-		RandomInterpolator<T>(
+		RandomInterpolator(
 			const T& minBirthValue = T(),
 			const T& maxBirthValue = T(),
 			const T& minDeathValue = T(),
 			const T& maxDeathValue = T());
 
-		RandomInterpolator<T>(const RandomInterpolator<T>& interpolator);
+		RandomInterpolator(const RandomInterpolator<T>& interpolator);
 
         virtual void createData(DataSet& dataSet,const Group& group) const override;
 

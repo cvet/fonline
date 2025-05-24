@@ -48,8 +48,8 @@ namespace SPK
 
 		T defaultValue;
 
-		DefaultInitializer<T>(const T& value = T());
-		DefaultInitializer<T>(const DefaultInitializer<T>& interpolator);
+		DefaultInitializer(const T& value = T());
+		DefaultInitializer(const DefaultInitializer<T>& interpolator);
 
         virtual  void interpolate(T* data,Group& group,DataSet* dataSet) const override {}
         virtual  void init(T& data,Particle& particle,DataSet* dataSet) const override;
