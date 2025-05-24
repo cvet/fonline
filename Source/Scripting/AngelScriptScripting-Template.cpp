@@ -1834,7 +1834,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     return prop_data;
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1847,7 +1848,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1859,10 +1861,9 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
     }
 }
 
-template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
-        int> = 0>
+template<typename T, typename U>
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1875,7 +1876,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1891,7 +1893,8 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolve
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1906,10 +1909,9 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
     }
 }
 
-template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
-        int> = 0>
+template<typename T, typename U>
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();

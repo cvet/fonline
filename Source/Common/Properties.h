@@ -311,7 +311,8 @@ public:
     auto ResolveHash(hstring::hash_t h) const -> hstring;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -338,7 +339,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, hstring>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -368,7 +370,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -395,7 +398,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
+    template<typename T>
+        requires(is_vector_v<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -470,7 +474,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -485,7 +490,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, hstring>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -502,7 +508,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -517,7 +524,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_vector_v<T>, int> = 0>
+    template<typename T>
+        requires(is_vector_v<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -584,7 +592,8 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>, int> = 0>
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
     void SetValue(const Property* prop, T new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -631,7 +640,8 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, hstring>)
     void SetValue(const Property* prop, T new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -680,7 +690,8 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
+    template<typename T>
+        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
     void SetValue(const Property* prop, const T& new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -808,9 +819,11 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<is_map_v<T>, int> = 0>
+    template<typename T>
+        requires(is_map_v<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
-    template<typename T, std::enable_if_t<is_map_v<T>, int> = 0>
+    template<typename T>
+        requires(is_map_v<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const -> T = delete;
     template<typename T, typename U>
     void SetValue(const Property* prop, const map<T, U>& new_value) = delete;

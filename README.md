@@ -30,7 +30,7 @@
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Supporting of hexagonal and square map tiling
 * Prerendered sprites for environment but with possibility of using 3D models for characters
-* Engine core written in C++ (supported C++17 and C++20)
+* Engine core written in modern C++ (up to C++20)
 * Flexible scripting system with varies supporting languages:
   + Native C++ coding
   + AngelScript
