@@ -1013,11 +1013,11 @@ public:
       _stacktrace[index] = reinterpret_cast<void *>(ctx.data[16]);
       ++index;
 #elif defined(__APPLE__)
-      unw_getcontext(&ctx)
-          // TODO: Convert the ucontext_t to libunwind's unw_context_t like
-          // we do in 64 bits
-          if (ctx.uc_mcontext->__ss.__eip ==
-              reinterpret_cast<greg_t>(error_addr())) {
+      unw_getcontext(&ctx);
+      // TODO: Convert the ucontext_t to libunwind's unw_context_t like
+      // we do in 64 bits
+      if (ctx.uc_mcontext->__ss.__eip ==
+          reinterpret_cast<greg_t>(error_addr())) {
         ctx.uc_mcontext->__ss.__eip = ctx.uc_mcontext->__ss.__esp;
       }
       _stacktrace[index] =
