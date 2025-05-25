@@ -405,8 +405,11 @@ static_assert(sizeof(raw_ptr<int>) == sizeof(int*));
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
-    if constexpr (sizeof(p) <= sizeof(uint64_t)) {
+    if constexpr (sizeof(p) == sizeof(uint64_t)) {
         return FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p)));
+    }
+    else if constexpr (sizeof(p) < sizeof(uint64_t)) {
+        return static_cast<size_t>(FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p))));
     }
     else {
         return FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<const void*>(&p), sizeof(p));

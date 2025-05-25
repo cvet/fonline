@@ -308,7 +308,7 @@ auto strex::erase(char what) -> strex&
 
     ownStorage();
 
-    _s.erase(std::ranges::remove(_s, what), _s.end());
+    std::erase(_s, what);
 
     _sv = _s;
 

@@ -679,7 +679,7 @@ void MapView::DestroyItem(ItemHexView* item)
     }
 
     {
-        const auto it = std::ranges::find(_allItems, item);
+        const auto it = std::find(_allItems.begin(), _allItems.end(), item);
         FO_RUNTIME_ASSERT(it != _allItems.end());
         _allItems.erase(it);
     }
@@ -3609,7 +3609,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
                 auto& field = _hexField->GetCellForWriting(_mapSize.FromRawPos(multihex_raw_hex));
 
                 if (set) {
-                    FO_RUNTIME_ASSERT(std::ranges::find(field.MultihexCritters,, cr) == field.MultihexCritters.end());
+                    FO_RUNTIME_ASSERT(std::ranges::find(field.MultihexCritters, cr) == field.MultihexCritters.end());
                     field.MultihexCritters.emplace_back(cr);
                 }
                 else {
