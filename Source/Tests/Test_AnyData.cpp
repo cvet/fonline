@@ -56,6 +56,7 @@ TEST_CASE("AnyData")
     SECTION("Float 2")
     {
         AnyData::Value val = 0.999999;
+        CHECK(AnyData::ValueToString(val) == "0.999999");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Double));
     }
 

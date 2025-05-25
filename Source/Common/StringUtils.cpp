@@ -258,23 +258,45 @@ auto strex::trim() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Left trim
-    const auto l = _sv.find_first_not_of(" \n\r\t");
+    trim(" \n\r\t");
+
+    return *this;
+}
+
+auto strex::trim(string_view chars) noexcept -> strex&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ltrim(chars);
+    rtrim(chars);
+
+    return *this;
+}
+
+auto strex::ltrim(string_view chars) noexcept -> strex&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto l = _sv.find_first_not_of(chars);
 
     if (l == string::npos) {
         _sv = {};
     }
-    else {
-        if (l > 0) {
-            _sv = _sv.substr(l);
-        }
+    else if (l > 0) {
+        _sv = _sv.substr(l);
+    }
 
-        // Right trim
-        const auto r = _sv.find_last_not_of(" \n\r\t");
+    return *this;
+}
 
-        if (r < _sv.length() - 1) {
-            _sv = _sv.substr(0, r + 1);
-        }
+auto strex::rtrim(string_view chars) noexcept -> strex&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto r = _sv.find_last_not_of(chars);
+
+    if (r < _sv.length() - 1) {
+        _sv = _sv.substr(0, r + 1);
     }
 
     return *this;

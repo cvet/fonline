@@ -71,6 +71,9 @@ TEST_CASE("StringUtils")
         CHECK(strex("Hello   ").trim().str() == "Hello");
         CHECK(strex("  Hello").trim().str() == "Hello");
         CHECK(strex("\t\nHel lo\t \r\t").trim().str() == "Hel lo");
+        CHECK(strex("\t\nHel lo\t \r\t").trim("\t\r ").str() == "\nHel lo");
+        CHECK(strex("\t\nHel lo\t \r\t").ltrim("\t\n").str() == "Hel lo\t \r\t");
+        CHECK(strex("\t\nHel lo\t \r\t").rtrim("\t\n").str() == "\t\nHel lo\t \r");
     }
 
     SECTION("GetResult")

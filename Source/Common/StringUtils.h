@@ -153,6 +153,9 @@ public:
     auto substringAfter(char separator) noexcept -> strex&;
     auto substringAfter(string_view separator) noexcept -> strex&;
     auto trim() noexcept -> strex&;
+    auto trim(string_view chars) noexcept -> strex&;
+    auto ltrim(string_view chars) noexcept -> strex&;
+    auto rtrim(string_view chars) noexcept -> strex&;
 
     auto erase(char what) -> strex&;
     auto erase(char begin, char end) -> strex&;
