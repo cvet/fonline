@@ -1584,6 +1584,7 @@ struct StackTraceScopeEntry
 };
 
 // Engine exception handling
+extern void InstallSystemExceptionHandler();
 extern auto GetRealStackTrace() -> string;
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") noexcept -> bool;

@@ -45,7 +45,7 @@
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
-#if __has_include(<libunwind.h>)
+#if __has_include(<libunwind.h>) && !(FO_MAC && defined(__aarch64__))
 #define BACKWARD_HAS_LIBUNWIND 1
 #elif __has_include(<bfd.h>)
 #define BACKWARD_HAS_BFD 1
@@ -86,6 +86,18 @@ struct StackTraceData
 static thread_local StackTraceData StackTrace;
 
 static StackTraceData* CrashStackTrace;
+
+extern void InstallSystemExceptionHandler()
+{
+    FO_STACK_TRACE_ENTRY();
+    
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    if (!IsRunInDebugger()) {
+        [[maybe_unused]] static backward::SignalHandling sh;
+        assert(sh.loaded());
+    }
+#endif
+}
 
 FO_END_NAMESPACE();
 extern void SetCrashStackTrace() noexcept // Called in backward.hpp

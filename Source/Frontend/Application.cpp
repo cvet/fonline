@@ -46,21 +46,6 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-#if !FO_WINDOWS
-#if __has_include(<libunwind.h>)
-#define BACKWARD_HAS_LIBUNWIND 1
-#elif __has_include(<bfd.h>)
-#define BACKWARD_HAS_BFD 1
-#endif
-#endif
-FO_DISABLE_WARNINGS_PUSH()
-#include "backward.hpp"
-FO_DISABLE_WARNINGS_POP()
-#endif
-
-#include "WinApiUndef-Include.h"
-
 FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
@@ -158,14 +143,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
         Platform::ForkProcess();
     }
 
-    // Unhandled exceptions handler
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-    if (!IsRunInDebugger()) {
-        [[maybe_unused]] static backward::SignalHandling sh;
-        assert(sh.loaded());
-    }
-#endif
-
+    InstallSystemExceptionHandler();
     CreateGlobalData();
 
 #if FO_TRACY
