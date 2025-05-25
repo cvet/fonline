@@ -705,7 +705,7 @@ void MapManager::TraceBullet(TraceData& trace)
             const auto critters = map->GetCritters(next_hex, trace.FindType);
 
             for (auto* cr : critters) {
-                if (std::ranges::find(trace.Critters, cr) == trace.Critters->end()) {
+                if (std::ranges::find(*trace.Critters, cr) == trace.Critters->end()) {
                     trace.Critters->emplace_back(cr);
                 }
             }

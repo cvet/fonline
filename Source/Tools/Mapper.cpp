@@ -3093,7 +3093,7 @@ void FOMapper::ShowMap(MapView* map)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    const auto it = std::ranges::find(LoadedMaps, map);
+    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     if (_curMap != map) {
@@ -3109,7 +3109,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    const auto it = std::ranges::find(LoadedMaps, map);
+    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     const auto map_errors = map->ValidateForSave();
@@ -3164,7 +3164,7 @@ void FOMapper::UnloadMap(MapView* map)
         _curMap = nullptr;
     }
 
-    const auto it = std::ranges::find(LoadedMaps, map);
+    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     map->MarkAsDestroyed();

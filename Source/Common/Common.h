@@ -428,8 +428,6 @@ FO_BEGIN_NAMESPACE();
 template<typename T>
 class refcount_ptr final
 {
-    //static_assert(is_refcounted_v<T>);
-
     template<typename U>
     friend class refcount_ptr;
 

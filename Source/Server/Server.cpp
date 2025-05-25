@@ -968,7 +968,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
         unlogined_player->MarkAsDestroyed();
@@ -1518,7 +1518,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         SetLogCallback("LogToClients", nullptr);
 
-        auto it = std::ranges::find(_logClients, player);
+        auto it = std::find(_logClients.begin(), _logClients.end(), player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
             logcb("Detached");
@@ -2275,7 +2275,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             return;
         }
 
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -2291,7 +2291,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = true;
 
         // Kick previous
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -4011,7 +4011,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     }
 
     // Find dialog
-    it_d = std::ranges::find_if(dialogs, [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
+    it_d = std::ranges::find_if(*dialogs, [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
 
     if (it_d == dialogs->end()) {
         cl->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
@@ -4243,7 +4243,7 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Find dialog
-    const auto it_d = std::ranges::find_if(dialogs, [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
+    const auto it_d = std::ranges::find_if(*dialogs, [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
 
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
