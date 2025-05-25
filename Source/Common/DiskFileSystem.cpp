@@ -33,7 +33,6 @@
 
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 #include <filesystem>
 
