@@ -101,7 +101,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_CRIT]) {
-        std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) -> bool { return a->GetName() < b->GetName(); });
+        std::ranges::sort(proto.NpcProtos, [](const ProtoCritter* a, const ProtoCritter* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
@@ -111,7 +111,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.emplace_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_ITEM]) {
-        std::sort(proto.ItemProtos.begin(), proto.ItemProtos.end(), [](const ProtoItem* a, const ProtoItem* b) -> bool { return a->GetName() < b->GetName(); });
+        std::ranges::sort(proto.ItemProtos, [](const ProtoItem* a, const ProtoItem* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     for (auto i = 0; i < TAB_COUNT; i++) {
@@ -2027,7 +2027,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+    const auto it = std::ranges::find(SelectedEntities, entity);
 
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
@@ -2049,7 +2049,7 @@ void FOMapper::SelectClear()
     for (auto* entity : SelectedEntities) {
         if (const auto* tile = dynamic_cast<ItemHexView*>(entity); tile != nullptr && tile->GetIsTile()) {
             for (auto* sibling_tile : copy(_curMap->GetTiles(tile->GetHex(), tile->GetIsRoofTile()))) {
-                const auto is_sibling_selected = std::find(SelectedEntities.begin(), SelectedEntities.end(), sibling_tile) != SelectedEntities.end();
+                const auto is_sibling_selected = std::ranges::find(SelectedEntities, sibling_tile) != SelectedEntities.end();
 
                 if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
                     _curMap->DestroyItem(sibling_tile);
@@ -2100,7 +2100,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+    const auto it = std::ranges::find(SelectedEntities, entity);
 
     if (it == SelectedEntities.end()) {
         SelectedEntities.emplace_back(entity);
@@ -2115,7 +2115,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
+    const auto it = std::ranges::find(SelectedEntities, entity);
 
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
@@ -2175,7 +2175,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     // Tile step
-    const auto have_tiles = std::find_if(SelectedEntities.begin(), SelectedEntities.end(), [](auto&& entity) {
+    const auto have_tiles = std::ranges::find_if(SelectedEntities, [](auto&& entity) {
         const auto* item = dynamic_cast<ItemHexView*>(entity);
         return item != nullptr && item->GetIsTile();
     }) != SelectedEntities.end();
@@ -3093,7 +3093,7 @@ void FOMapper::ShowMap(MapView* map)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
+    const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     if (_curMap != map) {
@@ -3109,7 +3109,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
+    const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     const auto map_errors = map->ValidateForSave();
@@ -3164,7 +3164,7 @@ void FOMapper::UnloadMap(MapView* map)
         _curMap = nullptr;
     }
 
-    const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
+    const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     map->MarkAsDestroyed();

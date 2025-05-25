@@ -1214,7 +1214,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 
         int index = -1;
 
-        if (const auto it = std::find(AllEffects.begin(), AllEffects.end(), effect_name); it != AllEffects.end()) {
+        if (const auto it = std::ranges::find(AllEffects, effect_name); it != AllEffects.end()) {
             index = static_cast<int>(std::distance(AllEffects.begin(), it));
         }
 
@@ -1236,7 +1236,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 
         int index = -1;
 
-        if (const auto it = std::find(AllTextures.begin(), AllTextures.end(), texture_name); it != AllTextures.end()) {
+        if (const auto it = std::ranges::find(AllTextures, texture_name); it != AllTextures.end()) {
             index = static_cast<int>(std::distance(AllTextures.begin(), it));
         }
 

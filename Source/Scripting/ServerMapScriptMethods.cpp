@@ -508,7 +508,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, uint 
         critters = self->GetCritters(hex, radius, findType);
     }
 
-    std::sort(critters.begin(), critters.end(), [hex](const Critter* cr1, const Critter* cr2) {
+    std::ranges::sort(critters, [hex](const Critter* cr1, const Critter* cr2) {
         const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
         const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
@@ -671,7 +671,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, Critter* 
     vector<Critter*> result_critters;
 
     for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
-        if (std::find(result_critters.begin(), result_critters.end(), cr_) == result_critters.end()) {
+        if (std::ranges::find(result_critters, cr_) == result_critters.end()) {
             result_critters.push_back(cr_);
         }
     }
@@ -688,7 +688,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vec
 
     for (auto* cr : critters) {
         for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
-            if (std::find(result_critters.begin(), result_critters.end(), cr_) == result_critters.end()) {
+            if (std::ranges::find(result_critters, cr_) == result_critters.end()) {
                 result_critters.push_back(cr_);
             }
         }

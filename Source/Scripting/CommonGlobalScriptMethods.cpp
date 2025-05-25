@@ -117,7 +117,7 @@ static void PrintLog(string& log, bool last_call, const std::function<void(strin
         }
     }
 
-    log.erase(std::remove(log.begin(), log.end(), '\r'), log.end());
+    log.erase(std::ranges::remove(log, '\r'), log.end());
 
     // Write own log
     while (true) {

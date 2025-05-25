@@ -334,7 +334,7 @@ void Map::RemoveItem(ident_t item_id)
     if (item->IsNonEmptyBlockLines()) {
         GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hex, _mapSize, [this, item](mpos block_hex) {
             auto& block_field = _hexField->GetCellForWriting(block_hex);
-            const auto it = std::find(block_field.BlockLines.begin(), block_field.BlockLines.end(), item);
+            const auto it = std::ranges::find(block_field.BlockLines, item);
             FO_RUNTIME_ASSERT(it != block_field.BlockLines.end());
             block_field.BlockLines.erase(it);
             RecacheHexFlags(block_field);
@@ -690,10 +690,10 @@ void Map::RecacheHexFlags(Field& field)
 
     if (_engine->Settings.CritterBlockHex && field.HasCritter) {
         if (!field.Critters.empty()) {
-            field.HasBlockCritter = std::any_of(field.Critters.begin(), field.Critters.end(), [](const Critter* cr) { return !cr->IsDead(); });
+            field.HasBlockCritter = std::ranges::any_of(field.Critters, [](const Critter* cr) { return !cr->IsDead(); });
         }
         if (!field.HasBlockCritter && !field.MultihexCritters.empty()) {
-            field.HasBlockCritter = std::any_of(field.MultihexCritters.begin(), field.MultihexCritters.end(), [](const Critter* cr) { return !cr->IsDead(); });
+            field.HasBlockCritter = std::ranges::any_of(field.MultihexCritters, [](const Critter* cr) { return !cr->IsDead(); });
         }
     }
 
@@ -781,13 +781,13 @@ auto Map::IsCritter(mpos hex, const Critter* cr) const -> bool
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        const auto it1 = std::find(field.Critters.begin(), field.Critters.end(), cr);
+        const auto it1 = std::ranges::find(field.Critters, cr);
 
         if (it1 != field.Critters.end()) {
             return true;
         }
 
-        const auto it2 = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
+        const auto it2 = std::ranges::find(field.MultihexCritters, cr);
 
         if (it2 != field.MultihexCritters.end()) {
             return true;

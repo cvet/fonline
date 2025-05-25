@@ -1422,8 +1422,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         vertices = mesh_data->Vertices;
         indices = mesh_data->Indices;
         combined_mesh->DrawEffect = mesh_instance->CurEffect;
-        std::for_each(combined_mesh->SkinBones.begin(), combined_mesh->SkinBones.end(), [](ModelBone*& bone) { bone = nullptr; });
-        std::for_each(std::begin(combined_mesh->Textures), std::end(combined_mesh->Textures), [](MeshTexture*& tex) { tex = nullptr; });
+        std::ranges::for_each(combined_mesh->SkinBones, [](ModelBone*& bone) { bone = nullptr; });
+        std::ranges::for_each(combined_mesh->Textures, [](MeshTexture*& tex) { tex = nullptr; });
         combined_mesh->CurBoneMatrix = 0;
     }
     else {
@@ -1597,7 +1597,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
             // Check anim layer
             const auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
-            const auto skip = std::find(cut->Layers.begin(), cut->Layers.end(), mesh_anim_layer) == cut->Layers.end();
+            const auto skip = std::ranges::find(cut->Layers, mesh_anim_layer) == cut->Layers.end();
 
             // Process faces
             i_count += combined_mesh->MeshIndices[k];
@@ -1742,7 +1742,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
             for (size_t i = 0, j = combined_mesh->MeshVertices.size(); i < j; i++) {
                 // Check anim layer
-                if (std::find(cut->Layers.begin(), cut->Layers.end(), combined_mesh->MeshAnimLayers[i]) == cut->Layers.end()) {
+                if (std::ranges::find(cut->Layers, combined_mesh->MeshAnimLayers[i]) == cut->Layers.end()) {
                     v_count += combined_mesh->MeshVertices[i];
                     v_pos = v_count;
                     continue;

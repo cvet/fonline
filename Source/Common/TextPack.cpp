@@ -328,14 +328,14 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
 
     // Add missed languages
     for (const auto& lang : bake_languages) {
-        if (std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == lang; }) == lang_packs.end()) {
+        if (std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == lang; }) == lang_packs.end()) {
             lang_packs.emplace_back(lang, map<string, TextPack>());
         }
     }
 
     // Remove unsupported languages
     for (auto it = lang_packs.begin(); it != lang_packs.end();) {
-        if (std::find_if(bake_languages.begin(), bake_languages.end(), [&](auto&& l) { return l == it->first; }) == bake_languages.end()) {
+        if (std::ranges::find_if(bake_languages, [&](auto&& l) { return l == it->first; }) == bake_languages.end()) {
             it = lang_packs.erase(it);
         }
         else {

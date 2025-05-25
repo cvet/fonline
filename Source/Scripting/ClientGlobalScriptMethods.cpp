@@ -418,7 +418,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 
     vector<CritterView*> sorted_critters = critters;
 
-    std::sort(sorted_critters.begin(), sorted_critters.end(), [](const CritterView* cr1, const CritterView* cr2) {
+    std::ranges::sort(sorted_critters, [](const CritterView* cr1, const CritterView* cr2) {
         const auto cr1_pos = cr1->GetHex();
         const auto cr2_pos = cr2->GetHex();
 
@@ -1270,7 +1270,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
 
     client->SprMngr.GetRtMngr().PushRenderTarget(rt);
 
-    const auto it = std::find(client->DirtyOffscreenSurfaces.begin(), client->DirtyOffscreenSurfaces.end(), rt);
+    const auto it = std::ranges::find(client->DirtyOffscreenSurfaces, rt);
     if (it != client->DirtyOffscreenSurfaces.end() || forceClear) {
         if (it != client->DirtyOffscreenSurfaces.end()) {
             client->DirtyOffscreenSurfaces.erase(it);
@@ -1279,7 +1279,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
         client->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
     }
 
-    if (std::find(client->PreDirtyOffscreenSurfaces.begin(), client->PreDirtyOffscreenSurfaces.end(), rt) == client->PreDirtyOffscreenSurfaces.end()) {
+    if (std::ranges::find(client->PreDirtyOffscreenSurfaces, rt) == client->PreDirtyOffscreenSurfaces.end()) {
         client->PreDirtyOffscreenSurfaces.emplace_back(rt);
     }
 }

@@ -46,24 +46,28 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view path, 
     FO_STACK_TRACE_ENTRY();
 
     string path_fixed = strex(path).normalizePathSlashes();
+
     if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
     }
 
-    const auto len = path_fixed.length();
     vector<string> result;
+    const auto len = path_fixed.length();
 
     for (const auto& fname : fnames) {
-        auto add = false;
+        bool add = false;
+
         if (fname.compare(0, len, path_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
             if (ext.empty() || strex(fname).getFileExtension() == ext) {
                 add = true;
             }
         }
-        if (add && std::find(result.begin(), result.end(), fname) == result.end()) {
+
+        if (add && std::ranges::find(result, fname) == result.end()) {
             result.push_back(fname);
         }
     }
+
     return result;
 }
 

@@ -108,7 +108,7 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
     FO_RUNTIME_ASSERT(item->GetContainerId() == GetId());
 
     vec_add_unique_value(_innerItems, refcount_ptr {item});
-    std::stable_sort(_innerItems.begin(), _innerItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
+    std::ranges::stable_sort(_innerItems, [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }

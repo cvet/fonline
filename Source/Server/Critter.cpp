@@ -183,7 +183,7 @@ void Critter::AttachToCritter(Critter* cr)
         SendAndBroadcast_Moving();
     }
 
-    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    const auto it = std::ranges::find(cr->AttachedCritters, this);
     FO_RUNTIME_ASSERT(it == cr->AttachedCritters.end());
     cr->AttachedCritters.emplace_back(this);
 
@@ -204,7 +204,7 @@ void Critter::DetachFromCritter()
     auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    const auto it = std::ranges::find(cr->AttachedCritters, this);
     FO_RUNTIME_ASSERT(it != cr->AttachedCritters.end());
     cr->AttachedCritters.erase(it);
 
@@ -295,7 +295,7 @@ void Critter::ClearVisible()
     FO_STACK_TRACE_ENTRY();
 
     for (auto* cr : VisCr) {
-        auto it_ = std::find(cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this);
+        auto it_ = std::ranges::find(cr->VisCrSelf, this);
         if (it_ != cr->VisCrSelf.end()) {
             cr->VisCrSelf.erase(it_);
             cr->VisCrSelfMap.erase(GetId());
@@ -307,7 +307,7 @@ void Critter::ClearVisible()
     VisCrMap.clear();
 
     for (auto* cr : VisCrSelf) {
-        auto it_ = std::find(cr->VisCr.begin(), cr->VisCr.end(), this);
+        auto it_ = std::ranges::find(cr->VisCr, this);
         if (it_ != cr->VisCr.end()) {
             cr->VisCr.erase(it_);
             cr->VisCrMap.erase(GetId());
@@ -398,11 +398,11 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
     FO_RUNTIME_ASSERT(it_map2 != del_cr->VisCrSelfMap.end());
     del_cr->VisCrSelfMap.erase(it_map2);
 
-    const auto it = std::find(VisCr.begin(), VisCr.end(), del_cr);
+    const auto it = std::ranges::find(VisCr, del_cr);
     FO_RUNTIME_ASSERT(it != VisCr.end());
     VisCr.erase(it);
 
-    const auto it2 = std::find(del_cr->VisCrSelf.begin(), del_cr->VisCrSelf.end(), this);
+    const auto it2 = std::ranges::find(del_cr->VisCrSelf, this);
     FO_RUNTIME_ASSERT(it2 != del_cr->VisCrSelf.end());
     del_cr->VisCrSelf.erase(it2);
 

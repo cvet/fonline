@@ -286,7 +286,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [&hex](const CritterView* cr1, const CritterView* cr2) {
+    std::ranges::sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
         const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());

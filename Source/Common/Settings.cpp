@@ -538,7 +538,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
         if (auto parent = get_map_value("Parent"); !parent.empty()) {
             const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent; };
-            const auto it = std::find_if(_subConfigs.begin(), _subConfigs.end(), find_predicate);
+            const auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
             if (it == _subConfigs.end()) {
                 throw SettingsException("Parent sub config not found", parent);
@@ -620,7 +620,7 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
     }
 
     const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
-    const auto it = std::find_if(_subConfigs.begin(), _subConfigs.end(), find_predicate);
+    const auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
     if (it == _subConfigs.end()) {
         throw SettingsException("Sub config not found", name);

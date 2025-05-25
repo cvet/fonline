@@ -555,7 +555,7 @@ Application::Application(int argc, char** argv, AppInitFlags flags) :
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return strex(sdl_backend).startsWith(entry); });
+        _mouseCanUseGlobalState = std::ranges::any_of(global_mouse_whitelist, [&sdl_backend](auto& entry) { return strex(sdl_backend).startsWith(entry); });
 
         if (Settings.ImGuiColorStyle == "Dark") {
             ImGui::StyleColorsDark();

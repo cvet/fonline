@@ -302,7 +302,7 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lo
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+    std::ranges::sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
         const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
         const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
 
@@ -323,7 +323,7 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
         }
     }
 
-    std::sort(result.begin(), result.end(), [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+    std::ranges::sort(result, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
         const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
         const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
 
@@ -381,7 +381,7 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
 
     const auto& critters = self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup;
 
-    return std::find(critters.begin(), critters.end(), cr) != critters.end();
+    return std::ranges::find(critters, cr) != critters.end();
 }
 
 ///@ ExportMethod
@@ -396,7 +396,7 @@ FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
     }
 
     const auto& critters = self->GetMapId() ? self->VisCr : *self->GlobalMapGroup;
-    return std::find(critters.begin(), critters.end(), cr) != critters.end();
+    return std::ranges::find(critters, cr) != critters.end();
 }
 
 ///@ ExportMethod

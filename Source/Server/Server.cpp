@@ -968,7 +968,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
         unlogined_player->MarkAsDestroyed();
@@ -1353,16 +1353,16 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto wanted_access = -1;
-        if (name_access == "client" && std::find(Settings.AccessClient.begin(), Settings.AccessClient.end(), pasw_access) != Settings.AccessClient.end()) {
+        if (name_access == "client" && std::ranges::find(Settings.AccessClient, pasw_access) != Settings.AccessClient.end()) {
             wanted_access = ACCESS_CLIENT;
         }
-        else if (name_access == "tester" && std::find(Settings.AccessTester.begin(), Settings.AccessTester.end(), pasw_access) != Settings.AccessTester.end()) {
+        else if (name_access == "tester" && std::ranges::find(Settings.AccessTester, pasw_access) != Settings.AccessTester.end()) {
             wanted_access = ACCESS_TESTER;
         }
-        else if (name_access == "moder" && std::find(Settings.AccessModer.begin(), Settings.AccessModer.end(), pasw_access) != Settings.AccessModer.end()) {
+        else if (name_access == "moder" && std::ranges::find(Settings.AccessModer, pasw_access) != Settings.AccessModer.end()) {
             wanted_access = ACCESS_MODER;
         }
-        else if (name_access == "admin" && std::find(Settings.AccessAdmin.begin(), Settings.AccessAdmin.end(), pasw_access) != Settings.AccessAdmin.end()) {
+        else if (name_access == "admin" && std::ranges::find(Settings.AccessAdmin, pasw_access) != Settings.AccessAdmin.end()) {
             wanted_access = ACCESS_ADMIN;
         }
 
@@ -1518,7 +1518,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         SetLogCallback("LogToClients", nullptr);
 
-        auto it = std::find(_logClients.begin(), _logClients.end(), player);
+        auto it = std::ranges::find(_logClients, player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
             logcb("Detached");
@@ -2275,7 +2275,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             return;
         }
 
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -2291,7 +2291,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = true;
 
         // Kick previous
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -4011,7 +4011,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     }
 
     // Find dialog
-    it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
+    it_d = std::ranges::find_if(dialogs, [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
 
     if (it_d == dialogs->end()) {
         cl->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
@@ -4243,7 +4243,7 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Find dialog
-    const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
+    const auto it_d = std::ranges::find_if(dialogs, [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
 
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);

@@ -308,7 +308,7 @@ auto strex::erase(char what) -> strex&
 
     ownStorage();
 
-    _s.erase(std::remove(_s.begin(), _s.end(), what), _s.end());
+    _s.erase(std::ranges::remove(_s, what), _s.end());
 
     _sv = _s;
 
@@ -348,7 +348,7 @@ auto strex::replace(char from, char to) -> strex&
 
     ownStorage();
 
-    std::replace(_s.begin(), _s.end(), from, to);
+    std::ranges::replace(_s, from, to);
 
     return *this;
 }
@@ -389,7 +389,7 @@ auto strex::lower() -> strex&
 
     ownStorage();
 
-    std::transform(_s.begin(), _s.end(), _s.begin(), tolower);
+    std::ranges::transform(_s, _s.begin(), tolower);
 
     return *this;
 }
@@ -400,7 +400,7 @@ auto strex::upper() -> strex&
 
     ownStorage();
 
-    std::transform(_s.begin(), _s.end(), _s.begin(), toupper);
+    std::ranges::transform(_s, _s.begin(), toupper);
 
     return *this;
 }
@@ -952,7 +952,7 @@ auto strex::normalizePathSlashes() -> strex&
 
     ownStorage();
 
-    std::replace(_s.begin(), _s.end(), '\\', '/');
+    std::ranges::replace(_s, '\\', '/');
 
     return *this;
 }

@@ -175,7 +175,7 @@ void DialogBaker::BakeFiles(FileCollection files)
                 continue;
             }
 
-            const auto it = std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == lang_pack; });
+            const auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == lang_pack; });
 
             if (it == lang_packs.end()) {
                 auto dialogs_text_pack = map<string, TextPack>();

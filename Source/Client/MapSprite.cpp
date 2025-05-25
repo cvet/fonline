@@ -453,7 +453,7 @@ void MapSpriteList::Sort()
         mspr = mspr->ChainChild;
     }
 
-    std::sort(_sortSprites.begin(), _sortSprites.end(), [](const MapSprite* mspr1, const MapSprite* mspr2) {
+    std::ranges::sort(_sortSprites, [](const MapSprite* mspr1, const MapSprite* mspr2) {
         if (mspr1->DrawOrderPos == mspr2->DrawOrderPos) {
             return mspr1->TreeIndex < mspr2->TreeIndex;
         }

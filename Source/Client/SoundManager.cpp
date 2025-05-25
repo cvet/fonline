@@ -619,7 +619,7 @@ void SoundManager::StopSounds()
     }
 
     App->Audio.LockDevice();
-    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return !s->IsMusic; }), _playingSounds.end());
+    _playingSounds.erase(std::ranges::remove_if(_playingSounds, [](auto&& s) { return !s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }
 
@@ -632,7 +632,7 @@ void SoundManager::StopMusic()
     }
 
     App->Audio.LockDevice();
-    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
+    _playingSounds.erase(std::ranges::remove_if(_playingSounds, [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }
 

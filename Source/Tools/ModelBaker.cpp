@@ -438,7 +438,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         mesh->Vertices.resize(result_vertices);
 
         mesh->Indices.resize(indices.size());
-        std::transform(indices.begin(), indices.end(), mesh->Indices.begin(), [](const uint32_t index) { return static_cast<vindex_t>(index); });
+        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return static_cast<vindex_t>(index); });
 
 #else
         for (size_t i = 0; i < mesh->Vertices.size(); i++) {

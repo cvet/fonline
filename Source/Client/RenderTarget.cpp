@@ -212,7 +212,7 @@ void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
+    const auto it = std::ranges::find_if(_rtAll, [rt](auto&& check_rt) { return check_rt.get() == rt; });
     FO_RUNTIME_ASSERT(it != _rtAll.end());
     _rtAll.erase(it);
 }

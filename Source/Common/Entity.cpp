@@ -125,17 +125,17 @@ void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackD
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
+    if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
         throw GenericException("Highest callback already added");
     }
 
-    if (callback.Priority <= EventPriority::Lowest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
+    if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
         throw GenericException("Lowest callback already added");
     }
 
     callbacks.emplace_back(std::move(callback));
 
-    std::stable_sort(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
+    std::ranges::stable_sort(callbacks, [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
         // From highest to lowest
         return cb1.Priority > cb2.Priority;
     });
@@ -147,7 +147,7 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* 
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (const auto it = std::find_if(callbacks.begin(), callbacks.end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
+    if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
         callbacks.erase(it);
     }
 }

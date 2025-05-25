@@ -331,7 +331,7 @@ auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
+    const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
     return it != _globalMapCritters.end() ? it->get() : nullptr;
 }
 
@@ -895,7 +895,7 @@ void FOClient::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
-        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
+        const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
 
         if (it != _globalMapCritters.end()) {
             BreakIntoDebugger();
@@ -1030,7 +1030,7 @@ void FOClient::Net_OnRemoveCritter()
         }
     }
     else {
-        const auto it = std::find_if(_globalMapCritters.begin(), _globalMapCritters.end(), [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
+        const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
 
         if (it == _globalMapCritters.end()) {
             BreakIntoDebugger();

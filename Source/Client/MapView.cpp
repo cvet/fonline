@@ -470,8 +470,8 @@ void MapView::AddItemToField(ItemHexView* item)
     else {
         field.Items.emplace_back(item);
 
-        std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
-        std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
+        std::ranges::sort(field.Items, [](const auto* i1, const auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
+        std::ranges::sort(field.Items, [](const auto* i1, const auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
 
         RecacheHexFlags(field);
 
@@ -500,18 +500,18 @@ void MapView::RemoveItemFromField(ItemHexView* item)
 
     if (item->GetIsTile()) {
         if (item->GetIsRoofTile()) {
-            const auto it = std::find(field.RoofTiles.begin(), field.RoofTiles.end(), item);
+            const auto it = std::ranges::find(field.RoofTiles, item);
             FO_RUNTIME_ASSERT(it != field.RoofTiles.end());
             field.RoofTiles.erase(it);
         }
         else {
-            const auto it = std::find(field.GroundTiles.begin(), field.GroundTiles.end(), item);
+            const auto it = std::ranges::find(field.GroundTiles, item);
             FO_RUNTIME_ASSERT(it != field.GroundTiles.end());
             field.GroundTiles.erase(it);
         }
     }
     else {
-        const auto it = std::find(field.Items.begin(), field.Items.end(), item);
+        const auto it = std::ranges::find(field.Items, item);
         FO_RUNTIME_ASSERT(it != field.Items.end());
         field.Items.erase(it);
 
@@ -520,7 +520,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hex, _mapSize, [this, item](mpos block_hex) {
                 auto& block_field = _hexField->GetCellForWriting(block_hex);
-                const auto it_block = std::find(block_field.BlockLineItems.begin(), block_field.BlockLineItems.end(), item);
+                const auto it_block = std::ranges::find(block_field.BlockLineItems, item);
                 FO_RUNTIME_ASSERT(it_block != block_field.BlockLineItems.end());
                 block_field.BlockLineItems.erase(it_block);
                 RecacheHexFlags(block_field);
@@ -679,29 +679,29 @@ void MapView::DestroyItem(ItemHexView* item)
     }
 
     {
-        const auto it = std::find(_allItems.begin(), _allItems.end(), item);
+        const auto it = std::ranges::find(_allItems, item);
         FO_RUNTIME_ASSERT(it != _allItems.end());
         _allItems.erase(it);
     }
 
     if (item->GetStatic()) {
-        const auto it = std::find(_staticItems.begin(), _staticItems.end(), item);
+        const auto it = std::ranges::find(_staticItems, item);
         FO_RUNTIME_ASSERT(it != _staticItems.end());
         _staticItems.erase(it);
     }
     else {
-        const auto it = std::find(_dynamicItems.begin(), _dynamicItems.end(), item);
+        const auto it = std::ranges::find(_dynamicItems, item);
         FO_RUNTIME_ASSERT(it != _dynamicItems.end());
         _dynamicItems.erase(it);
     }
 
     if (!item->GetIsTile()) {
-        const auto it = std::find(_nonTileItems.begin(), _nonTileItems.end(), item);
+        const auto it = std::ranges::find(_nonTileItems, item);
         FO_RUNTIME_ASSERT(it != _nonTileItems.end());
         _nonTileItems.erase(it);
     }
 
-    if (const auto it = std::find(_processingItems.begin(), _processingItems.end(), item); it != _processingItems.end()) {
+    if (const auto it = std::ranges::find(_processingItems, item); it != _processingItems.end()) {
         _processingItems.erase(it);
     }
 
@@ -896,7 +896,7 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     }
 
     pattern->FinishCallback = [this, ppattern = pattern.get()]() {
-        const auto it = std::find_if(_spritePatterns.begin(), _spritePatterns.end(), [ppattern](auto&& p) { return p.get() == ppattern; });
+        const auto it = std::ranges::find_if(_spritePatterns, [ppattern](auto&& p) { return p.get() == ppattern; });
         FO_RUNTIME_ASSERT(it != _spritePatterns.end());
         it->get()->Sprites.clear();
         _spritePatterns.erase(it);
@@ -2825,7 +2825,7 @@ void MapView::PrepareFogToDraw()
 
         CritterHexView* chosen;
 
-        if (const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto&& cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
+        if (const auto it = std::ranges::find_if(_critters, [](auto&& cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
             chosen = it->get();
         }
         else {
@@ -3609,11 +3609,11 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
                 auto& field = _hexField->GetCellForWriting(_mapSize.FromRawPos(multihex_raw_hex));
 
                 if (set) {
-                    FO_RUNTIME_ASSERT(std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr) == field.MultihexCritters.end());
+                    FO_RUNTIME_ASSERT(std::ranges::find(field.MultihexCritters,, cr) == field.MultihexCritters.end());
                     field.MultihexCritters.emplace_back(cr);
                 }
                 else {
-                    const auto it = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
+                    const auto it = std::ranges::find(field.MultihexCritters, cr);
                     FO_RUNTIME_ASSERT(it != field.MultihexCritters.end());
                     field.MultihexCritters.erase(it);
                 }
@@ -3732,8 +3732,8 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool
             return nullptr;
         }
         if (pix_item_egg.size() > 1) {
-            std::sort(pix_item_egg.begin(), pix_item_egg.end(), Sorter::ByTreeIndex);
-            std::sort(pix_item_egg.begin(), pix_item_egg.end(), Sorter::ByTransparent);
+            std::ranges::sort(pix_item_egg, Sorter::ByTreeIndex);
+            std::ranges::sort(pix_item_egg, Sorter::ByTransparent);
         }
         item_egg = true;
         return pix_item_egg[0];
@@ -3741,8 +3741,8 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool
 
     // Visible items
     if (pix_item.size() > 1) {
-        std::sort(pix_item.begin(), pix_item.end(), Sorter::ByTreeIndex);
-        std::sort(pix_item.begin(), pix_item.end(), Sorter::ByTransparent);
+        std::ranges::sort(pix_item, Sorter::ByTreeIndex);
+        std::ranges::sort(pix_item, Sorter::ByTransparent);
     }
 
     item_egg = false;
@@ -3794,7 +3794,7 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int e
     }
 
     if (critters.size() > 1) {
-        std::sort(critters.begin(), critters.end(), [](auto* cr1, auto* cr2) { return cr1->GetSprite()->TreeIndex > cr2->GetSprite()->TreeIndex; });
+        std::ranges::sort(critters, [](auto* cr1, auto* cr2) { return cr1->GetSprite()->TreeIndex > cr2->GetSprite()->TreeIndex; });
     }
     return critters.front();
 }
