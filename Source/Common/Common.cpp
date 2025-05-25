@@ -605,14 +605,31 @@ extern void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
+struct LocalTimeData
+{
+    LocalTimeData()
+    {
+        const auto now = std::chrono::system_clock::now();
+        const auto t = std::chrono::system_clock::to_time_t(now);
+        std::tm ltm = *std::localtime(&t);
+        const std::time_t lt = std::mktime(&ltm);
+        std::tm gtm = *std::gmtime(&lt);
+        const std::time_t gt = std::mktime(&gtm);
+        const int64 offset = lt - gt;
+        Offset = std::chrono::seconds(offset);
+    }
+
+    std::chrono::system_clock::duration Offset {};
+};
+FO_GLOBAL_DATA(LocalTimeData, LocalTime);
+
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 {
     FO_STACK_TRACE_ENTRY();
 
     time_desc_t result;
 
-    const auto zoned_time = std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now());
-    const auto now_sys = std::chrono::system_clock::time_point(local ? zoned_time.get_local_time().time_since_epoch() : zoned_time.get_sys_time().time_since_epoch());
+    const auto now_sys = std::chrono::system_clock::now() + (local ? LocalTime->Offset : std::chrono::seconds(0));
     const auto time_sys = now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value());
 
     const auto ymd_days = std::chrono::floor<std::chrono::days>(time_sys);
@@ -662,8 +679,7 @@ auto make_time_offset(int year, int month, int day, int hour, int minute, int se
     const auto days_sys = std::chrono::sys_days {ymd};
     const auto time_of_day = std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond};
     const auto target_sys = std::chrono::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day};
-    const auto zoned_time = std::chrono::zoned_time(std::chrono::current_zone(), std::chrono::system_clock::now());
-    const auto now_sys = std::chrono::system_clock::time_point(local ? zoned_time.get_local_time().time_since_epoch() : zoned_time.get_sys_time().time_since_epoch());
+    const auto now_sys = std::chrono::system_clock::now() + (local ? LocalTime->Offset : std::chrono::seconds(0));
     const auto delta = target_sys - now_sys;
 
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
