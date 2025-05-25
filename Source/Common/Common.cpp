@@ -90,7 +90,7 @@ static StackTraceData* CrashStackTrace;
 extern void InstallSystemExceptionHandler()
 {
     FO_STACK_TRACE_ENTRY();
-    
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     if (!IsRunInDebugger()) {
         [[maybe_unused]] static backward::SignalHandling sh;
