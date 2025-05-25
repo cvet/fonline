@@ -609,6 +609,8 @@ struct LocalTimeData
 {
     LocalTimeData()
     {
+        FO_STACK_TRACE_ENTRY();
+
         const auto now = std::chrono::system_clock::now();
         const auto t = std::chrono::system_clock::to_time_t(now);
         std::tm ltm = *std::localtime(&t);

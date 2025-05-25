@@ -47,6 +47,8 @@ struct LogData
 {
     LogData()
     {
+        FO_STACK_TRACE_ENTRY();
+
         MainThreadId = std::this_thread::get_id();
 
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
