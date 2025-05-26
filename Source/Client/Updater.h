@@ -61,11 +61,11 @@ public:
 private:
     struct UpdateFile
     {
-        uint Index {};
+        uint32 Index {};
         string Name;
         size_t Size {};
         size_t RemaningSize {};
-        uint Hash {};
+        uint32 Hash {};
     };
 
     [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
@@ -91,7 +91,7 @@ private:
     vector<string> _messages {};
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
-    uint _filesWholeSize {};
+    uint32 _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     vector<uint8> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};

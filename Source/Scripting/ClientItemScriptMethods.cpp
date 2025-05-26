@@ -46,7 +46,7 @@ FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint count)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, uint32 count)
 {
     auto cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);

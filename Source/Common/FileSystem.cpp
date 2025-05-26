@@ -136,7 +136,7 @@ File::File(string_view path, size_t size, uint64 write_time, const DataSource* d
 }
 
 File::File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
-    FileHeader(path, static_cast<uint>(buf.size()), write_time, ds)
+    FileHeader(path, buf.size(), write_time, ds)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -285,7 +285,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
         if (_buf[i] == static_cast<uint8>(fragment[0])) {
             bool not_match = false;
 
-            for (uint j = 1; j < fragment.size(); j++) {
+            for (size_t j = 1; j < fragment.size(); j++) {
                 if (_buf[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
                     not_match = true;
                     break;
@@ -326,10 +326,14 @@ auto FileReader::GetStrNT() -> string
         throw FileSystemExeption("Invalid read pos");
     }
 
-    uint len = 0;
+    uint32 len = 0;
 
     while (*(_buf.data() + _curPos + len) != 0) {
         len++;
+
+        if (_curPos + len > _buf.size()) {
+            throw FileSystemExeption("Invalid null terminated string length");
+        }
     }
 
     string str(reinterpret_cast<const char*>(_buf.data() + _curPos), len);
@@ -381,15 +385,15 @@ auto FileReader::GetLEUShort() -> uint16
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt() -> uint
+auto FileReader::GetBEUInt() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint) > _buf.size()) {
+    if (_curPos + sizeof(uint32) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint res = 0;
+    uint32 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 3; i >= 0; i--) {
@@ -400,15 +404,15 @@ auto FileReader::GetBEUInt() -> uint
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt() -> uint
+auto FileReader::GetLEUInt() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint) > _buf.size()) {
+    if (_curPos + sizeof(uint32) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint res = 0;
+    uint32 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 0; i <= 3; i++) {

@@ -86,11 +86,11 @@ void Player::Send_LoginSuccess()
     FO_STACK_TRACE_ENTRY();
 
     vector<const uint8*>* global_vars_data = nullptr;
-    vector<uint>* global_vars_data_sizes = nullptr;
+    vector<uint32>* global_vars_data_sizes = nullptr;
     _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
     vector<const uint8*>* player_data = nullptr;
-    vector<uint>* player_data_sizes = nullptr;
+    vector<uint32>* player_data_sizes = nullptr;
     StoreData(true, &player_data, &player_data_sizes);
 
     auto out_buf = _connection->WriteMsg(NetMessage::LoginSuccess);
@@ -108,7 +108,7 @@ void Player::Send_AddCritter(const Critter* cr)
     const auto is_chosen = cr == GetControlledCritter();
 
     vector<const uint8*>* cr_data = nullptr;
-    vector<uint>* cr_data_sizes = nullptr;
+    vector<uint32>* cr_data_sizes = nullptr;
     cr->StoreData(is_chosen, &cr_data, &cr_data_sizes);
 
     const auto& inv_items = cr->GetConstInvItems();
@@ -142,7 +142,7 @@ void Player::Send_AddCritter(const Critter* cr)
 
     SendInnerEntities(*out_buf, cr, is_chosen);
 
-    out_buf->Write(static_cast<uint>(send_items.size()));
+    out_buf->Write(static_cast<uint32>(send_items.size()));
 
     for (const auto* item : send_items) {
         SendItem(*out_buf, item, is_chosen, true, true);
@@ -192,9 +192,9 @@ void Player::Send_LoadMap(const Map* map)
     }
 
     vector<const uint8*>* map_data = nullptr;
-    vector<uint>* map_data_sizes = nullptr;
+    vector<uint32>* map_data_sizes = nullptr;
     vector<const uint8*>* loc_data = nullptr;
-    vector<uint>* loc_data_sizes = nullptr;
+    vector<uint32>* loc_data_sizes = nullptr;
 
     if (map != nullptr) {
         map->StoreData(false, &map_data, &map_data_sizes);
@@ -234,7 +234,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 
     auto out_buf = _connection->WriteMsg(NetMessage::Property);
 
-    out_buf->Write(static_cast<uint>(prop_raw_data.size()));
+    out_buf->Write(static_cast<uint32>(prop_raw_data.size()));
     out_buf->Write(type);
 
     switch (type) {
@@ -351,7 +351,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
         SendItem(*out_buf, moved_item, is_chosen, false, false);
     }
 
-    out_buf->Write(static_cast<uint>(send_items.size()));
+    out_buf->Write(static_cast<uint32>(send_items.size()));
 
     for (const auto* item : send_items) {
         SendItem(*out_buf, item, false, true, true);
@@ -485,7 +485,7 @@ void Player::Send_Talk()
         for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
             out_buf->Write(answer.TextId);
         }
-        out_buf->Write(talk_time.to_ms<uint>());
+        out_buf->Write(talk_time.to_ms<uint32>());
     }
 }
 
@@ -569,7 +569,7 @@ void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_in
     auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
 
     out_buf->Write(string(context_param));
-    out_buf->Write(static_cast<uint>(items.size()));
+    out_buf->Write(static_cast<uint32>(items.size()));
 
     for (const auto* item : items) {
         SendItem(*out_buf, item, owned, false, with_inner_entities);
@@ -597,7 +597,7 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
     FO_STACK_TRACE_ENTRY();
 
     vector<const uint8*>* data = nullptr;
-    vector<uint>* data_sizes = nullptr;
+    vector<uint32>* data_sizes = nullptr;
 
     entity->StoreData(owned, &data, &data_sizes);
 
@@ -640,7 +640,7 @@ void Player::SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool 
     }
 
     vector<const uint8*>* item_data = nullptr;
-    vector<uint>* item_data_sizes = nullptr;
+    vector<uint32>* item_data_sizes = nullptr;
     item->StoreData(owned, &item_data, &item_data_sizes);
     out_buf.WritePropsData(item_data, item_data_sizes);
 
@@ -671,18 +671,18 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
         const auto entry_access = std::get<1>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
 
         if (entry_access == EntityHolderEntryAccess::Private || (entry_access == EntityHolderEntryAccess::Protected && !owned)) {
-            out_buf.Write(static_cast<uint>(0));
+            out_buf.Write(static_cast<uint32>(0));
             continue;
         }
 
-        out_buf.Write(static_cast<uint>(entities.size()));
+        out_buf.Write(static_cast<uint32>(entities.size()));
 
         for (const auto& entity : entities) {
             const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity.get());
             FO_RUNTIME_ASSERT(custom_entity);
 
             vector<const uint8*>* data = nullptr;
-            vector<uint>* data_sizes = nullptr;
+            vector<uint32>* data_sizes = nullptr;
 
             custom_entity->StoreData(owned, &data, &data_sizes);
 
@@ -708,8 +708,8 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    out_buf.Write(static_cast<uint>(std::ceil(cr->Moving.WholeTime)));
-    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint>());
+    out_buf.Write(static_cast<uint32>(std::ceil(cr->Moving.WholeTime)));
+    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint32>());
     out_buf.Write(cr->Moving.Speed);
     out_buf.Write(cr->Moving.StartHex);
     out_buf.Write(static_cast<uint16>(cr->Moving.Steps.size()));

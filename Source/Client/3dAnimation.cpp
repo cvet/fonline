@@ -42,7 +42,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     FO_STACK_TRACE_ENTRY();
 
     string tmp;
-    uint len = 0;
+    uint32 len = 0;
 
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
@@ -55,11 +55,11 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 
     _bonesHierarchy.resize(len);
 
-    for (uint i = 0, j = len; i < j; i++) {
+    for (uint32 i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         _bonesHierarchy[i].resize(len);
 
-        for (uint k = 0, l = len; k < l; k++) {
+        for (uint32 k = 0, l = len; k < l; k++) {
             reader.ReadPtr(&len, sizeof(len));
             tmp.resize(len);
             reader.ReadPtr(tmp.data(), len);
@@ -70,7 +70,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     reader.ReadPtr(&len, sizeof(len));
     _boneOutputs.resize(len);
 
-    for (uint i = 0, j = len; i < j; i++) {
+    for (uint32 i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
@@ -94,7 +94,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     }
 }
 
-ModelAnimationController::ModelAnimationController(uint track_count)
+ModelAnimationController::ModelAnimationController(uint32 track_count)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -164,14 +164,14 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const noe
     return nullptr;
 }
 
-auto ModelAnimationController::GetTrackEnable(uint track) const noexcept -> bool
+auto ModelAnimationController::GetTrackEnable(uint32 track) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return _tracks[track].Enabled;
 }
 
-auto ModelAnimationController::GetTrackPosition(uint track) const noexcept -> float
+auto ModelAnimationController::GetTrackPosition(uint32 track) const noexcept -> float
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -185,7 +185,7 @@ auto ModelAnimationController::GetAnimationSetCount() const noexcept -> size_t
     return _sets->size();
 }
 
-void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
+void ModelAnimationController::SetTrackAnimationSet(uint32 track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -210,18 +210,18 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
     }
 }
 
-void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names)
+void ModelAnimationController::ResetBonesTransition(uint32 skip_track, const vector<hstring>& bone_names)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
-        for (uint i = 0, j = static_cast<uint>(_tracks.size()); i < j; i++) {
+        for (uint32 i = 0, j = static_cast<uint32>(_tracks.size()); i < j; i++) {
             if (i == skip_track) {
                 continue;
             }
 
-            for (uint k = 0, l = static_cast<uint>(_tracks[i].AnimOutput.size()); k < l; k++) {
+            for (uint32 k = 0, l = static_cast<uint32>(_tracks[i].AnimOutput.size()); k < l; k++) {
                 if (_tracks[i].AnimOutput[k] != nullptr && _tracks[i].AnimOutput[k]->BoneName == bone_name) {
                     _tracks[i].AnimOutput[k]->Valid[i] = false;
                     _tracks[i].AnimOutput[k] = nullptr;
@@ -242,35 +242,35 @@ void ModelAnimationController::Reset()
     }
 }
 
-void ModelAnimationController::AddEventEnable(uint track, bool enable, float start_time)
+void ModelAnimationController::AddEventEnable(uint32 track, bool enable, float start_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
-void ModelAnimationController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
+void ModelAnimationController::AddEventSpeed(uint32 track, float speed, float start_time, float smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
+void ModelAnimationController::AddEventWeight(uint32 track, float weight, float start_time, float smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Weight, weight, start_time, smooth_time});
 }
 
-void ModelAnimationController::SetTrackEnable(uint track, bool enable)
+void ModelAnimationController::SetTrackEnable(uint32 track, bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(uint track, float position)
+void ModelAnimationController::SetTrackPosition(uint32 track, float position)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -44,7 +44,7 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr uint NETMSG_SIGNATURE = 0x011E9422;
+    static constexpr uint32 NETMSG_SIGNATURE = 0x011E9422;
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -56,8 +56,8 @@ public:
     [[nodiscard]] auto GetData() noexcept -> const_span<uint8> { return {_bufData.data(), _bufEndPos}; }
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
-    static auto GenerateEncryptKey() -> uint;
-    void SetEncryptKey(uint seed);
+    static auto GenerateEncryptKey() -> uint32;
+    void SetEncryptKey(uint32 seed);
     virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);
 
@@ -103,7 +103,7 @@ public:
         requires(std::is_same_v<T, string_view> || std::is_same_v<T, string>)
     void Write(T value)
     {
-        const auto len = numeric_cast<uint>(value.length());
+        const auto len = numeric_cast<uint32>(value.length());
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -116,7 +116,7 @@ public:
         Push(&hash, sizeof(hash));
     }
 
-    void WritePropsData(vector<const uint8*>* props_data, const vector<uint>* props_data_sizes);
+    void WritePropsData(vector<const uint8*>* props_data, const vector<uint32>* props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -162,7 +162,7 @@ public:
     [[nodiscard]] auto Read() -> string
     {
         string result;
-        uint len = 0;
+        uint32 len = 0;
         Pop(&len, sizeof(len));
         result.resize(len);
         Pop(result.data(), len);

@@ -49,7 +49,7 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<int64>("int64");
     MapEnginePlainType<uint8>("uint8");
     MapEnginePlainType<uint16>("uint16");
-    MapEnginePlainType<uint>("uint");
+    MapEnginePlainType<uint32>("uint32");
     MapEnginePlainType<uint64>("uint64");
     MapEnginePlainType<float>("float");
     MapEnginePlainType<double>("double");
@@ -146,7 +146,7 @@ void ScriptSystem::InitModules()
     }
 }
 
-void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
+void ScriptSystem::HandleRemoteCall(uint32 rpc_num, Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 

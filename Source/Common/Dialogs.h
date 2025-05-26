@@ -73,7 +73,7 @@ struct DialogAnswerReq
 {
     uint8 Type {DR_NONE};
     uint8 Who {DR_WHO_NONE};
-    uint ParamIndex {};
+    uint32 ParamIndex {};
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};
@@ -85,16 +85,16 @@ struct DialogAnswerReq
 
 struct DialogAnswer
 {
-    uint Link {};
-    uint TextId {};
+    uint32 Link {};
+    uint32 TextId {};
     vector<DialogAnswerReq> Demands {};
     vector<DialogAnswerReq> Results {};
 };
 
 struct Dialog
 {
-    uint Id {};
-    uint TextId {};
+    uint32 Id {};
+    uint32 TextId {};
     vector<DialogAnswer> Answers {};
     bool NoShuffle {};
     hstring DlgScriptFuncName {};
@@ -117,7 +117,7 @@ struct TalkData
     mpos TalkHex {};
     hstring DialogPackId {};
     Dialog CurDialog {};
-    uint LastDialogId {};
+    uint32 LastDialogId {};
     nanotime StartTime {};
     timespan TalkTime {};
     bool Barter {};

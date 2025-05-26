@@ -117,11 +117,11 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
         // Hashes
         {
-            const auto hashes_count = reader.Read<uint>();
+            const auto hashes_count = reader.Read<uint32>();
             string str;
 
-            for (uint i = 0; i < hashes_count; i++) {
-                const auto str_len = reader.Read<uint>();
+            for (uint32 i = 0; i < hashes_count; i++) {
+                const auto str_len = reader.Read<uint32>();
                 str.resize(str_len);
                 reader.ReadPtr(str.data(), str.length());
                 const auto hstr = _engine->Hashes.ToHashedString(str);
@@ -131,11 +131,11 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
         // Protos
         {
-            const auto types_count = reader.Read<uint>();
+            const auto types_count = reader.Read<uint32>();
             vector<uint8> props_data;
 
-            for (uint i = 0; i < types_count; i++) {
-                const auto protos_count = reader.Read<uint>();
+            for (uint32 i = 0; i < types_count; i++) {
+                const auto protos_count = reader.Read<uint32>();
 
                 const auto type_name_len = reader.Read<uint16>();
                 const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
@@ -143,7 +143,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
                 FO_RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
 
-                for (uint j = 0; j < protos_count; j++) {
+                for (uint32 j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16>();
                     const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
                     const auto proto_id = _engine->Hashes.ToHashedString(proto_name);
@@ -160,7 +160,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                         proto->EnableComponent(component_name_hashed);
                     }
 
-                    const uint data_size = reader.Read<uint>();
+                    const uint32 data_size = reader.Read<uint32>();
                     props_data.resize(data_size);
                     reader.ReadPtr<uint8>(props_data.data(), data_size);
                     proto->GetPropertiesForEdit().RestoreAllData(props_data);

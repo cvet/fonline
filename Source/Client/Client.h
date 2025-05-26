@@ -82,7 +82,7 @@ struct VideoPlayback
 // Todo: fix static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
-enum class EffectType : uint
+enum class EffectType : uint32
 {
     None = 0,
     GenericSprite = 0x00000001,
@@ -127,9 +127,9 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int& ox, int& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool override;
 
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
@@ -152,13 +152,13 @@ public:
     void ScreenQuake(int noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
 
-    auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
-    void AnimFree(uint anim_id);
-    auto AnimGetSpr(uint anim_id) -> Sprite*;
+    auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32;
+    void AnimFree(uint32 anim_id);
+    auto AnimGetSpr(uint32 anim_id) -> Sprite*;
 
     void Connect(string_view login, string_view password, int reason);
     void Disconnect();
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint32 speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -239,15 +239,15 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*pass*/, uint& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*pass*/, uint32& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*fStateAnim*/, uint& /*fActionAnim*/, uint& /*fStateAnimEx*/, uint& /*fActionAnimEx*/, uint& /*flags*/);
+    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*fStateAnim*/, uint32& /*fActionAnim*/, uint32& /*fStateAnimEx*/, uint32& /*fActionAnimEx*/, uint32& /*flags*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenSizeChanged);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint /*dialogTime*/);
+    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint32 /*dialogTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
@@ -382,7 +382,7 @@ protected:
     refcount_ptr<CritterView> _chosen {};
 
     hstring _curMapLocPid {};
-    uint _curMapIndexInLoc {};
+    uint32 _curMapIndexInLoc {};
     bool _mapLoaded {};
 
     int _initNetReason {INIT_NET_REASON_NONE};
@@ -396,8 +396,8 @@ protected:
     vector<vector<uint8>> _tempPropertiesDataExt {};
     vector<vector<uint8>> _tempPropertiesDataCustomEntity {};
 
-    uint _ifaceAnimIndex {};
-    unordered_map<uint, unique_ptr<IfaceAnim>> _ifaceAnimations {};
+    uint32 _ifaceAnimIndex {};
+    unordered_map<uint32, unique_ptr<IfaceAnim>> _ifaceAnimations {};
     unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 
     vector<ScreenFadingData> _screenFadingEffects {};

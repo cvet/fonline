@@ -74,7 +74,7 @@ private:
     fpos _effStepOffset {};
     ipos _effStartOffset {};
     fpos _effCurOffset {};
-    uint _effDist {};
+    uint32 _effDist {};
     nanotime _effUpdateLastTime {};
     uint8 _effDir {};
     vector<mpos> _effSteps {};

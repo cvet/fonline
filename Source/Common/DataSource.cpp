@@ -509,7 +509,7 @@ auto FalloutDat::ReadTree() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint version = 0;
+    uint32 version = 0;
 
     if (!_datFile.SetReadPos(-12, DiskFileSeek::End)) {
         return false;
@@ -524,7 +524,7 @@ auto FalloutDat::ReadTree() -> bool
             return false;
         }
 
-        uint tree_size = 0;
+        uint32 tree_size = 0;
 
         if (!_datFile.Read(&tree_size, 4)) {
             return false;
@@ -535,7 +535,7 @@ auto FalloutDat::ReadTree() -> bool
             return false;
         }
 
-        uint files_total = 0;
+        uint32 files_total = 0;
 
         if (!_datFile.Read(&files_total, 4)) {
             return false;
@@ -554,9 +554,9 @@ auto FalloutDat::ReadTree() -> bool
         const auto* end_ptr = _memTree.get() + tree_size;
 
         while (ptr < end_ptr) {
-            uint fnsz = 0;
+            uint32 fnsz = 0;
             MemCopy(&fnsz, ptr, sizeof(fnsz));
-            uint type = 0;
+            uint32 type = 0;
             MemCopy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
@@ -581,12 +581,12 @@ auto FalloutDat::ReadTree() -> bool
         return false;
     }
 
-    uint tree_size = 0;
+    uint32 tree_size = 0;
     if (!_datFile.Read(&tree_size, 4)) {
         return false;
     }
 
-    uint dat_size = 0;
+    uint32 dat_size = 0;
     if (!_datFile.Read(&dat_size, 4)) {
         return false;
     }
@@ -596,7 +596,7 @@ auto FalloutDat::ReadTree() -> bool
         return false;
     }
 
-    uint dir_count = 0;
+    uint32 dir_count = 0;
     if (!_datFile.Read(&dir_count, 4)) {
         return false;
     }
@@ -616,7 +616,7 @@ auto FalloutDat::ReadTree() -> bool
         return false;
     }
 
-    uint files_total = 0;
+    uint32 files_total = 0;
     if (!_datFile.Read(&files_total, 4)) {
         return false;
     }
@@ -633,7 +633,7 @@ auto FalloutDat::ReadTree() -> bool
     const auto* end_ptr = _memTree.get() + tree_size;
 
     while (ptr < end_ptr) {
-        uint name_len = 0;
+        uint32 name_len = 0;
         MemCopy(&name_len, ptr, 4);
 
         if (ptr + 4 + name_len > end_ptr) {
@@ -669,7 +669,7 @@ auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_tim
         return false;
     }
 
-    uint real_size = 0;
+    uint32 real_size = 0;
     MemCopy(&real_size, it->second + 1, sizeof(real_size));
 
     size = real_size;
@@ -690,9 +690,9 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     const auto* ptr = it->second;
     uint8 type = 0;
     MemCopy(&type, ptr, sizeof(type));
-    uint real_size = 0;
+    uint32 real_size = 0;
     MemCopy(&real_size, ptr + 1, sizeof(real_size));
-    uint packed_size = 0;
+    uint32 packed_size = 0;
     MemCopy(&packed_size, ptr + 5, sizeof(packed_size));
     int offset = 0;
     MemCopy(&offset, ptr + 9, sizeof(offset));
@@ -736,7 +736,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 stream.next_in = _readBuf.data();
-                const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
+                const auto len = std::min(left, static_cast<uint32>(_readBuf.size()));
 
                 if (!_datFile.Read(_readBuf.data(), len)) {
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
@@ -827,8 +827,8 @@ ZipFile::ZipFile(string_view fname)
         struct MemStream
         {
             const volatile uint8* Buf;
-            uint Length;
-            uint Pos;
+            uint32 Length;
+            uint32 Pos;
         };
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
@@ -847,8 +847,8 @@ ZipFile::ZipFile(string_view fname)
                 }
 
                 auto* mem_stream = SafeAlloc::MakeRaw<MemStream>();
-                mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint);
-                mem_stream->Length = *reinterpret_cast<volatile const uint*>(EMBEDDED_RESOURCES);
+                mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint32);
+                mem_stream->Length = *reinterpret_cast<volatile const uint32*>(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
@@ -859,7 +859,7 @@ ZipFile::ZipFile(string_view fname)
             for (size_t i = 0; i < size; i++) {
                 static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
             }
-            mem_stream->Pos += static_cast<uint>(size);
+            mem_stream->Pos += static_cast<uint32>(size);
             return size;
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
@@ -871,13 +871,13 @@ ZipFile::ZipFile(string_view fname)
             auto* mem_stream = static_cast<MemStream*>(stream);
             switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                mem_stream->Pos = static_cast<uint>(offset);
+                mem_stream->Pos = static_cast<uint32>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                mem_stream->Pos += static_cast<uint>(offset);
+                mem_stream->Pos += static_cast<uint32>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                mem_stream->Pos = mem_stream->Length + static_cast<uint>(offset);
+                mem_stream->Pos = mem_stream->Length + static_cast<uint32>(offset);
                 break;
             default:
                 return -1;

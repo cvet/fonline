@@ -109,7 +109,7 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
-auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
+auto ItemManager::CreateItem(hstring pid, uint32 count, const Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -186,7 +186,7 @@ void ItemManager::DestroyItem(Item* item)
     _engine->EntityMngr.UnregisterItem(item, true);
 }
 
-auto ItemManager::SplitItem(Item* item, uint count) -> Item*
+auto ItemManager::SplitItem(Item* item, uint32 count) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -203,7 +203,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     return new_item;
 }
 
-auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
+auto ItemManager::MoveItem(Item* item, uint32 count, Critter* to_cr) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -223,7 +223,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Critter* to_cr) -> Item*
     }
 }
 
-auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> Item*
+auto ItemManager::MoveItem(Item* item, uint32 count, Map* to_map, mpos to_hex) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -245,7 +245,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Map* to_map, mpos to_hex) -> 
     }
 }
 
-auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, const any_t& stack_id) -> Item*
+auto ItemManager::MoveItem(Item* item, uint32 count, Item* to_cont, const any_t& stack_id) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -265,7 +265,7 @@ auto ItemManager::MoveItem(Item* item, uint count, Item* to_cont, const any_t& s
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const any_t& stack_id) -> Item*
+auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint32 count, const any_t& stack_id) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -283,7 +283,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const an
         else {
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
-            for (uint i = 0; i < count; ++i) {
+            for (uint32 i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
                 item = cont->AddItemToContainer(item, stack_id);
                 result = item;
@@ -299,7 +299,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const an
         else {
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
-            for (uint i = 0; i < count; ++i) {
+            for (uint32 i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
                 item = cont->AddItemToContainer(item, stack_id);
                 result = item;
@@ -310,7 +310,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, const an
     return result;
 }
 
-auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
+auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint32 count) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -333,7 +333,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
         else {
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
-            for (uint i = 0; i < count; ++i) {
+            for (uint32 i = 0; i < count; ++i) {
                 item = CreateItem(pid, 0, nullptr);
                 item = _engine->CrMngr.AddItemToCritter(cr, item, true);
                 result = item;
@@ -344,7 +344,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
     return result;
 }
 
-void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
+void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint32 count)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -367,7 +367,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
         }
     }
     else {
-        for (uint i = 0; i < count; ++i) {
+        for (uint32 i = 0; i < count; ++i) {
             DestroyItem(item);
 
             item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
@@ -379,7 +379,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
     }
 }
 
-void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
+void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint32 count)
 {
     FO_STACK_TRACE_ENTRY();
 

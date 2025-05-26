@@ -182,8 +182,9 @@ FO_BEGIN_NAMESPACE();
 using int8 = std::int8_t;
 using uint8 = std::uint8_t;
 using int16 = std::int16_t;
+using int32 = std::int32_t;
 using uint16 = std::uint16_t;
-using uint = std::uint32_t;
+using uint32 = std::uint32_t;
 using int64 = std::int64_t;
 using uint64 = std::uint64_t;
 
@@ -192,8 +193,8 @@ static_assert(sizeof(int8) == 1);
 static_assert(sizeof(uint8) == 1);
 static_assert(sizeof(int16) == 2);
 static_assert(sizeof(uint16) == 2);
-static_assert(sizeof(int) == 4);
-static_assert(sizeof(uint) == 4);
+static_assert(sizeof(int32) == 4);
+static_assert(sizeof(uint32) == 4);
 static_assert(sizeof(int64) == 8);
 static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
@@ -1091,6 +1092,36 @@ constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
+struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<typename T::underlying_type>::format(value.underlying_value(), ctx);
+    }
+};
+FO_BEGIN_NAMESPACE();
+
+FO_END_NAMESPACE();
+template<typename T>
+    requires(FO_NAMESPACE is_strong_type_v<T>)
+inline auto operator>>(std::istream& istr, T& value) -> std::istream&
+{
+    typename T::underlying_type uv;
+
+    if (istr >> uv) {
+        value = T(uv);
+    }
+    else {
+        value = T();
+    }
+
+    return istr;
+}
+FO_BEGIN_NAMESPACE();
+
+FO_END_NAMESPACE();
+template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T>>
 {
     using is_avalanching = void;
@@ -1098,18 +1129,6 @@ struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T>>
     {
         static_assert(std::has_unique_object_representations_v<FO_NAMESPACE strong_type<T>>);
         return detail::wyhash::hash(v.underlying_value());
-    }
-};
-FO_BEGIN_NAMESPACE();
-
-FO_END_NAMESPACE();
-template<typename T>
-struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_strong_type_v<T>, char>> : formatter<typename T::underlying_type>
-{
-    template<typename FormatContext>
-    auto format(const T& value, FormatContext& ctx) const
-    {
-        return formatter<typename T::underlying_type>::format(value.underlying_value(), ctx);
     }
 };
 FO_BEGIN_NAMESPACE();
@@ -1893,12 +1912,12 @@ private:
 };
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) noexcept -> uint
+constexpr auto const_hash(const char* input) noexcept -> uint32
 {
-    return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
+    return *input != 0 ? static_cast<uint32>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
-auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint
+auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint32
 {
     (void)size;
     return const_hash(str);
@@ -2072,17 +2091,6 @@ constexpr auto CombineEnum(T v1, T v2) noexcept -> T
 }
 
 // Formatters
-FO_END_NAMESPACE();
-template<typename T>
-inline auto parse_from_string(const FO_NAMESPACE string& str) -> T;
-
-template<typename T>
-inline auto parse_from_string(const FO_NAMESPACE string& str) -> T
-{
-    static_assert(FO_NAMESPACE always_false<T>::value, "No specialization exists for parse_from_string");
-}
-FO_BEGIN_NAMESPACE();
-
 #define FO_DECLARE_TYPE_FORMATTER(type, ...) \
     FO_END_NAMESPACE(); \
     template<> \
@@ -2100,13 +2108,12 @@ FO_BEGIN_NAMESPACE();
 
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
     FO_END_NAMESPACE(); \
-    template<> \
-    inline auto parse_from_string<type>(const FO_NAMESPACE string& str) -> type \
+    inline auto operator>>(std::istream& istr, type& value)->std::istream& \
     { \
-        type value = {}; \
-        FO_NAMESPACE istringstream sstr {str}; \
-        __VA_ARGS__; \
-        return value; \
+        if (!(istr >> __VA_ARGS__)) { \
+            value = {}; \
+        } \
+        return istr; \
     } \
     FO_BEGIN_NAMESPACE()
 
@@ -2377,19 +2384,19 @@ using IRect = TRect<int>; // Todo: move IRect to irect
 using FRect = TRect<float>; // Todo: move FRect to frect
 
 // Color type
-///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint-value
+///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint32-value
 struct ucolor
 {
-    using underlying_type = uint;
+    using underlying_type = uint32;
     static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = "ucolor";
-    static constexpr string_view underlying_type_name = "uint";
+    static constexpr string_view underlying_type_name = "uint32";
 
     constexpr ucolor() noexcept :
         rgba {}
     {
     }
-    explicit constexpr ucolor(uint rgba_) noexcept :
+    explicit constexpr ucolor(uint32 rgba_) noexcept :
         rgba {rgba_}
     {
     }
@@ -2423,14 +2430,14 @@ struct ucolor
 
     union
     {
-        uint rgb : 24;
-        uint rgba;
+        uint32 rgb : 24;
+        uint32 rgba;
         components comp;
     };
 
     static const ucolor clear;
 };
-static_assert(sizeof(ucolor) == sizeof(uint));
+static_assert(sizeof(ucolor) == sizeof(uint32));
 static_assert(std::is_standard_layout_v<ucolor>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
@@ -2451,7 +2458,7 @@ FO_BEGIN_NAMESPACE();
 // Hashing
 struct hstring
 {
-    using hash_t = uint;
+    using hash_t = uint32;
 
     struct entry
     {
@@ -2477,7 +2484,7 @@ struct hstring
     [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_int() const noexcept -> int { return static_cast<int>(_entry->Hash); }
-    [[nodiscard]] constexpr auto as_uint() const noexcept -> uint { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_uint() const noexcept -> uint32 { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
 
 private:
@@ -2508,7 +2515,7 @@ constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_
     !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value && !is_vector_v<T> && !is_map_v<T>;
 
 // Position types
-///@ ExportValueType isize isize HardStrong Layout = int-width+int-height
+///@ ExportValueType isize isize HardStrong Layout = int32-width+int32-height
 struct isize
 {
     constexpr isize() noexcept = default;
@@ -2533,10 +2540,10 @@ struct isize
 static_assert(std::is_standard_layout_v<isize>);
 static_assert(sizeof(isize) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize, sstr >> value.width, sstr >> value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize);
 
-///@ ExportValueType ipos ipos HardStrong Layout = int-x+int-y
+///@ ExportValueType ipos ipos HardStrong Layout = int32-x+int32-y
 struct ipos
 {
     constexpr ipos() noexcept = default;
@@ -2559,10 +2566,10 @@ struct ipos
 static_assert(std::is_standard_layout_v<ipos>);
 static_assert(sizeof(ipos) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos);
 
-///@ ExportValueType irect irect HardStrong Layout = int-x+int-y+int-width+int-height
+///@ ExportValueType irect irect HardStrong Layout = int32-x+int32-y+int32-width+int32-height
 struct irect
 {
     constexpr irect() noexcept = default;
@@ -2605,7 +2612,7 @@ struct irect
 static_assert(std::is_standard_layout_v<irect>);
 static_assert(sizeof(irect) == 16);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect, value.x >> value.y >> value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect);
 
 ///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
@@ -2631,7 +2638,7 @@ struct ipos16
 static_assert(std::is_standard_layout_v<ipos16>);
 static_assert(sizeof(ipos16) == 4);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
 ///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-x+uint16-y
@@ -2657,7 +2664,7 @@ struct upos16
 static_assert(std::is_standard_layout_v<upos16>);
 static_assert(sizeof(upos16) == 4);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE upos16, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE upos16, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE upos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE upos16);
 
 ///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-x+int8-y
@@ -2683,10 +2690,10 @@ struct ipos8
 static_assert(std::is_standard_layout_v<ipos8>);
 static_assert(sizeof(ipos8) == 2);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-///@ ExportValueType fsize fsize HardStrong Layout = float-width+float-height
+///@ ExportValueType fsize fsize HardStrong Layout = float32-width+float32-height
 struct fsize
 {
     constexpr fsize() noexcept = default;
@@ -2721,9 +2728,9 @@ struct fsize
 static_assert(std::is_standard_layout_v<fsize>);
 static_assert(sizeof(fsize) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize, sstr >> value.width, sstr >> value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize, value.width >> value.height);
 
-///@ ExportValueType fpos fpos HardStrong Layout = float-x+float-y
+///@ ExportValueType fpos fpos HardStrong Layout = float32-x+float32-y
 struct fpos
 {
     constexpr fpos() noexcept = default;
@@ -2756,9 +2763,9 @@ struct fpos
 static_assert(std::is_standard_layout_v<fpos>);
 static_assert(sizeof(fpos) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos, sstr >> value.x, sstr >> value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos, value.x >> value.y);
 
-///@ ExportValueType frect frect HardStrong Layout = float-x+float-y+float-width+float-height
+///@ ExportValueType frect frect HardStrong Layout = float32-x+float32-y+float32-width+float32-height
 struct frect
 {
     constexpr frect() noexcept = default;
@@ -2801,7 +2808,7 @@ struct frect
 static_assert(std::is_standard_layout_v<frect>);
 static_assert(sizeof(frect) == 16);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect, sstr >> value.x, sstr >> value.y, sstr >> value.width, sstr >> value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect, value.x >> value.y >> value.width >> value.height);
 
 // Generic constants
 // Todo: eliminate as much defines as possible
@@ -2810,7 +2817,7 @@ static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
-static constexpr uint PING_CLIENT_LIFE_TIME = 15000;
+static constexpr uint32 PING_CLIENT_LIFE_TIME = 15000;
 
 // Float constants
 constexpr auto PI_FLOAT = 3.14159265f;
@@ -2830,12 +2837,12 @@ static constexpr uint8 ANSWER_END = 0xF1;
 static constexpr uint8 ANSWER_BARTER = 0xF2;
 
 // Look checks
-static constexpr uint LOOK_CHECK_DIR = 0x01;
-static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;
-static constexpr uint LOOK_CHECK_TRACE = 0x08;
-static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
-static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
-static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
+static constexpr uint32 LOOK_CHECK_DIR = 0x01;
+static constexpr uint32 LOOK_CHECK_SNEAK_DIR = 0x02;
+static constexpr uint32 LOOK_CHECK_TRACE = 0x08;
+static constexpr uint32 LOOK_CHECK_SCRIPT = 0x10;
+static constexpr uint32 LOOK_CHECK_ITEM_SCRIPT = 0x20;
+static constexpr uint32 LOOK_CHECK_TRACE_CLIENT = 0x40;
 
 // Property type in network interaction
 enum class NetProperty : uint8
@@ -2859,11 +2866,11 @@ struct GameSettings
 #if FO_GEOMETRY == 1
     static constexpr bool HEXAGONAL_GEOMETRY = true;
     static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr uint MAP_DIR_COUNT = 6;
+    static constexpr uint32 MAP_DIR_COUNT = 6;
 #elif FO_GEOMETRY == 2
     static constexpr bool HEXAGONAL_GEOMETRY = false;
     static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr uint MAP_DIR_COUNT = 8;
+    static constexpr uint32 MAP_DIR_COUNT = 8;
 #else
 #error FO_GEOMETRY not specified
 #endif

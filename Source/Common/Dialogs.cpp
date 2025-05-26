@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
+static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -209,11 +209,11 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
 
         pack->Texts.emplace_back(lang_app, TextPack {});
 
-        uint str_num = 0;
+        uint32 str_num = 0;
 
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
             const size_t count = temp_msg.GetStrCount(str_num);
-            const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
+            const uint32 new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
 
             for (size_t n = 0; n < count; n++) {
                 string str = strex(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[");
@@ -245,7 +245,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
             throw DialogParseException("Bad dialog id number", pack_name);
         }
 
-        uint text_id = 0;
+        uint32 text_id = 0;
         input >> text_id;
 
         if (input.fail()) {
@@ -266,7 +266,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
 
         dlg.DlgScriptFuncName = _engine->Hashes.ToHashedString(script);
 
-        uint flags = 0;
+        uint32 flags = 0;
         input >> flags;
 
         if (input.fail()) {
@@ -363,7 +363,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const
     int values_count = 0;
     string svalue;
     int ivalue = 0;
-    uint id_index = 0;
+    uint32 id_index = 0;
     hstring id_hash;
     string type_str;
     string name;

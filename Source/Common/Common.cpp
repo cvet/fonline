@@ -668,8 +668,8 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
     const auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day);
 
     result.year = static_cast<int>(ymd.year());
-    result.month = static_cast<int>(static_cast<uint>(ymd.month()));
-    result.day = static_cast<int>(static_cast<uint>(ymd.day()));
+    result.month = static_cast<int>(static_cast<uint32>(ymd.month()));
+    result.day = static_cast<int>(static_cast<uint32>(ymd.day()));
     result.hour = static_cast<int>(hours.count());
     result.minute = static_cast<int>(minutes.count());
     result.second = static_cast<int>(seconds.count());
@@ -684,7 +684,7 @@ auto make_time_offset(int year, int month, int day, int hour, int minute, int se
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {numeric_cast<uint>(month)}, std::chrono::day {numeric_cast<uint>(day)}};
+    const auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {numeric_cast<uint32>(month)}, std::chrono::day {numeric_cast<uint32>(day)}};
 
     if (!ymd.ok()) {
         throw GenericException("Invalid year/month/day");

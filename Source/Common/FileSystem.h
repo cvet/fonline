@@ -93,9 +93,9 @@ public:
     [[nodiscard]] auto GetBEShort() -> int16 { return static_cast<int16>(GetBEUShort()); }
     [[nodiscard]] auto GetLEUShort() -> uint16;
     [[nodiscard]] auto GetLEShort() -> int16 { return static_cast<int16>(GetLEUShort()); }
-    [[nodiscard]] auto GetBEUInt() -> uint;
+    [[nodiscard]] auto GetBEUInt() -> uint32;
     [[nodiscard]] auto GetBEInt() -> int { return static_cast<int>(GetBEUInt()); }
-    [[nodiscard]] auto GetLEUInt() -> uint;
+    [[nodiscard]] auto GetLEUInt() -> uint32;
     [[nodiscard]] auto GetLEInt() -> int { return static_cast<int>(GetLEUInt()); }
     // ReSharper restore CppInconsistentNaming
 

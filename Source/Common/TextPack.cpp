@@ -69,7 +69,7 @@ auto TextPack::GetStr(TextPackKey num) const -> const string&
         break;
 
     default:
-        const int random_skip = GenericUtils::Random(0, static_cast<int>(str_count)) - 1;
+        const int random_skip = GenericUtils::Random(0, numeric_cast<int>(str_count)) - 1;
 
         for (int i = 0; i < random_skip; i++) {
             ++it;
@@ -200,11 +200,11 @@ auto TextPack::GetBinaryData() const -> vector<uint8>
     vector<uint8> data;
     auto writer = DataWriter {data};
 
-    writer.Write<uint>(static_cast<uint>(_strData.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(_strData.size()));
 
     for (auto&& [num, str] : _strData) {
         writer.Write<TextPackKey>(num);
-        writer.Write<uint>(static_cast<uint>(str.length()));
+        writer.Write<uint32>(numeric_cast<uint32>(str.length()));
         writer.WritePtr(str.data(), str.length());
     }
 
@@ -217,11 +217,11 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
 
     auto reader = DataReader {data};
 
-    const auto count = reader.Read<uint>();
+    const auto count = reader.Read<uint32>();
 
-    for (uint i = 0; i < count; i++) {
+    for (uint32 i = 0; i < count; i++) {
         const auto num = reader.Read<TextPackKey>();
-        const auto str_len = reader.Read<uint>();
+        const auto str_len = reader.Read<uint32>();
 
         string str;
 

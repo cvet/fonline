@@ -53,7 +53,7 @@ enum class TextPackName : uint8
     Protos = 6,
 };
 
-using TextPackKey = uint;
+using TextPackKey = uint32;
 
 class TextPack final
 {

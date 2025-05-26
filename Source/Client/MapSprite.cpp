@@ -270,7 +270,7 @@ void MapSpriteList::GrowPool()
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
-    for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
+    for (uint32 i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
         _spritesPool.emplace_back(SafeAlloc::MakeRaw<MapSprite>());
     }
 }
@@ -399,7 +399,7 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
     FO_STACK_TRACE_ENTRY();
 
     // Find place
-    uint order_pos;
+    uint32 order_pos;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
         order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hex.y * MAXHEX_MAX + hex.x;

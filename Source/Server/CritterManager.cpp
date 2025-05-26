@@ -141,7 +141,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
-    uint multihex;
+    uint32 multihex;
 
     if (props != nullptr) {
         auto props_copy = props->Copy();
@@ -421,7 +421,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     if (!cr->Talk.IgnoreDistance) {
         ident_t map_id;
         mpos hex;
-        uint talk_distance = 0;
+        uint32 talk_distance = 0;
 
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
@@ -474,7 +474,7 @@ void CritterManager::CloseTalk(Critter* cr)
             if (auto func = _engine->ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
                 func(cr, talker, &close);
             }
-            if (auto func = _engine->ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+            if (auto func = _engine->ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
                 func(cr, talker, &close);
             }
 

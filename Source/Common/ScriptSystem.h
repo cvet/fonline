@@ -52,20 +52,20 @@ enum class ScriptEnum_uint8 : uint8
 enum class ScriptEnum_uint16 : uint16
 {
 };
-enum class ScriptEnum_int : int
+enum class ScriptEnum_int32 : int
 {
 };
-enum class ScriptEnum_uint : uint
+enum class ScriptEnum_uint : uint32
 {
 };
 // ReSharper restore CppInconsistentNaming
 
-using GameComponent = ScriptEnum_int;
-using PlayerComponent = ScriptEnum_int;
-using ItemComponent = ScriptEnum_int;
-using CritterComponent = ScriptEnum_int;
-using MapComponent = ScriptEnum_int;
-using LocationComponent = ScriptEnum_int;
+using GameComponent = ScriptEnum_int32;
+using PlayerComponent = ScriptEnum_int32;
+using ItemComponent = ScriptEnum_int32;
+using CritterComponent = ScriptEnum_int32;
+using MapComponent = ScriptEnum_int32;
+using LocationComponent = ScriptEnum_int32;
 static_assert(sizeof(GameComponent) == sizeof(hstring::hash_t));
 
 using GameProperty = ScriptEnum_uint16;
@@ -236,7 +236,7 @@ public:
     virtual ~ScriptSystem() = default;
 
     void InitModules();
-    void HandleRemoteCall(uint rpc_num, Entity* entity);
+    void HandleRemoteCall(uint32 rpc_num, Entity* entity);
     void Process();
 
     void RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend);
@@ -368,7 +368,7 @@ public:
     auto AddScriptFunc(hstring name) -> ScriptFuncDesc* { return &_funcMap.emplace(name, ScriptFuncDesc())->second; }
     void AddInitFunc(ScriptFuncDesc* func) { vec_add_unique_value(_initFunc, func); }
 
-    void BindRemoteCallReceiver(uint hash, std::function<void(Entity*)> func)
+    void BindRemoteCallReceiver(uint32 hash, std::function<void(Entity*)> func)
     {
         FO_RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
         _rpcReceivers.emplace(hash, std::move(func));
@@ -380,7 +380,7 @@ private:
     vector<std::function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
     vector<ScriptFuncDesc*> _initFunc {};
-    unordered_map<uint, std::function<void(Entity*)>> _rpcReceivers {};
+    unordered_map<uint32, std::function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };
 

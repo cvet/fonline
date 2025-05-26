@@ -51,15 +51,15 @@ FO_BEGIN_NAMESPACE();
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
-constexpr uint ANIMATION_STAY = 0x01;
-constexpr uint ANIMATION_ONE_TIME = 0x02;
-constexpr auto ANIMATION_PERIOD(uint proc) -> uint
+constexpr uint32 ANIMATION_STAY = 0x01;
+constexpr uint32 ANIMATION_ONE_TIME = 0x02;
+constexpr auto ANIMATION_PERIOD(uint32 proc) -> uint32
 {
     return 0x04 | proc << 16;
 }
-constexpr uint ANIMATION_NO_SMOOTH = 0x08;
-constexpr uint ANIMATION_INIT = 0x10;
-constexpr uint ANIMATION_NO_ROTATE = 0x20;
+constexpr uint32 ANIMATION_NO_SMOOTH = 0x08;
+constexpr uint32 ANIMATION_INIT = 0x10;
+constexpr uint32 ANIMATION_NO_ROTATE = 0x20;
 
 struct ModelBone;
 class ModelInstance;
@@ -134,7 +134,7 @@ struct ModelCutData
 
 struct ModelAnimationData
 {
-    uint Id {};
+    uint32 Id {};
     int Layer {};
     int LayerValue {};
     hstring LinkBone {};
@@ -159,7 +159,7 @@ struct ModelAnimationData
 
 struct ModelParticleSystem
 {
-    uint Id {};
+    uint32 Id {};
     unique_ptr<ParticleSystem> Particle {};
     const ModelBone* Bone {};
     vec3 Move {};
@@ -221,10 +221,11 @@ private:
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
-    uint _animUpdateThreshold {};
+    uint32 _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
+    uint32 _linkId {};
     bool _nonConstHelper {};
 };
 
@@ -266,7 +267,7 @@ public:
     void SetupFrame(isize draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
+    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint32 flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
@@ -290,8 +291,8 @@ private:
         unique_ptr<RenderDrawBuffer> MeshBuf {};
         size_t EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
-        vector<uint> MeshVertices {};
-        vector<uint> MeshIndices {};
+        vector<uint32> MeshVertices {};
+        vector<uint32> MeshIndices {};
         vector<int> MeshAnimLayers {};
         size_t CurBoneMatrix {};
         vector<ModelBone*> SkinBones {};
@@ -331,7 +332,7 @@ private:
     unique_ptr<ModelAnimationController> _bodyAnimController {};
     unique_ptr<ModelAnimationController> _moveAnimController {};
     int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
-    uint _currentTrack {};
+    uint32 _currentTrack {};
     nanotime _lastDrawTime {};
     nanotime _endTime {};
     mat44 _matRot {};
@@ -358,7 +359,7 @@ private:
     CritterActionAnim _curMovingAnim {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
-    uint _currentMoveTrack {};
+    uint32 _currentMoveTrack {};
     float _movingSpeedFactor {};
     bool _isRunning {};
     bool _noRotate {};
@@ -411,13 +412,13 @@ private:
     size_t _numAnimationSets {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
-    unordered_map<uint, int> _animIndexes {};
-    unordered_map<uint, float> _animSpeed {};
-    unordered_map<uint, vector<pair<int, int>>> _animLayerValues {};
+    unordered_map<uint32, int> _animIndexes {};
+    unordered_map<uint32, float> _animSpeed {};
+    unordered_map<uint32, vector<pair<int, int>>> _animLayerValues {};
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    uint _renderAnim {};
+    uint32 _renderAnim {};
     int _renderAnimProcFrom {};
     int _renderAnimProcTo {100};
     int _renderAnimDir {};

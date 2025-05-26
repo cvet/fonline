@@ -316,7 +316,7 @@ class AppInput final
     friend class Application;
 
 public:
-    static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
+    static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
     [[nodiscard]] auto GetMousePosition() const -> ipos;
     [[nodiscard]] auto GetClipboardText() -> const string&;

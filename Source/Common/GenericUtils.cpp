@@ -32,6 +32,7 @@
 //
 
 #include "GenericUtils.h"
+
 #include "Application.h"
 #include "DiskFileSystem.h"
 #include "Log.h"
@@ -75,7 +76,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         // Add new entry
         auto locker = std::unique_lock {_hashStorageLocker};
 
-        const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+        const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry(hash_value, string(s)));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(&it->second);
@@ -128,7 +129,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
     return {};
 }
 
-auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
+auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -136,14 +137,14 @@ auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint
         return 0;
     }
 
-    constexpr uint seed = 0;
-    constexpr uint m = 0x5BD1E995;
+    constexpr uint32 seed = 0;
+    constexpr uint32 m = 0x5BD1E995;
     constexpr auto r = 24;
     const auto* pdata = static_cast<const uint8*>(data);
-    auto h = seed ^ static_cast<uint>(len);
+    auto h = seed ^ static_cast<uint32>(len);
 
     while (len >= 4) {
-        uint k = pdata[0];
+        uint32 k = pdata[0];
         k |= pdata[1] << 8;
         k |= pdata[2] << 16;
         k |= pdata[3] << 24;
@@ -189,7 +190,7 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
         return 0;
     }
 
-    constexpr uint seed = 0;
+    constexpr uint32 seed = 0;
     constexpr auto m = 0xc6a4a7935bd1e995ULL;
     constexpr auto r = 47;
     const auto* pdata = static_cast<const uint8*>(data);
@@ -307,7 +308,7 @@ void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> 
         static_cast<uint8>(size.height % 256), static_cast<uint8>(size.height / 256), 4 * 8, 0x20};
     file.Write(header);
 
-    file.Write(data.data(), data.size() * sizeof(uint));
+    file.Write(data.data(), data.size() * sizeof(uint32));
 }
 
 // Default randomizer
@@ -326,11 +327,11 @@ auto GenericUtils::Random(int minimum, int maximum) -> int
     return std::uniform_int_distribution {minimum, maximum}(RandomGenerator);
 }
 
-auto GenericUtils::Random(uint minimum, uint maximum) -> uint
+auto GenericUtils::Random(uint32 minimum, uint32 maximum) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(Random(static_cast<int>(minimum), static_cast<int>(maximum)));
+    return static_cast<uint32>(Random(static_cast<int>(minimum), static_cast<int>(maximum)));
 }
 
 auto GenericUtils::Percent(int full, int peace) -> int
@@ -348,7 +349,7 @@ auto GenericUtils::Percent(int full, int peace) -> int
     return std::clamp(percent, 0, 100);
 }
 
-auto GenericUtils::Percent(uint full, uint peace) -> uint
+auto GenericUtils::Percent(uint32 full, uint32 peace) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -361,7 +362,7 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
     return std::clamp(percent, 0u, 100u);
 }
 
-auto GenericUtils::NumericalNumber(uint num) noexcept -> uint
+auto GenericUtils::NumericalNumber(uint32 num) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -446,8 +447,8 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
     result[2] = static_cast<uint8>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
 
     if (light != nullptr) {
-        const auto max_light = (std::max(std::max(std::max(color_r[0], color_r[1]), color_r[2]), color_r[3]) + std::max(std::max(std::max(color_g[0], color_g[1]), color_g[2]), color_g[3]) + std::max(std::max(std::max(color_b[0], color_b[1]), color_b[2]), color_b[3])) / 3;
-        const auto min_light = (std::min(std::min(std::min(color_r[0], color_r[1]), color_r[2]), color_r[3]) + std::min(std::min(std::min(color_g[0], color_g[1]), color_g[2]), color_g[3]) + std::min(std::min(std::min(color_b[0], color_b[1]), color_b[2]), color_b[3])) / 3;
+        const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
+        const auto min_light = (std::min({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::min({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::min({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
         const auto cur_light = (result[0] + result[1] + result[2]) / 3;
 
         *light = Percent(max_light - min_light, max_light - cur_light);
@@ -457,14 +458,14 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint
+auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto dx = pos1.x - pos2.x;
     const auto dy = pos1.y - pos2.y;
 
-    return static_cast<uint>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
+    return static_cast<uint32>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
 }
 
 auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos

@@ -898,7 +898,7 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         case asTYPEID_INT32:
             return COMPARE(int);
         case asTYPEID_UINT32:
-            return COMPARE(uint);
+            return COMPARE(uint32);
         case asTYPEID_INT64:
             return COMPARE(int64);
         case asTYPEID_UINT64:
@@ -970,7 +970,7 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         case asTYPEID_INT32:
             return COMPARE(int);
         case asTYPEID_UINT32:
-            return COMPARE(uint);
+            return COMPARE(uint32);
         case asTYPEID_FLOAT:
             return COMPARE(float);
         case asTYPEID_DOUBLE:

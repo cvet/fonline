@@ -79,7 +79,7 @@ private:
 class ModelAnimationController final
 {
 public:
-    explicit ModelAnimationController(uint track_count);
+    explicit ModelAnimationController(uint32 track_count);
     ModelAnimationController(const ModelAnimationController&) = delete;
     ModelAnimationController(ModelAnimationController&&) noexcept = default;
     auto operator=(const ModelAnimationController&) = delete;
@@ -89,21 +89,21 @@ public:
     [[nodiscard]] auto Clone() const -> unique_ptr<ModelAnimationController>;
     [[nodiscard]] auto GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*;
     [[nodiscard]] auto GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*;
-    [[nodiscard]] auto GetTrackEnable(uint track) const noexcept -> bool;
-    [[nodiscard]] auto GetTrackPosition(uint track) const noexcept -> float;
+    [[nodiscard]] auto GetTrackEnable(uint32 track) const noexcept -> bool;
+    [[nodiscard]] auto GetTrackPosition(uint32 track) const noexcept -> float;
     [[nodiscard]] auto GetAnimationSetCount() const noexcept -> size_t;
     [[nodiscard]] auto GetTime() const noexcept -> float { return _curTime; }
 
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     void RegisterAnimationSet(ModelAnimation* animation);
-    void SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
-    void ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names);
-    void AddEventEnable(uint track, bool enable, float start_time);
-    void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);
-    void AddEventWeight(uint track, float weight, float start_time, float smooth_time);
-    void SetTrackEnable(uint track, bool enable);
-    void SetTrackPosition(uint track, float position);
+    void SetTrackAnimationSet(uint32 track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
+    void ResetBonesTransition(uint32 skip_track, const vector<hstring>& bone_names);
+    void AddEventEnable(uint32 track, bool enable, float start_time);
+    void AddEventSpeed(uint32 track, float speed, float start_time, float smooth_time);
+    void AddEventWeight(uint32 track, float weight, float start_time, float smooth_time);
+    void SetTrackEnable(uint32 track, bool enable);
+    void SetTrackPosition(uint32 track, float position);
     void SetInterpolation(bool enabled);
     void AdvanceTime(float time);
 

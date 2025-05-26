@@ -593,7 +593,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
             storage->SrcLoc.name = nullptr;
             storage->SrcLoc.function = storage->FuncBuf.data();
             storage->SrcLoc.file = storage->FileBuf.data();
-            storage->SrcLoc.line = static_cast<uint32_t>(orig_line);
+            storage->SrcLoc.line = static_cast<uint32>(orig_line);
         }
 
         PushStackTrace(storage->SrcLoc);
@@ -649,7 +649,7 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
     const auto* func_decl = ex_func->GetDeclaration(true);
 
     {
-        auto srcloc = SourceLocationData {nullptr, func_decl, ex_orig_file.c_str(), static_cast<uint32_t>(ex_orig_line)};
+        auto srcloc = SourceLocationData {nullptr, func_decl, ex_orig_file.c_str(), static_cast<uint32>(ex_orig_line)};
         PushStackTrace(srcloc);
         auto stack_trace_entry_end = ScopeCallback([]() noexcept { PopStackTrace(); });
 
@@ -860,7 +860,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_UINT16:
         return strex("uint16: {}", *static_cast<const uint16*>(ptr));
     case asTYPEID_UINT32:
-        return strex("uint32: {}", *static_cast<const uint*>(ptr));
+        return strex("uint32: {}", *static_cast<const uint32*>(ptr));
     case asTYPEID_UINT64:
         return strex("uint64: {}", *static_cast<const uint64*>(ptr));
     case asTYPEID_FLOAT:
@@ -1179,14 +1179,14 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
-                uint arr_size;
+                uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
 
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
-                    uint str_size;
+                for (uint32 i = 0; i < arr_size; i++) {
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
@@ -1199,10 +1199,10 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeHash()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = static_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
                     arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
@@ -1212,7 +1212,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = static_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
                 if (prop->GetBaseSize() == sizeof(int)) {
@@ -1221,7 +1221,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                 else {
                     auto* dest = static_cast<int*>(arr->At(0));
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         *(dest + i) = 0;
                         MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
@@ -1230,17 +1230,17 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypePrimitive()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = static_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
                 MemCopy(arr->At(0), data, data_size);
             }
         }
         else if (prop->IsBaseTypeStruct()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = static_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     MemCopy(arr->At(i), data, prop->GetBaseSize());
                     data += prop->GetBaseSize();
                 }
@@ -1263,14 +1263,14 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeySize();
                     }
 
-                    uint arr_size;
+                    uint32 arr_size;
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
@@ -1280,8 +1280,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         if (prop->IsDictOfArrayOfString()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
-                                uint str_size;
+                            for (uint32 i = 0; i < arr_size; i++) {
+                                uint32 str_size;
                                 MemCopy(&str_size, data, sizeof(str_size));
                                 data += sizeof(str_size);
 
@@ -1293,7 +1293,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         else if (prop->IsBaseTypeHash()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
                                 arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
@@ -1308,7 +1308,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                             else {
                                 auto* dest = static_cast<int*>(arr->At(0));
-                                for (uint i = 0; i < arr_size; i++) {
+                                for (uint32 i = 0; i < arr_size; i++) {
                                     MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
@@ -1324,7 +1324,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         else if (prop->IsBaseTypeStruct()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 MemCopy(arr->At(i), data, prop->GetBaseSize());
                                 data += prop->GetBaseSize();
                             }
@@ -1335,7 +1335,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(PASS_AS_PVOID(&key_str), &arr);
                     }
@@ -1361,21 +1361,21 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeySize();
                     }
 
-                    uint str_size;
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
+                    data += sizeof(uint32);
 
                     auto str = string {reinterpret_cast<const char*>(data), str_size};
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(PASS_AS_PVOID(&key_str), &str);
                     }
@@ -1401,7 +1401,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1409,7 +1409,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
 
                         if (prop->IsBaseTypeHash()) {
@@ -1492,23 +1492,23 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
             if (arr_size != 0) {
                 // Calculate size
-                size_t data_size = sizeof(uint);
+                size_t data_size = sizeof(uint32);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
-                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                    data_size += sizeof(uint32) + static_cast<uint32>(str.length());
                 }
 
                 // Make buffer
                 auto* buf = prop_data.Alloc(data_size);
 
                 MemCopy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint);
+                buf += sizeof(uint32);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
-                    uint str_size = static_cast<uint>(str.length());
+                    uint32 str_size = static_cast<uint32>(str.length());
                     MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
@@ -1520,14 +1520,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else {
-            const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
             const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
             if (data_size != 0) {
                 if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                         MemCopy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
@@ -1540,7 +1540,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
-                        for (uint i = 0; i < arr_size; i++) {
+                        for (uint32 i = 0; i < arr_size; i++) {
                             const auto e = *static_cast<const int*>(arr->At(i));
                             MemCopy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
@@ -1553,7 +1553,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 else if (prop->IsBaseTypeStruct()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         MemCopy(buf, arr->At(i), prop->GetBaseSize());
                         buf += prop->GetBaseSize();
                     }
@@ -1577,7 +1577,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const uint32 key_len = static_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1585,13 +1585,13 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
 
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
-                        for (uint i = 0; i < arr_size; i++) {
+                        for (uint32 i = 0; i < arr_size; i++) {
                             const auto& str = *static_cast<const string*>(arr->At(i));
-                            data_size += sizeof(uint) + static_cast<uint>(str.length());
+                            data_size += sizeof(uint32) + static_cast<uint32>(str.length());
                         }
                     }
                     else {
@@ -1607,7 +1607,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const uint32 key_len = static_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1628,17 +1628,17 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
 
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
-                    MemCopy(buf, &arr_size, sizeof(uint));
+                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    MemCopy(buf, &arr_size, sizeof(uint32));
                     buf += sizeof(arr_size);
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto& str = *static_cast<const string*>(arr->At(i));
-                                const auto str_size = static_cast<uint>(str.length());
+                                const auto str_size = static_cast<uint32>(str.length());
 
-                                MemCopy(buf, &str_size, sizeof(uint));
+                                MemCopy(buf, &str_size, sizeof(uint32));
                                 buf += sizeof(str_size);
 
                                 if (str_size != 0) {
@@ -1648,7 +1648,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                                 MemCopy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
@@ -1660,7 +1660,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 buf += arr_size * prop->GetBaseSize();
                             }
                             else {
-                                for (uint i = 0; i < arr_size; i++) {
+                                for (uint32 i = 0; i < arr_size; i++) {
                                     const auto e = *static_cast<const int*>(arr->At(i));
                                     MemCopy(buf, &e, prop->GetBaseSize());
                                     buf += prop->GetBaseSize();
@@ -1672,7 +1672,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             buf += arr_size * prop->GetBaseSize();
                         }
                         else if (prop->IsBaseTypeStruct()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 MemCopy(buf, arr->At(i), prop->GetBaseSize());
                                 buf += prop->GetBaseSize();
                             }
@@ -1694,7 +1694,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const uint32 key_len = static_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1702,7 +1702,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
 
                     const auto& str = *static_cast<const string*>(value);
-                    const auto str_size = static_cast<uint>(str.length());
+                    const auto str_size = static_cast<uint32>(str.length());
 
                     data_size += sizeof(str_size) + str_size;
                 }
@@ -1715,7 +1715,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const uint32 key_len = static_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1736,8 +1736,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
 
-                    const auto str_size = static_cast<uint>(str.length());
-                    MemCopy(buf, &str_size, sizeof(uint));
+                    const auto str_size = static_cast<uint32>(str.length());
+                    MemCopy(buf, &str_size, sizeof(uint32));
                     buf += sizeof(str_size);
 
                     if (str_size != 0) {
@@ -1758,7 +1758,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint key_len = static_cast<uint>(key_str.length());
+                    const uint32 key_len = static_cast<uint32>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
                     data_size += value_element_size;
                 }
@@ -1768,7 +1768,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint key_len = static_cast<uint>(key_str.length());
+                    const uint32 key_len = static_cast<uint32>(key_str.length());
 
                     MemCopy(buf, &key_len, sizeof(key_len));
                     buf += sizeof(key_len);
@@ -1854,7 +1854,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out_buf.Write(numeric_cast<uint>(value.size()));
+    out_buf.Write(numeric_cast<uint32>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value);
@@ -1868,7 +1868,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out_buf.Write(numeric_cast<uint>(value.size()));
+    out_buf.Write(numeric_cast<uint32>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value.first);
@@ -1899,10 +1899,10 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint>();
+    const auto inner_values_count = in_buf.Read<uint32>();
     value.reserve(inner_values_count);
 
-    for (uint i = 0; i < inner_values_count; i++) {
+    for (uint32 i = 0; i < inner_values_count; i++) {
         T inner_value;
         ReadNetBuf(in_buf, inner_value, hash_resolver);
         value.emplace_back(inner_value);
@@ -1916,9 +1916,9 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint>();
+    const auto inner_values_count = in_buf.Read<uint32>();
 
-    for (uint i = 0; i < inner_values_count; i++) {
+    for (uint32 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
         ReadNetBuf(in_buf, inner_value_first, hash_resolver);
         U inner_value_second;
@@ -1927,7 +1927,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
     }
 }
 
-[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint rpc_num)
+[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint32 rpc_num)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2216,7 +2216,7 @@ static void Global_ThrowException(asIScriptGeneric* gen)
 #endif
 }
 
-static void Global_Yield(uint time)
+static void Global_Yield(uint32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2812,7 +2812,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     bool failed = false;
     auto hstr = engine->Hashes.ResolveHash(hash, &failed);
@@ -2830,7 +2830,7 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     auto hstr = engine->Hashes.ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
@@ -2949,7 +2949,7 @@ static auto HashedString_GetHash(const hstring& self) -> int
 #endif
 }
 
-static auto HashedString_GetUHash(const hstring& self) -> uint
+static auto HashedString_GetUHash(const hstring& self) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3067,7 +3067,10 @@ static auto Any_Conv(const any_t& self) -> T
         return self;
     }
     else {
-        return parse_from_string<T>(self);
+        T value = {};
+        istringstream istr(self);
+        istr >> value;
+        return value;
     }
 
 #else
@@ -3210,7 +3213,7 @@ static auto StrongType_AnyConv(const T& self) -> any_t
 #endif
 }
 
-static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
+static void Ucolor_ConstructRawRgba(ucolor* self, uint32 rgba)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3867,7 +3870,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
@@ -3881,7 +3884,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
@@ -4393,7 +4396,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 case asTYPEID_UINT16:
                     return "uint16";
                 case asTYPEID_UINT32:
-                    return "uint";
+                    return "uint32";
                 case asTYPEID_UINT64:
                     return "uint64";
                 case asTYPEID_FLOAT:
@@ -4723,9 +4726,9 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 
     vector<uint8> data;
     auto writer = DataWriter(data);
-    writer.Write<uint>(static_cast<uint>(buf.size()));
+    writer.Write<uint32>(static_cast<uint32>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
-    writer.Write<uint>(static_cast<uint>(lnt_data.size()));
+    writer.Write<uint32>(static_cast<uint32>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
     return data;
@@ -4741,10 +4744,10 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
-    vector<asBYTE> buf(reader.Read<uint>());
+    vector<asBYTE> buf(reader.Read<uint32>());
     MemCopy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
 
-    std::vector<uint8> lnt_data(reader.Read<uint>());
+    std::vector<uint8> lnt_data(reader.Read<uint32>());
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
 
     reader.VerifyEnd();

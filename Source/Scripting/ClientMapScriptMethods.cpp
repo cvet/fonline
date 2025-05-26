@@ -272,7 +272,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, uint radius, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, uint32 radius, CritterFindType findType)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -287,8 +287,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
     }
 
     std::ranges::sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
-        const uint dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
-        const uint dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
+        const uint32 dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
+        const uint32 dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
         return dist1 - std::min(dist1, cr1->GetMultihex()) < dist2 - std::min(dist2, cr2->GetMultihex());
     });
 
@@ -296,7 +296,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -313,7 +313,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -330,7 +330,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint dist)
+FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint32 dist)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -347,7 +347,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, uint cut)
+FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, uint32 cut)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -383,7 +383,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, uint cut)
+FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, uint32 cut)
 {
     if (!self->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
@@ -421,7 +421,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, uint cut)
+FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, uint32 cut)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -450,11 +450,11 @@ FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos to
         return 0;
     }
 
-    return static_cast<uint>(result->DirSteps.size());
+    return static_cast<uint32>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, uint cut)
+FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, uint32 cut)
 {
     if (!self->GetSize().IsValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
@@ -485,11 +485,11 @@ FO_SCRIPT_API uint Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos
         return 0;
     }
 
-    return static_cast<uint>(result->DirSteps.size());
+    return static_cast<uint32>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint speed, bool canStop)
+FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint32 speed, bool canStop)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -504,7 +504,7 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint spee
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint speed, bool canStop)
+FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint32 speed, bool canStop)
 {
     self->ScrollOffset(offset, static_cast<float>(speed) / 1000.0f, canStop);
 }
@@ -534,7 +534,7 @@ FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, b
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, uint steps)
+FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, uint32 steps)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
@@ -546,7 +546,7 @@ FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, 
     bool result = false;
 
     if (steps > 1) {
-        for (uint i = 0; i < steps; i++) {
+        for (uint32 i = 0; i < steps; i++) {
             result |= GeometryHelper::MoveHexByDir(hex, dir, self->GetSize());
         }
     }
@@ -711,13 +711,13 @@ FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetShootBorders(MapView* self, bool enabled, uint dist)
+FO_SCRIPT_API void Client_Map_SetShootBorders(MapView* self, bool enabled, uint32 dist)
 {
     self->SetShootBorders(enabled, dist);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, uint spriteCount)
+FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, uint32 spriteCount)
 {
     if (spriteCount < 1) {
         throw ScriptException("Invalid sprite count");

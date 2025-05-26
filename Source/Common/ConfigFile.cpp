@@ -144,7 +144,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
             // Text format {}{}{}
             if (line.front() == '{') {
-                uint num = 0;
+                uint32 num = 0;
                 size_t offset = 0;
 
                 for (auto i = 0; i < 3; i++) {

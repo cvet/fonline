@@ -172,8 +172,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("12.1111").toInt() == 12);
 
         CHECK(strex("111").toUInt() == 111);
-        CHECK(strex("-100").toUInt() == std::numeric_limits<uint>::min());
-        CHECK(strex("1000000000000").toUInt() == std::numeric_limits<uint>::max());
+        CHECK(strex("-100").toUInt() == std::numeric_limits<uint32>::min());
+        CHECK(strex("1000000000000").toUInt() == std::numeric_limits<uint32>::max());
         CHECK(strex("4294967295").toUInt() == 4294967295);
 
         CHECK(strex("66666666666677").toInt64() == 66666666666677ll);

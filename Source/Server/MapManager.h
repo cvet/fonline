@@ -57,7 +57,7 @@ struct TraceData
     Map* TraceMap {};
     mpos StartHex {};
     mpos TargetHex {};
-    uint MaxDist {};
+    uint32 MaxDist {};
     float Angle {};
     Critter* FindCr {};
     CritterFindType FindType {};
@@ -79,9 +79,9 @@ struct FindPathInput
     mpos FromHex {};
     mpos ToHex {};
     mpos NewToHex {};
-    uint Multihex {};
-    uint Cut {};
-    uint TraceDist {};
+    uint32 Multihex {};
+    uint32 Cut {};
+    uint32 TraceDist {};
     bool CheckCritter {};
     bool CheckGagItems {};
     Critter* TraceCr {};
@@ -125,8 +125,8 @@ public:
     ~MapManager() = default;
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> FO_NON_NULL const StaticMap*;
-    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint32 skip_count) noexcept -> Location*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint32 skip_count) noexcept -> Map*;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
@@ -137,12 +137,12 @@ public:
     void TraceBullet(TraceData& trace);
     void AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
     void RemoveCritterFromMap(Critter* cr, Map* map);
-    void TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius);
+    void TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint32> safe_radius);
     void TransitToGlobal(Critter* cr, ident_t global_cr_id);
     void KickPlayersToGlobalMap(Map* map);
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
-    void ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir);
+    void ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int dir);
 
 private:
     [[nodiscard]] FO_FORCE_INLINE auto GridAt(mpos pos) -> int16&;
@@ -150,7 +150,7 @@ private:
 
     auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
-    void Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id);
+    void Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint32> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
     void DestroyMapContent(Map* map);
 

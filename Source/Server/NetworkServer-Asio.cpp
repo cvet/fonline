@@ -110,7 +110,7 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
     FO_STACK_TRACE_ENTRY();
 
     const auto& address = _socket->remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
+    _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint32>(-1);
     _host = address.to_string();
     _port = _socket->remote_endpoint().port();
 

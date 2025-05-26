@@ -274,7 +274,7 @@ FOClient::~FOClient()
     safe_call([this] { DestroyInnerEntities(); });
 }
 
-auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool
+auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int& ox, int& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -288,7 +288,7 @@ auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, Critte
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& f_state_anim, uint& f_action_anim, uint& f_state_anim_ex, uint& f_action_anim_ex, uint& flags) -> bool
+auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -427,7 +427,7 @@ void FOClient::ProcessScreenEffectFading()
         }
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<uint>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<uint>()) + 1;
+            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<uint32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<uint32>()) + 1;
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -729,7 +729,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     const auto prop_raw_data = props.GetRawData(prop);
 
     _conn.OutBuf.StartMsg(NetMessage::SendProperty);
-    _conn.OutBuf.Write(static_cast<uint>(prop_raw_data.size()));
+    _conn.OutBuf.Write(static_cast<uint32>(prop_raw_data.size()));
     _conn.OutBuf.Write(static_cast<char>(type));
 
     switch (type) {
@@ -780,7 +780,7 @@ void FOClient::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint32>();
 
     vector<uint8> data;
     data.resize(data_size);
@@ -800,7 +800,7 @@ void FOClient::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (uint file_index = 0;; file_index++) {
+        for (uint32 file_index = 0;; file_index++) {
             const auto name_len = reader.Read<int16>();
             if (name_len == -1) {
                 break;
@@ -808,8 +808,8 @@ void FOClient::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint>();
-            const auto hash = reader.Read<uint>();
+            const auto size = reader.Read<uint32>();
+            const auto hash = reader.Read<uint32>();
 
             ignore_unused(hash);
 
@@ -925,9 +925,9 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsPlayerOffline(is_player_offline);
 
     // Initial items
-    const auto items_count = _conn.InBuf.Read<uint>();
+    const auto items_count = _conn.InBuf.Read<uint32>();
 
-    for (uint i = 0; i < items_count; i++) {
+    for (uint32 i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
         const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
@@ -1214,9 +1214,9 @@ void FOClient::Net_OnCritterMoveItem()
         BreakIntoDebugger();
 
         // Skip rest data
-        const auto items_count = _conn.InBuf.Read<uint>();
+        const auto items_count = _conn.InBuf.Read<uint32>();
 
-        for (uint i = 0; i < items_count; i++) {
+        for (uint32 i = 0; i < items_count; i++) {
             (void)_conn.InBuf.Read<ident_t>();
             (void)_conn.InBuf.Read<hstring>(Hashes);
             (void)_conn.InBuf.Read<CritterItemSlot>();
@@ -1228,14 +1228,14 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     // Todo: rework critters inventory updating
-    const auto items_count = _conn.InBuf.Read<uint>();
+    const auto items_count = _conn.InBuf.Read<uint32>();
 
     if (items_count != 0) {
         FO_RUNTIME_ASSERT(!cr->GetIsChosen());
 
         cr->DeleteAllInvItems();
 
-        for (uint i = 0; i < items_count; i++) {
+        for (uint32 i = 0; i < items_count; i++) {
             const auto item_id = _conn.InBuf.Read<ident_t>();
             const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
             const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
@@ -1660,7 +1660,7 @@ void FOClient::Net_OnEffect()
     const auto [sx, sy] = Geometry.GetHexOffsets(hex);
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
-    for (uint i = 0; i < count; i++) {
+    for (uint32 i = 0; i < count; i++) {
         const auto ex = static_cast<int16>(hex.x) + sx[i];
         const auto ey = static_cast<int16>(hex.y) + sy[i];
 
@@ -1738,7 +1738,7 @@ void FOClient::Net_OnProperty()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint32>();
     const auto type = _conn.InBuf.Read<NetProperty>();
 
     ident_t cr_id;
@@ -1870,12 +1870,12 @@ void FOClient::Net_OnChosenTalk()
 
     const auto lexems = _conn.InBuf.Read<string>();
     auto* npc = is_npc ? _curMap->GetCritter(talk_cr_id) : nullptr;
-    const auto text_id = _conn.InBuf.Read<uint>();
+    const auto text_id = _conn.InBuf.Read<uint32>();
 
-    vector<uint> answer_ids;
+    vector<uint32> answer_ids;
 
     for (auto i = 0; i < count_answ; i++) {
-        const auto answ_text_id = _conn.InBuf.Read<uint>();
+        const auto answ_text_id = _conn.InBuf.Read<uint32>();
         answer_ids.push_back(answ_text_id);
     }
 
@@ -1890,7 +1890,7 @@ void FOClient::Net_OnChosenTalk()
         answers.emplace_back(std::move(str));
     }
 
-    const auto talk_time = _conn.InBuf.Read<uint>();
+    const auto talk_time = _conn.InBuf.Read<uint32>();
 
     OnDialogData.Fire(talk_cr_id, talk_dlg_id, text, answers, talk_time);
 }
@@ -1954,12 +1954,12 @@ void FOClient::Net_OnSomeItems()
     FO_STACK_TRACE_ENTRY();
 
     const auto context_param = any_t {_conn.InBuf.Read<string>()};
-    const auto items_count = _conn.InBuf.Read<uint>();
+    const auto items_count = _conn.InBuf.Read<uint32>();
 
     vector<refcount_ptr<ItemView>> items;
     items.reserve(items_count);
 
-    for (uint i = 0; i < items_count; i++) {
+    for (uint32 i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(Hashes);
         _conn.InBuf.ReadPropsData(_tempPropertiesData);
@@ -1998,7 +1998,7 @@ void FOClient::Net_OnRemoteCall()
 
     FO_NON_CONST_METHOD_HINT();
 
-    const auto rpc_num = _conn.InBuf.Read<uint>();
+    const auto rpc_num = _conn.InBuf.Read<uint32>();
 
     ScriptSys.HandleRemoteCall(rpc_num, _curPlayer.get());
 }
@@ -2085,9 +2085,9 @@ void FOClient::ReceiveCustomEntities(Entity* holder)
 
     for (uint16 i = 0; i < entries_count; i++) {
         const auto entry = _conn.InBuf.Read<hstring>(Hashes);
-        const auto entities_count = _conn.InBuf.Read<uint>();
+        const auto entities_count = _conn.InBuf.Read<uint32>();
 
-        for (uint j = 0; j < entities_count; j++) {
+        for (uint32 j = 0; j < entities_count; j++) {
             const auto id = _conn.InBuf.Read<ident_t>();
             const auto pid = _conn.InBuf.Read<hstring>(Hashes);
             _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
@@ -2157,8 +2157,8 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    const auto whole_time = _conn.InBuf.Read<uint>();
-    const auto offset_time = _conn.InBuf.Read<uint>();
+    const auto whole_time = _conn.InBuf.Read<uint32>();
+    const auto offset_time = _conn.InBuf.Read<uint32>();
     const auto speed = _conn.InBuf.Read<uint16>();
     const auto start_hex = _conn.InBuf.Read<mpos>();
 
@@ -2280,7 +2280,7 @@ void FOClient::UnregisterEntity(ClientEntity* entity)
     _allEntities.erase(entity->GetId());
 }
 
-auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
+auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2314,7 +2314,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
     return _ifaceAnimIndex;
 }
 
-void FOClient::AnimFree(uint anim_id)
+void FOClient::AnimFree(uint32 anim_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2328,7 +2328,7 @@ void FOClient::AnimFree(uint anim_id)
     }
 }
 
-auto FOClient::AnimGetSpr(uint anim_id) -> Sprite*
+auto FOClient::AnimGetSpr(uint32 anim_id) -> Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2746,7 +2746,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
 
                 istringstream itag(tag);
                 string pack_name_str;
-                uint str_num = 0;
+                uint32 str_num = 0;
 
                 if (itag >> pack_name_str >> str_num) {
                     bool failed = false;
@@ -2790,7 +2790,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     }
 
     dialogs.push_back(text);
-    text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
+    text = dialogs[GenericUtils::Random(0u, static_cast<uint32>(dialogs.size()) - 1u)];
 }
 
 void FOClient::UnloadMap()
@@ -3076,7 +3076,7 @@ void FOClient::Disconnect()
     _conn.Disconnect();
 }
 
-void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint speed)
+void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 

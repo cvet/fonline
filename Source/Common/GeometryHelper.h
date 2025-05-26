@@ -59,8 +59,8 @@ public:
     [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
     [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
 
-    [[nodiscard]] static auto DistGame(int x1, int y1, int x2, int y2) -> uint;
-    [[nodiscard]] static auto DistGame(mpos hex1, mpos hex2) -> uint;
+    [[nodiscard]] static auto DistGame(int x1, int y1, int x2, int y2) -> uint32;
+    [[nodiscard]] static auto DistGame(mpos hex1, mpos hex2) -> uint32;
     [[nodiscard]] static auto GetNearDir(int x1, int y1, int x2, int y2) -> uint8;
     [[nodiscard]] static auto GetNearDir(mpos from_hex, mpos to_hex) -> uint8;
     [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2) -> uint8;
@@ -74,7 +74,7 @@ public:
     [[nodiscard]] static auto DirToAngle(uint8 dir) -> int16;
     [[nodiscard]] static auto AngleToDir(int16 dir_angle) -> uint8;
     [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;
-    [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, uint dist) -> bool;
+    [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, uint32 dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) noexcept -> bool;

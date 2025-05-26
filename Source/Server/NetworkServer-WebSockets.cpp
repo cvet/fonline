@@ -142,7 +142,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     FO_STACK_TRACE_ENTRY();
 
     const auto& address = _connection->get_raw_socket().remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+    _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint32>(-1);
     _host = address.to_string();
     _port = _connection->get_raw_socket().remote_endpoint().port();
 

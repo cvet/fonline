@@ -96,12 +96,12 @@ void MapManager::LoadFromResources()
 
             // Read hashes
             {
-                const auto hashes_count = reader.Read<uint>();
+                const auto hashes_count = reader.Read<uint32>();
 
                 string str;
 
-                for (uint i = 0; i < hashes_count; i++) {
-                    const auto str_len = reader.Read<uint>();
+                for (uint32 i = 0; i < hashes_count; i++) {
+                    const auto str_len = reader.Read<uint32>();
                     str.resize(str_len);
                     reader.ReadPtr(str.data(), str.length());
                     const auto hstr = _engine->Hashes.ToHashedString(str);
@@ -115,7 +115,7 @@ void MapManager::LoadFromResources()
 
                 // Read critters
                 {
-                    const auto cr_count = reader.Read<uint>();
+                    const auto cr_count = reader.Read<uint32>();
 
                     static_map->CritterBillets.reserve(cr_count);
 
@@ -129,7 +129,7 @@ void MapManager::LoadFromResources()
                         const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
                         auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint>();
+                        const auto props_data_size = reader.Read<uint32>();
                         props_data.resize(props_data_size);
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         cr_props.RestoreAllData(props_data);
@@ -147,7 +147,7 @@ void MapManager::LoadFromResources()
 
                 // Read items
                 {
-                    const auto item_count = reader.Read<uint>();
+                    const auto item_count = reader.Read<uint32>();
 
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
@@ -165,7 +165,7 @@ void MapManager::LoadFromResources()
                         const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
                         auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint>();
+                        const auto props_data_size = reader.Read<uint32>();
                         props_data.resize(props_data_size);
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
@@ -418,7 +418,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     for (auto&& [id, loc] : locations) {
         result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
 
-        uint map_index = 0;
+        uint32 map_index = 0;
 
         for (const auto& map : loc->GetMaps()) {
             result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
@@ -538,7 +538,7 @@ void MapManager::RegenerateMap(Map* map)
     }
 }
 
-auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
+auto MapManager::GetMapByPid(hstring map_pid, uint32 skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -557,7 +557,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
     return nullptr;
 }
 
-auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*
+auto MapManager::GetLocationByPid(hstring loc_pid, uint32 skip_count) noexcept -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -674,7 +674,7 @@ void MapManager::TraceBullet(TraceData& trace)
     trace.HasLastMovable = false;
     bool last_passed_ok = false;
 
-    for (uint i = 0;; i++) {
+    for (uint32 i = 0;; i++) {
         if (i >= dist) {
             trace.IsFullTrace = true;
             break;
@@ -765,7 +765,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     if (input.Cut <= 1 && input.Multihex == 0) {
         auto&& [rsx, rsy] = _engine->Geometry.GetHexOffsets(input.ToHex);
 
-        uint i = 0;
+        uint32 i = 0;
 
         for (; i < GameSettings::MAP_DIR_COUNT; i++, rsx++, rsy++) {
             const auto ring_raw_hex = ipos {input.ToHex.x + *rsx, input.ToHex.y + *rsy};
@@ -830,7 +830,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
             auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(cur_hex);
 
-            for (uint j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
+            for (uint32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 const auto raw_next_hex = ipos {cur_hex.x + sx[j], cur_hex.y + sy[j]};
 
                 if (!map_size.IsValidPos(raw_next_hex)) {
@@ -1226,7 +1226,7 @@ label_FindOk:
     return output;
 }
 
-void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius)
+void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint32> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1243,7 +1243,7 @@ void MapManager::TransitToGlobal(Critter* cr, ident_t global_cr_id)
     Transit(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
 }
 
-void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id)
+void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint32> safe_radius, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1563,10 +1563,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
         }
     }
 
-    const uint dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
-    const uint show_cr_dist1 = cr->GetShowCritterDist1();
-    const uint show_cr_dist2 = cr->GetShowCritterDist2();
-    const uint show_cr_dist3 = cr->GetShowCritterDist3();
+    const uint32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+    const uint32 show_cr_dist1 = cr->GetShowCritterDist1();
+    const uint32 show_cr_dist2 = cr->GetShowCritterDist2();
+    const uint32 show_cr_dist3 = cr->GetShowCritterDist3();
 
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {
@@ -1622,8 +1622,8 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         is_see = _engine->OnMapCheckLook.Fire(map, cr, target);
     }
     else {
-        uint dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
-        uint look_dist = cr->GetLookDistance();
+        uint32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+        uint32 look_dist = cr->GetLookDistance();
         const int cr_dir = cr->GetDir();
 
         // Dir modifier
@@ -1639,11 +1639,11 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         }
 
         if (dist > look_dist) {
-            dist = std::numeric_limits<uint>::max();
+            dist = std::numeric_limits<uint32>::max();
         }
 
         // Trace
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint32>::max()) {
             if (!trace_result.has_value()) {
                 TraceData trace;
                 trace.TraceMap = map;
@@ -1653,20 +1653,20 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
                 TraceBullet(trace);
 
                 if (!trace.IsFullTrace) {
-                    dist = std::numeric_limits<uint>::max();
+                    dist = std::numeric_limits<uint32>::max();
                 }
 
                 trace_result = trace.IsFullTrace;
             }
             else {
                 if (!trace_result.value()) {
-                    dist = std::numeric_limits<uint>::max();
+                    dist = std::numeric_limits<uint32>::max();
                 }
             }
         }
 
         // Sneak
-        if (target->GetInSneakMode() && dist != std::numeric_limits<uint>::max()) {
+        if (target->GetInSneakMode() && dist != std::numeric_limits<uint32>::max()) {
             auto sneak_opp = target->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
@@ -1761,7 +1761,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1804,7 +1804,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
         }
 
         // Trace
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint32>::max()) {
             TraceData trace;
             trace.TraceMap = map;
             trace.StartHex = hex;
@@ -1818,7 +1818,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
         }
 
         // Hide modifier
-        uint vis;
+        uint32 vis;
 
         if (cr->GetInSneakMode()) {
             auto sneak_opp = cr->GetSneakCoefficient();

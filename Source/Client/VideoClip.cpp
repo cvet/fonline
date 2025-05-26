@@ -93,6 +93,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
         }
 
         const int r = th_decode_headerin(&_impl->VideoInfo, &_impl->Comment, &_impl->SetupInfo, &_impl->Packet);
+
         if (r == 0) {
             if (stream_index != _impl->Streams.MainIndex) {
                 while (true) {
@@ -261,6 +262,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     for (int i = 0; i < next_frame_diff; i++) {
         // Decode frame
         int r = th_decode_packetin(_impl->DecoderContext, &_impl->Packet, nullptr);
+
         if (r != TH_DUPFRAME) {
             if (r != 0) {
                 WriteLog("Frame does not contain encoded video data, error {}", r);
@@ -280,6 +282,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         // Seek next packet
         do {
             r = DecodePacket();
+
             if (r == -2) {
                 last_frame = true;
                 break;
@@ -315,11 +318,11 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Fill texture data
-    const uint w = _impl->VideoInfo.pic_width;
-    const uint h = _impl->VideoInfo.pic_height;
+    const uint32 w = _impl->VideoInfo.pic_width;
+    const uint32 h = _impl->VideoInfo.pic_height;
 
-    for (uint y = 0; y < h; y++) {
-        for (uint x = 0; x < w; x++) {
+    for (uint32 y = 0; y < h; y++) {
+        for (uint32 x = 0; x < w; x++) {
             const th_ycbcr_buffer& cbuf = _impl->ColorBuffer;
             const uint8 cy = cbuf[0].data[y * cbuf[0].stride + x];
             const uint8 cu = cbuf[1].data[y / dj * cbuf[1].stride + x / di];
@@ -366,8 +369,10 @@ int VideoClip::DecodePacket()
 
     int b = 0;
     int rv = 0;
+
     for (int i = 0; i < static_cast<int>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
         const int a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
+
         switch (a) {
         case 1:
             b = i + 1;
@@ -390,6 +395,7 @@ int VideoClip::DecodePacket()
         while (ogg_sync_pageout(&_impl->SyncState, &op) != 1) {
             auto read_bytes = static_cast<int>(_impl->RawVideoData.size() - _impl->ReadPos);
             read_bytes = std::min(1024, read_bytes);
+
             if (read_bytes == 0) {
                 return -2;
             }
@@ -402,6 +408,7 @@ int VideoClip::DecodePacket()
 
         if (ogg_page_bos(&op) != 0 && rv != 1) {
             int i = 0;
+
             while (i < static_cast<int>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]) {
                 i++;
             }
@@ -421,6 +428,7 @@ int VideoClip::DecodePacket()
         for (int i = 0; i < static_cast<int>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
             ogg_stream_pagein(&_impl->Streams.Streams[i], &op);
             const int a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
+
             switch (a) {
             case 1:
                 rv = i;

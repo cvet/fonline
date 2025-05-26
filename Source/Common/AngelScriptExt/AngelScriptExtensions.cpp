@@ -124,9 +124,9 @@ static bool CScriptArray_Remove(CScriptArray* arr, void* value)
     return false;
 }
 
-static uint CScriptArray_RemoveAll(CScriptArray* arr, void* value)
+static uint32 CScriptArray_RemoveAll(CScriptArray* arr, void* value)
 {
-    uint count = 0;
+    uint32 count = 0;
     int index = 0;
     while (index < static_cast<int>(arr->GetSize())) {
         index = arr->Find(index, value);
@@ -176,7 +176,7 @@ static void CScriptArray_Set(CScriptArray* arr, const CScriptArray* other)
     *arr = *other;
 }
 
-static void CScriptArray_InsertArrAt(CScriptArray* arr, uint index, const CScriptArray* other)
+static void CScriptArray_InsertArrAt(CScriptArray* arr, uint32 index, const CScriptArray* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
@@ -315,7 +315,7 @@ void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr, uint offset = 0)
+static bool IndexUtf8ToRaw(const string& str, int& index, uint32* length = nullptr, uint32 offset = 0)
 {
     if (index < 0) {
         index = static_cast<int>(strex(str).lengthUtf8()) + index;
@@ -327,7 +327,7 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
                 if (!str.empty()) {
                     size_t decode_length = str.length();
                     utf8::Decode(str.c_str(), decode_length);
-                    *length = static_cast<uint>(decode_length);
+                    *length = static_cast<uint32>(decode_length);
                 }
                 else {
                     *length = 0;
@@ -353,7 +353,7 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
             index = static_cast<int>(s - begin);
 
             if (length != nullptr) {
-                *length = static_cast<uint>(decode_length);
+                *length = static_cast<uint32>(decode_length);
             }
 
             return true;
@@ -461,7 +461,7 @@ static int ScriptString_FindLastNotOf(const string& str, const string& chars, in
 
 static string ScriptString_GetAt(const string& str, int i)
 {
-    uint length;
+    uint32 length;
     if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -474,7 +474,7 @@ static string ScriptString_GetAt(const string& str, int i)
 
 static void ScriptString_SetAt(string& str, int i, string& value)
 {
-    uint length;
+    uint32 length;
     if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -490,29 +490,29 @@ static void ScriptString_SetAt(string& str, int i, string& value)
     }
 }
 
-static uint ScriptString_Length(const string& str)
+static uint32 ScriptString_Length(const string& str)
 {
     return strex(str).lengthUtf8();
 }
 
-static uint ScriptString_RawLength(const string& str)
+static uint32 ScriptString_RawLength(const string& str)
 {
-    return static_cast<uint>(str.length());
+    return static_cast<uint32>(str.length());
 }
 
-static void ScriptString_RawResize(string& str, uint length)
+static void ScriptString_RawResize(string& str, uint32 length)
 {
     str.resize(length);
 }
 
-static uint8 ScriptString_RawGet(const string& str, uint index)
+static uint8 ScriptString_RawGet(const string& str, uint32 index)
 {
-    return index < static_cast<uint>(str.length()) ? str[index] : 0;
+    return index < static_cast<uint32>(str.length()) ? str[index] : 0;
 }
 
-static void ScriptString_RawSet(string& str, uint index, uint8 value)
+static void ScriptString_RawSet(string& str, uint32 index, uint8 value)
 {
-    if (index < static_cast<uint>(str.length())) {
+    if (index < static_cast<uint32>(str.length())) {
         str[index] = static_cast<char>(value);
     }
 }

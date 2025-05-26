@@ -79,7 +79,8 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (is_valid_pod_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        entry = parse_from_string<T>(any_value.AsString());
+        istringstream istr(any_value.AsString());
+        istr >> entry;
     }
     else {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);

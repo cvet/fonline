@@ -223,7 +223,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             writer.Write<uint8>(numeric_cast<uint8>(4)); // Socks version
             writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
             writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
-            writer.Write<uint>(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint32>(numeric_cast<uint32>(_sockAddr.sin_addr.s_addr));
             writer.Write<uint8>(numeric_cast<uint8>(0));
 
             recv_buf = send_recv(send_buf);
@@ -287,7 +287,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
             writer.Write<uint8>(numeric_cast<uint8>(0)); // Reserved
             writer.Write<uint8>(numeric_cast<uint8>(1)); // IP v4 address
-            writer.Write<uint>(numeric_cast<uint>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint32>(numeric_cast<uint32>(_sockAddr.sin_addr.s_addr));
             writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
 
             recv_buf = send_recv(send_buf);
@@ -353,7 +353,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     FO_STACK_TRACE_ENTRY();
 
     // ReSharper disable once CppLocalVariableMayBeConst
-    timeval tv = {0, 0};
+    timeval tv = {.tv_sec = 0, .tv_usec = 0};
 
     FD_ZERO(&_netSockSet);
     FD_SET(_netSock, &_netSockSet);
@@ -501,7 +501,7 @@ void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_vi
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
 
-    if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == static_cast<uint>(-1)) {
+    if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == 0xFFFFFFFFu) {
         static std::mutex gethostbyname_locker;
         auto locker = std::scoped_lock {gethostbyname_locker};
 

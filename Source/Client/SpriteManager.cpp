@@ -1502,8 +1502,8 @@ void SpriteManager::BuildFont(int index)
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
-    if (font.Letters.count(static_cast<uint>(' ')) != 0) {
-        font.SpaceWidth = font.Letters[static_cast<uint>(' ')].XAdvance;
+    if (font.Letters.count(static_cast<uint32>(' ')) != 0) {
+        font.SpaceWidth = font.Letters[static_cast<uint32>(' ')].XAdvance;
     }
 
     const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
@@ -1515,7 +1515,7 @@ void SpriteManager::BuildFont(int index)
     const auto bordered_oy = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, uint width, int x, int y) -> ucolor& { return tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, uint32 width, int x, int y) -> ucolor& { return tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->Size);
     vector<ucolor> data_bordered;
 
@@ -1762,7 +1762,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     return true;
 }
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
@@ -1858,7 +1858,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
         let.XAdvance = xa + 1;
     }
 
-    font->LineHeight = font->Letters.count(static_cast<uint>('W')) != 0 ? font->Letters[static_cast<uint>('W')].Size.height : base_height;
+    font->LineHeight = font->Letters.count(static_cast<uint32>('W')) != 0 ? font->Letters[static_cast<uint32>('W')].Size.height : base_height;
     font->YAdvance = font->LineHeight / 2;
     font->MakeGray = true;
 
@@ -1937,7 +1937,7 @@ static void StrGoTo(char*& str, char ch)
     }
 }
 
-static void StrEraseInterval(char* str, uint len)
+static void StrEraseInterval(char* str, uint32 len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1955,7 +1955,7 @@ static void StrEraseInterval(char* str, uint len)
     *str = 0;
 }
 
-static void StrInsert(char* to, const char* from, uint from_len)
+static void StrInsert(char* to, const char* from, uint32 from_len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1964,7 +1964,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
     }
 
     if (from_len == 0) {
-        from_len = static_cast<uint>(string_view(from).length());
+        from_len = static_cast<uint32>(string_view(from).length());
     }
     if (from_len == 0) {
         return;
@@ -2016,16 +2016,16 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     // Colorize
     ucolor* dots = nullptr;
-    uint d_offs = 0;
+    uint32 d_offs = 0;
     string buf;
 
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
         dots = fi.ColorDots;
     }
 
-    constexpr uint dots_history_len = 10;
+    constexpr uint32 dots_history_len = 10;
     ucolor dots_history[dots_history_len] = {fi.DefColor};
-    uint dots_history_cur = 0;
+    uint32 dots_history_cur = 0;
 
     for (auto* str_ = str; *str_ != 0;) {
         auto* s0 = str_;
@@ -2035,7 +2035,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         auto* s2 = str_;
 
         if (dots != nullptr) {
-            size_t d_len = static_cast<uint>(s2 - s1) + 1;
+            size_t d_len = static_cast<uint32>(s2 - s1) + 1;
             ucolor d;
 
             if (d_len == 2) {
@@ -2048,10 +2048,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             }
             else {
                 if (*(s1 + 1) == 'x') {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16))};
+                    d = ucolor {static_cast<uint32>(std::strtoul(s1 + 2, nullptr, 16))};
                 }
                 else {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0))};
+                    d = ucolor {static_cast<uint32>(std::strtoul(s1 + 1, nullptr, 0))};
                 }
 
                 if (dots_history_cur < dots_history_len - 1) {
@@ -2059,8 +2059,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
             }
 
-            dots[static_cast<uint>(s1 - str) - d_offs] = d;
-            d_offs += static_cast<uint>(d_len);
+            dots[static_cast<uint32>(s1 - str) - d_offs] = d;
+            d_offs += static_cast<uint32>(d_len);
         }
 
         *s1 = 0;
@@ -2396,7 +2396,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 }
 
-void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor color, int num_font)
+void SpriteManager::DrawText(irect rect, string_view str, uint32 flags, ucolor color, int num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2649,7 +2649,7 @@ auto SpriteManager::GetLineHeight(int num_font) -> int
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint flags, isize& result_size, int& lines) -> bool
+auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint32 flags, isize& result_size, int& lines) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2710,7 +2710,7 @@ auto SpriteManager::SplitLines(irect rect, string_view cstr, int num_font) -> ve
     return result;
 }
 
-auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
+auto SpriteManager::HaveLetter(int num_font, uint32 letter) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

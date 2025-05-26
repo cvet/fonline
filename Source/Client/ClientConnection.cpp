@@ -311,10 +311,9 @@ void ClientConnection::Net_SendHandshake()
     FO_STACK_TRACE_ENTRY();
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-    constexpr auto comp_version = static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     _netOut.StartMsg(NetMessage::Handshake);
-    _netOut.Write(_settings.BypassCompatibilityCheck ? 0 : comp_version);
+    _netOut.Write(_settings.BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 
@@ -326,7 +325,7 @@ void ClientConnection::Net_OnHandshakeAnswer()
     FO_STACK_TRACE_ENTRY();
 
     const auto outdated = _netIn.Read<bool>();
-    const auto encrypt_key = _netIn.Read<uint>();
+    const auto encrypt_key = _netIn.Read<uint32>();
 
     _netIn.SetEncryptKey(encrypt_key);
 
@@ -342,7 +341,7 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         const auto time = nanotime::now();
-        _settings.Ping = (time - _pingTime).to_ms<uint>();
+        _settings.Ping = (time - _pingTime).to_ms<uint32>();
         _pingTime = nanotime::zero;
         _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
     }

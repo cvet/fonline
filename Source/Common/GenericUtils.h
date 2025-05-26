@@ -54,7 +54,7 @@ class Hashing final
 public:
     Hashing() = delete;
 
-    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) noexcept -> uint;
+    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) noexcept -> uint32;
     [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) noexcept -> uint64;
 };
 
@@ -74,13 +74,13 @@ public:
     GenericUtils() = delete;
 
     [[nodiscard]] static auto Random(int minimum, int maximum) -> int;
-    [[nodiscard]] static auto Random(uint minimum, uint maximum) -> uint;
+    [[nodiscard]] static auto Random(uint32 minimum, uint32 maximum) -> uint32;
     [[nodiscard]] static auto Percent(int full, int peace) -> int;
-    [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
-    [[nodiscard]] static auto NumericalNumber(uint num) noexcept -> uint;
+    [[nodiscard]] static auto Percent(uint32 full, uint32 peace) -> uint32;
+    [[nodiscard]] static auto NumericalNumber(uint32 num) noexcept -> uint32;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) noexcept -> uint;
+    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32;
     [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos;
 

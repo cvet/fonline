@@ -67,7 +67,7 @@ struct SpritePattern
 
     bool Finished {};
     string SprName {};
-    uint SprCount {};
+    uint32 SprCount {};
     ipos EveryHex {1, 1};
     bool InteractWithRoof {};
     bool CheckTileProperty {};
@@ -91,17 +91,17 @@ public:
         ident_t Id {};
         mpos Hex {};
         ucolor Color {};
-        uint Distance {};
+        uint32 Distance {};
         uint8 Flags {};
         int Intensity {};
         const ipos* Offset {};
         bool Applied {};
         bool NeedReapply {};
-        uint StartIntensity {};
-        uint TargetIntensity {};
-        uint CurIntensity {};
+        uint32 StartIntensity {};
+        uint32 TargetIntensity {};
+        uint32 CurIntensity {};
         ucolor CenterColor {};
-        uint Capacity {};
+        uint32 Capacity {};
         ipos LastOffset {};
         vector<tuple<mpos, uint8, bool>> FanHexes {}; // Hex, Alpha, UseOffsets
         vector<mpos> MarkedHexes {};
@@ -183,7 +183,7 @@ public:
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int quad_dir) const -> bool;
-    void TraceBullet(mpos start_hex, mpos target_hex, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
+    void TraceBullet(mpos start_hex, mpos target_hex, uint32 dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -198,7 +198,7 @@ public:
     void RebuildMapOffset(ipos hex_offset);
     void RefreshMap() { RebuildMap(_screenRawHex); }
     void RebuildFog() { _rebuildFog = true; }
-    void SetShootBorders(bool enabled, uint dist);
+    void SetShootBorders(bool enabled, uint32 dist);
     auto MeasureMapBorders(const Sprite* spr, ipos offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
@@ -253,7 +253,7 @@ public:
 
     void RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex);
 
-    auto RunSpritePattern(string_view name, uint count) -> SpritePattern*;
+    auto RunSpritePattern(string_view name, uint32 count) -> SpritePattern*;
 
     void SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool refresh);
     void DrawCursor(const Sprite* spr);
@@ -305,16 +305,16 @@ private:
 
     // Lighting
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, uint distance, uint8 flags, int intensity, const ipos* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, uint32 distance, uint8 flags, int intensity, const ipos* offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);
     void CleanLightFan(LightSource* ls);
-    void TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, uint distance, uint intensity);
-    void MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, uint intensity);
-    void MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, uint intensity);
-    void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, uint intensity);
-    void MarkLight(LightSource* ls, mpos hex, uint intensity);
+    void TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, uint32 distance, uint32 intensity);
+    void MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, uint32 intensity);
+    void MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, uint32 intensity);
+    void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, uint32 intensity);
+    void MarkLight(LightSource* ls, mpos hex, uint32 intensity);
     void CalculateHexLight(mpos hex, const Field& field);
     void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const;
 
@@ -371,7 +371,7 @@ private:
     bool _rebuildFog {};
     bool _drawLookBorders {true};
     bool _drawShootBorders {};
-    uint _shootBordersDist {};
+    uint32 _shootBordersDist {};
     vector<PrimitivePoint> _fogLookPoints {};
     vector<PrimitivePoint> _fogShootPoints {};
 

@@ -51,22 +51,22 @@ FO_BEGIN_NAMESPACE();
 
 // Font flags
 // Todo: convert FT_ font flags to enum
-static constexpr uint FT_NOBREAK = 0x0001;
-static constexpr uint FT_NOBREAK_LINE = 0x0002;
-static constexpr uint FT_CENTERX = 0x0004;
-static constexpr uint FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
-static constexpr uint FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
-static constexpr uint FT_CENTERR = 0x0010;
-static constexpr uint FT_BOTTOM = 0x0020;
-static constexpr uint FT_UPPER = 0x0040;
-static constexpr uint FT_NO_COLORIZE = 0x0080;
-static constexpr uint FT_ALIGN = 0x0100;
-static constexpr uint FT_BORDERED = 0x0200;
-static constexpr auto FT_SKIPLINES(uint l) -> uint
+static constexpr uint32 FT_NOBREAK = 0x0001;
+static constexpr uint32 FT_NOBREAK_LINE = 0x0002;
+static constexpr uint32 FT_CENTERX = 0x0004;
+static constexpr uint32 FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
+static constexpr uint32 FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
+static constexpr uint32 FT_CENTERR = 0x0010;
+static constexpr uint32 FT_BOTTOM = 0x0020;
+static constexpr uint32 FT_UPPER = 0x0040;
+static constexpr uint32 FT_NO_COLORIZE = 0x0080;
+static constexpr uint32 FT_ALIGN = 0x0100;
+static constexpr uint32 FT_BORDERED = 0x0200;
+static constexpr auto FT_SKIPLINES(uint32 l) -> uint32
 {
     return 0x0400 | (l << 16);
 }
-static constexpr auto FT_SKIPLINES_END(uint l) -> uint
+static constexpr auto FT_SKIPLINES_END(uint32 l) -> uint32
 {
     return 0x0800 | (l << 16);
 }
@@ -282,14 +282,14 @@ public:
     [[nodiscard]] auto GetLinesCount(isize size, string_view str, int num_font) -> int;
     [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int num_font) -> int;
     [[nodiscard]] auto GetLineHeight(int num_font) -> int;
-    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int num_font, uint flags, isize& result_size, int& lines) -> bool;
-    [[nodiscard]] auto HaveLetter(int num_font, uint letter) -> bool;
+    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int num_font, uint32 flags, isize& result_size, int& lines) -> bool;
+    [[nodiscard]] auto HaveLetter(int num_font, uint32 letter) -> bool;
 
     auto LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
     auto LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool;
     void SetDefaultFont(int index);
     void SetFontEffect(int index, RenderEffect* effect);
-    void DrawText(irect rect, string_view str, uint flags, ucolor color, int num_font);
+    void DrawText(irect rect, string_view str, uint32 flags, ucolor color, int num_font);
     auto SplitLines(irect rect, string_view cstr, int num_font) -> vector<string>;
     void ClearFonts();
 
@@ -315,7 +315,7 @@ private:
         RenderEffect* DrawEffect {};
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
-        unordered_map<uint, Letter> Letters {};
+        unordered_map<uint32, Letter> Letters {};
         int SpaceWidth {};
         int LineHeight {};
         int YAdvance {};
@@ -328,7 +328,7 @@ private:
     struct FontFormatInfo
     {
         FontData* CurFont {};
-        uint Flags {};
+        uint32 Flags {};
         irect Rect {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};

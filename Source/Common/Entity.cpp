@@ -215,7 +215,7 @@ void Entity::MarkAsDestroyed() noexcept
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const
+void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 

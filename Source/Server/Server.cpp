@@ -363,10 +363,10 @@ FOServer::FOServer(GlobalSettings& settings) :
                 const auto data = file.GetData();
                 _updateFilesData.push_back(data);
 
-                writer.Write<int16>(static_cast<int16>(file.GetPath().length()));
+                writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
                 writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-                writer.Write<uint>(static_cast<uint>(data.size()));
-                writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+                writer.Write<uint32>(numeric_cast<uint32>(data.size()));
+                writer.Write<uint32>(Hashing::MurmurHash2(data.data(), data.size()));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -387,7 +387,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         if (Settings.AdminPanelPort != 0) {
             WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
 
-            InitAdminManager(this, static_cast<uint16>(Settings.AdminPanelPort));
+            InitAdminManager(this, numeric_cast<uint16>(Settings.AdminPanelPort));
         }
 
         return std::nullopt;
@@ -1383,7 +1383,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint>();
+        const auto count = buf.Read<uint32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1400,7 +1400,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDITEM_SELF: {
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint>();
+        const auto count = buf.Read<uint32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1993,11 +1993,11 @@ void FOServer::Process_Handshake(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
-    const auto comp_version = in_buf->Read<uint>();
-    const auto outdated = comp_version != 0 && comp_version != static_cast<uint>(FO_COMPATIBILITY_VERSION);
+    const auto comp_version = in_buf->Read<uint32>();
+    const auto outdated = comp_version != 0 && comp_version != FO_COMPATIBILITY_VERSION;
 
     // Begin data encrypting
-    const auto in_encrypt_key = in_buf->Read<uint>();
+    const auto in_encrypt_key = in_buf->Read<uint32>();
     FO_RUNTIME_ASSERT(in_encrypt_key != 0);
     in_buf->SetEncryptKey(in_encrypt_key);
 
@@ -2020,12 +2020,12 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     if (!outdated) {
         vector<const uint8*>* global_vars_data = nullptr;
-        vector<uint>* global_vars_data_sizes = nullptr;
+        vector<uint32>* global_vars_data_sizes = nullptr;
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-        out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
+        out_buf->Write(static_cast<uint32>(_updateFilesDesc.size()));
         out_buf->Push(_updateFilesDesc);
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
         out_buf->Write(GameTime.GetSynchronizedTime());
@@ -2063,7 +2063,7 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
 
     auto in_buf = connection->ReadBuf();
 
-    const auto file_index = in_buf->Read<uint>();
+    const auto file_index = in_buf->Read<uint32>();
 
     in_buf.Unlock();
 
@@ -2092,7 +2092,7 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
     }
 
     const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    uint update_portion = Settings.UpdateFileSendSize;
+    uint32 update_portion = Settings.UpdateFileSendSize;
     const auto offset = connection->UpdateFilePortion * update_portion;
 
     if (offset + update_portion < update_file_data.size()) {
@@ -2313,7 +2313,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
 
         auto ip_found = false;
-        for (uint i = 0; i < conn_ip.size(); i++) {
+        for (uint32 i = 0; i < conn_ip.size(); i++) {
             if (conn_ip[i] == ip) {
                 if (i < conn_ip.size() - 1) {
                     conn_ip.erase(conn_ip.begin() + i);
@@ -2400,7 +2400,7 @@ void FOServer::Process_Move(Player* player)
     vector<uint8> steps;
     steps.resize(steps_count);
 
-    for (auto i = 0; i < steps_count; i++) {
+    for (uint16 i = 0; i < steps_count; i++) {
         steps[i] = in_buf->Read<uint8>();
     }
 
@@ -2408,7 +2408,7 @@ void FOServer::Process_Move(Player* player)
     vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
 
-    for (auto i = 0; i < control_steps_count; i++) {
+    for (uint16 i = 0; i < control_steps_count; i++) {
         control_steps[i] = in_buf->Read<uint16>();
     }
 
@@ -2466,7 +2466,7 @@ void FOServer::Process_Move(Player* player)
         next_start_hy = hy;
     }*/
 
-    uint corrected_speed = speed;
+    uint32 corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
         BreakIntoDebugger();
@@ -2559,7 +2559,7 @@ void FOServer::Process_StopMove(Player* player)
         return;
     }
 
-    uint zero_speed = 0;
+    uint32 zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
@@ -2617,7 +2617,7 @@ void FOServer::Process_Property(Player* player)
 
     Critter* cr = player->GetControlledCritter();
 
-    const auto data_size = in_buf->Read<uint>();
+    const auto data_size = in_buf->Read<uint32>();
 
     // Todo: control max size explicitly, add option to property registration
     if (data_size > 0xFFFF) {
@@ -2992,7 +2992,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *static_cast<const uint*>(new_value);
+    const auto new_count = *static_cast<const uint32*>(new_value);
 
     if (new_count == 0 || (!item->GetStackable() && new_count != 1)) {
         if (!item->GetStackable()) {
@@ -3123,8 +3123,8 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
         if (need_find_path) {
             mpos hex;
-            uint cut;
-            uint trace_dist;
+            uint32 cut;
+            uint32 trace_dist;
             Critter* trace_cr;
 
             if (cr->TargetMoving.TargId) {
@@ -3319,8 +3319,8 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             // Evaluate current hex
             const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));
             const auto step_index = control_step_begin + static_cast<int>(step_index_f);
-            FO_RUNTIME_ASSERT(step_index >= control_step_begin);
-            FO_RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
+            FO_RUNTIME_ASSERT(step_index >= numeric_cast<int>(control_step_begin));
+            FO_RUNTIME_ASSERT(step_index <= numeric_cast<int>(cr->Moving.ControlSteps[i]));
 
             auto hex2 = next_start_hex;
 
@@ -3333,7 +3333,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
             if (old_hex != hex2) {
-                const uint multihex = cr->GetMultihex();
+                const uint32 multihex = cr->GetMultihex();
 
                 if (map->IsHexesMovable(hex2, multihex, cr)) {
                     map->RemoveCritterFromField(cr);
@@ -3673,32 +3673,32 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
             const auto pid = demand.ParamHash;
             switch (demand.Op) {
             case '>':
-                if (static_cast<int>(master->CountInvItemPid(pid)) > demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) > demand.Value) {
                     continue;
                 }
                 break;
             case '<':
-                if (static_cast<int>(master->CountInvItemPid(pid)) < demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) < demand.Value) {
                     continue;
                 }
                 break;
             case '=':
-                if (static_cast<int>(master->CountInvItemPid(pid)) == demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) == demand.Value) {
                     continue;
                 }
                 break;
             case '!':
-                if (static_cast<int>(master->CountInvItemPid(pid)) != demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) != demand.Value) {
                     continue;
                 }
                 break;
             case '}':
-                if (static_cast<int>(master->CountInvItemPid(pid)) >= demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) >= demand.Value) {
                     continue;
                 }
                 break;
             case '{':
-                if (static_cast<int>(master->CountInvItemPid(pid)) <= demand.Value) {
+                if (numeric_cast<int>(master->CountInvItemPid(pid)) <= demand.Value) {
                     continue;
                 }
                 break;
@@ -3735,7 +3735,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
     return true;
 }
 
-auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint
+auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3743,7 +3743,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
         return 0;
     }
 
-    uint force_dialog = 0;
+    uint32 force_dialog = 0;
     Critter* master = nullptr;
     Critter* slave = nullptr;
 
@@ -3983,19 +3983,19 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
     // Predialogue installations
     auto it_d = dialogs->begin();
-    auto go_dialog = static_cast<uint>(-1);
+    auto go_dialog = 0xFFFFFFFFu;
     auto it_a = it_d->Answers.begin();
 
     for (; it_a != it_d->Answers.end(); ++it_a) {
         if (DialogCheckDemand(npc, cl, *it_a, false)) {
             go_dialog = it_a->Link;
         }
-        if (go_dialog != static_cast<uint>(-1)) {
+        if (go_dialog != 0xFFFFFFFFu) {
             break;
         }
     }
 
-    if (go_dialog == static_cast<uint>(-1)) {
+    if (go_dialog == 0xFFFFFFFFu) {
         return;
     }
 
@@ -4003,7 +4003,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     const auto force_dialog = DialogUseResult(npc, cl, *it_a);
 
     if (force_dialog != 0) {
-        if (force_dialog == static_cast<uint>(-1)) {
+        if (force_dialog == 0xFFFFFFFFu) {
             return;
         }
 
@@ -4053,7 +4053,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
         if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
         cl->Talk.Locked = false;
@@ -4150,7 +4150,7 @@ void FOServer::Process_Dialog(Player* player)
     const auto* cur_dialog = &cr->Talk.CurDialog;
     const auto last_dialog = cur_dialog->Id;
 
-    uint next_dlg_id;
+    uint32 next_dlg_id;
 
     if (!cr->Talk.Barter) {
         // Barter
@@ -4202,7 +4202,7 @@ void FOServer::Process_Dialog(Player* player)
         }
 
         // Use result
-        const uint force_dlg_id = DialogUseResult(talker, cr, *answer);
+        const uint32 force_dlg_id = DialogUseResult(talker, cr, *answer);
 
         if (force_dlg_id != 0) {
             next_dlg_id = force_dlg_id;
@@ -4213,18 +4213,18 @@ void FOServer::Process_Dialog(Player* player)
 
         // Special links
         switch (next_dlg_id) {
-        case static_cast<uint>(-3):
+        case static_cast<uint32>(-3):
         case DIALOG_BARTER:
             do_barter();
             return;
-        case static_cast<uint>(-2):
+        case static_cast<uint32>(-2):
         case DIALOG_BACK:
             if (cr->Talk.LastDialogId != 0) {
                 next_dlg_id = cr->Talk.LastDialogId;
                 break;
             }
             [[fallthrough]];
-        case static_cast<uint>(-1):
+        case static_cast<uint32>(-1):
         case DIALOG_END:
             CrMngr.CloseTalk(cr);
             return;
@@ -4274,7 +4274,7 @@ void FOServer::Process_Dialog(Player* player)
         if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
         cr->Talk.Locked = false;
@@ -4316,14 +4316,14 @@ void FOServer::Process_RemoteCall(Player* player)
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    const auto rpc_num = in_buf->Read<uint>();
+    const auto rpc_num = in_buf->Read<uint32>();
 
     in_buf.Unlock();
 
     ScriptSys.HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint32 count, Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4343,9 +4343,9 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Prop
 
     // Non-stacked items
     if (item != nullptr && !proto->GetStackable() && count > 1) {
-        const uint fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
+        const uint32 fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
 
-        for (uint i = 0; i < fixed_count; i++) {
+        for (uint32 i = 0; i < fixed_count; i++) {
             if (add_item() == nullptr) {
                 break;
             }
@@ -4379,38 +4379,38 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
     }
 }
 
-auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
+auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
     switch (result.ValuesCount) {
     case 0:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*>(result.AnswerScriptFuncName)) {
             return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;
@@ -4461,7 +4461,7 @@ auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint>(player_name.length()));
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint32>(player_name.length()));
     FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }

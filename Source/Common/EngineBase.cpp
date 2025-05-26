@@ -249,12 +249,12 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint16);
             }},
-        {"uint",
+        {"uint32",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
                 info.IsUInt32 = true;
                 info.IsSignedInt = false;
-                info.Size = sizeof(uint);
+                info.Size = sizeof(uint32);
             }},
         {"uint64",
             [](BaseTypeInfo& info) {

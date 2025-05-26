@@ -147,7 +147,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     return 6;
 }
 
-SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint dirs) :
+SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint32 frames, uint32 ticks, uint32 dirs) :
     Sprite(spr_mngr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -162,7 +162,7 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, uint frames, uint ticks, uint 
 
     DirCount = dirs;
 
-    for (uint dir = 0; dir < dirs - 1; dir++) {
+    for (uint32 dir = 0; dir < dirs - 1; dir++) {
         Dirs[dir] = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames, ticks, 1);
     }
 }
@@ -213,7 +213,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
         copy->ActionAnim = ActionAnim;
     }
 
-    for (uint i = 0; i < DirCount - 1; i++) {
+    for (uint32 i = 0; i < DirCount - 1; i++) {
         if (Dirs[i]) {
             copy->Dirs[i] = dynamic_ptr_cast<SpriteSheet>(Dirs[i]->MakeCopy());
         }
@@ -322,7 +322,7 @@ auto SpriteSheet::Update() -> bool
             }
 
             FO_RUNTIME_ASSERT(index >= 0 && index < frm_count);
-            _curIndex = static_cast<uint>(index);
+            _curIndex = static_cast<uint32>(index);
 
             RefreshParams();
         }
@@ -343,28 +343,28 @@ void SpriteSheet::RefreshParams()
     Offset = cur_spr->Offset;
 }
 
-auto SpriteSheet::GetSpr(uint num_frm) const -> const Sprite*
+auto SpriteSheet::GetSpr(uint32 num_frm) const -> const Sprite*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
-auto SpriteSheet::GetSpr(uint num_frm) -> Sprite*
+auto SpriteSheet::GetSpr(uint32 num_frm) -> Sprite*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return Spr[num_frm % CntFrm].get();
 }
 
-auto SpriteSheet::GetDir(uint dir) const -> const SpriteSheet*
+auto SpriteSheet::GetDir(uint32 dir) const -> const SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
 }
 
-auto SpriteSheet::GetDir(uint dir) -> SpriteSheet*
+auto SpriteSheet::GetDir(uint32 dir) -> SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 

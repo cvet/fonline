@@ -104,9 +104,9 @@ void MapBaker::BakeFiles(FileCollection files)
         }();
 
         vector<uint8> props_data;
-        uint map_cr_count = 0;
-        uint map_item_count = 0;
-        uint map_client_item_count = 0;
+        uint32 map_cr_count = 0;
+        uint32 map_item_count = 0;
+        uint32 map_client_item_count = 0;
         vector<uint8> map_cr_data;
         vector<uint8> map_item_data;
         vector<uint8> map_client_item_data;
@@ -129,7 +129,7 @@ void MapBaker::BakeFiles(FileCollection files)
                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                 map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
-                map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                map_cr_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
             },
             [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
@@ -142,7 +142,7 @@ void MapBaker::BakeFiles(FileCollection files)
                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                 map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
-                map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                map_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
                 const auto is_static = proto->GetStatic();
@@ -157,7 +157,7 @@ void MapBaker::BakeFiles(FileCollection files)
                     map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                     map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
                     client_props.StoreAllData(props_data, client_str_hashes);
-                    map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                    map_client_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                     map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
                 }
             });
@@ -171,17 +171,17 @@ void MapBaker::BakeFiles(FileCollection files)
             vector<uint8> map_data;
             auto final_writer = DataWriter(map_data);
 
-            final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+            final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
                 const auto& str = hstr.as_str();
-                final_writer.Write<uint>(static_cast<uint>(str.length()));
+                final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
 
-            final_writer.Write<uint>(map_cr_count);
+            final_writer.Write<uint32>(map_cr_count);
             final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
-            final_writer.Write<uint>(map_item_count);
+            final_writer.Write<uint32>(map_item_count);
             final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
             _writeData(strex("{}.fomapb-server", map_name), map_data);
@@ -192,15 +192,15 @@ void MapBaker::BakeFiles(FileCollection files)
             vector<uint8> map_data;
             auto final_writer = DataWriter(map_data);
 
-            final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
+            final_writer.Write<uint32>(numeric_cast<uint32>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
                 const auto& str = hstr.as_str();
-                final_writer.Write<uint>(static_cast<uint>(str.length()));
+                final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
 
-            final_writer.Write<uint>(map_client_item_count);
+            final_writer.Write<uint32>(map_client_item_count);
             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
             _writeData(strex("{}.fomapb-client", map_name), map_data);

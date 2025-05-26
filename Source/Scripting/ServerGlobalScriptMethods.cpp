@@ -113,7 +113,7 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(FOServer* server, ident_t 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
     ignore_unused(server);
 
@@ -136,7 +136,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critt
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item1, Item* item2)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Item* item1, Item* item2)
 {
     ignore_unused(server);
 
@@ -158,7 +158,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item1, Item* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, Item* item)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Critter* cr, Item* item)
 {
     ignore_unused(server);
 
@@ -181,7 +181,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, Item* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, Critter* cr)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Item* item, Critter* cr)
 {
     ignore_unused(server);
 
@@ -204,7 +204,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, Critter
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, mpos hex)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Critter* cr, mpos hex)
 {
     ignore_unused(server);
 
@@ -221,7 +221,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Critter* cr, mpos h
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Critter* cr)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, mpos hex, Critter* cr)
 {
     ignore_unused(server);
 
@@ -238,7 +238,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Critter* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, mpos hex)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, Item* item, mpos hex)
 {
     ignore_unused(server);
 
@@ -254,7 +254,7 @@ FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, Item* item, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Game_GetDistance(FOServer* server, mpos hex, Item* item)
+FO_SCRIPT_API uint32 Server_Game_GetDistance(FOServer* server, mpos hex, Item* item)
 {
     ignore_unused(server);
 
@@ -298,7 +298,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Critter* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Critter* toCr)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint32 count, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -331,7 +331,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Map* toMa
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, mpos toHex)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint32 count, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -377,7 +377,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Item* toC
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint32 count, Item* toCont)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -394,7 +394,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint coun
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, any_t stackId)
+FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, uint32 count, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -522,7 +522,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, Item* item)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, Item* item, uint count)
+FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, Item* item, uint32 count)
 {
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
@@ -547,7 +547,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, ident_t itemId, uint count)
+FO_SCRIPT_API void Server_Game_DestroyItem(FOServer* server, ident_t itemId, uint32 count)
 {
     auto* item = server->EntityMngr.GetItem(itemId);
 
@@ -734,7 +734,7 @@ FO_SCRIPT_API Map* Server_Game_GetMap(FOServer* server, hstring mapPid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(FOServer* server, hstring mapPid, uint skipCount)
+FO_SCRIPT_API Map* Server_Game_GetMap(FOServer* server, hstring mapPid, uint32 skipCount)
 {
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
 }
@@ -783,7 +783,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid, uint skipCount)
+FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid, uint32 skipCount)
 {
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
@@ -1053,7 +1053,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName textPack, uint strNum)
+FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName textPack, uint32 strNum)
 {
     return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }

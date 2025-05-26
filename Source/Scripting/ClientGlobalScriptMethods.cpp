@@ -74,7 +74,7 @@ FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     ignore_unused(client);
 
@@ -99,7 +99,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, C
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
 {
     ignore_unused(client);
 
@@ -123,7 +123,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item1, It
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
 {
     ignore_unused(client);
 
@@ -148,7 +148,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, It
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
 {
     ignore_unused(client);
 
@@ -173,7 +173,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, Cri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
 {
     ignore_unused(client);
 
@@ -194,7 +194,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, CritterView* cr, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
 {
     ignore_unused(client);
 
@@ -215,7 +215,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, CritterVi
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
 {
     ignore_unused(client);
 
@@ -235,7 +235,7 @@ FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, mpos hex, ItemView*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
+FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
 {
     ignore_unused(client);
 
@@ -539,37 +539,37 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint32 strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint strNum, uint skipCount)
+FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint32 strNum, uint32 skipCount)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint32 Client_Game_GetTextNumUpper(FOClient* client, TextPackName textPack, uint32 strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint32 Client_Game_GetTextNumLower(FOClient* client, TextPackName textPack, uint32 strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API uint32 Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint32 strNum)
 {
-    return static_cast<uint>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
+    return static_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint strNum)
+FO_SCRIPT_API bool Client_Game_IsTextPresent(FOClient* client, TextPackName textPack, uint32 strNum)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
 }
@@ -650,88 +650,88 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
         return def_effect;
     };
 
-    const auto eff_type = static_cast<uint>(effectType);
+    const auto eff_type = static_cast<uint32>(effectType);
 
-    if (((eff_type & static_cast<uint>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
-        auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint>(effectSubtype)});
+    if (((eff_type & static_cast<uint32>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
+        auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint32>(effectSubtype)});
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
-    if (((eff_type & static_cast<uint>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
-        auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint>(effectSubtype)});
+    if (((eff_type & static_cast<uint32>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
+        auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint32>(effectSubtype)});
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
     }
 
-    if (((eff_type & static_cast<uint>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
+    if (((eff_type & static_cast<uint32>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
         client->EffectMngr.Effects.Generic = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
-    if (((eff_type & static_cast<uint>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
+    if (((eff_type & static_cast<uint32>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
         client->EffectMngr.Effects.Critter = reload_effect(client->EffectMngr.Effects.CritterDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::TileSprite)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::TileSprite)) != 0) {
         client->EffectMngr.Effects.Tile = reload_effect(client->EffectMngr.Effects.TileDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::RoofSprite)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::RoofSprite)) != 0) {
         client->EffectMngr.Effects.Roof = reload_effect(client->EffectMngr.Effects.RoofDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::RainSprite)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::RainSprite)) != 0) {
         client->EffectMngr.Effects.Rain = reload_effect(client->EffectMngr.Effects.RainDefault);
     }
 
 #if FO_ENABLE_3D
-    if ((eff_type & static_cast<uint>(EffectType::SkinnedMesh)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::SkinnedMesh)) != 0) {
         client->EffectMngr.Effects.SkinnedModel = reload_effect(client->EffectMngr.Effects.SkinnedModelDefault);
     }
 #endif
 
-    if ((eff_type & static_cast<uint>(EffectType::Interface)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::Interface)) != 0) {
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::ContourStrict)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::ContourStrict)) != 0) {
         client->EffectMngr.Effects.ContourStrictSprite = reload_effect(client->EffectMngr.Effects.ContourStrictSpriteDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::ContourDynamic)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::ContourDynamic)) != 0) {
         client->EffectMngr.Effects.ContourDynamicSprite = reload_effect(client->EffectMngr.Effects.ContourDynamicSpriteDefault);
     }
 
-    if (((eff_type & static_cast<uint>(EffectType::Font)) != 0) && effectSubtype == -1) {
+    if (((eff_type & static_cast<uint32>(EffectType::Font)) != 0) && effectSubtype == -1) {
         client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
-    if (((eff_type & static_cast<uint>(EffectType::Font)) != 0) && effectSubtype >= 0) {
+    if (((eff_type & static_cast<uint32>(EffectType::Font)) != 0) && effectSubtype >= 0) {
         client->SprMngr.SetFontEffect(static_cast<int>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::Primitive)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::Primitive)) != 0) {
         client->EffectMngr.Effects.Primitive = reload_effect(client->EffectMngr.Effects.PrimitiveDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::Light)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::Light)) != 0) {
         client->EffectMngr.Effects.Light = reload_effect(client->EffectMngr.Effects.LightDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::Fog)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::Fog)) != 0) {
         client->EffectMngr.Effects.Fog = reload_effect(client->EffectMngr.Effects.FogDefault);
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::FlushRenderTarget)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::FlushRenderTarget)) != 0) {
         client->EffectMngr.Effects.FlushRenderTarget = reload_effect(client->EffectMngr.Effects.FlushRenderTargetDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::FlushPrimitive)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::FlushPrimitive)) != 0) {
         client->EffectMngr.Effects.FlushPrimitive = reload_effect(client->EffectMngr.Effects.FlushPrimitiveDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::FlushMap)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::FlushMap)) != 0) {
         client->EffectMngr.Effects.FlushMap = reload_effect(client->EffectMngr.Effects.FlushMapDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::FlushLight)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::FlushLight)) != 0) {
         client->EffectMngr.Effects.FlushLight = reload_effect(client->EffectMngr.Effects.FlushLightDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::FlushFog)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::FlushFog)) != 0) {
         client->EffectMngr.Effects.FlushFog = reload_effect(client->EffectMngr.Effects.FlushFogDefault);
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::Offscreen)) != 0) {
+    if ((eff_type & static_cast<uint32>(EffectType::Offscreen)) != 0) {
         if (effectSubtype < 0) {
             throw ScriptException("Negative effect subtype");
         }
@@ -794,49 +794,49 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode k
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
+FO_SCRIPT_API uint32 Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
+FO_SCRIPT_API uint32 Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
+FO_SCRIPT_API uint32 Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
+FO_SCRIPT_API uint32 Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadSeparateSprite(FOClient* client, string_view sprName)
+FO_SCRIPT_API uint32 Client_Game_LoadSeparateSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Game_LoadSeparateSprite(FOClient* client, hstring nameHash)
+FO_SCRIPT_API uint32 Client_Game_LoadSeparateSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::OneImage);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FreeSprite(FOClient* client, uint sprId)
+FO_SCRIPT_API void Client_Game_FreeSprite(FOClient* client, uint32 sprId)
 {
     client->AnimFree(sprId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
+FO_SCRIPT_API isize Client_Game_GetSpriteSize(FOClient* client, uint32 sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
 
@@ -848,7 +848,7 @@ FO_SCRIPT_API isize Client_Game_GetSpriteSize(FOClient* client, uint sprId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos pos)
+FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint32 sprId, ipos pos)
 {
     const auto* spr = client->AnimGetSpr(sprId);
 
@@ -860,7 +860,7 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, ipos po
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
+FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint32 sprId)
 {
     auto* spr = client->AnimGetSpr(sprId);
 
@@ -872,7 +872,7 @@ FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
+FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint32 sprId, float normalizedTime)
 {
     auto* spr = client->AnimGetSpr(sprId);
 
@@ -884,7 +884,7 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint32 sprId, hstring animName, bool looped, bool reversed)
 {
     auto* spr = client->AnimGetSpr(sprId);
 
@@ -896,7 +896,7 @@ FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint flags, isize& resultSize, int& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint32 flags, isize& resultSize, int& resultLines)
 {
     if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -910,7 +910,7 @@ FO_SCRIPT_API int Client_Game_GetTextLines(FOClient* client, isize size, int fon
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -926,7 +926,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -942,7 +942,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, ucolor color, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos, ucolor color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -966,7 +966,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -982,7 +982,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos, isize size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -998,7 +998,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos pos, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1014,7 +1014,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos, fsize size, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos pos, fsize size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1030,7 +1030,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, fpos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos, isize size, ucolor color, bool fit, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos pos, isize size, ucolor color, bool fit, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1054,7 +1054,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, ipos pos, isize size, isize sprSize, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint32 sprId, ipos pos, isize size, isize sprSize, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1070,7 +1070,7 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint flags)
+FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint32 flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1114,7 +1114,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveTy
         auto& pp = points[i];
 
         pp.PointPos = {data[i * 3], data[i * 3 + 1]};
-        pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2])};
+        pp.PointColor = ucolor {static_cast<uint32>(data[i * 3 + 2])};
         pp.PointOffset = nullptr;
         pp.PPointColor = nullptr;
     }
@@ -1133,7 +1133,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
 {
 #if FO_ENABLE_3D
     // x y
@@ -1409,7 +1409,7 @@ FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint dataSize)
+FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint32 dataSize)
 {
     auto data_copy = data;
     data_copy.resize(dataSize);

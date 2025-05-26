@@ -190,7 +190,7 @@ auto strex::lengthUtf8() const noexcept -> size_t
     size_t length = 0;
 
     for (size_t i = 0; i < _sv.length(); i++) {
-        length += static_cast<uint>((_sv[i] & 0xC0) != 0x80);
+        length += static_cast<uint32>((_sv[i] & 0xC0) != 0x80);
     }
 
     return length;
@@ -731,14 +731,14 @@ auto strex::toInt() const noexcept -> int
     return success ? clamp_to<int>(value) : 0;
 }
 
-auto strex::toUInt() const noexcept -> uint
+auto strex::toUInt() const noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? clamp_to<uint>(value) : 0;
+    return success ? clamp_to<uint32>(value) : 0;
 }
 
 auto strex::toInt64() const noexcept -> int64
@@ -800,7 +800,7 @@ auto strex::formatPath() -> strex&
     }
 
     // Skip first '../'
-    uint back_count = 0;
+    uint32 back_count = 0;
 
     while (_s.length() >= 3 && _s[0] == '.' && _s[1] == '.' && _s[2] == '/') {
         back_count++;
@@ -837,7 +837,7 @@ auto strex::formatPath() -> strex&
     }
 
     // Apply skipped '../'
-    for (uint i = 0; i < back_count; i++) {
+    for (uint32 i = 0; i < back_count; i++) {
         _s.insert(0, "../");
     }
 
@@ -1012,9 +1012,9 @@ auto strex::toWideChar() const -> std::wstring
 // ReSharper restore CppInconsistentNaming
 
 // 0xFFFD - Unicode REPLACEMENT CHARACTER
-static constexpr uint UNICODE_BAD_CHAR = 0xFFFD;
+static constexpr uint32 UNICODE_BAD_CHAR = 0xFFFD;
 
-auto utf8::IsValid(uint ucs) noexcept -> bool
+auto utf8::IsValid(uint32 ucs) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1046,7 +1046,7 @@ auto utf8::DecodeStrNtLen(const char* str) noexcept -> size_t
     return length;
 }
 
-auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
+auto utf8::Decode(const char* str, size_t& length) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1054,13 +1054,13 @@ auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
         return UNICODE_BAD_CHAR;
     }
 
-    const auto make_result = [&length](uint ch, size_t ch_lenght) -> uint {
+    const auto make_result = [&length](uint32 ch, size_t ch_lenght) -> uint32 {
         FO_STRONG_ASSERT(ch_lenght <= length);
         length = ch_lenght;
         return ch;
     };
 
-    const auto make_error = [&length]() -> uint {
+    const auto make_error = [&length]() -> uint32 {
         length = 1;
         return UNICODE_BAD_CHAR;
     };
@@ -1150,7 +1150,7 @@ auto utf8::Decode(const char* str, size_t& length) noexcept -> uint
     return make_error();
 }
 
-auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
+auto utf8::Encode(uint32 ucs, char (&buf)[4]) noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1188,11 +1188,11 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) noexcept -> size_t
     return 3;
 }
 
-auto utf8::Lower(uint ucs) noexcept -> uint
+auto utf8::Lower(uint32 ucs) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    uint ret;
+    uint32 ret;
 
     if (ucs <= 0x02B6) {
         if (ucs >= 0x0041) {
@@ -1293,11 +1293,11 @@ struct Utf8Data
 
         UpperTable.resize(0x10000);
 
-        for (uint i = 0; i < 0x10000; i++) {
+        for (uint32 i = 0; i < 0x10000; i++) {
             UpperTable[i] = static_cast<uint16>(i);
         }
 
-        for (uint i = 0; i < 0x10000; i++) {
+        for (uint32 i = 0; i < 0x10000; i++) {
             const auto l = utf8::Lower(i);
 
             if (l != i) {
@@ -1310,7 +1310,7 @@ struct Utf8Data
 };
 FO_GLOBAL_DATA(Utf8Data, Data);
 
-auto utf8::Upper(uint ucs) noexcept -> uint
+auto utf8::Upper(uint32 ucs) noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 

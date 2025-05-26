@@ -73,23 +73,23 @@ struct BakerMeshData
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto len = static_cast<uint>(Vertices.size());
+        auto len = numeric_cast<uint32>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Vertices.data(), len * sizeof(Vertex3D));
-        len = static_cast<uint>(Indices.size());
+        len = numeric_cast<uint32>(Indices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Indices.data(), len * sizeof(vindex_t));
-        len = static_cast<uint>(DiffuseTexture.length());
+        len = numeric_cast<uint32>(DiffuseTexture.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(DiffuseTexture.data(), len);
-        len = static_cast<uint>(SkinBones.size());
+        len = numeric_cast<uint32>(SkinBones.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& bone_name : SkinBones) {
-            len = static_cast<uint>(bone_name.length());
+            len = numeric_cast<uint32>(bone_name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(bone_name.data(), len);
         }
-        len = static_cast<uint>(SkinBoneOffsets.size());
+        len = numeric_cast<uint32>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(mat44));
     }
@@ -125,7 +125,7 @@ struct BakerBone
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.Write<uint>(static_cast<uint>(Name.length()));
+        writer.Write<uint32>(numeric_cast<uint32>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
@@ -138,7 +138,7 @@ struct BakerBone
             writer.Write<uint8>(0);
         }
 
-        writer.Write<uint>(static_cast<uint>(Children.size()));
+        writer.Write<uint32>(numeric_cast<uint32>(Children.size()));
 
         for (const auto& child : Children) {
             child->Save(writer);
@@ -170,39 +170,39 @@ struct BakerAnimSet
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto len = static_cast<uint>(AnimFileName.length());
+        auto len = numeric_cast<uint32>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(AnimFileName.data(), len);
-        len = static_cast<uint>(AnimName.length());
+        len = numeric_cast<uint32>(AnimName.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(AnimName.data(), len);
         writer.WritePtr(&Duration, sizeof(Duration));
-        len = static_cast<uint>(BonesHierarchy.size());
+        len = numeric_cast<uint32>(BonesHierarchy.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& i : BonesHierarchy) {
-            len = static_cast<uint>(i.size());
+            len = numeric_cast<uint32>(i.size());
             writer.WritePtr(&len, sizeof(len));
             for (const auto& bone_name : i) {
-                len = static_cast<uint>(bone_name.length());
+                len = numeric_cast<uint32>(bone_name.length());
                 writer.WritePtr(&len, sizeof(len));
                 writer.WritePtr(bone_name.data(), len);
             }
         }
-        len = static_cast<uint>(BoneOutputs.size());
+        len = numeric_cast<uint32>(BoneOutputs.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& o : BoneOutputs) {
-            len = static_cast<uint>(o.Name.length());
+            len = numeric_cast<uint32>(o.Name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.Name.data(), len);
-            len = static_cast<uint>(o.ScaleTime.size());
+            len = numeric_cast<uint32>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
             writer.WritePtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
-            len = static_cast<uint>(o.RotationTime.size());
+            len = numeric_cast<uint32>(o.RotationTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
             writer.WritePtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
-            len = static_cast<uint>(o.TranslationTime.size());
+            len = numeric_cast<uint32>(o.TranslationTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
             writer.WritePtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
@@ -319,7 +319,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint
 
     root_bone->Save(writer);
 
-    writer.Write<uint>(static_cast<uint>(animations.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(animations.size()));
 
     for (const auto& loaded_animation : animations) {
         loaded_animation->Save(writer);

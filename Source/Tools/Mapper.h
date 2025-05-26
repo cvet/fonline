@@ -71,7 +71,7 @@ public:
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        uint Index {};
+        uint32 Index {};
         int Scroll {};
     };
 
@@ -150,7 +150,7 @@ public:
     auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
     void ProcessMapperInput();
-    void DrawStr(const IRect& rect, string_view str, uint flags, ucolor color, int num_font);
+    void DrawStr(const IRect& rect, string_view str, uint32 flags, ucolor color, int num_font);
 
     void CurDraw();
     void CurRMouseUp();
@@ -168,8 +168,8 @@ public:
     void IntMouseMove();
     void IntSetMode(int mode);
 
-    auto GetTabIndex() const -> uint;
-    void SetTabIndex(uint index);
+    auto GetTabIndex() const -> uint32;
+    void SetTabIndex(uint32 index);
     void RefreshCurProtos();
     auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
@@ -216,7 +216,7 @@ public:
     void AddMess(string_view message_text);
     void MessBoxDraw();
 
-    void DrawIfaceLayer(uint layer);
+    void DrawIfaceLayer(uint32 layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
 
@@ -292,8 +292,8 @@ public:
     uint8 NpcDir {};
     int* CurProtoScroll {};
     int ProtoWidth {};
-    uint ProtosOnScreen {};
-    uint TabIndex[INT_MODE_COUNT] {};
+    uint32 ProtosOnScreen {};
+    uint32 TabIndex[INT_MODE_COUNT] {};
     int InContScroll {};
     int ListScroll {};
     refcount_ptr<ItemView> InContItem {};
@@ -338,7 +338,7 @@ public:
     int ConsoleTextY {};
     bool ConsoleEdit {};
     string ConsoleStr {};
-    uint ConsoleCur {};
+    uint32 ConsoleCur {};
     vector<string> ConsoleHistory {};
     int ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};

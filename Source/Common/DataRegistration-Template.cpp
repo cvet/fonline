@@ -91,23 +91,24 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
 
     auto reader = DataReader(restore_info_bin);
 
-    const auto info_size = reader.Read<uint>();
+    const auto info_size = reader.Read<uint32>();
+
     for (const auto i : xrange(info_size)) {
         ignore_unused(i);
 
-        const auto name_size = reader.Read<uint>();
+        const auto name_size = reader.Read<uint32>();
         auto name = string();
         name.resize(name_size);
         reader.ReadPtr(name.data(), name_size);
 
-        const auto data_size = reader.Read<uint>();
+        const auto data_size = reader.Read<uint32>();
         auto data = vector<string>();
         data.reserve(data_size);
 
         for (const auto e : xrange(data_size)) {
             ignore_unused(e);
 
-            const auto entry_size = reader.Read<uint>();
+            const auto entry_size = reader.Read<uint32>();
             auto entry = string();
             entry.resize(entry_size);
             reader.ReadPtr(entry.data(), entry_size);
@@ -192,12 +193,14 @@ auto Baker_GetRestoreInfo() -> vector<uint8>
 
     ///@ CodeGen WriteRestoreInfo
 
-    size_t estimated_size = sizeof(uint);
+    size_t estimated_size = sizeof(uint32);
+
     for (const auto& [name, data] : restore_info) {
-        estimated_size += sizeof(uint) + name.size();
-        estimated_size += sizeof(uint);
+        estimated_size += sizeof(uint32) + name.size();
+        estimated_size += sizeof(uint32);
+
         for (const auto& entry : data) {
-            estimated_size += sizeof(uint) + entry.size();
+            estimated_size += sizeof(uint32) + entry.size();
         }
     }
 
@@ -205,13 +208,15 @@ auto Baker_GetRestoreInfo() -> vector<uint8>
     restore_info_bin.reserve(estimated_size + 1024u);
 
     auto writer = DataWriter(restore_info_bin);
-    writer.Write<uint>(static_cast<uint>(restore_info.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(restore_info.size()));
+
     for (const auto& [name, data] : restore_info) {
-        writer.Write<uint>(static_cast<uint>(name.size()));
+        writer.Write<uint32>(numeric_cast<uint32>(name.size()));
         writer.WritePtr(name.data(), name.size());
-        writer.Write<uint>(static_cast<uint>(data.size()));
+        writer.Write<uint32>(numeric_cast<uint32>(data.size()));
+
         for (const auto& entry : data) {
-            writer.Write<uint>(static_cast<uint>(entry.size()));
+            writer.Write<uint32>(numeric_cast<uint32>(entry.size()));
             writer.WritePtr(entry.data(), entry.size());
         }
     }

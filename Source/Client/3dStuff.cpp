@@ -46,7 +46,7 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint len = 0;
+    uint32 len = 0;
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
     reader.ReadPtr(Vertices.data(), len * sizeof(Vertex3D));
@@ -65,7 +65,7 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 
     string tmp;
 
-    for (uint i = 0, j = len; i < j; i++) {
+    for (uint32 i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
@@ -81,7 +81,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint len = 0;
+    uint32 len = 0;
     reader.ReadPtr(&len, sizeof(len));
     string tmp;
     tmp.resize(len);
@@ -102,7 +102,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 
     reader.ReadPtr(&len, sizeof(len));
 
-    for (uint i = 0; i < len; i++) {
+    for (uint32 i = 0; i < len; i++) {
         auto child = SafeAlloc::MakeUnique<ModelBone>();
         child->Load(reader, hash_resolver);
         Children.emplace_back(std::move(child));
@@ -222,9 +222,9 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
-    const auto anim_sets_count = reader.Read<uint>();
+    const auto anim_sets_count = reader.Read<uint32>();
 
-    for (uint i = 0; i < anim_sets_count; i++) {
+    for (uint32 i = 0; i < anim_sets_count; i++) {
         auto anim_set = SafeAlloc::MakeUnique<ModelAnimation>();
         anim_set->Load(reader, _hashResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
@@ -465,7 +465,7 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool
+auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint32 flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -486,7 +486,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     // Get animation index
-    const uint anim_pair = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
+    const uint32 anim_pair = (static_cast<uint32>(state_anim) << 16) | static_cast<uint32>(action_anim);
     float speed = 1.0f;
     int index = 0;
     float period_proc = 0.0f;
@@ -604,7 +604,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         }
 
         // Append animations
-        set<uint> keep_alive_particles;
+        set<uint32> keep_alive_particles;
 
         for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
@@ -757,7 +757,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         const auto* set = _bodyAnimController->GetAnimationSet(index);
 
         // Alternate tracks
-        const uint new_track = (_currentTrack == 0 ? 1 : 0);
+        const uint32 new_track = (_currentTrack == 0 ? 1 : 0);
         auto period = set->GetDuration();
         _animPosPeriod = period;
         if (IsBitSet(flags, ANIMATION_INIT)) {
@@ -810,7 +810,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
         // End time
         if (IsBitSet(flags, ANIMATION_ONE_TIME)) {
-            _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
+            _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint32>(period / GetSpeed() * 1000.0f)};
         }
         else {
             _endTime = nanotime::zero;
@@ -949,7 +949,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (index != -1) {
         const auto* anim_set = _moveAnimController->GetAnimationSet(index);
-        const uint new_track = _currentMoveTrack == 0 ? 1 : 0;
+        const uint32 new_track = _currentMoveTrack == 0 ? 1 : 0;
 
         _moveAnimController->SetTrackAnimationSet(new_track, anim_set, &_modelMngr._legBones);
         _moveAnimController->Reset();
@@ -983,7 +983,7 @@ auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
+    const auto index = (static_cast<uint32>(state_anim) << 16) | static_cast<uint32>(action_anim);
     const auto it = _modelInfo->_animIndexes.find(index);
 
     return it != _modelInfo->_animIndexes.end();
@@ -1000,14 +1000,14 @@ auto ModelInstance::GetStateAnim() const noexcept -> CritterStateAnim
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return static_cast<CritterStateAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) >> 16);
+    return static_cast<CritterStateAnim>(static_cast<uint32>(_currentLayers[MODEL_LAYERS_COUNT]) >> 16);
 }
 
 auto ModelInstance::GetActionAnim() const noexcept -> CritterActionAnim
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return static_cast<CritterActionAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) & 0xFFFF);
+    return static_cast<CritterActionAnim>(static_cast<uint32>(_currentLayers[MODEL_LAYERS_COUNT]) & 0xFFFF);
 }
 
 auto ModelInstance::GetMovingAnim2() const noexcept -> CritterActionAnim
@@ -1449,8 +1449,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Set mesh transform and anim layer
     combined_mesh->Meshes.emplace_back(mesh_data);
-    combined_mesh->MeshVertices.emplace_back(static_cast<uint>(vertices.size() - vertices_old_size));
-    combined_mesh->MeshIndices.emplace_back(static_cast<uint>(indices.size() - indices_old_size));
+    combined_mesh->MeshVertices.emplace_back(static_cast<uint32>(vertices.size() - vertices_old_size));
+    combined_mesh->MeshIndices.emplace_back(static_cast<uint32>(indices.size() - indices_old_size));
     combined_mesh->MeshAnimLayers.emplace_back(anim_layer);
 
     // Add bones matrices
@@ -1575,16 +1575,16 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<vindex_t> result_indices;
-        vector<uint> result_mesh_vertices;
-        vector<uint> result_mesh_indices;
+        vector<uint32> result_mesh_vertices;
+        vector<uint32> result_mesh_indices;
 
         result_vertices.reserve(vertices.size());
         result_indices.reserve(indices.size());
         result_mesh_vertices.reserve(combined_mesh->MeshVertices.size());
         result_mesh_indices.reserve(combined_mesh->MeshIndices.size());
 
-        uint i_pos = 0;
-        uint i_count = 0;
+        uint32 i_pos = 0;
+        uint32 i_count = 0;
 
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
             // Move shape to face space
@@ -1702,8 +1702,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                 }
             }
 
-            result_mesh_vertices.emplace_back(static_cast<uint>(result_vertices.size() - vertices_old_size));
-            result_mesh_indices.emplace_back(static_cast<uint>(result_indices.size() - indices_old_size));
+            result_mesh_vertices.emplace_back(static_cast<uint32>(result_vertices.size() - vertices_old_size));
+            result_mesh_indices.emplace_back(static_cast<uint32>(result_indices.size() - indices_old_size));
         }
 
         vertices = result_vertices;
@@ -1908,7 +1908,7 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
 
     // Update linked matrices
     if ((_parentBone != nullptr) && !_linkBones.empty()) {
-        for (uint i = 0, j = static_cast<uint>(_linkBones.size()) / 2; i < j; i++) {
+        for (uint32 i = 0, j = static_cast<uint32>(_linkBones.size()) / 2; i < j; i++) {
             _linkBones[static_cast<size_t>(i) * 2 + 1]->CombinedTransformationMatrix = _linkBones[static_cast<size_t>(i) * 2]->CombinedTransformationMatrix;
         }
     }
@@ -2097,7 +2097,7 @@ auto ModelInstance::GetAnimDuration() const -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::chrono::milliseconds {static_cast<uint>(_animPosPeriod * 1000.0f)};
+    return std::chrono::milliseconds {static_cast<uint32>(_animPosPeriod * 1000.0f)};
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -2155,7 +2155,6 @@ auto ModelInformation::Load(string_view name) -> bool
 
         ModelAnimationData dummy_link {};
         auto* link = &_animDataDefault;
-        static uint link_id = 0;
 
         auto istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
         auto closed = false;
@@ -2166,7 +2165,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         struct AnimEntry
         {
-            uint Index;
+            uint32 Index;
             string FileName;
             string Name;
         };
@@ -2288,7 +2287,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
                 else {
                     link = &_animData.emplace_back();
-                    link->Id = ++link_id;
+                    link->Id = ++_modelMngr._linkId;
                     link->Layer = layer;
                     link->LayerValue = layer_val;
                 }
@@ -2303,7 +2302,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 link = &_animData.emplace_back();
-                link->Id = ++link_id;
+                link->Id = ++_modelMngr._linkId;
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
@@ -2321,7 +2320,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 link = &_animData.emplace_back();
-                link->Id = ++link_id;
+                link->Id = ++_modelMngr._linkId;
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
@@ -2598,11 +2597,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     string a1;
                     string a2;
                     *istr >> a1 >> a2;
-                    anims.emplace_back(AnimEntry {(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
+                    anims.emplace_back(AnimEntry {(static_cast<uint32>(ind1) << 16) | static_cast<uint32>(ind2), a1, a2});
 
                     if (token == "AnimExt") {
                         *istr >> a1 >> a2;
-                        anims.emplace_back(AnimEntry {(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
+                        anims.emplace_back(AnimEntry {(static_cast<uint32>(ind1) << 16) | (static_cast<uint32>(ind2) | 0x8000), a1, a2});
                     }
                 }
                 else {
@@ -2626,7 +2625,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
                 const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                uint index = (ind1 << 16) | ind2;
+                uint32 index = (ind1 << 16) | ind2;
 
                 if (_animLayerValues.count(index) == 0) {
                     _animLayerValues.emplace(index, vector<pair<int, int>>());
@@ -2729,7 +2728,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.emplace_back(AnimEntry {static_cast<uint>(-1), render_fname, render_anim});
+            anims.emplace_back(AnimEntry {static_cast<uint32>(-1), render_fname, render_anim});
         }
 
         // Create animation controller
@@ -2755,7 +2754,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     _animController->RegisterAnimationSet(set);
                     const auto set_index = numeric_cast<int>(_animController->GetAnimationSetCount() - 1);
 
-                    if (anim.Index == static_cast<uint>(-1)) {
+                    if (anim.Index == static_cast<uint32>(-1)) {
                         _renderAnim = set_index;
                     }
                     else if (anim.Index != 0) {
@@ -2825,13 +2824,13 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     int index = -1;
 
     if (combat_first) {
-        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint32>(action_anim) | 0x8000), speed);
     }
     if (index == -1) {
         index = GetAnimationIndexEx(state_anim, action_anim, speed);
     }
     if (!combat_first && index == -1) {
-        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint32>(action_anim) | 0x8000), speed);
     }
     if (index != -1) {
         return index;
@@ -2869,14 +2868,14 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
         state_anim = it1->second;
     }
 
-    const auto it2 = _actionAnimEquals.find(static_cast<CritterActionAnim>(static_cast<uint>(action_anim) & 0x7FFF));
+    const auto it2 = _actionAnimEquals.find(static_cast<CritterActionAnim>(static_cast<uint32>(action_anim) & 0x7FFF));
 
     if (it2 != _actionAnimEquals.end()) {
-        action_anim = static_cast<CritterActionAnim>(static_cast<uint>(it2->second) | (static_cast<uint>(action_anim) & 0x8000));
+        action_anim = static_cast<CritterActionAnim>(static_cast<uint32>(it2->second) | (static_cast<uint32>(action_anim) & 0x8000));
     }
 
     // Make index
-    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
+    const auto index = (static_cast<uint32>(state_anim) << 16) | static_cast<uint32>(action_anim);
 
     // Speed
     if (speed != nullptr) {
@@ -2996,7 +2995,7 @@ ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)
+void SetupBonesExt(multimap<uint32, ModelBone*>& bones, ModelBone* bone, uint32 depth)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3011,7 +3010,7 @@ void ModelHierarchy::SetupBones()
 {
     FO_STACK_TRACE_ENTRY();
 
-    multimap<uint, ModelBone*> bones;
+    multimap<uint32, ModelBone*> bones;
     SetupBonesExt(bones, _rootBone, 0);
 
     for (auto&& [id, bone] : bones) {

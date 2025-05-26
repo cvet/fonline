@@ -71,7 +71,7 @@ private:
     AudioSettings& _settings;
     FileSystem& _resources;
     bool _isActive {};
-    uint _streamingPortion {};
+    uint32 _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8> _outputBuf {};
     bool _nonConstHelper {};

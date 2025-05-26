@@ -54,7 +54,7 @@ constexpr size_t BONES_PER_VERTEX = 4;
 #endif
 
 #if FO_RENDER_32BIT_INDEX
-using vindex_t = uint;
+using vindex_t = uint32;
 #else
 using vindex_t = uint16;
 #endif

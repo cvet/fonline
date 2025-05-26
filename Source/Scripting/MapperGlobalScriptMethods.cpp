@@ -340,7 +340,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_
             continue;
         }
 
-        for (uint i = 0; i < stab.ItemProtos.size(); i++) {
+        for (size_t i = 0; i < stab.ItemProtos.size(); i++) {
             stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
         }
     }
@@ -397,7 +397,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, stri
         if (&stab == &stab_default) {
             continue;
         }
-        for (uint i = 0; i < stab.NpcProtos.size(); i++) {
+        for (size_t i = 0; i < stab.NpcProtos.size(); i++) {
             stab_default.NpcProtos.push_back(stab.NpcProtos[i]);
         }
     }

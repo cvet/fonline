@@ -172,7 +172,7 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<uint>();
+    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<uint32>();
     const auto dots = static_cast<int>(std::fmod((nanotime::now() - _startTime).to_ms<double>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : xrange(dots)) {
@@ -238,7 +238,7 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint32>();
 
     vector<uint8> data;
     data.resize(data_size);
@@ -259,7 +259,7 @@ void Updater::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (uint file_index = 0;; file_index++) {
+        for (uint32 file_index = 0;; file_index++) {
             const auto name_len = reader.Read<int16>();
             if (name_len == -1) {
                 break;
@@ -267,8 +267,8 @@ void Updater::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint>();
-            const auto hash = reader.Read<uint>();
+            const auto size = reader.Read<uint32>();
+            const auto hash = reader.Read<uint32>();
 
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
@@ -308,7 +308,7 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint32>();
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);

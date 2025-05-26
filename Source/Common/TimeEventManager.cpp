@@ -85,7 +85,7 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
     }
 }
 
-auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint
+auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -128,7 +128,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
     return _timeEventCounter;
 }
 
-auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t
+auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint32 id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -180,7 +180,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id
     return 0;
 }
 
-void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<timespan> repeat, optional<vector<any_t>> data)
+void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -273,7 +273,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
     }
 }
 
-void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
+void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint32 id)
 {
     FO_STACK_TRACE_ENTRY();
 

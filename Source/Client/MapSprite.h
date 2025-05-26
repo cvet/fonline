@@ -104,7 +104,7 @@ struct MapSpriteData
     FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Valid {};
-    uint SprId {};
+    uint32 SprId {};
     mpos Hex {};
     hstring ProtoId {};
     ipos Offset {};
@@ -153,7 +153,7 @@ public:
     // Todo:: incapsulate all sprite data
     MapSpriteList* Root {};
     DrawOrderType DrawOrder {};
-    uint DrawOrderPos {};
+    uint32 DrawOrderPos {};
     size_t TreeIndex {};
     const Sprite* Spr {};
     const Sprite* const* PSpr {};
@@ -214,7 +214,7 @@ private:
     vector<MapSprite*> _spritesPool {};
     MapSprite* _rootSprite {};
     MapSprite* _lastSprite {};
-    uint _spriteCount {};
+    uint32 _spriteCount {};
     vector<MapSprite*> _sortSprites {};
     vector<MapSprite*> _invalidatedSprites {};
     bool _nonConstHelper {};

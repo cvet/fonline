@@ -228,10 +228,10 @@ void RenderTargetManager::DumpTextures() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint atlases_memory_size = 0;
+    size_t atlases_memory_size = 0;
 
     for (const auto& rt : _rtAll) {
-        atlases_memory_size += rt->MainTex->Size.width * rt->MainTex->Size.height * 4;
+        atlases_memory_size += static_cast<size_t>(rt->MainTex->Size.width) * rt->MainTex->Size.height * 4;
     }
 
     const auto time = nanotime::now().desc(true);

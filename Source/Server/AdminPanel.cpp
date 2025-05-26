@@ -319,7 +319,7 @@ static void AdminWork(FOServer* server, Session* session)
                 auto buf = NetOutBuffer(server->Settings.NetBufferSize);
                 PackNetCommand(cmd.substr(1), &buf, func, server->Hashes);
                 if (!buf.IsEmpty()) {
-                    // uint msg = 0;
+                    // uint32 msg = 0;
                     // buf >> msg;
                     // WriteLog("Admin panel ({}): Execute command '{}'", admin_name, cmd);
                     // server->Process_Command(buf, func, nullptr, admin_name);

@@ -59,7 +59,7 @@ struct SoundManager::Sound
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
@@ -284,8 +284,8 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     {
         uint16 WFormatTag; // Integer identifier of the format
         uint16 NChannels; // Number of audio channels
-        uint NSamplesPerSec; // Audio sample rate
-        uint NAvgBytesPerSec; // Bytes per second (possibly approximate)
+        uint32 NSamplesPerSec; // Audio sample rate
+        uint32 NAvgBytesPerSec; // Bytes per second (possibly approximate)
         uint16 NBlockAlign; // Size in bytes of a sample block (all channels)
         uint16 WBitsPerSample; // Size in bits of a single per-channel sample
         uint16 CbSize; // Bytes of extra data appended to this struct
@@ -411,18 +411,18 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
         switch (whence) {
         case SEEK_SET:
-            file_context->Reader.SetCurPos(static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(numeric_cast<uint32>(offset));
             break;
         case SEEK_CUR:
             if (offset >= 0) {
-                file_context->Reader.GoForward(static_cast<uint>(offset));
+                file_context->Reader.GoForward(numeric_cast<uint32>(offset));
             }
             else {
-                file_context->Reader.GoBack(static_cast<uint>(-offset));
+                file_context->Reader.GoBack(numeric_cast<uint32>(-offset));
             }
             break;
         case SEEK_END:
-            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<uint32>(offset));
             break;
         default:
             return -1;
@@ -439,7 +439,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     callbacks.tell_func = [](void* datasource) -> long {
         const auto* file_context = static_cast<OggFileContext*>(datasource);
-        return static_cast<long>(file_context->Reader.GetCurPos());
+        return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
     sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) {
@@ -485,7 +485,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     sound->BaseBufLen = _streamingPortion;
 
     int result;
-    uint decoded = 0;
+    uint32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
@@ -521,7 +521,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
     FO_STACK_TRACE_ENTRY();
 
     long result;
-    uint decoded = 0;
+    uint32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
@@ -584,7 +584,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Check random pattern 'NAME_X'
-    uint count = 0;
+    uint32 count = 0;
 
     while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
         count++;

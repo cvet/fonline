@@ -240,10 +240,10 @@ void TextureAtlasManager::DumpAtlases() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    int atlases_memory_size = 0;
+    size_t atlases_memory_size = 0;
 
     for (const auto& atlas : _allAtlases) {
-        atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
+        atlases_memory_size += static_cast<size_t>(atlas->Size.width) * atlas->Size.height * 4;
     }
 
     const auto time = nanotime::now().desc(true);

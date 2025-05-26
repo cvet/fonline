@@ -297,8 +297,8 @@ public:
     void ApplyPropertyFromText(const Property* prop, string_view text);
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
-    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
-    void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
+    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
+    void RestoreData(const vector<const uint8*>& all_data, const vector<uint32>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
     void SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
@@ -431,13 +431,13 @@ public:
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
                 FO_RUNTIME_ASSERT(prop->IsArrayOfString());
 
-                uint arr_size;
+                uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
                 result.resize(arr_size);
 
                 for (const auto i : xrange(arr_size)) {
-                    uint str_size;
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
@@ -549,13 +549,13 @@ public:
             if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
                 FO_STRONG_ASSERT(prop->IsArrayOfString());
 
-                uint arr_size;
+                uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
                 result.resize(arr_size);
 
                 for (const auto i : xrange(arr_size)) {
-                    uint str_size;
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
@@ -747,20 +747,20 @@ public:
 
         if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
             if (!new_value.empty()) {
-                size_t data_size = sizeof(uint);
+                size_t data_size = sizeof(uint32);
 
                 for (const auto& str : new_value) {
-                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                    data_size += sizeof(uint32) + static_cast<uint32>(str.length());
                 }
 
                 auto* buf = prop_data.Alloc(data_size);
 
-                const auto arr_size = static_cast<uint>(new_value.size());
+                const auto arr_size = static_cast<uint32>(new_value.size());
                 MemCopy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint);
+                buf += sizeof(uint32);
 
                 for (const auto& str : new_value) {
-                    const auto str_size = static_cast<uint>(str.length());
+                    const auto str_size = static_cast<uint32>(str.length());
                     MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
@@ -834,7 +834,7 @@ private:
     unique_ptr<pair<unique_ptr<uint8[]>, size_t>[]> _complexData {};
 
     mutable unique_ptr<vector<const uint8*>> _storeData {};
-    mutable unique_ptr<vector<uint>> _storeDataSizes {};
+    mutable unique_ptr<vector<uint32>> _storeDataSizes {};
     mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
     Entity* _entity {};
     bool _nonConstHelper {};

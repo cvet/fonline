@@ -139,7 +139,7 @@ public:
     [[nodiscard]] auto isNumber() const noexcept -> bool;
     [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
     [[nodiscard]] auto toInt() const noexcept -> int;
-    [[nodiscard]] auto toUInt() const noexcept -> uint;
+    [[nodiscard]] auto toUInt() const noexcept -> uint32;
     [[nodiscard]] auto toInt64() const noexcept -> int64;
     [[nodiscard]] auto toFloat() const noexcept -> float;
     [[nodiscard]] auto toDouble() const noexcept -> double;
@@ -194,12 +194,12 @@ static_assert(!std::is_polymorphic_v<strex>);
 
 namespace utf8
 {
-    auto IsValid(uint ucs) noexcept -> bool;
+    auto IsValid(uint32 ucs) noexcept -> bool;
     auto DecodeStrNtLen(const char* str) noexcept -> size_t;
-    auto Decode(const char* str, size_t& length) noexcept -> uint;
-    auto Encode(uint ucs, char (&buf)[4]) noexcept -> size_t;
-    auto Lower(uint ucs) noexcept -> uint;
-    auto Upper(uint ucs) noexcept -> uint;
+    auto Decode(const char* str, size_t& length) noexcept -> uint32;
+    auto Encode(uint32 ucs, char (&buf)[4]) noexcept -> size_t;
+    auto Lower(uint32 ucs) noexcept -> uint32;
+    auto Upper(uint32 ucs) noexcept -> uint32;
 }
 
 FO_END_NAMESPACE();
