@@ -62,14 +62,14 @@ public:
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int move) noexcept -> uint8;
+    auto EncryptKey(int32 move) noexcept -> uint8;
     void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept;
 
     vector<uint8> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
-    int _encryptKeyPos {};
+    int32 _encryptKeyPos {};
     uint8 _encryptKeys[CRYPT_KEYS_COUNT] {};
 };
 

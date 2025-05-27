@@ -378,10 +378,10 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
     mspr->DrawOrder = draw_order;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + mspr->Hex.y * MAXHEX_MAX + mspr->Hex.x;
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(draw_order) + mspr->Hex.y * MAXHEX_MAX + mspr->Hex.x;
     }
     else {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + mspr->Hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->Hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(DrawOrderType::NormalBegin) + mspr->Hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->Hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
     }
 
     return *mspr;
@@ -402,10 +402,10 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
     uint32 order_pos;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hex.y * MAXHEX_MAX + hex.x;
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(draw_order) + hex.y * MAXHEX_MAX + hex.x;
     }
     else {
-        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(DrawOrderType::NormalBegin) + hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
     }
 
     auto* parent = _rootSprite;

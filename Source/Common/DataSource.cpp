@@ -185,7 +185,7 @@ private:
     struct ZipFileInfo
     {
         unz_file_pos Pos {};
-        int UncompressedSize {};
+        int32 UncompressedSize {};
     };
 
     auto ReadTree() -> bool;
@@ -531,7 +531,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         // Read tree
-        if (!_datFile.SetReadPos(-static_cast<int>(tree_size), DiskFileSeek::End)) {
+        if (!_datFile.SetReadPos(-numeric_cast<int32>(tree_size), DiskFileSeek::End)) {
             return false;
         }
 
@@ -612,7 +612,7 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // Read tree
-    if (!_datFile.SetReadPos(-(static_cast<int>(tree_size) + 8), DiskFileSeek::End)) {
+    if (!_datFile.SetReadPos(-(numeric_cast<int32>(tree_size) + 8), DiskFileSeek::End)) {
         return false;
     }
 
@@ -647,7 +647,7 @@ auto FalloutDat::ReadTree() -> bool
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        ptr += static_cast<size_t>(4) + name_len + 13;
+        ptr += numeric_cast<size_t>(4) + name_len + 13;
     }
 
     return true;
@@ -694,7 +694,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     MemCopy(&real_size, ptr + 1, sizeof(real_size));
     uint32 packed_size = 0;
     MemCopy(&packed_size, ptr + 5, sizeof(packed_size));
-    int offset = 0;
+    int32 offset = 0;
     MemCopy(&offset, ptr + 9, sizeof(offset));
 
     if (!_datFile.SetReadPos(offset, DiskFileSeek::Set)) {
@@ -780,7 +780,7 @@ ZipFile::ZipFile(string_view fname)
 
         _writeTime = DiskFileSystem::GetWriteTime(fname);
 
-        ffunc.zopen_file = [](voidpf opaque, const char*, int) -> voidpf { return opaque; };
+        ffunc.zopen_file = [](voidpf opaque, const char*, int32) -> voidpf { return opaque; };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
             auto* file = static_cast<DiskFile*>(stream);
             return file->Read(buf, size) ? size : 0;
@@ -788,31 +788,31 @@ ZipFile::ZipFile(string_view fname)
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
             auto* file = static_cast<DiskFile*>(stream);
-            return static_cast<long>(file->GetReadPos());
+            return numeric_cast<long>(file->GetReadPos());
         };
-        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
+        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
             auto* file = static_cast<DiskFile*>(stream);
             switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::Set);
+                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Set);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::Cur);
+                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Cur);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                file->SetReadPos(static_cast<int>(offset), DiskFileSeek::End);
+                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::End);
                 break;
             default:
                 return -1;
             }
             return 0;
         };
-        ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
+        ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
             const auto* file = static_cast<DiskFile*>(stream);
             delete file;
             return 0;
         };
-        ffunc.zerror_file = [](voidpf, voidpf stream) -> int {
+        ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
             if (stream == nullptr) {
                 return 1;
             }
@@ -831,13 +831,13 @@ ZipFile::ZipFile(string_view fname)
             uint32 Pos;
         };
 
-        ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
+        ffunc.zopen_file = [](voidpf, const char* filename, int32) -> voidpf {
             if (string(filename) == "@Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
 
                 for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != static_cast<uint8>((i + 42) % 200)) {
+                    if (EMBEDDED_RESOURCES[i] != numeric_cast<uint8>((i + 42) % 200)) {
                         default_array = false;
                     }
                 }
@@ -855,41 +855,40 @@ ZipFile::ZipFile(string_view fname)
             return nullptr;
         };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-            auto* mem_stream = static_cast<MemStream*>(stream);
+            const auto* mem_stream = static_cast<MemStream*>(stream);
             for (size_t i = 0; i < size; i++) {
                 static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
             }
-            mem_stream->Pos += static_cast<uint32>(size);
             return size;
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
             const auto* mem_stream = static_cast<MemStream*>(stream);
-            return static_cast<long>(mem_stream->Pos);
+            return numeric_cast<long>(mem_stream->Pos);
         };
-        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
+        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
             auto* mem_stream = static_cast<MemStream*>(stream);
             switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                mem_stream->Pos = static_cast<uint32>(offset);
+                mem_stream->Pos = numeric_cast<uint32>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                mem_stream->Pos += static_cast<uint32>(offset);
+                mem_stream->Pos += numeric_cast<uint32>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                mem_stream->Pos = mem_stream->Length + static_cast<uint32>(offset);
+                mem_stream->Pos = mem_stream->Length + numeric_cast<uint32>(offset);
                 break;
             default:
                 return -1;
             }
             return 0;
         };
-        ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
+        ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
             const auto* mem_stream = static_cast<MemStream*>(stream);
             delete mem_stream;
             return 0;
         };
-        ffunc.zerror_file = [](voidpf, voidpf stream) -> int {
+        ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
             if (stream == nullptr) {
                 return 1;
             }
@@ -947,7 +946,7 @@ auto ZipFile::ReadTree() -> bool
             string name = strex(buf).normalizePathSlashes();
 
             zip_info.Pos = pos;
-            zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
+            zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
             _filesTree.emplace(name, zip_info);
             _filesTreeNames.emplace_back(std::move(name));
         }

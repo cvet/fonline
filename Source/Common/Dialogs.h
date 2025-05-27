@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-enum class TalkType
+enum class TalkType : uint8
 {
     None,
     Critter,
@@ -79,8 +79,8 @@ struct DialogAnswerReq
     bool NoRecheck {};
     uint8 Op {};
     uint8 ValuesCount {};
-    int Value {};
-    int ValueExt[5] {};
+    int32 Value {};
+    int32 ValueExt[5] {};
 };
 
 struct DialogAnswer

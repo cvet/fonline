@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-static constexpr int ATLAS_SPRITES_PADDING = 1;
+static constexpr int32 ATLAS_SPRITES_PADDING = 1;
 
 TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
     Parent {parent},
@@ -118,8 +118,8 @@ void TextureAtlas::SpaceNode::Free() noexcept
         }
 
         if (all_children_free) {
-            int max_x = Pos.x + Size.width;
-            int max_y = Pos.y + Size.height;
+            int32 max_x = Pos.x + Size.width;
+            int32 max_y = Pos.y + Size.height;
 
             for (const auto& child : Children) {
                 max_x = std::max(max_x, child->Pos.x + child->Size.width);

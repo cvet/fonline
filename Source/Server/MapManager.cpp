@@ -877,7 +877,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         }
 
         // Add gag and critters hexes
-        p_togo = static_cast<int>(coords.size()) - p;
+        p_togo = static_cast<int32>(coords.size()) - p;
 
         if (p_togo == 0) {
             if (!gag_coords.empty()) {
@@ -913,10 +913,10 @@ label_FindOk:
         numindex--;
 
         const auto find_path_grid = [this, &map_size, &input, base_angle, &raw_steps, &numindex](mpos& hex) -> bool {
-            int best_step_dir = -1;
+            int32 best_step_dir = -1;
             float best_step_angle_diff = 0.0f;
 
-            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int dir, ipos step_raw_hex) {
+            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos step_raw_hex) {
                 if (!map_size.IsValidPos(step_raw_hex)) {
                     return;
                 }
@@ -1074,7 +1074,7 @@ label_FindOk:
 
     // Trace
     if (input.TraceDist != 0) {
-        vector<int> trace_seq;
+        vector<int32> trace_seq;
         const mpos targ_hex = input.TraceCr->GetHex();
         bool trace_ok = false;
 
@@ -1100,7 +1100,7 @@ label_FindOk:
         trace.TargetHex = targ_hex;
         trace.FindCr = input.TraceCr;
 
-        for (int k = 0; k < 5; k++) {
+        for (int32 k = 0; k < 5; k++) {
             mpos check_hex2 = input.FromHex;
 
             for (size_t i = 0; i < raw_steps.size() - 1; i++) {
@@ -1157,7 +1157,7 @@ label_FindOk:
         while (true) {
             mpos trace_hex2 = to_hex;
 
-            for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
+            for (auto i = static_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(trace_hex, trace_hex2, map_size, 0.0f);
                 mpos next_hex = trace_hex;
                 vector<uint8> direct_steps;
@@ -1624,15 +1624,15 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
     else {
         uint32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
         uint32 look_dist = cr->GetLookDistance();
-        const int cr_dir = cr->GetDir();
+        const int32 cr_dir = cr->GetDir();
 
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
             const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
             auto dir_index = cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir;
 
-            if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
-                dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+            if (dir_index > static_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
+                dir_index = static_cast<int32>(GameSettings::MAP_DIR_COUNT) - dir_index;
             }
 
             look_dist -= look_dist * _engine->Settings.LookDir[dir_index] / 100;
@@ -1673,8 +1673,8 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
                 const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
                 auto dir_index = (cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir);
 
-                if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
-                    dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+                if (dir_index > static_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
+                    dir_index = static_cast<int32>(GameSettings::MAP_DIR_COUNT) - dir_index;
                 }
 
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[dir_index] / 100;
@@ -1713,7 +1713,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     auto* map = _engine->EntityMngr.GetMap(map_id);
     FO_RUNTIME_ASSERT(map);
 
-    const int look = static_cast<int>(cr->GetLookDistance());
+    const int32 look = static_cast<int32>(cr->GetLookDistance());
 
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
@@ -1736,7 +1736,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, cr, item);
             }
             else {
-                int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
+                int32 dist = static_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
 
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
@@ -1761,7 +1761,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int32 dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1792,8 +1792,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int 
             const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
             auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
-            if (i > static_cast<int>(dirs_count / 2u)) {
-                i = static_cast<int>(dirs_count) - i;
+            if (i > static_cast<int32>(dirs_count / 2u)) {
+                i = static_cast<int32>(dirs_count) - i;
             }
 
             look_self -= look_self * _engine->Settings.LookDir[i] / 100;
@@ -1827,8 +1827,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int 
                 const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
                 auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
-                if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = static_cast<int>(dirs_count) - i;
+                if (i > static_cast<int32>(dirs_count / 2u)) {
+                    i = static_cast<int32>(dirs_count) - i;
                 }
 
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[i] / 100;

@@ -109,7 +109,7 @@ void DialogManager::LoadFromResources(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int errors = 0;
+    int32 errors = 0;
     auto files = resources.FilterFiles("fodlg");
 
     while (files.MoveNext()) {
@@ -360,16 +360,16 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const
 
     uint8 who = DR_WHO_PLAYER;
     uint8 oper = '=';
-    int values_count = 0;
+    int32 values_count = 0;
     string svalue;
-    int ivalue = 0;
+    int32 ivalue = 0;
     uint32 id_index = 0;
     hstring id_hash;
     string type_str;
     string name;
     string script_name;
     bool no_recheck = false;
-    int script_val[5] = {0, 0, 0, 0, 0};
+    int32 script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
 

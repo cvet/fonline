@@ -55,7 +55,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv);
+        InitApp(numeric_cast<int32>(argc), argv);
 
         refcount_ptr<FOServer> server;
         vector<refcount_ptr<FOClient>> clients;

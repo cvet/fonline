@@ -48,7 +48,7 @@
 
 FO_USING_NAMESPACE();
 
-int main(int argc, char** argv)
+int32 main(int32 argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 

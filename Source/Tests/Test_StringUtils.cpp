@@ -161,8 +161,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("00000000012").toInt() == 12);
         CHECK(strex("1").toInt() == 1);
         CHECK(strex("-156").toInt() == -156);
-        CHECK(strex("-429496729500").toInt() == std::numeric_limits<int>::min());
-        CHECK(strex("4294967295").toInt() == std::numeric_limits<int>::max());
+        CHECK(strex("-429496729500").toInt() == std::numeric_limits<int32>::min());
+        CHECK(strex("4294967295").toInt() == std::numeric_limits<int32>::max());
         CHECK(strex("0xFFFF").toInt() == 0xFFFF);
         CHECK(strex("-0xFFFF").toInt() == -0xFFFF);
         CHECK(strex("012345").toInt() == 12345); // Do not recognize octal numbers
@@ -226,13 +226,13 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two    \tThree   ").split('\t') == vector<string>({"One Two", "Three"}));
         CHECK(strex(" One Two    \tThree   ").split('X') == vector<string>({"One Two    \tThree"}));
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
-        CHECK(strex(" 111 222  33Three g66 7").splitToInt(' ') == vector<int>({111, 222, 0, 0, 7}));
-        CHECK(strex("").splitToInt(' ') == vector<int>({}));
-        CHECK(strex("             ").splitToInt(' ') == vector<int>({}));
-        CHECK(strex("1").splitToInt(' ') == vector<int>({1}));
-        CHECK(strex("1 -2").splitToInt(' ') == vector<int>({1, -2}));
-        CHECK(strex("\t1   X -2 X 3").splitToInt('X') == vector<int>({1, -2, 3}));
-        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").splitToInt('X') == vector<int>({1, -2, 3}));
+        CHECK(strex(" 111 222  33Three g66 7").splitToInt(' ') == vector<int32>({111, 222, 0, 0, 7}));
+        CHECK(strex("").splitToInt(' ') == vector<int32>({}));
+        CHECK(strex("             ").splitToInt(' ') == vector<int32>({}));
+        CHECK(strex("1").splitToInt(' ') == vector<int32>({1}));
+        CHECK(strex("1 -2").splitToInt(' ') == vector<int32>({1, -2}));
+        CHECK(strex("\t1   X -2 X 3").splitToInt('X') == vector<int32>({1, -2, 3}));
+        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").splitToInt('X') == vector<int32>({1, -2, 3}));
     }
 
     SECTION("Substring")

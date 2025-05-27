@@ -37,6 +37,9 @@
 FO_BEGIN_NAMESPACE();
 
 constexpr auto BIAS_FLOAT = 0.02f;
+constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float>;
+constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float> * 2.0f;
+constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float>;
 
 LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float angle)
 {

@@ -406,8 +406,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     }
 
     // Calculate atlas size
-    int atlas_w;
-    int atlas_h;
+    int32 atlas_w;
+    int32 atlas_h;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0) {
         atlas_w = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
@@ -432,8 +432,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
 
-    const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int32&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int32&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Back buffer view
     ID3D11Texture2D* back_buf = nullptr;
@@ -790,12 +790,12 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int vp_ox;
-    int vp_oy;
-    int vp_width;
-    int vp_height;
-    int screen_width;
-    int screen_height;
+    int32 vp_ox;
+    int32 vp_oy;
+    int32 vp_width;
+    int32 vp_height;
+    int32 screen_width;
+    int32 screen_height;
 
     if (tex != nullptr) {
         const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
@@ -815,8 +815,8 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
         const float back_buf_aspect = static_cast<float>(BackBufSize.width) / static_cast<float>(BackBufSize.height);
         const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.height) * screen_aspect : static_cast<float>(BackBufSize.height) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.width) / back_buf_aspect : static_cast<float>(BackBufSize.width) / screen_aspect);
+        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.height) * screen_aspect : static_cast<float>(BackBufSize.height) * back_buf_aspect);
+        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufSize.width) / back_buf_aspect : static_cast<float>(BackBufSize.width) / screen_aspect);
 
         vp_ox = (BackBufSize.width - fit_width) / 2;
         vp_oy = (BackBufSize.height - fit_height) / 2;
@@ -886,10 +886,10 @@ void Direct3D_Renderer::EnableScissor(irect rect)
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
+        ScissorRect.left = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x + rect.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
         ScissorRect.left = ViewPortRect.Left + rect.x;
@@ -1032,7 +1032,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
-    for (int i = 0; i < size.height; i++) {
+    for (int32 i = 0; i < size.height; i++) {
         const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
         MemCopy(&result[static_cast<size_t>(i) * size.width], src, static_cast<size_t>(size.width) * 4);
     }

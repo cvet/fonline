@@ -302,7 +302,7 @@ void Player::Send_Dir(const Critter* from_cr)
     out_buf->Write(from_cr->GetDirAngle());
 }
 
-void Player::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
+void Player::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 

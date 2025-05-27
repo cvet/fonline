@@ -162,8 +162,8 @@ auto Updater::Process() -> bool
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = static_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            const auto cur = numeric_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
+            const auto max = std::max(numeric_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
             const string name = strex(update_file.Name).formatPath();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
@@ -173,7 +173,7 @@ auto Updater::Process() -> bool
     }
 
     const auto elapsed_time = (nanotime::now() - _startTime).to_ms<uint32>();
-    const auto dots = static_cast<int>(std::fmod((nanotime::now() - _startTime).to_ms<double>() / 100.0, 50.0)) + 1;
+    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<double>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";

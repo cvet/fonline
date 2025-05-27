@@ -279,26 +279,26 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(isize size, string_view str, int num_font) -> int;
-    [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int num_font) -> int;
-    [[nodiscard]] auto GetLineHeight(int num_font) -> int;
-    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int num_font, uint32 flags, isize& result_size, int& lines) -> bool;
-    [[nodiscard]] auto HaveLetter(int num_font, uint32 letter) -> bool;
+    [[nodiscard]] auto GetLinesCount(isize size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLineHeight(int32 num_font) -> int32;
+    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int32 num_font, uint32 flags, isize& result_size, int32& lines) -> bool;
+    [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) -> bool;
 
-    auto LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(int index);
-    void SetFontEffect(int index, RenderEffect* effect);
-    void DrawText(irect rect, string_view str, uint32 flags, ucolor color, int num_font);
-    auto SplitLines(irect rect, string_view cstr, int num_font) -> vector<string>;
+    auto LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
+    auto LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool;
+    void SetDefaultFont(int32 index);
+    void SetFontEffect(int32 index, RenderEffect* effect);
+    void DrawText(irect rect, string_view str, uint32 flags, ucolor color, int32 num_font);
+    auto SplitLines(irect rect, string_view cstr, int32 num_font) -> vector<string>;
     void ClearFonts();
 
 private:
-    static constexpr int FONT_BUF_LEN = 0x5000;
-    static constexpr int FONT_MAX_LINES = 1000;
-    static constexpr int FORMAT_TYPE_DRAW = 0;
-    static constexpr int FORMAT_TYPE_SPLIT = 1;
-    static constexpr int FORMAT_TYPE_LCOUNT = 2;
+    static constexpr int32 FONT_BUF_LEN = 0x5000;
+    static constexpr int32 FONT_MAX_LINES = 1000;
+    static constexpr int32 FORMAT_TYPE_DRAW = 0;
+    static constexpr int32 FORMAT_TYPE_SPLIT = 1;
+    static constexpr int32 FORMAT_TYPE_LCOUNT = 2;
 
     struct FontData
     {
@@ -307,7 +307,7 @@ private:
             ipos Pos {};
             isize Size {};
             ipos Offset {};
-            int XAdvance {};
+            int32 XAdvance {};
             FRect TexPos {};
             FRect TexBorderedPos {};
         };
@@ -316,9 +316,9 @@ private:
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
         unordered_map<uint32, Letter> Letters {};
-        int SpaceWidth {};
-        int LineHeight {};
-        int YAdvance {};
+        int32 SpaceWidth {};
+        int32 LineHeight {};
+        int32 YAdvance {};
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
         bool MakeGray {};
@@ -332,27 +332,27 @@ private:
         irect Rect {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
-        int LinesAll {1};
-        int LinesInRect {};
-        int CurX {};
-        int CurY {};
-        int MaxCurX {};
+        int32 LinesAll {1};
+        int32 LinesInRect {};
+        int32 CurX {};
+        int32 CurY {};
+        int32 MaxCurX {};
         ucolor ColorDots[FONT_BUF_LEN] {};
-        int LineWidth[FONT_MAX_LINES] {};
-        int LineSpaceWidth[FONT_MAX_LINES] {};
-        int OffsColDots {};
+        int32 LineWidth[FONT_MAX_LINES] {};
+        int32 LineSpaceWidth[FONT_MAX_LINES] {};
+        int32 OffsColDots {};
         ucolor DefColor {COLOR_TEXT};
         vector<string>* StrLines {};
         bool IsError {};
     };
 
-    [[nodiscard]] auto GetFont(int num) -> FontData*;
+    [[nodiscard]] auto GetFont(int32 num) -> FontData*;
 
-    void BuildFont(int index);
-    void FormatText(FontFormatInfo& fi, int fmt_type);
+    void BuildFont(int32 index);
+    void FormatText(FontFormatInfo& fi, int32 fmt_type);
 
     vector<unique_ptr<FontData>> _allFonts {};
-    int _defFontIndex {};
+    int32 _defFontIndex {};
     FontFormatInfo _fontFormatInfoBuf {};
 };
 

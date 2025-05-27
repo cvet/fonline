@@ -35,6 +35,11 @@
 
 FO_BEGIN_NAMESPACE();
 
+constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float>;
+constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float> * 2.0f;
+constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float>;
+constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float> / 180.0f;
+
 GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     _settings {settings}
 {
@@ -92,7 +97,7 @@ void GeometryHelper::InitializeHexOffsets() const
 
             for (auto j = 0; j < 5; j++) {
                 uint8 dir;
-                int steps;
+                int32 steps;
 
                 switch (j) {
                 case 0:
@@ -132,7 +137,7 @@ void GeometryHelper::InitializeHexOffsets() const
     }
 }
 
-auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) -> uint32
+auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -176,7 +181,7 @@ auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> uint32
     return DistGame(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
-auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) -> uint8
+auto GeometryHelper::GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -259,7 +264,7 @@ auto GeometryHelper::GetNearDir(mpos from_hex, mpos to_hex) -> uint8
     return GetNearDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
-auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) -> uint8
+auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -320,7 +325,7 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) -> uint8
     }
 }
 
-auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) -> uint8
+auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float offset) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -408,7 +413,7 @@ auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint
     return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
 }
 
-auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) -> float
+auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -625,7 +630,7 @@ auto GeometryHelper::GetYProj() const -> float
     return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
 }
 
-auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float
+auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float
 {
     FO_NO_STACK_TRACE_ENTRY();
 

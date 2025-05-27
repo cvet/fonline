@@ -50,9 +50,9 @@ struct SoundManager::Sound
     size_t BaseBufLen {};
     vector<uint8> ConvertedBuf {};
     size_t ConvertedBufCur {};
-    int OriginalFormat {};
-    int OriginalChannels {};
-    int OriginalRate {};
+    int32 OriginalFormat {};
+    int32 OriginalChannels {};
+    int32 OriginalRate {};
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
@@ -118,7 +118,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 
         if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), static_cast<int>(volume));
+            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), static_cast<int32>(volume));
             ++it;
         }
         else {
@@ -250,7 +250,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     auto reader = file.GetReader();
 
-    auto dw_buf = reader.GetLEUInt();
+    auto dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
@@ -259,21 +259,21 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     reader.GoForward(4);
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
         WriteLog("'WAVE' not found");
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
         WriteLog("'fmt ' not found");
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == 0) {
         WriteLog("Unknown format");
@@ -300,12 +300,12 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     reader.GoForward(dw_buf - 16);
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == MAKEUINT('f', 'a', 'c', 't')) {
-        dw_buf = reader.GetLEUInt();
+        dw_buf = reader.GetLEUInt32();
         reader.GoForward(dw_buf);
-        dw_buf = reader.GetLEUInt();
+        dw_buf = reader.GetLEUInt32();
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
@@ -313,13 +313,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
     sound->BaseBuf.resize(dw_buf);
     sound->BaseBufLen = dw_buf;
 
     // Check format
-    sound->OriginalChannels = static_cast<int>(waveformatex.NChannels);
-    sound->OriginalRate = static_cast<int>(waveformatex.NSamplesPerSec);
+    sound->OriginalChannels = static_cast<int32>(waveformatex.NChannels);
+    sound->OriginalRate = static_cast<int32>(waveformatex.NSamplesPerSec);
 
     switch (waveformatex.WBitsPerSample) {
     case 8:
@@ -352,7 +352,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int32>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -406,7 +406,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return bytes_read;
     };
 
-    callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
+    callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32 whence) -> int32 {
         auto* file_context = static_cast<OggFileContext*>(datasource);
 
         switch (whence) {
@@ -431,7 +431,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return 0;
     };
 
-    callbacks.close_func = [](void* datasource) -> int {
+    callbacks.close_func = [](void* datasource) -> int32 {
         const auto* file_context = static_cast<OggFileContext*>(datasource);
         delete file_context;
         return 0;
@@ -480,16 +480,16 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
-    sound->OriginalRate = static_cast<int>(vi->rate);
+    sound->OriginalRate = static_cast<int32>(vi->rate);
     sound->BaseBuf.resize(_streamingPortion);
     sound->BaseBufLen = _streamingPortion;
 
-    int result;
+    int32 result;
     uint32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
-        result = static_cast<int>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr));
+        result = static_cast<int32>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr));
 
         if (result <= 0) {
             break;
@@ -525,7 +525,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
-        result = ov_read(sound->OggStream.get(), buf, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr);
+        result = ov_read(sound->OggStream.get(), buf, static_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr);
 
         if (result <= 0) {
             break;

@@ -188,29 +188,29 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), value.AsInt64())) {
+        if (!bson_append_int64(bson, key.data(), static_cast<int32>(key.length()), value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Double) {
-        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), value.AsDouble())) {
+        if (!bson_append_double(bson, key.data(), static_cast<int32>(key.length()), value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), value.AsBool())) {
+        if (!bson_append_bool(bson, key.data(), static_cast<int32>(key.length()), value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), value.AsString().c_str(), static_cast<int>(value.AsString().length()))) {
+        if (!bson_append_utf8(bson, key.data(), static_cast<int32>(key.length()), value.AsString().c_str(), static_cast<int32>(value.AsString().length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_begin(bson, key.data(), static_cast<int>(key.length()), &bson_arr)) {
+        if (!bson_append_array_begin(bson, key.data(), static_cast<int32>(key.length()), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
@@ -229,7 +229,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson, key.data(), static_cast<int>(key.length()), &bson_doc)) {
+        if (!bson_append_document_begin(bson, key.data(), static_cast<int32>(key.length()), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
@@ -771,7 +771,7 @@ public:
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
-                [](const void* output, unsigned int output_len, void* user_data) {
+                [](const void* output, unsigned output_len, void* user_data) {
                     static_assert(sizeof(ident_t) == sizeof(int64));
                     FO_RUNTIME_ASSERT(output_len == sizeof(int64));
                     *static_cast<int64*>(user_data) = *static_cast<const int64*>(output);
@@ -813,7 +813,7 @@ protected:
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db, &id, sizeof(id),
-            [](const void* output, unsigned int output_len, void* user_data) {
+            [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
 
                 if (!bson_init_static(&bson, static_cast<const uint8*>(output), output_len)) {
@@ -846,7 +846,7 @@ protected:
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);

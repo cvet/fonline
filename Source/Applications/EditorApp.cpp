@@ -55,7 +55,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv);
+        InitApp(numeric_cast<int32>(argc), argv);
 
         {
             auto editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);

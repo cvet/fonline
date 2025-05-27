@@ -456,7 +456,7 @@ FO_SCRIPT_API void Client_Game_FadeScreen(FOClient* client, ucolor fromColor, uc
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int noise, timespan duration)
+FO_SCRIPT_API void Client_Game_QuakeScreen(FOClient* client, int32 noise, timespan duration)
 {
     client->ScreenQuake(noise, duration);
 }
@@ -614,7 +614,7 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
+FO_SCRIPT_API void Client_Game_LoadFont(FOClient* client, int32 fontIndex, string_view fontFname)
 {
     bool result;
 
@@ -631,7 +631,7 @@ FO_SCRIPT_API void Client_Game_LoadFont(FOClient* client, int fontIndex, string_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetDefaultFont(FOClient* client, int font)
+FO_SCRIPT_API void Client_Game_SetDefaultFont(FOClient* client, int32 font)
 {
     client->SprMngr.SetDefaultFont(font);
 }
@@ -702,7 +702,7 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
         client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
     if (((eff_type & static_cast<uint32>(EffectType::Font)) != 0) && effectSubtype >= 0) {
-        client->SprMngr.SetFontEffect(static_cast<int>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
+        client->SprMngr.SetFontEffect(static_cast<int32>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
     }
 
     if ((eff_type & static_cast<uint32>(EffectType::Primitive)) != 0) {
@@ -754,10 +754,10 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(FOClient* client, ipos pos, Mo
 
     IntVec prev_events = client->Settings.MainWindowMouseEvents;
     client->Settings.MainWindowMouseEvents.clear();
-    int prev_x = client->Settings.MouseX;
-    int prev_y = client->Settings.MouseY;
-    int last_prev_x = client->Settings.LastMouseX;
-    int last_prev_y = client->Settings.LastMouseY;
+    int32 prev_x = client->Settings.MouseX;
+    int32 prev_y = client->Settings.MouseY;
+    int32 last_prev_x = client->Settings.LastMouseX;
+    int32 last_prev_y = client->Settings.LastMouseY;
     client->Settings.MouseX = client->Settings.LastMouseX = x;
     client->Settings.MouseY = client->Settings.LastMouseY = y;
     client->Settings.MainWindowMouseEvents.emplace_back(SDL_MOUSEBUTTONDOWN);
@@ -896,7 +896,7 @@ FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint32 sprId, hstrin
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int font, uint32 flags, isize& resultSize, int& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int32 font, uint32 flags, isize& resultSize, int32& resultLines)
 {
     if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -904,7 +904,7 @@ FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int Client_Game_GetTextLines(FOClient* client, isize size, int font)
+FO_SCRIPT_API int32 Client_Game_GetTextLines(FOClient* client, isize size, int32 font)
 {
     return client->SprMngr.GetLinesCount(size, "", font);
 }
@@ -1070,7 +1070,7 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint32 sprId,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int font, uint32 flags)
+FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos pos, isize size, ucolor color, int32 font, uint32 flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1097,7 +1097,7 @@ FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveType primitiveType, const vector<int>& data)
+FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveType primitiveType, const vector<int32>& data)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1123,7 +1123,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveTy
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int32 l, int32 t, int32 r, int32 b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
@@ -1133,7 +1133,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int32>& layers, const vector<float>& position, ucolor color)
 {
 #if FO_ENABLE_3D
     // x y
@@ -1187,7 +1187,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
     const auto stb = count > 13 ? position[13] : 0.0f;
 
     if (count > 13) {
-        client->SprMngr.PushScissor({iround(stl), iround(stt), iround(str) - iround(stl), iround(stb) - iround(stt)});
+        client->SprMngr.PushScissor({iround<int32>(stl), iround<int32>(stt), iround<int32>(str) - iround<int32>(stl), iround<int32>(stb) - iround<int32>(stt)});
     }
 
     MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
@@ -1200,20 +1200,20 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
 
     model->SetLookDirAngle(0);
     model->SetMoveDirAngle(0, false);
-    model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
+    model->SetRotation(rx * std::numbers::pi_v<float> / 180.0f, ry * std::numbers::pi_v<float> / 180.0f, rz * std::numbers::pi_v<float> / 180.0f);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
-    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround<int32>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
     if (count > 13) {
-        const auto max_height = iround(stb - stt) * 4 / 3;
-        model_spr->SetSize({iround(str - stl), max_height});
+        const auto max_height = iround<int32>(stb - stt) * 4 / 3;
+        model_spr->SetSize({iround<int32>(str - stl), max_height});
     }
 
     model_spr->DrawToAtlas();
 
-    const auto result_x = iround(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
-    const auto result_y = iround(y) - model_spr->Size.height + model_spr->Offset.y;
+    const auto result_x = iround<int32>(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
+    const auto result_y = iround<int32>(y) - model_spr->Size.height + model_spr->Offset.y;
 
     client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
 
@@ -1285,7 +1285,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 effectSubtype)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1300,7 +1300,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1310,7 +1310,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, ipos pos, isize size)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 effectSubtype, ipos pos, isize size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1325,7 +1325,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1342,7 +1342,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 effectSubtype, int32 fromX, int32 fromY, int32 fromW, int32 fromH, int32 toX, int32 toY, int32 toW, int32 toH)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1357,7 +1357,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int eff
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 

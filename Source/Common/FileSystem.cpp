@@ -341,7 +341,7 @@ auto FileReader::GetStrNT() -> string
     return str;
 }
 
-auto FileReader::GetUChar() -> uint8
+auto FileReader::GetUInt8() -> uint8
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -353,7 +353,7 @@ auto FileReader::GetUChar() -> uint8
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUShort() -> uint16
+auto FileReader::GetBEUInt16() -> uint16
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -369,7 +369,7 @@ auto FileReader::GetBEUShort() -> uint16
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUShort() -> uint16
+auto FileReader::GetLEUInt16() -> uint16
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -385,7 +385,7 @@ auto FileReader::GetLEUShort() -> uint16
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt() -> uint32
+auto FileReader::GetBEUInt32() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -404,7 +404,7 @@ auto FileReader::GetBEUInt() -> uint32
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt() -> uint32
+auto FileReader::GetLEUInt32() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -443,9 +443,9 @@ auto FileCollection::MoveNext() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
-    return ++_curFileIndex < static_cast<int>(_allFiles.size());
+    return ++_curFileIndex < numeric_cast<int32>(_allFiles.size());
 }
 
 void FileCollection::ResetCounter()
@@ -460,7 +460,7 @@ auto FileCollection::GetCurFile() const -> File
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh.GetSize();
@@ -475,7 +475,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     return FileHeader(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());

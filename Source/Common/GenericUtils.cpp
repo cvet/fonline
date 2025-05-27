@@ -256,10 +256,10 @@ auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto buf_len = static_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
+    auto buf_len = numeric_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
     auto buf = vector<uint8>(buf_len);
 
-    if (compress2(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
+    if (compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
         return {};
     }
 
@@ -272,11 +272,11 @@ auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
+    auto buf_len = numeric_cast<uLongf>(data.size() * mul_approx);
     auto buf = vector<uint8>(buf_len);
 
     while (true) {
-        const auto result = uncompress(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()));
+        const auto result = uncompress(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()));
 
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
@@ -304,8 +304,8 @@ void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> 
     FO_RUNTIME_ASSERT(file);
 
     const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        static_cast<uint8>(size.width % 256), static_cast<uint8>(size.width / 256), //
-        static_cast<uint8>(size.height % 256), static_cast<uint8>(size.height / 256), 4 * 8, 0x20};
+        numeric_cast<uint8>(size.width % 256), numeric_cast<uint8>(size.width / 256), //
+        numeric_cast<uint8>(size.height % 256), numeric_cast<uint8>(size.height / 256), 4 * 8, 0x20};
     file.Write(header);
 
     file.Write(data.data(), data.size() * sizeof(uint32));
@@ -313,14 +313,14 @@ void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> 
 
 // Default randomizer
 static std::mt19937 RandomGenerator(std::random_device {}());
-void GenericUtils::SetRandomSeed(int seed)
+void GenericUtils::SetRandomSeed(int32 seed)
 {
     FO_STACK_TRACE_ENTRY();
 
     RandomGenerator = std::mt19937(seed);
 }
 
-auto GenericUtils::Random(int minimum, int maximum) -> int
+auto GenericUtils::Random(int32 minimum, int32 maximum) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -331,10 +331,10 @@ auto GenericUtils::Random(uint32 minimum, uint32 maximum) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint32>(Random(static_cast<int>(minimum), static_cast<int>(maximum)));
+    return numeric_cast<uint32>(Random(numeric_cast<int32>(minimum), numeric_cast<int32>(maximum)));
 }
 
-auto GenericUtils::Percent(int full, int peace) -> int
+auto GenericUtils::Percent(int32 full, int32 peace) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -373,7 +373,7 @@ auto GenericUtils::NumericalNumber(uint32 num) noexcept -> uint32
     return num * num / 2 + num / 2;
 }
 
-auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool
+auto GenericUtils::IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -397,7 +397,7 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor
+auto GenericUtils::GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -405,13 +405,13 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
     FO_RUNTIME_ASSERT(colors.size() == 12);
 
     uint8 result[3];
-    const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
-    const int color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
-    const int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
+    const int32 color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
+    const int32 color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
+    const int32 color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
 
     game_time %= 1440;
-    int time;
-    int duration;
+    int32 time;
+    int32 duration;
     if (game_time >= day_time[0] && game_time < day_time[1]) {
         time = 0;
         game_time -= day_time[0];
@@ -442,9 +442,9 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
         duration = 1;
     }
 
-    result[0] = static_cast<uint8>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
-    result[1] = static_cast<uint8>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
-    result[2] = static_cast<uint8>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
+    result[0] = numeric_cast<uint8>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
+    result[1] = numeric_cast<uint8>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
+    result[2] = numeric_cast<uint8>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
 
     if (light != nullptr) {
         const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
@@ -465,15 +465,15 @@ auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32
     const auto dx = pos1.x - pos2.x;
     const auto dy = pos1.y - pos2.y;
 
-    return static_cast<uint32>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
+    return static_cast<uint32>(iround<int32>(std::sqrt(static_cast<double>(dx * dx + dy * dy))));
 }
 
 auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dx = static_cast<float>(std::abs(to_pos.x - from_pos.x));
-    const auto dy = static_cast<float>(std::abs(to_pos.y - from_pos.y));
+    const auto dx = numeric_cast<float>(std::abs(to_pos.x - from_pos.x));
+    const auto dy = numeric_cast<float>(std::abs(to_pos.y - from_pos.y));
 
     auto sx = 1.0f;
     auto sy = 1.0f;
@@ -494,7 +494,7 @@ auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto rad = deq * PI_FLOAT / 180.0f;
+    const auto rad = deq * std::numbers::pi_v<float> / 180.0f;
     const auto x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
     const auto y = pos.x * std::sin(rad) + pos.y * std::cos(rad);
 
@@ -505,7 +505,7 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16]) noe
 static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept;
 static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool;
 
-auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool
+auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* winx, float* winy, float* winz) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -531,8 +531,8 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     in[1] = in[1] * 0.5f + 0.5f;
     in[2] = in[2] * 0.5f + 0.5f;
 
-    in[0] = in[0] * static_cast<float>(viewport[2] + viewport[0]);
-    in[1] = in[1] * static_cast<float>(viewport[3] + viewport[1]);
+    in[0] = in[0] * numeric_cast<float>(viewport[2] + viewport[0]);
+    in[1] = in[1] * numeric_cast<float>(viewport[3] + viewport[1]);
 
     *winx = in[0];
     *winy = in[1];
@@ -541,7 +541,7 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     return true;
 }
 
-auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool
+auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* objx, float* objy, float* objz) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -558,8 +558,8 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
     in[2] = winz;
     in[3] = 1.0f;
 
-    in[0] = (in[0] - static_cast<float>(viewport[0])) / static_cast<float>(viewport[2]);
-    in[1] = (in[1] - static_cast<float>(viewport[1])) / static_cast<float>(viewport[3]);
+    in[0] = (in[0] - numeric_cast<float>(viewport[0])) / numeric_cast<float>(viewport[2]);
+    in[1] = (in[1] - numeric_cast<float>(viewport[1])) / numeric_cast<float>(viewport[3]);
 
     in[0] = in[0] * 2 - 1;
     in[1] = in[1] * 2 - 1;
@@ -665,7 +665,7 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 
         _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
             constexpr SafeAllocator<uint8> allocator;
-            return allocator.allocate(static_cast<size_t>(items) * size);
+            return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
         _impl->ZStream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8> allocator;
@@ -679,17 +679,17 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
 
     _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
-    _impl->ZStream.avail_in = static_cast<uInt>(buf.size());
+    _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
     _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
-    _impl->ZStream.avail_out = static_cast<uInt>(result.size());
+    _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
     FO_RUNTIME_ASSERT(deflate_result == Z_OK);
 
-    const auto writed_len = static_cast<size_t>(_impl->ZStream.next_in - buf.data());
+    const auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
     FO_RUNTIME_ASSERT(writed_len == buf.size());
 
-    const auto compr_len = static_cast<size_t>(_impl->ZStream.next_out - result.data());
+    const auto compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - result.data());
     result.resize(compr_len);
 }
 
@@ -729,7 +729,7 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
 
         _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
             constexpr SafeAllocator<uint8> allocator;
-            return allocator.allocate(static_cast<size_t>(items) * size);
+            return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
         _impl->ZStream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8> allocator;

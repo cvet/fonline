@@ -73,18 +73,18 @@ class GenericUtils final
 public:
     GenericUtils() = delete;
 
-    [[nodiscard]] static auto Random(int minimum, int maximum) -> int;
+    [[nodiscard]] static auto Random(int32 minimum, int32 maximum) -> int32;
     [[nodiscard]] static auto Random(uint32 minimum, uint32 maximum) -> uint32;
-    [[nodiscard]] static auto Percent(int full, int peace) -> int;
+    [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
     [[nodiscard]] static auto Percent(uint32 full, uint32 peace) -> uint32;
     [[nodiscard]] static auto NumericalNumber(uint32 num) noexcept -> uint32;
-    [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) noexcept -> bool;
-    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor;
+    [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
+    [[nodiscard]] static auto GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor;
     [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32;
     [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos;
 
-    static void SetRandomSeed(int seed);
+    static void SetRandomSeed(int32 seed);
     static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
 };
 
@@ -93,8 +93,8 @@ class MatrixHelper final
 public:
     MatrixHelper() = delete;
 
-    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) noexcept -> bool;
-    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) noexcept -> bool;
+    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* winx, float* winy, float* winz) noexcept -> bool;
+    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* objx, float* objy, float* objz) noexcept -> bool;
 };
 
 class StreamCompressor final

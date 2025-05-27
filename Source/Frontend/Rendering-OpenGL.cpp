@@ -236,7 +236,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
-    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
+    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int32>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
     FO_RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
@@ -340,8 +340,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     atlas_h = std::min(max_viewport_size[1], atlas_h);
     FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int32&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int32&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -465,13 +465,13 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Info parser
         const auto get_shader_compile_log = [](GLuint shader) -> string {
             string result = "(no info)";
-            int len = 0;
+            int32 len = 0;
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                int chars = 0;
+                int32 chars = 0;
                 GL(glGetShaderInfoLog(shader, len, &chars, buf.data()));
                 result.assign(buf.data(), len);
             }
@@ -481,12 +481,12 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         const auto get_program_compile_log = [](GLuint program) -> string {
             string result = "(no info)";
-            int len = 0;
+            int32 len = 0;
             GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
                 vector<GLchar> buf;
-                int chars = 0;
+                int32 chars = 0;
                 GL(glGetProgramInfoLog(program, len, &chars, buf.data()));
                 result.assign(buf.data(), len);
             }
@@ -611,12 +611,12 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int vp_ox;
-    int vp_oy;
-    int vp_width;
-    int vp_height;
-    int screen_width;
-    int screen_height;
+    int32 vp_ox;
+    int32 vp_oy;
+    int32 vp_width;
+    int32 vp_height;
+    int32 screen_width;
+    int32 screen_height;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
@@ -636,8 +636,8 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
         const float back_buf_aspect = static_cast<float>(BaseFrameBufSize.width) / static_cast<float>(BaseFrameBufSize.height);
         const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
+        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
+        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
@@ -690,19 +690,19 @@ void OpenGL_Renderer::EnableScissor(irect rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int l;
-    int t;
-    int r;
-    int b;
+    int32 l;
+    int32 t;
+    int32 r;
+    int32 b;
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
+        l = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
         l = ViewPortRect.Left + rect.x;

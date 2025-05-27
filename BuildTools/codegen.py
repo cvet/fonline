@@ -396,14 +396,14 @@ def parseTags():
 
     def engineTypeToUnifiedType(t):
         typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-            'int': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
+            'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
             'int8&': 'int8&', 'uint8&': 'uint8&', 'int16&': 'int16&', 'uint16&': 'uint16&',
-            'int&': 'int32&', 'uint32&': 'uint32&', 'int64&': 'int64&', 'uint64&': 'uint64&',
+            'int32&': 'int32&', 'uint32&': 'uint32&', 'int64&': 'int64&', 'uint64&': 'uint64&',
             'float': 'float32', 'double': 'float64', 'float&': 'float32&', 'double&': 'float64&',
             'bool': 'bool', 'bool&': 'bool&', 'void': 'void',
             'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
             'int8*': 'int8&', 'uint8*': 'uint8&', 'int16*': 'int16&', 'uint16*': 'uint16&',
-            'int*': 'int32&', 'uint32*': 'uint32&', 'int64*': 'int64&', 'uint64*': 'uint64&',
+            'int32*': 'int32&', 'uint32*': 'uint32&', 'int64*': 'int64&', 'uint64*': 'uint64&',
             'float*': 'float32&', 'double*': 'float64&', 'bool*': 'bool&', 'string*': 'string&',
             'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&',
             'any_t': 'any', 'any_t&': 'any&', 'any_t*': 'any*'}
@@ -492,7 +492,7 @@ def parseTags():
                 assert firstLine.startswith('enum class ')
                 sep = firstLine.find(':')
                 grname = firstLine[len('enum class '):sep if sep != -1 else len(firstLine)].strip()
-                utype = engineTypeToMetaType('int' if sep == -1 else firstLine[sep + 1:].strip())
+                utype = engineTypeToMetaType('int32' if sep == -1 else firstLine[sep + 1:].strip())
                 
                 keyValues = []
                 assert tagContext[1].startswith('{')
@@ -563,7 +563,7 @@ def parseTags():
                             minValue = v if v < minValue else minValue
                             maxValue = v if v > maxValue else maxValue
                         if minValue < 0:
-                            return 'int'
+                            return 'int32'
                         else:
                             assert maxValue <= 0xFFFFFFFF
                             if maxValue <= 0xFF:
@@ -1370,7 +1370,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None):
         assert r, 'Invalid native type ' + tt[0]
     else:
         def mapType(mt):
-            typeMap = {'int32': 'int', 'uint32': 'uint32', 'any': 'any_t', 'float32': 'float', 'float64': 'double'}
+            typeMap = {'any': 'any_t', 'float32': 'float', 'float64': 'double'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1748,7 +1748,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] in refTypes or tt[0] in entityRelatives:
                 return tt[0] + '*'
             elif tt[0] in scriptEnums or tt[0] in engineEnums:
-                r = 'int'
+                r = 'int32'
             elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
@@ -1759,7 +1759,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 assert r, 'Invalid native type ' + tt[0]
             else:
                 def mapType(t):
-                    typeMap = {'int32': 'int', 'uint32': 'uint32', 'any': 'any_t', 'float32': 'float', 'float64': 'double'}
+                    typeMap = {'any': 'any_t', 'float32': 'float', 'float64': 'double'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':

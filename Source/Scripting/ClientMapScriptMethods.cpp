@@ -84,14 +84,14 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;
         draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
-        draw_order_hy_offset = static_cast<int>(proto->GetDrawOrderOffsetHexY());
+        draw_order_hy_offset = numeric_cast<int32>(proto->GetDrawOrderOffsetHexY());
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
         contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     const auto& field = self->GetField(mapSpr->Hex);
-    auto& mspr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, static_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
+    auto& mspr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, numeric_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
         {(self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->Offset.x, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->Offset.y}, &field.Offset, anim, nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
@@ -366,7 +366,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32>(cut))) {
         return {};
     }
 
@@ -404,7 +404,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32>(cut))) {
         return {};
     }
 
@@ -437,7 +437,7 @@ FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos 
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32>(cut))) {
         return 0;
     }
 
@@ -450,7 +450,7 @@ FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos 
         return 0;
     }
 
-    return static_cast<uint32>(result->DirSteps.size());
+    return numeric_cast<uint32>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
@@ -472,7 +472,7 @@ FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mp
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, static_cast<int>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32>(cut))) {
         return 0;
     }
 
@@ -485,7 +485,7 @@ FO_SCRIPT_API uint32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mp
         return 0;
     }
 
-    return static_cast<uint32>(result->DirSteps.size());
+    return numeric_cast<uint32>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
@@ -499,14 +499,14 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint32 sp
         self->FindSetCenter(hex);
     }
     else {
-        self->ScrollToHex(hex, static_cast<float>(speed) / 1000.0f, canStop);
+        self->ScrollToHex(hex, numeric_cast<float>(speed) / 1000.0f, canStop);
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint32 speed, bool canStop)
 {
-    self->ScrollOffset(offset, static_cast<float>(speed) / 1000.0f, canStop);
+    self->ScrollOffset(offset, numeric_cast<float>(speed) / 1000.0f, canStop);
 }
 
 ///@ ExportMethod
@@ -643,8 +643,8 @@ FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& scr
     screenPos = self->GetHexPosition(hex);
     screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
     screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
-    screenPos.x = static_cast<int>(static_cast<float>(screenPos.x) / self->GetSpritesZoom());
-    screenPos.y = static_cast<int>(static_cast<float>(screenPos.y) / self->GetSpritesZoom());
+    screenPos.x = iround<int32>(numeric_cast<float>(screenPos.x) / self->GetSpritesZoom());
+    screenPos.y = iround<int32>(numeric_cast<float>(screenPos.y) / self->GetSpritesZoom());
 }
 
 ///@ ExportMethod
@@ -673,7 +673,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos, int extraRange)
+FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos, int32 extraRange)
 {
     auto* cr = self->GetCritterAtScreenPos(pos, false, 0, true);
 

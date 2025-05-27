@@ -73,7 +73,7 @@ map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> Int
 
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-int GlobalDataCallbacksCount;
+int32 GlobalDataCallbacksCount;
 
 static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
 
@@ -109,12 +109,12 @@ extern void SetCrashStackTrace() noexcept // Called in backward.hpp
 FO_BEGIN_NAMESPACE();
 
 template<typename T>
-static char* ItoA(T num, char buf[64], int base) noexcept
+static char* ItoA(T num, char buf[64], int32 base) noexcept
 {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 16);
 
-    int i = 0;
+    int32 i = 0;
     [[maybe_unused]] bool is_negative = false;
 
     if (num == 0) {
@@ -131,7 +131,7 @@ static char* ItoA(T num, char buf[64], int base) noexcept
     }
 
     while (num != 0) {
-        const int rem = num % base;
+        const int32 rem = num % base;
         buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
         num = num / base;
     }
@@ -142,8 +142,8 @@ static char* ItoA(T num, char buf[64], int base) noexcept
 
     buf[i] = '\0';
 
-    int start = 0;
-    int end = i - 1;
+    int32 start = 0;
+    int32 end = i - 1;
 
     while (start < end) {
         const char ch = buf[start];
@@ -164,7 +164,7 @@ static void SafeWriteStackTrace(const StackTraceData* st) noexcept
 
     char itoa_buf[64] = {};
 
-    for (int i = std::min(static_cast<int>(st->CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+    for (int32 i = std::min(static_cast<int32>(st->CallsCount), static_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st->CallTree[i];
         WriteLogFatalMessage("- ");
         WriteLogFatalMessage(entry->function);
@@ -361,7 +361,7 @@ extern void ShowExceptionMessageBox(bool enabled) noexcept
     ExceptionMessageBox = enabled;
 }
 
-extern void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept
+extern void ReportStrongAssertAndExit(string_view message, const char* file, int32 line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -373,7 +373,7 @@ extern void ReportStrongAssertAndExit(string_view message, const char* file, int
     }
 }
 
-extern void ReportVerifyFailed(string_view message, const char* file, int line) noexcept
+extern void ReportVerifyFailed(string_view message, const char* file, int32 line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -424,7 +424,7 @@ extern auto GetStackTrace() -> string
 
     const auto& st = StackTrace;
 
-    for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+    for (int32 i = std::min(static_cast<int32>(st.CallsCount), static_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st.CallTree[i];
 
         ss << "- " << entry->function << " (" << strex(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
@@ -552,7 +552,7 @@ extern auto IsRunInDebugger() noexcept -> bool
 
 #elif FO_MAC
     std::call_once(RunInDebuggerOnce, [] {
-        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+        int32 mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
         struct kinfo_proc info = {};
         size_t size = sizeof(info);
         if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
@@ -667,20 +667,20 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
     rest_day -= microseconds;
     const auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day);
 
-    result.year = static_cast<int>(ymd.year());
-    result.month = static_cast<int>(static_cast<uint32>(ymd.month()));
-    result.day = static_cast<int>(static_cast<uint32>(ymd.day()));
-    result.hour = static_cast<int>(hours.count());
-    result.minute = static_cast<int>(minutes.count());
-    result.second = static_cast<int>(seconds.count());
-    result.millisecond = static_cast<int>(milliseconds.count());
-    result.microsecond = static_cast<int>(microseconds.count());
-    result.nanosecond = static_cast<int>(nanoseconds.count());
+    result.year = static_cast<int32>(ymd.year());
+    result.month = static_cast<int32>(static_cast<uint32>(ymd.month()));
+    result.day = static_cast<int32>(static_cast<uint32>(ymd.day()));
+    result.hour = static_cast<int32>(hours.count());
+    result.minute = static_cast<int32>(minutes.count());
+    result.second = static_cast<int32>(seconds.count());
+    result.millisecond = static_cast<int32>(milliseconds.count());
+    result.microsecond = static_cast<int32>(microseconds.count());
+    result.nanosecond = static_cast<int32>(nanoseconds.count());
 
     return result;
 }
 
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, bool local) -> timespan
+auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond, bool local) -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -699,7 +699,7 @@ auto make_time_offset(int year, int month, int day, int hour, int minute, int se
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }
 
-FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :
+FrameBalancer::FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
     _sleep {sleep},
     _fixedFps {fixed_fps}
@@ -1013,7 +1013,7 @@ extern auto GetThisThreadName() -> const string&
 
 FO_END_NAMESPACE();
 
-void emscripten_sleep(unsigned int ms)
+void emscripten_sleep(unsigned int32 ms)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1342,7 +1342,7 @@ extern void MemCopy(void* dest, const void* src, size_t size) noexcept
     }
 }
 
-extern void MemFill(void* ptr, int value, size_t size) noexcept
+extern void MemFill(void* ptr, int32 value, size_t size) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

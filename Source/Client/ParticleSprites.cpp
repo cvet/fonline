@@ -227,18 +227,18 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     // Render to atlas
     if (rt_intermediate->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
-        const auto t = iround((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Size.height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
-        const auto b = iround((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto l = iround<int32>(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto t = iround<int32>((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto r = iround<int32>(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto b = iround<int32>((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Size.height));
 
         region_to = IRect(l, t, r, b);
     }
     else {
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
-        const auto t = iround(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Size.height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
-        const auto b = iround(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto l = iround<int32>(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto t = iround<int32>(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Size.height));
+        const auto r = iround<int32>(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Size.width));
+        const auto b = iround<int32>(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Size.height));
 
         region_to = IRect(l, t, r, b);
     }

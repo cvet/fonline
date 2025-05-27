@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define SOCKET int
+#define SOCKET int32
 #define INVALID_SOCKET (-1)
 #define SOCKET_ERROR (-1)
 #define closesocket close
@@ -163,7 +163,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         }
 
 #else
-        int flags = ::fcntl(_netSock, F_GETFL, 0);
+        int32 flags = ::fcntl(_netSock, F_GETFL, 0);
         FO_RUNTIME_ASSERT(flags >= 0);
 
         if (::fcntl(_netSock, F_SETFL, flags | O_NONBLOCK)) {
@@ -358,7 +358,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     FD_ZERO(&_netSockSet);
     FD_SET(_netSock, &_netSockSet);
 
-    const auto r = ::select(static_cast<int>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
+    const auto r = ::select(static_cast<int32>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
 
     if (r == 1) {
         if (_isConnecting) {
@@ -372,9 +372,9 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (r == 0) {
-        int error = 0;
+        int32 error = 0;
 #if FO_WINDOWS
-        int len = sizeof(error);
+        int32 len = sizeof(error);
 #else
         socklen_t len = sizeof(error);
 #endif
@@ -405,7 +405,7 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> siz
     }
 
 #else
-    int len = (int)::send(_netSock, buf.data(), buf.size(), 0);
+    const auto len = ::send(_netSock, buf.data(), buf.size(), 0);
 
     if (len <= 0) {
         throw NetworkClientException("Socket error while send to server", GetLastSocketError());
@@ -433,7 +433,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
     }
 
 #else
-    int len = numeric_cast<int>(::recv(_netSock, buf.data(), buf.size(), 0));
+    auto len = ::recv(_netSock, buf.data(), buf.size(), 0);
 
     if (len == SOCKET_ERROR) {
         throw NetworkClientException("Socket error while receive from server", GetLastSocketError());
@@ -444,7 +444,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
         throw NetworkClientException("Socket is closed");
     }
 
-    auto whole_len = static_cast<size_t>(len);
+    auto whole_len = numeric_cast<size_t>(len);
 
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
@@ -463,7 +463,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
         }
 
 #else
-        len = numeric_cast<int>(::recv(_netSock, buf.data() + whole_len, buf.size() - whole_len, 0));
+        len = numeric_cast<int32>(::recv(_netSock, buf.data() + whole_len, buf.size() - whole_len, 0));
 
         if (len == SOCKET_ERROR) {
             if (errno == EINPROGRESS) {
@@ -478,7 +478,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
             throw NetworkClientException("Socket is closed (2)");
         }
 
-        whole_len += len;
+        whole_len += numeric_cast<size_t>(len);
     }
 
     return whole_len;

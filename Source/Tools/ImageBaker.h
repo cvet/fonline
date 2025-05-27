@@ -46,7 +46,7 @@ FO_DECLARE_EXCEPTION(ImageBakerException);
 class ImageBaker final : public BaseBaker
 {
 public:
-    static constexpr int MAX_DIRS_MINUS_ONE = 7;
+    static constexpr int32 MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
     {

@@ -236,14 +236,14 @@ void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
     _props.SetValueFromData(prop, prop_data);
 }
 
-auto Entity::GetValueAsInt(const Property* prop) const -> int
+auto Entity::GetValueAsInt(const Property* prop) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsInt(prop);
 }
 
-auto Entity::GetValueAsInt(int prop_index) const -> int
+auto Entity::GetValueAsInt(int32 prop_index) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -257,21 +257,21 @@ auto Entity::GetValueAsAny(const Property* prop) const -> any_t
     return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsAny(int prop_index) const -> any_t
+auto Entity::GetValueAsAny(int32 prop_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsAny(prop_index);
 }
 
-void Entity::SetValueAsInt(const Property* prop, int value)
+void Entity::SetValueAsInt(const Property* prop, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
-void Entity::SetValueAsInt(int prop_index, int value)
+void Entity::SetValueAsInt(int32 prop_index, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -285,7 +285,7 @@ void Entity::SetValueAsAny(const Property* prop, const any_t& value)
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsAny(int prop_index, const any_t& value)
+void Entity::SetValueAsAny(int32 prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -68,10 +68,10 @@ public:
     [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
     [[nodiscard]] auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool override;
     [[nodiscard]] auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool override;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& override;
-    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
     [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
@@ -82,7 +82,7 @@ public:
     void RegisterPropertiesRelation(PropertiesRelationType props_relation);
     auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
-    void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values);
+    void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int32>&& key_values);
     void RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void FinalizeDataRegistration();
@@ -93,9 +93,9 @@ private:
     PropertiesRelationType _propsRelation {};
     bool _registrationFinalized {};
     unordered_map<hstring, EntityTypeInfo> _entityTypesInfo {};
-    unordered_map<string, unordered_map<string, int>> _enums {};
-    unordered_map<string, unordered_map<int, string>> _enumsRev {};
-    unordered_map<string, int> _enumsFull {};
+    unordered_map<string, unordered_map<string, int32>> _enums {};
+    unordered_map<string, unordered_map<int32, string>> _enumsRev {};
+    unordered_map<string, int32> _enumsFull {};
     unordered_map<string, BaseTypeInfo> _enumTypes {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, tuple<size_t, BaseTypeInfo::StructLayoutInfo>> _valueTypes {};

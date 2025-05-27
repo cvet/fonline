@@ -87,16 +87,16 @@ public:
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
-    [[nodiscard]] auto GetUChar() -> uint8;
-    [[nodiscard]] auto GetChar() -> char { return static_cast<char>(GetUChar()); }
-    [[nodiscard]] auto GetBEUShort() -> uint16;
-    [[nodiscard]] auto GetBEShort() -> int16 { return static_cast<int16>(GetBEUShort()); }
-    [[nodiscard]] auto GetLEUShort() -> uint16;
-    [[nodiscard]] auto GetLEShort() -> int16 { return static_cast<int16>(GetLEUShort()); }
-    [[nodiscard]] auto GetBEUInt() -> uint32;
-    [[nodiscard]] auto GetBEInt() -> int { return static_cast<int>(GetBEUInt()); }
-    [[nodiscard]] auto GetLEUInt() -> uint32;
-    [[nodiscard]] auto GetLEInt() -> int { return static_cast<int>(GetLEUInt()); }
+    [[nodiscard]] auto GetUInt8() -> uint8;
+    [[nodiscard]] auto GetInt8() -> int8 { return std::bit_cast<int8>(GetUInt8()); }
+    [[nodiscard]] auto GetBEUInt16() -> uint16;
+    [[nodiscard]] auto GetBEInt16() -> int16 { return std::bit_cast<int16>(GetBEUInt16()); }
+    [[nodiscard]] auto GetLEUInt16() -> uint16;
+    [[nodiscard]] auto GetLEInt16() -> int16 { return std::bit_cast<int16>(GetLEUInt16()); }
+    [[nodiscard]] auto GetBEUInt32() -> uint32;
+    [[nodiscard]] auto GetBEInt32() -> int32 { return std::bit_cast<int32>(GetBEUInt32()); }
+    [[nodiscard]] auto GetLEUInt32() -> uint32;
+    [[nodiscard]] auto GetLEInt32() -> int32 { return std::bit_cast<int32>(GetLEUInt32()); }
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
@@ -154,7 +154,7 @@ public:
 
 private:
     vector<FileHeader> _allFiles {};
-    int _curFileIndex {-1};
+    int32 _curFileIndex {-1};
     mutable unordered_map<string, size_t> _nameToIndex {};
     mutable unordered_map<string, size_t> _pathToIndex {};
 };

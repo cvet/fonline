@@ -52,10 +52,10 @@ enum class ScriptEnum_uint8 : uint8
 enum class ScriptEnum_uint16 : uint16
 {
 };
-enum class ScriptEnum_int32 : int
+enum class ScriptEnum_int32 : int32
 {
 };
-enum class ScriptEnum_uint : uint32
+enum class ScriptEnum_uint32 : uint32
 {
 };
 // ReSharper restore CppInconsistentNaming
@@ -392,10 +392,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem& script_sys, T* entity, hstring init_script, bool first_time) -> bool

@@ -247,11 +247,11 @@ void RenderTargetManager::DumpTextures() const
         }
     };
 
-    int cnt = 1;
+    size_t num = 1;
 
     for (const auto& rt : _rtAll) {
-        write_rt(strex("All_{}", cnt), rt.get());
-        cnt++;
+        write_rt(strex("All_{}", num), rt.get());
+        num++;
     }
 }
 

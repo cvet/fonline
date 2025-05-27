@@ -160,7 +160,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         // Find in 2 hex radius
-        int pos = -1;
+        int32 pos = -1;
 
         while (true) {
             // Todo: find better place for critter in square geometry

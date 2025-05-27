@@ -127,7 +127,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    int32 errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -333,7 +333,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     }
 
     // Validation
-    int errors = 0;
+    int32 errors = 0;
 
     for (auto&& [type_name, protos] : all_protos) {
         for (auto&& [pid, proto] : protos) {
@@ -355,7 +355,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                     const auto it = std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == proto_text.first; });
 
                     if (it != lang_packs.end()) {
-                        const auto& pack_name_str = engine->ResolveEnumValueName("TextPackName", static_cast<int>(pack_name));
+                        const auto& pack_name_str = engine->ResolveEnumValueName("TextPackName", static_cast<int32>(pack_name));
                         auto& text_pack = it->second[pack_name_str];
 
                         if (text_pack.CheckIntersections(proto_text.second)) {

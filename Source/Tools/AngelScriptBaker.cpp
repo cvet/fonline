@@ -102,7 +102,7 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    int32 errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {

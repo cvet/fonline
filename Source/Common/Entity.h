@@ -221,7 +221,7 @@ struct msize
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
-        return {static_cast<uint16>(std::clamp(static_cast<int>(pos.x), 0, width - 1)), static_cast<uint16>(std::clamp(static_cast<int>(pos.y), 0, height - 1))};
+        return {static_cast<uint16>(std::clamp(static_cast<int32>(pos.x), 0, width - 1)), static_cast<uint16>(std::clamp(static_cast<int32>(pos.y), 0, height - 1))};
     }
     template<typename T>
     [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
@@ -248,7 +248,7 @@ class AnimationResolver
 {
 public:
     virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool = 0;
 };
@@ -306,7 +306,7 @@ public:
     };
 
     ///@ ExportEnum
-    enum class EventPriority : uint32
+    enum class EventPriority : int32
     {
         Lowest = 0,
         Low = 1000000,
@@ -348,10 +348,10 @@ public:
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties& { return _props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
     [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
-    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
-    [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
+    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int32;
+    [[nodiscard]] auto GetValueAsInt(int32 prop_index) const -> int32;
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
-    [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
+    [[nodiscard]] auto GetValueAsAny(int32 prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
     [[nodiscard]] auto GetInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
@@ -364,10 +364,10 @@ public:
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
-    void SetValueAsInt(const Property* prop, int value);
-    void SetValueAsInt(int prop_index, int value);
+    void SetValueAsInt(const Property* prop, int32 value);
+    void SetValueAsInt(int32 prop_index, int32 value);
     void SetValueAsAny(const Property* prop, const any_t& value);
-    void SetValueAsAny(int prop_index, const any_t& value);
+    void SetValueAsAny(int32 prop_index, const any_t& value);
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept;
     void UnsubscribeAllEvent(string_view event_name) noexcept;
@@ -403,7 +403,7 @@ private:
     unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
-    mutable int _refCounter {1};
+    mutable int32 _refCounter {1};
 };
 
 class EntityEventBase

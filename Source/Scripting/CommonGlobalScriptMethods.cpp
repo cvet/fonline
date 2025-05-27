@@ -136,7 +136,7 @@ static void PrintLog(string& log, bool last_call, const std::function<void(strin
     }
 }
 
-static auto SystemCall(string_view command, const std::function<void(string_view)>& log_callback) -> int
+static auto SystemCall(string_view command, const std::function<void(string_view)>& log_callback) -> int32
 {
 #if FO_WINDOWS && !FO_UWP
     HANDLE out_read = nullptr;
@@ -204,7 +204,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     ::CloseHandle(pi.hProcess);
     ::CloseHandle(pi.hThread);
 
-    return static_cast<int>(retval);
+    return std::bit_cast<int32>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
     FILE* in = popen(string(command).c_str(), "r");
@@ -227,7 +227,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command)
+FO_SCRIPT_API int32 Common_Game_SystemCall(BaseEngine* engine, string_view command)
 {
     ignore_unused(engine);
 
@@ -236,7 +236,7 @@ FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command, string& output)
+FO_SCRIPT_API int32 Common_Game_SystemCall(BaseEngine* engine, string_view command, string& output)
 {
     ignore_unused(engine);
 
@@ -251,7 +251,7 @@ FO_SCRIPT_API int Common_Game_SystemCall(BaseEngine* engine, string_view command
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int Common_Game_Random(BaseEngine* engine, int minValue, int maxValue)
+FO_SCRIPT_API int32 Common_Game_Random(BaseEngine* engine, int32 minValue, int32 maxValue)
 {
     ignore_unused(engine);
 
@@ -362,7 +362,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mp
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround(GeometryHelper::GetDirAngle(fromHex, toHex)));
+    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex)));
 }
 
 ///@ ExportMethod
@@ -370,7 +370,7 @@ FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos fromPos
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround(engine->Geometry.GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
+    return numeric_cast<int16>(iround<int32>(engine->Geometry.GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
 
 ///@ ExportMethod
@@ -394,7 +394,7 @@ FO_SCRIPT_API int16 Common_Game_RotateDirAngle(BaseEngine* engine, int16 dirAngl
 {
     ignore_unused(engine);
 
-    auto rotated = numeric_cast<int>(dirAngle);
+    auto rotated = numeric_cast<int32>(dirAngle);
 
     if (clockwise) {
         rotated += step;
@@ -418,7 +418,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, int16 dirAng
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
+    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
 }
 
 ///@ ExportMethod
@@ -484,7 +484,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoItems();
@@ -540,7 +540,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoCritters();
@@ -596,7 +596,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoMaps();
@@ -652,7 +652,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationProperty property, int propertyValue)
+FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
     const auto& protos = engine->ProtoMngr.GetProtoLocations();
@@ -678,7 +678,7 @@ FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond)
+FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond)
 {
     ignore_unused(engine);
 
@@ -686,7 +686,7 @@ FO_SCRIPT_API nanotime Common_Game_PackTime(BaseEngine* engine, int year, int mo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond, int& microsecond, int& nanosecond)
+FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int32& year, int32& month, int32& day, int32& hour, int32& minute, int32& second, int32& millisecond, int32& microsecond, int32& nanosecond)
 {
     ignore_unused(engine);
 
@@ -703,7 +703,7 @@ FO_SCRIPT_API void Common_Game_UnpackTime(BaseEngine* engine, nanotime time, int
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int year, int month, int day, int hour, int minute, int second, int millisecond)
+FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond)
 {
     ignore_unused(engine);
 
@@ -711,7 +711,7 @@ FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(BaseEngine* engine, int 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, synctime time, int& year, int& month, int& day, int& hour, int& minute, int& second, int& millisecond)
+FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, synctime time, int32& year, int32& month, int32& day, int32& hour, int32& minute, int32& second, int32& millisecond)
 {
     ignore_unused(engine);
 

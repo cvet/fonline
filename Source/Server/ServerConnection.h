@@ -109,7 +109,7 @@ public:
     nanotime PingNextTime {};
     bool PingOk {true};
     nanotime LastActivityTime {};
-    int UpdateFileIndex {-1};
+    int32 UpdateFileIndex {-1};
     uint32 UpdateFilePortion {};
 
 private:

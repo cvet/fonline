@@ -111,7 +111,7 @@ struct MapSpriteData
     bool IsFlat {};
     bool NoLight {};
     DrawOrderType DrawOrder {};
-    int DrawOrderHyOffset {};
+    int32 DrawOrderHyOffset {};
     CornerType Corner {};
     bool DisableEgg {};
     ucolor Color {};

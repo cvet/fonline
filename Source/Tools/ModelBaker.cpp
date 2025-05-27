@@ -256,7 +256,7 @@ void ModelBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    int32 errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -603,10 +603,10 @@ static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
 
     ucolor color;
 
-    color.comp.r = static_cast<uint8>(iround(c.x * 255.0));
-    color.comp.g = static_cast<uint8>(iround(c.y * 255.0));
-    color.comp.b = static_cast<uint8>(iround(c.z * 255.0));
-    color.comp.a = static_cast<uint8>(iround(c.w * 255.0));
+    color.comp.r = static_cast<uint8>(iround<int32>(c.x * 255.0));
+    color.comp.g = static_cast<uint8>(iround<int32>(c.y * 255.0));
+    color.comp.b = static_cast<uint8>(iround<int32>(c.z * 255.0));
+    color.comp.a = static_cast<uint8>(iround<int32>(c.w * 255.0));
 
     return color;
 }

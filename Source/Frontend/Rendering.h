@@ -363,19 +363,19 @@ protected:
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif
 
-    int _posMainTex[EFFECT_MAX_PASSES] {};
-    int _posEggTex[EFFECT_MAX_PASSES] {};
-    int _posProjBuf[EFFECT_MAX_PASSES] {};
-    int _posMainTexBuf[EFFECT_MAX_PASSES] {};
-    int _posContourBuf[EFFECT_MAX_PASSES] {};
-    int _posTimeBuf[EFFECT_MAX_PASSES] {};
-    int _posRandomValueBuf[EFFECT_MAX_PASSES] {};
-    int _posScriptValueBuf[EFFECT_MAX_PASSES] {};
+    int32 _posMainTex[EFFECT_MAX_PASSES] {};
+    int32 _posEggTex[EFFECT_MAX_PASSES] {};
+    int32 _posProjBuf[EFFECT_MAX_PASSES] {};
+    int32 _posMainTexBuf[EFFECT_MAX_PASSES] {};
+    int32 _posContourBuf[EFFECT_MAX_PASSES] {};
+    int32 _posTimeBuf[EFFECT_MAX_PASSES] {};
+    int32 _posRandomValueBuf[EFFECT_MAX_PASSES] {};
+    int32 _posScriptValueBuf[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
-    int _posModelBuf[EFFECT_MAX_PASSES] {};
-    int _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
-    int _posModelTexBuf[EFFECT_MAX_PASSES] {};
-    int _posModelAnimBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
+    int32 _posModelTexBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelAnimBuf[EFFECT_MAX_PASSES] {};
 #endif
 };
 

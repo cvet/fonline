@@ -483,7 +483,7 @@ void Critter::ChangeDir(uint8 dir)
     SetDir(normalized_dir);
 }
 
-void Critter::ChangeDirAngle(int dir_angle)
+void Critter::ChangeDirAngle(int32 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -614,7 +614,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Action(CritterAction action, int action_data, const Item* item)
+void Critter::Broadcast_Action(CritterAction action, int32 action_data, const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -673,7 +673,7 @@ void Critter::SendAndBroadcast_Moving()
     }
 }
 
-void Critter::SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item)
+void Critter::SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -922,7 +922,7 @@ void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
+void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 

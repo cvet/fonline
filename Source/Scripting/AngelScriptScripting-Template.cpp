@@ -314,7 +314,7 @@ public:
         ctx_ext2.EndScriptCall = AngelScriptEndCall;
 #endif
 
-        int r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
+        int32 r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
         FO_RUNTIME_ASSERT(r >= 0);
 
         FreeContexts.push_back(ctx);
@@ -390,7 +390,7 @@ public:
         auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = asGetActiveContext();
 
-        int exec_result = 0;
+        int32 exec_result = 0;
 
         {
             ctx_ext.ExecutionActive = true;
@@ -566,7 +566,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
     }
 
     if (storage == nullptr) {
-        int ctx_line = ctx->GetLineNumber();
+        int32 ctx_line = ctx->GetLineNumber();
 
         auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
         const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
@@ -838,7 +838,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     return as_dict;
 }
 
-[[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int type_id) -> string
+[[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int32 type_id) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -852,7 +852,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_INT16:
         return strex("int16: {}", *static_cast<const int16*>(ptr));
     case asTYPEID_INT32:
-        return strex("int32: {}", *static_cast<const int*>(ptr));
+        return strex("int32: {}", *static_cast<const int32*>(ptr));
     case asTYPEID_INT64:
         return strex("int64: {}", *static_cast<const int64*>(ptr));
     case asTYPEID_UINT8:
@@ -903,7 +903,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     }
 
     if (asUINT enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
-        const int enum_value = *static_cast<const int*>(ptr);
+        const auto enum_value = *static_cast<const int32*>(ptr);
 
         if (engine->GetEnumInfo(type_name, nullptr)) {
             bool failed = false;
@@ -916,7 +916,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
         }
 
         for (asUINT i = 0; i < enum_value_count; i++) {
-            int check_enum_value = 0;
+            int32 check_enum_value = 0;
             const char* enum_value_name = as_type_info->GetEnumValueByIndex(i, &check_enum_value);
 
             if (check_enum_value == enum_value) {
@@ -1081,7 +1081,7 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
             return sizeof(hstring);
         }
         else if (prop->IsBaseTypeEnum()) {
-            return sizeof(int);
+            return sizeof(int32);
         }
         else if (prop->IsBaseTypePrimitive()) {
             return prop->GetBaseSize();
@@ -1139,8 +1139,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         const auto& hash_resolver = prop->GetRegistrator()->GetHashResolver();
         return hash_resolver.ResolveHash(hash);
     };
-    const auto resolve_enum = [](const void* eptr, size_t elen) -> int {
-        int result = 0;
+    const auto resolve_enum = [](const void* eptr, size_t elen) -> int32 {
+        int32 result = 0;
         MemCopy(&result, eptr, elen);
         return result;
     };
@@ -1155,8 +1155,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             FO_RUNTIME_ASSERT(data_size != 0);
-            FO_RUNTIME_ASSERT(data_size <= sizeof(int));
-            MemFill(construct_addr, 0, sizeof(int));
+            FO_RUNTIME_ASSERT(data_size <= sizeof(int32));
+            MemFill(construct_addr, 0, sizeof(int32));
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
@@ -1215,11 +1215,11 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                 const auto arr_size = static_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                if (prop->GetBaseSize() == sizeof(int)) {
+                if (prop->GetBaseSize() == sizeof(int32)) {
                     MemCopy(arr->At(0), data, data_size);
                 }
                 else {
-                    auto* dest = static_cast<int*>(arr->At(0));
+                    auto* dest = static_cast<int32*>(arr->At(0));
 
                     for (uint32 i = 0; i < arr_size; i++) {
                         *(dest + i) = 0;
@@ -1307,7 +1307,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                                 MemCopy(arr->At(0), data, arr_size * prop->GetBaseSize());
                             }
                             else {
-                                auto* dest = static_cast<int*>(arr->At(0));
+                                auto* dest = static_cast<int32*>(arr->At(0));
                                 for (uint32 i = 0; i < arr_size; i++) {
                                     MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
@@ -1534,14 +1534,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
                 }
                 else if (prop->IsBaseTypeEnum()) {
-                    if (prop->GetBaseSize() == sizeof(int)) {
+                    if (prop->GetBaseSize() == sizeof(int32)) {
                         prop_data.Pass(arr->At(0), data_size);
                     }
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
                         for (uint32 i = 0; i < arr_size; i++) {
-                            const auto e = *static_cast<const int*>(arr->At(i));
+                            const auto e = *static_cast<const int32*>(arr->At(i));
                             MemCopy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
@@ -1619,7 +1619,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1655,13 +1655,13 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             }
                         }
                         else if (prop->IsBaseTypeEnum()) {
-                            if (prop->GetBaseSize() == sizeof(int)) {
+                            if (prop->GetBaseSize() == sizeof(int32)) {
                                 MemCopy(buf, arr->At(0), arr_size * prop->GetBaseSize());
                                 buf += arr_size * prop->GetBaseSize();
                             }
                             else {
                                 for (uint32 i = 0; i < arr_size; i++) {
-                                    const auto e = *static_cast<const int*>(arr->At(i));
+                                    const auto e = *static_cast<const int32*>(arr->At(i));
                                     MemCopy(buf, &e, prop->GetBaseSize());
                                     buf += prop->GetBaseSize();
                                 }
@@ -1727,7 +1727,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1805,7 +1805,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         MemCopy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, key_element_size);
                     }
                     else {
@@ -2107,7 +2107,7 @@ static void Global_Assert(asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(Args);
 
-    for (int i = 1; i < gen->GetArgCount(); i++) {
+    for (int32 i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
@@ -2167,7 +2167,7 @@ static void Global_ThrowException(asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(Args);
 
-    for (int i = 1; i < gen->GetArgCount(); i++) {
+    for (int32 i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
@@ -2243,7 +2243,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
@@ -2266,9 +2266,9 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
-    int type_id;
+    int32 type_id;
     asDWORD flags;
-    int as_result;
+    int32 as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
@@ -2327,7 +2327,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
@@ -2344,9 +2344,9 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
 
-    int type_id;
+    int32 type_id;
     asDWORD flags;
-    int as_result;
+    int32 as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
@@ -2497,7 +2497,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
 }
 
 template<typename T>
-static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
+static auto Property_GetValueAsInt(const T* entity, int32 prop_index) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2529,7 +2529,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 }
 
 template<typename T>
-static void Property_SetValueAsInt(T* entity, int prop_index, int value)
+static void Property_SetValueAsInt(T* entity, int32 prop_index, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2565,7 +2565,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 }
 
 template<typename T>
-static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
+static auto Property_GetValueAsAny(const T* entity, int32 prop_index) -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2597,7 +2597,7 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 }
 
 template<typename T>
-static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
+static void Property_SetValueAsAny(T* entity, int32 prop_index, any_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2936,7 +2936,7 @@ static auto HashedString_GetString(const hstring& self) -> string
 #endif
 }
 
-static auto HashedString_GetHash(const hstring& self) -> int
+static auto HashedString_GetHash(const hstring& self) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3227,7 +3227,7 @@ static void Ucolor_ConstructRawRgba(ucolor* self, uint32 rgba)
 #endif
 }
 
-static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
+static void Ucolor_ConstructRgba(ucolor* self, int32 r, int32 g, int32 b, int32 a)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3247,7 +3247,7 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 }
 
 template<typename T>
-static void Time_ConstructWithPlace(T* self, int64 value, int place)
+static void Time_ConstructWithPlace(T* self, int64 value, int32 place)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3275,7 +3275,7 @@ static void Time_ConstructWithPlace(T* self, int64 value, int place)
 #endif
 }
 
-static void Ipos_ConstructXandY(ipos* self, int x, int y)
+static void Ipos_ConstructXandY(ipos* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3367,14 +3367,14 @@ static auto Ipos_FitToRect(const ipos& self, irect rect) -> bool
     return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
-static void Isize_ConstructWandH(isize* self, int width, int height)
+static void Isize_ConstructWandH(isize* self, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) isize {width, height};
 }
 
-static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, int height)
+static void Irect_ConstructXandYandWandH(irect* self, int32 x, int32 y, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3434,7 +3434,7 @@ static void Fsize_ConstructWandH(isize* self, float width, float height)
     new (self) fsize {width, height};
 }
 
-static void Mpos_ConstructXandY(mpos* self, int x, int y)
+static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3652,18 +3652,18 @@ static void Enum_Parse(asIScriptGeneric* gen)
     const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
     bool failed = false;
-    int enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
+    int32 enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
 
     if (failed) {
         if (gen->GetArgCount() == 2) {
-            enum_value = *static_cast<int*>(gen->GetAddressOfArg(1));
+            enum_value = *static_cast<int32*>(gen->GetAddressOfArg(1));
         }
         else {
             throw ScriptException("Can't parse enum", enum_info->EnumName, enum_value_name);
         }
     }
 
-    new (gen->GetAddressOfReturnLocation()) int(enum_value);
+    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
 
 #else
     ignore_unused(gen);
@@ -3677,7 +3677,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
-    int enum_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    int32 enum_index = *static_cast<int32*>(gen->GetAddressOfArg(0));
     bool full_spec = *static_cast<bool*>(gen->GetAddressOfArg(1));
 
     bool failed = false;
@@ -3749,7 +3749,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     FO_STACK_TRACE_ENTRY();
 
 #if COMPILER_MODE
-    static int dummy = 0;
+    static int32 dummy = 0;
 #endif
 
     // Maybe unused
@@ -3788,7 +3788,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     [[maybe_unused]] unordered_set<hstring> hashed_strings;
 #endif
 
-    int as_result;
+    int32 as_result;
     AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(CallbackMessage), as_engine, asCALL_CDECL));
 
     AS_VERIFY(as_engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
@@ -3869,7 +3869,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
@@ -3883,7 +3883,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
@@ -3959,7 +3959,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register timespan
     REGISTER_HARD_STRONG_TYPE(FO_TIMESPAN_NAME, timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
@@ -3972,7 +3972,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register nanotime
     REGISTER_HARD_STRONG_TYPE(FO_NANOTIME_NAME, nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
@@ -3987,7 +3987,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register synctime
     REGISTER_HARD_STRONG_TYPE(FO_SYNCTIME_NAME, synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
@@ -4288,7 +4288,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         }
 
         for (const auto i : xrange(registrator->GetPropertiesCount())) {
-            const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
+            const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 
@@ -4316,7 +4316,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         }
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            vector<int> prop_enums;
+            vector<int32> prop_enums;
             prop_enums.reserve(properties.size());
             for (const auto* prop : properties) {
                 prop_enums.push_back(prop->GetRegIndex());
@@ -4324,7 +4324,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
             AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = EnumArrays.emplace(MarshalBackArray<int>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
+            const auto it_enum = EnumArrays.emplace(MarshalBackArray<int32>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             FO_RUNTIME_ASSERT(it_enum.second);
 #endif
             AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
@@ -4372,12 +4372,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         FO_RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
         auto* mod = as_engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [&](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
+        const auto as_type_to_type_info = [&](int32 type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
             const auto& engine_type_map = script_sys.GetEngineTypeMap();
             auto* as_type_info = as_engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
-            const auto get_type_name = [as_engine](int tid) -> string_view {
+            const auto get_type_name = [as_engine](int32 tid) -> string_view {
                 switch (tid) {
                 case asTYPEID_VOID:
                     return "void";
@@ -4388,7 +4388,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 case asTYPEID_INT16:
                     return "int16";
                 case asTYPEID_INT32:
-                    return "int";
+                    return "int32";
                 case asTYPEID_INT64:
                     return "int64";
                 case asTYPEID_UINT8:
@@ -4488,7 +4488,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
             for (asUINT p = 0; p < func->GetParamCount(); p++) {
-                int param_type_id;
+                int32 param_type_id;
                 asDWORD param_flags;
                 AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
 
@@ -4496,7 +4496,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             asDWORD ret_flags = 0;
-            int ret_type_id = func->GetReturnTypeId(&ret_flags);
+            int32 ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc->RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
             func_desc->CallSupported = func_desc->RetType && std::find(func_desc->ArgsType.begin(), func_desc->ArgsType.end(), nullptr) == func_desc->ArgsType.end();
@@ -4619,11 +4619,11 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
     private:
         const string* _rootScript;
         const map<string, string>* _scriptFiles;
-        int _includeDeep {};
+        int32 _includeDeep {};
     };
 
     map<string, string> final_script_files;
-    vector<tuple<int, string, string>> final_script_files_order;
+    vector<tuple<int32, string, string>> final_script_files_order;
 
     for (const auto& script_file : script_files) {
         string script_name = string(script_file.GetName());
@@ -4633,7 +4633,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         const auto line_sep = script_content.find('\n');
         const auto first_line = script_content.substr(0, line_sep);
 
-        int sort = 0;
+        int32 sort = 0;
         const auto sort_pos = first_line.find("Sort ");
 
         if (sort_pos != string::npos) {
@@ -4701,7 +4701,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         throw ScriptCompilerException("Create root module failed");
     }
 
-    int as_result = mod->AddScriptSection("Root", result.String.c_str());
+    int32 as_result = mod->AddScriptSection("Root", result.String.c_str());
 
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to add script section", as_result);
@@ -4764,7 +4764,7 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
     as_engine->SetUserData(lnt, 5);
 
     BinaryStream binary {buf};
-    int as_result = mod->LoadByteCode(&binary);
+    int32 as_result = mod->LoadByteCode(&binary);
 
     if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);

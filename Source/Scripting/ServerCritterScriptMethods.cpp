@@ -490,7 +490,7 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemComponent componen
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -525,7 +525,7 @@ FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -633,17 +633,17 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
     }
 
     if (cond == CritterCondition::Dead) {
-        self->SendAndBroadcast_Action(CritterAction::Dead, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+        self->SendAndBroadcast_Action(CritterAction::Dead, static_cast<int32>(actionAnim), dynamic_cast<Item*>(contextItem));
     }
     else if (cond == CritterCondition::Knockout) {
-        self->SendAndBroadcast_Action(CritterAction::Knockout, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+        self->SendAndBroadcast_Action(CritterAction::Knockout, static_cast<int32>(actionAnim), dynamic_cast<Item*>(contextItem));
     }
     else if (cond == CritterCondition::Alive) {
         if (prev_cond == CritterCondition::Knockout) {
-            self->SendAndBroadcast_Action(CritterAction::StandUp, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+            self->SendAndBroadcast_Action(CritterAction::StandUp, static_cast<int32>(actionAnim), dynamic_cast<Item*>(contextItem));
         }
         else {
-            self->SendAndBroadcast_Action(CritterAction::Respawn, static_cast<int>(actionAnim), dynamic_cast<Item*>(contextItem));
+            self->SendAndBroadcast_Action(CritterAction::Respawn, static_cast<int32>(actionAnim), dynamic_cast<Item*>(contextItem));
         }
     }
 }
@@ -657,7 +657,7 @@ FO_SCRIPT_API void Server_Critter_CloseDialog(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int actionData, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32 actionData, AbstractItem* contextItem)
 {
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }
@@ -786,7 +786,7 @@ FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int speed)
+FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int32 speed)
 {
     self->GetEngine()->ChangeCritterMovingSpeed(self, numeric_cast<uint16>(speed));
 }

@@ -39,16 +39,18 @@
 #include "as_typeinfo.h"
 #include "scriptarray.h"
 
-using namespace std;
+FO_USING_NAMESPACE();
 
 BEGIN_AS_NAMESPACE
 
-static asITypeInfo* GetTypeInfoById(asIScriptEngine* engine, int typeId)
+static asITypeInfo* GetTypeInfoById(asIScriptEngine* engine, int32 typeId)
 {
     const asCDataType dt = static_cast<asCScriptEngine*>(engine)->GetDataTypeFromTypeId(typeId);
+
     if (dt.IsValid()) {
         return dt.GetTypeInfo();
     }
+
     return nullptr;
 }
 
@@ -70,27 +72,28 @@ void ScriptType::Release() const
     }
 }
 
-string ScriptType::GetName() const
+std::string ScriptType::GetName() const
 {
     const char* ns = objType->GetNamespace();
+
     if (ns[0]) {
-        return string(ns).append("::").append(objType->GetName());
+        return std::string(ns).append("::").append(objType->GetName());
     }
 
     return objType->GetName();
 }
 
-string ScriptType::GetNameWithoutNamespace() const
+std::string ScriptType::GetNameWithoutNamespace() const
 {
     return objType->GetName();
 }
 
-string ScriptType::GetNamespace() const
+std::string ScriptType::GetNamespace() const
 {
     return objType->GetNamespace();
 }
 
-string ScriptType::GetModule() const
+std::string ScriptType::GetModule() const
 {
     return objType->GetModule() ? objType->GetModule()->GetName() : "(global)";
 }
@@ -162,7 +165,7 @@ bool ScriptType::DerivesFrom(const ScriptType* other)
     return other && objType->DerivesFrom(other->objType);
 }
 
-void ScriptType::Instantiate(void* out, int out_type_id) const
+void ScriptType::Instantiate(void* out, int32 out_type_id) const
 {
     asIScriptEngine* engine = objType->GetEngine();
 
@@ -182,7 +185,7 @@ void ScriptType::Instantiate(void* out, int out_type_id) const
     *static_cast<void**>(out) = engine->CreateScriptObject(objType);
 }
 
-void ScriptType::InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const
+void ScriptType::InstantiateCopy(void* in, int32 in_type_id, void* out, int32 out_type_id) const
 {
     asIScriptEngine* engine = objType->GetEngine();
 
@@ -222,7 +225,7 @@ asUINT ScriptType::GetMethodsCount() const
     return objType->GetMethodCount();
 }
 
-string ScriptType::GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const
+std::string ScriptType::GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const
 {
     if (index >= objType->GetMethodCount()) {
         return "";
@@ -235,7 +238,7 @@ asUINT ScriptType::GetPropertiesCount() const
     return objType->GetPropertyCount();
 }
 
-string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) const
+std::string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) const
 {
     if (index >= objType->GetPropertyCount()) {
         return "";
@@ -253,9 +256,11 @@ CScriptArray* ScriptType::GetEnumNames() const
 {
     asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("string[]"));
+
     for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(enum_type->enumValues[i]->name.AddressOf());
     }
+
     return result;
 }
 
@@ -263,9 +268,11 @@ CScriptArray* ScriptType::GetEnumValues() const
 {
     asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("int[]"));
+
     for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(&enum_type->enumValues[i]->value);
     }
+
     return result;
 }
 
@@ -274,6 +281,7 @@ static bool ScriptTypeOfTemplateCallback(asITypeInfo* ot, bool&)
     if (ot->GetSubTypeCount() != 1 || (ot->GetSubTypeId() & asTYPEID_MASK_SEQNBR) <= asTYPEID_DOUBLE) {
         return false;
     }
+
     return true;
 }
 
@@ -382,7 +390,7 @@ static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScript
     }
 
     asUINT count = 0, stack_size = ctx->GetCallstackSize();
-    int line, column;
+    int32 line, column;
     const asIScriptFunction* func;
 
     for (asUINT i = 0; i < stack_size; i++) {

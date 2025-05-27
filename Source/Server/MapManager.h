@@ -89,7 +89,7 @@ struct FindPathInput
 
 struct FindPathOutput
 {
-    enum class ResultType
+    enum class ResultType : int8
     {
         Unknown = -1,
         Ok = 0,
@@ -142,7 +142,7 @@ public:
     void KickPlayersToGlobalMap(Map* map);
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
-    void ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int dir);
+    void ViewMap(Critter* view_cr, Map* map, uint32 look, mpos hex, int32 dir);
 
 private:
     [[nodiscard]] FO_FORCE_INLINE auto GridAt(mpos pos) -> int16&;

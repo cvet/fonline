@@ -58,8 +58,8 @@ public:
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view;
-    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int;
-    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
     [[nodiscard]] auto GetSections() noexcept -> multimap<string, map<string, string>>&;

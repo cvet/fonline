@@ -245,7 +245,7 @@ void SpriteSheet::SetTime(float normalized_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curIndex = CntFrm > 1 ? iround(normalized_time * static_cast<float>(CntFrm - 1)) : 0;
+    _curIndex = CntFrm > 1 ? iround<int32>(normalized_time * static_cast<float>(CntFrm - 1)) : 0;
 
     RefreshParams();
 }
@@ -295,15 +295,15 @@ auto SpriteSheet::Update() -> bool
 
     if (_playing) {
         const auto cur_tick = _sprMngr.GetTimer().GetFrameTime();
-        const auto dt = (cur_tick - _startTick).to_ms<int>();
-        const auto frm_count = static_cast<int>(CntFrm);
-        const auto ticks_per_frame = static_cast<int>(WholeTicks) / frm_count;
+        const auto dt = (cur_tick - _startTick).to_ms<int32>();
+        const auto frm_count = static_cast<int32>(CntFrm);
+        const auto ticks_per_frame = static_cast<int32>(WholeTicks) / frm_count;
         const auto frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
             _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
 
-            auto index = static_cast<int>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
+            auto index = static_cast<int32>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
 
             if (_looped) {
                 if (index < 0 || index >= frm_count) {
@@ -391,12 +391,12 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     auto reader = file.GetReader();
 
-    const auto check_number = reader.GetUChar();
+    const auto check_number = reader.GetUInt8();
     FO_RUNTIME_ASSERT(check_number == 42);
-    const auto frames_count = reader.GetLEUShort();
+    const auto frames_count = reader.GetLEUInt16();
     FO_RUNTIME_ASSERT(frames_count != 0);
-    const auto ticks = reader.GetLEUShort();
-    const auto dirs = reader.GetUChar();
+    const auto ticks = reader.GetLEUInt16();
+    const auto dirs = reader.GetUInt8();
     FO_RUNTIME_ASSERT(dirs != 0);
 
     if (frames_count > 1 || dirs > 1) {
@@ -404,20 +404,20 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         for (uint16 dir = 0; dir < dirs; dir++) {
             auto* dir_anim = anim->GetDir(dir);
-            const auto ox = reader.GetLEShort();
-            const auto oy = reader.GetLEShort();
+            const auto ox = reader.GetLEInt16();
+            const auto oy = reader.GetLEInt16();
 
             dir_anim->Offset.x = ox;
             dir_anim->Offset.y = oy;
 
             for (uint16 i = 0; i < frames_count; i++) {
-                const auto is_spr_ref = reader.GetUChar();
+                const auto is_spr_ref = reader.GetUInt8();
 
                 if (is_spr_ref == 0) {
-                    const auto width = reader.GetLEUShort();
-                    const auto height = reader.GetLEUShort();
-                    const auto nx = reader.GetLEShort();
-                    const auto ny = reader.GetLEShort();
+                    const auto width = reader.GetLEUInt16();
+                    const auto height = reader.GetLEUInt16();
+                    const auto nx = reader.GetLEInt16();
+                    const auto ny = reader.GetLEInt16();
                     const auto* data = reader.GetCurBuf();
 
                     auto spr = SafeAlloc::MakeShared<AtlasSprite>(_sprMngr);
@@ -441,7 +441,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     reader.GoForward(static_cast<size_t>(width) * height * 4);
                 }
                 else {
-                    const auto index = reader.GetLEUShort();
+                    const auto index = reader.GetLEUInt16();
 
                     dir_anim->Spr[i] = dir_anim->GetSpr(index)->MakeCopy();
                     dir_anim->SprOffset[i] = dir_anim->SprOffset[index];
@@ -449,22 +449,22 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             }
         }
 
-        const auto check_number2 = reader.GetUChar();
+        const auto check_number2 = reader.GetUInt8();
         FO_RUNTIME_ASSERT(check_number2 == 42);
 
         return anim;
     }
     else {
-        const auto ox = reader.GetLEShort();
-        const auto oy = reader.GetLEShort();
+        const auto ox = reader.GetLEInt16();
+        const auto oy = reader.GetLEInt16();
 
-        const auto is_spr_ref = reader.GetUChar();
+        const auto is_spr_ref = reader.GetUInt8();
         FO_RUNTIME_ASSERT(is_spr_ref == 0);
 
-        const auto width = reader.GetLEUShort();
-        const auto height = reader.GetLEUShort();
-        const auto nx = reader.GetLEShort();
-        const auto ny = reader.GetLEShort();
+        const auto width = reader.GetLEUInt16();
+        const auto height = reader.GetLEUInt16();
+        const auto nx = reader.GetLEInt16();
+        const auto ny = reader.GetLEInt16();
         const auto* data = reader.GetCurBuf();
 
         ignore_unused(nx);
@@ -481,7 +481,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         reader.GoForward(static_cast<size_t>(width) * height * 4);
 
-        const auto check_number2 = reader.GetUChar();
+        const auto check_number2 = reader.GetUInt8();
         FO_RUNTIME_ASSERT(check_number2 == 42);
 
         return spr;
@@ -514,7 +514,7 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         tex->UpdateTextureRegion({pos.x, pos.y + size.height}, {size.width, 1}, data + static_cast<size_t>(size.height - 1) * size.width);
 
         // Left
-        for (int i = 0; i < size.height; i++) {
+        for (int32 i = 0; i < size.height; i++) {
             _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * size.width);
         }
         _borderBuf[0] = _borderBuf[1];
@@ -522,7 +522,7 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, _borderBuf.data());
 
         // Right
-        for (int i = 0; i < size.height; i++) {
+        for (int32 i = 0; i < size.height; i++) {
             _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * size.width + (size.width - 1));
         }
         _borderBuf[0] = _borderBuf[1];

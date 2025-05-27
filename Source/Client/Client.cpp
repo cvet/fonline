@@ -178,7 +178,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
+                const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(i));
 
                 switch (prop->GetAccess()) {
                 case Property::AccessType::PublicModifiable:
@@ -205,7 +205,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
+        const auto set_callback = [](const auto* registrator, int32 prop_index, PropertyPostSetCallback callback) {
             const auto* prop = registrator->GetPropertyByIndex(prop_index);
             prop->AddPostSetter(std::move(callback));
         };
@@ -274,7 +274,7 @@ FOClient::~FOClient()
     safe_call([this] { DestroyInnerEntities(); });
 }
 
-auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int& ox, int& oy, string& anim_name) -> bool
+auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -428,13 +428,13 @@ void FOClient::ProcessScreenEffectFading()
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
             const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<uint32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<uint32>()) + 1;
-            int res[4];
+            int32 res[4];
 
             for (auto i = 0; i < 4; i++) {
-                const int sc = (reinterpret_cast<uint8*>(&screen_effect.StartColor))[i];
-                const int ec = (reinterpret_cast<uint8*>(&screen_effect.EndColor))[i];
+                const int32 sc = (reinterpret_cast<uint8*>(&screen_effect.StartColor))[i];
+                const int32 ec = (reinterpret_cast<uint8*>(&screen_effect.EndColor))[i];
                 const auto dc = ec - sc;
-                res[i] = sc + dc * static_cast<int>(proc) / 100;
+                res[i] = sc + dc * static_cast<int32>(proc) / 100;
             }
 
             const auto color = ucolor {static_cast<uint8>(res[0]), static_cast<uint8>(res[1]), static_cast<uint8>(res[2]), static_cast<uint8>(res[3])};
@@ -450,19 +450,19 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
-void FOClient::ScreenQuake(int noise, timespan time)
+void FOClient::ScreenQuake(int32 noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
-    Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
+    Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
+    Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
 
     _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float>() / 30.0f);
 
-    Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
-    Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
+    Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
+    Settings.ScreenOffset.y += iround<int32>(_quakeScreenOffsY);
 
     _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 }
@@ -472,8 +472,8 @@ void FOClient::ProcessScreenEffectQuake()
     FO_STACK_TRACE_ENTRY();
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
-        Settings.ScreenOffset.x -= iround(_quakeScreenOffsX);
-        Settings.ScreenOffset.y -= iround(_quakeScreenOffsY);
+        Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
+        Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
 
         if (_quakeScreenOffsX < 0.0f) {
             _quakeScreenOffsX += _quakeScreenOffsStep;
@@ -492,8 +492,8 @@ void FOClient::ProcessScreenEffectQuake()
         _quakeScreenOffsX = -_quakeScreenOffsX;
         _quakeScreenOffsY = -_quakeScreenOffsY;
 
-        Settings.ScreenOffset.x += iround(_quakeScreenOffsX);
-        Settings.ScreenOffset.y += iround(_quakeScreenOffsY);
+        Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
+        Settings.ScreenOffset.y += iround<int32>(_quakeScreenOffsY);
 
         _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
@@ -1128,7 +1128,7 @@ void FOClient::Net_OnCritterMoveSpeed()
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.StartTime = GameTime.GetFrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.OffsetTime = std::chrono::milliseconds {iround<int32>(elapsed_time / diff)};
     cr->Moving.Speed = speed;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
 
@@ -1141,7 +1141,7 @@ void FOClient::Net_OnCritterAction()
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<CritterAction>();
-    const auto action_ext = _conn.InBuf.Read<int>();
+    const auto action_ext = _conn.InBuf.Read<int32>();
     const auto is_context_item = _conn.InBuf.Read<bool>();
 
     refcount_ptr<ItemView> context_item;
@@ -1249,7 +1249,7 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, static_cast<int>(prev_slot), moved_item.get(), false);
+        hex_cr->Action(action, static_cast<int32>(prev_slot), moved_item.get(), false);
     }
 
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
@@ -2724,7 +2724,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 auto rnd = strex(text.substr(first, last - first + 1)).split('|');
                 text.erase(first, last - first + 1);
                 if (!rnd.empty()) {
-                    text.insert(first, rnd[GenericUtils::Random(0, static_cast<int>(rnd.size()) - 1)]);
+                    text.insert(first, rnd[GenericUtils::Random(0, static_cast<int32>(rnd.size()) - 1)]);
                 }
             }
             // Lexems
@@ -2992,8 +2992,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         return strex("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
-        const int w = strex(args[1]).toInt();
-        const int h = strex(args[2]).toInt();
+        const int32 w = strex(args[1]).toInt();
+        const int32 h = strex(args[2]).toInt();
 
         SprMngr.SetScreenSize({w, h});
         SprMngr.SetWindowSize({w, h});
@@ -3010,11 +3010,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        const int zoom = strex(args[1]).toInt();
-        const int x = strex(args[2]).toInt();
-        const int y = strex(args[3]).toInt();
-        const int x2 = x + strex(args[4]).toInt();
-        const int y2 = y + strex(args[5]).toInt();
+        const int32 zoom = strex(args[1]).toInt();
+        const int32 x = strex(args[2]).toInt();
+        const int32 y = strex(args[3]).toInt();
+        const int32 x2 = x + strex(args[4]).toInt();
+        const int32 y2 = y + strex(args[5]).toInt();
 
         if (zoom != _lmapZoom || x != _lmapWMap[0] || y != _lmapWMap[1] || x2 != _lmapWMap[2] || y2 != _lmapWMap[3]) {
             _lmapZoom = zoom;
@@ -3044,7 +3044,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     return "";
 }
 
-void FOClient::Connect(string_view login, string_view password, int reason)
+void FOClient::Connect(string_view login, string_view password, int32 reason)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3076,7 +3076,7 @@ void FOClient::Disconnect()
     _conn.Disconnect();
 }
 
-void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint32 speed)
+void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, uint32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 

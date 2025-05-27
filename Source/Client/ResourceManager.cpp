@@ -299,8 +299,8 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                     anim_merge->SprOffset[i + anim_->CntFrm] = animex_->SprOffset[i];
                 }
 
-                int ox = 0;
-                int oy = 0;
+                int32 ox = 0;
+                int32 oy = 0;
 
                 for (uint32 i = 0; i < anim_->CntFrm; i++) {
                     ox += anim_->SprOffset[i].x;
@@ -389,8 +389,8 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
         auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
 
-        int next_x = 0;
-        int next_y = 0;
+        int32 next_x = 0;
+        int32 next_y = 0;
 
         for (uint32 i = 0; i < stay_frm->CntFrm; i++) {
             next_x += stay_frm->SprOffset[i].x;
@@ -546,7 +546,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -568,7 +568,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const ModelSprite*
 {
     FO_STACK_TRACE_ENTRY();
 

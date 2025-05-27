@@ -46,17 +46,17 @@ FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
 
-static constexpr int MAX_ATLAS_WIDTH_ = 1024;
-static constexpr int MAX_ATLAS_HEIGHT_ = 1024;
-static constexpr int MAX_BONES_ = 32;
-const int& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const int& AppRender::MAX_BONES {MAX_BONES_};
-const int AppAudio::AUDIO_FORMAT_U8 = 0;
-const int AppAudio::AUDIO_FORMAT_S16 = 1;
+static constexpr int32 MAX_ATLAS_WIDTH_ = 1024;
+static constexpr int32 MAX_ATLAS_HEIGHT_ = 1024;
+static constexpr int32 MAX_BONES_ = 32;
+const int32& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const int32& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const int32& AppRender::MAX_BONES {MAX_BONES_};
+const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
+const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
 
 #if FO_LINUX || FO_MAC
-static void SignalHandler(int sig)
+static void SignalHandler(int32 sig)
 {
     signal(sig, SignalHandler);
 
@@ -64,7 +64,7 @@ static void SignalHandler(int sig)
 }
 #endif
 
-void InitApp(int argc, char** argv, AppInitFlags flags)
+void InitApp(int32 argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,7 +80,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
     }
 
     const auto need_fork = [&] {
-        for (int i = 0; i < argc; i++) {
+        for (int32 i = 0; i < argc; i++) {
             if (string_view(argv[i]) == "--fork") {
                 return true;
             }
@@ -134,7 +134,7 @@ void ExitApp(bool success) noexcept
 #endif
 }
 
-Application::Application(int argc, char** argv, AppInitFlags flags) :
+Application::Application(int32 argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
 {
     FO_STACK_TRACE_ENTRY();
@@ -547,7 +547,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_RUNTIME_ASSERT(IsEnabled());
 }
 
-auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
+auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -563,7 +563,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
     return true;
 }
 
-void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
+void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -73,12 +73,12 @@ public:
     auto AddRawInvItem(ItemView* item) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int dir_angle);
-    void ChangeLookDirAngle(int dir_angle);
-    void ChangeMoveDirAngle(int dir_angle);
+    void ChangeDirAngle(int32 dir_angle);
+    void ChangeLookDirAngle(int32 dir_angle);
+    void ChangeMoveDirAngle(int32 dir_angle);
     void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
     void AnimateStay();
-    void Action(CritterAction action, int action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
     void Process();
     void ResetOk();
     void ClearAnim();
@@ -119,7 +119,7 @@ private:
     };
 
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetModelLayersData() const -> const int*;
+    [[nodiscard]] auto GetModelLayersData() const -> const int32*;
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 

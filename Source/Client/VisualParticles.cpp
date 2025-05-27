@@ -64,7 +64,7 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
 
     if (_settings.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
+        _animUpdateThreshold = iround<int32>(1000.0f / static_cast<float>(_settings.Animation3dFPS));
     }
 }
 
@@ -161,8 +161,8 @@ auto ParticleSystem::GetDrawSize() const -> isize
 {
     FO_STACK_TRACE_ENTRY();
 
-    int max_draw_width = 0;
-    int max_draw_height = 0;
+    int32 max_draw_width = 0;
+    int32 max_draw_height = 0;
 
     for (size_t i = 0; i < _impl->System->getNbGroups(); i++) {
         auto&& group = _impl->System->getGroup(i);
@@ -225,7 +225,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         mat44::Translation(result_pos_pos, result_pos_pos_mat);
 
         mat44 look_dir_mat;
-        mat44::RotationY((look_dir_angle - 90.0f) * PI_FLOAT / 180.0f, look_dir_mat);
+        mat44::RotationY((look_dir_angle - 90.0f) * std::numbers::pi_v<float> / 180.0f, look_dir_mat);
 
         result_pos_mat = result_pos_pos_mat * look_dir_mat;
     }
@@ -253,7 +253,7 @@ void ParticleSystem::Prewarm()
     }
 
     const float max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
-    const float init_time = static_cast<float>(GenericUtils::Random(0, static_cast<int>(max_lifetime * 1000.0f))) / 1000.0f;
+    const float init_time = numeric_cast<float>(GenericUtils::Random(0, iround<int32>(max_lifetime * 1000.0f))) / 1000.0f;
 
     for (float dt = 0.0f; dt < init_time;) {
         _impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
@@ -297,7 +297,7 @@ void ParticleSystem::Draw()
     mat44::Translation({-_viewOffset.x, -_viewOffset.y, -_viewOffset.z}, view_offset_mat);
 
     mat44 cam_rot_mat;
-    mat44::RotationX(_particleMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, cam_rot_mat);
+    mat44::RotationX(_particleMngr._settings.MapCameraAngle * std::numbers::pi_v<float> / 180.0f, cam_rot_mat);
 
     mat44 view = view_offset_mat * cam_rot_mat;
     view.Transpose();

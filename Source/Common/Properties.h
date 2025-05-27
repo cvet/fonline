@@ -48,7 +48,7 @@ class Property;
 class PropertyRegistrator;
 class Properties;
 
-enum class PropertiesRelationType
+enum class PropertiesRelationType : uint8
 {
     BothRelative,
     ServerRelative,
@@ -117,7 +117,7 @@ class Property final
 public:
     static constexpr size_t INVALID_DATA_MARKER = static_cast<size_t>(-1);
 
-    enum class AccessType
+    enum class AccessType : uint16
     {
         PrivateCommon = 0x0010,
         PrivateClient = 0x0020,
@@ -282,10 +282,10 @@ public:
     [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
-    [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
+    [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int32;
     [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
-    [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
-    [[nodiscard]] auto GetValueAsAny(int property_index) const -> any_t;
+    [[nodiscard]] auto GetValueAsInt(int32 property_index) const -> int32;
+    [[nodiscard]] auto GetValueAsAny(int32 property_index) const -> any_t;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
 
@@ -302,12 +302,12 @@ public:
     void RestoreData(const vector<vector<uint8>>& all_data);
     void SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
-    void SetPlainDataValueAsInt(const Property* prop, int value);
+    void SetPlainDataValueAsInt(const Property* prop, int32 value);
     void SetPlainDataValueAsAny(const Property* prop, const any_t& value);
-    void SetValueAsInt(int property_index, int value);
-    void SetValueAsAny(int property_index, const any_t& value);
-    void SetValueAsIntProps(int property_index, int value);
-    void SetValueAsAnyProps(int property_index, const any_t& value);
+    void SetValueAsInt(int32 property_index, int32 value);
+    void SetValueAsAny(int32 property_index, const any_t& value);
+    void SetValueAsIntProps(int32 property_index, int32 value);
+    void SetValueAsAnyProps(int32 property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
 
@@ -858,7 +858,7 @@ public:
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
-    [[nodiscard]] auto GetPropertyByIndex(int property_index) const noexcept -> const Property*;
+    [[nodiscard]] auto GetPropertyByIndex(int32 property_index) const noexcept -> const Property*;
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }

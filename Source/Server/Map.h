@@ -140,10 +140,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLoop);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);

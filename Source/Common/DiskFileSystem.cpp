@@ -105,8 +105,8 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
         return true;
     }
 
-    _file.read(static_cast<char*>(buf), static_cast<std::streamsize>(len));
-    return !!_file && _file.gcount() == static_cast<std::streamsize>(len);
+    _file.read(static_cast<char*>(buf), numeric_cast<std::streamsize>(len));
+    return !!_file && _file.gcount() == numeric_cast<std::streamsize>(len);
 }
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
@@ -120,7 +120,7 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
         return true;
     }
 
-    _file.write(static_cast<const char*>(buf), static_cast<std::streamsize>(len));
+    _file.write(static_cast<const char*>(buf), numeric_cast<std::streamsize>(len));
 
     if (_writeThrough && _file) {
         _file.flush();
@@ -129,7 +129,7 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
     return !!_file;
 }
 
-auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
+auto DiskFile::SetReadPos(int32 offset, DiskFileSeek origin) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -138,13 +138,13 @@ auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 
     switch (origin) {
     case DiskFileSeek::Set:
-        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::beg);
+        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::beg);
         break;
     case DiskFileSeek::Cur:
-        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::cur);
+        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::cur);
         break;
     case DiskFileSeek::End:
-        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::end);
+        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::end);
         break;
     }
 
@@ -158,7 +158,7 @@ auto DiskFile::GetReadPos() -> size_t
     FO_RUNTIME_ASSERT(_file);
     FO_RUNTIME_ASSERT(!_openedForWriting);
 
-    const auto cur_pos = static_cast<size_t>(_file.tellg());
+    const auto cur_pos = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
     FO_RUNTIME_ASSERT(_file);
     return cur_pos;
 }
@@ -172,12 +172,12 @@ auto DiskFile::GetSize() -> size_t
     size_t file_len;
 
     if (_openedForWriting) {
-        file_len = static_cast<size_t>(_file.tellp());
+        file_len = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellp()));
     }
     else {
         const auto cur_pos = _file.tellg();
         _file.seekg(0, std::ios_base::end);
-        file_len = static_cast<size_t>(_file.tellg());
+        file_len = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
         _file.seekg(cur_pos, std::ios_base::beg);
     }
 

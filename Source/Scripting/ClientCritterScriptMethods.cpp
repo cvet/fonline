@@ -231,7 +231,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
@@ -277,7 +277,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemC
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
     auto& inv_items = self->GetInvItems();
@@ -411,7 +411,7 @@ FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int dir, uint32 speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32 dir, uint32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -507,7 +507,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
+            map_cr->Action(CritterAction::DropItem, static_cast<int32>(from_slot), item, true);
         }
 
         if (item->GetStackable() && itemCount < item->GetCount()) {
@@ -526,10 +526,10 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         }
 
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
+            map_cr->Action(CritterAction::MoveItem, static_cast<int32>(from_slot), item, true);
 
             if (swap_item != nullptr) {
-                map_cr->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
+                map_cr->Action(CritterAction::SwapItems, static_cast<int32>(toSlot), swap_item, true);
             }
         }
     }

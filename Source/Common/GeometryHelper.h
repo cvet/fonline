@@ -54,20 +54,20 @@ public:
 
     // Todo: move all geometry helper methods to static
     [[nodiscard]] auto GetYProj() const -> float;
-    [[nodiscard]] auto GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float;
+    [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float;
     [[nodiscard]] auto GetHexOffsets(mpos hex) const -> tuple<const int16*, const int16*>;
     [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
     [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
 
-    [[nodiscard]] static auto DistGame(int x1, int y1, int x2, int y2) -> uint32;
+    [[nodiscard]] static auto DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> uint32;
     [[nodiscard]] static auto DistGame(mpos hex1, mpos hex2) -> uint32;
-    [[nodiscard]] static auto GetNearDir(int x1, int y1, int x2, int y2) -> uint8;
+    [[nodiscard]] static auto GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
     [[nodiscard]] static auto GetNearDir(mpos from_hex, mpos to_hex) -> uint8;
-    [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2) -> uint8;
-    [[nodiscard]] static auto GetFarDir(int x1, int y1, int x2, int y2, float offset) -> uint8;
+    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
+    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float offset) -> uint8;
     [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex) -> uint8;
     [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8;
-    [[nodiscard]] static auto GetDirAngle(int x1, int y1, int x2, int y2) -> float;
+    [[nodiscard]] static auto GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float;
     [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float;
     [[nodiscard]] static auto GetDirAngleDiff(float a1, float a2) -> float;
     [[nodiscard]] static auto GetDirAngleDiffSided(float a1, float a2) -> float;

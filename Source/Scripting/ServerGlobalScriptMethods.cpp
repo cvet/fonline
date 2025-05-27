@@ -643,7 +643,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring pro
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, &props_);
@@ -801,7 +801,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationCompon
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProperty property, int propertyValue)
+FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
@@ -861,7 +861,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationProperty property, int propertyValue)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 

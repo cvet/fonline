@@ -72,7 +72,7 @@ struct SpritePattern
     bool InteractWithRoof {};
     bool CheckTileProperty {};
     ItemProperty TileProperty {};
-    int ExpectedTilePropertyValue {};
+    int32 ExpectedTilePropertyValue {};
 
     void Finish() { FO_NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
 
@@ -93,7 +93,7 @@ public:
         ucolor Color {};
         uint32 Distance {};
         uint8 Flags {};
-        int Intensity {};
+        int32 Intensity {};
         const ipos* Offset {};
         bool Applied {};
         bool NeedReapply {};
@@ -180,15 +180,15 @@ public:
 
     void DrawMap();
 
-    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> optional<FindPathResult>;
-    auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int cut) -> bool;
-    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int quad_dir) const -> bool;
+    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> optional<FindPathResult>;
+    auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> bool;
+    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, uint32 dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();
     void SwitchShowTrack();
 
-    void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
+    void ChangeZoom(int32 zoom); // < 0 in, > 0 out, 0 normalize
 
     auto GetScreenRawHex() const -> ipos;
     auto GetHexPosition(mpos hex) const -> ipos;
@@ -234,15 +234,15 @@ public:
     auto GetItems() const -> const vector<refcount_ptr<ItemHexView>>& { return _allItems; }
     auto GetItems() -> vector<refcount_ptr<ItemHexView>>& { return _allItems; }
     auto GetItems(mpos hex) -> const vector<ItemHexView*>&;
-    auto GetTile(mpos hex, bool is_roof, int layer) -> ItemHexView*;
+    auto GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*;
     auto GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
     auto GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> bool;
-    auto GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*;
-    auto GetEntityAtScreenPos(ipos pos, int extra_range, bool check_transparent) -> ClientEntity*;
+    auto GetItemAtScreenPos(ipos pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
+    auto GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*;
+    auto GetEntityAtScreenPos(ipos pos, int32 extra_range, bool check_transparent) -> ClientEntity*;
 
     void UpdateCritterLightSource(const CritterHexView* cr);
     void UpdateItemLightSource(const ItemHexView* item);
@@ -280,8 +280,8 @@ public:
 private:
     [[nodiscard]] auto IsVisible(const Sprite* spr, ipos offset) const -> bool;
     [[nodiscard]] auto GetViewSize() const -> isize;
-    [[nodiscard]] auto ScrollCheckPos(int (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
-    [[nodiscard]] auto ScrollCheck(int xmod, int ymod) const -> bool;
+    [[nodiscard]] auto ScrollCheckPos(int32 (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
+    [[nodiscard]] auto ScrollCheck(int32 xmod, int32 ymod) const -> bool;
 
     void OnDestroySelf() override;
 
@@ -305,7 +305,7 @@ private:
 
     // Lighting
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, uint32 distance, uint8 flags, int intensity, const ipos* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, uint32 distance, uint8 flags, int32 intensity, const ipos* offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);
@@ -353,16 +353,16 @@ private:
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
-    int _rtScreenOx {};
-    int _rtScreenOy {};
+    int32 _rtScreenOx {};
+    int32 _rtScreenOy {};
 
     ipos _screenRawHex {};
-    int _hTop {};
-    int _hBottom {};
-    int _wLeft {};
-    int _wRight {};
-    int _wVisible {};
-    int _hVisible {};
+    int32 _hTop {};
+    int32 _hBottom {};
+    int32 _wLeft {};
+    int32 _wRight {};
+    int32 _wVisible {};
+    int32 _hVisible {};
     vector<ViewField> _viewField {};
 
     const ipos* _fogOffset {};
@@ -383,14 +383,14 @@ private:
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
 
-    int _prevMapDayTime {-1};
-    int _prevGlobalDayTime {-1};
+    int32 _prevMapDayTime {-1};
+    int32 _prevGlobalDayTime {-1};
     ucolor _prevMapDayColor {};
     ucolor _prevGlobalDayColor {};
     ucolor _mapDayColor {};
     ucolor _globalDayColor {};
-    int _mapDayLightCapacity {};
-    int _globalDayLightCapacity {};
+    int32 _mapDayLightCapacity {};
+    int32 _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};
@@ -400,15 +400,15 @@ private:
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
 
-    int _roofSkip {};
+    int32 _roofSkip {};
 
-    int _drawCursorX {};
+    int32 _drawCursorX {};
     shared_ptr<Sprite> _cursorPrePic {};
     shared_ptr<Sprite> _cursorPostPic {};
     shared_ptr<Sprite> _cursorXPic {};
-    int _cursorX {};
-    int _cursorY {};
-    int _lastCurX {};
+    int32 _cursorX {};
+    int32 _cursorY {};
+    int32 _lastCurX {};
     mpos _lastCurPos {};
 
     unordered_set<hstring> _fastPids {};

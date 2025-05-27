@@ -97,6 +97,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numbers>
 #include <numeric>
 #include <optional>
 #include <random>
@@ -198,7 +199,8 @@ static_assert(sizeof(uint32) == 4);
 static_assert(sizeof(int64) == 8);
 static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
-static_assert(sizeof(long long) >= 8);
+static_assert(sizeof(size_t) >= 4);
+static_assert(sizeof(int) >= 4);
 static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
@@ -402,7 +404,7 @@ public:
 private:
     T* _ptr;
 };
-static_assert(sizeof(raw_ptr<int>) == sizeof(int*));
+static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
@@ -928,7 +930,7 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
 extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
 extern void MemFree(void* ptr) noexcept;
 extern void MemCopy(void* dest, const void* src, size_t size) noexcept;
-extern void MemFill(void* ptr, int value, size_t size) noexcept;
+extern void MemFill(void* ptr, int32 value, size_t size) noexcept;
 extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool;
 
 // Basic types with safe allocator
@@ -1190,7 +1192,7 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const timespan& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto compare(const timespan& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
     [[nodiscard]] constexpr auto operator==(const timespan& other) const noexcept -> bool { return value() == other.value(); }
     [[nodiscard]] constexpr auto operator!=(const timespan& other) const noexcept -> bool { return value() != other.value(); }
     [[nodiscard]] constexpr auto operator<(const timespan& other) const noexcept -> bool { return value() < other.value(); }
@@ -1231,19 +1233,19 @@ static_assert(std::is_standard_layout_v<timespan>);
 
 struct time_desc_t
 {
-    int year {};
-    int month {}; // 1..12
-    int day {}; // 1..31
-    int hour {}; // 0..23
-    int minute {}; // 0..59
-    int second {}; // 0..59
-    int millisecond {}; // 0..999
-    int microsecond {}; // 0..999
-    int nanosecond {}; // 0..999
+    int32 year {};
+    int32 month {}; // 1..12
+    int32 day {}; // 1..31
+    int32 hour {}; // 0..23
+    int32 minute {}; // 0..59
+    int32 second {}; // 0..59
+    int32 millisecond {}; // 0..999
+    int32 microsecond {}; // 0..999
+    int32 nanosecond {}; // 0..999
 };
 
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
-auto make_time_offset(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, bool local) -> timespan;
+auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond, bool local) -> timespan;
 
 ///@ ExportValueType nanotime nanotime HardStrong Layout = int64-value
 #define FO_NANOTIME_NAME "nanotime"
@@ -1288,7 +1290,7 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const nanotime& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto compare(const nanotime& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
     [[nodiscard]] constexpr auto operator==(const nanotime& other) const noexcept -> bool { return value() == other.value(); }
     [[nodiscard]] constexpr auto operator!=(const nanotime& other) const noexcept -> bool { return value() != other.value(); }
     [[nodiscard]] constexpr auto operator<(const nanotime& other) const noexcept -> bool { return value() < other.value(); }
@@ -1365,7 +1367,7 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const synctime& other) const noexcept -> int { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
+    [[nodiscard]] constexpr auto compare(const synctime& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
     [[nodiscard]] constexpr auto operator==(const synctime& other) const noexcept -> bool { return value() == other.value(); }
     [[nodiscard]] constexpr auto operator!=(const synctime& other) const noexcept -> bool { return value() != other.value(); }
     [[nodiscard]] constexpr auto operator<(const synctime& other) const noexcept -> bool { return value() < other.value(); }
@@ -1612,8 +1614,8 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void ShowExceptionMessageBox(bool enabled) noexcept;
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int line) noexcept;
-extern void ReportVerifyFailed(string_view message, const char* file, int line) noexcept;
+[[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int32 line) noexcept;
+extern void ReportVerifyFailed(string_view message, const char* file, int32 line) noexcept;
 
 struct ExceptionStackTraceData
 {
@@ -1941,7 +1943,7 @@ auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
             delete this; \
         } \
     } \
-    mutable int RefCounter \
+    mutable int32 RefCounter \
     { \
         1 \
     }
@@ -2015,7 +2017,7 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
 
 private:
-    int _initCount {std::uncaught_exceptions()};
+    decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
 };
 
 // Float safe comparator
@@ -2324,21 +2326,13 @@ struct TRect
         return *this;
     }
 
-    void Clear() noexcept
-    {
-        Left = 0;
-        Top = 0;
-        Right = 0;
-        Bottom = 0;
-    }
-
     [[nodiscard]] auto IsZero() const noexcept -> bool { return !Left && !Top && !Right && !Bottom; }
     [[nodiscard]] auto Width() const noexcept -> T { return Right - Left; }
     [[nodiscard]] auto Height() const noexcept -> T { return Bottom - Top; }
     [[nodiscard]] auto CenterX() const noexcept -> T { return Left + Width() / 2; }
     [[nodiscard]] auto CenterY() const noexcept -> T { return Top + Height() / 2; }
 
-    [[nodiscard]] auto operator[](int index) -> T&
+    [[nodiscard]] auto operator[](int32 index) -> T&
     {
         switch (index) {
         case 0:
@@ -2355,32 +2349,14 @@ struct TRect
         throw InvalidOperationException(FO_LINE_STR);
     }
 
-    [[nodiscard]] auto operator[](int index) const noexcept -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
-
-    void Advance(T ox, T oy) noexcept
-    {
-        Left += ox;
-        Top += oy;
-        Right += ox;
-        Bottom += oy;
-    }
-
-    auto Interpolate(const TRect<T>& to, int procent) const noexcept -> TRect<T>
-    {
-        TRect<T> result(Left, Top, Right, Bottom);
-        result.Left += static_cast<T>(static_cast<int>(to.Left - Left) * procent / 100);
-        result.Top += static_cast<T>(static_cast<int>(to.Top - Top) * procent / 100);
-        result.Right += static_cast<T>(static_cast<int>(to.Right - Right) * procent / 100);
-        result.Bottom += static_cast<T>(static_cast<int>(to.Bottom - Bottom) * procent / 100);
-        return result;
-    }
+    [[nodiscard]] auto operator[](int32 index) const noexcept -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
 
     T Left {};
     T Top {};
     T Right {};
     T Bottom {};
 };
-using IRect = TRect<int>; // Todo: move IRect to irect
+using IRect = TRect<int32>; // Todo: move IRect to irect
 using FRect = TRect<float>; // Todo: move FRect to frect
 
 // Color type
@@ -2483,7 +2459,7 @@ struct hstring
     [[nodiscard]] constexpr auto operator!=(const hstring& other) const noexcept { return _entry->Hash != other._entry->Hash; }
     [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto as_int() const noexcept -> int { return static_cast<int>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_int() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
     [[nodiscard]] constexpr auto as_uint() const noexcept -> uint32 { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
 
@@ -2519,7 +2495,7 @@ constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_
 struct isize
 {
     constexpr isize() noexcept = default;
-    constexpr isize(int width_, int height_) noexcept :
+    constexpr isize(int32 width_, int32 height_) noexcept :
         width {width_},
         height {height_}
     {
@@ -2527,15 +2503,15 @@ struct isize
 
     [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
-    [[nodiscard]] constexpr auto GetSquare() const noexcept -> int { return width * height; }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> int32 { return width * height; }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
     {
         return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
     }
 
-    int width {};
-    int height {};
+    int32 width {};
+    int32 height {};
 };
 static_assert(std::is_standard_layout_v<isize>);
 static_assert(sizeof(isize) == 8);
@@ -2547,7 +2523,7 @@ FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize);
 struct ipos
 {
     constexpr ipos() noexcept = default;
-    constexpr ipos(int x_, int y_) noexcept :
+    constexpr ipos(int32 x_, int32 y_) noexcept :
         x {x_},
         y {y_}
     {
@@ -2560,8 +2536,8 @@ struct ipos
     [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
     [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
 
-    int x {};
-    int y {};
+    int32 x {};
+    int32 y {};
 };
 static_assert(std::is_standard_layout_v<ipos>);
 static_assert(sizeof(ipos) == 8);
@@ -2580,21 +2556,21 @@ struct irect
         height {size.height}
     {
     }
-    constexpr irect(int x_, int y_, isize size) noexcept :
+    constexpr irect(int32 x_, int32 y_, isize size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect(ipos pos, int width_, int height_) noexcept :
+    constexpr irect(ipos pos, int32 width_, int32 height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
         height {height_}
     {
     }
-    constexpr irect(int x_, int y_, int width_, int height_) noexcept :
+    constexpr irect(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
         x {x_},
         y {y_},
         width {width_},
@@ -2604,10 +2580,10 @@ struct irect
     [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
 
-    int x {};
-    int y {};
-    int width {};
-    int height {};
+    int32 x {};
+    int32 y {};
+    int32 width {};
+    int32 height {};
 };
 static_assert(std::is_standard_layout_v<irect>);
 static_assert(sizeof(irect) == 16);
@@ -2702,7 +2678,7 @@ struct fsize
         height {height_}
     {
     }
-    constexpr fsize(int width_, int height_) noexcept :
+    constexpr fsize(int32 width_, int32 height_) noexcept :
         width {static_cast<float>(width_)},
         height {static_cast<float>(height_)}
     {
@@ -2739,7 +2715,7 @@ struct fpos
         y {y_}
     {
     }
-    constexpr fpos(int x_, int y_) noexcept :
+    constexpr fpos(int32 x_, int32 y_) noexcept :
         x {static_cast<float>(x_)},
         y {static_cast<float>(y_)}
     {
@@ -2811,20 +2787,10 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect, "{} {} {} {}", value.x, value.y, v
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect, value.x >> value.y >> value.width >> value.height);
 
 // Generic constants
-// Todo: eliminate as much defines as possible
-// Todo: convert all defines to constants and enums
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
-static constexpr uint32 PING_CLIENT_LIFE_TIME = 15000;
-
-// Float constants
-constexpr auto PI_FLOAT = 3.14159265f;
-constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
-constexpr auto SQRT3_FLOAT = 1.732050807f;
-constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
-constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;
@@ -2877,7 +2843,7 @@ struct GameSettings
 };
 
 // Light
-static constexpr auto LIGHT_DISABLE_DIR(int dir) -> uint8
+static constexpr auto LIGHT_DISABLE_DIR(int32 dir) -> uint8
 {
     return static_cast<uint8>(1u << std::clamp(dir, 0, 5));
 }
@@ -3272,12 +3238,16 @@ constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> 
 FO_DECLARE_EXCEPTION(OverflowException);
 
 template<typename T, typename U>
-inline constexpr auto numeric_cast(U value) -> T
+[[nodiscard]] inline constexpr auto numeric_cast(U value) -> T
 {
     static_assert(std::is_arithmetic_v<T>);
     static_assert(std::is_arithmetic_v<U>);
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
 
-    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
@@ -3327,12 +3297,22 @@ inline constexpr auto numeric_cast(U value) -> T
 }
 
 template<typename T, typename U>
-inline constexpr auto check_numeric_cast(U value) noexcept -> bool
+[[nodiscard]] inline consteval auto const_numeric_cast(U value) noexcept -> T
+{
+    return numeric_cast<T>(value);
+}
+
+template<typename T, typename U>
+[[nodiscard]] inline constexpr auto check_numeric_cast(U value) noexcept -> bool
 {
     static_assert(std::is_arithmetic_v<T>);
     static_assert(std::is_arithmetic_v<U>);
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
 
-    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+        static_assert(std::is_floating_point_v<T>, "Use iround<int32> for float to int conversion");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
@@ -3403,11 +3383,11 @@ constexpr U lerp(T v1, T v2, float t) noexcept
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
 }
 
-template<typename T>
-    requires(std::is_floating_point_v<T>)
-constexpr auto iround(T value) noexcept -> int
+template<typename T, typename U>
+    requires(std::is_floating_point_v<U> && std::is_integral_v<T>)
+constexpr auto iround(U value) noexcept -> T
 {
-    return static_cast<int>(std::lround(value));
+    return static_cast<T>(std::round(value) + 0.5);
 }
 
 template<typename T, typename U>
@@ -3468,10 +3448,10 @@ public:
     [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
     [[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
     [[nodiscard]] virtual auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
 };
 
@@ -3479,7 +3459,7 @@ class FrameBalancer
 {
 public:
     FrameBalancer() = default;
-    FrameBalancer(bool enabled, int sleep, int fixed_fps);
+    FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps);
 
     [[nodiscard]] auto GetLoopDuration() const -> timespan { return _loopDuration; }
 
@@ -3488,8 +3468,8 @@ public:
 
 private:
     bool _enabled {};
-    int _sleep {};
-    int _fixedFps {};
+    int32 _sleep {};
+    int32 _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};
     timespan _idleTimeBalance {};
@@ -3606,7 +3586,7 @@ constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 40;
 using GlobalDataCallback = void (*)();
 extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern int GlobalDataCallbacksCount;
+extern int32 GlobalDataCallbacksCount;
 
 extern void CreateGlobalData();
 extern void DeleteGlobalData();

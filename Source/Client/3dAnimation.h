@@ -121,7 +121,7 @@ private:
 
     struct Track
     {
-        enum class EventType
+        enum class EventType : uint8
         {
             Enable,
             Speed,

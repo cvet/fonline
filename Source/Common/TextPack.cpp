@@ -69,9 +69,9 @@ auto TextPack::GetStr(TextPackKey num) const -> const string&
         break;
 
     default:
-        const int random_skip = GenericUtils::Random(0, numeric_cast<int>(str_count)) - 1;
+        const int32 random_skip = GenericUtils::Random(0, numeric_cast<int32>(str_count)) - 1;
 
-        for (int i = 0; i < random_skip; i++) {
+        for (int32 i = 0; i < random_skip; i++) {
             ++it;
         }
 

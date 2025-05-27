@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE();
 
 // ReSharper disable CppInconsistentNaming
 
-strex::operator string&&()
+strex::operator string&&() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -51,7 +51,7 @@ strex::operator string&&()
     return std::move(_s);
 }
 
-auto strex::str() -> string&&
+auto strex::str() noexcept -> string&&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -62,7 +62,7 @@ auto strex::str() -> string&&
     return std::move(_s);
 }
 
-auto strex::c_str() -> const char*
+auto strex::c_str() noexcept -> const char*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -71,7 +71,7 @@ auto strex::c_str() -> const char*
     return _s.c_str();
 }
 
-void strex::ownStorage()
+void strex::ownStorage() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -80,7 +80,7 @@ void strex::ownStorage()
     }
     else {
         if (_s.data() != _sv.data()) {
-            _s.erase(0, static_cast<size_t>(_sv.data() - _s.data()));
+            _s.erase(0, std::bit_cast<size_t>(_sv.data() - _s.data()));
         }
 
         if (_s.length() != _sv.length()) {
@@ -190,7 +190,7 @@ auto strex::lengthUtf8() const noexcept -> size_t
     size_t length = 0;
 
     for (size_t i = 0; i < _sv.length(); i++) {
-        length += static_cast<uint32>((_sv[i] & 0xC0) != 0x80);
+        length += (_sv[i] & 0xC0) != 0x80 ? 1u : 0u;
     }
 
     return length;
@@ -484,11 +484,11 @@ auto strex::split(char delimiter) const -> vector<string>
     return result;
 }
 
-auto strex::splitToInt(char delimiter) const -> vector<int>
+auto strex::splitToInt(char delimiter) const -> vector<int32>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    vector<int> result;
+    vector<int32> result;
 
     for (size_t pos = 0;;) {
         const size_t end_pos = _sv.find(delimiter, pos);
@@ -538,7 +538,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 
         const char* ptr = sv.data();
         const char* end_ptr = ptr + len;
-        int base = 10;
+        int32 base = 10;
         bool negative = false;
 
         if (sv[0] == '-') {
@@ -721,14 +721,14 @@ auto strex::isExplicitBool() const noexcept -> bool
     return false;
 }
 
-auto strex::toInt() const noexcept -> int
+auto strex::toInt() const noexcept -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? clamp_to<int>(value) : 0;
+    return success ? clamp_to<int32>(value) : 0;
 }
 
 auto strex::toUInt() const noexcept -> uint32
@@ -974,10 +974,10 @@ auto strex::parseWideChar(const wchar_t* str) -> strex&
 
     ownStorage();
 
-    const auto len = static_cast<int>(::wcslen(str));
+    const auto len = numeric_cast<int32>(::wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(_malloca(static_cast<size_t>(len) * 4));
+        auto* buf = static_cast<char*>(_malloca(numeric_cast<size_t>(len) * 4));
         const auto r = ::WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += buf != nullptr ? string(buf, r) : string();
@@ -1000,7 +1000,7 @@ auto strex::toWideChar() const -> std::wstring
 
     auto* buf = static_cast<wchar_t*>(_malloca(_sv.length() * sizeof(wchar_t) * 2));
 
-    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), static_cast<int>(_sv.length()), buf, static_cast<int>(_sv.length()));
+    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), numeric_cast<int32>(_sv.length()), buf, numeric_cast<int32>(_sv.length()));
     auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
 
     _freea(buf);
@@ -1294,14 +1294,14 @@ struct Utf8Data
         UpperTable.resize(0x10000);
 
         for (uint32 i = 0; i < 0x10000; i++) {
-            UpperTable[i] = static_cast<uint16>(i);
+            UpperTable[i] = numeric_cast<uint16>(i);
         }
 
         for (uint32 i = 0; i < 0x10000; i++) {
             const auto l = utf8::Lower(i);
 
             if (l != i) {
-                UpperTable[l] = static_cast<uint16>(i);
+                UpperTable[l] = numeric_cast<uint16>(i);
             }
         }
     }

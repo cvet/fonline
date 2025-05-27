@@ -115,7 +115,7 @@ void MapBaker::BakeFiles(FileCollection files)
         auto map_client_item_data_writer = DataWriter(map_client_item_data);
         set<hstring> str_hashes;
         set<hstring> client_str_hashes;
-        int errors = 0;
+        int32 errors = 0;
 
         MapLoader::Load(
             map_name, file_content, server_proto_mngr, server_engine.Hashes,
@@ -214,7 +214,7 @@ void MapBaker::BakeFiles(FileCollection files)
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] { bake_map(file); }));
     }
 
-    int errors = 0;
+    int32 errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {

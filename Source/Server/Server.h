@@ -112,7 +112,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int32 /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
     ///@ ExportEvent
@@ -275,7 +275,7 @@ private:
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};
     std::condition_variable _syncRunSignal {};
-    int _syncRequest {};
+    int32 _syncRequest {};
     bool _syncPointReady {};
 
     std::atomic_bool _started {};

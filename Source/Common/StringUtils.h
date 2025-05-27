@@ -114,15 +114,15 @@ public:
     ~strex() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&&();
+    operator string&&() noexcept;
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const noexcept { return _sv; }
 
     auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
     auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
 
-    [[nodiscard]] auto c_str() -> const char*;
-    [[nodiscard]] auto str() -> string&&;
+    [[nodiscard]] auto c_str() noexcept -> const char*;
+    [[nodiscard]] auto str() noexcept -> string&&;
     [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
 
     [[nodiscard]] auto length() const noexcept -> size_t;
@@ -138,7 +138,7 @@ public:
 
     [[nodiscard]] auto isNumber() const noexcept -> bool;
     [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
-    [[nodiscard]] auto toInt() const noexcept -> int;
+    [[nodiscard]] auto toInt() const noexcept -> int32;
     [[nodiscard]] auto toUInt() const noexcept -> uint32;
     [[nodiscard]] auto toInt64() const noexcept -> int64;
     [[nodiscard]] auto toFloat() const noexcept -> float;
@@ -146,7 +146,7 @@ public:
     [[nodiscard]] auto toBool() const noexcept -> bool;
 
     [[nodiscard]] auto split(char delimiter) const -> vector<string>;
-    [[nodiscard]] auto splitToInt(char delimiter) const -> vector<int>;
+    [[nodiscard]] auto splitToInt(char delimiter) const -> vector<int32>;
 
     auto substringUntil(char separator) noexcept -> strex&;
     auto substringUntil(string_view separator) noexcept -> strex&;
@@ -183,7 +183,7 @@ public:
 #endif
 
 private:
-    void ownStorage();
+    void ownStorage() noexcept;
 
     string _s {};
     string_view _sv {};

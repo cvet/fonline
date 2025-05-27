@@ -62,9 +62,9 @@ public:
     ///@ ExportProperty ReadOnly Temporary
     FO_ENTITY_PROPERTY(PrivateCommon, timespan, FrameDeltaTime);
     ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, int, FramesPerSecond);
+    FO_ENTITY_PROPERTY(PrivateCommon, int32, FramesPerSecond);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, int, GlobalDayTime);
+    FO_ENTITY_PROPERTY(PrivateClient, int32, GlobalDayTime);
 };
 
 class PlayerProperties : public EntityProperties
@@ -288,7 +288,7 @@ public:
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int, ScaleFactor);
+    FO_ENTITY_PROPERTY(Public, int32, ScaleFactor);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateServer, uint32, ShowCritterDist1);
     ///@ ExportProperty
@@ -296,7 +296,7 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateServer, uint32, ShowCritterDist3);
     ///@ ExportProperty Temporary
-    FO_ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
+    FO_ENTITY_PROPERTY(PrivateClient, vector<int32>, ModelLayers);
     ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
     ///@ ExportProperty ReadOnly Temporary
     FO_ENTITY_PROPERTY(PrivateCommon, bool, ControlledByPlayer);
@@ -311,7 +311,7 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
     ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateServer, int, MovingSpeed);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, MovingSpeed);
 
     // Todo: exclude critter properties from engine:
     ///@ ExportProperty
@@ -377,10 +377,10 @@ public:
     FO_ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
     ///@ MigrationRule Property Map CurDayTime FixedDayTime
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int, FixedDayTime);
+    FO_ENTITY_PROPERTY(Public, int32, FixedDayTime);
     ///@ MigrationRule Property Map DayTime DayColorTime
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateCommon, vector<int>, DayColorTime);
+    FO_ENTITY_PROPERTY(PrivateCommon, vector<int32>, DayColorTime);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateCommon, vector<uint8>, DayColor);
 };

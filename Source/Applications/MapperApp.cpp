@@ -99,7 +99,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv, AppInitFlags::ClientMode);
+        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::ClientMode);
 
 #if FO_IOS
         MapperEntry(nullptr);

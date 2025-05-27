@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "Common.h"
+
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
@@ -61,7 +63,7 @@ public:
 
     // Type information
     asITypeInfo* GetDictObjectType() const;
-    int GetDictTypeId() const;
+    FO_NAMESPACE int32 GetDictTypeId() const;
 
     // Copy the contents of one dict to another (only if the types are the same)
     CScriptDict& operator=(const CScriptDict& other);
@@ -85,18 +87,18 @@ public:
     void GetMap(std::vector<std::pair<void*, void*>>& data) const;
 
     // GC methods
-    int GetRefCount();
+    FO_NAMESPACE int32 GetRefCount();
     void SetFlag();
     bool GetFlag();
     void EnumReferences(asIScriptEngine* engine);
     void ReleaseAllHandles(asIScriptEngine* engine);
 
 protected:
-    mutable int refCount;
+    mutable FO_NAMESPACE int32 refCount;
     mutable bool gcFlag;
     asITypeInfo* objType;
-    int keyTypeId;
-    int valueTypeId;
+    FO_NAMESPACE int32 keyTypeId;
+    FO_NAMESPACE int32 valueTypeId;
     void* dictMap;
     SDictCache* cache;
 

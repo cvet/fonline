@@ -45,7 +45,7 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<bool>("bool");
     MapEnginePlainType<int8>("int8");
     MapEnginePlainType<int16>("int16");
-    MapEnginePlainType<int>("int");
+    MapEnginePlainType<int32>("int32");
     MapEnginePlainType<int64>("int64");
     MapEnginePlainType<uint8>("uint8");
     MapEnginePlainType<uint16>("uint16");
@@ -178,13 +178,13 @@ void ScriptSystem::Process()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
     FO_RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = prop_reg->GetPropertyByIndex(static_cast<int32>(prop_index));
 
     if (prop == nullptr) {
         throw ScriptException("Invalid property index", type_name, prop_index);

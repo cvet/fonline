@@ -113,12 +113,12 @@ void ItemHexView::Process()
 
             _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 
-            if (GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
+            if (GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
                 Finish();
             }
         }
 
-        const auto dist = GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset);
+        const auto dist = GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset);
         const auto proc = GenericUtils::Percent(_effDist, dist);
         const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
 
@@ -257,8 +257,8 @@ void ItemHexView::RefreshOffs()
     }
 
     if (_isDynamicEffect) {
-        SprOffset.x += iround(_effCurOffset.x);
-        SprOffset.y += iround(_effCurOffset.y);
+        SprOffset.x += iround<int32>(_effCurOffset.x);
+        SprOffset.y += iround<int32>(_effCurOffset.y);
     }
 }
 

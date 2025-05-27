@@ -69,14 +69,14 @@ void NetBuffer::SetEncryptKey(uint32 seed)
     std::mt19937 rnd_generator {seed};
 
     for (auto& key : _encryptKeys) {
-        key = static_cast<uint8>(rnd_generator() % 256);
+        key = numeric_cast<uint8>(rnd_generator() % 256);
     }
 
     _encryptKeyPos = 0;
     _encryptActive = true;
 }
 
-auto NetBuffer::EncryptKey(int move) noexcept -> uint8
+auto NetBuffer::EncryptKey(int32 move) noexcept -> uint8
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -86,11 +86,11 @@ auto NetBuffer::EncryptKey(int move) noexcept -> uint8
         key = _encryptKeys[_encryptKeyPos];
         _encryptKeyPos += move;
 
-        if (_encryptKeyPos < 0 || _encryptKeyPos >= static_cast<int>(CRYPT_KEYS_COUNT)) {
-            _encryptKeyPos %= static_cast<int>(CRYPT_KEYS_COUNT);
+        if (_encryptKeyPos < 0 || _encryptKeyPos >= const_numeric_cast<int32>(CRYPT_KEYS_COUNT)) {
+            _encryptKeyPos %= const_numeric_cast<int32>(CRYPT_KEYS_COUNT);
 
             if (_encryptKeyPos < 0) {
-                _encryptKeyPos += static_cast<int>(CRYPT_KEYS_COUNT);
+                _encryptKeyPos += const_numeric_cast<int32>(CRYPT_KEYS_COUNT);
             }
         }
     }
@@ -148,7 +148,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
     }
 
     GrowBuf(len);
-    CopyBuf(buf, _bufData.data() + _bufEndPos, EncryptKey(static_cast<int>(len)), len);
+    CopyBuf(buf, _bufData.data() + _bufEndPos, EncryptKey(numeric_cast<int32>(len)), len);
     _bufEndPos += len;
 }
 
@@ -161,7 +161,7 @@ void NetOutBuffer::Push(const_span<uint8> buf)
     }
 
     GrowBuf(buf.size());
-    CopyBuf(buf.data(), _bufData.data() + _bufEndPos, EncryptKey(static_cast<int>(buf.size())), buf.size());
+    CopyBuf(buf.data(), _bufData.data() + _bufEndPos, EncryptKey(numeric_cast<int32>(buf.size())), buf.size());
     _bufEndPos += buf.size();
 }
 
@@ -193,10 +193,10 @@ void NetOutBuffer::WritePropsData(vector<const uint8*>* props_data, const vector
 
     FO_RUNTIME_ASSERT(props_data->size() == props_data_sizes->size());
     FO_RUNTIME_ASSERT(props_data->size() <= 0xFFFF);
-    Write<uint16>(static_cast<uint16>(props_data->size()));
+    Write<uint16>(numeric_cast<uint16>(props_data->size()));
 
     for (size_t i = 0; i < props_data->size(); i++) {
-        const auto data_size = static_cast<uint32>(props_data_sizes->at(i));
+        const auto data_size = numeric_cast<uint32>(props_data_sizes->at(i));
         Write<uint32>(data_size);
         Push({props_data->at(i), data_size});
     }
@@ -230,8 +230,8 @@ void NetOutBuffer::EndMsg()
     _msgStarted = false;
 
     // Move to message start position
-    const auto msg_len = static_cast<uint32>(_bufEndPos - _startedBufPos);
-    EncryptKey(-static_cast<int>(msg_len));
+    const auto msg_len = numeric_cast<uint32>(_bufEndPos - _startedBufPos);
+    EncryptKey(-numeric_cast<int32>(msg_len));
 
     // Verify signature
     uint32 msg_signature;
@@ -242,7 +242,7 @@ void NetOutBuffer::EndMsg()
     CopyBuf(&msg_len, _bufData.data() + _startedBufPos + sizeof(msg_signature), EncryptKey(0), sizeof(msg_len));
 
     // Return to the end
-    EncryptKey(static_cast<int>(msg_len - sizeof(msg_signature)));
+    EncryptKey(numeric_cast<int32>(msg_len - sizeof(msg_signature)));
 }
 
 void NetInBuffer::ResetBuf() noexcept
@@ -291,7 +291,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
         throw NetBufferException("Invalid read length", len, _bufReadPos, _bufEndPos);
     }
 
-    CopyBuf(_bufData.data() + _bufReadPos, buf, EncryptKey(static_cast<int>(len)), len);
+    CopyBuf(_bufData.data() + _bufReadPos, buf, EncryptKey(numeric_cast<int32>(len)), len);
     _bufReadPos += len;
 }
 
@@ -400,7 +400,7 @@ auto NetInBuffer::NeedProcess() -> bool
     uint32 msg_len;
     EncryptKey(sizeof(msg_signature));
     CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg_signature), &msg_len, EncryptKey(0), sizeof(msg_len));
-    EncryptKey(-static_cast<int>(sizeof(msg_signature)));
+    EncryptKey(-static_cast<int32>(sizeof(msg_signature)));
 
     if (msg_len < sizeof(uint32) + sizeof(uint32) + sizeof(NetMessage)) {
         ResetBuf();

@@ -71,7 +71,7 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = static_cast<T>(static_cast<int>(entry) | any_value.AsInt64());
+        entry = static_cast<T>(static_cast<int32>(entry) | any_value.AsInt64());
     }
     else if constexpr (is_strong_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
@@ -156,7 +156,7 @@ static void DrawEditableEntry(string_view name, T& entry)
     DrawEntry(name, entry);
 }
 
-GlobalSettings::GlobalSettings(int argc, char** argv)
+GlobalSettings::GlobalSettings(int32 argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -255,7 +255,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         "DebuggingSubConfig",
     };
 
-    for (int i = 0; i < argc; i++) {
+    for (int32 i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -305,7 +305,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     }
 
     // Command line config
-    for (int i = 0; i < argc; i++) {
+    for (int32 i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -480,7 +480,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
             pack_info.MapperOnly = strex(mapper_only).toBool();
         }
-        if (static_cast<int>(pack_info.ServerOnly) + static_cast<int>(pack_info.ClientOnly) + static_cast<int>(pack_info.MapperOnly) > 1) {
+        if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
@@ -604,7 +604,7 @@ void GlobalSettings::ApplyAutoSettings()
 
     const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    const_cast<int32&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;

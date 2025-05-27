@@ -349,7 +349,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
     }
 
     auto* db_non_const = const_cast<unqlite*>(_db.get());
-    const auto r = unqlite_kv_fetch_callback(db_non_const, entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+    const auto r = unqlite_kv_fetch_callback(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -367,7 +367,7 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
         return;
     }
 
-    auto r = unqlite_kv_delete(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()));
+    auto r = unqlite_kv_delete(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()));
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't delete cache entry '{}'", entry_name);
@@ -394,7 +394,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     auto* db_non_const = const_cast<unqlite*>(_db.get());
 
     unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
+    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), nullptr, &size);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -405,9 +405,9 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     }
 
     string str;
-    str.resize(static_cast<size_t>(size));
+    str.resize(numeric_cast<size_t>(size));
 
-    r = unqlite_kv_fetch(db_non_const, entry_name.data(), static_cast<int>(entry_name.length()), str.data(), &size);
+    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), str.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}", entry_name);
@@ -428,7 +428,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
     auto* db_non_const = const_cast<unqlite*>(_db.get());
 
     unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
+    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), nullptr, &size);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -439,9 +439,9 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
     }
 
     vector<uint8> data;
-    data.resize(static_cast<size_t>(size));
+    data.resize(numeric_cast<size_t>(size));
 
-    r = unqlite_kv_fetch(db_non_const, entry_name.data(), static_cast<int>(entry_name.length()), data.data(), &size);
+    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), data.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -459,7 +459,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), str.data(), static_cast<unqlite_int64>(str.length()));
+    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()), str.data(), numeric_cast<unqlite_int64>(str.length()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);
@@ -481,7 +481,7 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data
         return;
     }
 
-    auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), static_cast<unqlite_int64>(data.size()));
+    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()), data.data(), numeric_cast<unqlite_int64>(data.size()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);

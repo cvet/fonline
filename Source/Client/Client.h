@@ -107,11 +107,11 @@ enum class EffectType : uint32
 };
 
 // Connection reason
-constexpr int INIT_NET_REASON_NONE = 0;
-constexpr int INIT_NET_REASON_LOGIN = 1;
-constexpr int INIT_NET_REASON_REG = 2;
-constexpr int INIT_NET_REASON_LOAD = 3;
-constexpr int INIT_NET_REASON_CUSTOM = 4;
+constexpr int32 INIT_NET_REASON_NONE = 0;
+constexpr int32 INIT_NET_REASON_LOGIN = 1;
+constexpr int32 INIT_NET_REASON_REG = 2;
+constexpr int32 INIT_NET_REASON_LOAD = 3;
+constexpr int32 INIT_NET_REASON_CUSTOM = 4;
 
 class FOClient : public BaseEngine, public AnimationResolver
 {
@@ -127,7 +127,7 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int& ox, int& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool override;
 
@@ -149,16 +149,16 @@ public:
     void ChangeLanguage(string_view lang_name);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
-    void ScreenQuake(int noise, timespan time);
+    void ScreenQuake(int32 noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32;
     void AnimFree(uint32 anim_id);
     auto AnimGetSpr(uint32 anim_id) -> Sprite*;
 
-    void Connect(string_view login, string_view password, int reason);
+    void Connect(string_view login, string_view password, int32 reason);
     void Disconnect();
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int> pos_or_dir, uint32 speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, uint32 speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -235,11 +235,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int /*actionData*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int32 /*actionData*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*pass*/, uint32& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*pass*/, uint32& /*flags*/, int32& /*ox*/, int32& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
@@ -270,7 +270,7 @@ public:
     vector<shared_ptr<ModelSprite>> DrawCritterModel {};
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
-    int DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};
+    int32 DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};
 #endif
 
 protected:
@@ -385,7 +385,7 @@ protected:
     uint32 _curMapIndexInLoc {};
     bool _mapLoaded {};
 
-    int _initNetReason {INIT_NET_REASON_NONE};
+    int32 _initNetReason {INIT_NET_REASON_NONE};
 
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
@@ -409,7 +409,7 @@ protected:
 
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
-    int _lmapZoom {2};
+    int32 _lmapZoom {2};
     bool _lmapSwitchHi {};
     nanotime _lmapPrepareNextTime {};
 

@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "Common.h"
+
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
@@ -67,8 +69,8 @@ public:
     bool Implements(const ScriptType* other) const;
     bool Equals(const ScriptType* other);
     bool DerivesFrom(const ScriptType* other);
-    void Instantiate(void* out, int out_type_id) const;
-    void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
+    void Instantiate(void* out, FO_NAMESPACE int32 out_type_id) const;
+    void InstantiateCopy(void* in, FO_NAMESPACE int32 in_type_id, void* out, FO_NAMESPACE int32 out_type_id) const;
     asUINT GetMethodsCount() const;
     std::string GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const;
     asUINT GetPropertiesCount() const;
@@ -78,7 +80,7 @@ public:
     CScriptArray* GetEnumValues() const;
 
 protected:
-    mutable int refCount;
+    mutable FO_NAMESPACE int32 refCount;
     asITypeInfo* objType;
 };
 
