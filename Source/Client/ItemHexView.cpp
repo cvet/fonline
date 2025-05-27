@@ -97,7 +97,7 @@ void ItemHexView::Process()
     }
 
     if (_isDynamicEffect && !IsFinishing()) {
-        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float>();
+        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float32>();
 
         if (dt > 0.0f) {
             auto speed = GetFlyEffectSpeed();
@@ -125,8 +125,8 @@ void ItemHexView::Process()
         if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
-            _effCurOffset.x -= static_cast<float>(x);
-            _effCurOffset.y -= static_cast<float>(y);
+            _effCurOffset.x -= static_cast<float32>(x);
+            _effCurOffset.y -= static_cast<float32>(y);
 
             RefreshOffs();
 
@@ -158,7 +158,7 @@ void ItemHexView::SetEffect(mpos to_hex)
     }
 
     _effStartOffset = SprOffset;
-    _effCurOffset = {static_cast<float>(SprOffset.x), static_cast<float>(SprOffset.y)};
+    _effCurOffset = {static_cast<float32>(SprOffset.x), static_cast<float32>(SprOffset.y)};
     _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
     _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 }

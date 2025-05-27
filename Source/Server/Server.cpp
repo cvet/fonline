@@ -199,7 +199,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto* registrator = entity_info.PropRegistrator;
 
             for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(i));
+                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -235,7 +235,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
                 for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(i));
+                    const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                     if (prop->IsDisabled()) {
                         continue;
@@ -680,7 +680,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.Uptime = cur_time - _stats.ServerStartTime;
 
 #if FO_TRACY
-            TracyPlot("Server loops per second", static_cast<int64>(_stats.LoopsPerSecond));
+            TracyPlot("Server loops per second", numeric_cast<int64>(_stats.LoopsPerSecond));
 #endif
 
             return std::chrono::milliseconds {0};
@@ -919,7 +919,7 @@ auto FOServer::GetHealthInfo() const -> string
     buf += strex("Max loop time: {}\n", _stats.LoopMaxTime);
     buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
     buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-    buf += strex("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+    buf += strex("Compress ratio: {}\n", numeric_cast<float64>(_stats.DataReal) / numeric_cast<float64>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
     buf += strex("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
 
     return buf;
@@ -1377,7 +1377,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        player->Access = static_cast<uint8>(wanted_access);
+        player->Access = numeric_cast<uint8>(wanted_access);
         logcb("Access changed");
     } break;
     case CMD_ADDITEM: {
@@ -2025,7 +2025,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-        out_buf->Write(static_cast<uint32>(_updateFilesDesc.size()));
+        out_buf->Write(numeric_cast<uint32>(_updateFilesDesc.size()));
         out_buf->Push(_updateFilesDesc);
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
         out_buf->Write(GameTime.GetSynchronizedTime());
@@ -2073,7 +2073,7 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
         return;
     }
 
-    connection->UpdateFileIndex = static_cast<int32>(file_index);
+    connection->UpdateFileIndex = numeric_cast<int32>(file_index);
     connection->UpdateFilePortion = 0;
 
     Process_UpdateFileData(connection);
@@ -2179,9 +2179,9 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.EmplaceBack(static_cast<int64>(connection->GetIp()));
+    reg_ip.EmplaceBack(numeric_cast<int64>(connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.EmplaceBack(static_cast<int64>(connection->GetPort()));
+    reg_port.EmplaceBack(numeric_cast<int64>(connection->GetPort()));
 
     AnyData::Document player_data;
     player_data.Emplace("_Name", string(name));
@@ -2495,7 +2495,7 @@ void FOServer::Process_Move(Player* player)
 
         // Insert part of path to beginning of whole path
         for (auto& control_step : control_steps) {
-            control_step += static_cast<uint16>(find_result.Steps.size());
+            control_step += numeric_cast<uint16>(find_result.Steps.size());
         }
 
         control_steps.insert(control_steps.begin(), find_result.ControlSteps.begin(), find_result.ControlSteps.end());
@@ -2509,10 +2509,10 @@ void FOServer::Process_Move(Player* player)
         BreakIntoDebugger();
     }
 
-    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
-    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
+    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16>(-Settings.MapHexWidth / 2), numeric_cast<int16>(Settings.MapHexWidth / 2));
+    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16>(-Settings.MapHexHeight / 2), numeric_cast<int16>(Settings.MapHexHeight / 2));
 
-    StartCritterMoving(cr, static_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
+    StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
     if (corrected_speed != speed) {
         player->Send_MovingSpeed(cr);
@@ -2826,9 +2826,9 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         const auto time = GameTime.GetSynchronizedTime();
 
         AnyData::Document doc;
-        doc.Emplace("Time", static_cast<int64>(time.milliseconds()));
+        doc.Emplace("Time", numeric_cast<int64>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
-        doc.Emplace("EntityId", static_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlying_value()));
         doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
@@ -3275,7 +3275,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>() / cr->Moving.WholeTime;
+    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>() / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3305,20 +3305,19 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
+        auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
         dist = std::max(dist, 0.0001f);
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == cr->Moving.ControlSteps.size() - 1)) {
-            float normalized_dist = (dist_pos - cur_dist) / dist;
+            float32 normalized_dist = (dist_pos - cur_dist) / dist;
             normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
             if (normalized_time == 1.0f) {
                 normalized_dist = 1.0f;
             }
 
             // Evaluate current hex
-            const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));
-            const auto step_index = control_step_begin + static_cast<int32>(step_index_f);
+            const auto step_index = control_step_begin + iround<int32>(normalized_dist * numeric_cast<float32>(cr->Moving.ControlSteps[i] - control_step_begin));
             FO_RUNTIME_ASSERT(step_index >= numeric_cast<int32>(control_step_begin));
             FO_RUNTIME_ASSERT(step_index <= numeric_cast<int32>(cr->Moving.ControlSteps[i]));
 
@@ -3369,29 +3368,29 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto moved = cr_hex != old_hex;
 
             auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
+
             if (i == 0) {
                 cr_ox -= cr->Moving.StartHexOffset.x;
                 cr_oy -= cr->Moving.StartHexOffset.y;
             }
 
-            const auto lerp = [](int32 a, int32 b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
+            const auto lerp = [](int32 a, int32 b, float32 t) { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
 
             auto mx = lerp(0, ox, normalized_dist);
             auto my = lerp(0, oy, normalized_dist);
 
-            mx -= static_cast<float>(cr_ox);
-            my -= static_cast<float>(cr_oy);
+            mx -= numeric_cast<float32>(cr_ox);
+            my -= numeric_cast<float32>(cr_oy);
 
-            const auto mxi = static_cast<int16>(std::round(mx));
-            const auto myi = static_cast<int16>(std::round(my));
+            const auto mxi = iround<int16>(mx);
+            const auto myi = iround<int16>(my);
 
             if (moved || cr->GetHexOffset() != ipos16 {mxi, myi}) {
                 cr->SetHexOffset({mxi, myi});
             }
 
             // Evaluate dir angle
-            const auto dir_angle_f = Geometry.GetLineDirAngle(0, 0, ox, oy);
-            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
+            const auto dir_angle = iround<int16>(Geometry.GetLineDirAngle(0, 0, ox, oy));
 
             cr->SetDirAngle(dir_angle);
 
@@ -3454,7 +3453,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->Moving.WholeDist = 0.0f;
 
     FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-    const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
+    const auto base_move_speed = numeric_cast<float32>(cr->Moving.Speed);
 
     auto next_start_hex = start_hex;
     uint16 control_step_begin = 0;
@@ -3480,8 +3479,8 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
 
         cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
         cr->Moving.WholeDist += dist;
@@ -3524,14 +3523,14 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
         return;
     }
 
-    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
     const auto cur_time = GameTime.GetFrameTime();
-    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>();
+    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
     cr->Moving.StartTime = cur_time;
-    cr->Moving.OffsetTime = std::chrono::milliseconds {iround<int32>(elapsed_time / diff)};
+    cr->Moving.OffsetTime = std::chrono::milliseconds(iround<int32>(elapsed_time / diff));
     cr->Moving.Speed = speed;
 
     cr->SetMovingSpeed(speed);
@@ -3632,7 +3631,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 break;
             }
 
-            const auto val = entity->GetProperties().GetValueAsInt(static_cast<int32>(demand.ParamIndex));
+            const auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(demand.ParamIndex));
 
             switch (demand.Op) {
             case '>':
@@ -3794,7 +3793,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 break;
             }
 
-            auto val = entity->GetProperties().GetValueAsInt(static_cast<int32>(result.ParamIndex));
+            auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(result.ParamIndex));
 
             switch (result.Op) {
             case '+':
@@ -3816,12 +3815,12 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 break;
             }
 
-            entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int32>(result.ParamIndex), val);
+            entity->GetPropertiesForEdit().SetValueAsInt(numeric_cast<int32>(result.ParamIndex), val);
         }
             continue;
         case DR_ITEM: {
             const auto pid = result.ParamHash;
-            const int32 cur_count = static_cast<int32>(master->CountInvItemPid(pid));
+            const auto cur_count = numeric_cast<int32>(master->CountInvItemPid(pid));
             auto need_count = cur_count;
 
             switch (result.Op) {
@@ -4213,18 +4212,18 @@ void FOServer::Process_Dialog(Player* player)
 
         // Special links
         switch (next_dlg_id) {
-        case static_cast<uint32>(-3):
+        case std::bit_cast<uint32>(-3):
         case DIALOG_BARTER:
             do_barter();
             return;
-        case static_cast<uint32>(-2):
+        case std::bit_cast<uint32>(-2):
         case DIALOG_BACK:
             if (cr->Talk.LastDialogId != 0) {
                 next_dlg_id = cr->Talk.LastDialogId;
                 break;
             }
             [[fallthrough]];
-        case static_cast<uint32>(-1):
+        case std::bit_cast<uint32>(-1):
         case DIALOG_END:
             CrMngr.CloseTalk(cr);
             return;
@@ -4461,7 +4460,7 @@ auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint32>(player_name.length()));
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), numeric_cast<uint32>(player_name.length()));
     FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }

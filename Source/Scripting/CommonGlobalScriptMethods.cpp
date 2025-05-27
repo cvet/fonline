@@ -350,7 +350,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float offset)
+FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32 offset)
 {
     ignore_unused(engine);
 

@@ -196,7 +196,7 @@ private:
         int64 BytesRecv {};
         int64 DataReal {1};
         int64 DataCompressed {1};
-        float CompressRatio {};
+        float32 CompressRatio {};
 
         size_t MaxOnline {};
         size_t CurOnline {};

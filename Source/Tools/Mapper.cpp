@@ -2207,8 +2207,8 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        const auto ox = static_cast<float>(offs_x) * _curMap->GetSpritesZoom() + small_ox;
-        const auto oy = static_cast<float>(offs_y) * _curMap->GetSpritesZoom() + small_oy;
+        const auto ox = static_cast<float32>(offs_x) * _curMap->GetSpritesZoom() + small_ox;
+        const auto oy = static_cast<float32>(offs_y) * _curMap->GetSpritesZoom() + small_oy;
 
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
@@ -2629,8 +2629,8 @@ void FOMapper::CurDraw()
                     }
                 }
 
-                SprMngr.DrawSpriteSize(spr, {static_cast<int32>(static_cast<float>(x) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float>(y) / _curMap->GetSpritesZoom())}, //
-                    {static_cast<int32>(static_cast<float>(spr->Size.width) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float>(spr->Size.height) / _curMap->GetSpritesZoom())}, true, false, COLOR_SPRITE);
+                SprMngr.DrawSpriteSize(spr, {static_cast<int32>(static_cast<float32>(x) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float32>(y) / _curMap->GetSpritesZoom())}, //
+                    {static_cast<int32>(static_cast<float32>(spr->Size.width) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float32>(spr->Size.height) / _curMap->GetSpritesZoom())}, true, false, COLOR_SPRITE);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2651,10 +2651,10 @@ void FOMapper::CurDraw()
             const auto y = _curMap->GetField(hex).Offset.y - anim->Size.height + anim->Offset.y;
 
             SprMngr.DrawSpriteSize(anim, //
-                {static_cast<int32>((static_cast<float>(x + Settings.ScreenOffset.x) + (static_cast<float>(Settings.MapHexWidth) / 2.0f)) / _curMap->GetSpritesZoom()), //
-                    static_cast<int32>((static_cast<float>(y + Settings.ScreenOffset.y) + (static_cast<float>(Settings.MapHexHeight) / 2.0f)) / _curMap->GetSpritesZoom())}, //
-                {static_cast<int32>(static_cast<float>(anim->Size.width) / _curMap->GetSpritesZoom()), //
-                    static_cast<int32>(static_cast<float>(anim->Size.height) / _curMap->GetSpritesZoom())},
+                {static_cast<int32>((static_cast<float32>(x + Settings.ScreenOffset.x) + (static_cast<float32>(Settings.MapHexWidth) / 2.0f)) / _curMap->GetSpritesZoom()), //
+                    static_cast<int32>((static_cast<float32>(y + Settings.ScreenOffset.y) + (static_cast<float32>(Settings.MapHexHeight) / 2.0f)) / _curMap->GetSpritesZoom())}, //
+                {static_cast<int32>(static_cast<float32>(anim->Size.width) / _curMap->GetSpritesZoom()), //
+                    static_cast<int32>(static_cast<float32>(anim->Size.height) / _curMap->GetSpritesZoom())},
                 true, false, COLOR_SPRITE);
         }
         else {

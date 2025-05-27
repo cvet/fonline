@@ -53,8 +53,8 @@ public:
     ~GeometryHelper() = default;
 
     // Todo: move all geometry helper methods to static
-    [[nodiscard]] auto GetYProj() const -> float;
-    [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float;
+    [[nodiscard]] auto GetYProj() const -> float32;
+    [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
     [[nodiscard]] auto GetHexOffsets(mpos hex) const -> tuple<const int16*, const int16*>;
     [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
     [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
@@ -64,13 +64,13 @@ public:
     [[nodiscard]] static auto GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
     [[nodiscard]] static auto GetNearDir(mpos from_hex, mpos to_hex) -> uint8;
     [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
-    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float offset) -> uint8;
+    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8;
     [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex) -> uint8;
-    [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8;
-    [[nodiscard]] static auto GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float;
-    [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float;
-    [[nodiscard]] static auto GetDirAngleDiff(float a1, float a2) -> float;
-    [[nodiscard]] static auto GetDirAngleDiffSided(float a1, float a2) -> float;
+    [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8;
+    [[nodiscard]] static auto GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32;
+    [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float32;
+    [[nodiscard]] static auto GetDirAngleDiff(float32 a1, float32 a2) -> float32;
+    [[nodiscard]] static auto GetDirAngleDiffSided(float32 a1, float32 a2) -> float32;
     [[nodiscard]] static auto DirToAngle(uint8 dir) -> int16;
     [[nodiscard]] static auto AngleToDir(int16 dir_angle) -> uint8;
     [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;

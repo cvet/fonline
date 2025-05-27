@@ -45,11 +45,11 @@ public:
     struct BoneOutput
     {
         hstring BoneName {};
-        vector<float> ScaleTime {};
+        vector<float32> ScaleTime {};
         vector<vec3> ScaleValue {};
-        vector<float> RotationTime {};
+        vector<float32> RotationTime {};
         vector<quaternion> RotationValue {};
-        vector<float> TranslationTime {};
+        vector<float32> TranslationTime {};
         vector<vec3> TranslationValue {};
     };
 
@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto GetFileName() const noexcept -> string_view { return _animFileName; }
     [[nodiscard]] auto GetName() const noexcept -> string_view { return _animName; }
     [[nodiscard]] auto GetBoneOutputs() const noexcept -> const vector<BoneOutput>& { return _boneOutputs; }
-    [[nodiscard]] auto GetDuration() const noexcept -> float { return _duration; }
+    [[nodiscard]] auto GetDuration() const noexcept -> float32 { return _duration; }
     [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>& { return _bonesHierarchy; }
 
     void Load(DataReader& reader, HashResolver& hash_resolver);
@@ -71,7 +71,7 @@ public:
 private:
     string _animFileName {};
     string _animName {};
-    float _duration {};
+    float32 _duration {};
     vector<BoneOutput> _boneOutputs {};
     vector<vector<hstring>> _bonesHierarchy {};
 };
@@ -90,22 +90,22 @@ public:
     [[nodiscard]] auto GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*;
     [[nodiscard]] auto GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*;
     [[nodiscard]] auto GetTrackEnable(uint32 track) const noexcept -> bool;
-    [[nodiscard]] auto GetTrackPosition(uint32 track) const noexcept -> float;
+    [[nodiscard]] auto GetTrackPosition(uint32 track) const noexcept -> float32;
     [[nodiscard]] auto GetAnimationSetCount() const noexcept -> size_t;
-    [[nodiscard]] auto GetTime() const noexcept -> float { return _curTime; }
+    [[nodiscard]] auto GetTime() const noexcept -> float32 { return _curTime; }
 
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     void RegisterAnimationSet(ModelAnimation* animation);
     void SetTrackAnimationSet(uint32 track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
     void ResetBonesTransition(uint32 skip_track, const vector<hstring>& bone_names);
-    void AddEventEnable(uint32 track, bool enable, float start_time);
-    void AddEventSpeed(uint32 track, float speed, float start_time, float smooth_time);
-    void AddEventWeight(uint32 track, float weight, float start_time, float smooth_time);
+    void AddEventEnable(uint32 track, bool enable, float32 start_time);
+    void AddEventSpeed(uint32 track, float32 speed, float32 start_time, float32 smooth_time);
+    void AddEventWeight(uint32 track, float32 weight, float32 start_time, float32 smooth_time);
     void SetTrackEnable(uint32 track, bool enable);
-    void SetTrackPosition(uint32 track, float position);
+    void SetTrackPosition(uint32 track, float32 position);
     void SetInterpolation(bool enabled);
-    void AdvanceTime(float time);
+    void AdvanceTime(float32 time);
 
 private:
     struct Output
@@ -113,7 +113,7 @@ private:
         hstring BoneName {};
         mat44* Matrix {};
         vector<bool> Valid {};
-        vector<float> Factor {};
+        vector<float32> Factor {};
         vector<vec3> Scale {};
         vector<quaternion> Rotation {};
         vector<vec3> Translation {};
@@ -131,26 +131,26 @@ private:
         struct Event
         {
             EventType Type {};
-            float ValueTo {};
-            float StartTime {};
-            float SmoothTime {};
-            float ValueFrom {-1.0f};
+            float32 ValueTo {};
+            float32 StartTime {};
+            float32 SmoothTime {};
+            float32 ValueFrom {-1.0f};
         };
 
         bool Enabled {};
-        float Speed {};
-        float Weight {};
-        float Position {};
+        float32 Speed {};
+        float32 Weight {};
+        float32 Position {};
         const ModelAnimation* Anim {};
         vector<Output*> AnimOutput {};
         vector<Event> Events {};
     };
 
-    void Interpolate(quaternion& q1, const quaternion& q2, float factor) const;
-    void Interpolate(vec3& v1, const vec3& v2, float factor) const;
+    void Interpolate(quaternion& q1, const quaternion& q2, float32 factor) const;
+    void Interpolate(vec3& v1, const vec3& v2, float32 factor) const;
 
     template<class T>
-    void FindSrtValue(float time, const vector<float>& times, const vector<T>& values, T& result)
+    void FindSrtValue(float32 time, const vector<float32>& times, const vector<T>& values, T& result)
     {
         for (size_t n = 0; n < times.size(); n++) {
             if (n + 1 < times.size()) {
@@ -172,7 +172,7 @@ private:
     shared_ptr<vector<ModelAnimation*>> _sets {};
     shared_ptr<vector<Output>> _outputs {};
     vector<Track> _tracks {};
-    float _curTime {};
+    float32 _curTime {};
     bool _interpolationDisabled {};
 };
 

@@ -191,7 +191,7 @@ public:
     ///@ ExportProperty Resource
     FO_ENTITY_PROPERTY(Public, hstring, PicInv);
     ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, float, FlyEffectSpeed);
+    FO_ENTITY_PROPERTY(PrivateCommon, float32, FlyEffectSpeed);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
     ///@ ExportProperty ReadOnly
@@ -374,7 +374,7 @@ public:
 
     // Todo: exclude map properties from engine:
     ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
+    FO_ENTITY_PROPERTY(PrivateClient, float32, SpritesZoom);
     ///@ MigrationRule Property Map CurDayTime FixedDayTime
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, int32, FixedDayTime);

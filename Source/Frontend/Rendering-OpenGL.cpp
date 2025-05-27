@@ -564,7 +564,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     return std::move(opengl_effect);
 }
 
-auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto OpenGL_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -634,10 +634,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const float back_buf_aspect = static_cast<float>(BaseFrameBufSize.width) / static_cast<float>(BaseFrameBufSize.height);
-        const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
-        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
+        const float32 back_buf_aspect = static_cast<float32>(BaseFrameBufSize.width) / static_cast<float32>(BaseFrameBufSize.height);
+        const float32 screen_aspect = static_cast<float32>(Settings->ScreenWidth) / static_cast<float32>(Settings->ScreenHeight);
+        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BaseFrameBufSize.height) * screen_aspect : static_cast<float32>(BaseFrameBufSize.height) * back_buf_aspect);
+        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float32>(BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
@@ -650,7 +650,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float32>(screen_width), static_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     TargetSize = {screen_width, screen_height};
@@ -663,10 +663,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
-        const auto g = static_cast<float>(color.value().comp.g) / 255.0f;
-        const auto b = static_cast<float>(color.value().comp.b) / 255.0f;
-        const auto a = static_cast<float>(color.value().comp.a) / 255.0f;
+        const auto r = static_cast<float32>(color.value().comp.r) / 255.0f;
+        const auto g = static_cast<float32>(color.value().comp.g) / 255.0f;
+        const auto b = static_cast<float32>(color.value().comp.b) / 255.0f;
+        const auto a = static_cast<float32>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -696,13 +696,13 @@ void OpenGL_Renderer::EnableScissor(irect rect)
     int32 b;
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
-        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
+        const float32 x_ratio = static_cast<float32>(ViewPortRect.Width()) / static_cast<float32>(TargetSize.width);
+        const float32 y_ratio = static_cast<float32>(ViewPortRect.Height()) / static_cast<float32>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x) * x_ratio);
-        t = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y) * y_ratio);
-        r = ViewPortRect.Left + iround<int32>(static_cast<float>(rect.x + rect.width) * x_ratio);
-        b = ViewPortRect.Top + iround<int32>(static_cast<float>(rect.y + rect.height) * y_ratio);
+        l = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
         l = ViewPortRect.Left + rect.x;
@@ -1094,12 +1094,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
+        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float32));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
+        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32));
     }
 
     if (GL_HAS(uniform_buffer_object)) {

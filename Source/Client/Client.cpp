@@ -457,9 +457,9 @@ void FOClient::ScreenQuake(int32 noise, timespan time)
     Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
     Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
 
-    _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float>() / 30.0f);
+    _quakeScreenOffsX = static_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsY = static_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
 
     Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
     Settings.ScreenOffset.y += iround<int32>(_quakeScreenOffsY);
@@ -1123,8 +1123,8 @@ void FOClient::Net_OnCritterMoveSpeed()
         return;
     }
 
-    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
-    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>();
+    const auto diff = static_cast<float32>(speed) / static_cast<float32>(cr->Moving.Speed);
+    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.StartTime = GameTime.GetFrameTime();
@@ -2193,7 +2193,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
-    cr->Moving.WholeTime = static_cast<float>(whole_time);
+    cr->Moving.WholeTime = static_cast<float32>(whole_time);
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHex = start_hex;
@@ -2231,8 +2231,8 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = static_cast<float32>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(static_cast<float32>(ox * ox) + proj_oy * proj_oy);
 
         cr->Moving.WholeDist += dist;
 
@@ -3135,7 +3135,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         cr->Moving.WholeDist = {};
 
         FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-        const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
+        const auto base_move_speed = static_cast<float32>(cr->Moving.Speed);
 
         auto next_start_hex = cr->Moving.StartHex;
         uint16 control_step_begin = 0;
@@ -3161,8 +3161,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
                 offset2.y += cr->Moving.EndHexOffset.y;
             }
 
-            const auto proj_oy = static_cast<float>(offset2.y) * Geometry.GetYProj();
-            const auto dist = std::sqrt(static_cast<float>(offset2.x * offset2.x) + proj_oy * proj_oy);
+            const auto proj_oy = static_cast<float32>(offset2.y) * Geometry.GetYProj();
+            const auto dist = std::sqrt(static_cast<float32>(offset2.x * offset2.x) + proj_oy * proj_oy);
 
             cr->Moving.WholeDist += dist;
             cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;

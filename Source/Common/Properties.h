@@ -253,8 +253,8 @@ private:
     bool _checkMaxValue {};
     int64 _minValueI {};
     int64 _maxValueI {};
-    double _minValueF {};
-    double _maxValueF {};
+    float64 _minValueF {};
+    float64 _maxValueF {};
     bool _isTemporary {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};

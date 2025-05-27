@@ -624,10 +624,10 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return true;
             }
 
-            // Try read as float
+            // Try read as float32
             if (base == 10) {
-                if (double fvalue; ConvertToNumber(sv, fvalue)) {
-                    value = static_cast<T>(std::clamp(fvalue, static_cast<double>(std::numeric_limits<T>::min()), static_cast<double>(std::numeric_limits<T>::max())));
+                if (float64 fvalue; ConvertToNumber(sv, fvalue)) {
+                    value = static_cast<T>(std::clamp(fvalue, static_cast<float64>(std::numeric_limits<T>::min()), static_cast<float64>(std::numeric_limits<T>::max())));
 
                     return true;
                 }
@@ -700,7 +700,7 @@ auto strex::isNumber() const noexcept -> bool
         return false;
     }
 
-    double value;
+    float64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
     ignore_unused(value);
 
@@ -751,21 +751,21 @@ auto strex::toInt64() const noexcept -> int64
     return success ? value : 0;
 }
 
-auto strex::toFloat() const noexcept -> float
+auto strex::toFloat() const noexcept -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    double value;
+    float64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? static_cast<float>(value) : 0.0f;
+    return success ? static_cast<float32>(value) : 0.0f;
 }
 
-auto strex::toDouble() const noexcept -> double
+auto strex::toDouble() const noexcept -> float64
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    double value;
+    float64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
     return success ? value : 0.0;

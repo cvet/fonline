@@ -737,7 +737,7 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const timespan target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<double>(_fixedFps) * 1000000.0)};
+        const timespan target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<float64>(_fixedFps) * 1000000.0)};
         const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
 
         if (idle_time > timespan::zero) {

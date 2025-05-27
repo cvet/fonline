@@ -58,7 +58,7 @@ struct TraceData
     mpos StartHex {};
     mpos TargetHex {};
     uint32 MaxDist {};
-    float Angle {};
+    float32 Angle {};
     Critter* FindCr {};
     CritterFindType FindType {};
 

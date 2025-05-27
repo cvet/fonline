@@ -821,7 +821,7 @@ static void* CopyObject(asITypeInfo* objType, int32 subTypeIndex, void* value)
         *static_cast<int32*>(ptr) = *static_cast<int32*>(value);
     }
     else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE) {
-        *static_cast<double*>(ptr) = *static_cast<double*>(value);
+        *static_cast<int64*>(ptr) = *static_cast<int64*>(value);
     }
 
     return ptr;
@@ -901,9 +901,9 @@ static bool Less(SDictCache* cache, int32 typeId, const void* a, const void* b)
         case asTYPEID_UINT64:
             return COMPARE(uint64);
         case asTYPEID_FLOAT:
-            return COMPARE(float);
+            return COMPARE(float32);
         case asTYPEID_DOUBLE:
-            return COMPARE(double);
+            return COMPARE(float64);
         default:
             return COMPARE(int32); // All enums fall in this case
 #undef COMPARE
@@ -969,9 +969,9 @@ static bool Equals(SDictCache* cache, int32 typeId, const void* a, const void* b
         case asTYPEID_UINT32:
             return COMPARE(uint32);
         case asTYPEID_FLOAT:
-            return COMPARE(float);
+            return COMPARE(float32);
         case asTYPEID_DOUBLE:
-            return COMPARE(double);
+            return COMPARE(float64);
         default:
             return COMPARE(int32); // All enums fall here
 #undef COMPARE

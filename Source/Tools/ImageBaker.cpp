@@ -1395,16 +1395,16 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
             throw ImageBakerException("Invalid SPR header", fname);
         }
 
-        const auto dimension_left = static_cast<float>(reader.GetUInt8()) * 6.7f;
-        const auto dimension_up = static_cast<float>(reader.GetUInt8()) * 7.6f;
+        const auto dimension_left = static_cast<float32>(reader.GetUInt8()) * 6.7f;
+        const auto dimension_up = static_cast<float32>(reader.GetUInt8()) * 7.6f;
         ignore_unused(dimension_up);
-        const auto dimension_right = static_cast<float>(reader.GetUInt8()) * 6.7f;
+        const auto dimension_right = static_cast<float32>(reader.GetUInt8()) * 6.7f;
         const auto center_x = static_cast<int32>(reader.GetLEUInt32());
         const auto center_y = static_cast<int32>(reader.GetLEUInt32());
         reader.GoForward(2); // uint16 unknown1  sometimes it is 0, and sometimes it is 3
         reader.GoForward(1); // CHAR unknown2  0x64, other values were not observed
 
-        auto ta = (127.0f / 2.0f) * std::numbers::pi_v<float> / 180.0f; // Tactics grid angle
+        auto ta = (127.0f / 2.0f) * DEG_TO_RAD_FLOAT; // Tactics grid angle
         auto center_x_ex = static_cast<int32>((dimension_left * sinf(ta) + dimension_right * sinf(ta)) / 2.0f - dimension_left * sinf(ta));
         auto center_y_ex = static_cast<int32>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
 

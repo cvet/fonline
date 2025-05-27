@@ -559,10 +559,10 @@ static int32 ScriptString_ToInt(const string& str, int32 defaultValue)
     return result;
 }
 
-static float ScriptString_ToFloat(const string& str, float defaultValue)
+static float32 ScriptString_ToFloat(const string& str, float32 defaultValue)
 {
     char* end_str = nullptr;
-    const auto result = static_cast<float>(std::strtod(str.c_str(), &end_str));
+    const auto result = static_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
@@ -584,10 +584,10 @@ static bool ScriptString_TryToInt(const string& str, int32& result)
     return true;
 }
 
-static bool ScriptString_TryToFloat(const string& str, float& result)
+static bool ScriptString_TryToFloat(const string& str, float32& result)
 {
     char* end_str = nullptr;
-    const auto result_ = static_cast<float>(std::strtod(str.c_str(), &end_str));
+    const auto result_ = static_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;

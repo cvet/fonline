@@ -307,7 +307,7 @@ FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos& pos)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float moveX, float moveY, float moveZ)
+FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float32 moveX, float32 moveY, float32 moveZ)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -332,7 +332,7 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float normalizedTime, CallbackFunc<CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32 normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 

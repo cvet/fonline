@@ -733,10 +733,10 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            return iround<int32>(GetValue<float>(prop));
+            return iround<int32>(GetValue<float32>(prop));
         }
         if (base_type_info.IsDoubleFloat) {
-            return iround<int32>(GetValue<double>(prop));
+            return iround<int32>(GetValue<float64>(prop));
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
@@ -797,10 +797,10 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            return any_t {strex("{}", GetValue<float>(prop))};
+            return any_t {strex("{}", GetValue<float32>(prop))};
         }
         if (base_type_info.IsDoubleFloat) {
-            return any_t {strex("{}", GetValue<double>(prop))};
+            return any_t {strex("{}", GetValue<float64>(prop))};
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
@@ -861,10 +861,10 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int32 value)
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            SetValue<float>(prop, numeric_cast<float>(value));
+            SetValue<float32>(prop, numeric_cast<float32>(value));
         }
         else if (base_type_info.IsDoubleFloat) {
-            SetValue<double>(prop, numeric_cast<double>(value));
+            SetValue<float64>(prop, numeric_cast<float64>(value));
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
@@ -926,10 +926,10 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            SetValue<float>(prop, strex(value).toFloat());
+            SetValue<float32>(prop, strex(value).toFloat());
         }
         else if (base_type_info.IsDoubleFloat) {
-            SetValue<double>(prop, strex(value).toDouble());
+            SetValue<float64>(prop, strex(value).toDouble());
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
@@ -1083,10 +1083,10 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            SetValue<float>(prop, numeric_cast<float>(value));
+            SetValue<float32>(prop, numeric_cast<float32>(value));
         }
         else if (base_type_info.IsDoubleFloat) {
-            SetValue<double>(prop, numeric_cast<double>(value));
+            SetValue<float64>(prop, numeric_cast<float64>(value));
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {

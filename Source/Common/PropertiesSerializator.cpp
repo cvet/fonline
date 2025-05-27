@@ -195,10 +195,10 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
             return numeric_cast<int64>(*reinterpret_cast<const uint32*>(pdata - base_type_info.Size));
         }
         else if (base_type_info.IsFloat) {
-            return numeric_cast<double>(*reinterpret_cast<const float*>(pdata - base_type_info.Size));
+            return numeric_cast<float64>(*reinterpret_cast<const float32*>(pdata - base_type_info.Size));
         }
         else if (base_type_info.IsDoubleFloat) {
-            return numeric_cast<double>(*reinterpret_cast<const double*>(pdata - base_type_info.Size));
+            return numeric_cast<float64>(*reinterpret_cast<const float64*>(pdata - base_type_info.Size));
         }
         else if (base_type_info.IsBool) {
             return *reinterpret_cast<const bool*>(pdata - base_type_info.Size);
@@ -316,10 +316,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                     return strex("{}", *reinterpret_cast<const uint32*>(p));
                 }
                 else if (dict_key_type_info.IsSingleFloat) {
-                    return strex("{}", *reinterpret_cast<const float*>(p));
+                    return strex("{}", *reinterpret_cast<const float32*>(p));
                 }
                 else if (dict_key_type_info.IsDoubleFloat) {
-                    return strex("{}", *reinterpret_cast<const double*>(p));
+                    return strex("{}", *reinterpret_cast<const float64*>(p));
                 }
                 else if (dict_key_type_info.IsBool) {
                     return strex("{}", *reinterpret_cast<const bool*>(p));
@@ -406,7 +406,7 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> const s
     case AnyData::ValueType::Bool:
         return buf = strex("{}", value.AsBool());
     default:
-        throw PropertySerializationException("Unable to convert not string, int32, float or bool value to string", value.Type());
+        throw PropertySerializationException("Unable to convert not string, int32, float32 or bool value to string", value.Type());
     }
 };
 
@@ -475,7 +475,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else {
-        throw PropertySerializationException("Wrong value type (not string, int, float or bool)", value.Type());
+        throw PropertySerializationException("Wrong value type (not string, int, float32 or bool)", value.Type());
     }
 }
 
@@ -541,10 +541,10 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
             ConvertToNumber(value, *reinterpret_cast<uint32*>(pdata));
         }
         else if (base_type_info.IsSingleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<float*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<float32*>(pdata));
         }
         else if (base_type_info.IsDoubleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<double*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<float64*>(pdata));
         }
         else if (base_type_info.IsBool) {
             ConvertToNumber(value, *reinterpret_cast<bool*>(pdata));
@@ -771,10 +771,10 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strex(dict_key).toInt64());
             }
             else if (dickt_key_type_info.IsSingleFloat) {
-                *reinterpret_cast<float*>(pdata) = numeric_cast<float>(strex(dict_key).toFloat());
+                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strex(dict_key).toFloat());
             }
             else if (dickt_key_type_info.IsDoubleFloat) {
-                *reinterpret_cast<double*>(pdata) = numeric_cast<double>(strex(dict_key).toDouble());
+                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strex(dict_key).toDouble());
             }
             else if (dickt_key_type_info.IsBool) {
                 *reinterpret_cast<bool*>(pdata) = strex(dict_key).toBool();

@@ -35,11 +35,6 @@
 
 FO_BEGIN_NAMESPACE();
 
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float> / 180.0f;
-
 GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     _settings {settings}
 {
@@ -269,14 +264,13 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const auto hx = static_cast<float>(x1);
-        const auto hy = static_cast<float>(y1);
-        const auto tx = static_cast<float>(x2);
-        const auto ty = static_cast<float>(y2);
+        const auto hx = static_cast<float32>(x1);
+        const auto hy = static_cast<float32>(y1);
+        const auto tx = static_cast<float32>(x2);
+        const auto ty = static_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx);
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx);
 
         if (dir >= 60.0f && dir < 120.0f) {
             return 5;
@@ -297,7 +291,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
         return 0;
     }
     else {
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1));
+        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(static_cast<float32>(x2 - x1), static_cast<float32>(y2 - y1));
 
         if (dir >= 22.5f && dir < 67.5f) {
             return 7;
@@ -325,18 +319,18 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
     }
 }
 
-auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float offset) -> uint8
+auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const auto hx = static_cast<float>(x1);
-        const auto hy = static_cast<float>(y1);
-        const auto tx = static_cast<float>(x2);
-        const auto ty = static_cast<float>(y2);
+        const auto hx = static_cast<float32>(x1);
+        const auto hy = static_cast<float32>(y1);
+        const auto tx = static_cast<float32>(x2);
+        const auto ty = static_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-        auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx) + offset;
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx) + offset;
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
@@ -364,7 +358,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float off
         return 0;
     }
     else {
-        auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1)) + offset;
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(static_cast<float32>(x2 - x1), static_cast<float32>(y2 - y1)) + offset;
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
@@ -406,25 +400,25 @@ auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex) -> uint8
     return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
-auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float offset) -> uint8
+auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
 }
 
-auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float
+auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto hx = static_cast<float>(x1);
-    const auto hy = static_cast<float>(y1);
-    const auto tx = static_cast<float>(x2);
-    const auto ty = static_cast<float>(y2);
+    const auto hx = static_cast<float32>(x1);
+    const auto hy = static_cast<float32>(y1);
+    const auto tx = static_cast<float32>(x2);
+    const auto ty = static_cast<float32>(y2);
     const auto nx = 3 * (tx - hx);
-    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(x2 % 2)) - static_cast<float>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
-    float r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
+    float32 r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
     FO_RUNTIME_ASSERT(r >= 0.0f);
     FO_RUNTIME_ASSERT(r <= 360.0f);
 
@@ -442,14 +436,14 @@ auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> floa
     return r;
 }
 
-auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float
+auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetDirAngle(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
-auto GeometryHelper::GetDirAngleDiff(float a1, float a2) -> float
+auto GeometryHelper::GetDirAngleDiff(float32 a1, float32 a2) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -460,7 +454,7 @@ auto GeometryHelper::GetDirAngleDiff(float a1, float a2) -> float
     return r;
 }
 
-auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) -> float
+auto GeometryHelper::GetDirAngleDiffSided(float32 a1, float32 a2) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -623,21 +617,21 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
     }
 }
 
-auto GeometryHelper::GetYProj() const -> float
+auto GeometryHelper::GetYProj() const -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
 }
 
-auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float
+auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto x1_f = static_cast<float>(x1);
-    const auto y1_f = static_cast<float>(y1) * GetYProj();
-    const auto x2_f = static_cast<float>(x2);
-    const auto y2_f = static_cast<float>(y2) * GetYProj();
+    const auto x1_f = static_cast<float32>(x1);
+    const auto y1_f = static_cast<float32>(y1) * GetYProj();
+    const auto x2_f = static_cast<float32>(x2);
+    const auto y2_f = static_cast<float32>(y2) * GetYProj();
 
     auto angle = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f);
 

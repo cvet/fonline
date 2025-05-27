@@ -67,7 +67,7 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::is_floating_point_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
-        entry += static_cast<float>(any_value.AsDouble());
+        entry += static_cast<float32>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
@@ -118,7 +118,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<float>(arr_entry.AsDouble()));
+            entry.emplace_back(static_cast<float32>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {

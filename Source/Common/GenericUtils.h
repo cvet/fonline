@@ -80,9 +80,9 @@ public:
     [[nodiscard]] static auto NumericalNumber(uint32 num) noexcept -> uint32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32;
+    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> uint32;
     [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
-    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos;
+    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
 
     static void SetRandomSeed(int32 seed);
     static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
@@ -93,8 +93,8 @@ class MatrixHelper final
 public:
     MatrixHelper() = delete;
 
-    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* winx, float* winy, float* winz) noexcept -> bool;
-    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* objx, float* objy, float* objz) noexcept -> bool;
+    static auto MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool;
+    static auto MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool;
 };
 
 class StreamCompressor final

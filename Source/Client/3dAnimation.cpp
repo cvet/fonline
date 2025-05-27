@@ -171,7 +171,7 @@ auto ModelAnimationController::GetTrackEnable(uint32 track) const noexcept -> bo
     return _tracks[track].Enabled;
 }
 
-auto ModelAnimationController::GetTrackPosition(uint32 track) const noexcept -> float
+auto ModelAnimationController::GetTrackPosition(uint32 track) const noexcept -> float32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -242,21 +242,21 @@ void ModelAnimationController::Reset()
     }
 }
 
-void ModelAnimationController::AddEventEnable(uint32 track, bool enable, float start_time)
+void ModelAnimationController::AddEventEnable(uint32 track, bool enable, float32 start_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
-void ModelAnimationController::AddEventSpeed(uint32 track, float speed, float start_time, float smooth_time)
+void ModelAnimationController::AddEventSpeed(uint32 track, float32 speed, float32 start_time, float32 smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(uint32 track, float weight, float start_time, float smooth_time)
+void ModelAnimationController::AddEventWeight(uint32 track, float32 weight, float32 start_time, float32 smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -270,7 +270,7 @@ void ModelAnimationController::SetTrackEnable(uint32 track, bool enable)
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(uint32 track, float position)
+void ModelAnimationController::SetTrackPosition(uint32 track, float32 position)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -284,7 +284,7 @@ void ModelAnimationController::SetInterpolation(bool enabled)
     _interpolationDisabled = !enabled;
 }
 
-void ModelAnimationController::AdvanceTime(float time)
+void ModelAnimationController::AdvanceTime(float32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -409,7 +409,7 @@ void ModelAnimationController::AdvanceTime(float time)
     }
 }
 
-void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float factor) const
+void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float32 factor) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -421,7 +421,7 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
     }
 }
 
-void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float factor) const
+void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32 factor) const
 {
     FO_STACK_TRACE_ENTRY();
 

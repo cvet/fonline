@@ -63,7 +63,7 @@ public:
             _value(value)
         {
         }
-        Value(double value) :
+        Value(float64 value) :
             _value(value)
         {
         }
@@ -96,7 +96,7 @@ public:
         [[nodiscard]] auto operator!=(const Value& other) const -> bool { return !(*this == other); }
         [[nodiscard]] auto Type() const noexcept -> ValueType { return static_cast<ValueType>(_value.index()); }
         [[nodiscard]] auto AsInt64() const -> int64 { return std::get<int64>(_value); }
-        [[nodiscard]] auto AsDouble() const -> double { return std::get<double>(_value); }
+        [[nodiscard]] auto AsDouble() const -> float64 { return std::get<float64>(_value); }
         [[nodiscard]] auto AsBool() const -> bool { return std::get<bool>(_value); }
         [[nodiscard]] auto AsString() const -> const string& { return std::get<string>(_value); }
         [[nodiscard]] auto AsArray() const -> const Array& { return *std::get<unique_ptr<Array>>(_value); }
@@ -104,7 +104,7 @@ public:
         [[nodiscard]] auto Copy() const -> Value;
 
     private:
-        std::variant<int64, double, bool, string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
+        std::variant<int64, float64, bool, string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
     };
 
     class Array

@@ -117,7 +117,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32 normalizedTime)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->GetAnim()->SetTime(normalizedTime);

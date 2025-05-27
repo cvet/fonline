@@ -194,23 +194,23 @@ TEST_CASE("StringUtils")
         CHECK(strex("9223372036854775806").toInt64() == (std::numeric_limits<int64>::max() - 1));
         CHECK_FALSE(strex("9223372036854775808").toInt64() == std::numeric_limits<int64>::max());
         CHECK_FALSE(strex("18446744073709551615").toInt64() == std::numeric_limits<int64>::max());
-        CHECK(strex("18446744073709551615").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max())); // Max 64bit 18446744073709551615
-        CHECK(strex("18446744073709551614").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max() - 1));
-        CHECK(strex("18446744073709551616").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex("184467440737095516546734734716").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex("18446744073709551615").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max())); // Max 64bit 18446744073709551615
+        CHECK(strex("18446744073709551614").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max() - 1));
+        CHECK(strex("18446744073709551616").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex("184467440737095516546734734716").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
         CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH + 1, '5')).toInt64() == 0);
 
         CHECK(is_float_equal(strex("455.6573").toFloat(), 455.6573f));
-        CHECK(is_float_equal(strex("0xFFFF").toFloat(), static_cast<float>(0xFFFF)));
-        CHECK(is_float_equal(strex("-0xFFFF").toFloat(), static_cast<float>(-0xFFFF)));
-        CHECK(is_float_equal(strex("0xFFFF.44").toFloat(), static_cast<float>(0)));
-        CHECK(is_float_equal(strex("f").toFloat(), static_cast<float>(0)));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float>::min()).toFloat(), std::numeric_limits<float>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float>::max()).toFloat(), std::numeric_limits<float>::max()));
+        CHECK(is_float_equal(strex("0xFFFF").toFloat(), numeric_cast<float32>(0xFFFF)));
+        CHECK(is_float_equal(strex("-0xFFFF").toFloat(), numeric_cast<float32>(-0xFFFF)));
+        CHECK(is_float_equal(strex("0xFFFF.44").toFloat(), numeric_cast<float32>(0)));
+        CHECK(is_float_equal(strex("f").toFloat(), numeric_cast<float32>(0)));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::min()).toFloat(), std::numeric_limits<float32>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::max()).toFloat(), std::numeric_limits<float32>::max()));
         CHECK(is_float_equal(strex("34567774455.65745678555").toDouble(), 34567774455.65745678555));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<double>::min()).toDouble(), std::numeric_limits<double>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<double>::max()).toDouble(), std::numeric_limits<double>::max()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::min()).toDouble(), std::numeric_limits<float64>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::max()).toDouble(), std::numeric_limits<float64>::max()));
 
         CHECK(strex(" true ").toBool() == true);
         CHECK(strex(" 1 ").toBool() == true);

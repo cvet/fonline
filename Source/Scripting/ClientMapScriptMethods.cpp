@@ -296,7 +296,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, uint32 dist, CritterFindType findType)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -313,7 +313,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, uint32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -330,7 +330,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float angle, uint32 dist)
+FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float32 angle, uint32 dist)
 {
     if (!self->GetSize().IsValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -499,14 +499,14 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, uint32 sp
         self->FindSetCenter(hex);
     }
     else {
-        self->ScrollToHex(hex, numeric_cast<float>(speed) / 1000.0f, canStop);
+        self->ScrollToHex(hex, numeric_cast<float32>(speed) / 1000.0f, canStop);
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos offset, uint32 speed, bool canStop)
 {
-    self->ScrollOffset(offset, numeric_cast<float>(speed) / 1000.0f, canStop);
+    self->ScrollOffset(offset, numeric_cast<float32>(speed) / 1000.0f, canStop);
 }
 
 ///@ ExportMethod
@@ -594,7 +594,7 @@ FO_SCRIPT_API void Client_Map_RedrawMap(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float targetZoom)
+FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
 {
     if (is_float_equal(targetZoom, self->GetSpritesZoom())) {
         return;
@@ -643,8 +643,8 @@ FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& scr
     screenPos = self->GetHexPosition(hex);
     screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
     screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
-    screenPos.x = iround<int32>(numeric_cast<float>(screenPos.x) / self->GetSpritesZoom());
-    screenPos.y = iround<int32>(numeric_cast<float>(screenPos.y) / self->GetSpritesZoom());
+    screenPos.x = iround<int32>(numeric_cast<float32>(screenPos.x) / self->GetSpritesZoom());
+    screenPos.y = iround<int32>(numeric_cast<float32>(screenPos.y) / self->GetSpritesZoom());
 }
 
 ///@ ExportMethod

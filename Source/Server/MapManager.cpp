@@ -907,14 +907,14 @@ label_FindOk:
     raw_steps.resize(numindex - 1);
 
     // Smooth data
-    float base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
+    float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
 
     while (numindex > 1) {
         numindex--;
 
         const auto find_path_grid = [this, &map_size, &input, base_angle, &raw_steps, &numindex](mpos& hex) -> bool {
             int32 best_step_dir = -1;
-            float best_step_angle_diff = 0.0f;
+            float32 best_step_angle_diff = 0.0f;
 
             const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos step_raw_hex) {
                 if (!map_size.IsValidPos(step_raw_hex)) {
@@ -927,8 +927,8 @@ label_FindOk:
                     return;
                 }
 
-                const float angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
-                const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+                const float32 angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
+                const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
                 if (best_step_dir == -1 || numindex == 0) {
                     best_step_dir = dir;

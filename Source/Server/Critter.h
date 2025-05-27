@@ -248,8 +248,8 @@ public:
         timespan OffsetTime {};
         mpos StartHex {};
         mpos EndHex {};
-        float WholeTime {};
-        float WholeDist {};
+        float32 WholeTime {};
+        float32 WholeDist {};
         ipos16 StartHexOffset {};
         ipos16 EndHexOffset {};
     } Moving {};

@@ -263,17 +263,17 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint64);
             }},
-        {"float",
+        {"float32",
             [](BaseTypeInfo& info) {
                 info.IsFloat = true;
                 info.IsSingleFloat = true;
-                info.Size = sizeof(float);
+                info.Size = sizeof(float32);
             }},
-        {"double",
+        {"float64",
             [](BaseTypeInfo& info) {
                 info.IsFloat = true;
                 info.IsDoubleFloat = true;
-                info.Size = sizeof(double);
+                info.Size = sizeof(float64);
             }},
         {"bool",
             [](BaseTypeInfo& info) {

@@ -440,7 +440,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return nullptr;
 }
 
-auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 

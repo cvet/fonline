@@ -327,12 +327,12 @@ void CritterHexView::AnimateStay()
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         const auto scale_factor = GetScaleFactor();
-        const auto scale = scale_factor != 0 ? static_cast<float>(scale_factor) / 1000.0f : 1.0f;
+        const auto scale = scale_factor != 0 ? static_cast<float32>(scale_factor) / 1000.0f : 1.0f;
 
         _model->SetScale(scale, scale, scale);
 
         if (IsMoving()) {
-            _model->SetMoving(true, iround<int32>(static_cast<float>(Moving.Speed) / scale));
+            _model->SetMoving(true, iround<int32>(static_cast<float32>(Moving.Speed) / scale));
             action_anim = _model->GetMovingAnim();
         }
         else {
@@ -598,7 +598,7 @@ void CritterHexView::Process()
 
         const auto dist = GenericUtils::DistSqrt({0, 0}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
         const auto dist_div = dist / 10;
-        const auto mul = std::max(static_cast<float>(dist_div), 1.0f);
+        const auto mul = std::max(static_cast<float32>(dist_div), 1.0f);
 
         _offsExt.x += _offsExtSpeed.x * mul;
         _offsExt.y += _offsExtSpeed.y * mul;
@@ -701,7 +701,7 @@ void CritterHexView::ProcessMoving()
         return;
     }
 
-    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).to_ms<float>() / Moving.WholeTime;
+    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).to_ms<float32>() / Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = Moving.WholeDist * normalized_time;
@@ -732,8 +732,8 @@ void CritterHexView::ProcessMoving()
             oy += Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * _engine->Geometry.GetYProj();
-        auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = static_cast<float32>(oy) * _engine->Geometry.GetYProj();
+        auto dist = std::sqrt(static_cast<float32>(ox * ox) + proj_oy * proj_oy);
         if (dist < 0.0001f) {
             dist = 0.0001f;
         }
@@ -746,7 +746,7 @@ void CritterHexView::ProcessMoving()
             }
 
             // Evaluate current hex
-            const auto step_index_f = std::round(normalized_dist * static_cast<float>(Moving.ControlSteps[i] - control_step_begin));
+            const auto step_index_f = std::round(normalized_dist * static_cast<float32>(Moving.ControlSteps[i] - control_step_begin));
             const auto step_index = control_step_begin + static_cast<int32>(step_index_f);
             FO_RUNTIME_ASSERT(step_index >= control_step_begin);
             FO_RUNTIME_ASSERT(step_index <= Moving.ControlSteps[i]);
@@ -773,12 +773,12 @@ void CritterHexView::ProcessMoving()
                 cr_oy -= Moving.StartHexOffset.y;
             }
 
-            const auto lerp = [](int32 a, int32 b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
+            const auto lerp = [](int32 a, int32 b, float32 t) { return static_cast<float32>(a) * (1.0f - t) + static_cast<float32>(b) * t; };
 
             auto mx = lerp(0, ox, normalized_dist);
             auto my = lerp(0, oy, normalized_dist);
-            mx -= static_cast<float>(cr_ox);
-            my -= static_cast<float>(cr_oy);
+            mx -= static_cast<float32>(cr_ox);
+            my -= static_cast<float32>(cr_oy);
 
             const auto mxi = static_cast<int16>(iround<int32>(mx));
             const auto myi = static_cast<int16>(iround<int32>(my));
@@ -874,8 +874,8 @@ void CritterHexView::AddExtraOffs(ipos offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _offsExt.x += static_cast<float>(offset.x);
-    _offsExt.y += static_cast<float>(offset.y);
+    _offsExt.x += static_cast<float32>(offset.x);
+    _offsExt.y += static_cast<float32>(offset.y);
 
     _offsExtSpeed = GenericUtils::GetStepsCoords({}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
     _offsExtSpeed.x = -_offsExtSpeed.x;
@@ -906,8 +906,8 @@ auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
     if (IsSpriteValid()) {
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
-        const int32 x = iround<int32>(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
-        const int32 y = iround<int32>(static_cast<float>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
+        const int32 x = iround<int32>(static_cast<float32>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
+        const int32 y = iround<int32>(static_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
 
         pos = {x, y};
         return true;

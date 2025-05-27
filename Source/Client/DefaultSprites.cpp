@@ -241,11 +241,11 @@ void SpriteSheet::Prewarm()
     RefreshParams();
 }
 
-void SpriteSheet::SetTime(float normalized_time)
+void SpriteSheet::SetTime(float32 normalized_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curIndex = CntFrm > 1 ? iround<int32>(normalized_time * static_cast<float>(CntFrm - 1)) : 0;
+    _curIndex = CntFrm > 1 ? iround<int32>(normalized_time * static_cast<float32>(CntFrm - 1)) : 0;
 
     RefreshParams();
 }
@@ -544,10 +544,10 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
     // Set parameters
     atlas_spr->Atlas = atlas;
     atlas_spr->AtlasNode = atlas_node;
-    atlas_spr->AtlasRect.Left = static_cast<float>(pos.x) / static_cast<float>(atlas->Size.width);
-    atlas_spr->AtlasRect.Top = static_cast<float>(pos.y) / static_cast<float>(atlas->Size.height);
-    atlas_spr->AtlasRect.Right = static_cast<float>(pos.x + size.width) / static_cast<float>(atlas->Size.width);
-    atlas_spr->AtlasRect.Bottom = static_cast<float>(pos.y + size.height) / static_cast<float>(atlas->Size.height);
+    atlas_spr->AtlasRect.Left = static_cast<float32>(pos.x) / static_cast<float32>(atlas->Size.width);
+    atlas_spr->AtlasRect.Top = static_cast<float32>(pos.y) / static_cast<float32>(atlas->Size.height);
+    atlas_spr->AtlasRect.Right = static_cast<float32>(pos.x + size.width) / static_cast<float32>(atlas->Size.width);
+    atlas_spr->AtlasRect.Bottom = static_cast<float32>(pos.y + size.height) / static_cast<float32>(atlas->Size.height);
 }
 
 FO_END_NAMESPACE();

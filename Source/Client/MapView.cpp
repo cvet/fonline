@@ -81,8 +81,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     SetSpritesZoom(1.0f);
 
-    _rtScreenOx = iround<int32>(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
-    _rtScreenOy = iround<int32>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
+    _rtScreenOx = iround<int32>(std::ceil(static_cast<float32>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
+    _rtScreenOy = iround<int32>(std::ceil(static_cast<float32>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
     _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {_rtScreenOx * 2, _rtScreenOy * 2}, false);
     _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
@@ -103,8 +103,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     if (_picHexMask) {
         const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
         FO_RUNTIME_ASSERT(atlas_spr);
-        const auto mask_x = iround<int32>(static_cast<float>(atlas_spr->Atlas->MainTex->Size.width) * atlas_spr->AtlasRect.Left);
-        const auto mask_y = iround<int32>(static_cast<float>(atlas_spr->Atlas->MainTex->Size.height) * atlas_spr->AtlasRect.Top);
+        const auto mask_x = iround<int32>(static_cast<float32>(atlas_spr->Atlas->MainTex->Size.width) * atlas_spr->AtlasRect.Left);
+        const auto mask_y = iround<int32>(static_cast<float32>(atlas_spr->Atlas->MainTex->Size.height) * atlas_spr->AtlasRect.Top);
         _picHexMaskData = atlas_spr->Atlas->MainTex->GetTextureRegion({mask_x, mask_y}, atlas_spr->Size);
     }
 
@@ -447,8 +447,8 @@ auto MapView::GetViewSize() const -> isize
     FO_STACK_TRACE_ENTRY();
 
     const auto& settings = _engine->Settings;
-    const auto width = iround<int32>(static_cast<float>(settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) != 0 ? 1 : 0)) * GetSpritesZoom());
-    const auto height = iround<int32>(static_cast<float>((settings.ScreenHeight - settings.ScreenHudHeight) / settings.MapHexLineHeight + (((settings.ScreenHeight - settings.ScreenHudHeight) % settings.MapHexLineHeight) != 0 ? 1 : 0)) * GetSpritesZoom());
+    const auto width = iround<int32>(static_cast<float32>(settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) != 0 ? 1 : 0)) * GetSpritesZoom());
+    const auto height = iround<int32>(static_cast<float32>((settings.ScreenHeight - settings.ScreenHudHeight) / settings.MapHexLineHeight + (((settings.ScreenHeight - settings.ScreenHudHeight) % settings.MapHexLineHeight) != 0 ? 1 : 0)) * GetSpritesZoom());
 
     return {width, height};
 }
@@ -968,10 +968,10 @@ void MapView::DrawCursor(const Sprite* spr)
     }
 
     const auto spr_zoom = GetSpritesZoom();
-    const int32 x = iround<int32>(static_cast<float>(_cursorX + _engine->Settings.ScreenOffset.x) / spr_zoom);
-    const int32 y = iround<int32>(static_cast<float>(_cursorY + _engine->Settings.ScreenOffset.y) / spr_zoom);
-    const int32 w = iround<int32>(static_cast<float>(spr->Size.width) / spr_zoom);
-    const int32 h = iround<int32>(static_cast<float>(spr->Size.height) / spr_zoom);
+    const int32 x = iround<int32>(static_cast<float32>(_cursorX + _engine->Settings.ScreenOffset.x) / spr_zoom);
+    const int32 y = iround<int32>(static_cast<float32>(_cursorY + _engine->Settings.ScreenOffset.y) / spr_zoom);
+    const int32 w = iround<int32>(static_cast<float32>(spr->Size.width) / spr_zoom);
+    const int32 h = iround<int32>(static_cast<float32>(spr->Size.height) / spr_zoom);
 
     _engine->SprMngr.DrawSpriteSize(spr, {x, y}, {w, h}, true, false, COLOR_SPRITE);
 }
@@ -985,10 +985,10 @@ void MapView::DrawCursor(string_view text)
     }
 
     const auto spr_zoom = GetSpritesZoom();
-    const auto x = iround<int32>(static_cast<float>(_cursorX + _engine->Settings.ScreenOffset.x) / spr_zoom);
-    const auto y = iround<int32>(static_cast<float>(_cursorY + _engine->Settings.ScreenOffset.y) / spr_zoom);
-    const auto width = iround<int32>(static_cast<float>(_engine->Settings.MapHexWidth) / spr_zoom);
-    const auto height = iround<int32>(static_cast<float>(_engine->Settings.MapHexHeight) / spr_zoom);
+    const auto x = iround<int32>(static_cast<float32>(_cursorX + _engine->Settings.ScreenOffset.x) / spr_zoom);
+    const auto y = iround<int32>(static_cast<float32>(_cursorY + _engine->Settings.ScreenOffset.y) / spr_zoom);
+    const auto width = iround<int32>(static_cast<float32>(_engine->Settings.MapHexWidth) / spr_zoom);
+    const auto height = iround<int32>(static_cast<float32>(_engine->Settings.MapHexHeight) / spr_zoom);
 
     _engine->SprMngr.DrawText({x, y, width, height}, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, -1);
 }
@@ -1544,7 +1544,7 @@ void MapView::ProcessLighting()
         const auto prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
-            const auto elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float>(std::chrono::milliseconds {200});
+            const auto elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32>(std::chrono::milliseconds {200});
 
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
@@ -1618,7 +1618,7 @@ void MapView::ProcessLighting()
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
         const auto zoom = GetSpritesZoom();
-        const auto offset = fpos {static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy)};
+        const auto offset = fpos {static_cast<float32>(_rtScreenOx), static_cast<float32>(_rtScreenOy)};
 
         for (auto& points : _lightPoints) {
             if (!points.empty()) {
@@ -1843,7 +1843,7 @@ void MapView::ApplyLightFan(LightSource* ls)
                 bool use_offsets = false;
 
                 if (ipos {traced_hex.x, traced_hex.y} != raw_traced_hex) {
-                    traced_alpha = static_cast<uint8>(lerp(static_cast<int32>(center_alpha), 0, static_cast<float>(GeometryHelper::DistGame(center_hex, traced_hex)) / static_cast<float>(distance)));
+                    traced_alpha = static_cast<uint8>(lerp(static_cast<int32>(center_alpha), 0, static_cast<float32>(GeometryHelper::DistGame(center_hex, traced_hex)) / static_cast<float32>(distance)));
 
                     if (traced_hex == center_hex) {
                         use_offsets = true;
@@ -1914,8 +1914,8 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, uint3
     const auto sx1_f = base_sx;
     const auto sy1_f = base_sy;
 
-    auto curx1_f = static_cast<float>(from_hex.x);
-    auto cury1_f = static_cast<float>(from_hex.y);
+    auto curx1_f = static_cast<float32>(from_hex.x);
+    auto cury1_f = static_cast<float32>(from_hex.y);
     auto curx1_i = static_cast<int32>(from_hex.x);
     auto cury1_i = static_cast<int32>(from_hex.y);
 
@@ -1932,12 +1932,12 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, uint3
 
         // Casts
         curx1_i = iround<int32>(curx1_f);
-        if (curx1_f - static_cast<float>(curx1_i) >= 0.5f) {
+        if (curx1_f - static_cast<float32>(curx1_i) >= 0.5f) {
             curx1_i++;
         }
 
         cury1_i = iround<int32>(cury1_f);
-        if (cury1_f - static_cast<float>(cury1_i) >= 0.5f) {
+        if (cury1_f - static_cast<float32>(cury1_i) >= 0.5f) {
             cury1_i++;
         }
 
@@ -2201,8 +2201,8 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
             soft_points.emplace_back(PrimitivePoint {cur.PointPos, cur.PointColor, cur.PointOffset, cur.PPointColor});
 
             const auto dist_comp = GenericUtils::DistSqrt(center_pos, cur.PointPos) > GenericUtils::DistSqrt(center_pos, next.PointPos);
-            const auto x = static_cast<float>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
-            const auto y = static_cast<float>(dist_comp ? next.PointPos.y - cur.PointPos.y : cur.PointPos.y - next.PointPos.y);
+            const auto x = static_cast<float32>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
+            const auto y = static_cast<float32>(dist_comp ? next.PointPos.y - cur.PointPos.y : cur.PointPos.y - next.PointPos.y);
             const auto changed_xy = GenericUtils::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
@@ -2266,8 +2266,8 @@ auto MapView::IsVisible(const Sprite* spr, ipos offset) const -> bool
     const auto bottom = offset.y + spr->Offset.y + _engine->Settings.MapHexLineHeight * 2;
     const auto left = offset.x + spr->Offset.x - spr->Size.width / 2 - _engine->Settings.MapHexWidth;
     const auto right = offset.x + spr->Offset.x + spr->Size.width / 2 + _engine->Settings.MapHexWidth;
-    const auto zoomed_screen_height = iround<int32>(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * GetSpritesZoom()));
-    const auto zoomed_screen_width = iround<int32>(std::ceil(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
+    const auto zoomed_screen_height = iround<int32>(std::ceil(static_cast<float32>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * GetSpritesZoom()));
+    const auto zoomed_screen_width = iround<int32>(std::ceil(static_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
 
     return top <= zoomed_screen_height && bottom >= 0 && left <= zoomed_screen_width && right >= 0;
 }
@@ -2533,7 +2533,7 @@ void MapView::InitView(ipos screen_raw_hex)
         const auto xa = -(_wRight * _engine->Settings.MapHexWidth);
         const auto xb = -(_engine->Settings.MapHexWidth / 2) - (_wRight * _engine->Settings.MapHexWidth);
         auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
-        const auto wx = iround<int32>(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
+        const auto wx = iround<int32>(static_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
         for (auto yv = 0; yv < _hVisible; yv++) {
             auto hx = screen_raw_hex.x + yv / 2 + std::abs(yv % 2);
@@ -2547,7 +2547,7 @@ void MapView::InitView(ipos screen_raw_hex)
             for (auto xv = 0; xv < _wVisible; xv++) {
                 auto& vf = _viewField[yv * _wVisible + xv];
                 vf.Offset = {wx - ox, oy};
-                vf.Offsetf = {static_cast<float>(vf.Offset.x), static_cast<float>(vf.Offset.y)};
+                vf.Offsetf = {static_cast<float32>(vf.Offset.x), static_cast<float32>(vf.Offset.y)};
                 vf.RawHex = {hx, hy};
 
                 if ((hx % 2) != 0) {
@@ -2572,7 +2572,7 @@ void MapView::InitView(ipos screen_raw_hex)
         auto xa = -_engine->Settings.MapHexWidth * _wRight;
         auto xb = -_engine->Settings.MapHexWidth * _wRight - _engine->Settings.MapHexWidth / 2;
         auto y = -_engine->Settings.MapHexLineHeight * _hTop;
-        const auto wx = iround<int32>(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
+        const auto wx = iround<int32>(static_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
         // Initialize field
         for (auto j = 0; j < _hVisible; j++) {
@@ -2583,7 +2583,7 @@ void MapView::InitView(ipos screen_raw_hex)
             for (auto i = 0; i < _wVisible; i++) {
                 const auto vpos = y2 + i;
                 _viewField[vpos].Offset = {wx - x, y};
-                _viewField[vpos].Offsetf = {static_cast<float>(_viewField[vpos].Offset.x), static_cast<float>(_viewField[vpos].Offset.y)};
+                _viewField[vpos].Offsetf = {static_cast<float32>(_viewField[vpos].Offset.x), static_cast<float32>(_viewField[vpos].Offset.y)};
                 _viewField[vpos].RawHex = {hx, hy};
 
                 hx++;
@@ -2694,7 +2694,7 @@ void MapView::ChangeZoom(int32 zoom)
 
     if (zoom != 0 || GetSpritesZoom() < 1.0f) {
         const auto old_zoom = GetSpritesZoom();
-        const auto width = static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0));
+        const auto width = static_cast<float32>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0));
         SetSpritesZoom((width * GetSpritesZoom() + (zoom >= 0 ? 2.0f : -2.0f)) / width);
 
         if (GetSpritesZoom() < std::max(_engine->Settings.SpritesZoomMin, MIN_ZOOM) || GetSpritesZoom() > std::min(_engine->Settings.SpritesZoomMax, MAX_ZOOM)) {
@@ -2746,8 +2746,8 @@ void MapView::DrawMap()
     PrepareFogToDraw();
 
     // Prerendered offsets
-    const auto ox = _rtScreenOx - iround<int32>(static_cast<float>(_engine->Settings.ScreenOffset.x) / GetSpritesZoom());
-    const auto oy = _rtScreenOy - iround<int32>(static_cast<float>(_engine->Settings.ScreenOffset.y) / GetSpritesZoom());
+    const auto ox = _rtScreenOx - iround<int32>(static_cast<float32>(_engine->Settings.ScreenOffset.x) / GetSpritesZoom());
+    const auto oy = _rtScreenOy - iround<int32>(static_cast<float32>(_engine->Settings.ScreenOffset.y) / GetSpritesZoom());
     const auto prerendered_rect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + (_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight));
 
     // Separate render target
@@ -2939,8 +2939,8 @@ void MapView::PrepareFogToDraw()
             _fogLastOffset = *_fogOffset;
         }
 
-        const float zoom = GetSpritesZoom();
-        const auto offset = fpos {static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy)};
+        const float32 zoom = GetSpritesZoom();
+        const auto offset = fpos {static_cast<float32>(_rtScreenOx), static_cast<float32>(_rtScreenOy)};
 
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
@@ -2966,7 +2966,7 @@ auto MapView::Scroll() -> bool
     FO_STACK_TRACE_ENTRY();
 
     // Scroll delay
-    float time_k = 1.0f;
+    float32 time_k = 1.0f;
 
     if (_engine->Settings.ScrollDelay != 0) {
         const auto time = _engine->GameTime.GetFrameTime();
@@ -2975,7 +2975,7 @@ auto MapView::Scroll() -> bool
             return false;
         }
 
-        time_k = (time - _scrollLastTime).to_ms<float>() / static_cast<float>(_engine->Settings.ScrollDelay);
+        time_k = (time - _scrollLastTime).to_ms<float32>() / static_cast<float32>(_engine->Settings.ScrollDelay);
         _scrollLastTime = time;
     }
 
@@ -3020,25 +3020,25 @@ auto MapView::Scroll() -> bool
 
         if (xscroll > _engine->Settings.MapHexWidth) {
             xscroll = _engine->Settings.MapHexWidth;
-            AutoScroll.OffsetStep.x = static_cast<float>(_engine->Settings.MapHexWidth);
+            AutoScroll.OffsetStep.x = static_cast<float32>(_engine->Settings.MapHexWidth);
         }
         if (xscroll < -_engine->Settings.MapHexWidth) {
             xscroll = -_engine->Settings.MapHexWidth;
-            AutoScroll.OffsetStep.x = -static_cast<float>(_engine->Settings.MapHexWidth);
+            AutoScroll.OffsetStep.x = -static_cast<float32>(_engine->Settings.MapHexWidth);
         }
         if (yscroll > _engine->Settings.MapHexLineHeight * 2) {
             yscroll = _engine->Settings.MapHexLineHeight * 2;
-            AutoScroll.OffsetStep.y = static_cast<float>(_engine->Settings.MapHexLineHeight * 2);
+            AutoScroll.OffsetStep.y = static_cast<float32>(_engine->Settings.MapHexLineHeight * 2);
         }
         if (yscroll < -_engine->Settings.MapHexLineHeight * 2) {
             yscroll = -_engine->Settings.MapHexLineHeight * 2;
-            AutoScroll.OffsetStep.y = -static_cast<float>(_engine->Settings.MapHexLineHeight * 2);
+            AutoScroll.OffsetStep.y = -static_cast<float32>(_engine->Settings.MapHexLineHeight * 2);
         }
 
-        AutoScroll.Offset.x -= static_cast<float>(xscroll);
-        AutoScroll.Offset.y -= static_cast<float>(yscroll);
-        AutoScroll.OffsetStep.x -= static_cast<float>(xscroll);
-        AutoScroll.OffsetStep.y -= static_cast<float>(yscroll);
+        AutoScroll.Offset.x -= static_cast<float32>(xscroll);
+        AutoScroll.Offset.y -= static_cast<float32>(yscroll);
+        AutoScroll.OffsetStep.x -= static_cast<float32>(xscroll);
+        AutoScroll.OffsetStep.y -= static_cast<float32>(yscroll);
 
         if (xscroll == 0 && yscroll == 0) {
             return false;
@@ -3070,8 +3070,8 @@ auto MapView::Scroll() -> bool
             return false;
         }
 
-        xscroll = iround<int32>(static_cast<float>(xscroll * _engine->Settings.ScrollStep) * GetSpritesZoom() * time_k);
-        yscroll = iround<int32>(static_cast<float>(yscroll * (_engine->Settings.ScrollStep * (_engine->Settings.MapHexLineHeight * 2) / _engine->Settings.MapHexWidth)) * GetSpritesZoom() * time_k);
+        xscroll = iround<int32>(static_cast<float32>(xscroll * _engine->Settings.ScrollStep) * GetSpritesZoom() * time_k);
+        yscroll = iround<int32>(static_cast<float32>(yscroll * (_engine->Settings.ScrollStep * (_engine->Settings.MapHexLineHeight * 2) / _engine->Settings.MapHexWidth)) * GetSpritesZoom() * time_k);
     }
 
     scr_ox += xscroll;
@@ -3295,7 +3295,7 @@ auto MapView::ScrollCheck(int32 xmod, int32 ymod) const -> bool
     return false;
 }
 
-void MapView::ScrollToHex(mpos hex, float speed, bool can_stop)
+void MapView::ScrollToHex(mpos hex, float32 speed, bool can_stop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3305,7 +3305,7 @@ void MapView::ScrollToHex(mpos hex, float speed, bool can_stop)
     ScrollOffset(hex_offset, speed, can_stop);
 }
 
-void MapView::ScrollOffset(ipos offset, float speed, bool can_stop)
+void MapView::ScrollOffset(ipos offset, float32 speed, bool can_stop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3317,8 +3317,8 @@ void MapView::ScrollOffset(ipos offset, float speed, bool can_stop)
 
     AutoScroll.CanStop = can_stop;
     AutoScroll.Speed = speed;
-    AutoScroll.Offset.x += -static_cast<float>(offset.x);
-    AutoScroll.Offset.y += -static_cast<float>(offset.y);
+    AutoScroll.Offset.x += -static_cast<float32>(offset.x);
+    AutoScroll.Offset.y += -static_cast<float32>(offset.y);
 }
 
 void MapView::AddCritterToField(CritterHexView* cr)
@@ -3629,18 +3629,18 @@ auto MapView::GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float spr_zoom = GetSpritesZoom();
-    const float xf = static_cast<float>(pos.x) - static_cast<float>(_engine->Settings.ScreenOffset.x) / spr_zoom;
-    const float yf = static_cast<float>(pos.y) - static_cast<float>(_engine->Settings.ScreenOffset.y) / spr_zoom;
-    const float ox = static_cast<float>(_engine->Settings.MapHexWidth) / spr_zoom;
-    const float oy = static_cast<float>(_engine->Settings.MapHexHeight) / spr_zoom;
+    const float32 spr_zoom = GetSpritesZoom();
+    const float32 xf = static_cast<float32>(pos.x) - static_cast<float32>(_engine->Settings.ScreenOffset.x) / spr_zoom;
+    const float32 yf = static_cast<float32>(pos.y) - static_cast<float32>(_engine->Settings.ScreenOffset.y) / spr_zoom;
+    const float32 ox = static_cast<float32>(_engine->Settings.MapHexWidth) / spr_zoom;
+    const float32 oy = static_cast<float32>(_engine->Settings.MapHexHeight) / spr_zoom;
     int32 y2 = 0;
 
     for (int32 vf_y = 0; vf_y < _hVisible; vf_y++) {
         for (int32 vf_x = 0; vf_x < _wVisible; vf_x++) {
             const int32 vf_index = y2 + vf_x;
-            const float vf_ox = _viewField[vf_index].Offsetf.x / spr_zoom;
-            const float vf_oy = _viewField[vf_index].Offsetf.y / spr_zoom;
+            const float32 vf_ox = _viewField[vf_index].Offsetf.x / spr_zoom;
+            const float32 vf_oy = _viewField[vf_index].Offsetf.y / spr_zoom;
 
             if (xf >= vf_ox && xf < vf_ox + ox && yf >= vf_oy && yf < vf_oy + oy) {
                 ipos raw_hex = _viewField[vf_index].RawHex;
@@ -3701,10 +3701,10 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int32 extra_range, bo
         const auto hex = item->GetHex();
         const auto& field = _hexField->GetCellForReading(hex);
         const auto spr_zoom = GetSpritesZoom();
-        const auto l = iround<int32>(static_cast<float>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScreenOffset.x - spr->Size.width / 2) / spr_zoom) - extra_range;
-        const auto r = iround<int32>(static_cast<float>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScreenOffset.x + spr->Size.width / 2) / spr_zoom) + extra_range;
-        const auto t = iround<int32>(static_cast<float>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScreenOffset.y - spr->Size.height) / spr_zoom) - extra_range;
-        const auto b = iround<int32>(static_cast<float>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScreenOffset.y) / spr_zoom) + extra_range;
+        const auto l = iround<int32>(static_cast<float32>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScreenOffset.x - spr->Size.width / 2) / spr_zoom) - extra_range;
+        const auto r = iround<int32>(static_cast<float32>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScreenOffset.x + spr->Size.width / 2) / spr_zoom) + extra_range;
+        const auto t = iround<int32>(static_cast<float32>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScreenOffset.y - spr->Size.height) / spr_zoom) - extra_range;
+        const auto b = iround<int32>(static_cast<float32>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScreenOffset.y) / spr_zoom) + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
@@ -3769,16 +3769,16 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int32
         }
 
         const auto rect = cr->GetViewRect();
-        const auto l = iround<int32>(static_cast<float>(rect.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) - extra_range;
-        const auto r = iround<int32>(static_cast<float>(rect.Right + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) + extra_range;
-        const auto t = iround<int32>(static_cast<float>(rect.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) - extra_range;
-        const auto b = iround<int32>(static_cast<float>(rect.Bottom + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) + extra_range;
+        const auto l = iround<int32>(static_cast<float32>(rect.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) - extra_range;
+        const auto r = iround<int32>(static_cast<float32>(rect.Right + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) + extra_range;
+        const auto t = iround<int32>(static_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) - extra_range;
+        const auto b = iround<int32>(static_cast<float32>(rect.Bottom + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) + extra_range;
 
         if (pos.x >= l && pos.x <= r && pos.y >= t && pos.y <= b) {
             if (check_transparent) {
                 const auto rect_draw = cr->GetSprite()->GetDrawRect();
-                const auto l_draw = iround<int32>(static_cast<float>(rect_draw.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom());
-                const auto t_draw = iround<int32>(static_cast<float>(rect_draw.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom());
+                const auto l_draw = iround<int32>(static_cast<float32>(rect_draw.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom());
+                const auto t_draw = iround<int32>(static_cast<float32>(rect_draw.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom());
 
                 if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - l_draw, pos.y - t_draw}, true)) {
                     critters.emplace_back(cr.get());
@@ -3976,22 +3976,22 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     vector<uint8> raw_steps;
     raw_steps.resize(numindex - 1);
 
-    float base_angle = GeometryHelper::GetDirAngle(target_hex, start_hex);
+    float32 base_angle = GeometryHelper::GetDirAngle(target_hex, start_hex);
 
     // From end
     while (numindex > 1) {
         numindex--;
 
         int32 best_step_dir = -1;
-        float best_step_angle_diff = 0.0f;
+        float32 best_step_angle_diff = 0.0f;
 
         const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, &grid_at, start_hex, base_angle, this](uint8 dir, ipos raw_step_hex) {
             if (_mapSize.IsValidPos(raw_step_hex)) {
                 const auto step_hex = _mapSize.FromRawPos(raw_step_hex);
 
                 if (grid_at(step_hex) == numindex) {
-                    const float angle = GeometryHelper::GetDirAngle(step_hex, start_hex);
-                    const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+                    const float32 angle = GeometryHelper::GetDirAngle(step_hex, start_hex);
+                    const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
                     if (best_step_dir == -1 || numindex == 0) {
                         best_step_dir = dir;
@@ -4238,7 +4238,7 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& d
     return true;
 }
 
-void MapView::TraceBullet(mpos start_hex, mpos target_hex, uint32 dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks)
+void MapView::TraceBullet(mpos start_hex, mpos target_hex, uint32 dist, float32 angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks)
 {
     FO_STACK_TRACE_ENTRY();
 

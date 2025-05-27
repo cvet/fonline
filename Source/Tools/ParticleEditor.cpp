@@ -183,14 +183,14 @@ void ParticleEditor::OnDraw()
 
     auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
 
-    if (ImGui::BeginChild("Info", {0.0f, static_cast<float>(draw_height + 120)})) {
+    if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", static_cast<double>(_impl->Particle->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", numeric_cast<float64>(_impl->Particle->GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
@@ -237,8 +237,8 @@ void ParticleEditor::OnDraw()
         _impl->Particle->Respawn();
     }
 
-    const auto frame_width = static_cast<float>(draw_width);
-    const auto frame_height = static_cast<float>(draw_height);
+    const auto frame_width = static_cast<float32>(draw_width);
+    const auto frame_height = static_cast<float32>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
     const auto proj_height = frame_height * (1.0f / _editor.Settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
@@ -287,7 +287,7 @@ void ParticleEditor::OnDraw()
 
 #define DRAW_SPK_FLOAT(label, get, set) \
     do { \
-        float val = obj->get(); \
+        float32 val = obj->get(); \
         Changed |= ImGui::InputFloat(label, &val); \
         obj->set(val); \
     } while (0)
@@ -307,8 +307,8 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_FLOAT_FLOAT(label1, label2, get1, get2, set) \
     do { \
-        float val1 = obj->get1(); \
-        float val2 = obj->get2(); \
+        float32 val1 = obj->get1(); \
+        float32 val2 = obj->get2(); \
         Changed |= ImGui::InputFloat(label1, &val1); \
         Changed |= ImGui::InputFloat(label2, &val2); \
         obj->set(val1, val2); \
@@ -329,7 +329,7 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_FLOAT_BOOL(label1, label2, get1, get2, set) \
     do { \
-        float val1 = obj->get1(); \
+        float32 val1 = obj->get1(); \
         bool val2 = obj->get2(); \
         Changed |= ImGui::InputFloat(label1, &val1); \
         Changed |= ImGui::Checkbox(label2, &val2); \
@@ -337,14 +337,14 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_VECTOR(label, get, set) \
     do { \
-        float val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
+        float32 val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
         Changed |= ImGui::InputFloat3(label, val); \
         obj->set(SPK::Vector3D(val[0], val[1], val[2])); \
     } while (0)
 #define DRAW_SPK_VECTOR_VECTOR(label1, label2, get1, get2, set) \
     do { \
-        float val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
-        float val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
+        float32 val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
+        float32 val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
         Changed |= ImGui::InputFloat3(label1, val1); \
         Changed |= ImGui::InputFloat3(label2, val2); \
         obj->set(SPK::Vector3D(val1[0], val1[1], val1[2]), SPK::Vector3D(val2[0], val2[1], val2[2])); \
@@ -494,8 +494,8 @@ void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transforma
             ImGui::PopStyleColor();
         }
 
-        Changed |= ImGui::InputFloat3("Position", const_cast<float*>(&obj->getTransform().getLocal()[12]));
-        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float*>(&obj->getTransform().getLocal()[4]));
+        Changed |= ImGui::InputFloat3("Position", const_cast<float32*>(&obj->getTransform().getLocal()[12]));
+        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32*>(&obj->getTransform().getLocal()[4]));
 
         if (ImGui::Button("Fix transform")) {
             Changed |= true;
@@ -747,8 +747,8 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
             string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
             if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                ImGui::InputFloat("Start", const_cast<float*>(&entry.y0));
-                ImGui::InputFloat("End", const_cast<float*>(&entry.y1));
+                ImGui::InputFloat("Start", const_cast<float32*>(&entry.y0));
+                ImGui::InputFloat("End", const_cast<float32*>(&entry.y1));
 
                 ImGui::TreePop();
             }
@@ -771,7 +771,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
         }
 
         if (AddingMode) {
-            static float x = 0.0f;
+            static float32 x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
                 obj->addEntry(x, 0.0f, 0.0f);
@@ -838,7 +838,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
         }
 
         if (AddingMode) {
-            static float x = 0.0f;
+            static float32 x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
                 obj->addEntry(x, SPK::Color(), SPK::Color());
@@ -1260,11 +1260,11 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
     const char* items3[] = {"LOCK_LOOK", "LOCK_UP"};
     DRAW_SPK_COMBO_COMBO_COMBO("LookOrientation", "UpOrientation", "LockedAxis", getLookOrientation, getUpOrientation, getLockedAxis, setOrientation);
 
-    float look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
+    float32 look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
     Changed |= ImGui::InputFloat3("LookVector", look);
     obj->lookVector = SPK::Vector3D(look[0], look[1], look[2]);
 
-    float up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
+    float32 up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
     Changed |= ImGui::InputFloat3("UpVector", up);
     obj->upVector = SPK::Vector3D(up[0], up[1], up[2]);
 }

@@ -141,8 +141,8 @@ public:
     [[nodiscard]] auto toInt() const noexcept -> int32;
     [[nodiscard]] auto toUInt() const noexcept -> uint32;
     [[nodiscard]] auto toInt64() const noexcept -> int64;
-    [[nodiscard]] auto toFloat() const noexcept -> float;
-    [[nodiscard]] auto toDouble() const noexcept -> double;
+    [[nodiscard]] auto toFloat() const noexcept -> float32;
+    [[nodiscard]] auto toDouble() const noexcept -> float64;
     [[nodiscard]] auto toBool() const noexcept -> bool;
 
     [[nodiscard]] auto split(char delimiter) const -> vector<string>;

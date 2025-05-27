@@ -85,8 +85,8 @@ static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto screen_x = iround<int32>(static_cast<float>(pos.x - vp.Left) / static_cast<float>(vp.Width()) * static_cast<float>(App->Settings.ScreenWidth));
-    const auto screen_y = iround<int32>(static_cast<float>(pos.y - vp.Top) / static_cast<float>(vp.Height()) * static_cast<float>(App->Settings.ScreenHeight));
+    const auto screen_x = iround<int32>(static_cast<float32>(pos.x - vp.Left) / static_cast<float32>(vp.Width()) * static_cast<float32>(App->Settings.ScreenWidth));
+    const auto screen_y = iround<int32>(static_cast<float32>(pos.y - vp.Top) / static_cast<float32>(vp.Height()) * static_cast<float32>(App->Settings.ScreenHeight));
 
     return {screen_x, screen_y};
 }
@@ -95,8 +95,8 @@ static auto ScreenPosToWindowPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto win_x = vp.Left + iround<int32>(static_cast<float>(pos.x) / static_cast<float>(App->Settings.ScreenWidth) * static_cast<float>(vp.Width()));
-    const auto win_y = vp.Top + iround<int32>(static_cast<float>(pos.y) / static_cast<float>(App->Settings.ScreenHeight) * static_cast<float>(vp.Height()));
+    const auto win_x = vp.Left + iround<int32>(static_cast<float32>(pos.x) / static_cast<float32>(App->Settings.ScreenWidth) * static_cast<float32>(vp.Width()));
+    const auto win_y = vp.Top + iround<int32>(static_cast<float32>(pos.y) / static_cast<float32>(App->Settings.ScreenHeight) * static_cast<float32>(vp.Height()));
 
     return {win_x, win_y};
 }
@@ -496,9 +496,9 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
             Settings.ScreenWidth = std::max(display_mode->w, display_mode->h);
             Settings.ScreenHeight = std::min(display_mode->w, display_mode->h);
 
-            const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
+            const auto ratio = static_cast<float32>(Settings.ScreenWidth) / static_cast<float32>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
-            Settings.ScreenWidth = iround<int32>(static_cast<float>(Settings.ScreenHeight) * ratio);
+            Settings.ScreenWidth = iround<int32>(static_cast<float32>(Settings.ScreenHeight) * ratio);
 
             Settings.Fullscreen = true;
         }
@@ -774,13 +774,13 @@ void Application::BeginFrame()
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
-            const auto x_ratio = static_cast<float>(App->Settings.ScreenWidth) / static_cast<float>(vp.Width());
-            const auto y_ratio = static_cast<float>(App->Settings.ScreenHeight) / static_cast<float>(vp.Height());
+            const auto x_ratio = static_cast<float32>(App->Settings.ScreenWidth) / static_cast<float32>(vp.Width());
+            const auto y_ratio = static_cast<float32>(App->Settings.ScreenHeight) / static_cast<float32>(vp.Height());
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
             EventsQueue->emplace_back(ev);
 
-            io.AddMousePosEvent(static_cast<float>(ev.MouseX), static_cast<float>(ev.MouseY));
+            io.AddMousePosEvent(static_cast<float32>(ev.MouseX), static_cast<float32>(ev.MouseY));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
@@ -832,8 +832,8 @@ void Application::BeginFrame()
             ev.Delta = iround<int32>(sdl_event.wheel.y);
             EventsQueue->emplace_back(ev);
 
-            float wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
-            float wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
+            float32 wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
+            float32 wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_EVENT_KEY_UP:
@@ -969,18 +969,18 @@ void Application::BeginFrame()
 
     // Setup display size
     if (ActiveRendererType != RenderType::Null) {
-        io.DisplaySize = ImVec2(static_cast<float>(App->Settings.ScreenWidth), static_cast<float>(App->Settings.ScreenHeight));
+        io.DisplaySize = ImVec2(static_cast<float32>(App->Settings.ScreenWidth), static_cast<float32>(App->Settings.ScreenHeight));
     }
 
     // Setup time step
     uint64 cur_time = SDL_GetPerformanceCounter();
-    io.DeltaTime = static_cast<float>(static_cast<double>(cur_time - _time) / static_cast<double>(_timeFrequency));
+    io.DeltaTime = static_cast<float32>(static_cast<float64>(cur_time - _time) / static_cast<float64>(_timeFrequency));
     _time = cur_time;
 
     // Mouse state
     if (ActiveRendererType != RenderType::Null) {
         if (_pendingMouseLeaveFrame != 0 && _pendingMouseLeaveFrame >= ImGui::GetFrameCount() && _mouseButtonsDown == 0) {
-            io.AddMousePosEvent(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+            io.AddMousePosEvent(-std::numeric_limits<float32>::max(), -std::numeric_limits<float32>::max());
             _pendingMouseLeaveFrame = 0;
         }
 
@@ -998,8 +998,8 @@ void Application::BeginFrame()
             }
 
             if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
-                float mouse_x_global;
-                float mouse_y_global;
+                float32 mouse_x_global;
+                float32 mouse_y_global;
                 SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
 
                 int32 window_x;
@@ -1007,7 +1007,7 @@ void Application::BeginFrame()
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
 
                 const auto screen_pos = WindowPosToScreenPos({iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
-                io.AddMousePosEvent(static_cast<float>(screen_pos.x), static_cast<float>(screen_pos.y));
+                io.AddMousePosEvent(static_cast<float32>(screen_pos.x), static_cast<float32>(screen_pos.y));
             }
         }
     }
@@ -1364,7 +1364,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
-auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1386,8 +1386,8 @@ auto AppInput::GetMousePosition() const -> ipos
 {
     FO_STACK_TRACE_ENTRY();
 
-    float x = 100;
-    float y = 100;
+    float32 x = 100;
+    float32 y = 100;
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
@@ -1410,10 +1410,10 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
         if (relative_to != nullptr) {
             pos = ScreenPosToWindowPos(pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), static_cast<float>(pos.x), static_cast<float>(pos.y));
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), static_cast<float32>(pos.x), static_cast<float32>(pos.y));
         }
         else {
-            SDL_WarpMouseGlobal(static_cast<float>(pos.x), static_cast<float>(pos.y));
+            SDL_WarpMouseGlobal(static_cast<float32>(pos.x), static_cast<float32>(pos.y));
         }
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
@@ -1531,7 +1531,7 @@ void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volum
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    const float vlume_01 = static_cast<float>(std::clamp(volume, 0, 100)) / 100.0f;
+    const float32 vlume_01 = static_cast<float32>(std::clamp(volume, 0, 100)) / 100.0f;
     SDL_MixAudio(output, buf, AudioSpec.format, static_cast<Uint32>(len), vlume_01);
 }
 

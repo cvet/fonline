@@ -458,22 +458,22 @@ auto GenericUtils::GetColorDay(const vector<int32>& day_time, const vector<uint8
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) noexcept -> uint32
+auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto dx = pos1.x - pos2.x;
     const auto dy = pos1.y - pos2.y;
 
-    return static_cast<uint32>(iround<int32>(std::sqrt(static_cast<double>(dx * dx + dy * dy))));
+    return numeric_cast<uint32>(iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy))));
 }
 
 auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dx = numeric_cast<float>(std::abs(to_pos.x - from_pos.x));
-    const auto dy = numeric_cast<float>(std::abs(to_pos.y - from_pos.y));
+    const auto dx = numeric_cast<float32>(std::abs(to_pos.x - from_pos.x));
+    const auto dy = numeric_cast<float32>(std::abs(to_pos.y - from_pos.y));
 
     auto sx = 1.0f;
     auto sy = 1.0f;
@@ -490,32 +490,32 @@ auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
     return {sx, sy};
 }
 
-auto GenericUtils::ChangeStepsCoords(fpos pos, float deq) noexcept -> fpos
+auto GenericUtils::ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto rad = deq * std::numbers::pi_v<float> / 180.0f;
+    const auto rad = deq * DEG_TO_RAD_FLOAT;
     const auto x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
     const auto y = pos.x * std::sin(rad) + pos.y * std::cos(rad);
 
     return {x, y};
 }
 
-static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept;
-static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept;
-static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool;
+static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept;
+static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept;
+static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool;
 
-auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* winx, float* winy, float* winz) noexcept -> bool
+auto MatrixHelper::MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float in[4];
+    float32 in[4];
     in[0] = objx;
     in[1] = objy;
     in[2] = objz;
     in[3] = 1.0f;
 
-    float out[4];
+    float32 out[4];
     MultMatrixVecf(model_matrix, in, out);
     MultMatrixVecf(proj_matrix, out, in);
 
@@ -531,8 +531,8 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     in[1] = in[1] * 0.5f + 0.5f;
     in[2] = in[2] * 0.5f + 0.5f;
 
-    in[0] = in[0] * numeric_cast<float>(viewport[2] + viewport[0]);
-    in[1] = in[1] * numeric_cast<float>(viewport[3] + viewport[1]);
+    in[0] = in[0] * numeric_cast<float32>(viewport[2] + viewport[0]);
+    in[1] = in[1] * numeric_cast<float32>(viewport[3] + viewport[1]);
 
     *winx = in[0];
     *winy = in[1];
@@ -541,31 +541,31 @@ auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float
     return true;
 }
 
-auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int32 viewport[4], float* objx, float* objy, float* objz) noexcept -> bool
+auto MatrixHelper::MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float final_matrix[16];
+    float32 final_matrix[16];
     MultMatricesf(model_matrix, proj_matrix, final_matrix);
 
     if (!InvertMatrixf(final_matrix, final_matrix)) {
         return false;
     }
 
-    float in[4];
+    float32 in[4];
     in[0] = winx;
     in[1] = winy;
     in[2] = winz;
     in[3] = 1.0f;
 
-    in[0] = (in[0] - numeric_cast<float>(viewport[0])) / numeric_cast<float>(viewport[2]);
-    in[1] = (in[1] - numeric_cast<float>(viewport[1])) / numeric_cast<float>(viewport[3]);
+    in[0] = (in[0] - numeric_cast<float32>(viewport[0])) / numeric_cast<float32>(viewport[2]);
+    in[1] = (in[1] - numeric_cast<float32>(viewport[1])) / numeric_cast<float32>(viewport[3]);
 
     in[0] = in[0] * 2 - 1;
     in[1] = in[1] * 2 - 1;
     in[2] = in[2] * 2 - 1;
 
-    float out[4];
+    float32 out[4];
     MultMatrixVecf(final_matrix, in, out);
 
     if (out[3] == 0.0f) {
@@ -582,7 +582,7 @@ auto MatrixHelper::MatrixUnproject(float winx, float winy, float winz, const flo
     return true;
 }
 
-static void MultMatricesf(const float a[16], const float b[16], float r[16]) noexcept
+static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -593,7 +593,7 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16]) noe
     }
 }
 
-static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]) noexcept
+static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -602,11 +602,11 @@ static void MultMatrixVecf(const float matrix[16], const float in[4], float out[
     }
 }
 
-static auto InvertMatrixf(const float m[16], float inv_out[16]) noexcept -> bool
+static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float inv[16];
+    float32 inv[16];
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
     inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
     inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];

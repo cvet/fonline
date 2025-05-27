@@ -402,9 +402,9 @@ protected:
 
     vector<ScreenFadingData> _screenFadingEffects {};
 
-    float _quakeScreenOffsX {};
-    float _quakeScreenOffsY {};
-    float _quakeScreenOffsStep {};
+    float32 _quakeScreenOffsX {};
+    float32 _quakeScreenOffsY {};
+    float32 _quakeScreenOffsStep {};
     nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};

@@ -165,11 +165,11 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
 {
     FO_STACK_TRACE_ENTRY();
 
-    _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
+    _moveTransitionTime = static_cast<float32>(_settings.Animation3dSmoothTime) / 1000.0f;
     _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
     if (_settings.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32>(1000.0f / static_cast<float>(_settings.Animation3dFPS));
+        _animUpdateThreshold = iround<int32>(1000.0f / static_cast<float32>(_settings.Animation3dFPS));
     }
 
     _headBone = GetBoneHashedString(settings.HeadBone);
@@ -402,7 +402,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    mat44::RotationX(_modelMngr._settings.MapCameraAngle * std::numbers::pi_v<float> / 180.0f, _matRot);
+    mat44::RotationX(_modelMngr._settings.MapCameraAngle * DEG_TO_RAD_FLOAT, _matRot);
     _forceDraw = true;
     _lastDrawTime = GetTime();
     SetupFrame(_modelInfo->_drawSize);
@@ -414,8 +414,8 @@ void ModelInstance::SetupFrame(isize draw_size)
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
     // Projection
-    const auto frame_ratio = static_cast<float>(_frameSize.width) / static_cast<float>(_frameSize.height);
-    const auto proj_height = static_cast<float>(_frameSize.height) * (1.0f / _modelMngr._settings.ModelProjFactor);
+    const auto frame_ratio = numeric_cast<float32>(_frameSize.width) / numeric_cast<float32>(_frameSize.height);
+    const auto proj_height = numeric_cast<float32>(_frameSize.height) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
@@ -423,25 +423,25 @@ void ModelInstance::SetupFrame(isize draw_size)
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 pos) const noexcept -> ipos
+auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos
 {
     FO_STACK_TRACE_ENTRY();
 
     const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out;
     MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
-    return {iround<int32>(out.x / static_cast<float>(FRAME_SCALE)), iround<int32>(out.y / static_cast<float>(FRAME_SCALE))};
+    return {iround<int32>(out.x / const_numeric_cast<float32>(FRAME_SCALE)), iround<int32>(out.y / const_numeric_cast<float32>(FRAME_SCALE))};
 }
 
-auto ModelInstance::Convert2dTo3d(ipos pos) const noexcept -> vec3
+auto ModelInstance::Convert2dTo3d(ipos pos) const -> vec3
 {
     FO_STACK_TRACE_ENTRY();
 
     const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    const auto xf = static_cast<float>(pos.x) * static_cast<float>(FRAME_SCALE);
-    const auto yf = static_cast<float>(pos.y) * static_cast<float>(FRAME_SCALE);
+    const auto xf = numeric_cast<float32>(pos.x) * numeric_cast<float32>(FRAME_SCALE);
+    const auto yf = numeric_cast<float32>(pos.y) * numeric_cast<float32>(FRAME_SCALE);
     vec3 out;
-    MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    MatrixHelper::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -490,14 +490,14 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     // Get animation index
     const uint32 anim_pair = (static_cast<uint32>(state_anim) << 16) | static_cast<uint32>(action_anim);
-    float speed = 1.0f;
+    float32 speed = 1.0f;
     int32 index = 0;
-    float period_proc = 0.0f;
+    float32 period_proc = 0.0f;
 
     if (!IsBitSet(flags, ANIMATION_INIT)) {
         if (state_anim == CritterStateAnim::None) {
             index = numeric_cast<int32>(_modelInfo->_renderAnim);
-            period_proc = static_cast<float>(action_anim) / 10.0f;
+            period_proc = static_cast<float32>(action_anim) / 10.0f;
         }
         else {
             index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
@@ -505,7 +505,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     if (IsBitSet(flags, ANIMATION_PERIOD(0))) {
-        period_proc = static_cast<float>(flags >> 16);
+        period_proc = static_cast<float32>(flags >> 16);
     }
 
     period_proc = std::clamp(period_proc, 0.0f, 99.9f);
@@ -528,7 +528,8 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     // Check for change
-    auto layer_changed = IsBitSet(flags, ANIMATION_INIT);
+    bool layer_changed = IsBitSet(flags, ANIMATION_INIT);
+
     if (!layer_changed) {
         for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
             if (new_layers[i] != _currentLayers[i]) {
@@ -545,7 +546,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     MemCopy(_currentLayers, new_layers, sizeof(_currentLayers));
 
-    auto mesh_changed = false;
+    bool mesh_changed = false;
     vector<hstring> fast_transition_bones;
 
     if (layer_changed) {
@@ -764,6 +765,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         const uint32 new_track = (_currentTrack == 0 ? 1 : 0);
         auto period = set->GetDuration();
         _animPosPeriod = period;
+
         if (IsBitSet(flags, ANIMATION_INIT)) {
             period = 0.0002f;
         }
@@ -782,6 +784,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         // Smooth time
         const auto smooth_time = IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime;
         const auto start_time = period * period_proc / 100.0f;
+
         if (IsBitSet(flags, ANIMATION_STAY)) {
             period = start_time + 0.0002f;
         }
@@ -795,9 +798,11 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackPosition(new_track, 0.0f);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
+
         if (IsBitSet(flags, ANIMATION_ONE_TIME | ANIMATION_STAY | ANIMATION_INIT)) {
             _bodyAnimController->AddEventSpeed(new_track, 0.0f, period - 0.0001f, 0.0f);
         }
+
         _bodyAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
 
         _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
@@ -860,11 +865,11 @@ void ModelInstance::SetMoving(bool enabled, int32 speed)
     if (_isMoving) {
         if (speed < _modelMngr._settings.RunAnimStartSpeed) {
             _isRunning = false;
-            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(_modelMngr._settings.WalkAnimBaseSpeed);
+            _movingSpeedFactor = static_cast<float32>(speed) / static_cast<float32>(_modelMngr._settings.WalkAnimBaseSpeed);
         }
         else {
             _isRunning = true;
-            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(_modelMngr._settings.RunAnimBaseSpeed);
+            _movingSpeedFactor = static_cast<float32>(speed) / static_cast<float32>(_modelMngr._settings.RunAnimBaseSpeed);
         }
     }
 
@@ -935,7 +940,7 @@ void ModelInstance::RefreshMoveAnimation()
         }
     }
 
-    float speed = 1.0f;
+    float32 speed = 1.0f;
     const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
 
     if (index == _curMovingAnimIndex) {
@@ -949,7 +954,7 @@ void ModelInstance::RefreshMoveAnimation()
         speed *= _movingSpeedFactor;
     }
 
-    constexpr float smooth_time = 0.0001f;
+    constexpr float32 smooth_time = 0.0001f;
 
     if (index != -1) {
         const auto* anim_set = _moveAnimController->GetAnimationSet(index);
@@ -1019,7 +1024,7 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
     return GetTime() < _endTime;
 }
 
-auto ModelInstance::GetRenderFramesData() const -> tuple<float, int32, int32, int32>
+auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, int32>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1051,15 +1056,15 @@ auto ModelInstance::GetViewSize() const noexcept -> isize
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto draw_width_scale = numeric_cast<float>(_frameSize.width / FRAME_SCALE) / numeric_cast<float>(_modelInfo->_drawSize.width);
-    const auto draw_height_scale = numeric_cast<float>(_frameSize.height / FRAME_SCALE) / numeric_cast<float>(_modelInfo->_drawSize.height);
-    const auto view_width = iround<int32>(numeric_cast<float>(_modelInfo->_viewSize.width) * draw_width_scale);
-    const auto view_height = iround<int32>(numeric_cast<float>(_modelInfo->_viewSize.height) * draw_height_scale);
+    const auto draw_width_scale = numeric_cast<float32>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32>(_modelInfo->_drawSize.width);
+    const auto draw_height_scale = numeric_cast<float32>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32>(_modelInfo->_drawSize.height);
+    const auto view_width = iround<int32>(numeric_cast<float32>(_modelInfo->_viewSize.width) * draw_width_scale);
+    const auto view_height = iround<int32>(numeric_cast<float32>(_modelInfo->_viewSize.height) * draw_height_scale);
 
     return {view_width, view_height};
 }
 
-auto ModelInstance::GetSpeed() const -> float
+auto ModelInstance::GetSpeed() const -> float32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1095,13 +1100,13 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
         _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, 1.0f, data.ScaleZ), mat_tmp);
     }
     if (data.RotX != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationX(-data.RotX * std::numbers::pi_v<float> / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationX(-data.RotX * DEG_TO_RAD_FLOAT, mat_tmp);
     }
     if (data.RotY != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationY(data.RotY * std::numbers::pi_v<float> / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationY(data.RotY * DEG_TO_RAD_FLOAT, mat_tmp);
     }
     if (data.RotZ != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationZ(data.RotZ * std::numbers::pi_v<float> / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationZ(data.RotZ * DEG_TO_RAD_FLOAT, mat_tmp);
     }
     if (data.MoveX != 0.0f) {
         _matTransBase = _matTransBase * mat44::Translation(vec3(data.MoveX, 0.0f, 0.0f), mat_tmp);
@@ -1232,7 +1237,7 @@ void ModelInstance::SetLookDirAngle(int32 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = static_cast<float>(180 - dir_angle);
+    const auto new_angle = static_cast<float32>(180 - dir_angle);
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
@@ -1249,7 +1254,7 @@ void ModelInstance::SetMoveDirAngle(int32 dir_angle, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = static_cast<float>(180 - dir_angle);
+    const auto new_angle = static_cast<float32>(180 - dir_angle);
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
@@ -1266,7 +1271,7 @@ void ModelInstance::SetMoveDirAngle(int32 dir_angle, bool smooth_rotation)
     }
 }
 
-void ModelInstance::SetRotation(float rx, float ry, float rz)
+void ModelInstance::SetRotation(float32 rx, float32 ry, float32 rz)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1280,14 +1285,14 @@ void ModelInstance::SetRotation(float rx, float ry, float rz)
     _matRot = mx * my * mz;
 }
 
-void ModelInstance::SetScale(float sx, float sy, float sz)
+void ModelInstance::SetScale(float32 sx, float32 sy, float32 sz)
 {
     FO_STACK_TRACE_ENTRY();
 
     mat44::Scaling(vec3(sx, sy, sz), _matScale);
 }
 
-void ModelInstance::SetSpeed(float speed)
+void ModelInstance::SetSpeed(float32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1428,7 +1433,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         }
 
         // Add bones matrices offset
-        const auto bone_index_offset = static_cast<float>(combined_mesh->CurBoneMatrix);
+        const auto bone_index_offset = static_cast<float32>(combined_mesh->CurBoneMatrix);
         const auto start_vertex = vertices.size() - mesh_data->Vertices.size();
         for (auto i = start_vertex, j = vertices.size(); i < j; i++) {
             for (auto& blend_index : vertices[i].BlendIndices) {
@@ -1499,11 +1504,11 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
 // -1 - inside
 // 0 - outside
 // 1 - one point
-static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float r, Vertex3D& in) -> int32
+static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float32 r, Vertex3D& in) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto sq = [](float f) -> float { return f * f; };
+    auto sq = [](float32 f) -> float32 { return f * f; };
     const auto a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
     const auto b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
     const auto c = sq(sp.x) + sq(sp.y) + sq(sp.z) + sq(p1.Position.x) + sq(p1.Position.y) + sq(p1.Position.z) - 2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - sq(r);
@@ -1706,18 +1711,18 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     if (cut->UnskinBone1 && cut->UnskinBone2) {
         // Find unskin bones
         ModelBone* unskin_bone1 = nullptr;
-        float unskin_bone1_index = 0.0f;
+        float32 unskin_bone1_index = 0.0f;
         ModelBone* unskin_bone2 = nullptr;
-        float unskin_bone2_index = 0.0f;
+        float32 unskin_bone2_index = 0.0f;
 
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone1) {
                 unskin_bone1 = combined_mesh->SkinBones[i];
-                unskin_bone1_index = static_cast<float>(i);
+                unskin_bone1_index = static_cast<float32>(i);
             }
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone2) {
                 unskin_bone2 = combined_mesh->SkinBones[i];
-                unskin_bone2_index = static_cast<float>(i);
+                unskin_bone2_index = static_cast<float32>(i);
             }
             if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
                 break;
@@ -1815,7 +1820,7 @@ void ModelInstance::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float>();
+    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32>();
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -1823,7 +1828,7 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameSize.width / FRAME_SCALE;
     const auto h = _frameSize.height / FRAME_SCALE;
-    ProcessAnimation(dt, {w / 2, h - h / 4}, static_cast<float>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, static_cast<float32>(FRAME_SCALE));
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
@@ -1834,7 +1839,7 @@ void ModelInstance::Draw()
     DrawAllParticles();
 }
 
-void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
+void ModelInstance::ProcessAnimation(float32 elapsed, ipos pos, float32 scale)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1845,7 +1850,7 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
         mat44 mat_scale;
         mat44 mat_trans;
         mat44::Scaling(vec3(scale, scale, scale), mat_scale);
-        mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * std::numbers::pi_v<float> / 180.0f, mat_rot_y);
+        mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, mat_rot_y);
         mat44::Translation(pos3d, mat_trans);
 
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
@@ -1861,8 +1866,8 @@ void ModelInstance::ProcessAnimation(float elapsed, ipos pos, float scale)
     }
 
     // Advance animation time
-    float prev_track_pos = 0.0f;
-    float new_track_pos = 0.0f;
+    float32 prev_track_pos = 0.0f;
+    float32 new_track_pos = 0.0f;
 
     if (_bodyAnimController && elapsed >= 0.0f) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
@@ -1955,12 +1960,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * std::numbers::pi_v<float> / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * std::numbers::pi_v<float> / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -1980,7 +1985,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
+    MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float32));
 
     effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -1992,16 +1997,16 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         m.Transpose(); // Convert to column major order
-        MemCopy(wm, m[0], 16 * sizeof(float));
+        MemCopy(wm, m[0], 16 * sizeof(float32));
         wm += 16;
     }
 
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
-    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float));
+    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float32));
     model_buf->GroundPosition[3] = 0.0f;
 
-    MemCopy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
+    MemCopy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float32));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2009,8 +2014,8 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i] != nullptr) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
-                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32));
+                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float32)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float32));
             }
             else {
                 effect->ModelTex[i] = nullptr;
@@ -2808,7 +2813,7 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int32
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed, bool combat_first) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2849,7 +2854,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     return index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int32
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2938,8 +2943,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
         shape.IsSphere = false;
 
         // Calculate bounding box size
-        float vmin[3];
-        float vmax[3];
+        float32 vmin[3];
+        float32 vmax[3];
 
         for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++) {
             const Vertex3D& v = mesh->Vertices[i];

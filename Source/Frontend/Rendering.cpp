@@ -68,7 +68,7 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
     return nullptr;
 }
 
-auto Null_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -146,7 +146,7 @@ void Null_Renderer::OnResizeWindow(isize size)
 
 RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
     Size {size},
-    SizeData {numeric_cast<float>(size.width), numeric_cast<float>(size.height), 1.0f / numeric_cast<float>(size.width), 1.0f / numeric_cast<float>(size.height)},
+    SizeData {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height), 1.0f / numeric_cast<float32>(size.width), 1.0f / numeric_cast<float32>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {

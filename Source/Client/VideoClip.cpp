@@ -247,8 +247,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Calculate next frame
-    const double cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<double>() / 1000.0;
-    const int32 new_frame = iround<int32>(cur_second * numeric_cast<double>(_impl->VideoInfo.fps_numerator) / numeric_cast<double>(_impl->VideoInfo.fps_denominator));
+    const float64 cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<float64>() / 1000.0;
+    const int32 new_frame = iround<int32>(cur_second * numeric_cast<float64>(_impl->VideoInfo.fps_numerator) / numeric_cast<float64>(_impl->VideoInfo.fps_denominator));
     const int32 next_frame_diff = new_frame - _impl->CurFrame;
 
     if (next_frame_diff <= 0) {
@@ -330,9 +330,9 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             const uint8 cv = cbuf[2].data[y / dj * cbuf[2].stride + x / di];
 
             // YUV to RGB
-            const float cr = static_cast<float>(cy) + 1.402f * static_cast<float>(cv - 127);
-            const float cg = static_cast<float>(cy) - 0.344f * static_cast<float>(cu - 127) - 0.714f * static_cast<float>(cv - 127);
-            const float cb = static_cast<float>(cy) + 1.722f * static_cast<float>(cu - 127);
+            const float32 cr = static_cast<float32>(cy) + 1.402f * static_cast<float32>(cv - 127);
+            const float32 cg = static_cast<float32>(cy) - 0.344f * static_cast<float32>(cu - 127) - 0.714f * static_cast<float32>(cv - 127);
+            const float32 cb = static_cast<float32>(cy) + 1.722f * static_cast<float32>(cu - 127);
 
             auto* data = reinterpret_cast<uint8*>(_impl->RenderedTextureData.data()) + (y * w * 4 + x * 4);
             data[0] = static_cast<uint8>(cr);
@@ -346,7 +346,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     const auto frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds {0}) {
-        _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<double>() / 2.0)};
+        _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<float64>() / 2.0)};
     }
     else {
         _impl->AverageRenderTime = frame_render_duration;

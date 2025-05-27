@@ -51,8 +51,8 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<uint16>("uint16");
     MapEnginePlainType<uint32>("uint32");
     MapEnginePlainType<uint64>("uint64");
-    MapEnginePlainType<float>("float");
-    MapEnginePlainType<double>("double");
+    MapEnginePlainType<float32>("float32");
+    MapEnginePlainType<float64>("float64");
     MapEnginePlainType<ident_t>(FO_IDENT_NAME);
     MapEnginePlainType<timespan>(FO_TIMESPAN_NAME);
     MapEnginePlainType<nanotime>(FO_NANOTIME_NAME);

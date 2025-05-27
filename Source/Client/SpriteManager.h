@@ -103,7 +103,7 @@ public:
 
     virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
     virtual void SetDir(uint8 dir) { ignore_unused(dir); }
     virtual void SetDirAngle(short dir_angle) { ignore_unused(dir_angle); }
     virtual void PlayDefault() { Play({}, true, false); }
@@ -205,14 +205,14 @@ public:
     void BeginScene();
     void EndScene();
 
-    void SetSpritesZoom(float zoom);
+    void SetSpritesZoom(float32 zoom);
 
     void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
     void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color);
     void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
-    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
+    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
     void Flush();
@@ -269,7 +269,7 @@ private:
     shared_ptr<AtlasSprite> _sprEgg {};
     vector<ucolor> _eggData {};
 
-    float _spritesZoom {1.0f};
+    float32 _spritesZoom {1.0f};
 
     ipos _windowSizeDiff {};
 

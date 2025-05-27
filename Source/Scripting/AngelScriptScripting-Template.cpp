@@ -864,9 +864,9 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_UINT64:
         return strex("uint64: {}", *static_cast<const uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return strex("float: {}", *static_cast<const float*>(ptr));
+        return strex("float32: {}", *static_cast<const float32*>(ptr));
     case asTYPEID_DOUBLE:
-        return strex("double: {}", *static_cast<const double*>(ptr));
+        return strex("float64: {}", *static_cast<const float64*>(ptr));
     default:
         break;
     }
@@ -3381,7 +3381,7 @@ static void Irect_ConstructXandYandWandH(irect* self, int32 x, int32 y, int32 wi
     new (self) irect {x, y, width, height};
 }
 
-static void Fpos_ConstructXandY(fpos* self, float x, float y)
+static void Fpos_ConstructXandY(fpos* self, float32 x, float32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3427,7 +3427,7 @@ static auto Fpos_NegFpos(const fpos& self) -> fpos
     return fpos {-self.x, -self.y};
 }
 
-static void Fsize_ConstructWandH(isize* self, float width, float height)
+static void Fsize_ConstructWandH(isize* self, float32 width, float32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3873,8 +3873,8 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
@@ -3887,8 +3887,8 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, engine));
     AS_VERIFY(as_engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
@@ -4400,9 +4400,9 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 case asTYPEID_UINT64:
                     return "uint64";
                 case asTYPEID_FLOAT:
-                    return "float";
+                    return "float32";
                 case asTYPEID_DOUBLE:
-                    return "double";
+                    return "float64";
                 default:
                     break;
                 }

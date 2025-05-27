@@ -37,18 +37,15 @@
 FO_BEGIN_NAMESPACE();
 
 constexpr auto BIAS_FLOAT = 0.02f;
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float>;
 
-LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float angle)
+LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float32 angle)
 {
     FO_STACK_TRACE_ENTRY();
 
     _mapSize = map_size;
 
     if constexpr (GameSettings::SQUARE_GEOMETRY) {
-        _dir = std::atan2(static_cast<float>(target_hex.y - start_hex.y), static_cast<float>(target_hex.x - start_hex.x)) + angle;
+        _dir = std::atan2(static_cast<float32>(target_hex.y - start_hex.y), static_cast<float32>(target_hex.x - start_hex.x)) + angle;
         _dx = std::cos(_dir);
         _dy = std::sin(_dir);
 
@@ -61,12 +58,12 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float an
             _dy = _dy > 0 ? 1.0f : -1.0f;
         }
 
-        _x1 = static_cast<float>(start_hex.x) + 0.5f;
-        _y1 = static_cast<float>(start_hex.y) + 0.5f;
+        _x1 = static_cast<float32>(start_hex.x) + 0.5f;
+        _y1 = static_cast<float32>(start_hex.y) + 0.5f;
     }
     else {
-        const auto nx = 3.0f * (static_cast<float>(target_hex.x) - static_cast<float>(start_hex.x));
-        const auto ny = (static_cast<float>(target_hex.y) - static_cast<float>(start_hex.y)) * SQRT3_X2_FLOAT - (static_cast<float>(std::abs(target_hex.x % 2)) - static_cast<float>(std::abs(start_hex.x % 2))) * SQRT3_FLOAT;
+        const auto nx = 3.0f * (static_cast<float32>(target_hex.x) - static_cast<float32>(start_hex.x));
+        const auto ny = (static_cast<float32>(target_hex.y) - static_cast<float32>(start_hex.y)) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(target_hex.x % 2)) - static_cast<float32>(std::abs(start_hex.x % 2))) * SQRT3_FLOAT;
 
         _dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
@@ -100,10 +97,10 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float an
             _dir2 = 1;
         }
 
-        _x1 = 3.0f * static_cast<float>(start_hex.x) + BIAS_FLOAT;
-        _y1 = SQRT3_X2_FLOAT * static_cast<float>(start_hex.y) - SQRT3_FLOAT * static_cast<float>(std::abs(start_hex.x % 2)) + BIAS_FLOAT;
-        _x2 = 3.0f * static_cast<float>(target_hex.x) + BIAS_FLOAT + BIAS_FLOAT;
-        _y2 = SQRT3_X2_FLOAT * static_cast<float>(target_hex.y) - SQRT3_FLOAT * static_cast<float>(std::abs(target_hex.x % 2)) + BIAS_FLOAT;
+        _x1 = 3.0f * static_cast<float32>(start_hex.x) + BIAS_FLOAT;
+        _y1 = SQRT3_X2_FLOAT * static_cast<float32>(start_hex.y) - SQRT3_FLOAT * static_cast<float32>(std::abs(start_hex.x % 2)) + BIAS_FLOAT;
+        _x2 = 3.0f * static_cast<float32>(target_hex.x) + BIAS_FLOAT + BIAS_FLOAT;
+        _y2 = SQRT3_X2_FLOAT * static_cast<float32>(target_hex.y) - SQRT3_FLOAT * static_cast<float32>(std::abs(target_hex.x % 2)) + BIAS_FLOAT;
 
         if (angle != 0.0f) {
             _x2 -= _x1;
@@ -131,8 +128,8 @@ auto LineTracer::GetNextHex(mpos& pos) const -> uint8
     GeometryHelper::MoveHexByDir(t1_pos, _dir1, _mapSize);
     GeometryHelper::MoveHexByDir(t2_pos, _dir2, _mapSize);
 
-    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_pos.y) - static_cast<float>(std::abs(t1_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_pos.x));
-    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_pos.y) - static_cast<float>(std::abs(t2_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_pos.x));
+    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float32>(t1_pos.y) - static_cast<float32>(std::abs(t1_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float32>(t1_pos.x));
+    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float32>(t2_pos.y) - static_cast<float32>(std::abs(t2_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float32>(t2_pos.x));
 
     dist1 = dist1 > 0 ? dist1 : -dist1;
     dist2 = dist2 > 0 ? dist2 : -dist2;

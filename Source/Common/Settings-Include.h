@@ -158,7 +158,7 @@ FIXED_SETTING(int32, MapTileOffsX, -8); // Tile default offsets
 FIXED_SETTING(int32, MapTileOffsY, 32); // Tile default offsets
 FIXED_SETTING(int32, MapRoofOffsX, -8); // Roof default offsets
 FIXED_SETTING(int32, MapRoofOffsY, -66); // Roof default offsets
-FIXED_SETTING(float, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
+FIXED_SETTING(float32, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // Enable pathfinding path smoothing
 FIXED_SETTING(string, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
@@ -180,15 +180,15 @@ VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
-VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+VARIABLE_SETTING(vector<float32>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, Fullscreen, false);
 VARIABLE_SETTING(int32, Brightness, 0);
 VARIABLE_SETTING(int32, Sleep, -1); // -1 to disable, Sleep has priority over FixedFPS if both enabled
 VARIABLE_SETTING(int32, FixedFPS, 100); // 0 to disable, Sleep has priority over FixedFPS if both enabled
 FIXED_SETTING(int32, FogExtraLength, 0);
-FIXED_SETTING(float, CritterTurnAngle, 100.0f);
-FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
-FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
+FIXED_SETTING(float32, CritterTurnAngle, 100.0f);
+FIXED_SETTING(float32, CritterBodyTurnFactor, 0.6f);
+FIXED_SETTING(float32, CritterHeadTurnFactor, 0.4f);
 FIXED_SETTING(int32, DefaultModelViewWidth, 0);
 FIXED_SETTING(int32, DefaultModelViewHeight, 0);
 FIXED_SETTING(int32, DefaultModelDrawWidth, 128);
@@ -196,7 +196,7 @@ FIXED_SETTING(int32, DefaultModelDrawHeight, 128);
 FIXED_SETTING(int32, WalkAnimBaseSpeed, 60);
 FIXED_SETTING(int32, RunAnimStartSpeed, 80);
 FIXED_SETTING(int32, RunAnimBaseSpeed, 120);
-FIXED_SETTING(float, ModelProjFactor, 40.0f);
+FIXED_SETTING(float32, ModelProjFactor, 40.0f);
 FIXED_SETTING(bool, AtlasLinearFiltration, false);
 FIXED_SETTING(int32, DefaultParticleDrawWidth, 128);
 FIXED_SETTING(int32, DefaultParticleDrawHeight, 128);
@@ -237,8 +237,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
-FIXED_SETTING(float, SpritesZoomMax, MAX_ZOOM);
-FIXED_SETTING(float, SpritesZoomMin, MIN_ZOOM);
+FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM);
+FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM);
 FIXED_SETTING(uint32, ScrollDelay, 10);
 FIXED_SETTING(int32, ScrollStep, 12);
 FIXED_SETTING(uint32, RainTick, 60);

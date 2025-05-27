@@ -872,7 +872,7 @@ FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint32 sprId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint32 sprId, float normalizedTime)
+FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint32 sprId, float32 normalizedTime)
 {
     auto* spr = client->AnimGetSpr(sprId);
 
@@ -1133,7 +1133,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(FOClient* client, hstring modelName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int32>& layers, const vector<float>& position, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int32>& layers, const vector<float32>& position, ucolor color)
 {
 #if FO_ENABLE_3D
     // x y
@@ -1200,7 +1200,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
 
     model->SetLookDirAngle(0);
     model->SetMoveDirAngle(0, false);
-    model->SetRotation(rx * std::numbers::pi_v<float> / 180.0f, ry * std::numbers::pi_v<float> / 180.0f, rz * std::numbers::pi_v<float> / 180.0f);
+    model->SetRotation(rx * DEG_TO_RAD_FLOAT, ry * DEG_TO_RAD_FLOAT, rz * DEG_TO_RAD_FLOAT);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
     model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround<int32>(period * 100.0f)) | ANIMATION_NO_SMOOTH);

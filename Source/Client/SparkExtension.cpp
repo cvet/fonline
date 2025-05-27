@@ -91,7 +91,7 @@ namespace SPK::FO
         v.Color = ucolor {color.r, color.g, color.b, color.a};
     }
 
-    void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)
+    void SparkRenderBuffer::SetNextTexCoord(float32 tu, float32 tv)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -254,7 +254,7 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        const float32 diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
         const Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
@@ -427,7 +427,7 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("scale"); attrib != nullptr) {
-            const auto tmpScale = attrib->getValues<float>();
+            const auto tmpScale = attrib->getValues<float32>();
 
             switch (tmpScale.size()) {
             case 1:

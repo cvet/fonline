@@ -188,6 +188,8 @@ using uint16 = std::uint16_t;
 using uint32 = std::uint32_t;
 using int64 = std::int64_t;
 using uint64 = std::uint64_t;
+using float32 = float;
+using float64 = double;
 
 // Check the sizes of base types
 static_assert(sizeof(int8) == 1);
@@ -201,6 +203,8 @@ static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(size_t) >= 4);
 static_assert(sizeof(int) >= 4);
+static_assert(sizeof(float32) == 4);
+static_assert(sizeof(float64) == 8);
 static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
@@ -1220,7 +1224,7 @@ public:
     template<typename T>
     [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T
     {
-        return static_cast<T>(static_cast<double>(_value) / static_cast<double>(other._value));
+        return static_cast<T>(static_cast<float64>(_value) / static_cast<float64>(other._value));
     }
 
     static const timespan zero;
@@ -1511,14 +1515,14 @@ FO_BEGIN_NAMESPACE();
 FO_END_NAMESPACE();
 #include "assimp/types.h"
 FO_BEGIN_NAMESPACE();
-using vec3 = aiVector3t<float>;
-using dvec3 = aiVector3t<double>;
-using mat44 = aiMatrix4x4t<float>;
-using dmat44 = aiMatrix4x4t<double>;
-using quaternion = aiQuaterniont<float>;
-using dquaternion = aiQuaterniont<double>;
-using color4 = aiColor4t<float>;
-using dcolor4 = aiColor4t<double>;
+using vec3 = aiVector3t<float32>;
+using dvec3 = aiVector3t<float64>;
+using mat44 = aiMatrix4x4t<float32>;
+using dmat44 = aiMatrix4x4t<float64>;
+using quaternion = aiQuaterniont<float32>;
+using dquaternion = aiQuaterniont<float64>;
+using color4 = aiColor4t<float32>;
+using dcolor4 = aiColor4t<float64>;
 
 // Atomic formatter
 template<typename T>
@@ -2357,7 +2361,7 @@ struct TRect
     T Bottom {};
 };
 using IRect = TRect<int32>; // Todo: move IRect to irect
-using FRect = TRect<float>; // Todo: move FRect to frect
+using FRect = TRect<float32>; // Todo: move FRect to frect
 
 // Color type
 ///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint32-value
@@ -2673,33 +2677,33 @@ FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 struct fsize
 {
     constexpr fsize() noexcept = default;
-    constexpr fsize(float width_, float height_) noexcept :
+    constexpr fsize(float32 width_, float32 height_) noexcept :
         width {width_},
         height {height_}
     {
     }
     constexpr fsize(int32 width_, int32 height_) noexcept :
-        width {static_cast<float>(width_)},
-        height {static_cast<float>(height_)}
+        width {static_cast<float32>(width_)},
+        height {static_cast<float32>(height_)}
     {
     }
     constexpr explicit fsize(isize size) noexcept :
-        width {static_cast<float>(size.width)},
-        height {static_cast<float>(size.height)}
+        width {static_cast<float32>(size.width)},
+        height {static_cast<float32>(size.height)}
     {
     }
 
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto GetSquare() const noexcept -> float { return width * height; }
+    [[nodiscard]] constexpr auto GetSquare() const noexcept -> float32 { return width * height; }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
     {
         return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < width && pos.y < height;
     }
 
-    float width {};
-    float height {};
+    float32 width {};
+    float32 height {};
 };
 static_assert(std::is_standard_layout_v<fsize>);
 static_assert(sizeof(fsize) == 8);
@@ -2710,19 +2714,19 @@ FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize, value.width >> value.height);
 struct fpos
 {
     constexpr fpos() noexcept = default;
-    constexpr fpos(float x_, float y_) noexcept :
+    constexpr fpos(float32 x_, float32 y_) noexcept :
         x {x_},
         y {y_}
     {
     }
     constexpr fpos(int32 x_, int32 y_) noexcept :
-        x {static_cast<float>(x_)},
-        y {static_cast<float>(y_)}
+        x {static_cast<float32>(x_)},
+        y {static_cast<float32>(y_)}
     {
     }
     constexpr explicit fpos(ipos pos) noexcept :
-        x {static_cast<float>(pos.x)},
-        y {static_cast<float>(pos.y)}
+        x {static_cast<float32>(pos.x)},
+        y {static_cast<float32>(pos.y)}
     {
     }
 
@@ -2733,8 +2737,8 @@ struct fpos
     [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
     [[nodiscard]] constexpr auto operator/(const fpos& other) const noexcept -> fpos { return {x / other.x, y / other.y}; }
 
-    float x {};
-    float y {};
+    float32 x {};
+    float32 y {};
 };
 static_assert(std::is_standard_layout_v<fpos>);
 static_assert(sizeof(fpos) == 8);
@@ -2752,21 +2756,21 @@ struct frect
         height {size.height}
     {
     }
-    constexpr frect(float x_, float y_, fsize size) noexcept :
+    constexpr frect(float32 x_, float32 y_, fsize size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr frect(fpos pos, float width_, float height_) noexcept :
+    constexpr frect(fpos pos, float32 width_, float32 height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
         height {height_}
     {
     }
-    constexpr frect(float x_, float y_, float width_, float height_) noexcept :
+    constexpr frect(float32 x_, float32 y_, float32 width_, float32 height_) noexcept :
         x {x_},
         y {y_},
         width {width_},
@@ -2776,10 +2780,10 @@ struct frect
     [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const frect& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
 
-    float x {};
-    float y {};
-    float width {};
-    float height {};
+    float32 x {};
+    float32 y {};
+    float32 width {};
+    float32 height {};
 };
 static_assert(std::is_standard_layout_v<frect>);
 static_assert(sizeof(frect) == 16);
@@ -2789,8 +2793,14 @@ FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect, value.x >> value.y >> value.width >> 
 // Generic constants
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto PROCESS_TALK_TIME = 1000;
-static constexpr float MIN_ZOOM = 0.1f;
-static constexpr float MAX_ZOOM = 20.0f;
+static constexpr float32 MIN_ZOOM = 0.1f;
+static constexpr float32 MAX_ZOOM = 20.0f;
+
+// Math constants
+constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32>;
+constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32> * 2.0f;
+constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32>;
+constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32> / 180.0f;
 
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;
@@ -3245,7 +3255,7 @@ template<typename T, typename U>
     static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
 
     if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+        static_assert(std::is_floating_point_v<T>, "Use iround for float32 to int conversion");
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -3310,7 +3320,7 @@ template<typename T, typename U>
     static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
 
     if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround<int32> for float to int conversion");
+        static_assert(std::is_floating_point_v<T>, "Use iround<int32> for float32 to int conversion");
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -3364,30 +3374,30 @@ template<typename T, typename U>
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
     requires(!std::is_integral_v<U>)
-constexpr U lerp(T v1, T v2, float t) noexcept
+constexpr U lerp(T v1, T v2, float32 t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::is_integral_v<U> && std::is_signed_v<U>)
-constexpr U lerp(T v1, T v2, float t) noexcept
+constexpr U lerp(T v1, T v2, float32 t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::is_integral_v<U> && std::is_unsigned_v<U>)
-constexpr U lerp(T v1, T v2, float t) noexcept
+constexpr U lerp(T v1, T v2, float32 t) noexcept
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
 }
 
 template<typename T, typename U>
     requires(std::is_floating_point_v<U> && std::is_integral_v<T>)
-constexpr auto iround(U value) noexcept -> T
+constexpr auto iround(U value) -> T
 {
-    return static_cast<T>(std::round(value) + 0.5);
+    return numeric_cast<T>(std::llround(value));
 }
 
 template<typename T, typename U>

@@ -56,7 +56,7 @@ namespace SPK::FO
 
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
-        void SetNextTexCoord(float tu, float tv);
+        void SetNextTexCoord(float32 tu, float32 tv);
         void Render(size_t vertices, RenderEffect* effect) const;
 
     private:

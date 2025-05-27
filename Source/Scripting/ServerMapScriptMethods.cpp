@@ -587,7 +587,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType)
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, uint32 dist, CritterFindType findType)
 {
     vector<Critter*> critters;
 
@@ -606,7 +606,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos from
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float angle, uint32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, uint32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     vector<Critter*> critters;
     mpos block;
@@ -698,7 +698,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vec
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float angle, uint32 dist)
+FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, uint32 dist)
 {
     mpos pre_block;
     mpos block;
@@ -718,7 +718,7 @@ FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& toHex, float angle, uint32 dist)
+FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, uint32 dist)
 {
     mpos last_movable;
 
