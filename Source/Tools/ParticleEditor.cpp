@@ -237,8 +237,8 @@ void ParticleEditor::OnDraw()
         _impl->Particle->Respawn();
     }
 
-    const auto frame_width = static_cast<float32>(draw_width);
-    const auto frame_height = static_cast<float32>(draw_height);
+    const auto frame_width = numeric_cast<float32>(draw_width);
+    const auto frame_height = numeric_cast<float32>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
     const auto proj_height = frame_height * (1.0f / _editor.Settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
@@ -315,14 +315,14 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_INT(label, get, set) \
     do { \
-        int32 val = static_cast<int32>(obj->get()); \
+        int32 val = numeric_cast<int32>(obj->get()); \
         Changed |= ImGui::InputInt(label, &val); \
         obj->set(val); \
     } while (0)
 #define DRAW_SPK_INT_INT(label1, label2, get1, get2, set) \
     do { \
-        int32 val1 = static_cast<int32>(obj->get1()); \
-        int32 val2 = static_cast<int32>(obj->get2()); \
+        int32 val1 = numeric_cast<int32>(obj->get1()); \
+        int32 val2 = numeric_cast<int32>(obj->get2()); \
         Changed |= ImGui::InputInt(label1, &val1); \
         Changed |= ImGui::InputInt(label2, &val2); \
         obj->set(val1, val2); \
@@ -738,7 +738,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
     FO_STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int32>(graph.size()))) {
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32>(graph.size()))) {
         int32 delIndex = -1;
         int32 index = 0;
 
@@ -795,7 +795,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
     FO_STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int32>(graph.size()))) {
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32>(graph.size()))) {
         int32 delIndex = -1;
         int32 index = 0;
 
@@ -806,16 +806,16 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int32 c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
-                const_cast<unsigned char&>(entry.y0.r) = static_cast<unsigned char>(c1[0]);
-                const_cast<unsigned char&>(entry.y0.g) = static_cast<unsigned char>(c1[1]);
-                const_cast<unsigned char&>(entry.y0.b) = static_cast<unsigned char>(c1[2]);
-                const_cast<unsigned char&>(entry.y0.a) = static_cast<unsigned char>(c1[3]);
+                const_cast<unsigned char&>(entry.y0.r) = numeric_cast<unsigned char>(c1[0]);
+                const_cast<unsigned char&>(entry.y0.g) = numeric_cast<unsigned char>(c1[1]);
+                const_cast<unsigned char&>(entry.y0.b) = numeric_cast<unsigned char>(c1[2]);
+                const_cast<unsigned char&>(entry.y0.a) = numeric_cast<unsigned char>(c1[3]);
                 int32 c2[] = {entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a};
                 ImGui::InputInt4("End", c2);
-                const_cast<unsigned char&>(entry.y1.r) = static_cast<unsigned char>(c2[0]);
-                const_cast<unsigned char&>(entry.y1.g) = static_cast<unsigned char>(c2[1]);
-                const_cast<unsigned char&>(entry.y1.b) = static_cast<unsigned char>(c2[2]);
-                const_cast<unsigned char&>(entry.y1.a) = static_cast<unsigned char>(c2[3]);
+                const_cast<unsigned char&>(entry.y1.r) = numeric_cast<unsigned char>(c2[0]);
+                const_cast<unsigned char&>(entry.y1.g) = numeric_cast<unsigned char>(c2[1]);
+                const_cast<unsigned char&>(entry.y1.b) = numeric_cast<unsigned char>(c2[2]);
+                const_cast<unsigned char&>(entry.y1.a) = numeric_cast<unsigned char>(c2[3]);
 
                 ImGui::TreePop();
             }
@@ -1215,7 +1215,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
         int32 index = -1;
 
         if (const auto it = std::ranges::find(AllEffects, effect_name); it != AllEffects.end()) {
-            index = static_cast<int32>(std::distance(AllEffects.begin(), it));
+            index = numeric_cast<int32>(std::distance(AllEffects.begin(), it));
         }
 
         vector<const char*> eff_items;
@@ -1224,7 +1224,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             eff_items.push_back(eff.c_str());
         }
 
-        if (ImGui::Combo("Effect", &index, eff_items.data(), static_cast<int32>(eff_items.size()))) {
+        if (ImGui::Combo("Effect", &index, eff_items.data(), numeric_cast<int32>(eff_items.size()))) {
             Changed |= true;
             obj->SetEffectName(eff_items[index]);
         }
@@ -1237,7 +1237,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
         int32 index = -1;
 
         if (const auto it = std::ranges::find(AllTextures, texture_name); it != AllTextures.end()) {
-            index = static_cast<int32>(std::distance(AllTextures.begin(), it));
+            index = numeric_cast<int32>(std::distance(AllTextures.begin(), it));
         }
 
         vector<const char*> tex_items;
@@ -1246,7 +1246,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             tex_items.push_back(tex.c_str());
         }
 
-        if (ImGui::Combo("Texture", &index, tex_items.data(), static_cast<int32>(tex_items.size()))) {
+        if (ImGui::Combo("Texture", &index, tex_items.data(), numeric_cast<int32>(tex_items.size()))) {
             Changed |= true;
             obj->SetTextureName(tex_items[index]);
         }
@@ -1274,7 +1274,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, static_cast<int32>(get_size()))) {
+    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32>(get_size()))) {
         int32 delIndex = -1;
 
         for (size_t i = 0; i < get_size(); i++) {
@@ -1289,7 +1289,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 
             if (RemovingMode) {
                 if (ImGui::Button(strex("Remove {}", name).c_str())) {
-                    delIndex = static_cast<int32>(i);
+                    delIndex = numeric_cast<int32>(i);
                 }
             }
         }

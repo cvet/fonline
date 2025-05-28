@@ -565,7 +565,7 @@ FO_SCRIPT_API uint32 Client_Game_GetTextNumLower(FOClient* client, TextPackName 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Client_Game_GetTextCount(FOClient* client, TextPackName textPack, uint32 strNum)
 {
-    return static_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
+    return numeric_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
 }
 
 ///@ ExportMethod
@@ -642,11 +642,14 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
             auto* effect = client->EffectMngr.LoadEffect(def_effect->GetUsage(), effectPath);
+
             if (effect == nullptr) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }
+
             return effect;
         }
+
         return def_effect;
     };
 
@@ -654,12 +657,14 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
 
     if (((eff_type & static_cast<uint32>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
         auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint32>(effectSubtype)});
+
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if (((eff_type & static_cast<uint32>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
         auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint32>(effectSubtype)});
+
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
@@ -1114,7 +1119,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveTy
         auto& pp = points[i];
 
         pp.PointPos = {data[i * 3], data[i * 3 + 1]};
-        pp.PointColor = ucolor {static_cast<uint32>(data[i * 3 + 2])};
+        pp.PointColor = ucolor {numeric_cast<uint32>(data[i * 3 + 2])};
         pp.PointOffset = nullptr;
         pp.PPointColor = nullptr;
     }
@@ -1300,7 +1305,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1325,7 +1330,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1357,7 +1362,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 

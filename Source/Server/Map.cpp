@@ -90,7 +90,7 @@ auto Map::FindStartHex(mpos hex, uint32 multihex, uint32 seek_radius, bool skip_
     seek_radius = std::min<uint32>(seek_radius, MAX_HEX_OFFSET);
 
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
-    const int32 max_pos = static_cast<int32>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);
+    const int32 max_pos = numeric_cast<int32>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);
     int32 pos = GenericUtils::Random(0, max_pos - 1);
     int32 iterations = 0;
 
@@ -254,13 +254,13 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int32 dist = static_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), hex));
+                    int32 dist = numeric_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), hex));
 
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
 
-                    allowed = dist <= static_cast<int32>(cr->GetLookDistance());
+                    allowed = dist <= numeric_cast<int32>(cr->GetLookDistance());
                 }
 
                 if (!allowed) {
@@ -467,12 +467,12 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int32 dist = static_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
+                    int32 dist = numeric_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
 
-                    allowed = dist <= static_cast<int32>(cr->GetLookDistance());
+                    allowed = dist <= numeric_cast<int32>(cr->GetLookDistance());
                 }
 
                 if (!allowed) {
@@ -490,12 +490,12 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int32 dist = static_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
+                    int32 dist = numeric_cast<int32>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
 
-                    allowed = dist <= static_cast<int32>(cr->GetLookDistance());
+                    allowed = dist <= numeric_cast<int32>(cr->GetLookDistance());
                 }
 
                 if (!allowed) {
@@ -889,7 +889,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, m
     FO_NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (GenericUtils::IntersectCircleLine(cr->GetHex().x, cr->GetHex().y, static_cast<int32>(cr->GetLookDistance()), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
+        if (GenericUtils::IntersectCircleLine(cr->GetHex().x, cr->GetHex().y, numeric_cast<int32>(cr->GetLookDistance()), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
             cr->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
         }
     }

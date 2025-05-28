@@ -327,12 +327,12 @@ void CritterHexView::AnimateStay()
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         const auto scale_factor = GetScaleFactor();
-        const auto scale = scale_factor != 0 ? static_cast<float32>(scale_factor) / 1000.0f : 1.0f;
+        const auto scale = scale_factor != 0 ? numeric_cast<float32>(scale_factor) / 1000.0f : 1.0f;
 
         _model->SetScale(scale, scale, scale);
 
         if (IsMoving()) {
-            _model->SetMoving(true, iround<int32>(static_cast<float32>(Moving.Speed) / scale));
+            _model->SetMoving(true, iround<int32>(numeric_cast<float32>(Moving.Speed) / scale));
             action_anim = _model->GetMovingAnim();
         }
         else {
@@ -542,7 +542,7 @@ void CritterHexView::ChangeLookDirAngle(int32 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
+    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(numeric_cast<int16>(dir_angle));
     const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
 
     if (normalized_dir_angle == GetDirAngle() && dir == GetDir()) {
@@ -598,7 +598,7 @@ void CritterHexView::Process()
 
         const auto dist = GenericUtils::DistSqrt({0, 0}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
         const auto dist_div = dist / 10;
-        const auto mul = std::max(static_cast<float32>(dist_div), 1.0f);
+        const auto mul = std::max(numeric_cast<float32>(dist_div), 1.0f);
 
         _offsExt.x += _offsExtSpeed.x * mul;
         _offsExt.y += _offsExtSpeed.y * mul;
@@ -732,11 +732,9 @@ void CritterHexView::ProcessMoving()
             oy += Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float32>(oy) * _engine->Geometry.GetYProj();
-        auto dist = std::sqrt(static_cast<float32>(ox * ox) + proj_oy * proj_oy);
-        if (dist < 0.0001f) {
-            dist = 0.0001f;
-        }
+        const auto proj_oy = numeric_cast<float32>(oy) * _engine->Geometry.GetYProj();
+        auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
+        dist = std::max(dist, 0.0001f);
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == Moving.ControlSteps.size() - 1)) {
             auto normalized_dist = (dist_pos - cur_dist) / dist;
@@ -746,10 +744,10 @@ void CritterHexView::ProcessMoving()
             }
 
             // Evaluate current hex
-            const auto step_index_f = std::round(normalized_dist * static_cast<float32>(Moving.ControlSteps[i] - control_step_begin));
-            const auto step_index = control_step_begin + static_cast<int32>(step_index_f);
+            const auto step_index_f = normalized_dist * numeric_cast<float32>(Moving.ControlSteps[i] - control_step_begin);
+            const auto step_index = control_step_begin + iround<int32>(step_index_f);
             FO_RUNTIME_ASSERT(step_index >= control_step_begin);
-            FO_RUNTIME_ASSERT(step_index <= Moving.ControlSteps[i]);
+            FO_RUNTIME_ASSERT(step_index <= numeric_cast<int32>(Moving.ControlSteps[i]));
 
             auto hex2 = start_hex;
 
@@ -773,15 +771,15 @@ void CritterHexView::ProcessMoving()
                 cr_oy -= Moving.StartHexOffset.y;
             }
 
-            const auto lerp = [](int32 a, int32 b, float32 t) { return static_cast<float32>(a) * (1.0f - t) + static_cast<float32>(b) * t; };
+            const auto lerp = [](int32 a, int32 b, float32 t) { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
 
             auto mx = lerp(0, ox, normalized_dist);
             auto my = lerp(0, oy, normalized_dist);
-            mx -= static_cast<float32>(cr_ox);
-            my -= static_cast<float32>(cr_oy);
+            mx -= numeric_cast<float32>(cr_ox);
+            my -= numeric_cast<float32>(cr_oy);
 
-            const auto mxi = static_cast<int16>(iround<int32>(mx));
-            const auto myi = static_cast<int16>(iround<int32>(my));
+            const auto mxi = numeric_cast<int16>(iround<int32>(mx));
+            const auto myi = numeric_cast<int16>(iround<int32>(my));
             const auto hex_offset = GetHexOffset();
 
             if (moved || hex_offset.x != mxi || hex_offset.y != myi) {
@@ -806,7 +804,7 @@ void CritterHexView::ProcessMoving()
 
             // Evaluate dir angle
             const auto dir_angle_f = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
-            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
+            const auto dir_angle = iround<int16>(dir_angle_f);
 
 #if FO_ENABLE_3D
             if (_model != nullptr) {
@@ -874,8 +872,8 @@ void CritterHexView::AddExtraOffs(ipos offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _offsExt.x += static_cast<float32>(offset.x);
-    _offsExt.y += static_cast<float32>(offset.y);
+    _offsExt.x += numeric_cast<float32>(offset.x);
+    _offsExt.y += numeric_cast<float32>(offset.y);
 
     _offsExtSpeed = GenericUtils::GetStepsCoords({}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
     _offsExtSpeed.x = -_offsExtSpeed.x;
@@ -906,8 +904,8 @@ auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
     if (IsSpriteValid()) {
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
-        const int32 x = iround<int32>(static_cast<float32>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
-        const int32 y = iround<int32>(static_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
+        const auto x = iround<int32>(numeric_cast<float32>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
+        const auto y = iround<int32>(numeric_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
 
         pos = {x, y};
         return true;

@@ -144,7 +144,7 @@ void HexView::EvaluateCurAlpha()
             _fading = false;
         }
 
-        _curAlpha = static_cast<uint8>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
+        _curAlpha = numeric_cast<uint8>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
     }
     else {
         _curAlpha = _targetAlpha;

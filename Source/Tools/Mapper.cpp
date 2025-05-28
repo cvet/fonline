@@ -144,7 +144,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
         if (map != nullptr) {
             if (Settings.StartHexX > 0 && Settings.StartHexY > 0) {
-                _curMap->FindSetCenter({static_cast<uint16>(Settings.StartHexX), static_cast<uint16>(Settings.StartHexY)});
+                _curMap->FindSetCenter({numeric_cast<uint16>(Settings.StartHexX), numeric_cast<uint16>(Settings.StartHexY)});
             }
 
             ShowMap(map);
@@ -172,7 +172,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
-    ConsoleHistoryCur = static_cast<int32>(ConsoleHistory.size());
+    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
 }
 
 void FOMapper::InitIface()
@@ -640,7 +640,7 @@ void FOMapper::ProcessMapperInput()
                 int32 step = 1;
 
                 if (Keyb.ShiftDwn) {
-                    step = static_cast<int32>(ProtosOnScreen);
+                    step = numeric_cast<int32>(ProtosOnScreen);
                 }
                 else if (Keyb.CtrlDwn) {
                     step = 100;
@@ -666,14 +666,14 @@ void FOMapper::ProcessMapperInput()
                 else {
                     if (IsItemMode() && !CurItemProtos->empty()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= static_cast<int32>(CurItemProtos->size())) {
-                            *CurProtoScroll = static_cast<int32>(CurItemProtos->size()) - 1;
+                        if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
+                            *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
                         }
                     }
                     else if (IsCritMode() && !CurNpcProtos->empty()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= static_cast<int32>(CurNpcProtos->size())) {
-                            *CurProtoScroll = static_cast<int32>(CurNpcProtos->size()) - 1;
+                        if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
+                            *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
                         }
                     }
                     else if (IntMode == INT_MODE_INCONT) {
@@ -879,12 +879,12 @@ void FOMapper::IntDraw()
 
     if (IsItemMode()) {
         auto i = *CurProtoScroll;
-        int32 j = static_cast<int32>(static_cast<size_t>(i) + ProtosOnScreen);
-        j = std::min(j, static_cast<int32>(CurItemProtos->size()));
+        auto j = numeric_cast<int32>(numeric_cast<size_t>(i) + ProtosOnScreen);
+        j = std::min(j, numeric_cast<int32>(CurItemProtos->size()));
 
         for (; i < j; i++, x += w) {
             const auto* proto_item = (*CurItemProtos)[i];
-            auto col = (i == static_cast<int32>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
+            auto col = (i == numeric_cast<int32>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
 
             if (const auto* spr = GetIfaceSpr(proto_item->GetPicMap()); spr != nullptr) {
                 SprMngr.DrawSpriteSize(spr, {x, y}, {w, h / 2}, false, true, col);
@@ -901,7 +901,7 @@ void FOMapper::IntDraw()
             DrawStr(IRect(x, y + h - 15, x + w, y + h), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
-        if (GetTabIndex() < static_cast<uint32>(CurItemProtos->size())) {
+        if (GetTabIndex() < numeric_cast<uint32>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
 
             SprMngr.DrawText(irect(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
@@ -912,7 +912,7 @@ void FOMapper::IntDraw()
         auto j = i + ProtosOnScreen;
 
         if (j > CurNpcProtos->size()) {
-            j = static_cast<uint32>(CurNpcProtos->size());
+            j = numeric_cast<uint32>(CurNpcProtos->size());
         }
 
         for (; i < j; i++, x += w) {
@@ -948,7 +948,7 @@ void FOMapper::IntDraw()
         auto j = i + ProtosOnScreen;
 
         if (j > inner_items.size()) {
-            j = static_cast<uint32>(inner_items.size());
+            j = numeric_cast<uint32>(inner_items.size());
         }
 
         for (; i < j; i++, x += w) {
@@ -978,7 +978,7 @@ void FOMapper::IntDraw()
     }
     else if (IntMode == INT_MODE_LIST) {
         auto i = ListScroll;
-        auto j = static_cast<int32>(LoadedMaps.size());
+        auto j = numeric_cast<int32>(LoadedMaps.size());
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i].get();
@@ -1017,10 +1017,10 @@ void FOMapper::IntDraw()
                 color = COLOR_TEXT_DWHITE;
             }
 
-            auto count = static_cast<uint32>(stab.NpcProtos.size());
+            auto count = numeric_cast<uint32>(stab.NpcProtos.size());
 
             if (count == 0) {
-                count = static_cast<uint32>(stab.ItemProtos.size());
+                count = numeric_cast<uint32>(stab.ItemProtos.size());
             }
 
             name += strex(" ({})", count);
@@ -1116,7 +1116,7 @@ void FOMapper::ObjDraw()
     for (const auto* prop : ShowProps) {
         if (prop != nullptr) {
             auto value = entity->GetProperties().SavePropertyToText(prop);
-            DrawLine(prop->GetName(), prop->GetFullTypeName(), value, prop->IsReadOnly(), r);
+            DrawLine(prop->GetName(), prop->GetViewTypeName(), value, prop->IsReadOnly(), r);
         }
         else {
             r.Top += DRAW_NEXT_HEIGHT;
@@ -1207,7 +1207,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 
     constexpr auto start_line = 3;
 
-    if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int32>(ShowProps.size())) {
+    if (ObjCurLine >= start_line && ObjCurLine - start_line < numeric_cast<int32>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
 
         if (prop != nullptr) {
@@ -1243,10 +1243,10 @@ void FOMapper::SelectEntityProp(int32 line)
     ObjCurLineIsConst = true;
 
     if (const auto* entity = GetInspectorEntity(); entity != nullptr) {
-        if (ObjCurLine - start_line >= static_cast<int32>(ShowProps.size())) {
-            ObjCurLine = static_cast<int32>(ShowProps.size()) + start_line - 1;
+        if (ObjCurLine - start_line >= numeric_cast<int32>(ShowProps.size())) {
+            ObjCurLine = numeric_cast<int32>(ShowProps.size()) + start_line - 1;
         }
-        if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int32>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
+        if (ObjCurLine >= start_line && ObjCurLine - start_line < numeric_cast<int32>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
             ObjCurLineInitValue = ObjCurLineValue = entity->GetProperties().SavePropertyToText(ShowProps[ObjCurLine - start_line]);
             ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsReadOnly();
         }
@@ -1409,8 +1409,8 @@ void FOMapper::IntLMouseDown()
 
         if (IsItemMode() && !CurItemProtos->empty()) {
             ind += *CurProtoScroll;
-            if (ind >= static_cast<int32>(CurItemProtos->size())) {
-                ind = static_cast<int32>(CurItemProtos->size()) - 1;
+            if (ind >= numeric_cast<int32>(CurItemProtos->size())) {
+                ind = numeric_cast<int32>(CurItemProtos->size()) - 1;
             }
             SetTabIndex(ind);
 
@@ -1455,8 +1455,8 @@ void FOMapper::IntLMouseDown()
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
             ind += *CurProtoScroll;
-            if (ind >= static_cast<int32>(CurNpcProtos->size())) {
-                ind = static_cast<int32>(CurNpcProtos->size()) - 1;
+            if (ind >= numeric_cast<int32>(CurNpcProtos->size())) {
+                ind = numeric_cast<int32>(CurNpcProtos->size()) - 1;
             }
             SetTabIndex(ind);
         }
@@ -1471,7 +1471,7 @@ void FOMapper::IntLMouseDown()
             }
 
             if (!inner_items.empty()) {
-                if (ind < static_cast<int32>(inner_items.size())) {
+                if (ind < numeric_cast<int32>(inner_items.size())) {
                     InContItem = inner_items[ind];
                 }
 
@@ -1503,7 +1503,7 @@ void FOMapper::IntLMouseDown()
                     if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
                         auto to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
 
-                        while (static_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
+                        while (numeric_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                             to_slot++;
                         }
 
@@ -1525,7 +1525,7 @@ void FOMapper::IntLMouseDown()
         else if (IntMode == INT_MODE_LIST) {
             ind += ListScroll;
 
-            if (ind < static_cast<int32>(LoadedMaps.size()) && _curMap != LoadedMaps[ind].get()) {
+            if (ind < numeric_cast<int32>(LoadedMaps.size()) && _curMap != LoadedMaps[ind].get()) {
                 ShowMap(LoadedMaps[ind].get());
             }
         }
@@ -1600,29 +1600,29 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBScrBackFst, IntX, IntY)) {
         if (IsItemMode() || IsCritMode()) {
-            (*CurProtoScroll) -= static_cast<int32>(ProtosOnScreen);
+            (*CurProtoScroll) -= numeric_cast<int32>(ProtosOnScreen);
             *CurProtoScroll = std::max(*CurProtoScroll, 0);
         }
         else if (IntMode == INT_MODE_INCONT) {
-            InContScroll -= static_cast<int32>(ProtosOnScreen);
+            InContScroll -= numeric_cast<int32>(ProtosOnScreen);
             InContScroll = std::max(InContScroll, 0);
         }
         else if (IntMode == INT_MODE_LIST) {
-            ListScroll -= static_cast<int32>(ProtosOnScreen);
+            ListScroll -= numeric_cast<int32>(ProtosOnScreen);
             ListScroll = std::max(ListScroll, 0);
         }
     }
     else if (IsCurInRect(IntBScrFront, IntX, IntY)) {
         if (IsItemMode() && !CurItemProtos->empty()) {
             (*CurProtoScroll)++;
-            if (*CurProtoScroll >= static_cast<int32>(CurItemProtos->size())) {
-                *CurProtoScroll = static_cast<int32>(CurItemProtos->size()) - 1;
+            if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
             (*CurProtoScroll)++;
-            if (*CurProtoScroll >= static_cast<int32>(CurNpcProtos->size())) {
-                *CurProtoScroll = static_cast<int32>(CurNpcProtos->size()) - 1;
+            if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
@@ -1634,22 +1634,22 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBScrFrontFst, IntX, IntY)) {
         if (IsItemMode() && !CurItemProtos->empty()) {
-            (*CurProtoScroll) += static_cast<int32>(ProtosOnScreen);
-            if (*CurProtoScroll >= static_cast<int32>(CurItemProtos->size())) {
-                *CurProtoScroll = static_cast<int32>(CurItemProtos->size()) - 1;
+            (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
+            if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
-            (*CurProtoScroll) += static_cast<int32>(ProtosOnScreen);
-            if (*CurProtoScroll >= static_cast<int32>(CurNpcProtos->size())) {
-                *CurProtoScroll = static_cast<int32>(CurNpcProtos->size()) - 1;
+            (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
+            if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
-            InContScroll += static_cast<int32>(ProtosOnScreen);
+            InContScroll += numeric_cast<int32>(ProtosOnScreen);
         }
         else if (IntMode == INT_MODE_LIST) {
-            ListScroll += static_cast<int32>(ProtosOnScreen);
+            ListScroll += numeric_cast<int32>(ProtosOnScreen);
         }
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
@@ -1730,7 +1730,7 @@ void FOMapper::IntLMouseUp()
 
                     for (int32 i = fx; i <= tx; i++) {
                         for (int32 j = fy; j <= ty; j++) {
-                            hexes.emplace_back(static_cast<uint16>(i), static_cast<uint16>(j));
+                            hexes.emplace_back(numeric_cast<uint16>(i), numeric_cast<uint16>(j));
                         }
                     }
                 }
@@ -1835,7 +1835,7 @@ void FOMapper::IntMouseMove()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            _curMap->GetHexTrack({static_cast<uint16>(i), static_cast<uint16>(j)}) = 1;
+                            _curMap->GetHexTrack({numeric_cast<uint16>(i), numeric_cast<uint16>(j)}) = 1;
                         }
                     }
                 }
@@ -1849,14 +1849,14 @@ void FOMapper::IntMouseMove()
             }
         }
         else if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            auto offs_hx = static_cast<int32>(SelectHex2.x) - static_cast<int32>(SelectHex1.x);
-            auto offs_hy = static_cast<int32>(SelectHex2.y) - static_cast<int32>(SelectHex1.y);
+            auto offs_hx = numeric_cast<int32>(SelectHex2.x) - numeric_cast<int32>(SelectHex1.x);
+            auto offs_hy = numeric_cast<int32>(SelectHex2.y) - numeric_cast<int32>(SelectHex1.y);
             auto offs_x = Settings.MousePos.x - SelectPos.x;
             auto offs_y = Settings.MousePos.y - SelectPos.y;
 
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
-                SelectHex1.x = static_cast<uint16>(SelectHex1.x + offs_hx);
-                SelectHex1.y = static_cast<uint16>(SelectHex1.y + offs_hy);
+                SelectHex1.x = numeric_cast<uint16>(SelectHex1.x + offs_hx);
+                SelectHex1.y = numeric_cast<uint16>(SelectHex1.y + offs_hy);
                 SelectPos.x += offs_x;
                 SelectPos.y += offs_y;
                 _curMap->RefreshMap();
@@ -2207,8 +2207,8 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        const auto ox = static_cast<float32>(offs_x) * _curMap->GetSpritesZoom() + small_ox;
-        const auto oy = static_cast<float32>(offs_y) * _curMap->GetSpritesZoom() + small_oy;
+        const auto ox = numeric_cast<float32>(offs_x) * _curMap->GetSpritesZoom() + small_ox;
+        const auto oy = numeric_cast<float32>(offs_y) * _curMap->GetSpritesZoom() + small_oy;
 
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
@@ -2223,8 +2223,8 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
             small_oy = 0.0f;
         }
 
-        offs_x = static_cast<int32>(ox);
-        offs_y = static_cast<int32>(oy);
+        offs_x = iround<int32>(ox);
+        offs_y = iround<int32>(oy);
     }
     else {
         for (auto* entity : SelectedEntities) {
@@ -2272,7 +2272,7 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
                 ox = oy = 0;
             }
 
-            item->SetOffset({static_cast<int16>(ox), static_cast<int16>(oy)});
+            item->SetOffset({numeric_cast<int16>(ox), numeric_cast<int16>(oy)});
             item->RefreshAnim();
         }
         else {
@@ -2400,7 +2400,7 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         }
     }
     else if (proto->GetIsTile()) {
-        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, static_cast<uint8>(TileLayer), DrawRoof);
+        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, numeric_cast<uint8>(TileLayer), DrawRoof);
     }
     else {
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
@@ -2538,8 +2538,8 @@ void FOMapper::BufferPaste()
     SelectClear();
 
     for (const auto& entity_buf : EntitiesBuffer) {
-        const auto raw_hx = static_cast<int32>(entity_buf.Hex.x) + hx_offset;
-        const auto raw_hy = static_cast<int32>(entity_buf.Hex.y) + hy_offset;
+        const auto raw_hx = numeric_cast<int32>(entity_buf.Hex.x) + hx_offset;
+        const auto raw_hy = numeric_cast<int32>(entity_buf.Hex.y) + hy_offset;
 
         if (!_curMap->GetSize().IsValidPos(ipos {raw_hx, raw_hy})) {
             continue;
@@ -2629,8 +2629,8 @@ void FOMapper::CurDraw()
                     }
                 }
 
-                SprMngr.DrawSpriteSize(spr, {static_cast<int32>(static_cast<float32>(x) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float32>(y) / _curMap->GetSpritesZoom())}, //
-                    {static_cast<int32>(static_cast<float32>(spr->Size.width) / _curMap->GetSpritesZoom()), static_cast<int32>(static_cast<float32>(spr->Size.height) / _curMap->GetSpritesZoom())}, true, false, COLOR_SPRITE);
+                SprMngr.DrawSpriteSize(spr, {iround<int32>(numeric_cast<float32>(x) / _curMap->GetSpritesZoom()), iround<int32>(numeric_cast<float32>(y) / _curMap->GetSpritesZoom())}, //
+                    {iround<int32>(numeric_cast<float32>(spr->Size.width) / _curMap->GetSpritesZoom()), iround<int32>(numeric_cast<float32>(spr->Size.height) / _curMap->GetSpritesZoom())}, true, false, COLOR_SPRITE);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2651,10 +2651,10 @@ void FOMapper::CurDraw()
             const auto y = _curMap->GetField(hex).Offset.y - anim->Size.height + anim->Offset.y;
 
             SprMngr.DrawSpriteSize(anim, //
-                {static_cast<int32>((static_cast<float32>(x + Settings.ScreenOffset.x) + (static_cast<float32>(Settings.MapHexWidth) / 2.0f)) / _curMap->GetSpritesZoom()), //
-                    static_cast<int32>((static_cast<float32>(y + Settings.ScreenOffset.y) + (static_cast<float32>(Settings.MapHexHeight) / 2.0f)) / _curMap->GetSpritesZoom())}, //
-                {static_cast<int32>(static_cast<float32>(anim->Size.width) / _curMap->GetSpritesZoom()), //
-                    static_cast<int32>(static_cast<float32>(anim->Size.height) / _curMap->GetSpritesZoom())},
+                {iround<int32>((numeric_cast<float32>(x + Settings.ScreenOffset.x) + (numeric_cast<float32>(Settings.MapHexWidth) / 2.0f)) / _curMap->GetSpritesZoom()), //
+                    iround<int32>((numeric_cast<float32>(y + Settings.ScreenOffset.y) + (numeric_cast<float32>(Settings.MapHexHeight) / 2.0f)) / _curMap->GetSpritesZoom())}, //
+                {iround<int32>(numeric_cast<float32>(anim->Size.width) / _curMap->GetSpritesZoom()), //
+                    iround<int32>(numeric_cast<float32>(anim->Size.height) / _curMap->GetSpritesZoom())},
                 true, false, COLOR_SPRITE);
         }
         else {
@@ -2708,7 +2708,7 @@ void FOMapper::CurMMouseDown()
                 if (dir >= GameSettings::MAP_DIR_COUNT) {
                     dir = 0u;
                 }
-                cr->ChangeDir(static_cast<uint8>(dir));
+                cr->ChangeDir(numeric_cast<uint8>(dir));
             }
         }
     }
@@ -2791,7 +2791,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                 // Modify console history
                 ConsoleHistory.emplace_back(ConsoleStr);
 
-                for (int32 i = 0; i < static_cast<int32>(ConsoleHistory.size()) - 1; i++) {
+                for (int32 i = 0; i < numeric_cast<int32>(ConsoleHistory.size()) - 1; i++) {
                     if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
                         ConsoleHistory.erase(ConsoleHistory.begin() + i);
                         i = -1;
@@ -2802,7 +2802,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                     ConsoleHistory.erase(ConsoleHistory.begin());
                 }
 
-                ConsoleHistoryCur = static_cast<int32>(ConsoleHistory.size());
+                ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
 
                 // Save console history
                 string history_str;
@@ -2829,7 +2829,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             ConsoleEdit = true;
             ConsoleStr = "";
             ConsoleCur = 0;
-            ConsoleHistoryCur = static_cast<int32>(ConsoleHistory.size());
+            ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
         }
     }
     else {
@@ -2838,19 +2838,19 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             if (ConsoleHistoryCur > 0) {
                 ConsoleHistoryCur--;
                 ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = static_cast<uint32>(ConsoleStr.length());
+                ConsoleCur = numeric_cast<uint32>(ConsoleStr.length());
             }
         } break;
         case KeyCode::Down: {
-            if (ConsoleHistoryCur + 1 >= static_cast<int32>(ConsoleHistory.size())) {
-                ConsoleHistoryCur = static_cast<int32>(ConsoleHistory.size());
+            if (ConsoleHistoryCur + 1 >= numeric_cast<int32>(ConsoleHistory.size())) {
+                ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
                 ConsoleStr = "";
                 ConsoleCur = 0;
             }
             else {
                 ConsoleHistoryCur++;
                 ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = static_cast<uint32>(ConsoleStr.length());
+                ConsoleCur = numeric_cast<uint32>(ConsoleStr.length());
             }
         } break;
         default: {
@@ -2978,7 +2978,7 @@ void FOMapper::ParseCommand(string_view command)
                     cr->ClearAnim();
 
                     for (uint32 j = 0; j < anims.size() / 2; j++) {
-                        cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
+                        cr->Animate(static_cast<CritterStateAnim>(anims[numeric_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                     }
                 }
             }
@@ -2988,7 +2988,7 @@ void FOMapper::ParseCommand(string_view command)
                 cr->ClearAnim();
 
                 for (uint32 j = 0; j < anims.size() / 2; j++) {
-                    cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
+                    cr->Animate(static_cast<CritterStateAnim>(anims[numeric_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                 }
             }
         }
@@ -3046,7 +3046,7 @@ void FOMapper::ParseCommand(string_view command)
                 return;
             }
 
-            ResizeMap(_curMap.get(), static_cast<uint16>(maxhx), static_cast<uint16>(maxhy));
+            ResizeMap(_curMap.get(), numeric_cast<uint16>(maxhx), numeric_cast<uint16>(maxhy));
         }
     }
     else {
@@ -3189,8 +3189,8 @@ void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
     const auto corrected_height = std::clamp(height, MAXHEX_MIN, MAXHEX_MAX);
 
     auto work_pos = map->GetWorkHex();
-    work_pos.x = std::min(work_pos.x, static_cast<uint16>(corrected_width - 1));
-    work_pos.y = std::min(work_pos.y, static_cast<uint16>(corrected_height - 1));
+    work_pos.x = std::min(work_pos.x, numeric_cast<uint16>(corrected_width - 1));
+    work_pos.y = std::min(work_pos.y, numeric_cast<uint16>(corrected_height - 1));
     map->SetWorkHex(work_pos);
 
     map->Resize({corrected_width, corrected_height});
@@ -3221,7 +3221,8 @@ void FOMapper::AddMess(string_view message_text)
         max_lines = 20;
     }
 
-    int32 cur_mess = static_cast<int32>(MessBox.size()) - 1;
+    int32 cur_mess = numeric_cast<int32>(MessBox.size()) - 1;
+
     for (int32 i = 0, j = 0; cur_mess >= 0; cur_mess--) {
         MessBoxMessage& m = MessBox[cur_mess];
 

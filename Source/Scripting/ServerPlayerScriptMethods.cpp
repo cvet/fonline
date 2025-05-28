@@ -74,8 +74,9 @@ FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int32 access)
 
     string pass;
     const auto allow = self->GetEngine()->OnPlayerGetAccess.Fire(self, access, pass);
+
     if (allow) {
-        self->Access = static_cast<uint8>(access);
+        self->Access = numeric_cast<uint8>(access);
     }
 
     return allow;

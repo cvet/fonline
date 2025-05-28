@@ -242,18 +242,20 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, uint32 look, 
     }
 
     auto dir_ = dir;
+
     if (dir_ >= GameSettings::MAP_DIR_COUNT) {
         dir_ = self->GetDir();
     }
 
     auto look_ = look;
+
     if (look_ == 0) {
         look_ = self->GetLookDistance();
     }
 
     self->ViewMapId = map->GetId();
     self->ViewMapPid = map->GetProtoId();
-    self->ViewMapLook = static_cast<uint16>(look_);
+    self->ViewMapLook = numeric_cast<uint16>(look_);
     self->ViewMapHex = hex;
     self->ViewMapDir = dir_;
     self->ViewMapLocId = ident_t {};
@@ -746,7 +748,7 @@ FO_SCRIPT_API void Server_Critter_MoveToCritter(Critter* self, Critter* target, 
     self->TargetMoving.TargId = target->GetId();
     self->TargetMoving.TargHex = target->GetHex();
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = static_cast<uint16>(speed);
+    self->TargetMoving.Speed = numeric_cast<uint16>(speed);
 }
 
 ///@ ExportMethod
@@ -756,7 +758,7 @@ FO_SCRIPT_API void Server_Critter_MoveToHex(Critter* self, mpos hex, uint32 cut,
     self->TargetMoving.State = MovingState::InProgress;
     self->TargetMoving.TargHex = hex;
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = static_cast<uint16>(speed);
+    self->TargetMoving.Speed = numeric_cast<uint16>(speed);
 }
 
 ///@ ExportMethod

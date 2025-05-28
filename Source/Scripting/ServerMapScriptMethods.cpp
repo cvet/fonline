@@ -655,7 +655,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
     for (auto* cr : map_critters) {
         const auto hex = cr->GetHex();
 
-        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, static_cast<int32>(cr->GetLookDistance()), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
+        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, numeric_cast<int32>(cr->GetLookDistance()), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.push_back(cr);
         }
     }
@@ -762,7 +762,7 @@ FO_SCRIPT_API uint32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHe
         return 0;
     }
 
-    return static_cast<uint32>(output.Steps.size());
+    return numeric_cast<uint32>(output.Steps.size());
 }
 
 ///@ ExportMethod
@@ -790,7 +790,7 @@ FO_SCRIPT_API uint32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex
         return 0;
     }
 
-    return static_cast<uint32>(output.Steps.size());
+    return numeric_cast<uint32>(output.Steps.size());
 }
 
 ///@ ExportMethod
@@ -877,7 +877,7 @@ FO_SCRIPT_API void Server_Map_RunEffect(Map* self, hstring effPid, mpos hex, uin
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SendEffect(effPid, hex, static_cast<uint16>(radius));
+    self->SendEffect(effPid, hex, numeric_cast<uint16>(radius));
 }
 
 ///@ ExportMethod

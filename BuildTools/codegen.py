@@ -399,12 +399,12 @@ def parseTags():
             'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
             'int8&': 'int8&', 'uint8&': 'uint8&', 'int16&': 'int16&', 'uint16&': 'uint16&',
             'int32&': 'int32&', 'uint32&': 'uint32&', 'int64&': 'int64&', 'uint64&': 'uint64&',
-            'float': 'float32', 'double': 'float64', 'float&': 'float32&', 'double&': 'float64&',
+            'float32': 'float32', 'float64': 'float64', 'float32&': 'float32&', 'float64&': 'float64&',
             'bool': 'bool', 'bool&': 'bool&', 'void': 'void',
             'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
             'int8*': 'int8&', 'uint8*': 'uint8&', 'int16*': 'int16&', 'uint16*': 'uint16&',
             'int32*': 'int32&', 'uint32*': 'uint32&', 'int64*': 'int64&', 'uint64*': 'uint64&',
-            'float*': 'float32&', 'double*': 'float64&', 'bool*': 'bool&', 'string*': 'string&',
+            'float32*': 'float32&', 'float64*': 'float64&', 'bool*': 'bool&', 'string*': 'string&',
             'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&',
             'any_t': 'any', 'any_t&': 'any&', 'any_t*': 'any*'}
         if t.startswith('InitFunc<'):
@@ -1370,7 +1370,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None):
         assert r, 'Invalid native type ' + tt[0]
     else:
         def mapType(mt):
-            typeMap = {'any': 'any_t', 'float32': 'float', 'float64': 'double'}
+            typeMap = {'any': 'any_t'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1759,7 +1759,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 assert r, 'Invalid native type ' + tt[0]
             else:
                 def mapType(t):
-                    typeMap = {'any': 'any_t', 'float32': 'float', 'float64': 'double'}
+                    typeMap = {'any': 'any_t'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
@@ -2219,9 +2219,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif type == 'bool':
                     globalLines.append('    return strex(value).toBool();')
                 elif type in ['float32', 'float64']:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
                 else:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
             else:
                 globalLines.append('    ignore_unused(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')

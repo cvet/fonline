@@ -372,7 +372,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 mesh_triangles_count += triangles_count;
                 FO_RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
 
-                for (size_t i = 0; i < static_cast<size_t>(triangles_count) * 3; i++) {
+                for (size_t i = 0; i < numeric_cast<size_t>(triangles_count) * 3; i++) {
                     const uint32_t index = triangle_indices[i];
                     auto& v = mesh->Vertices.emplace_back();
 
@@ -395,8 +395,8 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     }
 
                     if (fbx_mesh->vertex_uv.exists) {
-                        v.TexCoord[0] = static_cast<float32>(fbx_mesh->vertex_uv[index].x);
-                        v.TexCoord[1] = 1.0f - static_cast<float32>(fbx_mesh->vertex_uv[index].y);
+                        v.TexCoord[0] = numeric_cast<float32>(fbx_mesh->vertex_uv[index].x);
+                        v.TexCoord[1] = 1.0f - numeric_cast<float32>(fbx_mesh->vertex_uv[index].y);
                         v.TexCoordBase[0] = v.TexCoord[0];
                         v.TexCoordBase[1] = v.TexCoord[1];
                     }
@@ -404,17 +404,17 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     if (fbx_skin != nullptr) {
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
-                        const size_t weights_count = std::min(static_cast<size_t>(fbx_skin_vertex.num_weights), BONES_PER_VERTEX);
+                        const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), BONES_PER_VERTEX);
 
                         float32 total_weight = 0.0f;
 
                         for (size_t w = 0; w < weights_count; w++) {
                             const ufbx_skin_weight skin_weight = fbx_skin->weights[fbx_skin_vertex.weight_begin + w];
 
-                            v.BlendIndices[w] = static_cast<float32>(skin_weight.cluster_index);
-                            v.BlendWeights[w] = static_cast<float32>(skin_weight.weight);
+                            v.BlendIndices[w] = numeric_cast<float32>(skin_weight.cluster_index);
+                            v.BlendWeights[w] = numeric_cast<float32>(skin_weight.weight);
 
-                            total_weight += static_cast<float32>(skin_weight.weight);
+                            total_weight += numeric_cast<float32>(skin_weight.weight);
                         }
 
                         for (size_t w = 0; w < weights_count; w++) {
@@ -438,11 +438,11 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         mesh->Vertices.resize(result_vertices);
 
         mesh->Indices.resize(indices.size());
-        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return static_cast<vindex_t>(index); });
+        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 
 #else
         for (size_t i = 0; i < mesh->Vertices.size(); i++) {
-            mesh->Indices.emplace_back(static_cast<vindex_t>(mesh->Indices.size()));
+            mesh->Indices.emplace_back(numeric_cast<vindex_t>(mesh->Indices.size()));
         }
 #endif
 
@@ -522,7 +522,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;
         anim_set->AnimName = fbx_anim_stack->name.data;
-        anim_set->Duration = static_cast<float32>(fbx_baked_anim->playback_duration);
+        anim_set->Duration = numeric_cast<float32>(fbx_baked_anim->playback_duration);
 
         for (const ufbx_baked_node& fbx_baked_anim_node : fbx_baked_anim->nodes) {
             vector<float32> tt;
@@ -533,15 +533,15 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
             vector<vec3> sv;
 
             for (const ufbx_baked_vec3& translation_key : fbx_baked_anim_node.translation_keys) {
-                tt.emplace_back(static_cast<float32>(translation_key.time));
+                tt.emplace_back(numeric_cast<float32>(translation_key.time));
                 tv.emplace_back(ConvertFbxVec3(translation_key.value));
             }
             for (const ufbx_baked_quat& rotation_key : fbx_baked_anim_node.rotation_keys) {
-                rt.emplace_back(static_cast<float32>(rotation_key.time));
+                rt.emplace_back(numeric_cast<float32>(rotation_key.time));
                 rv.emplace_back(ConvertFbxQuat(rotation_key.value));
             }
             for (const ufbx_baked_vec3& scale_key : fbx_baked_anim_node.scale_keys) {
-                st.emplace_back(static_cast<float32>(scale_key.time));
+                st.emplace_back(numeric_cast<float32>(scale_key.time));
                 sv.emplace_back(ConvertFbxVec3(scale_key.value));
             }
 
@@ -576,9 +576,9 @@ static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3
 
     vec3 result;
 
-    result.x = static_cast<float32>(v.x);
-    result.y = static_cast<float32>(v.y);
-    result.z = static_cast<float32>(v.z);
+    result.x = numeric_cast<float32>(v.x);
+    result.y = numeric_cast<float32>(v.y);
+    result.z = numeric_cast<float32>(v.z);
 
     return result;
 }
@@ -589,10 +589,10 @@ static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion
 
     quaternion result;
 
-    result.x = static_cast<float32>(q.x);
-    result.y = static_cast<float32>(q.y);
-    result.z = static_cast<float32>(q.z);
-    result.w = static_cast<float32>(q.w);
+    result.x = numeric_cast<float32>(q.x);
+    result.y = numeric_cast<float32>(q.y);
+    result.z = numeric_cast<float32>(q.z);
+    result.w = numeric_cast<float32>(q.w);
 
     return result;
 }
@@ -603,10 +603,10 @@ static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
 
     ucolor color;
 
-    color.comp.r = static_cast<uint8>(iround<int32>(c.x * 255.0));
-    color.comp.g = static_cast<uint8>(iround<int32>(c.y * 255.0));
-    color.comp.b = static_cast<uint8>(iround<int32>(c.z * 255.0));
-    color.comp.a = static_cast<uint8>(iround<int32>(c.w * 255.0));
+    color.comp.r = numeric_cast<uint8>(iround<int32>(c.x * 255.0));
+    color.comp.g = numeric_cast<uint8>(iround<int32>(c.y * 255.0));
+    color.comp.b = numeric_cast<uint8>(iround<int32>(c.z * 255.0));
+    color.comp.a = numeric_cast<uint8>(iround<int32>(c.w * 255.0));
 
     return color;
 }
@@ -617,18 +617,18 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
 
     mat44 result;
 
-    result.a1 = static_cast<float32>(m.m00);
-    result.a2 = static_cast<float32>(m.m01);
-    result.a3 = static_cast<float32>(m.m02);
-    result.a4 = static_cast<float32>(m.m03);
-    result.b1 = static_cast<float32>(m.m10);
-    result.b2 = static_cast<float32>(m.m11);
-    result.b3 = static_cast<float32>(m.m12);
-    result.b4 = static_cast<float32>(m.m13);
-    result.c1 = static_cast<float32>(m.m20);
-    result.c2 = static_cast<float32>(m.m21);
-    result.c3 = static_cast<float32>(m.m22);
-    result.c4 = static_cast<float32>(m.m23);
+    result.a1 = numeric_cast<float32>(m.m00);
+    result.a2 = numeric_cast<float32>(m.m01);
+    result.a3 = numeric_cast<float32>(m.m02);
+    result.a4 = numeric_cast<float32>(m.m03);
+    result.b1 = numeric_cast<float32>(m.m10);
+    result.b2 = numeric_cast<float32>(m.m11);
+    result.b3 = numeric_cast<float32>(m.m12);
+    result.b4 = numeric_cast<float32>(m.m13);
+    result.c1 = numeric_cast<float32>(m.m20);
+    result.c2 = numeric_cast<float32>(m.m21);
+    result.c3 = numeric_cast<float32>(m.m22);
+    result.c4 = numeric_cast<float32>(m.m23);
     result.d1 = 0.0f;
     result.d2 = 0.0f;
     result.d3 = 0.0f;

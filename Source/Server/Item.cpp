@@ -58,7 +58,7 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
         }
 
         if (sort_value >= item->GetSortValue()) {
-            sort_value = static_cast<int16>(item->GetSortValue() - 1);
+            sort_value = numeric_cast<int16>(item->GetSortValue() - 1);
         }
     }
 

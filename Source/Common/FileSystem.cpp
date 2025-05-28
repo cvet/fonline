@@ -282,11 +282,11 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     }
 
     for (size_t i = _curPos; i < _buf.size() - fragment.size(); i++) {
-        if (_buf[i] == static_cast<uint8>(fragment[0])) {
+        if (_buf[i] == std::bit_cast<uint8>(fragment[0])) {
             bool not_match = false;
 
             for (size_t j = 1; j < fragment.size(); j++) {
-                if (_buf[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
+                if (_buf[numeric_cast<size_t>(i) + j] != std::bit_cast<uint8>(fragment[j])) {
                     not_match = true;
                     break;
                 }

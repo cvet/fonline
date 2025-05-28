@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _locMaps.size(); }
     [[nodiscard]] auto GetMapByIndex(uint32 index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
-    [[nodiscard]] auto GetMapIndex(hstring map_pid) const noexcept -> size_t;
+    [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> size_t;
 
     void AddMap(Map* map);
 

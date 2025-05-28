@@ -155,7 +155,7 @@ public:
     explicit OpenGL_DrawBuffer(bool is_static);
     ~OpenGL_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
+    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
 
     GLuint VertexBufObj {};
     GLuint IndexBufObj {};
@@ -173,7 +173,7 @@ public:
     }
     ~OpenGL_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex) override;
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
@@ -634,10 +634,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const float32 back_buf_aspect = static_cast<float32>(BaseFrameBufSize.width) / static_cast<float32>(BaseFrameBufSize.height);
-        const float32 screen_aspect = static_cast<float32>(Settings->ScreenWidth) / static_cast<float32>(Settings->ScreenHeight);
-        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BaseFrameBufSize.height) * screen_aspect : static_cast<float32>(BaseFrameBufSize.height) * back_buf_aspect);
-        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float32>(BaseFrameBufSize.width) / screen_aspect);
+        const auto back_buf_aspect = explicit_div<float32>(numeric_cast<float32>(BaseFrameBufSize.width), numeric_cast<float32>(BaseFrameBufSize.height));
+        const auto screen_aspect = explicit_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
+        const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32>(BaseFrameBufSize.height) * back_buf_aspect);
+        const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32>(BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
@@ -650,7 +650,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float32>(screen_width), static_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     TargetSize = {screen_width, screen_height};
@@ -663,10 +663,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto r = static_cast<float32>(color.value().comp.r) / 255.0f;
-        const auto g = static_cast<float32>(color.value().comp.g) / 255.0f;
-        const auto b = static_cast<float32>(color.value().comp.b) / 255.0f;
-        const auto a = static_cast<float32>(color.value().comp.a) / 255.0f;
+        const auto r = numeric_cast<float32>(color.value().comp.r) / 255.0f;
+        const auto g = numeric_cast<float32>(color.value().comp.g) / 255.0f;
+        const auto b = numeric_cast<float32>(color.value().comp.b) / 255.0f;
+        const auto a = numeric_cast<float32>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -696,13 +696,13 @@ void OpenGL_Renderer::EnableScissor(irect rect)
     int32 b;
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float32 x_ratio = static_cast<float32>(ViewPortRect.Width()) / static_cast<float32>(TargetSize.width);
-        const float32 y_ratio = static_cast<float32>(ViewPortRect.Height()) / static_cast<float32>(TargetSize.height);
+        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.Width()) / numeric_cast<float32>(TargetSize.width);
+        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.Height()) / numeric_cast<float32>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x) * x_ratio);
-        t = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y) * y_ratio);
-        r = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x + rect.width) * x_ratio);
-        b = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y + rect.height) * y_ratio);
+        l = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
         l = ViewPortRect.Left + rect.x;
@@ -777,7 +777,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucol
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(size.width) * size.height);
+    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
@@ -882,7 +882,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
     glDeleteBuffers(1, &IndexBufObj);
 }
 
-void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
+void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -902,23 +902,23 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         FO_RUNTIME_ASSERT(Vertices.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
         FO_RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
     }
 #else
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+    upload_vertices = custom_vertices_size.value_or(VertCount);
     GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
 #endif
 
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     // Fill index buffer
-    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
+    const auto upload_indices = custom_indices_size.value_or(IndCount);
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
     GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), Indices.data(), buf_type));
@@ -1023,7 +1023,7 @@ OpenGL_Effect::~OpenGL_Effect()
     }
 }
 
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
+void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1128,7 +1128,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 
     const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex ? EggTex.get() : DummyTexture.get());
-    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
+    const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
     for (size_t pass = 0; pass < _passCount; pass++) {

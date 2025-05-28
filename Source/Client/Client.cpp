@@ -178,7 +178,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(i));
+                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                 switch (prop->GetAccess()) {
                 case Property::AccessType::PublicModifiable:
@@ -342,7 +342,7 @@ void FOClient::MainLoop()
     FrameAdvance();
 
 #if FO_TRACY
-    TracyPlot("Client FPS", static_cast<int64>(GameTime.GetFramesPerSecond()));
+    TracyPlot("Client FPS", numeric_cast<int64>(GameTime.GetFramesPerSecond()));
 #endif
 
     // Network
@@ -434,10 +434,10 @@ void FOClient::ProcessScreenEffectFading()
                 const int32 sc = (reinterpret_cast<uint8*>(&screen_effect.StartColor))[i];
                 const int32 ec = (reinterpret_cast<uint8*>(&screen_effect.EndColor))[i];
                 const auto dc = ec - sc;
-                res[i] = sc + dc * static_cast<int32>(proc) / 100;
+                res[i] = sc + dc * numeric_cast<int32>(proc) / 100;
             }
 
-            const auto color = ucolor {static_cast<uint8>(res[0]), static_cast<uint8>(res[1]), static_cast<uint8>(res[2]), static_cast<uint8>(res[3])};
+            const auto color = ucolor {numeric_cast<uint8>(res[0]), numeric_cast<uint8>(res[1]), numeric_cast<uint8>(res[2]), numeric_cast<uint8>(res[3])};
 
             for (auto i = 0; i < 6; i++) {
                 full_screen_quad[i].PointColor = color;
@@ -457,8 +457,8 @@ void FOClient::ScreenQuake(int32 noise, timespan time)
     Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
     Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
 
-    _quakeScreenOffsX = static_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = static_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsX = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsY = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
 
     Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
@@ -690,11 +690,11 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     _conn.OutBuf.Write(cr->GetId());
     _conn.OutBuf.Write(cr->Moving.Speed);
     _conn.OutBuf.Write(cr->Moving.StartHex);
-    _conn.OutBuf.Write(static_cast<uint16>(cr->Moving.Steps.size()));
+    _conn.OutBuf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
     for (const auto step : cr->Moving.Steps) {
         _conn.OutBuf.Write(step);
     }
-    _conn.OutBuf.Write(static_cast<uint16>(cr->Moving.ControlSteps.size()));
+    _conn.OutBuf.Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
     for (const auto control_step : cr->Moving.ControlSteps) {
         _conn.OutBuf.Write(control_step);
     }
@@ -729,8 +729,8 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     const auto prop_raw_data = props.GetRawData(prop);
 
     _conn.OutBuf.StartMsg(NetMessage::SendProperty);
-    _conn.OutBuf.Write(static_cast<uint32>(prop_raw_data.size()));
-    _conn.OutBuf.Write(static_cast<char>(type));
+    _conn.OutBuf.Write(numeric_cast<uint32>(prop_raw_data.size()));
+    _conn.OutBuf.Write(type);
 
     switch (type) {
     case NetProperty::CritterItem: {
@@ -1123,7 +1123,7 @@ void FOClient::Net_OnCritterMoveSpeed()
         return;
     }
 
-    const auto diff = static_cast<float32>(speed) / static_cast<float32>(cr->Moving.Speed);
+    const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
     const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
@@ -1661,11 +1661,11 @@ void FOClient::Net_OnEffect()
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (uint32 i = 0; i < count; i++) {
-        const auto ex = static_cast<int16>(hex.x) + sx[i];
-        const auto ey = static_cast<int16>(hex.y) + sy[i];
+        const auto ex = numeric_cast<int16>(hex.x) + sx[i];
+        const auto ey = numeric_cast<int16>(hex.y) + sy[i];
 
         if (_curMap->GetSize().IsValidPos(ipos {ex, ey})) {
-            _curMap->RunEffectItem(eff_pid, {static_cast<uint16>(ex), static_cast<uint16>(ey)}, {static_cast<uint16>(ex), static_cast<uint16>(ey)});
+            _curMap->RunEffectItem(eff_pid, {numeric_cast<uint16>(ex), numeric_cast<uint16>(ey)}, {numeric_cast<uint16>(ex), numeric_cast<uint16>(ey)});
         }
     }
 }
@@ -2193,7 +2193,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.GetFrameTime();
     cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
-    cr->Moving.WholeTime = static_cast<float32>(whole_time);
+    cr->Moving.WholeTime = numeric_cast<float32>(whole_time);
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHex = start_hex;
@@ -2202,7 +2202,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
         const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
-        cr->Moving.StartHexOffset = {static_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), static_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
+        cr->Moving.StartHexOffset = {numeric_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), numeric_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
     }
 
     cr->Moving.WholeDist = 0.0f;
@@ -2231,8 +2231,8 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float32>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(static_cast<float32>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
 
         cr->Moving.WholeDist += dist;
 
@@ -2724,7 +2724,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
                 auto rnd = strex(text.substr(first, last - first + 1)).split('|');
                 text.erase(first, last - first + 1);
                 if (!rnd.empty()) {
-                    text.insert(first, rnd[GenericUtils::Random(0, static_cast<int32>(rnd.size()) - 1)]);
+                    text.insert(first, rnd[GenericUtils::Random(0, numeric_cast<int32>(rnd.size()) - 1)]);
                 }
             }
             // Lexems
@@ -2790,7 +2790,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     }
 
     dialogs.push_back(text);
-    text = dialogs[GenericUtils::Random(0u, static_cast<uint32>(dialogs.size()) - 1u)];
+    text = dialogs[GenericUtils::Random(0u, numeric_cast<uint32>(dialogs.size()) - 1u)];
 }
 
 void FOClient::UnloadMap()
@@ -2858,17 +2858,18 @@ void FOClient::LmapPrepareMap()
                 continue;
             }
 
-            auto is_far = false;
+            bool is_far = false;
             const auto dist = GeometryHelper::DistGame(hex.x, hex.y, i1, i2);
+
             if (dist > vis) {
                 is_far = true;
             }
 
-            const auto& field = _curMap->GetField({static_cast<uint16>(i1), static_cast<uint16>(i2)});
+            const auto& field = _curMap->GetField({numeric_cast<uint16>(i1), numeric_cast<uint16>(i2)});
             ucolor cur_color;
 
-            if (const auto* cr = _curMap->GetNonDeadCritter({static_cast<uint16>(i1), static_cast<uint16>(i2)}); cr != nullptr) {
-                cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
+            if (const auto* cr = _curMap->GetNonDeadCritter({numeric_cast<uint16>(i1), numeric_cast<uint16>(i2)}); cr != nullptr) {
+                cur_color = cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0};
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y}, cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
             }
@@ -3005,7 +3006,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         const auto is_cr = strex(args[1]).toBool();
         const auto cr_id = is_cr ? ident_t {strex(args[2]).toInt64()} : ident_t {};
         const auto dlg_pack_id = is_cr ? hstring() : Hashes.ResolveHash(strex(args[2]).toUInt());
-        const auto answer_index = static_cast<uint8>(strex(args[3]).toUInt());
+        const auto answer_index = numeric_cast<uint8>(strex(args[3]).toUInt());
 
         Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
@@ -3034,7 +3035,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         if (_curMap != nullptr) {
             const auto hx = strex(args[1]).toUInt();
             const auto hy = strex(args[2]).toUInt();
-            _curMap->SetSkipRoof({static_cast<uint16>(hx), static_cast<uint16>(hy)});
+            _curMap->SetSkipRoof({numeric_cast<uint16>(hx), numeric_cast<uint16>(hy)});
         }
     }
     else {
@@ -3114,7 +3115,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
                 hex = cr->GetHex();
 
                 if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
-                    control_steps.push_back(static_cast<uint16>(steps.size()));
+                    control_steps.push_back(numeric_cast<uint16>(steps.size()));
                     try_move = true;
                 }
             }
@@ -3125,7 +3126,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         cr->Moving.Steps = steps;
         cr->Moving.ControlSteps = control_steps;
         cr->Moving.StartTime = GameTime.GetFrameTime();
-        cr->Moving.Speed = static_cast<uint16>(speed);
+        cr->Moving.Speed = numeric_cast<uint16>(speed);
         cr->Moving.StartHex = cr->GetHex();
         cr->Moving.EndHex = hex;
         cr->Moving.StartHexOffset = cr->GetHexOffset();
@@ -3135,7 +3136,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         cr->Moving.WholeDist = {};
 
         FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-        const auto base_move_speed = static_cast<float32>(cr->Moving.Speed);
+        const auto base_move_speed = numeric_cast<float32>(cr->Moving.Speed);
 
         auto next_start_hex = cr->Moving.StartHex;
         uint16 control_step_begin = 0;
@@ -3161,8 +3162,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
                 offset2.y += cr->Moving.EndHexOffset.y;
             }
 
-            const auto proj_oy = static_cast<float32>(offset2.y) * Geometry.GetYProj();
-            const auto dist = std::sqrt(static_cast<float32>(offset2.x * offset2.x) + proj_oy * proj_oy);
+            const auto proj_oy = numeric_cast<float32>(offset2.y) * Geometry.GetYProj();
+            const auto dist = std::sqrt(numeric_cast<float32>(offset2.x * offset2.x) + proj_oy * proj_oy);
 
             cr->Moving.WholeDist += dist;
             cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;

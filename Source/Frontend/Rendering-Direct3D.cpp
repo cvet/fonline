@@ -85,7 +85,7 @@ public:
     auto operator=(Direct3D_DrawBuffer&&) noexcept -> Direct3D_DrawBuffer& = delete;
     ~Direct3D_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
+    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
 
     ID3D11Buffer* VertexBuf {};
     ID3D11Buffer* IndexBuf {};
@@ -108,7 +108,7 @@ public:
     auto operator=(Direct3D_Effect&&) noexcept -> Direct3D_Effect& = delete;
     ~Direct3D_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex) override;
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override;
 
     ID3D11VertexShader* VertexShader[EFFECT_MAX_PASSES] {};
     ID3D11InputLayout* InputLayout[EFFECT_MAX_PASSES] {};
@@ -255,7 +255,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
 #endif
         };
-        constexpr auto feature_levels_count = static_cast<UINT>(std::size(feature_levels));
+        constexpr auto feature_levels_count = numeric_cast<UINT>(std::size(feature_levels));
 
         UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
 
@@ -604,15 +604,15 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                 static_assert(BONES_PER_VERTEX == 4);
 
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, Normal)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, TexCoord)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, TexCoordBase)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 4, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, Tangent)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 5, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, Bitangent)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 6, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, BlendWeights)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 7, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, BlendIndices)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 8, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex3D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Normal)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, TexCoord)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, TexCoordBase)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 4, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Tangent)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 5, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Bitangent)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 6, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, BlendWeights)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 7, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, BlendIndices)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 8, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex3D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
                 const auto d3d_create_input_layout = D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout[pass]);
@@ -625,10 +625,10 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 #endif
             {
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, EggTexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, EggTexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
                 const auto d3d_create_input_layout = D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout[pass]);
@@ -813,10 +813,10 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
         CurRenderTarget = MainRenderTarget;
         CurDepthStencil = nullptr;
 
-        const float32 back_buf_aspect = static_cast<float32>(BackBufSize.width) / static_cast<float32>(BackBufSize.height);
-        const float32 screen_aspect = static_cast<float32>(Settings->ScreenWidth) / static_cast<float32>(Settings->ScreenHeight);
-        const int32 fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BackBufSize.height) * screen_aspect : static_cast<float32>(BackBufSize.height) * back_buf_aspect);
-        const int32 fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? static_cast<float32>(BackBufSize.width) / back_buf_aspect : static_cast<float32>(BackBufSize.width) / screen_aspect);
+        const auto back_buf_aspect = explicit_div<float32>(numeric_cast<float32>(BackBufSize.width), numeric_cast<float32>(BackBufSize.height));
+        const auto screen_aspect = explicit_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
+        const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BackBufSize.height) * screen_aspect : numeric_cast<float32>(BackBufSize.height) * back_buf_aspect);
+        const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BackBufSize.width) / back_buf_aspect : numeric_cast<float32>(BackBufSize.width) / screen_aspect);
 
         vp_ox = (BackBufSize.width - fit_width) / 2;
         vp_oy = (BackBufSize.height - fit_height) / 2;
@@ -830,16 +830,16 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
     ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
 
-    ViewPort.Width = static_cast<FLOAT>(vp_width);
-    ViewPort.Height = static_cast<FLOAT>(vp_height);
+    ViewPort.Width = numeric_cast<FLOAT>(vp_width);
+    ViewPort.Height = numeric_cast<FLOAT>(vp_height);
     ViewPort.MinDepth = 0.0f;
     ViewPort.MaxDepth = 1.0f;
-    ViewPort.TopLeftX = static_cast<FLOAT>(vp_ox);
-    ViewPort.TopLeftY = static_cast<FLOAT>(vp_oy);
+    ViewPort.TopLeftX = numeric_cast<FLOAT>(vp_ox);
+    ViewPort.TopLeftY = numeric_cast<FLOAT>(vp_oy);
 
     D3DDeviceContext->RSSetViewports(1, &ViewPort);
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float32>(screen_width), static_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     DisabledScissorRect.left = vp_ox;
@@ -855,10 +855,10 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     FO_STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
-        const auto r = static_cast<float32>(color.value().comp.r) / 255.0f;
-        const auto g = static_cast<float32>(color.value().comp.g) / 255.0f;
-        const auto b = static_cast<float32>(color.value().comp.b) / 255.0f;
-        const auto a = static_cast<float32>(color.value().comp.a) / 255.0f;
+        const auto r = numeric_cast<float32>(color.value().comp.r) / 255.0f;
+        const auto g = numeric_cast<float32>(color.value().comp.g) / 255.0f;
+        const auto b = numeric_cast<float32>(color.value().comp.b) / 255.0f;
+        const auto a = numeric_cast<float32>(color.value().comp.a) / 255.0f;
         const float32 color_rgba[] {r, g, b, a};
 
         D3DDeviceContext->ClearRenderTargetView(CurRenderTarget, color_rgba);
@@ -883,13 +883,13 @@ void Direct3D_Renderer::EnableScissor(irect rect)
     FO_STACK_TRACE_ENTRY();
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float32 x_ratio = static_cast<float32>(ViewPortRect.Width()) / static_cast<float32>(TargetSize.width);
-        const float32 y_ratio = static_cast<float32>(ViewPortRect.Height()) / static_cast<float32>(TargetSize.height);
+        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.Width()) / numeric_cast<float32>(TargetSize.width);
+        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.Height()) / numeric_cast<float32>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround<int32>(static_cast<float32>(rect.x + rect.width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround<int32>(static_cast<float32>(rect.y + rect.height) * y_ratio);
+        ScissorRect.left = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
         ScissorRect.left = ViewPortRect.Left + rect.x;
@@ -999,7 +999,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(size.width) * size.height);
+    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
     staging_desc.Width = size.width;
@@ -1033,8 +1033,8 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     for (int32 i = 0; i < size.height; i++) {
-        const auto* src = static_cast<uint8*>(tex_resource.pData) + static_cast<size_t>(tex_resource.RowPitch) * i;
-        MemCopy(&result[static_cast<size_t>(i) * size.width], src, static_cast<size_t>(size.width) * 4);
+        const auto* src = static_cast<uint8*>(tex_resource.pData) + numeric_cast<size_t>(tex_resource.RowPitch) * i;
+        MemCopy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
     D3DDeviceContext->Unmap(staging_tex, 0);
@@ -1075,7 +1075,7 @@ Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
     }
 }
 
-void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
+void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1092,18 +1092,18 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         FO_RUNTIME_ASSERT(Vertices.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         vert_size = sizeof(Vertex3D);
     }
     else {
         FO_RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         vert_size = sizeof(Vertex2D);
     }
 
 #else
     ignore_unused(usage);
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+    upload_vertices = custom_vertices_size.value_or(VertCount);
     vert_size = sizeof(Vertex2D);
 #endif
 
@@ -1117,7 +1117,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
         D3D11_BUFFER_DESC vbuf_desc = {};
         vbuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-        vbuf_desc.ByteWidth = static_cast<UINT>(VertexBufSize * vert_size);
+        vbuf_desc.ByteWidth = numeric_cast<UINT>(VertexBufSize * vert_size);
         vbuf_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         vbuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         vbuf_desc.MiscFlags = 0;
@@ -1144,7 +1144,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
     D3DDeviceContext->Unmap(VertexBuf, 0);
 
     // Fill index buffer
-    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
+    const auto upload_indices = custom_indices_size.value_or(IndCount);
 
     if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
         if (IndexBuf != nullptr) {
@@ -1156,7 +1156,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
         D3D11_BUFFER_DESC ibuf_desc = {};
         ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-        ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(vindex_t));
+        ibuf_desc.ByteWidth = numeric_cast<UINT>(IndexBufSize * sizeof(vindex_t));
         ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         ibuf_desc.MiscFlags = 0;
@@ -1207,7 +1207,7 @@ Direct3D_Effect::~Direct3D_Effect()
 #undef SAFE_RELEASE
 }
 
-void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
+void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1303,7 +1303,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #undef CBUF_UPLOAD_BUFFER
 
     const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex ? EggTex.get() : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-    const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->IndCount : indices_to_draw);
+    const auto draw_count = numeric_cast<UINT>(indices_to_draw.value_or(d3d_dbuf->IndCount));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
@@ -1399,7 +1399,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
             D3DDeviceContext->Draw(draw_count, 0);
         }
         else {
-            D3DDeviceContext->DrawIndexed(draw_count, static_cast<UINT>(start_index), 0);
+            D3DDeviceContext->DrawIndexed(draw_count, numeric_cast<UINT>(start_index), 0);
         }
 
         // Unbind

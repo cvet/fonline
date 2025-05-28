@@ -188,29 +188,29 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson, key.data(), static_cast<int32>(key.length()), value.AsInt64())) {
+        if (!bson_append_int64(bson, key.data(), numeric_cast<int32>(key.length()), value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Double) {
-        if (!bson_append_double(bson, key.data(), static_cast<int32>(key.length()), value.AsDouble())) {
+        if (!bson_append_double(bson, key.data(), numeric_cast<int32>(key.length()), value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson, key.data(), static_cast<int32>(key.length()), value.AsBool())) {
+        if (!bson_append_bool(bson, key.data(), numeric_cast<int32>(key.length()), value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key.data(), static_cast<int32>(key.length()), value.AsString().c_str(), static_cast<int32>(value.AsString().length()))) {
+        if (!bson_append_utf8(bson, key.data(), numeric_cast<int32>(key.length()), value.AsString().c_str(), numeric_cast<int32>(value.AsString().length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_begin(bson, key.data(), static_cast<int32>(key.length()), &bson_arr)) {
+        if (!bson_append_array_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
@@ -229,7 +229,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson, key.data(), static_cast<int32>(key.length()), &bson_doc)) {
+        if (!bson_append_document_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
@@ -264,7 +264,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
     const auto* value = bson_iter_value(iter);
 
     if (value->value_type == BSON_TYPE_INT32) {
-        return static_cast<int64>(value->value.v_int32);
+        return numeric_cast<int64>(value->value.v_int32);
     }
     else if (value->value_type == BSON_TYPE_INT64) {
         return value->value.v_int64;
@@ -568,7 +568,7 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -643,7 +643,7 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 

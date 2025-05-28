@@ -358,7 +358,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     FD_ZERO(&_netSockSet);
     FD_SET(_netSock, &_netSockSet);
 
-    const auto r = ::select(static_cast<int32>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
+    const auto r = ::select(numeric_cast<int32>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
 
     if (r == 1) {
         if (_isConnecting) {

@@ -125,8 +125,8 @@ void ItemHexView::Process()
         if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
-            _effCurOffset.x -= static_cast<float32>(x);
-            _effCurOffset.y -= static_cast<float32>(y);
+            _effCurOffset.x -= numeric_cast<float32>(x);
+            _effCurOffset.y -= numeric_cast<float32>(y);
 
             RefreshOffs();
 
@@ -158,7 +158,7 @@ void ItemHexView::SetEffect(mpos to_hex)
     }
 
     _effStartOffset = SprOffset;
-    _effCurOffset = {static_cast<float32>(SprOffset.x), static_cast<float32>(SprOffset.y)};
+    _effCurOffset = {numeric_cast<float32>(SprOffset.x), numeric_cast<float32>(SprOffset.y)};
     _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
     _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 }

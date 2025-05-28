@@ -216,15 +216,15 @@ void ModelAnimationController::ResetBonesTransition(uint32 skip_track, const vec
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
-        for (uint32 i = 0, j = static_cast<uint32>(_tracks.size()); i < j; i++) {
-            if (i == skip_track) {
+        for (size_t i = 0; i < _tracks.size(); i++) {
+            if (i == numeric_cast<size_t>(skip_track)) {
                 continue;
             }
 
-            for (uint32 k = 0, l = static_cast<uint32>(_tracks[i].AnimOutput.size()); k < l; k++) {
-                if (_tracks[i].AnimOutput[k] != nullptr && _tracks[i].AnimOutput[k]->BoneName == bone_name) {
-                    _tracks[i].AnimOutput[k]->Valid[i] = false;
-                    _tracks[i].AnimOutput[k] = nullptr;
+            for (size_t j = 0; j < _tracks[i].AnimOutput.size(); j++) {
+                if (_tracks[i].AnimOutput[j] != nullptr && _tracks[i].AnimOutput[j]->BoneName == bone_name) {
+                    _tracks[i].AnimOutput[j]->Valid[i] = false;
+                    _tracks[i].AnimOutput[j] = nullptr;
                 }
             }
         }

@@ -152,7 +152,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _preallocatedCells.resize(static_cast<int64>(base::_size.width) * base::_size.height);
+        _preallocatedCells.resize(safe_numeric_cast<int64>(base::_size.width) * base::_size.height);
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
@@ -161,7 +161,7 @@ public:
 
         FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
 
-        auto& cell = _preallocatedCells[static_cast<int64>(pos.y) * base::_size.width + pos.x];
+        auto& cell = _preallocatedCells[safe_numeric_cast<int64>(pos.y) * base::_size.width + pos.x];
 
         if (!cell) {
             return _emptyCell;
@@ -176,7 +176,7 @@ public:
 
         FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
 
-        auto& cell = _preallocatedCells[static_cast<int64>(pos.y) * base::_size.width + pos.x];
+        auto& cell = _preallocatedCells[safe_numeric_cast<int64>(pos.y) * base::_size.width + pos.x];
 
         if (!cell) {
             cell = SafeAlloc::MakeUnique<TCell>();
@@ -199,7 +199,7 @@ public:
 
         vector<unique_ptr<TCell>> new_cells;
 
-        new_cells.resize(static_cast<int64>(base::_size.width) * base::_size.height);
+        new_cells.resize(numeric_cast<int64>(base::_size.width) * base::_size.height);
 
         for (int64 y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64 x = 0; x < std::max(prev_width, base::_size.width); x++) {

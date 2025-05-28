@@ -1778,6 +1778,229 @@ FO_DECLARE_EXCEPTION(InvalidCallException);
 FO_DECLARE_EXCEPTION(NotEnabled3DException);
 FO_DECLARE_EXCEPTION(InvalidOperationException);
 
+// Numeric cast
+FO_DECLARE_EXCEPTION(OverflowException);
+FO_DECLARE_EXCEPTION(DivisionByZeroException);
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto numeric_cast(U value) -> T
+{
+    static_assert(std::is_arithmetic_v<T>);
+    static_assert(std::is_arithmetic_v<U>);
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+
+    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
+        }
+        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::min());
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        if (value < 0) {
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
+        }
+        if (value < 0) {
+            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
+        }
+    }
+
+    return static_cast<T>(value);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto safe_numeric_cast(U value) noexcept -> T
+{
+    static_assert(std::is_arithmetic_v<T>);
+    static_assert(std::is_arithmetic_v<U>);
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+
+    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        static_assert(false, "Safe conversion not possible");
+    }
+
+    return static_cast<T>(value);
+}
+
+template<typename T, typename U>
+[[nodiscard]] consteval auto const_numeric_cast(U value) noexcept -> T // NOLINT(bugprone-exception-escape)
+{
+    return numeric_cast<T>(value);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto clamp_to(U value) noexcept -> T
+{
+    static_assert(std::is_arithmetic_v<T>);
+    static_assert(std::is_arithmetic_v<U>);
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+
+    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            value = static_cast<U>(std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            value = static_cast<U>(std::numeric_limits<T>::max());
+        }
+        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
+            value = static_cast<U>(std::numeric_limits<T>::min());
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
+        if (value < 0) {
+            value = 0;
+        }
+    }
+    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            value = static_cast<U>(std::numeric_limits<T>::max());
+        }
+        if (value < 0) {
+            value = 0;
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            value = static_cast<U>(std::numeric_limits<T>::max());
+        }
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
+        // Always fit
+    }
+    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
+        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
+            value = static_cast<U>(std::numeric_limits<T>::max());
+        }
+    }
+
+    return static_cast<T>(value);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto iround(U value) -> T
+{
+    static_assert(std::is_floating_point_v<U> && std::is_integral_v<T>);
+    return numeric_cast<T>(std::llround(value));
+}
+
+// Safe arithmetics
+template<typename T, typename U>
+[[nodiscard]] constexpr auto explicit_add(const U& value1, const U& value2) -> U
+{
+    static_assert(std::is_same_v<T, U>);
+    static_assert(std::is_arithmetic_v<T>);
+
+    return numeric_cast<T>(value1 + value2);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto explicit_sub(const U& value1, const U& value2) -> U
+{
+    static_assert(std::is_same_v<T, U>);
+    static_assert(std::is_arithmetic_v<T>);
+
+    return numeric_cast<T>(value1 - value2);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto explicit_mul(const U& value1, const U& value2) -> U
+{
+    static_assert(std::is_same_v<T, U>);
+    static_assert(std::is_arithmetic_v<T>);
+
+    return numeric_cast<T>(value1 * value2);
+}
+
+template<typename T, typename U>
+[[nodiscard]] constexpr auto explicit_div(const U& value1, const U& value2) -> U
+{
+    static_assert(std::is_same_v<T, U>);
+    static_assert(std::is_arithmetic_v<T>);
+
+    if constexpr (std::is_floating_point_v<T>) {
+        if (std::fabs(value2) < std::numeric_limits<T>::epsilon()) {
+            throw DivisionByZeroException("Float division by zero", typeid(T).name(), value1, value2);
+        }
+    }
+    else {
+        if (value2 == 0) {
+            throw DivisionByZeroException("Integer division by zero", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return numeric_cast<T>(value1 / value2);
+}
+
 // Event system
 class EventUnsubscriberCallback final
 {
@@ -2290,12 +2513,23 @@ struct TRect
 
     TRect() noexcept = default;
     template<typename T2>
+        requires(std::is_floating_point_v<T2>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
     TRect(const TRect<T2>& other) noexcept :
-        Left(static_cast<T>(other.Left)),
-        Top(static_cast<T>(other.Top)),
-        Right(static_cast<T>(other.Right)),
-        Bottom(static_cast<T>(other.Bottom))
+        Left(iround<T>(other.Left)),
+        Top(iround<T>(other.Top)),
+        Right(iround<T>(other.Right)),
+        Bottom(iround<T>(other.Bottom))
+    {
+    }
+    template<typename T2>
+        requires(std::is_integral_v<T2>)
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    TRect(const TRect<T2>& other) noexcept :
+        Left(numeric_cast<T>(other.Left)),
+        Top(numeric_cast<T>(other.Top)),
+        Right(numeric_cast<T>(other.Right)),
+        Bottom(numeric_cast<T>(other.Bottom))
     {
     }
     TRect(T l, T t, T r, T b) noexcept :
@@ -2323,10 +2557,10 @@ struct TRect
     template<typename T2>
     auto operator=(const TRect<T2>& fr) noexcept -> TRect&
     {
-        Left = static_cast<T>(fr.Left);
-        Top = static_cast<T>(fr.Top);
-        Right = static_cast<T>(fr.Right);
-        Bottom = static_cast<T>(fr.Bottom);
+        Left = numeric_cast<T>(fr.Left);
+        Top = numeric_cast<T>(fr.Top);
+        Right = numeric_cast<T>(fr.Right);
+        Bottom = numeric_cast<T>(fr.Bottom);
         return *this;
     }
 
@@ -2607,10 +2841,10 @@ struct ipos16
 
     [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x + other.x), static_cast<int16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x - other.x), static_cast<int16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x * other.x), static_cast<int16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const ipos16& other) const noexcept -> ipos16 { return {static_cast<int16>(x / other.x), static_cast<int16>(y / other.y)}; }
+    [[nodiscard]] constexpr auto operator+(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x + other.x), numeric_cast<int16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x - other.x), numeric_cast<int16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x * other.x), numeric_cast<int16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x / other.x), numeric_cast<int16>(y / other.y)}; }
 
     int16 x {};
     int16 y {};
@@ -2633,10 +2867,10 @@ struct upos16
 
     [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const upos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x - other.x), static_cast<uint16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x * other.x), static_cast<uint16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const upos16& other) const noexcept -> upos16 { return {static_cast<uint16>(x / other.x), static_cast<uint16>(y / other.y)}; }
+    [[nodiscard]] constexpr auto operator+(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x + other.x), numeric_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x - other.x), numeric_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
 
     uint16 x {};
     uint16 y {};
@@ -2659,10 +2893,10 @@ struct ipos8
 
     [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos8& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x + other.x), static_cast<int8>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x - other.x), static_cast<int8>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x * other.x), static_cast<int8>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const ipos8& other) const noexcept -> ipos8 { return {static_cast<int8>(x / other.x), static_cast<int8>(y / other.y)}; }
+    [[nodiscard]] constexpr auto operator+(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x + other.x), numeric_cast<int8>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x - other.x), numeric_cast<int8>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x * other.x), numeric_cast<int8>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x / other.x), numeric_cast<int8>(y / other.y)}; }
 
     int8 x {};
     int8 y {};
@@ -2683,13 +2917,13 @@ struct fsize
     {
     }
     constexpr fsize(int32 width_, int32 height_) noexcept :
-        width {static_cast<float32>(width_)},
-        height {static_cast<float32>(height_)}
+        width {safe_numeric_cast<float32>(width_)},
+        height {safe_numeric_cast<float32>(height_)}
     {
     }
     constexpr explicit fsize(isize size) noexcept :
-        width {static_cast<float32>(size.width)},
-        height {static_cast<float32>(size.height)}
+        width {safe_numeric_cast<float32>(size.width)},
+        height {safe_numeric_cast<float32>(size.height)}
     {
     }
 
@@ -2720,22 +2954,22 @@ struct fpos
     {
     }
     constexpr fpos(int32 x_, int32 y_) noexcept :
-        x {static_cast<float32>(x_)},
-        y {static_cast<float32>(y_)}
+        x {safe_numeric_cast<float32>(x_)},
+        y {safe_numeric_cast<float32>(y_)}
     {
     }
     constexpr explicit fpos(ipos pos) noexcept :
-        x {static_cast<float32>(pos.x)},
-        y {static_cast<float32>(pos.y)}
+        x {safe_numeric_cast<float32>(pos.x)},
+        y {safe_numeric_cast<float32>(pos.y)}
     {
     }
 
     [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
     [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
-    [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
-    [[nodiscard]] constexpr auto operator-(const fpos& other) const noexcept -> fpos { return {x - other.x, y - other.y}; }
-    [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
-    [[nodiscard]] constexpr auto operator/(const fpos& other) const noexcept -> fpos { return {x / other.x, y / other.y}; }
+    [[nodiscard]] constexpr auto operator+(const fpos& other) const -> fpos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const fpos& other) const -> fpos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const fpos& other) const -> fpos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const fpos& other) const -> fpos { return {x / other.x, y / other.y}; }
 
     float32 x {};
     float32 y {};
@@ -2855,7 +3089,7 @@ struct GameSettings
 // Light
 static constexpr auto LIGHT_DISABLE_DIR(int32 dir) -> uint8
 {
-    return static_cast<uint8>(1u << std::clamp(dir, 0, 5));
+    return numeric_cast<uint8>(1u << std::clamp(dir, 0, 5));
 }
 static constexpr uint8 LIGHT_GLOBAL = 0x40;
 static constexpr uint8 LIGHT_INVERSE = 0x80;
@@ -3104,7 +3338,7 @@ public:
 };
 
 template<typename T>
-constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
 {
     ref_hold_vector<T> ref_vec;
     ref_vec.reserve(value.size());
@@ -3117,7 +3351,7 @@ constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
 }
 
 template<typename T, typename U>
-constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vector<U>
+[[nodiscard]] constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vector<U>
 {
     ref_hold_vector<U> ref_vec;
     ref_vec.reserve(value.size());
@@ -3130,7 +3364,7 @@ constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vecto
 }
 
 template<typename T>
-constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T>
 {
     ref_hold_vector<T> ref_vec;
     ref_vec.reserve(value.size());
@@ -3143,7 +3377,7 @@ constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T
 }
 
 template<typename T>
-constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+[[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
 {
     static_assert(!std::is_const_v<T>);
     ref_hold_vector<T*> ref_vec;
@@ -3158,7 +3392,7 @@ constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold
 
 // Vector helpers
 template<typename T, typename T2>
-constexpr auto vec_static_cast(const vector<T2>& vec) -> vector<T>
+[[nodiscard]] constexpr auto vec_static_cast(const vector<T2>& vec) -> vector<T>
 {
     vector<T> result;
     result.reserve(vec.size());
@@ -3169,7 +3403,7 @@ constexpr auto vec_static_cast(const vector<T2>& vec) -> vector<T>
 }
 
 template<typename T, typename T2>
-constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
+[[nodiscard]] constexpr auto vec_dynamic_cast(const vector<T2>& value) -> vector<T>
 {
     vector<T> result;
     result.reserve(value.size());
@@ -3198,7 +3432,7 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 }
 
 template<typename T, typename U>
-constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
+[[nodiscard]] constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
 {
     vector<T> result;
     result.reserve(vec.size());
@@ -3211,7 +3445,7 @@ constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
 }
 
 template<typename T, typename U>
-constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(std::is_nothrow_invocable_v<U>) -> T
+[[nodiscard]] constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(std::is_nothrow_invocable_v<U>) -> T
 {
     for (const auto& value : vec) {
         if (static_cast<bool>(filter(value))) {
@@ -3222,7 +3456,7 @@ constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(
 }
 
 template<typename T, typename U>
-constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
+[[nodiscard]] constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
 {
     vector<decltype(transfromer(nullptr))> result;
     result.reserve(vec.size());
@@ -3233,177 +3467,37 @@ constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
 }
 
 template<typename T>
-constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
+[[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
 {
     return std::find(vec.begin(), vec.end(), value) != vec.end();
 }
 
 template<typename T, typename U>
-constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> bool
+[[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> bool
 {
     return std::find_if(vec.begin(), vec.end(), predicate) != vec.end();
 }
 
-// Numeric cast
-FO_DECLARE_EXCEPTION(OverflowException);
-
-template<typename T, typename U>
-[[nodiscard]] inline constexpr auto numeric_cast(U value) -> T
-{
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
-
-    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround for float32 to int conversion");
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
-        }
-        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
-            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::min());
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        if (value < 0) {
-            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
-        }
-        if (value < 0) {
-            throw OverflowException("Numeric cast underflow", typeid(U).name(), typeid(T).name(), value, 0);
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
-        }
-    }
-
-    return static_cast<T>(value);
-}
-
-template<typename T, typename U>
-[[nodiscard]] inline consteval auto const_numeric_cast(U value) noexcept -> T
-{
-    return numeric_cast<T>(value);
-}
-
-template<typename T, typename U>
-[[nodiscard]] inline constexpr auto check_numeric_cast(U value) noexcept -> bool
-{
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
-
-    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround<int32> for float32 to int conversion");
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            return false;
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            return false;
-        }
-        if (value < static_cast<U>(std::numeric_limits<T>::min())) {
-            return false;
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) >= sizeof(U)) {
-        if (value < 0) {
-            return false;
-        }
-    }
-    else if constexpr (std::is_unsigned_v<T> && std::is_signed_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            return false;
-        }
-        if (value < 0) {
-            return false;
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) == sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            return false;
-        }
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) > sizeof(U)) {
-        // Always fit
-    }
-    else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
-        if (value > static_cast<U>(std::numeric_limits<T>::max())) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
-    requires(!std::is_integral_v<U>)
-constexpr U lerp(T v1, T v2, float32 t) noexcept
+    requires(std::is_floating_point_v<U>)
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::is_integral_v<U> && std::is_signed_v<U>)
-constexpr U lerp(T v1, T v2, float32 t) noexcept
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
-    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + iround<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::is_integral_v<U> && std::is_unsigned_v<U>)
-constexpr U lerp(T v1, T v2, float32 t) noexcept
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
-    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
-}
-
-template<typename T, typename U>
-    requires(std::is_floating_point_v<U> && std::is_integral_v<T>)
-constexpr auto iround(U value) -> T
-{
-    return numeric_cast<T>(std::llround(value));
-}
-
-template<typename T, typename U>
-constexpr auto clamp_to(U value) noexcept -> T
-{
-    return static_cast<T>(std::clamp(value, static_cast<U>(std::numeric_limits<T>::min()), static_cast<U>(std::numeric_limits<T>::max())));
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : iround<U>(v1 * (1 - t) + v2 * t));
 }
 
 // Hashing

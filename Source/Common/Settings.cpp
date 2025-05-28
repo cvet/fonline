@@ -67,15 +67,15 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::is_floating_point_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
-        entry += static_cast<float32>(any_value.AsDouble());
+        entry += numeric_cast<float32>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = static_cast<T>(static_cast<int32>(entry) | any_value.AsInt64());
+        entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
     }
     else if constexpr (is_strong_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = T {static_cast<typename T::underlying_type>(any_value.AsInt64())};
+        entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (is_valid_pod_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
@@ -84,7 +84,7 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry += static_cast<T>(any_value.AsInt64());
+        entry += numeric_cast<T>(any_value.AsInt64());
     }
 }
 
@@ -118,7 +118,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<float32>(arr_entry.AsDouble()));
+            entry.emplace_back(numeric_cast<float32>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -126,7 +126,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
+            entry.emplace_back(numeric_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
         }
     }
     else {
@@ -134,7 +134,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<T>(arr_entry.AsInt64()));
+            entry.emplace_back(numeric_cast<T>(arr_entry.AsInt64()));
         }
     }
 }

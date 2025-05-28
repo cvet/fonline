@@ -184,7 +184,7 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, st
 
     const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
     FO_RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetPropertyByIndex(static_cast<int32>(prop_index));
+    const auto* prop = prop_reg->GetPropertyByIndex(prop_index);
 
     if (prop == nullptr) {
         throw ScriptException("Invalid property index", type_name, prop_index);

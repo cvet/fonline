@@ -64,7 +64,7 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
 
     if (_settings.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32>(1000.0f / static_cast<float32>(_settings.Animation3dFPS));
+        _animUpdateThreshold = iround<int32>(1000.0f / numeric_cast<float32>(_settings.Animation3dFPS));
     }
 }
 
@@ -81,7 +81,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 
     if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources.ReadFile(name)) {
-            base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), static_cast<unsigned>(file.GetSize()));
+            base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), numeric_cast<unsigned>(file.GetSize()));
         }
 
         if (base_system) {
@@ -140,7 +140,7 @@ auto ParticleSystem::GetElapsedTime() const -> float32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return static_cast<float32>(_elapsedTime);
+    return numeric_cast<float32>(_elapsedTime);
 }
 
 auto ParticleSystem::GetBaseSystem() -> SPK::System*

@@ -180,9 +180,9 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, mpos 
         throw ScriptException("Invalid hex args");
     }
 
-    const auto corrected_layer = std::clamp(layer, 0, 4);
+    const auto corrected_layer = numeric_cast<uint8>(std::clamp(layer, 0, 4));
 
-    return mapper->GetCurMap()->AddMapperTile(pid, hex, static_cast<uint8>(corrected_layer), roof);
+    return mapper->GetCurMap()->AddMapperTile(pid, hex, corrected_layer, roof);
 }
 
 ///@ ExportMethod
@@ -214,7 +214,7 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int32
 {
     index = -1;
 
-    for (auto i = 0, j = static_cast<int32>(mapper->LoadedMaps.size()); i < j; i++) {
+    for (int32 i = 0, j = numeric_cast<int32>(mapper->LoadedMaps.size()); i < j; i++) {
         const auto& map = mapper->LoadedMaps[i];
         if (map.get() == mapper->GetCurMap()) {
             index = i;

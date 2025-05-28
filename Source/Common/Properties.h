@@ -115,8 +115,6 @@ class Property final
     friend class SafeAlloc;
 
 public:
-    static constexpr size_t INVALID_DATA_MARKER = static_cast<size_t>(-1);
-
     enum class AccessType : uint16
     {
         PrivateCommon = 0x0010,
@@ -193,7 +191,7 @@ public:
     [[nodiscard]] auto GetDictKeyTypeInfo() const noexcept -> const BaseTypeInfo& { return _dictKeyType; }
     [[nodiscard]] auto GetDictKeySize() const noexcept -> size_t { return _dictKeyType.Size; }
     [[nodiscard]] auto GetDictKeyTypeName() const noexcept -> const string& { return _dictKeyType.TypeName; }
-    [[nodiscard]] auto GetFullTypeName() const noexcept -> const string& { return _asFullTypeName; }
+    [[nodiscard]] auto GetViewTypeName() const noexcept -> const string& { return _viewTypeName; }
 
     [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
     [[nodiscard]] auto IsVirtual() const noexcept -> bool { return _isVirtual; }
@@ -244,23 +242,17 @@ private:
     bool _isDictKeyString {};
     BaseTypeInfo _dictKeyType {};
 
-    string _asFullTypeName {};
+    string _viewTypeName {};
 
     bool _isDisabled {};
     bool _isVirtual {};
     bool _isReadOnly {};
-    bool _checkMinValue {};
-    bool _checkMaxValue {};
-    int64 _minValueI {};
-    int64 _maxValueI {};
-    float64 _minValueF {};
-    float64 _maxValueF {};
     bool _isTemporary {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
     uint16 _regIndex {};
-    size_t _podDataOffset {INVALID_DATA_MARKER};
-    size_t _complexDataIndex {INVALID_DATA_MARKER};
+    optional<size_t> _podDataOffset {};
+    optional<size_t> _complexDataIndex {};
 };
 
 class Properties final
@@ -334,8 +326,8 @@ public:
             }
         }
 
-        FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
+        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+        auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
         return result;
     }
 
@@ -364,8 +356,8 @@ public:
             }
         }
 
-        FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
     }
@@ -392,8 +384,8 @@ public:
             }
         }
 
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+        const auto& complex_data = _complexData[*prop->_complexDataIndex];
         auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
     }
@@ -417,8 +409,8 @@ public:
             }
         }
         else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-            const auto& complex_data = _complexData[prop->_complexDataIndex];
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            const auto& complex_data = _complexData[*prop->_complexDataIndex];
             prop_data.Pass({complex_data.first.get(), complex_data.second});
         }
 
@@ -485,8 +477,8 @@ public:
         FO_STRONG_ASSERT(prop->IsPlainData());
         FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        FO_STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
+        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+        auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
         return result;
     }
 
@@ -502,8 +494,8 @@ public:
         FO_STRONG_ASSERT(prop->IsBaseTypeHash());
         FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        FO_STRONG_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
         auto result = ResolveHash(hash, nullptr);
         return result;
     }
@@ -518,8 +510,8 @@ public:
         FO_STRONG_ASSERT(prop->IsString());
         FO_STRONG_ASSERT(!prop->IsVirtual());
 
-        FO_STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+        const auto& complex_data = _complexData[*prop->_complexDataIndex];
         const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
         return result;
     }
@@ -536,8 +528,8 @@ public:
 
         PropertyRawData prop_data;
 
-        FO_STRONG_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
-        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+        const auto& complex_data = _complexData[*prop->_complexDataIndex];
         prop_data.Pass({complex_data.first.get(), complex_data.second});
 
         const auto* data = prop_data.GetPtrAs<uint8>();
@@ -614,9 +606,19 @@ public:
             }
         }
         else {
-            FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
 
-            if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
+            auto& cur_value = *reinterpret_cast<T*>(&_podData[*prop->_podDataOffset]);
+            bool equal;
+
+            if constexpr (std::is_floating_point_v<T>) {
+                equal = is_float_equal(new_value, cur_value);
+            }
+            else {
+                equal = new_value == cur_value;
+            }
+
+            if (!equal) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<T>(new_value);
@@ -625,10 +627,10 @@ public:
                         setter(_entity, prop, prop_data);
                     }
 
-                    *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = prop_data.GetAs<T>();
+                    cur_value = prop_data.GetAs<T>();
                 }
                 else {
-                    *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
+                    cur_value = new_value;
                 }
 
                 if (_entity != nullptr) {
@@ -663,10 +665,10 @@ public:
             }
         }
         else {
-            FO_RUNTIME_ASSERT(prop->_podDataOffset != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
             const auto new_value_hash = new_value.as_hash();
 
-            if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset])) {
+            if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<hstring::hash_t>(new_value_hash);
@@ -675,10 +677,10 @@ public:
                         setter(_entity, prop, prop_data);
                     }
 
-                    *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
+                    *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
                 }
                 else {
-                    *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value_hash;
+                    *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = new_value_hash;
                 }
 
                 if (_entity != nullptr) {
@@ -711,7 +713,7 @@ public:
             }
         }
         else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
 
             if (!prop->_setters.empty() && _entity != nullptr) {
                 PropertyRawData prop_data;
@@ -801,7 +803,7 @@ public:
             }
         }
         else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex != Property::INVALID_DATA_MARKER);
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
 
             if (!prop->_setters.empty() && _entity != nullptr) {
                 for (const auto& setter : prop->_setters) {

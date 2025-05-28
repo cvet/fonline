@@ -758,7 +758,7 @@ auto strex::toFloat() const noexcept -> float32
     float64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? static_cast<float32>(value) : 0.0f;
+    return success ? safe_numeric_cast<float32>(value) : 0.0f;
 }
 
 auto strex::toDouble() const noexcept -> float64

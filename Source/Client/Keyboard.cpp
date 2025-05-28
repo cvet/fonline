@@ -64,14 +64,11 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint32* 
 
     const auto ctrl_shift = CtrlDwn || ShiftDwn;
     const auto dik_text_len_utf8 = strex(dik_text).lengthUtf8();
-    const auto str_len = static_cast<uint32>(str.length());
+    const auto str_len = numeric_cast<uint32>(str.length());
 
     uint32 position_dummy = str_len;
     uint32& pos = position != nullptr ? *position : position_dummy;
-
-    if (pos > str_len) {
-        pos = str_len;
-    }
+    pos = std::min(pos, str_len);
 
     if (dik == KeyCode::Right && !ctrl_shift) {
         if (pos < str_len) {
@@ -142,7 +139,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint32* 
 
         if (!text.empty()) {
             str.insert(pos, text);
-            pos += static_cast<uint32>(text.length());
+            pos += numeric_cast<uint32>(text.length());
         }
     }
     else {
@@ -164,7 +161,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint32* 
         }
 
         str.insert(pos, dik_text);
-        pos += static_cast<uint32>(dik_text.length());
+        pos += numeric_cast<uint32>(dik_text.length());
     }
 }
 
@@ -195,7 +192,7 @@ auto Keyboard::IsInvalidChar(const char* str, uint32 flags, uint32& length) cons
         return true;
     }
 
-    length = static_cast<uint32>(decode_length);
+    length = numeric_cast<uint32>(decode_length);
 
     if (length == 1) {
         if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str == '\n' || *str == '\r' || *str == '\t')) {

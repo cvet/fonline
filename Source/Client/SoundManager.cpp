@@ -118,7 +118,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 
         if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), static_cast<int32>(volume));
+            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32>(volume));
             ++it;
         }
         else {
@@ -318,8 +318,8 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     sound->BaseBufLen = dw_buf;
 
     // Check format
-    sound->OriginalChannels = static_cast<int32>(waveformatex.NChannels);
-    sound->OriginalRate = static_cast<int32>(waveformatex.NSamplesPerSec);
+    sound->OriginalChannels = numeric_cast<int32>(waveformatex.NChannels);
+    sound->OriginalRate = numeric_cast<int32>(waveformatex.NSamplesPerSec);
 
     switch (waveformatex.WBitsPerSample) {
     case 8:
@@ -352,7 +352,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int32>(file.GetSize()), channels, freq, samples);
+    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), numeric_cast<int32>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -480,7 +480,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
-    sound->OriginalRate = static_cast<int32>(vi->rate);
+    sound->OriginalRate = numeric_cast<int32>(vi->rate);
     sound->BaseBuf.resize(_streamingPortion);
     sound->BaseBufLen = _streamingPortion;
 
@@ -489,7 +489,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
-        result = static_cast<int32>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr));
+        result = numeric_cast<int32>(ov_read(sound->OggStream.get(), buf + decoded, numeric_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr));
 
         if (result <= 0) {
             break;
@@ -525,7 +525,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
-        result = ov_read(sound->OggStream.get(), buf, static_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr);
+        result = ov_read(sound->OggStream.get(), buf, numeric_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr);
 
         if (result <= 0) {
             break;

@@ -570,7 +570,7 @@ auto FalloutDat::ReadTree() -> bool
                 _filesTreeNames.emplace_back(std::move(name));
             }
 
-            ptr += static_cast<size_t>(fnsz) + 24;
+            ptr += numeric_cast<size_t>(fnsz) + 24;
         }
 
         return true;
@@ -715,7 +715,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
         z_stream stream = {};
         stream.zalloc = [](voidpf, uInt items, uInt size_) -> void* {
             constexpr SafeAllocator<uint8> allocator;
-            return allocator.allocate(static_cast<size_t>(items) * size_);
+            return allocator.allocate(numeric_cast<size_t>(items) * size_);
         };
         stream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8> allocator;
@@ -736,7 +736,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 stream.next_in = _readBuf.data();
-                const auto len = std::min(left, static_cast<uint32>(_readBuf.size()));
+                const auto len = std::min(left, numeric_cast<uint32>(_readBuf.size()));
 
                 if (!_datFile.Read(_readBuf.data(), len)) {
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
@@ -997,7 +997,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         throw DataSourceException("Can't read file from zip (2)", path);
     }
 
-    auto buf = SafeAlloc::MakeUniqueArr<uint8>(static_cast<size_t>(info.UncompressedSize));
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(numeric_cast<size_t>(info.UncompressedSize));
     const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {

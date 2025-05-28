@@ -164,7 +164,7 @@ static void SafeWriteStackTrace(const StackTraceData* st) noexcept
 
     char itoa_buf[64] = {};
 
-    for (int32 i = std::min(static_cast<int32>(st->CallsCount), static_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+    for (int32 i = std::min(numeric_cast<int32>(st->CallsCount), const_numeric_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st->CallTree[i];
         WriteLogFatalMessage("- ");
         WriteLogFatalMessage(entry->function);
@@ -424,7 +424,7 @@ extern auto GetStackTrace() -> string
 
     const auto& st = StackTrace;
 
-    for (int32 i = std::min(static_cast<int32>(st.CallsCount), static_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+    for (int32 i = std::min(numeric_cast<int32>(st.CallsCount), const_numeric_cast<int32>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = st.CallTree[i];
 
         ss << "- " << entry->function << " (" << strex(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
@@ -737,7 +737,7 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const timespan target_time = std::chrono::nanoseconds {static_cast<uint64>(1000.0 / static_cast<float64>(_fixedFps) * 1000000.0)};
+        const timespan target_time = std::chrono::nanoseconds(iround<uint64>(1000.0 / numeric_cast<float64>(_fixedFps) * 1000000.0));
         const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
 
         if (idle_time > timespan::zero) {

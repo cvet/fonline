@@ -209,15 +209,15 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
             break;
         case CornerType::NorthSouth:
         case CornerType::West:
-            LightRight = Light + static_cast<size_t>(size.width);
-            LightLeft = Light - static_cast<size_t>(size.width);
+            LightRight = Light + numeric_cast<size_t>(size.width);
+            LightLeft = Light - numeric_cast<size_t>(size.width);
             break;
         case CornerType::South:
             LightRight = Light - 1;
-            LightLeft = Light - static_cast<size_t>(size.width);
+            LightLeft = Light - numeric_cast<size_t>(size.width);
             break;
         case CornerType::North:
-            LightRight = Light + static_cast<size_t>(size.width);
+            LightRight = Light + numeric_cast<size_t>(size.width);
             LightLeft = Light + 1;
             break;
         }

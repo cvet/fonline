@@ -98,7 +98,7 @@ public:
     [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
     [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> uint32;
-    [[nodiscard]] auto RealCountInvItems() const noexcept -> uint32 { return static_cast<uint32>(_invItems.size()); }
+    [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
     [[nodiscard]] auto CountInvItems() const noexcept -> uint32;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;

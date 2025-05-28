@@ -192,7 +192,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     auto final_dir = dir;
 
     if (dir >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+        final_dir = numeric_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
 
     // Create critter
@@ -236,7 +236,7 @@ void CritterManager::DestroyCritter(Critter* cr)
         cr->LockMapTransfers++;
         auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountInvItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
+        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->HasItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             if (cr->GetMapId()) {
                 auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
                 FO_RUNTIME_ASSERT(map);

@@ -135,7 +135,7 @@ static uint32 CScriptArray_RemoveAll(CScriptArray* arr, void* value)
     uint32 count = 0;
     int32 index = 0;
 
-    while (index < static_cast<int32>(arr->GetSize())) {
+    while (index < numeric_cast<int32>(arr->GetSize())) {
         index = arr->Find(index, value);
 
         if (index != -1) {
@@ -339,7 +339,7 @@ void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
 static bool IndexUtf8ToRaw(const string& str, int32& index, uint32* length = nullptr, uint32 offset = 0)
 {
     if (index < 0) {
-        index = static_cast<int32>(strex(str).lengthUtf8()) + index;
+        index = numeric_cast<int32>(strex(str).lengthUtf8()) + index;
 
         if (index < 0) {
             index = 0;
@@ -348,7 +348,7 @@ static bool IndexUtf8ToRaw(const string& str, int32& index, uint32* length = nul
                 if (!str.empty()) {
                     size_t decode_length = str.length();
                     utf8::Decode(str.c_str(), decode_length);
-                    *length = static_cast<uint32>(decode_length);
+                    *length = numeric_cast<uint32>(decode_length);
                 }
                 else {
                     *length = 0;
@@ -363,7 +363,7 @@ static bool IndexUtf8ToRaw(const string& str, int32& index, uint32* length = nul
     const char* s = begin;
 
     while (*s != 0) {
-        size_t decode_length = str.length() - offset - static_cast<size_t>(s - begin);
+        size_t decode_length = str.length() - offset - numeric_cast<size_t>(s - begin);
         utf8::Decode(s, decode_length);
 
         if (index > 0) {
@@ -371,17 +371,17 @@ static bool IndexUtf8ToRaw(const string& str, int32& index, uint32* length = nul
             index--;
         }
         else {
-            index = static_cast<int32>(s - begin);
+            index = numeric_cast<int32>(s - begin);
 
             if (length != nullptr) {
-                *length = static_cast<uint32>(decode_length);
+                *length = numeric_cast<uint32>(decode_length);
             }
 
             return true;
         }
     }
 
-    index = static_cast<int32>(s - begin);
+    index = numeric_cast<int32>(s - begin);
 
     if (length != nullptr) {
         *length = 0;
@@ -398,7 +398,7 @@ static int32 IndexRawToUtf8(const string& str, int32 index)
         size_t decode_length = str.length() - i;
         utf8::Decode(&str[i], decode_length);
         i += decode_length;
-        index -= static_cast<int32>(decode_length);
+        index -= numeric_cast<int32>(decode_length);
         result++;
     }
 
@@ -433,7 +433,7 @@ static int32 ScriptString_FindFirst(const string& str, const string& sub, int32 
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.find(sub, start));
+    const int32 pos = numeric_cast<int32>(str.find(sub, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -443,7 +443,7 @@ static int32 ScriptString_FindLast(const string& str, const string& sub, int32 s
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.rfind(sub));
+    const int32 pos = numeric_cast<int32>(str.rfind(sub));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -453,7 +453,7 @@ static int32 ScriptString_FindFirstOf(const string& str, const string& chars, in
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.find_first_of(chars, start));
+    const int32 pos = numeric_cast<int32>(str.find_first_of(chars, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -463,7 +463,7 @@ static int32 ScriptString_FindFirstNotOf(const string& str, const string& chars,
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.find_first_not_of(chars, start));
+    const int32 pos = numeric_cast<int32>(str.find_first_not_of(chars, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -473,7 +473,7 @@ static int32 ScriptString_FindLastOf(const string& str, const string& chars, int
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.find_last_of(chars));
+    const int32 pos = numeric_cast<int32>(str.find_last_of(chars));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -483,7 +483,7 @@ static int32 ScriptString_FindLastNotOf(const string& str, const string& chars, 
         return -1;
     }
 
-    const int32 pos = static_cast<int32>(str.find_last_not_of(chars, start));
+    const int32 pos = numeric_cast<int32>(str.find_last_not_of(chars, start));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
@@ -515,19 +515,19 @@ static void ScriptString_SetAt(string& str, int32 i, string& value)
     if (length) {
         str.erase(i, length);
     }
-    if (value.length()) {
+    if (!value.empty()) {
         str.insert(i, value.c_str());
     }
 }
 
 static uint32 ScriptString_Length(const string& str)
 {
-    return strex(str).lengthUtf8();
+    return numeric_cast<uint32>(strex(str).lengthUtf8());
 }
 
 static uint32 ScriptString_RawLength(const string& str)
 {
-    return static_cast<uint32>(str.length());
+    return numeric_cast<uint32>(str.length());
 }
 
 static void ScriptString_RawResize(string& str, uint32 length)
@@ -537,20 +537,20 @@ static void ScriptString_RawResize(string& str, uint32 length)
 
 static uint8 ScriptString_RawGet(const string& str, uint32 index)
 {
-    return index < static_cast<uint32>(str.length()) ? str[index] : 0;
+    return index < numeric_cast<uint32>(str.length()) ? str[index] : 0;
 }
 
 static void ScriptString_RawSet(string& str, uint32 index, uint8 value)
 {
-    if (index < static_cast<uint32>(str.length())) {
-        str[index] = static_cast<char>(value);
+    if (index < numeric_cast<uint32>(str.length())) {
+        str[index] = std::bit_cast<char>(value);
     }
 }
 
 static int32 ScriptString_ToInt(const string& str, int32 defaultValue)
 {
     char* end_str = nullptr;
-    const auto result = static_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
+    const auto result = numeric_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
@@ -562,7 +562,7 @@ static int32 ScriptString_ToInt(const string& str, int32 defaultValue)
 static float32 ScriptString_ToFloat(const string& str, float32 defaultValue)
 {
     char* end_str = nullptr;
-    const auto result = static_cast<float32>(std::strtod(str.c_str(), &end_str));
+    const auto result = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
@@ -574,7 +574,7 @@ static float32 ScriptString_ToFloat(const string& str, float32 defaultValue)
 static bool ScriptString_TryToInt(const string& str, int32& result)
 {
     char* end_str = nullptr;
-    const auto result_ = static_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
+    const auto result_ = numeric_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;
@@ -587,7 +587,7 @@ static bool ScriptString_TryToInt(const string& str, int32& result)
 static bool ScriptString_TryToFloat(const string& str, float32& result)
 {
     char* end_str = nullptr;
-    const auto result_ = static_cast<float32>(std::strtod(str.c_str(), &end_str));
+    const auto result_ = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;
@@ -657,9 +657,11 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
     CScriptArray* array = CScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("string[]")));
 
     // Find the existence of the delimiter in the input string
-    int32 pos = 0, prev = 0, count = 0;
+    size_t pos = 0;
+    size_t prev = 0;
+    int32 count = 0;
 
-    while ((pos = static_cast<int32>(str.find(delim, prev))) != static_cast<int32>(string::npos)) {
+    while ((pos = str.find(delim, prev)) != string::npos) {
         // Add the part to the array
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
@@ -669,7 +671,7 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
         }
 
         // Find the next part
-        prev = pos + static_cast<int32>(delim.length());
+        prev = pos + delim.length();
     }
 
     // Add the remaining part
@@ -704,7 +706,7 @@ static string ScriptString_Join(const CScriptArray* array, const string& delim)
     if (array->GetSize()) {
         int32 n;
 
-        for (n = 0; n < static_cast<int32>(array->GetSize()) - 1; n++) {
+        for (n = 0; n < numeric_cast<int32>(array->GetSize()) - 1; n++) {
             str += *(string*)array->At(n);
             str += delim;
         }

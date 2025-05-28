@@ -116,9 +116,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
     }
 
     _impl->DecoderContext = th_decode_alloc(&_impl->VideoInfo, _impl->SetupInfo);
-
-    _impl->RenderedTextureData.resize(static_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
-
+    _impl->RenderedTextureData.resize(numeric_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
     _impl->StartTime = nanotime::now();
 }
 
@@ -330,14 +328,14 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             const uint8 cv = cbuf[2].data[y / dj * cbuf[2].stride + x / di];
 
             // YUV to RGB
-            const float32 cr = static_cast<float32>(cy) + 1.402f * static_cast<float32>(cv - 127);
-            const float32 cg = static_cast<float32>(cy) - 0.344f * static_cast<float32>(cu - 127) - 0.714f * static_cast<float32>(cv - 127);
-            const float32 cb = static_cast<float32>(cy) + 1.722f * static_cast<float32>(cu - 127);
+            const float32 cr = numeric_cast<float32>(cy) + 1.402f * numeric_cast<float32>(cv - 127);
+            const float32 cg = numeric_cast<float32>(cy) - 0.344f * numeric_cast<float32>(cu - 127) - 0.714f * numeric_cast<float32>(cv - 127);
+            const float32 cb = numeric_cast<float32>(cy) + 1.722f * numeric_cast<float32>(cu - 127);
 
             auto* data = reinterpret_cast<uint8*>(_impl->RenderedTextureData.data()) + (y * w * 4 + x * 4);
-            data[0] = static_cast<uint8>(cr);
-            data[1] = static_cast<uint8>(cg);
-            data[2] = static_cast<uint8>(cb);
+            data[0] = iround<uint8>(cr);
+            data[1] = iround<uint8>(cg);
+            data[2] = iround<uint8>(cb);
             data[3] = 0xFF;
         }
     }
@@ -345,8 +343,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     // Store render time
     const auto frame_render_duration = nanotime::now() - start_frame_render;
 
-    if (_impl->AverageRenderTime > std::chrono::milliseconds {0}) {
-        _impl->AverageRenderTime = std::chrono::milliseconds {static_cast<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<float64>() / 2.0)};
+    if (_impl->AverageRenderTime > std::chrono::milliseconds(0)) {
+        _impl->AverageRenderTime = std::chrono::milliseconds(iround<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<float64>() / 2.0));
     }
     else {
         _impl->AverageRenderTime = frame_render_duration;
@@ -371,7 +369,7 @@ int32 VideoClip::DecodePacket()
     int32 b = 0;
     int32 rv = 0;
 
-    for (int32 i = 0; i < static_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
+    for (int32 i = 0; i < numeric_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
         const int32 a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
 
         switch (a) {
@@ -394,7 +392,7 @@ int32 VideoClip::DecodePacket()
         ogg_page op;
 
         while (ogg_sync_pageout(&_impl->SyncState, &op) != 1) {
-            auto read_bytes = static_cast<int32>(_impl->RawVideoData.size() - _impl->ReadPos);
+            auto read_bytes = numeric_cast<int32>(_impl->RawVideoData.size() - _impl->ReadPos);
             read_bytes = std::min(1024, read_bytes);
 
             if (read_bytes == 0) {
@@ -410,7 +408,7 @@ int32 VideoClip::DecodePacket()
         if (ogg_page_bos(&op) != 0 && rv != 1) {
             int32 i = 0;
 
-            while (i < static_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]) {
+            while (i < numeric_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]) {
                 i++;
             }
 
@@ -427,7 +425,7 @@ int32 VideoClip::DecodePacket()
             }
         }
 
-        for (int32 i = 0; i < static_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
+        for (int32 i = 0; i < numeric_cast<int32>(_impl->Streams.StreamsState.size()) && _impl->Streams.StreamsState[i]; i++) {
             ogg_stream_pagein(&_impl->Streams.Streams[i], &op);
             const int32 a = ogg_stream_packetout(&_impl->Streams.Streams[i], &_impl->Packet);
 

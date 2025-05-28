@@ -105,7 +105,7 @@ auto Platform::GetExePath() -> optional<string>
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);
 
-    auto size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    auto size = ::GetModuleFileNameW(nullptr, path.data(), numeric_cast<DWORD>(path.size()));
 
     if (size == 0) {
         return std::nullopt;
@@ -113,7 +113,7 @@ auto Platform::GetExePath() -> optional<string>
 
     while (size == path.size()) {
         path.resize(path.size() * 2);
-        size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+        size = ::GetModuleFileNameW(nullptr, path.data(), numeric_cast<DWORD>(path.size()));
 
         if (size == 0) {
             return std::nullopt;

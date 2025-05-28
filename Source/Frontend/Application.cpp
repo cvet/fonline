@@ -85,8 +85,8 @@ static auto WindowPosToScreenPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto screen_x = iround<int32>(static_cast<float32>(pos.x - vp.Left) / static_cast<float32>(vp.Width()) * static_cast<float32>(App->Settings.ScreenWidth));
-    const auto screen_y = iround<int32>(static_cast<float32>(pos.y - vp.Top) / static_cast<float32>(vp.Height()) * static_cast<float32>(App->Settings.ScreenHeight));
+    const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.Left) / numeric_cast<float32>(vp.Width()) * numeric_cast<float32>(App->Settings.ScreenWidth));
+    const auto screen_y = iround<int32>(numeric_cast<float32>(pos.y - vp.Top) / numeric_cast<float32>(vp.Height()) * numeric_cast<float32>(App->Settings.ScreenHeight));
 
     return {screen_x, screen_y};
 }
@@ -95,8 +95,8 @@ static auto ScreenPosToWindowPos(ipos pos) -> ipos
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto win_x = vp.Left + iround<int32>(static_cast<float32>(pos.x) / static_cast<float32>(App->Settings.ScreenWidth) * static_cast<float32>(vp.Width()));
-    const auto win_y = vp.Top + iround<int32>(static_cast<float32>(pos.y) / static_cast<float32>(App->Settings.ScreenHeight) * static_cast<float32>(vp.Height()));
+    const auto win_x = vp.Left + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(App->Settings.ScreenWidth) * numeric_cast<float32>(vp.Width()));
+    const auto win_y = vp.Top + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(App->Settings.ScreenHeight) * numeric_cast<float32>(vp.Height()));
 
     return {win_x, win_y};
 }
@@ -370,16 +370,16 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
                 ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
-                    if (static_cast<size_t>(additional_amount) > AudioStreamBuf->size()) {
-                        AudioStreamBuf->resize(static_cast<size_t>(additional_amount) * 2);
+                    if (numeric_cast<size_t>(additional_amount) > AudioStreamBuf->size()) {
+                        AudioStreamBuf->resize(numeric_cast<size_t>(additional_amount) * 2);
                     }
 
-                    const auto silence = static_cast<uint8>(SDL_GetSilenceValueForFormat(AudioSpec.format));
+                    const auto silence = numeric_cast<uint8>(SDL_GetSilenceValueForFormat(AudioSpec.format));
 
                     MemFill(AudioStreamBuf->data(), silence, additional_amount);
 
                     if (*AudioStreamWriter) {
-                        (*AudioStreamWriter)(silence, {AudioStreamBuf->data(), static_cast<size_t>(additional_amount)});
+                        (*AudioStreamWriter)(silence, {AudioStreamBuf->data(), numeric_cast<size_t>(additional_amount)});
                     }
 
                     SDL_PutAudioStreamData(stream, AudioStreamBuf->data(), additional_amount);
@@ -496,9 +496,9 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
             Settings.ScreenWidth = std::max(display_mode->w, display_mode->h);
             Settings.ScreenHeight = std::min(display_mode->w, display_mode->h);
 
-            const auto ratio = static_cast<float32>(Settings.ScreenWidth) / static_cast<float32>(Settings.ScreenHeight);
+            const auto ratio = numeric_cast<float32>(Settings.ScreenWidth) / numeric_cast<float32>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
-            Settings.ScreenWidth = iround<int32>(static_cast<float32>(Settings.ScreenHeight) * ratio);
+            Settings.ScreenWidth = iround<int32>(numeric_cast<float32>(Settings.ScreenHeight) * ratio);
 
             Settings.Fullscreen = true;
         }
@@ -774,13 +774,13 @@ void Application::BeginFrame()
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
-            const auto x_ratio = static_cast<float32>(App->Settings.ScreenWidth) / static_cast<float32>(vp.Width());
-            const auto y_ratio = static_cast<float32>(App->Settings.ScreenHeight) / static_cast<float32>(vp.Height());
+            const auto x_ratio = numeric_cast<float32>(App->Settings.ScreenWidth) / numeric_cast<float32>(vp.Width());
+            const auto y_ratio = numeric_cast<float32>(App->Settings.ScreenHeight) / numeric_cast<float32>(vp.Height());
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
             EventsQueue->emplace_back(ev);
 
-            io.AddMousePosEvent(static_cast<float32>(ev.MouseX), static_cast<float32>(ev.MouseY));
+            io.AddMousePosEvent(numeric_cast<float32>(ev.MouseX), numeric_cast<float32>(ev.MouseY));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
@@ -861,7 +861,7 @@ void Application::BeginFrame()
 
             ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.key);
             io.AddKeyEvent(key, sdl_event.type == SDL_EVENT_KEY_DOWN);
-            io.SetKeyEventNativeData(key, static_cast<int32>(sdl_event.key.key), sdl_event.key.scancode, sdl_event.key.scancode);
+            io.SetKeyEventNativeData(key, numeric_cast<int32>(sdl_event.key.key), sdl_event.key.scancode, sdl_event.key.scancode);
         } break;
         case SDL_EVENT_TEXT_INPUT: {
             InputEvent::KeyDownEvent ev1;
@@ -969,12 +969,12 @@ void Application::BeginFrame()
 
     // Setup display size
     if (ActiveRendererType != RenderType::Null) {
-        io.DisplaySize = ImVec2(static_cast<float32>(App->Settings.ScreenWidth), static_cast<float32>(App->Settings.ScreenHeight));
+        io.DisplaySize = ImVec2(numeric_cast<float32>(App->Settings.ScreenWidth), numeric_cast<float32>(App->Settings.ScreenHeight));
     }
 
     // Setup time step
     uint64 cur_time = SDL_GetPerformanceCounter();
-    io.DeltaTime = static_cast<float32>(static_cast<float64>(cur_time - _time) / static_cast<float64>(_timeFrequency));
+    io.DeltaTime = numeric_cast<float32>(numeric_cast<float64>(cur_time - _time) / numeric_cast<float64>(_timeFrequency));
     _time = cur_time;
 
     // Mouse state
@@ -1007,7 +1007,7 @@ void Application::BeginFrame()
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
 
                 const auto screen_pos = WindowPosToScreenPos({iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
-                io.AddMousePosEvent(static_cast<float32>(screen_pos.x), static_cast<float32>(screen_pos.y));
+                io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
             }
         }
     }
@@ -1031,8 +1031,8 @@ void Application::EndFrame()
 
     const auto* draw_data = ImGui::GetDrawData();
 
-    const auto fb_width = static_cast<int32>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-    const auto fb_height = static_cast<int32>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+    const auto fb_width = iround<int32>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+    const auto fb_height = iround<int32>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
         // Scissor/clipping
@@ -1060,7 +1060,7 @@ void Application::EndFrame()
             _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
 
             for (int32 i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-                _imguiDrawBuf->Indices[i] = static_cast<vindex_t>(cmd_list->IdxBuffer[i]);
+                _imguiDrawBuf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
 
             _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
@@ -1069,10 +1069,10 @@ void Application::EndFrame()
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
                 FO_RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
 
-                const auto clip_rect_l = static_cast<int32>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
-                const auto clip_rect_t = static_cast<int32>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-                const auto clip_rect_r = static_cast<int32>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
-                const auto clip_rect_b = static_cast<int32>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
+                const auto clip_rect_l = iround<int32>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
+                const auto clip_rect_t = iround<int32>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
+                const auto clip_rect_r = iround<int32>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
+                const auto clip_rect_b = iround<int32>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
@@ -1410,10 +1410,10 @@ void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
         if (relative_to != nullptr) {
             pos = ScreenPosToWindowPos(pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), static_cast<float32>(pos.x), static_cast<float32>(pos.y));
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
         }
         else {
-            SDL_WarpMouseGlobal(static_cast<float32>(pos.x), static_cast<float32>(pos.y));
+            SDL_WarpMouseGlobal(numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
         }
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
@@ -1505,18 +1505,18 @@ auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uin
 
     SDL_AudioSpec spec;
     spec.format = static_cast<SDL_AudioFormat>(format);
-    spec.channels = static_cast<Uint8>(channels);
+    spec.channels = numeric_cast<Uint8>(channels);
     spec.freq = rate;
 
     if (spec.format != AudioSpec.format || spec.channels != AudioSpec.channels || spec.freq != rate) {
         uint8* dst_data;
         int32 dst_len;
 
-        if (!SDL_ConvertAudioSamples(&spec, buf.data(), static_cast<int32>(buf.size()), &AudioSpec, &dst_data, &dst_len)) {
+        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32>(buf.size()), &AudioSpec, &dst_data, &dst_len)) {
             return false;
         }
 
-        buf.resize(static_cast<size_t>(dst_len));
+        buf.resize(numeric_cast<size_t>(dst_len));
         MemCopy(buf.data(), dst_data, buf.size());
     }
 
@@ -1531,8 +1531,8 @@ void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volum
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    const float32 vlume_01 = static_cast<float32>(std::clamp(volume, 0, 100)) / 100.0f;
-    SDL_MixAudio(output, buf, AudioSpec.format, static_cast<Uint32>(len), vlume_01);
+    const float32 vlume_01 = numeric_cast<float32>(std::clamp(volume, 0, 100)) / 100.0f;
+    SDL_MixAudio(output, buf, AudioSpec.format, numeric_cast<Uint32>(len), vlume_01);
 }
 
 void AppAudio::LockDevice()

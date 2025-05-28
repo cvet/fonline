@@ -142,14 +142,14 @@ void Player::Send_AddCritter(const Critter* cr)
 
     SendInnerEntities(*out_buf, cr, is_chosen);
 
-    out_buf->Write(static_cast<uint32>(send_items.size()));
+    out_buf->Write(numeric_cast<uint32>(send_items.size()));
 
     for (const auto* item : send_items) {
         SendItem(*out_buf, item, is_chosen, true, true);
     }
 
     out_buf->Write(cr->GetIsAttached());
-    out_buf->Write(static_cast<uint16>(cr->AttachedCritters.size()));
+    out_buf->Write(numeric_cast<uint16>(cr->AttachedCritters.size()));
 
     if (!cr->AttachedCritters.empty()) {
         for (const auto* attached_cr : cr->AttachedCritters) {
@@ -188,7 +188,7 @@ void Player::Send_LoadMap(const Map* map)
         loc = map->GetLocation();
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
-        map_index_in_loc = static_cast<uint8>(loc->GetMapIndex(pid_map));
+        map_index_in_loc = numeric_cast<uint8>(loc->GetMapIndex(pid_map));
     }
 
     vector<const uint8*>* map_data = nullptr;
@@ -234,7 +234,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 
     auto out_buf = _connection->WriteMsg(NetMessage::Property);
 
-    out_buf->Write(static_cast<uint32>(prop_raw_data.size()));
+    out_buf->Write(numeric_cast<uint32>(prop_raw_data.size()));
     out_buf->Write(type);
 
     switch (type) {
@@ -351,7 +351,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
         SendItem(*out_buf, moved_item, is_chosen, false, false);
     }
 
-    out_buf->Write(static_cast<uint32>(send_items.size()));
+    out_buf->Write(numeric_cast<uint32>(send_items.size()));
 
     for (const auto* item : send_items) {
         SendItem(*out_buf, item, false, true, true);
@@ -464,10 +464,10 @@ void Player::Send_Talk()
         out_buf->Write(is_npc);
         out_buf->Write(_controlledCr->Talk.CritterId);
         out_buf->Write(_controlledCr->Talk.DialogPackId);
-        out_buf->Write(static_cast<uint8>(0));
+        out_buf->Write(numeric_cast<uint8>(0));
     }
     else {
-        const auto all_answers = static_cast<uint8>(_controlledCr->Talk.CurDialog.Answers.size());
+        const auto all_answers = numeric_cast<uint8>(_controlledCr->Talk.CurDialog.Answers.size());
 
         auto talk_time = _controlledCr->Talk.TalkTime;
 
@@ -569,7 +569,7 @@ void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_in
     auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
 
     out_buf->Write(string(context_param));
-    out_buf->Write(static_cast<uint32>(items.size()));
+    out_buf->Write(numeric_cast<uint32>(items.size()));
 
     for (const auto* item : items) {
         SendItem(*out_buf, item, owned, false, with_inner_entities);
@@ -585,7 +585,7 @@ void Player::Send_Attachments(const Critter* from_cr)
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetIsAttached());
     out_buf->Write(from_cr->GetAttachMaster());
-    out_buf->Write(static_cast<uint16>(from_cr->AttachedCritters.size()));
+    out_buf->Write(numeric_cast<uint16>(from_cr->AttachedCritters.size()));
 
     for (const auto* attached_cr : from_cr->AttachedCritters) {
         out_buf->Write(attached_cr->GetId());
@@ -648,7 +648,7 @@ void Player::SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool 
         SendInnerEntities(out_buf, item, false);
     }
     else {
-        out_buf.Write(static_cast<uint16>(0));
+        out_buf.Write(numeric_cast<uint16>(0));
     }
 }
 
@@ -657,13 +657,13 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
     FO_STACK_TRACE_ENTRY();
 
     if (!holder->HasInnerEntities()) {
-        out_buf.Write(static_cast<uint16>(0));
+        out_buf.Write(numeric_cast<uint16>(0));
         return;
     }
 
     const auto& entries_entities = holder->GetInnerEntities();
 
-    out_buf.Write(static_cast<uint16>(entries_entities.size()));
+    out_buf.Write(numeric_cast<uint16>(entries_entities.size()));
 
     for (auto&& [entry, entities] : entries_entities) {
         out_buf.Write(entry);
@@ -671,11 +671,11 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
         const auto entry_access = std::get<1>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
 
         if (entry_access == EntityHolderEntryAccess::Private || (entry_access == EntityHolderEntryAccess::Protected && !owned)) {
-            out_buf.Write(static_cast<uint32>(0));
+            out_buf.Write(numeric_cast<uint32>(0));
             continue;
         }
 
-        out_buf.Write(static_cast<uint32>(entities.size()));
+        out_buf.Write(numeric_cast<uint32>(entities.size()));
 
         for (const auto& entity : entities) {
             const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity.get());
@@ -708,17 +708,17 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    out_buf.Write(static_cast<uint32>(std::ceil(cr->Moving.WholeTime)));
+    out_buf.Write(iround<uint32>(std::ceil(cr->Moving.WholeTime)));
     out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint32>());
     out_buf.Write(cr->Moving.Speed);
     out_buf.Write(cr->Moving.StartHex);
-    out_buf.Write(static_cast<uint16>(cr->Moving.Steps.size()));
+    out_buf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
 
     for (const auto step : cr->Moving.Steps) {
         out_buf.Write(step);
     }
 
-    out_buf.Write(static_cast<uint16>(cr->Moving.ControlSteps.size()));
+    out_buf.Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
 
     for (const auto control_step : cr->Moving.ControlSteps) {
         out_buf.Write(control_step);

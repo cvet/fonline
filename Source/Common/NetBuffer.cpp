@@ -400,7 +400,7 @@ auto NetInBuffer::NeedProcess() -> bool
     uint32 msg_len;
     EncryptKey(sizeof(msg_signature));
     CopyBuf(_bufData.data() + _bufReadPos + sizeof(msg_signature), &msg_len, EncryptKey(0), sizeof(msg_len));
-    EncryptKey(-static_cast<int32>(sizeof(msg_signature)));
+    EncryptKey(-const_numeric_cast<int32>(sizeof(msg_signature)));
 
     if (msg_len < sizeof(uint32) + sizeof(uint32) + sizeof(NetMessage)) {
         ResetBuf();

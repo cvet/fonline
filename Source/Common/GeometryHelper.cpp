@@ -65,10 +65,10 @@ void GeometryHelper::InitializeHexOffsets() const
                 const uint8 dir = (j + 2) % 6;
 
                 for (auto k = 0; k < i + 1; k++) {
-                    _sxEven[iter] = static_cast<int16>(pos1.x);
-                    _syEven[iter] = static_cast<int16>(pos1.y);
-                    _sxOdd[iter] = static_cast<int16>(pos2.x - 1);
-                    _syOdd[iter] = static_cast<int16>(pos2.y);
+                    _sxEven[iter] = numeric_cast<int16>(pos1.x);
+                    _syEven[iter] = numeric_cast<int16>(pos1.y);
+                    _sxOdd[iter] = numeric_cast<int16>(pos2.x - 1);
+                    _syOdd[iter] = numeric_cast<int16>(pos2.y);
 
                     iter++;
 
@@ -120,8 +120,8 @@ void GeometryHelper::InitializeHexOffsets() const
                 }
 
                 for (auto k = 0; k < steps; k++) {
-                    _sxEven[iter] = static_cast<int16>(pos.x);
-                    _syEven[iter] = static_cast<int16>(pos.y);
+                    _sxEven[iter] = numeric_cast<int16>(pos.x);
+                    _syEven[iter] = numeric_cast<int16>(pos.y);
 
                     iter++;
 
@@ -264,12 +264,12 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const auto hx = static_cast<float32>(x1);
-        const auto hy = static_cast<float32>(y1);
-        const auto tx = static_cast<float32>(x2);
-        const auto ty = static_cast<float32>(y2);
+        const auto hx = numeric_cast<float32>(x1);
+        const auto hy = numeric_cast<float32>(y1);
+        const auto tx = numeric_cast<float32>(x2);
+        const auto ty = numeric_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(x2 % 2)) - numeric_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
         const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx);
 
         if (dir >= 60.0f && dir < 120.0f) {
@@ -291,7 +291,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
         return 0;
     }
     else {
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(static_cast<float32>(x2 - x1), static_cast<float32>(y2 - y1));
+        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32>(x2 - x1), numeric_cast<float32>(y2 - y1));
 
         if (dir >= 22.5f && dir < 67.5f) {
             return 7;
@@ -324,12 +324,12 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 o
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const auto hx = static_cast<float32>(x1);
-        const auto hy = static_cast<float32>(y1);
-        const auto tx = static_cast<float32>(x2);
-        const auto ty = static_cast<float32>(y2);
+        const auto hx = numeric_cast<float32>(x1);
+        const auto hy = numeric_cast<float32>(y1);
+        const auto tx = numeric_cast<float32>(x2);
+        const auto ty = numeric_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
-        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+        const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(x2 % 2)) - numeric_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
         auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx) + offset;
 
         if (dir < 0.0f) {
@@ -358,7 +358,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 o
         return 0;
     }
     else {
-        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(static_cast<float32>(x2 - x1), static_cast<float32>(y2 - y1)) + offset;
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32>(x2 - x1), numeric_cast<float32>(y2 - y1)) + offset;
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
@@ -411,12 +411,12 @@ auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> floa
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto hx = static_cast<float32>(x1);
-    const auto hy = static_cast<float32>(y1);
-    const auto tx = static_cast<float32>(x2);
-    const auto ty = static_cast<float32>(y2);
+    const auto hx = numeric_cast<float32>(x1);
+    const auto hy = numeric_cast<float32>(y1);
+    const auto tx = numeric_cast<float32>(x2);
+    const auto ty = numeric_cast<float32>(y2);
     const auto nx = 3 * (tx - hx);
-    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float32>(std::abs(x2 % 2)) - static_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(x2 % 2)) - numeric_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
     float32 r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
     FO_RUNTIME_ASSERT(r >= 0.0f);
@@ -472,10 +472,10 @@ auto GeometryHelper::DirToAngle(uint8 dir) -> int16
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return static_cast<int16>(dir * 60 + 30);
+        return numeric_cast<int16>(dir * 60 + 30);
     }
     else {
-        return static_cast<int16>(dir * 45 + 45);
+        return numeric_cast<int16>(dir * 45 + 45);
     }
 }
 
@@ -484,10 +484,10 @@ auto GeometryHelper::AngleToDir(int16 dir_angle) -> uint8
     FO_NO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return static_cast<uint8>(NormalizeAngle(dir_angle) / 60);
+        return numeric_cast<uint8>(NormalizeAngle(dir_angle) / 60);
     }
     else {
-        return static_cast<uint8>(NormalizeAngle(static_cast<int16>(dir_angle - 45 / 2)) / 45);
+        return numeric_cast<uint8>(NormalizeAngle(numeric_cast<int16>(dir_angle - 45 / 2)) / 45);
     }
 }
 
@@ -499,7 +499,7 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
         dir_angle += 360;
     }
 
-    return static_cast<int16>(dir_angle % 360);
+    return numeric_cast<int16>(dir_angle % 360);
 }
 
 auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, uint32 dist) -> bool
@@ -513,26 +513,25 @@ auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return static_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
+    return numeric_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
-auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) noexcept -> bool
+auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     auto raw_pos = ipos {hex.x, hex.y};
 
     if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
-        hex.x = static_cast<uint16>(raw_pos.x);
-        hex.y = static_cast<uint16>(raw_pos.y);
-
+        hex.x = numeric_cast<uint16>(raw_pos.x);
+        hex.y = numeric_cast<uint16>(raw_pos.y);
         return true;
     }
 
     return false;
 }
 
-auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) noexcept -> bool
+auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -541,7 +540,7 @@ auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) no
     return map_size.IsValidPos(hex);
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
+void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -578,7 +577,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
             hex.y--;
             break;
         default:
-            break;
+            throw GenericException("Invalid dir", dir);
         }
     }
     else {
@@ -612,7 +611,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir) noexcept
             hex.y--;
             break;
         default:
-            break;
+            throw GenericException("Invalid dir", dir);
         }
     }
 }
@@ -628,10 +627,10 @@ auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) con
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto x1_f = static_cast<float32>(x1);
-    const auto y1_f = static_cast<float32>(y1) * GetYProj();
-    const auto x2_f = static_cast<float32>(x2);
-    const auto y2_f = static_cast<float32>(y2) * GetYProj();
+    const auto x1_f = numeric_cast<float32>(x1);
+    const auto y1_f = numeric_cast<float32>(y1) * GetYProj();
+    const auto x2_f = numeric_cast<float32>(x2);
+    const auto y2_f = numeric_cast<float32>(y2) * GetYProj();
 
     auto angle = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f);
 
@@ -724,7 +723,7 @@ void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, mpos hex, msi
 
         for (uint8 k = 0; k < steps; k++) {
             if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
-                callback({static_cast<uint16>(raw_pos.x), static_cast<uint16>(raw_pos.y)});
+                callback({numeric_cast<uint16>(raw_pos.x), numeric_cast<uint16>(raw_pos.y)});
             }
         }
     }

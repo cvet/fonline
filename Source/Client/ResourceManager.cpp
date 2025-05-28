@@ -108,7 +108,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 actio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), static_cast<uint32>(-1)};
+    const uint32 dw[4] = {model_name.as_uint(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -446,8 +446,8 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 
     // Try load fofrm
     static constexpr char FRM_IND[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    FO_RUNTIME_ASSERT(static_cast<uint32>(state_anim) < sizeof(FRM_IND));
-    FO_RUNTIME_ASSERT(static_cast<uint32>(action_anim) < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(state_anim < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(action_anim < sizeof(FRM_IND));
 
     shared_ptr<SpriteSheet> anim;
 
@@ -456,13 +456,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 
     // Try load from fofrm
     {
-        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[static_cast<uint32>(state_anim)], FRM_IND[static_cast<uint32>(action_anim)]);
+        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[static_cast<uint32>(state_anim)], FRM_IND[static_cast<uint32>(action_anim)]);
+        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 

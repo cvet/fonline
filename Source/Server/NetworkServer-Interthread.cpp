@@ -120,7 +120,7 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 }
 
 InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _virtualPort {static_cast<uint16>(settings.ServerPort)}
+    _virtualPort {numeric_cast<uint16>(settings.ServerPort)}
 {
     FO_STACK_TRACE_ENTRY();
 

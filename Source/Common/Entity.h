@@ -184,10 +184,10 @@ struct mpos
 
     [[nodiscard]] constexpr auto operator==(const mpos& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const mpos& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x + other.x), static_cast<uint16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x - other.x), static_cast<uint16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x * other.x), static_cast<uint16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const mpos& other) const noexcept -> mpos { return {static_cast<uint16>(x / other.x), static_cast<uint16>(y / other.y)}; }
+    [[nodiscard]] constexpr auto operator+(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x + other.x), numeric_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x - other.x), numeric_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
 
     uint16 x {};
     uint16 y {};
@@ -210,7 +210,7 @@ struct msize
 
     [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
-    [[nodiscard]] constexpr auto GetSquare() const noexcept -> uint32 { return static_cast<uint32>(width * height); }
+    [[nodiscard]] constexpr auto GetSquare() const -> uint32 { return numeric_cast<uint32>(width * height); }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
     {
@@ -221,7 +221,7 @@ struct msize
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
-        return {static_cast<uint16>(std::clamp(static_cast<int32>(pos.x), 0, width - 1)), static_cast<uint16>(std::clamp(static_cast<int32>(pos.y), 0, height - 1))};
+        return {numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.x), 0, width - 1)), numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.y), 0, height - 1))};
     }
     template<typename T>
     [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
@@ -232,7 +232,7 @@ struct msize
         FO_RUNTIME_ASSERT(pos.y >= 0);
         FO_RUNTIME_ASSERT(pos.x < width);
         FO_RUNTIME_ASSERT(pos.y < height);
-        return {static_cast<uint16>(pos.x), static_cast<uint16>(pos.y)};
+        return {numeric_cast<uint16>(pos.x), numeric_cast<uint16>(pos.y)};
     }
 
     uint16 width {};

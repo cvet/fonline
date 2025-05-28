@@ -189,7 +189,7 @@ public:
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
     virtual ~RenderDrawBuffer() = default;
 
-    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1), size_t custom_indices_size = static_cast<size_t>(-1)) = 0;
+    virtual void Upload(EffectUsage usage, optional<size_t> custom_vertices_size = std::nullopt, optional<size_t> custom_indices_size = std::nullopt) = 0;
 
     void CheckAllocBuf(size_t vcount, size_t icount);
 
@@ -330,7 +330,7 @@ public:
     optional<ModelAnimBuffer> ModelAnimBuf {};
 #endif
 
-    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), const RenderTexture* custom_tex = nullptr) = 0;
+    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, const RenderTexture* custom_tex = nullptr) = 0;
 
 protected:
     RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);

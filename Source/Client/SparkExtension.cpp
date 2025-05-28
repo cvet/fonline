@@ -62,12 +62,12 @@ namespace SPK::FO
         }
 
         for (size_t i = 0; i < ibuf.size() / 6; i++) {
-            ibuf[i * 6 + 0] = static_cast<vindex_t>(i * 4 + 0);
-            ibuf[i * 6 + 1] = static_cast<vindex_t>(i * 4 + 1);
-            ibuf[i * 6 + 2] = static_cast<vindex_t>(i * 4 + 2);
-            ibuf[i * 6 + 3] = static_cast<vindex_t>(i * 4 + 2);
-            ibuf[i * 6 + 4] = static_cast<vindex_t>(i * 4 + 3);
-            ibuf[i * 6 + 5] = static_cast<vindex_t>(i * 4 + 0);
+            ibuf[i * 6 + 0] = numeric_cast<vindex_t>(i * 4 + 0);
+            ibuf[i * 6 + 1] = numeric_cast<vindex_t>(i * 4 + 1);
+            ibuf[i * 6 + 2] = numeric_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 3] = numeric_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 4] = numeric_cast<vindex_t>(i * 4 + 3);
+            ibuf[i * 6 + 5] = numeric_cast<vindex_t>(i * 4 + 0);
         }
     }
 
@@ -528,7 +528,7 @@ namespace SPK::FO
         const std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
-        const std::vector tmpAtlasDimensions = {static_cast<uint32_t>(textureAtlasNbX), static_cast<uint32_t>(textureAtlasNbY)};
+        const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {

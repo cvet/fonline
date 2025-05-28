@@ -114,7 +114,7 @@ void EngineData::RegisterValueType(string_view name, size_t size, BaseTypeInfo::
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(_valueTypes.count(name) == 0);
-    FO_RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
+    FO_RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), const_numeric_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
 
     _valueTypes.emplace(name, tuple {size, std::move(layout)});
 }

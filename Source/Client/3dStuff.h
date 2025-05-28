@@ -257,8 +257,8 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float32, int32, int32, int32>;
-    [[nodiscard]] auto GetDrawSize() const noexcept -> isize;
-    [[nodiscard]] auto GetViewSize() const noexcept -> isize;
+    [[nodiscard]] auto GetDrawSize() const -> isize;
+    [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
@@ -371,7 +371,7 @@ private:
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};
     ModelInstance* _parent {};
-    ModelBone* _parentBone {};
+    raw_ptr<ModelBone> _parentBone {};
     mat44 _parentMatrix {};
     vector<ModelBone*> _linkBones {};
     vector<mat44> _linkMatricles {};
@@ -398,7 +398,7 @@ public:
 
 private:
     [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed, bool combat_first) const -> int32;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, bool combat, float32* speed) const -> int32;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;
@@ -412,9 +412,10 @@ private:
     size_t _numAnimationSets {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
-    unordered_map<uint32, int32> _animIndexes {};
-    unordered_map<uint32, float32> _animSpeed {};
-    unordered_map<uint32, vector<pair<int32, int32>>> _animLayerValues {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32> _animIndexes {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32> _animCombatIndexes {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, float32> _animSpeed {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, vector<pair<int32, int32>>> _animLayerValues {};
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};

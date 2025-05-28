@@ -507,7 +507,7 @@ asUINT CScriptDict::GetSize() const
 {
     const DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    return static_cast<asUINT>(dict->size());
+    return numeric_cast<asUINT>(dict->size());
 }
 
 bool CScriptDict::IsEmpty() const
@@ -624,7 +624,7 @@ void* CScriptDict::GetKey(asUINT index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= static_cast<asUINT>(dict->size())) {
+    if (index >= numeric_cast<asUINT>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");
@@ -644,7 +644,7 @@ void* CScriptDict::GetValue(asUINT index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= static_cast<asUINT>(dict->size())) {
+    if (index >= numeric_cast<asUINT>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");

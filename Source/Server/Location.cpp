@@ -75,7 +75,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
+auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -89,7 +89,7 @@ auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
         index++;
     }
 
-    return static_cast<size_t>(-1);
+    throw GenericException("Map not found", map_pid);
 }
 
 void Location::AddMap(Map* map)
