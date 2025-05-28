@@ -270,7 +270,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
         const auto ty = numeric_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
         const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(x2 % 2)) - numeric_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx);
+        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
         if (dir >= 60.0f && dir < 120.0f) {
             return 5;
@@ -330,7 +330,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 o
         const auto ty = numeric_cast<float32>(y2);
         const auto nx = 3 * (tx - hx);
         const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(x2 % 2)) - numeric_cast<float32>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2f(ny, nx) + offset;
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx) + offset;
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
