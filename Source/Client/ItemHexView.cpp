@@ -120,7 +120,7 @@ void ItemHexView::Process()
 
         const auto dist = GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset);
         const auto proc = GenericUtils::Percent(_effDist, dist);
-        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
+        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);

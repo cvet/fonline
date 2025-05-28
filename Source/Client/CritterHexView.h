@@ -111,8 +111,8 @@ private:
     {
         const SpriteSheet* AnimFrames {};
         timespan AnimDuration {};
-        uint32 BeginFrm {};
-        uint32 EndFrm {};
+        int32 BeginFrm {};
+        int32 EndFrm {};
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         refcount_ptr<Entity> ContextItem {};
@@ -127,12 +127,12 @@ private:
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
-    void SetAnimSpr(const SpriteSheet* anim, uint32 frm_index);
+    void SetAnimSpr(const SpriteSheet* anim, int32 frm_index);
 
     bool _needReset {};
     nanotime _resetTime {};
 
-    uint32 _curFrmIndex {};
+    int32 _curFrmIndex {};
     nanotime _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};

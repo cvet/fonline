@@ -80,7 +80,7 @@ private:
     FileSystem& _resources;
     GameTimer& _gameTime;
     TextureLoader _textureLoader;
-    uint32 _animUpdateThreshold {};
+    int32 _animUpdateThreshold {};
     mat44 _projMatColMaj {};
     mat44 _viewMatColMaj {};
 };

@@ -39,37 +39,37 @@
 FO_BEGIN_NAMESPACE();
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*> func)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, {}, {});
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*, any_t> func, any_t data)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*, any_t> func, any_t data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func, const vector<any_t>& data)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func, const vector<any_t>& data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, {}, data);
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*> func)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, repeat, {});
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*, any_t> func, any_t data)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*, any_t> func, any_t data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func, const vector<any_t>& data)
+FO_SCRIPT_API int32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func, const vector<any_t>& data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, false, func, delay, repeat, data);
 }
@@ -99,27 +99,27 @@ FO_SCRIPT_API void Server_Entity_StartPersistentTimeEvent(ServerEntity* self, ti
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API int32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*, any_t> func)
+FO_SCRIPT_API int32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*, any_t> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func)
+FO_SCRIPT_API int32 Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Server_Entity_CountTimeEvent(ServerEntity* self, uint32 id)
+FO_SCRIPT_API int32 Server_Entity_CountTimeEvent(ServerEntity* self, uint32 id)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
 }
 
 ///@ ExportMethod TimeEventRelated

@@ -280,7 +280,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
             extension_errors++; \
         } \
     }
-    uint32 extension_errors = 0;
+    size_t extension_errors = 0;
     CHECK_EXTENSION(version_2_0, true);
     CHECK_EXTENSION(vertex_buffer_object, true);
     CHECK_EXTENSION(uniform_buffer_object, true);
@@ -822,7 +822,7 @@ static void EnableVertAtribs(EffectUsage usage)
         GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
         GL(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))));
 
-        for (uint32 i = 0; i <= 8; i++) {
+        for (GLuint i = 0; i <= 8; i++) {
             GL(glEnableVertexAttribArray(i));
         }
 
@@ -835,7 +835,7 @@ static void EnableVertAtribs(EffectUsage usage)
     GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))));
     GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))));
 
-    for (uint32 i = 0; i <= 3; i++) {
+    for (GLuint i = 0; i <= 3; i++) {
         GL(glEnableVertexAttribArray(i));
     }
 }
@@ -848,7 +848,7 @@ static void DisableVertAtribs(EffectUsage usage)
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        for (uint32 i = 0; i <= 8; i++) {
+        for (GLuint i = 0; i <= 8; i++) {
             GL(glDisableVertexAttribArray(i));
         }
 
@@ -856,7 +856,7 @@ static void DisableVertAtribs(EffectUsage usage)
     }
 #endif
 
-    for (uint32 i = 0; i <= 3; i++) {
+    for (GLuint i = 0; i <= 3; i++) {
         GL(glDisableVertexAttribArray(i));
     }
 }

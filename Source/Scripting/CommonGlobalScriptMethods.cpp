@@ -259,19 +259,19 @@ FO_SCRIPT_API int32 Common_Game_Random(BaseEngine* engine, int32 minValue, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_DecodeUtf8(BaseEngine* engine, string_view text, uint32& length)
+FO_SCRIPT_API int32 Common_Game_DecodeUtf8(BaseEngine* engine, string_view text, int32& length)
 {
     ignore_unused(engine);
 
     size_t decode_length = text.length();
     const auto ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
-    length = numeric_cast<uint32>(decode_length);
+    length = numeric_cast<int32>(decode_length);
     return ch;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_Game_EncodeUtf8(BaseEngine* engine, uint32 ucs)
+FO_SCRIPT_API string Common_Game_EncodeUtf8(BaseEngine* engine, int32 ucs)
 {
     ignore_unused(engine);
 
@@ -334,7 +334,7 @@ FO_SCRIPT_API uint64 Common_Game_GetUnixTime(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos hex2)
+FO_SCRIPT_API int32 Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos hex2)
 {
     ignore_unused(engine);
 
@@ -762,27 +762,27 @@ FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan del
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void> func)
+FO_SCRIPT_API int32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void> func)
 {
-    return numeric_cast<uint32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<int32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void, any_t> func)
+FO_SCRIPT_API int32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void, any_t> func)
 {
-    return numeric_cast<uint32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<int32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void, vector<any_t>> func)
+FO_SCRIPT_API int32 Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFuncName<void, vector<any_t>> func)
 {
-    return numeric_cast<uint32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
+    return numeric_cast<int32>(engine->TimeEventMngr.CountTimeEvent(engine, func, {}));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Common_Game_CountTimeEvent(BaseEngine* engine, uint32 id)
+FO_SCRIPT_API int32 Common_Game_CountTimeEvent(BaseEngine* engine, uint32 id)
 {
-    return numeric_cast<uint32>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
+    return numeric_cast<int32>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
 }
 
 ///@ ExportMethod

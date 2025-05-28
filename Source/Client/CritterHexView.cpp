@@ -618,15 +618,16 @@ void CritterHexView::Process()
 
     // Animation
     const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
-    const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<uint32>() * 100 / (cur_anim.AnimDuration ? cur_anim.AnimDuration.to_ms<uint32>() : 100);
+    const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32>() * 100 / (cur_anim.AnimDuration ? cur_anim.AnimDuration.to_ms<int32>() : 100);
 
     // Change frames
 #if FO_ENABLE_3D
     if (_model == nullptr)
 #endif
     {
-        const auto frm_proc = !_animSequence.empty() ? std::min(anim_proc, 99u) : anim_proc % 100;
+        const auto frm_proc = !_animSequence.empty() ? std::min(anim_proc, 99) : anim_proc % 100;
         const auto frm_index = cur_anim.BeginFrm + (cur_anim.EndFrm - cur_anim.BeginFrm + 1) * frm_proc / 100;
+
         if (frm_index != _curFrmIndex) {
             SetAnimSpr(cur_anim.AnimFrames, frm_index);
         }
@@ -845,11 +846,11 @@ auto CritterHexView::GetViewRect() const -> IRect
     return GetSprite()->GetViewRect();
 }
 
-void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint32 frm_index)
+void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curFrmIndex = frm_index;
+    _curFrmIndex = frm_index % anim->CntFrm;
 
     Spr = anim->GetSpr(_curFrmIndex);
 
@@ -859,7 +860,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint32 frm_index)
         // ...
     }
     else {
-        for (const auto i : xrange(_curFrmIndex + 1u)) {
+        for (const auto i : xrange(_curFrmIndex + 1)) {
             _offsAnim.x += anim->SprOffset[i].x;
             _offsAnim.y += anim->SprOffset[i].y;
         }

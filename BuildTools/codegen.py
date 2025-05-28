@@ -92,7 +92,7 @@ def getHash(input, seed=0):
         return str(-((h ^ 0xFFFFFFFF) + 1))
 
 def getHashUint(input, seed=0):
-    return str(int(getHash(input, seed)) + 2**32)
+    return str(int(getHash(input, seed)) & 0xFFFFFFFF)
 
 assert getHash('abcd') == '646393889'
 assert getHash('abcde') == '1594468574'

@@ -92,7 +92,7 @@ void DialogBaker::BakeFiles(FileCollection files)
     auto dialog_mngr = DialogManager(server_engine);
     auto script_sys = BakerScriptSystem(server_engine, *_bakedFiles);
 
-    int32 errors = 0;
+    size_t errors = 0;
     vector<unique_ptr<DialogPack>> dialog_packs;
 
     for (const auto& file : filtered_files) {

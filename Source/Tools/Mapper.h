@@ -71,7 +71,7 @@ public:
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        uint32 Index {};
+        int32 Index {};
         int32 Scroll {};
     };
 
@@ -168,8 +168,8 @@ public:
     void IntMouseMove();
     void IntSetMode(int32 mode);
 
-    auto GetTabIndex() const -> uint32;
-    void SetTabIndex(uint32 index);
+    auto GetTabIndex() const -> int32;
+    void SetTabIndex(int32 index);
     void RefreshCurProtos();
     auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
@@ -216,7 +216,7 @@ public:
     void AddMess(string_view message_text);
     void MessBoxDraw();
 
-    void DrawIfaceLayer(uint32 layer);
+    void DrawIfaceLayer(int32 layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
 
@@ -292,8 +292,8 @@ public:
     uint8 NpcDir {};
     int32* CurProtoScroll {};
     int32 ProtoWidth {};
-    uint32 ProtosOnScreen {};
-    uint32 TabIndex[INT_MODE_COUNT] {};
+    int32 ProtosOnScreen {};
+    int32 TabIndex[INT_MODE_COUNT] {};
     int32 InContScroll {};
     int32 ListScroll {};
     refcount_ptr<ItemView> InContItem {};
@@ -338,7 +338,7 @@ public:
     int32 ConsoleTextY {};
     bool ConsoleEdit {};
     string ConsoleStr {};
-    uint32 ConsoleCur {};
+    int32 ConsoleCur {};
     vector<string> ConsoleHistory {};
     int32 ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};

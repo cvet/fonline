@@ -132,7 +132,7 @@ void GeometryHelper::InitializeHexOffsets() const
     }
 }
 
-auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> uint32
+auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -169,7 +169,7 @@ auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> uint32
     }
 }
 
-auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> uint32
+auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -502,7 +502,7 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
     return numeric_cast<int16>(dir_angle % 360);
 }
 
-auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, uint32 dist) -> bool
+auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

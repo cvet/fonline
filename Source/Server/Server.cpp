@@ -439,7 +439,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             else {
                 WriteLog("Restore world");
 
-                int32 errors = 0;
+                size_t errors = 0;
 
                 try {
                     EntityMngr.LoadEntities();
@@ -1994,7 +1994,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     // Net protocol
     const auto comp_version = in_buf->Read<uint32>();
-    const auto outdated = comp_version != 0 && comp_version != FO_COMPATIBILITY_VERSION;
+    const auto outdated = comp_version != 0 && comp_version != numeric_cast<uint32>(FO_COMPATIBILITY_VERSION);
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint32>();
@@ -2092,14 +2092,14 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
     }
 
     const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    uint32 update_portion = Settings.UpdateFileSendSize;
+    auto update_portion = Settings.UpdateFileSendSize;
     const auto offset = connection->UpdateFilePortion * update_portion;
 
-    if (offset + update_portion < update_file_data.size()) {
+    if (offset + update_portion < numeric_cast<int32>(update_file_data.size())) {
         connection->UpdateFilePortion++;
     }
     else {
-        update_portion = update_file_data.size() % update_portion;
+        update_portion = numeric_cast<int32>(update_file_data.size()) % update_portion;
         connection->UpdateFileIndex = -1;
     }
 
@@ -2312,14 +2312,15 @@ void FOServer::Process_Login(Player* unlogined_player)
         auto conn_port = player->GetConnectionPort();
         FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
 
-        auto ip_found = false;
-        for (uint32 i = 0; i < conn_ip.size(); i++) {
+        bool ip_found = false;
+
+        for (size_t i = 0; i < conn_ip.size(); i++) {
             if (conn_ip[i] == ip) {
                 if (i < conn_ip.size() - 1) {
-                    conn_ip.erase(conn_ip.begin() + i);
+                    conn_ip.erase(conn_ip.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_ip.push_back(ip);
                     player->SetConnectionIp(conn_ip);
-                    conn_port.erase(conn_port.begin() + i);
+                    conn_port.erase(conn_port.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_port.push_back(port);
                     player->SetConnectionPort(conn_port);
                 }
@@ -2327,6 +2328,7 @@ void FOServer::Process_Login(Player* unlogined_player)
                     conn_port.back() = port;
                     player->SetConnectionPort(conn_port);
                 }
+
                 ip_found = true;
                 break;
             }
@@ -2466,7 +2468,7 @@ void FOServer::Process_Move(Player* player)
         next_start_hy = hy;
     }*/
 
-    uint32 corrected_speed = speed;
+    int32 corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
         BreakIntoDebugger();
@@ -2559,7 +2561,7 @@ void FOServer::Process_StopMove(Player* player)
         return;
     }
 
-    uint32 zero_speed = 0;
+    int32 zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
@@ -2994,7 +2996,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint32*>(new_value);
 
-    if (new_count == 0 || (!item->GetStackable() && new_count != 1)) {
+    if (new_count <= 0 || (!item->GetStackable() && new_count != 1)) {
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
@@ -3123,8 +3125,8 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
         if (need_find_path) {
             mpos hex;
-            uint32 cut;
-            uint32 trace_dist;
+            int32 cut;
+            int32 trace_dist;
             Critter* trace_cr;
 
             if (cr->TargetMoving.TargId) {
@@ -3332,7 +3334,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
             if (old_hex != hex2) {
-                const uint32 multihex = cr->GetMultihex();
+                const auto multihex = cr->GetMultihex();
 
                 if (map->IsHexesMovable(hex2, multihex, cr)) {
                     map->RemoveCritterFromField(cr);
@@ -4322,12 +4324,12 @@ void FOServer::Process_RemoteCall(Player* player)
     ScriptSys.HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint32 count, Properties* props) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (count == 0) {
-        throw GenericException("Item count is zero");
+    if (count <= 0) {
+        throw GenericException("Invalid items cound");
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -4342,9 +4344,9 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint32 count, Pr
 
     // Non-stacked items
     if (item != nullptr && !proto->GetStackable() && count > 1) {
-        const uint32 fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
+        const auto fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
 
-        for (uint32 i = 0; i < fixed_count; i++) {
+        for (int32 i = 0; i < fixed_count; i++) {
             if (add_item() == nullptr) {
                 break;
             }

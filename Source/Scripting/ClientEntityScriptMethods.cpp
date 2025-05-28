@@ -75,27 +75,27 @@ FO_SCRIPT_API uint32 Client_Entity_StartTimeEvent(ClientEntity* self, timespan d
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API int32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*, any_t> func)
+FO_SCRIPT_API int32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*, any_t> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func)
+FO_SCRIPT_API int32 Client_Entity_CountTimeEvent(ClientEntity* self, ScriptFuncName<void, ScriptSelfEntity*, vector<any_t>> func)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func, {}));
 }
 
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32 Client_Entity_CountTimeEvent(ClientEntity* self, uint32 id)
+FO_SCRIPT_API int32 Client_Entity_CountTimeEvent(ClientEntity* self, uint32 id)
 {
-    return numeric_cast<uint32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
+    return numeric_cast<int32>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
 }
 
 ///@ ExportMethod TimeEventRelated

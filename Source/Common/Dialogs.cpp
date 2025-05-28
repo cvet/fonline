@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint32
+static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -64,6 +64,7 @@ static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_
     }
 
     const Property* prop = nullptr;
+
     if (prop_global != nullptr) {
         prop = prop_global;
         type = DR_PROP_GLOBAL;
@@ -109,7 +110,7 @@ void DialogManager::LoadFromResources(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 errors = 0;
+    size_t errors = 0;
     auto files = resources.FilterFiles("fodlg");
 
     while (files.MoveNext()) {
@@ -363,7 +364,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const
     int32 values_count = 0;
     string svalue;
     int32 ivalue = 0;
-    uint32 id_index = 0;
+    int32 id_index = 0;
     hstring id_hash;
     string type_str;
     string name;

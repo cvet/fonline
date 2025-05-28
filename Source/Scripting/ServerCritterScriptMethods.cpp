@@ -228,7 +228,7 @@ FO_SCRIPT_API void Server_Critter_RefreshView(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, uint32 look, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, mpos hex, uint8 dir)
 {
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
@@ -304,10 +304,9 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lo
         }
     }
 
-    std::ranges::sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
-
+    std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -325,10 +324,9 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
         }
     }
 
-    std::ranges::sort(result, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex());
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex());
-
+    std::ranges::stable_sort(result, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -336,9 +334,9 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Server_Critter_GetTalkingCrittersCount(Critter* self)
+FO_SCRIPT_API int32 Server_Critter_GetTalkingCrittersCount(Critter* self)
 {
-    uint32 result = 0;
+    int32 result = 0;
 
     for (const auto* cr : self->VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == self->GetId()) {
@@ -412,7 +410,7 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Server_Critter_CountItem(Critter* self, hstring protoId)
+FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, hstring protoId)
 {
     return self->CountInvItemPid(protoId);
 }
@@ -425,6 +423,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
     }
 
     const auto count = self->CountInvItemPid(pid);
+
     if (count == 0) {
         return;
     }
@@ -433,13 +432,13 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, uint32 count)
+FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32 count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
 
-    if (count == 0) {
+    if (count <= 0) {
         return;
     }
 
@@ -447,7 +446,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, uint32 count)
+FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32 count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -456,7 +455,7 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, uint32 co
         throw ScriptException("Invalid proto", pid);
     }
 
-    if (count == 0) {
+    if (count <= 0) {
         return nullptr;
     }
 
@@ -737,7 +736,7 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_MoveToCritter(Critter* self, Critter* target, uint32 cut, uint32 speed)
+FO_SCRIPT_API void Server_Critter_MoveToCritter(Critter* self, Critter* target, int32 cut, int32 speed)
 {
     if (target == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -752,7 +751,7 @@ FO_SCRIPT_API void Server_Critter_MoveToCritter(Critter* self, Critter* target, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_MoveToHex(Critter* self, mpos hex, uint32 cut, uint32 speed)
+FO_SCRIPT_API void Server_Critter_MoveToHex(Critter* self, mpos hex, int32 cut, int32 speed)
 {
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;

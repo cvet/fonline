@@ -1519,7 +1519,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         const auto* arr = *static_cast<CScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
-            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const auto arr_size = numeric_cast<uint32>(arr != nullptr ? arr->GetSize() : 0);
 
             if (arr_size != 0) {
                 // Calculate size
@@ -1539,7 +1539,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (uint32 i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
-                    uint32 str_size = numeric_cast<uint32>(str.length());
+                    const auto str_size = numeric_cast<uint32>(str.length());
                     MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
@@ -1608,7 +1608,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1638,7 +1638,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1725,7 +1725,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1746,7 +1746,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1789,7 +1789,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                    const auto key_len = numeric_cast<uint32>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
                     data_size += value_element_size;
                 }
@@ -1799,7 +1799,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint32 key_len = numeric_cast<uint32>(key_str.length());
+                    const auto key_len = numeric_cast<uint32>(key_str.length());
 
                     MemCopy(buf, &key_len, sizeof(key_len));
                     buf += sizeof(key_len);
@@ -1958,7 +1958,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
     }
 }
 
-static void WriteRpcHeader(NetOutBuffer& out_buf, uint32 rpc_num)
+[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint32 rpc_num)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1966,7 +1966,7 @@ static void WriteRpcHeader(NetOutBuffer& out_buf, uint32 rpc_num)
     out_buf.Write(rpc_num);
 }
 
-static void WriteRpcFooter(NetOutBuffer& out_buf)
+[[maybe_unused]] static void WriteRpcFooter(NetOutBuffer& out_buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2247,7 +2247,7 @@ static void Global_ThrowException(asIScriptGeneric* gen)
 #endif
 }
 
-static void Global_Yield(uint32 time)
+static void Global_Yield(int32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3949,7 +3949,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_ThrowException<8>), SCRIPT_GENERIC_CONV));
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_ThrowException<9>), SCRIPT_GENERIC_CONV));
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_ThrowException<10>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
 #define REGISTER_HARD_STRONG_TYPE(name, type) \
@@ -4675,7 +4675,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         final_script_files.emplace(script_path, std::move(script_content));
     }
 
-    std::stable_sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
+    std::ranges::stable_sort(final_script_files_order, [](auto&& a, auto&& b) {
         if (std::get<0>(a) == std::get<0>(b)) {
             return std::get<1>(a) < std::get<1>(b);
         }

@@ -168,7 +168,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
 
-    while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
+    while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
@@ -901,18 +901,18 @@ void FOMapper::IntDraw()
             DrawStr(IRect(x, y + h - 15, x + w, y + h), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
-        if (GetTabIndex() < numeric_cast<uint32>(CurItemProtos->size())) {
+        if (GetTabIndex() < numeric_cast<int32>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
 
             SprMngr.DrawText(irect(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IsCritMode()) {
-        uint32 i = *CurProtoScroll;
+        auto i = *CurProtoScroll;
         auto j = i + ProtosOnScreen;
 
-        if (j > CurNpcProtos->size()) {
-            j = numeric_cast<uint32>(CurNpcProtos->size());
+        if (j > numeric_cast<int32>(CurNpcProtos->size())) {
+            j = numeric_cast<int32>(CurNpcProtos->size());
         }
 
         for (; i < j; i++, x += w) {
@@ -935,7 +935,7 @@ void FOMapper::IntDraw()
             DrawStr(IRect(x, y + h - 15, x + w, y + h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
-        if (GetTabIndex() < CurNpcProtos->size()) {
+        if (GetTabIndex() < numeric_cast<int32>(CurNpcProtos->size())) {
             const auto* proto = (*CurNpcProtos)[GetTabIndex()];
             DrawStr(IRect(IntWHint, IntX, IntY), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
@@ -944,11 +944,11 @@ void FOMapper::IntDraw()
         auto* entity = SelectedEntities[0];
         auto inner_items = GetEntityInnerItems(entity);
 
-        uint32 i = InContScroll;
+        auto i = InContScroll;
         auto j = i + ProtosOnScreen;
 
-        if (j > inner_items.size()) {
-            j = numeric_cast<uint32>(inner_items.size());
+        if (j > numeric_cast<int32>(inner_items.size())) {
+            j = numeric_cast<int32>(inner_items.size());
         }
 
         for (; i < j; i++, x += w) {
@@ -1017,10 +1017,10 @@ void FOMapper::IntDraw()
                 color = COLOR_TEXT_DWHITE;
             }
 
-            auto count = numeric_cast<uint32>(stab.NpcProtos.size());
+            auto count = numeric_cast<int32>(stab.NpcProtos.size());
 
             if (count == 0) {
-                count = numeric_cast<uint32>(stab.ItemProtos.size());
+                count = numeric_cast<int32>(stab.ItemProtos.size());
             }
 
             name += strex(" ({})", count);
@@ -1873,7 +1873,7 @@ void FOMapper::IntMouseMove()
     }
 }
 
-auto FOMapper::GetTabIndex() const -> uint32
+auto FOMapper::GetTabIndex() const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1883,7 +1883,7 @@ auto FOMapper::GetTabIndex() const -> uint32
     return TabIndex[IntMode];
 }
 
-void FOMapper::SetTabIndex(uint32 index)
+void FOMapper::SetTabIndex(int32 index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2704,11 +2704,8 @@ void FOMapper::CurMMouseDown()
     else {
         for (auto* entity : SelectedEntities) {
             if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                uint32 dir = cr->GetDir() + 1u;
-                if (dir >= GameSettings::MAP_DIR_COUNT) {
-                    dir = 0u;
-                }
-                cr->ChangeDir(numeric_cast<uint8>(dir));
+                const auto dir = cr->GetDir() + 1;
+                cr->ChangeDir(numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT));
             }
         }
     }
@@ -2773,7 +2770,7 @@ void FOMapper::ConsoleDraw()
         SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
 
         auto str = ConsoleStr;
-        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<uint32>() % 800 < 400 ? "!" : ".");
+        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<int32>() % 800 < 400 ? "!" : ".");
         DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -2798,7 +2795,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                     }
                 }
 
-                while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
+                while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
                     ConsoleHistory.erase(ConsoleHistory.begin());
                 }
 
@@ -2838,7 +2835,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             if (ConsoleHistoryCur > 0) {
                 ConsoleHistoryCur--;
                 ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = numeric_cast<uint32>(ConsoleStr.length());
+                ConsoleCur = numeric_cast<int32>(ConsoleStr.length());
             }
         } break;
         case KeyCode::Down: {
@@ -2850,7 +2847,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             else {
                 ConsoleHistoryCur++;
                 ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = numeric_cast<uint32>(ConsoleStr.length());
+                ConsoleCur = numeric_cast<int32>(ConsoleStr.length());
             }
         } break;
         default: {
@@ -2977,7 +2974,7 @@ void FOMapper::ParseCommand(string_view command)
                 if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
 
-                    for (uint32 j = 0; j < anims.size() / 2; j++) {
+                    for (size_t j = 0; j < anims.size() / 2; j++) {
                         cr->Animate(static_cast<CritterStateAnim>(anims[numeric_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                     }
                 }
@@ -2987,7 +2984,7 @@ void FOMapper::ParseCommand(string_view command)
             for (auto& cr : _curMap->GetCritters()) {
                 cr->ClearAnim();
 
-                for (uint32 j = 0; j < anims.size() / 2; j++) {
+                for (size_t j = 0; j < anims.size() / 2; j++) {
                     cr->Animate(static_cast<CritterStateAnim>(anims[numeric_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                 }
             }
@@ -3254,7 +3251,7 @@ void FOMapper::MessBoxDraw()
     DrawStr(IRect(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
-void FOMapper::DrawIfaceLayer(uint32 layer)
+void FOMapper::DrawIfaceLayer(int32 layer)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -496,7 +496,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     if (!IsBitSet(flags, ANIMATION_INIT)) {
         if (state_anim == CritterStateAnim::None) {
-            index = numeric_cast<int32>(_modelInfo->_renderAnim);
+            index = _modelInfo->_renderAnim;
         }
         else {
             index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
@@ -758,7 +758,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     if (_bodyAnimController && index >= 0) {
         // Get the animation set from the controller
-        const auto* set = _bodyAnimController->GetAnimationSet(index);
+        const auto* set = _bodyAnimController->GetAnimationSet(numeric_cast<size_t>(index));
 
         // Alternate tracks
         const uint32 new_track = (_currentTrack == 0 ? 1 : 0);
@@ -818,7 +818,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
         // End time
         if (IsBitSet(flags, ANIMATION_ONE_TIME)) {
-            _endTime = GetTime() + std::chrono::milliseconds(iround<uint32>(period / GetSpeed() * 1000.0f));
+            _endTime = GetTime() + std::chrono::milliseconds(iround<int32>(period / GetSpeed() * 1000.0f));
         }
         else {
             _endTime = nanotime::zero;
@@ -956,7 +956,7 @@ void ModelInstance::RefreshMoveAnimation()
     constexpr float32 smooth_time = 0.0001f;
 
     if (index != -1) {
-        const auto* anim_set = _moveAnimController->GetAnimationSet(index);
+        const auto* anim_set = _moveAnimController->GetAnimationSet(numeric_cast<size_t>(index));
         const uint32 new_track = _currentMoveTrack == 0 ? 1 : 0;
 
         _moveAnimController->SetTrackAnimationSet(new_track, anim_set, &_modelMngr._legBones);
@@ -1030,7 +1030,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, 
     auto period = 0.0f;
 
     if (_bodyAnimController) {
-        const auto* anim_set = _bodyAnimController->GetAnimationSet(_modelInfo->_renderAnim);
+        const auto* anim_set = _bodyAnimController->GetAnimationSet(numeric_cast<size_t>(_modelInfo->_renderAnim));
 
         if (anim_set != nullptr) {
             period = anim_set->GetDuration();
@@ -1814,7 +1814,7 @@ auto ModelInstance::NeedDraw() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animUpdateThreshold};
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_modelMngr._animUpdateThreshold);
 }
 
 void ModelInstance::Draw()
@@ -2098,7 +2098,7 @@ auto ModelInstance::GetAnimDuration() const -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::chrono::milliseconds(iround<uint32>(_animPosPeriod * 1000.0f));
+    return std::chrono::milliseconds(iround<int32>(_animPosPeriod * 1000.0f));
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -3001,7 +3001,7 @@ ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-void SetupBonesExt(multimap<uint32, ModelBone*>& bones, ModelBone* bone, uint32 depth)
+static void SetupBonesExt(multimap<uint32, ModelBone*>& bones, ModelBone* bone, uint32 depth)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -182,13 +182,13 @@ void Player::Send_LoadMap(const Map* map)
     const Location* loc = nullptr;
     hstring pid_map;
     hstring pid_loc;
-    uint8 map_index_in_loc = 0;
+    int32 map_index_in_loc = 0;
 
     if (map != nullptr) {
         loc = map->GetLocation();
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
-        map_index_in_loc = numeric_cast<uint8>(loc->GetMapIndex(pid_map));
+        map_index_in_loc = numeric_cast<int32>(loc->GetMapIndex(pid_map));
     }
 
     vector<const uint8*>* map_data = nullptr;
@@ -464,16 +464,16 @@ void Player::Send_Talk()
         out_buf->Write(is_npc);
         out_buf->Write(_controlledCr->Talk.CritterId);
         out_buf->Write(_controlledCr->Talk.DialogPackId);
-        out_buf->Write(numeric_cast<uint8>(0));
+        out_buf->Write(numeric_cast<int32>(0));
     }
     else {
-        const auto all_answers = numeric_cast<uint8>(_controlledCr->Talk.CurDialog.Answers.size());
+        const auto all_answers = numeric_cast<int32>(_controlledCr->Talk.CurDialog.Answers.size());
 
         auto talk_time = _controlledCr->Talk.TalkTime;
 
         if (talk_time) {
             const auto diff = _engine->GameTime.GetFrameTime() - _controlledCr->Talk.StartTime;
-            talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds {1};
+            talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds(1);
         }
 
         out_buf->Write(is_npc);
@@ -485,7 +485,7 @@ void Player::Send_Talk()
         for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
             out_buf->Write(answer.TextId);
         }
-        out_buf->Write(talk_time.to_ms<uint32>());
+        out_buf->Write(talk_time.to_ms<int32>());
     }
 }
 
@@ -708,8 +708,8 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    out_buf.Write(iround<uint32>(std::ceil(cr->Moving.WholeTime)));
-    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<uint32>());
+    out_buf.Write(iround<int32>(std::ceil(cr->Moving.WholeTime)));
+    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<int32>());
     out_buf.Write(cr->Moving.Speed);
     out_buf.Write(cr->Moving.StartHex);
     out_buf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));

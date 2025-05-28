@@ -575,11 +575,11 @@ auto Critter::GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>
     return vec_filter(_invItems, [&](const Item* item) { return item->GetCritterSlot() == slot; });
 }
 
-auto Critter::CountInvItemPid(hstring pid) const noexcept -> uint32
+auto Critter::CountInvItemPid(hstring pid) const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 count = 0;
+    int32 count = 0;
 
     for (const auto* item : _invItems) {
         if (item->GetProtoId() == pid) {
@@ -590,11 +590,11 @@ auto Critter::CountInvItemPid(hstring pid) const noexcept -> uint32
     return count;
 }
 
-auto Critter::CountInvItems() const noexcept -> uint32
+auto Critter::CountInvItems() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 count = 0;
+    int32 count = 0;
 
     for (const auto* item : _invItems) {
         count += item->GetCount();
@@ -735,11 +735,11 @@ auto Critter::IsTalking() const noexcept -> bool
     return Talk.Type != TalkType::None;
 }
 
-auto Critter::GetTalkingCritters() const noexcept -> uint32
+auto Critter::GetTalkingCritters() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 talkers = 0;
+    int32 talkers = 0;
 
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
@@ -750,7 +750,7 @@ auto Critter::GetTalkingCritters() const noexcept -> uint32
     return talkers;
 }
 
-auto Critter::GetBarterCritters() const noexcept -> uint32
+auto Critter::GetBarterCritters() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 

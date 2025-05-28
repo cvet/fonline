@@ -141,7 +141,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
-    uint32 multihex;
+    int32 multihex;
 
     if (props != nullptr) {
         auto props_copy = props->Copy();
@@ -421,7 +421,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     if (!cr->Talk.IgnoreDistance) {
         ident_t map_id;
         mpos hex;
-        uint32 talk_distance = 0;
+        int32 talk_distance = 0;
 
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();

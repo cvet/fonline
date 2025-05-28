@@ -1438,7 +1438,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         while (space_pos + prop->GetBaseSize() <= space_size) {
             auto fail = false;
 
-            for (uint32 i = 0; i < prop->GetBaseSize(); i++) {
+            for (size_t i = 0; i < prop->GetBaseSize(); i++) {
                 if (space[space_pos + i]) {
                     fail = true;
                     break;
@@ -1460,7 +1460,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             space.resize(new_size);
         }
 
-        for (uint32 i = 0; i < prop->GetBaseSize(); i++) {
+        for (size_t i = 0; i < prop->GetBaseSize(); i++) {
             space[space_pos + i] = true;
         }
 

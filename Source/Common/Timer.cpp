@@ -61,10 +61,10 @@ void GameTimer::FrameAdvance()
 
     // Skip time spent under debugger
     if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
-        const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<uint32>();
+        const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32>();
 
         if (dt > _settings.DebuggingDeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds {dt - _settings.DebuggingDeltaTimeCap};
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings.DebuggingDeltaTimeCap);
         }
 
         _frameTime = now_time - _debuggingOffset;

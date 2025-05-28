@@ -73,7 +73,7 @@ struct DialogAnswerReq
 {
     uint8 Type {DR_NONE};
     uint8 Who {DR_WHO_NONE};
-    uint32 ParamIndex {};
+    int32 ParamIndex {};
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};

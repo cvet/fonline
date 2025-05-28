@@ -411,18 +411,18 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
         switch (whence) {
         case SEEK_SET:
-            file_context->Reader.SetCurPos(numeric_cast<uint32>(offset));
+            file_context->Reader.SetCurPos(numeric_cast<size_t>(offset));
             break;
         case SEEK_CUR:
             if (offset >= 0) {
-                file_context->Reader.GoForward(numeric_cast<uint32>(offset));
+                file_context->Reader.GoForward(numeric_cast<size_t>(offset));
             }
             else {
-                file_context->Reader.GoBack(numeric_cast<uint32>(-offset));
+                file_context->Reader.GoBack(numeric_cast<size_t>(-offset));
             }
             break;
         case SEEK_END:
-            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<uint32>(offset));
+            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<size_t>(offset));
             break;
         default:
             return -1;
@@ -485,7 +485,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     sound->BaseBufLen = _streamingPortion;
 
     int32 result;
-    uint32 decoded = 0;
+    int32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
@@ -521,7 +521,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
     FO_STACK_TRACE_ENTRY();
 
     long result;
-    uint32 decoded = 0;
+    int32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
@@ -584,7 +584,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Check random pattern 'NAME_X'
-    uint32 count = 0;
+    int32 count = 0;
 
     while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
         count++;

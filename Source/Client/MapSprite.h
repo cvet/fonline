@@ -214,7 +214,7 @@ private:
     vector<MapSprite*> _spritesPool {};
     MapSprite* _rootSprite {};
     MapSprite* _lastSprite {};
-    uint32 _spriteCount {};
+    size_t _spriteCount {};
     vector<MapSprite*> _sortSprites {};
     vector<MapSprite*> _invalidatedSprites {};
     bool _nonConstHelper {};

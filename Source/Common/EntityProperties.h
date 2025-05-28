@@ -129,7 +129,7 @@ public:
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, uint32, Count);
+    FO_ENTITY_PROPERTY(Public, int32, Count);
     ///@ ExportProperty Resource
     FO_ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty
@@ -266,7 +266,7 @@ public:
     ///@ ExportProperty Resource
     FO_ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(Protected, uint32, Multihex);
+    FO_ENTITY_PROPERTY(Protected, int32, Multihex);
     ///@ MigrationRule Property Critter Anim1Life AliveStateAnim
     ///@ MigrationRule Property Critter Anim1Alive AliveStateAnim
     ///@ ExportProperty ReadOnly
@@ -290,11 +290,11 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, int32, ScaleFactor);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, ShowCritterDist1);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist1);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, ShowCritterDist2);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist2);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, ShowCritterDist3);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist3);
     ///@ ExportProperty Temporary
     FO_ENTITY_PROPERTY(PrivateClient, vector<int32>, ModelLayers);
     ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
@@ -324,13 +324,13 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, SneakCoefficient);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, SneakCoefficient);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Protected, uint32, LookDistance);
+    FO_ENTITY_PROPERTY(Protected, int32, LookDistance);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, uint32, TalkDistance);
+    FO_ENTITY_PROPERTY(Public, int32, TalkDistance);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, MaxTalkers);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, MaxTalkers);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, hstring, DialogId);
     ///@ ExportProperty
@@ -360,7 +360,7 @@ public:
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateServer, ident_t, LocId);
     ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, LocMapIndex);
+    FO_ENTITY_PROPERTY(PrivateServer, int32, LocMapIndex);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, CritterIds);
     ///@ ExportProperty ReadOnly

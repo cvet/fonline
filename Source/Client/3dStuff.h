@@ -221,7 +221,7 @@ private:
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float32 _moveTransitionTime {0.25f};
     float32 _globalSpeedAdjust {1.0f};
-    uint32 _animUpdateThreshold {};
+    int32 _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
@@ -419,7 +419,7 @@ private:
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    uint32 _renderAnim {};
+    int32 _renderAnim {};
     int32 _renderAnimProcFrom {};
     int32 _renderAnimProcTo {100};
     int32 _renderAnimDir {};

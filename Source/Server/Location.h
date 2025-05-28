@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto GetMaps() const noexcept -> const vector<refcount_ptr<Map>>& { return _locMaps; }
     [[nodiscard]] auto GetMaps() noexcept -> vector<refcount_ptr<Map>>& { return _locMaps; }
     [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _locMaps.size(); }
-    [[nodiscard]] auto GetMapByIndex(uint32 index) noexcept -> Map*;
+    [[nodiscard]] auto GetMapByIndex(int32 index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> size_t;
 

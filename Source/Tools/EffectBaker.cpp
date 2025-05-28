@@ -93,7 +93,7 @@ void EffectBaker::BakeFiles(FileCollection files)
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, path = file.GetPath(), content = file.GetStr()] { BakeShaderProgram(path, content); }));
     }
 
-    int32 errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {

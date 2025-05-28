@@ -210,7 +210,7 @@ struct msize
 
     [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
-    [[nodiscard]] constexpr auto GetSquare() const -> uint32 { return numeric_cast<uint32>(width * height); }
+    [[nodiscard]] constexpr auto GetSquare() const -> int32 { return numeric_cast<int32>(width * height); }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
     {
@@ -248,9 +248,9 @@ class AnimationResolver
 {
 public:
     virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool = 0;
 };
 
 class EntityProperties

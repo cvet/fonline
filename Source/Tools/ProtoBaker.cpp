@@ -127,7 +127,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int32 errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -333,7 +333,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     }
 
     // Validation
-    int32 errors = 0;
+    size_t errors = 0;
 
     for (auto&& [type_name, protos] : all_protos) {
         for (auto&& [pid, proto] : protos) {

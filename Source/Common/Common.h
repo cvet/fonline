@@ -822,7 +822,7 @@ public:
             ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
 
             while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+                ptr = new (std::nothrow) T(std::forward<Args>(args)...); // Todo: fix use after possible move
             }
 
             if (ptr == nullptr) {
@@ -3076,11 +3076,11 @@ struct GameSettings
 #if FO_GEOMETRY == 1
     static constexpr bool HEXAGONAL_GEOMETRY = true;
     static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr uint32 MAP_DIR_COUNT = 6;
+    static constexpr int32 MAP_DIR_COUNT = 6;
 #elif FO_GEOMETRY == 2
     static constexpr bool HEXAGONAL_GEOMETRY = false;
     static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr uint32 MAP_DIR_COUNT = 8;
+    static constexpr int32 MAP_DIR_COUNT = 8;
 #else
 #error FO_GEOMETRY not specified
 #endif

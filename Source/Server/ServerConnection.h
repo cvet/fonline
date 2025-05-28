@@ -110,7 +110,7 @@ public:
     bool PingOk {true};
     nanotime LastActivityTime {};
     int32 UpdateFileIndex {-1};
-    uint32 UpdateFilePortion {};
+    int32 UpdateFilePortion {};
 
 private:
     void StartAsyncSend();

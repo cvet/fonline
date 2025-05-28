@@ -74,7 +74,7 @@ FO_SCRIPT_API bool Client_Game_IsConnected(FOClient* client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     ignore_unused(client);
 
@@ -99,7 +99,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr1,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item1, ItemView* item2)
 {
     ignore_unused(client);
 
@@ -123,7 +123,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item1, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr, ItemView* item)
 {
     ignore_unused(client);
 
@@ -148,7 +148,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item, CritterView* cr)
 {
     ignore_unused(client);
 
@@ -173,7 +173,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item, C
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr, mpos hex)
 {
     ignore_unused(client);
 
@@ -194,7 +194,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, CritterView* cr, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, mpos hex, CritterView* cr)
 {
     ignore_unused(client);
 
@@ -215,7 +215,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, Critter
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, mpos hex, ItemView* item)
 {
     ignore_unused(client);
 
@@ -235,7 +235,7 @@ FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, mpos hex, ItemVie
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
+FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item, mpos hex)
 {
     ignore_unused(client);
 
@@ -418,7 +418,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
 
     vector<CritterView*> sorted_critters = critters;
 
-    std::ranges::sort(sorted_critters, [](const CritterView* cr1, const CritterView* cr2) {
+    std::ranges::stable_sort(sorted_critters, [](const CritterView* cr1, const CritterView* cr2) {
         const auto cr1_pos = cr1->GetHex();
         const auto cr2_pos = cr2->GetHex();
 
@@ -1414,8 +1414,12 @@ FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint32 dataSize)
+FO_SCRIPT_API void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, int32 dataSize)
 {
+    if (dataSize < 0) {
+        throw ScriptException("Negative data size", dataSize);
+    }
+
     auto data_copy = data;
     data_copy.resize(dataSize);
     client->Cache.SetData(name, data_copy);

@@ -338,7 +338,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", asMETHOD(CScriptDict, Remove), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", asMETHOD(CScriptDict, GetSize), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", asMETHOD(CScriptDict, GetSize), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", asMETHOD(CScriptDict, Clear), asCALL_THISCALL);
     assert(r >= 0);
@@ -346,9 +346,9 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asMETHOD(CScriptDict, GetDefault), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", asMETHOD(CScriptDict, GetKey), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", asMETHOD(CScriptDict, GetKey), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", asMETHOD(CScriptDict, GetValue), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", asMETHOD(CScriptDict, GetValue), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", asMETHOD(CScriptDict, Exists), asCALL_THISCALL);
     assert(r >= 0);
@@ -503,11 +503,11 @@ CScriptDict::~CScriptDict()
     }
 }
 
-asUINT CScriptDict::GetSize() const
+int32 CScriptDict::GetSize() const
 {
     const DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    return numeric_cast<asUINT>(dict->size());
+    return numeric_cast<int32>(dict->size());
 }
 
 bool CScriptDict::IsEmpty() const
@@ -561,10 +561,10 @@ bool CScriptDict::Remove(void* key)
     return false;
 }
 
-asUINT CScriptDict::RemoveValues(void* value)
+int32 CScriptDict::RemoveValues(void* value)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
-    asUINT result = 0;
+    int32 result = 0;
 
     for (auto it = dict->begin(); it != dict->end();) {
         if (Equals(cache, valueTypeId, it->second, value)) {
@@ -620,11 +620,11 @@ void* CScriptDict::GetDefault(void* key, void* defaultValue)
     return it->second;
 }
 
-void* CScriptDict::GetKey(asUINT index)
+void* CScriptDict::GetKey(int32 index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= numeric_cast<asUINT>(dict->size())) {
+    if (index < 0 || index >= numeric_cast<int32>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");
@@ -640,11 +640,11 @@ void* CScriptDict::GetKey(asUINT index)
     return it->first;
 }
 
-void* CScriptDict::GetValue(asUINT index)
+void* CScriptDict::GetValue(int32 index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= numeric_cast<asUINT>(dict->size())) {
+    if (index < 0 || index >= numeric_cast<int32>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");
@@ -1023,9 +1023,9 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", WRAP_MFN(CScriptDict, Remove), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint removeValues(const T2&in)", WRAP_MFN(CScriptDict, RemoveValues), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int removeValues(const T2&in)", WRAP_MFN(CScriptDict, RemoveValues), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", WRAP_MFN(CScriptDict, GetSize), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", WRAP_MFN(CScriptDict, GetSize), asCALL_GENERIC);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", WRAP_MFN(CScriptDict, Clear), asCALL_GENERIC);
     assert(r >= 0);
@@ -1033,9 +1033,9 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", WRAP_MFN(CScriptDict, GetDefault), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", WRAP_MFN(CScriptDict, GetKey), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", WRAP_MFN(CScriptDict, GetKey), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", WRAP_MFN(CScriptDict, GetValue), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", WRAP_MFN(CScriptDict, GetValue), asCALL_GENERIC);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", WRAP_MFN(CScriptDict, Exists), asCALL_GENERIC);
     assert(r >= 0);

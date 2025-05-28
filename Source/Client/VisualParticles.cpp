@@ -193,7 +193,7 @@ auto ParticleSystem::NeedDraw() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_particleMngr._animUpdateThreshold} && _impl->System->isActive();
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr._animUpdateThreshold) && _impl->System->isActive();
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32 look_dir_angle, const vec3& view_offset)

@@ -310,10 +310,11 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto comp_version = numeric_cast<uint32>(_settings.BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
     _netOut.StartMsg(NetMessage::Handshake);
-    _netOut.Write(_settings.BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
+    _netOut.Write(comp_version);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 
@@ -341,9 +342,9 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         const auto time = nanotime::now();
-        _settings.Ping = (time - _pingTime).to_ms<uint32>();
+        _settings.Ping = (time - _pingTime).to_ms<int32>();
         _pingTime = nanotime::zero;
-        _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
+        _pingCallTime = time + std::chrono::milliseconds(_settings.PingPeriod);
     }
     else {
         _netOut.StartMsg(NetMessage::Ping);

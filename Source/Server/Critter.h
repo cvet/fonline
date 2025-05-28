@@ -97,15 +97,15 @@ public:
     [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
-    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> uint32;
+    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> int32;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
-    [[nodiscard]] auto CountInvItems() const noexcept -> uint32;
+    [[nodiscard]] auto CountInvItems() const noexcept -> int32;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
     [[nodiscard]] auto IsTalking() const noexcept -> bool;
-    [[nodiscard]] auto GetTalkingCritters() const noexcept -> uint32;
-    [[nodiscard]] auto GetBarterCritters() const noexcept -> uint32;
+    [[nodiscard]] auto GetTalkingCritters() const noexcept -> int32;
+    [[nodiscard]] auto GetBarterCritters() const noexcept -> int32;
     [[nodiscard]] auto IsFreeToTalk() const noexcept -> bool;
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
@@ -200,13 +200,12 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint32 /*talkers*/);
+    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, int32 /*talkers*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint32 /*barterCount*/);
+    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32 /*barterCount*/);
 
     // Todo: incapsulate Critter data
     int32 LockMapTransfers {};
-    uint32 AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
     unordered_map<ident_t, Critter*> VisCrMap {};
@@ -225,16 +224,16 @@ public:
     mpos ViewMapHex {};
     uint8 ViewMapDir {};
     ident_t ViewMapLocId {};
-    uint32 ViewMapLocEnt {};
+    int32 ViewMapLocEnt {};
 
     struct TargetMovingData
     {
         MovingState State {MovingState::Success};
         ident_t TargId {};
         mpos TargHex {};
-        uint32 Cut {};
+        int32 Cut {};
         uint16 Speed {};
-        uint32 TraceDist {};
+        int32 TraceDist {};
         ident_t GagEntityId {};
     } TargetMoving {};
 

@@ -72,17 +72,17 @@ public:
     bool operator==(const CScriptDict&) const;
 
     // Dict manipulation
-    asUINT GetSize() const;
+    FO_NAMESPACE int32 GetSize() const;
     bool IsEmpty() const;
     void Set(void* key, void* value);
     void SetIfNotExist(void* key, void* value);
     bool Remove(void* key);
-    asUINT RemoveValues(void* value);
+    FO_NAMESPACE int32 RemoveValues(void* value);
     void Clear();
     void* Get(void* key);
     void* GetDefault(void* key, void* defaultValue);
-    void* GetKey(asUINT index);
-    void* GetValue(asUINT index);
+    void* GetKey(FO_NAMESPACE int32 index);
+    void* GetValue(FO_NAMESPACE int32 index);
     bool Exists(void* key) const;
     void GetMap(std::vector<std::pair<void*, void*>>& data) const;
 

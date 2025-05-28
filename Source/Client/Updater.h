@@ -61,7 +61,7 @@ public:
 private:
     struct UpdateFile
     {
-        uint32 Index {};
+        int32 Index {};
         string Name;
         size_t Size {};
         size_t RemaningSize {};
@@ -91,7 +91,7 @@ private:
     vector<string> _messages {};
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
-    uint32 _filesWholeSize {};
+    size_t _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     vector<uint8> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};

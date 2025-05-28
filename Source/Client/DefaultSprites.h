@@ -66,7 +66,7 @@ public:
 class SpriteSheet final : public Sprite
 {
 public:
-    SpriteSheet(SpriteManager& spr_mngr, uint32 frames, uint32 ticks, uint32 dirs);
+    SpriteSheet(SpriteManager& spr_mngr, int32 frames, int32 ticks, int32 dirs);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;
@@ -79,10 +79,10 @@ public:
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetCurSpr() const -> const Sprite*;
     [[nodiscard]] auto GetCurSpr() -> Sprite*;
-    [[nodiscard]] auto GetSpr(uint32 num_frm) const -> const Sprite*;
-    [[nodiscard]] auto GetSpr(uint32 num_frm) -> Sprite*;
-    [[nodiscard]] auto GetDir(uint32 dir) const -> const SpriteSheet*;
-    [[nodiscard]] auto GetDir(uint32 dir) -> SpriteSheet*;
+    [[nodiscard]] auto GetSpr(int32 num_frm) const -> const Sprite*;
+    [[nodiscard]] auto GetSpr(int32 num_frm) -> Sprite*;
+    [[nodiscard]] auto GetDir(int32 dir) const -> const SpriteSheet*;
+    [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
 
     auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
@@ -97,18 +97,18 @@ public:
     // Todo: incapsulate sprite sheet data
     vector<shared_ptr<Sprite>> Spr {};
     vector<ipos> SprOffset {};
-    uint32 CntFrm {}; // Todo: Spr.size()
-    uint32 WholeTicks {};
+    int32 CntFrm {}; // Todo: Spr.size()
+    int32 WholeTicks {};
     CritterStateAnim StateAnim {};
     CritterActionAnim ActionAnim {};
-    uint32 DirCount {};
+    int32 DirCount {};
     shared_ptr<SpriteSheet> Dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 
 private:
     void RefreshParams();
 
     uint8 _curDir {};
-    uint32 _curIndex {};
+    int32 _curIndex {};
     bool _playing {};
     bool _looped {};
     bool _reversed {};

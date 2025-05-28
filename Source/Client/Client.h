@@ -127,9 +127,9 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint32& f_state_anim, uint32& f_action_anim, uint32& f_state_anim_ex, uint32& f_action_anim_ex, uint32& flags) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool override;
 
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
@@ -158,7 +158,7 @@ public:
 
     void Connect(string_view login, string_view password, int32 reason);
     void Disconnect();
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, uint32 speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -239,15 +239,15 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*pass*/, uint32& /*flags*/, int32& /*ox*/, int32& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32& /*pass*/, uint32& /*flags*/, int32& /*ox*/, int32& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32& /*fStateAnim*/, uint32& /*fActionAnim*/, uint32& /*fStateAnimEx*/, uint32& /*fActionAnimEx*/, uint32& /*flags*/);
+    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32& /*fStateAnim*/, int32& /*fActionAnim*/, int32& /*fStateAnimEx*/, int32& /*fActionAnimEx*/, uint32& /*flags*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenSizeChanged);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, uint32 /*dialogTime*/);
+    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, int32 /*dialogTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
@@ -382,7 +382,7 @@ protected:
     refcount_ptr<CritterView> _chosen {};
 
     hstring _curMapLocPid {};
-    uint32 _curMapIndexInLoc {};
+    int32 _curMapIndexInLoc {};
     bool _mapLoaded {};
 
     int32 _initNetReason {INIT_NET_REASON_NONE};
@@ -396,7 +396,7 @@ protected:
     vector<vector<uint8>> _tempPropertiesDataExt {};
     vector<vector<uint8>> _tempPropertiesDataCustomEntity {};
 
-    uint32 _ifaceAnimIndex {};
+    uint32 _ifaceAnimCounter {};
     unordered_map<uint32, unique_ptr<IfaceAnim>> _ifaceAnimations {};
     unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 

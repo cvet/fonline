@@ -74,13 +74,11 @@ public:
     GenericUtils() = delete;
 
     [[nodiscard]] static auto Random(int32 minimum, int32 maximum) -> int32;
-    [[nodiscard]] static auto Random(uint32 minimum, uint32 maximum) -> uint32;
     [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
-    [[nodiscard]] static auto Percent(uint32 full, uint32 peace) -> uint32;
-    [[nodiscard]] static auto NumericalNumber(uint32 num) noexcept -> uint32;
+    [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
     [[nodiscard]] static auto GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> uint32;
+    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> int32;
     [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
 

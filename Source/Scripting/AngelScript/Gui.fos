@@ -96,8 +96,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void OnFocusChanged()
 //   void OnHoverChanged()
 //   void OnDragChanged()
-//   void OnResizeGrid(Object cell, uint cellIndex)
-//   void OnDrawItem(Item item, Object cell, uint cellIndex)
+//   void OnResizeGrid(Object cell, int cellIndex)
+//   void OnDrawItem(Item item, Object cell, int cellIndex)
 //   void OnRefreshText()
 // CheckBox
 //   void OnCheckedChanged()
@@ -123,11 +123,11 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   bool IsPressed
 //   bool IsHovered
 //   bool IsDragged
-//   uint ChildCount
+//   int ChildCount
 //   Object Parent
 //   Screen Screen
 //   Grid Grid
-//   uint CellIndex
+//   int CellIndex
 //   void Init(Object parent)
 //   void Remove()
 //   void SetActive(bool active)
@@ -158,7 +158,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   TextInput FindTextInput(string name)
 //   Button FindButton(string name)
 //   Object Find(string name, bool deepFind = true)
-//   Object GetChild(uint index)
+//   Object GetChild(int index)
 // Panel : Object
 //   Sprite::Sprite BackgroundImage
 //   SpriteLayout BackgroundImageLayout
@@ -182,10 +182,10 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetTextColor(ucolor color)
 //   void SetTextFocusedColor(ucolor color)
 // TextInput : Text : Object
-//   uint InputLength
+//   int InputLength
 //   bool IsTextPassword
 //   string PasswordChar
-//   void SetInputLength(uint length)
+//   void SetInputLength(int length)
 //   void SetInputPassword(string passwordChar)
 //   void SetCarriage(bool enable)
 // Button : Panel : Object
@@ -224,13 +224,13 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetAvailableCursors(CursorType[] cursors)
 // Grid : Panel : Object
 //   string CellPrototype
-//   uint GridSize
+//   int GridSize
 //   int Columns
 //   Object[] Cells
-//   void ResizeGrid(uint size)
+//   void ResizeGrid(int size)
 //   void RefreshContentPositions()
 //   void SetCellPrototype(string name)
-//   void SetGridSize(uint size)
+//   void SetGridSize(int size)
 //   void SetColumns(int length)
 //   void SetPadding(ipos pos)
 //   void SetPadding(int x, int y)
@@ -248,19 +248,19 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 // Console : TextInput : Text : Object
 //   string HistoryStorageName
 //   string[] History
-//   uint HistoryMaxLength
+//   int HistoryMaxLength
 //   void Activate()
 //   void Deactivate()
 //   void SendText()
 //   void Toggle() // Automatically manage calls of Activate / Deactivate / SendText
 //   void SetHistoryStorage(string storageName)
-//   void SetHistoryMaxLength(uint length)
+//   void SetHistoryMaxLength(int length)
 // ItemView : Grid : Panel : Object
 //   int UserData
 //   int UserDataExt
 //   bool UseSorting
 //   Item[] Items
-//   Item Game.GetItem(uint cellIndex)
+//   Item Game.GetItem(int cellIndex)
 //   void Resort()
 //   void SetUserData(int data)
 //   void SetUserDataExt(int data)
@@ -336,7 +336,7 @@ class Object
     {
         return _IsDragged || (_Parent != null && _Parent.IsDragged);
     }
-    uint get_ChildCount() final
+    int get_ChildCount() final
     {
         return _Children.length();
     }
@@ -352,7 +352,7 @@ class Object
     {
         return _Grid;
     }
-    uint get_CellIndex() final
+    int get_CellIndex() final
     {
         return _CellIndex;
     }
@@ -380,7 +380,7 @@ class Object
     Object _Parent;
     Object[] _Children;
     Grid _Grid;
-    uint _CellIndex;
+    int _CellIndex;
 
     // Callbacks
     void OnConstruct()
@@ -485,10 +485,10 @@ class Object
     void OnDragChanged()
     {
     }
-    void OnResizeGrid(Object cell, uint cellIndex)
+    void OnResizeGrid(Object cell, int cellIndex)
     {
     }
-    void OnDrawItem(Item item, Object cell, uint cellIndex)
+    void OnDrawItem(Item item, Object cell, int cellIndex)
     {
     }
     void OnRefreshText()
@@ -535,7 +535,7 @@ class Object
 
     void _Init()
     {
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Init();
         }
         OnInit();
@@ -546,7 +546,7 @@ class Object
     {
         OnShow();
         OnShow(params);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Show(params);
         }
     }
@@ -554,7 +554,7 @@ class Object
     void _Hide()
     {
         OnHide();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Hide();
         }
     }
@@ -562,7 +562,7 @@ class Object
     void _Appear()
     {
         OnAppear();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Appear();
         }
     }
@@ -570,7 +570,7 @@ class Object
     void _Disappear()
     {
         OnDisappear();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Disappear();
         }
     }
@@ -578,7 +578,7 @@ class Object
     void _DragChanged()
     {
         OnDragChanged();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._DragChanged();
         }
     }
@@ -598,7 +598,7 @@ class Object
     void _Remove()
     {
         OnRemove();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Remove();
         }
     }
@@ -607,14 +607,14 @@ class Object
     {
         _RefreshPosition();
 
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._RefreshPositionRecursive();
         }
     }
 
     void _RefreshTextRecursive()
     {
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._RefreshTextRecursive();
         }
 
@@ -646,7 +646,7 @@ class Object
         }
 
         // _Children
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             Object child = _Children[i];
             if (child._ActiveSelf && !child._IsDragged) {
                 child._Draw(true);
@@ -679,7 +679,7 @@ class Object
             _BasePos += deltaPos;
         }
 
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Move(deltaPos, false, false);
         }
 
@@ -691,7 +691,7 @@ class Object
     void _MoveCallback(ipos deltaPos)
     {
         OnMove(deltaPos);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._MoveCallback(deltaPos);
         }
     }
@@ -769,7 +769,7 @@ class Object
             rect[3] = b;
         }
 
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GetWholeSizeRect(rect);
         }
     }
@@ -781,7 +781,7 @@ class Object
             _GetWholeSizeRect(rect);
         }
         else if (_Children.length() > 0) {
-            for (uint i = 0; i < _Children.length(); i++) {
+            for (int i = 0; i < _Children.length(); i++) {
                 _Children[i]._GetWholeSizeRect(rect);
             }
         }
@@ -879,7 +879,7 @@ class Object
     void _GlobalMouseDown(MouseButton button)
     {
         OnGlobalMouseDown(button);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalMouseDown(button);
         }
     }
@@ -887,7 +887,7 @@ class Object
     void _GlobalMouseUp(MouseButton button)
     {
         OnGlobalMouseUp(button);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalMouseUp(button);
         }
     }
@@ -895,7 +895,7 @@ class Object
     void _GlobalMousePressed(MouseButton button)
     {
         OnGlobalMousePressed(button);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalMousePressed(button);
         }
     }
@@ -903,7 +903,7 @@ class Object
     void _GlobalMouseClick(MouseButton button)
     {
         OnGlobalMouseClick(button);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalMouseClick(button);
         }
     }
@@ -911,7 +911,7 @@ class Object
     void _GlobalMouseMove()
     {
         OnGlobalMouseMove();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalMouseMove();
         }
     }
@@ -931,7 +931,7 @@ class Object
     void _GlobalInput(KeyCode key, string text)
     {
         OnGlobalInput(key, text);
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._GlobalInput(key, text);
         }
     }
@@ -978,7 +978,7 @@ class Object
             parent._Children.insertLast(newObject);
         }
         newObject.OnConstruct();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Clone(newObject);
         }
         return newObject;
@@ -1006,7 +1006,7 @@ class Object
 
     Object Find(string name, bool deepFind = true)
     {
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             Object child = _Children[i];
             if (!child._Name.isEmpty() && child._Name == name) {
                 return child;
@@ -1022,7 +1022,7 @@ class Object
         return null;
     }
 
-    Object GetChild(uint index)
+    Object GetChild(int index)
     {
         return _Children[index];
     }
@@ -1117,7 +1117,7 @@ class Object
     void _ActiveChanged()
     {
         OnActiveChanged();
-        for (uint i = 0; i < _Children.length(); i++) {
+        for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._ActiveChanged();
         }
     }
@@ -1423,7 +1423,7 @@ class Panel : Object
             if (!onlyCheck) {
                 _VerticalScroll = curVer;
                 _HorizontalScroll = curHor;
-                for (uint i = 0; i < _Children.length(); i++) {
+                for (int i = 0; i < _Children.length(); i++) {
                     _Children[i]._Move(ipos(-(curHor - oldHor), -(curVer - oldVer)), true, false);
                 }
             }
@@ -1581,7 +1581,7 @@ class Text : Object
 const timespan PasswordShowTime = Time::Milliseconds(1000);
 class TextInput : Text
 {
-    uint get_InputLength() final
+    int get_InputLength() final
     {
         return _InputLength;
     }
@@ -1594,7 +1594,7 @@ class TextInput : Text
         return _PasswordChar;
     }
 
-    uint _InputLength;
+    int _InputLength;
     bool _IsTextPassword;
     string _PasswordChar;
     nanotime _PasswordTime;
@@ -1635,7 +1635,7 @@ class TextInput : Text
         if (_IsTextPassword && text.length() > 0) {
             string rawText = text;
             text = "";
-            for (uint i = 0; i < rawText.length(); i++) {
+            for (int i = 0; i < rawText.length(); i++) {
                 text += _PasswordChar;
             }
             if (Game.FrameTime - _PasswordTime <= PasswordShowTime) {
@@ -1665,7 +1665,7 @@ class TextInput : Text
 
     void Input(KeyCode key, string text) override
     {
-        uint oldLen = _Text.length();
+        int oldLen = _Text.length();
         _ProcessKey(key, text);
         while (_InputLength != 0 && _Text.length() > _InputLength) {
             _Text = _Text.substr(0, _Text.length() - 1);
@@ -1756,7 +1756,7 @@ class TextInput : Text
         }
     }
 
-    void SetInputLength(uint length)
+    void SetInputLength(int length)
     {
         _InputLength = length;
     }
@@ -1972,7 +1972,7 @@ class RadioButton : CheckBox
     void SetChecked(bool checked) override
     {
         if (checked && _Parent != null) {
-            for (uint i = 0; i < _Parent._Children.length(); i++) {
+            for (int i = 0; i < _Parent._Children.length(); i++) {
                 RadioButton button = cast<RadioButton>(_Parent._Children[i]);
                 if (button != null && button._IsSwitched) {
                     button._IsSwitched = false;
@@ -2174,7 +2174,7 @@ class Screen : Panel
         if (obj._IsPressed) {
             return obj;
         }
-        for (uint i = 0; i < obj._Children.length(); i++) {
+        for (int i = 0; i < obj._Children.length(); i++) {
             Object pressedObj = _FindPressed(obj._Children[i]);
             if (pressedObj != null) {
                 return pressedObj;
@@ -2217,7 +2217,7 @@ class Grid : Panel
     {
         return _CellPrototype;
     }
-    uint get_GridSize() final
+    int get_GridSize() final
     {
         return _GridSize;
     }
@@ -2235,7 +2235,7 @@ class Grid : Panel
     }
 
     string _CellPrototype;
-    uint _GridSize;
+    int _GridSize;
     int _Columns;
     ipos _Padding;
     Object[] _Cells;
@@ -2267,7 +2267,7 @@ class Grid : Panel
         }
     }
 
-    void ResizeGrid(uint size)
+    void ResizeGrid(int size)
     {
         // Refresh grid size
         _GridSize = size;
@@ -2289,10 +2289,10 @@ class Grid : Panel
         }
 
         // Remove current instances
-        for (uint i = 0; i < _Children.length();) {
+        for (int i = 0; i < _Children.length();) {
             if (_Cells.findByRef(_Children[i]) != -1) {
                 _Children[i].SetActive(false);
-                _SetCellIndex(_Children[i], null, uint(-1));
+                _SetCellIndex(_Children[i], null, int(-1));
                 _Children.removeAt(i);
             }
             else {
@@ -2305,7 +2305,7 @@ class Grid : Panel
         cellPrototype._ActiveSelf = true;
         Object[] cellInstances = {};
 
-        for (uint i = 0; i < _GridSize; i++) {
+        for (int i = 0; i < _GridSize; i++) {
             Object cellInstance = cellPrototype._Clone(this);
             _Children.removeLast();
             _Children.insertAt(++childIndex, cellInstance);
@@ -2317,13 +2317,13 @@ class Grid : Panel
         cellPrototype._ActiveSelf = false;
 
         // Callbacks
-        for (uint i = 0; i < cellInstances.length(); i++) {
+        for (int i = 0; i < cellInstances.length(); i++) {
             OnResizeGrid(cellInstances[i], i);
             _ResizeGrid(cellInstances[i], cellInstances[i], i);
         }
 
         // Init
-        for (uint i = 0; i < cellInstances.length(); i++) {
+        for (int i = 0; i < cellInstances.length(); i++) {
             cellInstances[i]._Init();
         }
 
@@ -2334,7 +2334,7 @@ class Grid : Panel
         int shiftX = -_HorizontalScroll;
         int shiftY = -_VerticalScroll;
 
-        for (uint i = 0; i < cellInstances.length(); i++) {
+        for (int i = 0; i < cellInstances.length(); i++) {
             cellInstances[i]._Move(ipos(shiftX, shiftY), false, true);
             shiftX += cellInstances[i]._Size.width + _Padding.x;
 
@@ -2368,7 +2368,7 @@ class Grid : Panel
         int baseX = _Cells[0]._BasePos.x - _HorizontalScroll;
         int baseY = _Cells[0]._BasePos.y - _VerticalScroll;
 
-        for (uint i = 0; i < _Cells.length(); i++) {
+        for (int i = 0; i < _Cells.length(); i++) {
             int ox = shiftX - _Cells[i]._BasePos.x + baseX;
             int oy = shiftY - _Cells[i]._BasePos.y + baseY;
 
@@ -2394,21 +2394,21 @@ class Grid : Panel
         _ModifyScroll(0, 0);
     }
 
-    void _SetCellIndex(Object obj, Grid grid, uint cellIndex)
+    void _SetCellIndex(Object obj, Grid grid, int cellIndex)
     {
         obj._Grid = grid;
         obj._CellIndex = cellIndex;
 
-        for (uint i = 0; i < obj._Children.length(); i++) {
+        for (int i = 0; i < obj._Children.length(); i++) {
             _SetCellIndex(obj._Children[i], grid, cellIndex);
         }
     }
 
-    void _ResizeGrid(Object obj, Object cell, uint cellIndex)
+    void _ResizeGrid(Object obj, Object cell, int cellIndex)
     {
         obj.OnResizeGrid(cell, cellIndex);
 
-        for (uint i = 0; i < obj._Children.length(); i++) {
+        for (int i = 0; i < obj._Children.length(); i++) {
             _ResizeGrid(obj._Children[i], cell, cellIndex);
         }
     }
@@ -2426,7 +2426,7 @@ class Grid : Panel
         }
     }
 
-    void SetGridSize(uint size)
+    void SetGridSize(int size)
     {
         _GridSize = size;
     }
@@ -2753,7 +2753,7 @@ class Console : TextInput
     {
         return _History;
     }
-    uint get_HistoryMaxLength() final
+    int get_HistoryMaxLength() final
     {
         return _HistoryMaxLength;
     }
@@ -2762,8 +2762,8 @@ class Console : TextInput
     string _HistoryStorageName;
     string _HistoryActualStorageName;
     string[] _History;
-    uint _HistoryMaxLength;
-    uint _HistoryCur;
+    int _HistoryMaxLength;
+    int _HistoryCur;
 
     void _Construct() override
     {
@@ -2861,7 +2861,7 @@ class Console : TextInput
 
         // Modify history
         _History.insertLast(_Text);
-        for (uint i = 0; i < _History.length() - 1;) {
+        for (int i = 0; i < _History.length() - 1;) {
             if (_History[i] == _History.last()) {
                 _History.removeAt(i);
             }
@@ -2871,7 +2871,7 @@ class Console : TextInput
         }
 
         // Trim history length
-        uint historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.ConsoleHistorySize);
+        int historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.ConsoleHistorySize);
         while (_History.length() > historyMaxLength) {
             _History.removeAt(0);
         }
@@ -2963,7 +2963,7 @@ class Console : TextInput
         _HistoryStorageName = storageName;
     }
 
-    void SetHistoryMaxLength(uint length)
+    void SetHistoryMaxLength(int length)
     {
         _HistoryMaxLength = length;
     }
@@ -2988,7 +2988,7 @@ class ItemView : Grid
     int _UserDataExt;
     bool _UseSorting;
     Item[] _Items;
-    uint _ItemsGridSize;
+    int _ItemsGridSize;
     bool _Dirty;
 
     void _Construct() override
@@ -3032,7 +3032,7 @@ class ItemView : Grid
         Grid::_Init();
     }
 
-    Item GetItem(uint cellIndex)
+    Item GetItem(int cellIndex)
     {
         return _Items[cellIndex];
     }
@@ -3047,7 +3047,7 @@ class ItemView : Grid
         }
     }
 
-    void ResizeGrid(uint size) override
+    void ResizeGrid(int size) override
     {
         Item[] newItems = {};
 
@@ -3056,13 +3056,13 @@ class ItemView : Grid
             items = array<Item>();
         }
 
-        for (uint i = 0; i < items.length(); i++) {
+        for (int i = 0; i < items.length(); i++) {
             Assert(!items[i].IsDestroyed);
         }
 
         if (!_UseSorting) {
             newItems.resize(_ItemsGridSize);
-            for (uint i = 0; i < items.length(); i++) {
+            for (int i = 0; i < items.length(); i++) {
                 int itemIndex = OnCheckItem(items[i]);
                 if (itemIndex >= 0 && itemIndex < int(newItems.length())) {
                     newItems[itemIndex] = items[i];
@@ -3071,11 +3071,11 @@ class ItemView : Grid
         }
         else {
             int[] sortValues = {};
-            for (uint i = 0; i < items.length(); i++) {
+            for (int i = 0; i < items.length(); i++) {
                 int sortValue = OnCheckItem(items[i]);
                 if (sortValue >= 0) {
                     bool added = false;
-                    for (uint j = 0; j < newItems.length(); j++) {
+                    for (int j = 0; j < newItems.length(); j++) {
                         if (sortValues[j] > sortValue) {
                             newItems.insertAt(j, items[i]);
                             sortValues.insertAt(j, sortValue);
@@ -3092,7 +3092,7 @@ class ItemView : Grid
         }
 
         bool isChanged = newItems.length() != _Items.length();
-        for (uint i = 0; i < newItems.length() && !isChanged; i++) {
+        for (int i = 0; i < newItems.length() && !isChanged; i++) {
             isChanged = newItems[i] !is _Items[i];
         }
 
@@ -3298,7 +3298,7 @@ Screen[] GetActiveScreens()
 {
     Screen[] result = {};
 
-    for (uint i = 0; i < Screens.length(); i++) {
+    for (int i = 0; i < Screens.length(); i++) {
         Screen screen = Screens[i];
         if (screen.Active) {
             result.insertLast(screen);
@@ -3411,7 +3411,7 @@ TextInput FindNextTextInput(Object obj)
         FindNextTextInputSkipObj = null;
     }
 
-    for (uint i = 0; i < obj._Children.length(); i++) {
+    for (int i = 0; i < obj._Children.length(); i++) {
         if (obj._Children[i]._ActiveSelf) {
             TextInput textInput = FindNextTextInput(obj._Children[i]);
             if (textInput != null) {
@@ -3438,7 +3438,7 @@ void CollectMessageBoxes(Object obj, MessageBox[] messageBoxes)
         messageBoxes.insertLast(mb);
     }
 
-    for (uint i = 0; i < obj._Children.length(); i++) {
+    for (int i = 0; i < obj._Children.length(); i++) {
         CollectMessageBoxes(obj._Children[i], messageBoxes);
     }
 }
@@ -3464,7 +3464,7 @@ bool IsConsoleActive(Object obj)
         return true;
     }
 
-    for (uint i = 0; i < obj._Children.length(); i++) {
+    for (int i = 0; i < obj._Children.length(); i++) {
         if (IsConsoleActive(obj._Children[i])) {
             return true;
         }
@@ -3485,7 +3485,7 @@ void SetDropMenu(IDropMenu dropMenu)
 
 bool CheckHit(ipos pos)
 {
-    for (uint i = 0; i < Screens.length(); i++) {
+    for (int i = 0; i < Screens.length(); i++) {
         if (Screens[i].Active && Screens[i].FindHit(pos) != null) {
             return true;
         }
@@ -3515,7 +3515,7 @@ void EngineCallback_Start()
 
 void EngineCallback_Draw()
 {
-    for (uint i = 0; i < Screens.length(); i++) {
+    for (int i = 0; i < Screens.length(); i++) {
         Screen screen = Screens[i];
 
         if (screen.Active) {
@@ -3645,7 +3645,7 @@ void EngineCallback_MouseUp(MouseButton button)
 
         if (isDragged && screen != null) {
             Object target = screen.FindMouseHit();
-            for (uint i = 0; i < DragAndDropHandlers.length(); i++) {
+            for (int i = 0; i < DragAndDropHandlers.length(); i++) {
                 if (DragAndDropHandlers[i](obj, target)) {
                     break;
                 }
@@ -3789,7 +3789,7 @@ void EngineCallback_ItemChanged(bool onMap)
     if (!onMap) {
         ItemView[] itemViews = {};
         CollectItemView(itemViews);
-        for (uint i = 0; i < itemViews.length(); i++) {
+        for (int i = 0; i < itemViews.length(); i++) {
             itemViews[i].Resort();
         }
     }
@@ -3809,7 +3809,7 @@ void CollectItemView(Object obj, ItemView[] itemViews)
         itemViews.insertLast(itemView);
     }
 
-    for (uint i = 0; i < obj._Children.length(); i++) {
+    for (int i = 0; i < obj._Children.length(); i++) {
         CollectItemView(obj._Children[i], itemViews);
     }
 }
@@ -3820,14 +3820,14 @@ void CollectItemView(Object obj, ItemView[] itemViews)
 
 void Callback_OnResolutionChanged()
 {
-    for (uint i = 0; i < Screens.length(); i++) {
+    for (int i = 0; i < Screens.length(); i++) {
         Screens[i]._RefreshPositionRecursive();
     }
 }
 
 void Callback_OnLanguageChanged()
 {
-    for (uint i = 0; i < Screens.length(); i++) {
+    for (int i = 0; i < Screens.length(); i++) {
         Screens[i]._RefreshTextRecursive();
         Screens[i]._RefreshPositionRecursive();
     }
@@ -3968,9 +3968,9 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
     }
 }
 
-uint GetScreenCount(GuiScreen screenNum)
+int GetScreenCount(GuiScreen screenNum)
 {
-    uint count = 0;
+    int count = 0;
 
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         if (Screens[i].Num == screenNum) {

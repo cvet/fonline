@@ -59,9 +59,9 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint32 count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
 {
-    if (count == 0) {
+    if (count <= 0) {
         return nullptr;
     }
 
@@ -69,9 +69,9 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint32 count)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint32 count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, any_t stackId)
 {
-    if (count == 0) {
+    if (count <= 0) {
         return nullptr;
     }
 

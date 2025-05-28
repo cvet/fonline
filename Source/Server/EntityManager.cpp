@@ -223,7 +223,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
                 const auto loc_map_index = map->GetLocMapIndex();
                 auto& loc_maps = loc->GetMaps();
 
-                if (loc_map_index >= numeric_cast<uint32>(loc_maps.size())) {
+                if (loc_map_index >= numeric_cast<int32>(loc_maps.size())) {
                     loc_maps.resize(loc_map_index + 1);
                 }
 

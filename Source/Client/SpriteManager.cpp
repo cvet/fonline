@@ -1515,7 +1515,7 @@ void SpriteManager::BuildFont(int32 index)
     const auto bordered_oy = (si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, uint32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->Size);
     vector<ucolor> data_bordered;
 
@@ -1937,7 +1937,7 @@ static void StrGoTo(char*& str, char ch)
     }
 }
 
-static void StrEraseInterval(char* str, uint32 len)
+static void StrEraseInterval(char* str, int32 len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1955,7 +1955,7 @@ static void StrEraseInterval(char* str, uint32 len)
     *str = 0;
 }
 
-static void StrInsert(char* to, const char* from, uint32 from_len)
+static void StrInsert(char* to, const char* from, int32 from_len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1964,7 +1964,7 @@ static void StrInsert(char* to, const char* from, uint32 from_len)
     }
 
     if (from_len == 0) {
-        from_len = numeric_cast<uint32>(string_view(from).length());
+        from_len = numeric_cast<int32>(string_view(from).length());
     }
     if (from_len == 0) {
         return;
@@ -2016,16 +2016,16 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
 
     // Colorize
     ucolor* dots = nullptr;
-    uint32 d_offs = 0;
+    int32 d_offs = 0;
     string buf;
 
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
         dots = fi.ColorDots;
     }
 
-    constexpr uint32 dots_history_len = 10;
+    constexpr int32 dots_history_len = 10;
     ucolor dots_history[dots_history_len] = {fi.DefColor};
-    uint32 dots_history_cur = 0;
+    int32 dots_history_cur = 0;
 
     for (auto* str_ = str; *str_ != 0;) {
         auto* s0 = str_;
@@ -2035,7 +2035,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
         auto* s2 = str_;
 
         if (dots != nullptr) {
-            size_t d_len = numeric_cast<uint32>(s2 - s1) + 1;
+            auto d_len = numeric_cast<int32>(s2 - s1) + 1;
             ucolor d;
 
             if (d_len == 2) {
@@ -2059,8 +2059,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
                 }
             }
 
-            dots[numeric_cast<uint32>(s1 - str) - d_offs] = d;
-            d_offs += numeric_cast<uint32>(d_len);
+            dots[numeric_cast<int32>(s1 - str) - d_offs] = d;
+            d_offs += d_len;
         }
 
         *s1 = 0;

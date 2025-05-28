@@ -59,16 +59,16 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    auto CreateItem(hstring pid, uint32 count, const Properties* props) -> FO_NON_NULL Item*;
-    auto SplitItem(Item* item, uint32 count) -> FO_NON_NULL Item*;
-    auto AddItemContainer(Item* cont, hstring pid, uint32 count, const any_t& stack_id) -> FO_NON_NULL Item*;
-    auto AddItemCritter(Critter* cr, hstring pid, uint32 count) -> FO_NON_NULL Item*;
-    void SubItemCritter(Critter* cr, hstring pid, uint32 count);
-    void SetItemCritter(Critter* cr, hstring pid, uint32 count);
+    auto CreateItem(hstring pid, int32 count, const Properties* props) -> FO_NON_NULL Item*;
+    auto SplitItem(Item* item, int32 count) -> FO_NON_NULL Item*;
+    auto AddItemContainer(Item* cont, hstring pid, int32 count, const any_t& stack_id) -> FO_NON_NULL Item*;
+    auto AddItemCritter(Critter* cr, hstring pid, int32 count) -> FO_NON_NULL Item*;
+    void SubItemCritter(Critter* cr, hstring pid, int32 count);
+    void SetItemCritter(Critter* cr, hstring pid, int32 count);
     void DestroyItem(Item* item);
-    auto MoveItem(Item* item, uint32 count, Critter* to_cr) -> FO_NON_NULL Item*;
-    auto MoveItem(Item* item, uint32 count, Map* to_map, mpos to_hex) -> FO_NON_NULL Item*;
-    auto MoveItem(Item* item, uint32 count, Item* to_cont, const any_t& stack_id) -> FO_NON_NULL Item*;
+    auto MoveItem(Item* item, int32 count, Critter* to_cr) -> FO_NON_NULL Item*;
+    auto MoveItem(Item* item, int32 count, Map* to_map, mpos to_hex) -> FO_NON_NULL Item*;
+    auto MoveItem(Item* item, int32 count, Item* to_cont, const any_t& stack_id) -> FO_NON_NULL Item*;
 
 private:
     [[nodiscard]] auto GetItemHolder(Item* item) -> FO_NON_NULL Entity*;

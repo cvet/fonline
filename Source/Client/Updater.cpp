@@ -172,7 +172,7 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<uint32>();
+    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32>();
     const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<float64>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : xrange(dots)) {
@@ -259,8 +259,9 @@ void Updater::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (uint32 file_index = 0;; file_index++) {
+        for (int32 file_index = 0;; file_index++) {
             const auto name_len = reader.Read<int16>();
+
             if (name_len == -1) {
                 break;
             }
@@ -308,7 +309,7 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint32>();
+    const auto data_size = numeric_cast<size_t>(_conn.InBuf.Read<int32>());
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);

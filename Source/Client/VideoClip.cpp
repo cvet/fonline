@@ -317,11 +317,11 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Fill texture data
-    const uint32 w = _impl->VideoInfo.pic_width;
-    const uint32 h = _impl->VideoInfo.pic_height;
+    const auto w = numeric_cast<int32>(_impl->VideoInfo.pic_width);
+    const auto h = numeric_cast<int32>(_impl->VideoInfo.pic_height);
 
-    for (uint32 y = 0; y < h; y++) {
-        for (uint32 x = 0; x < w; x++) {
+    for (int32 y = 0; y < h; y++) {
+        for (int32 x = 0; x < w; x++) {
             const th_ycbcr_buffer& cbuf = _impl->ColorBuffer;
             const uint8 cy = cbuf[0].data[y * cbuf[0].stride + x];
             const uint8 cu = cbuf[1].data[y / dj * cbuf[1].stride + x / di];

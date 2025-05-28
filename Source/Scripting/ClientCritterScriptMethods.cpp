@@ -168,9 +168,9 @@ FO_SCRIPT_API void Client_Critter_StopAnim(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Critter_CountItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
-    uint32 result = 0;
+    int32 result = 0;
 
     for (const auto& item : self->GetInvItems()) {
         if (!protoId || item->GetProtoId() == protoId) {
@@ -396,7 +396,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos hexOffset, uint32 speed)
+FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos hexOffset, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -411,7 +411,7 @@ FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32 dir, uint32 speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32 dir, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -489,7 +489,7 @@ FO_SCRIPT_API void Client_Critter_SetContour(CritterView* self, ContourType cont
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, uint32 itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32 itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto* item = self->GetInvItem(itemId);
     auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;

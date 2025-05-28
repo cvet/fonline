@@ -367,7 +367,7 @@ void MasterBaker::BakeAll()
             WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
         };
 
-        int32 errors = 0;
+        size_t errors = 0;
 
         for (int32 bake_order = 0; bake_order <= _settings.MaxBakeOrder; bake_order++) {
             vector<std::future<void>> res_bakings;
@@ -433,7 +433,7 @@ class Critter;
 class Map;
 class Location;
 
-auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> int32
+auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -448,7 +448,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     FO_RUNTIME_ASSERT(_bakedFiles);
 
-    int32 errors = 0;
+    size_t errors = 0;
 
     const auto* registrator = props.GetRegistrator();
 

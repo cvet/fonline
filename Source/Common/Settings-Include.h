@@ -49,7 +49,7 @@ FIXED_SETTING(string, ApplySubConfig);
 FIXED_SETTING(string, DebuggingSubConfig);
 FIXED_SETTING(vector<int32>, DummyIntVec); // Auto
 FIXED_SETTING(string, ImGuiColorStyle); // Light, Classic, Dark
-FIXED_SETTING(uint32, ScriptOverrunReportTime, 100);
+FIXED_SETTING(int32, ScriptOverrunReportTime, 100);
 FIXED_SETTING(bool, DebugBuild, false); // Auto
 SETTING_GROUP_END();
 
@@ -68,43 +68,43 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
-FIXED_SETTING(uint32, MinNameLength, 4);
-FIXED_SETTING(uint32, MaxNameLength, 12);
-FIXED_SETTING(uint32, TalkDistance, 3);
+FIXED_SETTING(int32, MinNameLength, 4);
+FIXED_SETTING(int32, MaxNameLength, 12);
+FIXED_SETTING(int32, TalkDistance, 3);
 FIXED_SETTING(uint32, LookChecks, 0);
-FIXED_SETTING(vector<uint32>, LookDir, 0, 20, 40, 60, 60);
-FIXED_SETTING(vector<uint32>, LookSneakDir, 90, 60, 30, 0, 0);
-FIXED_SETTING(uint32, LookMinimum, 6);
+FIXED_SETTING(vector<int32>, LookDir, 0, 20, 40, 60, 60);
+FIXED_SETTING(vector<int32>, LookSneakDir, 90, 60, 30, 0, 0);
+FIXED_SETTING(int32, LookMinimum, 6);
 FIXED_SETTING(bool, CritterBlockHex, false);
-FIXED_SETTING(uint32, MaxAddUnstackableItems, 10);
+FIXED_SETTING(int32, MaxAddUnstackableItems, 10);
 FIXED_SETTING(int32, MaxPathFindLength, 400);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
-FIXED_SETTING(uint32, RegistrationTimeout, 5);
-FIXED_SETTING(uint32, NpcMaxTalkers, 1);
-FIXED_SETTING(uint32, DlgTalkMaxTime, 0);
-FIXED_SETTING(uint32, DlgBarterMaxTime, 0);
+FIXED_SETTING(int32, RegistrationTimeout, 5);
+FIXED_SETTING(int32, NpcMaxTalkers, 1);
+FIXED_SETTING(int32, DlgTalkMaxTime, 0);
+FIXED_SETTING(int32, DlgBarterMaxTime, 0);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
-FIXED_SETTING(uint32, SneakDivider, 6);
+FIXED_SETTING(int32, SneakDivider, 6);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
-FIXED_SETTING(uint32, ServerPort, 4000);
-FIXED_SETTING(uint32, NetBufferSize, 4096);
-FIXED_SETTING(uint32, UpdateFileSendSize, 1000000);
+FIXED_SETTING(int32, ServerPort, 4000);
+FIXED_SETTING(int32, NetBufferSize, 4096);
+FIXED_SETTING(int32, UpdateFileSendSize, 1000000);
 FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);
-FIXED_SETTING(uint32, ArtificalLags, 0);
+FIXED_SETTING(int32, ArtificalLags, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
-FIXED_SETTING(uint32, ClientPingTime, 10000);
-FIXED_SETTING(uint32, InactivityDisconnectTime, 0);
+FIXED_SETTING(int32, ClientPingTime, 10000);
+FIXED_SETTING(int32, InactivityDisconnectTime, 0);
 FIXED_SETTING(string, WssPrivateKey, "");
 FIXED_SETTING(string, WssCertificate, "");
 SETTING_GROUP_END();
@@ -112,13 +112,13 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(string, ServerHost, "localhost");
-FIXED_SETTING(uint32, PingPeriod, 2000);
-VARIABLE_SETTING(uint32, ProxyType, 0);
+FIXED_SETTING(int32, PingPeriod, 2000);
+VARIABLE_SETTING(int32, ProxyType, 0);
 VARIABLE_SETTING(string, ProxyHost, "");
-VARIABLE_SETTING(uint32, ProxyPort, 8080);
+VARIABLE_SETTING(int32, ProxyPort, 8080);
 VARIABLE_SETTING(string, ProxyUser, "");
 VARIABLE_SETTING(string, ProxyPass, "");
-VARIABLE_SETTING(uint32, Ping); // Auto
+VARIABLE_SETTING(int32, Ping); // Auto
 VARIABLE_SETTING(bool, DebugNet, false);
 FIXED_SETTING(bool, BypassCompatibilityCheck, false);
 SETTING_GROUP_END();
@@ -126,8 +126,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(AudioSettings, virtual DummySettings);
 VARIABLE_SETTING(bool, DisableAudio, false);
-VARIABLE_SETTING(uint32, SoundVolume, 100);
-VARIABLE_SETTING(uint32, MusicVolume, 100);
+VARIABLE_SETTING(int32, SoundVolume, 100);
+VARIABLE_SETTING(int32, MusicVolume, 100);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -142,7 +142,7 @@ VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
 FIXED_SETTING(bool, HideNativeCursor, false);
-FIXED_SETTING(uint32, FadingDuration, 1000);
+FIXED_SETTING(int32, FadingDuration, 1000);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -166,8 +166,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
-FIXED_SETTING(uint32, Animation3dSmoothTime, 150);
-FIXED_SETTING(uint32, Animation3dFPS, 30);
+FIXED_SETTING(int32, Animation3dSmoothTime, 150);
+FIXED_SETTING(int32, Animation3dFPS, 30);
 FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
 FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
@@ -205,7 +205,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual DummySettings);
-FIXED_SETTING(uint32, DebuggingDeltaTimeCap, 100);
+FIXED_SETTING(int32, DebuggingDeltaTimeCap, 100);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -228,7 +228,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
-FIXED_SETTING(uint32, CritterFidgetTime, 50000);
+FIXED_SETTING(int32, CritterFidgetTime, 50000);
 FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
 FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
@@ -239,9 +239,9 @@ SETTING_GROUP_END();
 SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
 FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM);
 FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM);
-FIXED_SETTING(uint32, ScrollDelay, 10);
+FIXED_SETTING(int32, ScrollDelay, 10);
 FIXED_SETTING(int32, ScrollStep, 12);
-FIXED_SETTING(uint32, RainTick, 60);
+FIXED_SETTING(int32, RainTick, 60);
 FIXED_SETTING(int16, RainSpeedX, 0);
 FIXED_SETTING(int16, RainSpeedY, 15);
 FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear);
@@ -285,8 +285,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(InputSettings, virtual DummySettings);
-VARIABLE_SETTING(uint32, DoubleClickTime, 500);
-VARIABLE_SETTING(uint32, ConsoleHistorySize, 100);
+VARIABLE_SETTING(int32, DoubleClickTime, 500);
+VARIABLE_SETTING(int32, ConsoleHistorySize, 100);
 VARIABLE_SETTING(ipos, MousePos); // Auto
 SETTING_GROUP_END();
 
@@ -300,7 +300,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual DataSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
-FIXED_SETTING(uint32, UpdaterInfoDelay, 1000);
+FIXED_SETTING(int32, UpdaterInfoDelay, 1000);
 FIXED_SETTING(int32, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
 FIXED_SETTING(string, DefaultSplash);
 FIXED_SETTING(string, DefaultSplashPack);
@@ -316,16 +316,16 @@ FIXED_SETTING(vector<string>, AccessAdmin);
 FIXED_SETTING(vector<string>, AccessClient);
 FIXED_SETTING(vector<string>, AccessModer);
 FIXED_SETTING(vector<string>, AccessTester);
-FIXED_SETTING(uint32, AdminPanelPort);
+FIXED_SETTING(int32, AdminPanelPort);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(bool, CollapseLogOnStart, false);
 FIXED_SETTING(int32, ServerSleep, -1);
 FIXED_SETTING(int32, LoopsPerSecondCap, 1000);
-FIXED_SETTING(uint32, LockMaxWaitTime, 100);
-FIXED_SETTING(uint32, DataBaseCommitPeriod, 10);
-FIXED_SETTING(uint32, DataBaseMaxCommitJobs, 100);
-FIXED_SETTING(uint32, LoopAverageTimeInterval, 1000);
+FIXED_SETTING(int32, LockMaxWaitTime, 100);
+FIXED_SETTING(int32, DataBaseCommitPeriod, 10);
+FIXED_SETTING(int32, DataBaseMaxCommitJobs, 100);
+FIXED_SETTING(int32, LoopAverageTimeInterval, 1000);
 FIXED_SETTING(bool, WriteHealthFile, false);
 FIXED_SETTING(bool, ProtoMapStaticGrid, false);
 FIXED_SETTING(bool, MapInstanceStaticGrid, false);

@@ -327,13 +327,6 @@ auto GenericUtils::Random(int32 minimum, int32 maximum) -> int32
     return std::uniform_int_distribution {minimum, maximum}(RandomGenerator);
 }
 
-auto GenericUtils::Random(uint32 minimum, uint32 maximum) -> uint32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return numeric_cast<uint32>(Random(numeric_cast<int32>(minimum), numeric_cast<int32>(maximum)));
-}
-
 auto GenericUtils::Percent(int32 full, int32 peace) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -349,20 +342,7 @@ auto GenericUtils::Percent(int32 full, int32 peace) -> int32
     return std::clamp(percent, 0, 100);
 }
 
-auto GenericUtils::Percent(uint32 full, uint32 peace) -> uint32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (full == 0) {
-        return 0;
-    }
-
-    const auto percent = peace * 100 / full;
-
-    return std::clamp(percent, 0u, 100u);
-}
-
-auto GenericUtils::NumericalNumber(uint32 num) noexcept -> uint32
+auto GenericUtils::NumericalNumber(int32 num) noexcept -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -458,14 +438,14 @@ auto GenericUtils::GetColorDay(const vector<int32>& day_time, const vector<uint8
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> uint32
+auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto dx = pos1.x - pos2.x;
     const auto dy = pos1.y - pos2.y;
 
-    return numeric_cast<uint32>(iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy))));
+    return iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy)));
 }
 
 auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
