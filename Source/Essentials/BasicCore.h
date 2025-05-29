@@ -119,10 +119,8 @@
 #error TRACY_ENABLE not defined
 #endif
 
-FO_END_NAMESPACE();
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
-FO_BEGIN_NAMESPACE();
 #endif
 
 // Compiler warnings disable helper
