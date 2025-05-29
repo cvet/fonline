@@ -34,8 +34,11 @@
 #include "BasicCore.h"
 #include "WinApi-Include.h"
 
-#if FO_MAC
+#if FO_LINUX
+#include <fcntl.h>
+#elif FO_MAC
 #include <sys/sysctl.h>
+#include <unistd.h>
 #endif
 
 FO_BEGIN_NAMESPACE();

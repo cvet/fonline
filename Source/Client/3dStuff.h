@@ -243,7 +243,7 @@ public:
 
     ModelInstance() = delete;
     ModelInstance(ModelManager& model_mngr, ModelInformation* info);
-    ModelInstance(const ModelInstance&) = default;
+    ModelInstance(const ModelInstance&) = delete;
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
     auto operator=(ModelInstance&&) noexcept = delete;
