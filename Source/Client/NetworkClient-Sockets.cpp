@@ -33,7 +33,6 @@
 
 #include "NetworkClient.h"
 
-#include "Log.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS

@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "EntityProperties.h"
-#include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
 #include "ProtoManager.h"

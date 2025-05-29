@@ -219,6 +219,7 @@ add_compile_definitions(FO_RENDER_32BIT_INDEX=0)
 add_compile_definitions(FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 
 # Basic includes
+include_directories("${FO_ENGINE_ROOT}/Source/Essentials")
 include_directories("${FO_ENGINE_ROOT}/Source/Common")
 include_directories("${FO_ENGINE_ROOT}/Source/Server")
 include_directories("${FO_ENGINE_ROOT}/Source/Client")

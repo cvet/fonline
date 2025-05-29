@@ -33,30 +33,14 @@
 
 #pragma once
 
-#include "Common.h"
+#include "BasicCore.h"
+#include "Containers.h"
+#include "ExceptionHadling.h"
 
 FO_BEGIN_NAMESPACE();
 
-class HashStorage : public HashResolver
-{
-public:
-    auto ToHashedString(string_view s) -> hstring override;
-    auto ResolveHash(hstring::hash_t h) const -> hstring override;
-    auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
-
-private:
-    unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
-    mutable std::shared_mutex _hashStorageLocker {};
-};
-
-class Hashing final
-{
-public:
-    Hashing() = delete;
-
-    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) noexcept -> uint32;
-    [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) noexcept -> uint64;
-};
+FO_DECLARE_EXCEPTION(CompressionException);
+FO_DECLARE_EXCEPTION(DecompressException);
 
 class Compressor final
 {
@@ -66,33 +50,6 @@ public:
     [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
     [[nodiscard]] static auto Compress(const_span<uint8> data) -> vector<uint8>;
     [[nodiscard]] static auto Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>;
-};
-
-class GenericUtils final
-{
-public:
-    GenericUtils() = delete;
-
-    [[nodiscard]] static auto Random(int32 minimum, int32 maximum) -> int32;
-    [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
-    [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
-    [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
-    [[nodiscard]] static auto GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor;
-    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> int32;
-    [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
-    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
-
-    static void SetRandomSeed(int32 seed);
-    static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
-};
-
-class MatrixHelper final
-{
-public:
-    MatrixHelper() = delete;
-
-    static auto MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool;
-    static auto MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool;
 };
 
 class StreamCompressor final

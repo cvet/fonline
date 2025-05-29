@@ -33,7 +33,6 @@
 
 #include "DialogBaker.h"
 #include "Dialogs.h"
-#include "Log.h"
 #include "ScriptSystem.h"
 #include "TextPack.h"
 

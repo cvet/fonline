@@ -35,10 +35,7 @@
 
 #include "Application.h"
 #include "EngineBase.h"
-#include "GenericUtils.h"
-#include "Log.h"
 #include "ScriptSystem.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
@@ -53,14 +50,6 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
     ignore_unused(engine);
 
     BreakIntoDebugger();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine, string_view message)
-{
-    ignore_unused(engine);
-
-    BreakIntoDebugger(message);
 }
 
 ///@ ExportMethod

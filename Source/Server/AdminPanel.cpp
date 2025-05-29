@@ -33,11 +33,9 @@
 
 #include "AdminPanel.h"
 #include "Application.h"
-#include "Log.h"
 #include "NetBuffer.h"
 #include "NetCommand.h"
 #include "Server.h"
-#include "StringUtils.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS

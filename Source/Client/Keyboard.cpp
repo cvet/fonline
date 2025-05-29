@@ -32,7 +32,6 @@
 //
 
 #include "Keyboard.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

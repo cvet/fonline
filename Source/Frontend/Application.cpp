@@ -33,12 +33,8 @@
 
 #include "Application.h"
 #include "ConfigFile.h"
-#include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "ImGuiStuff.h"
-#include "Log.h"
-#include "Platform.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 
 #include "SDL3/SDL.h"
@@ -122,8 +118,6 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetThisThreadName("Main");
-
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -145,7 +139,6 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
         Platform::ForkProcess();
     }
 
-    InstallSystemExceptionHandler();
     CreateGlobalData();
 
 #if FO_TRACY
@@ -169,6 +162,8 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
 
+    SetBadAllocCallback([] { App->RequestQuit(); });
+
 #if FO_WEB
     // clang-format off
     MAIN_THREAD_EM_ASM({
@@ -187,19 +182,6 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
         }
     }, WebCanvasId.c_str());
     // clang-format on
-#endif
-}
-
-void ExitApp(bool success) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
-
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-    std::quick_exit(code);
-#else
-    std::exit(code);
 #endif
 }
 

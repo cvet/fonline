@@ -36,8 +36,6 @@
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "../Include/Types.h"
 #include "GlslangToSpv.h"

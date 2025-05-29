@@ -35,8 +35,6 @@
 
 #if FO_ENABLE_3D
 
-#include "Log.h"
-
 FO_BEGIN_NAMESPACE();
 
 ModelSprite::ModelSprite(SpriteManager& spr_mngr) :

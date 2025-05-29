@@ -32,7 +32,6 @@
 //
 
 #include "SparkExtension.h"
-#include "StringUtils.h"
 #include "VisualParticles.h"
 
 namespace SPK::FO

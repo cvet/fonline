@@ -146,7 +146,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #endif
 }
 
-void Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
+auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
 {
     FO_STACK_TRACE_ENTRY();
 

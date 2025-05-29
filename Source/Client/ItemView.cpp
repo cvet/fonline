@@ -33,7 +33,6 @@
 
 #include "ItemView.h"
 #include "Client.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

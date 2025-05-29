@@ -32,10 +32,6 @@
 //
 
 #include "Application.h"
-#include "DiskFileSystem.h"
-#include "Log.h"
-#include "Platform.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 
 #if FO_LINUX || FO_MAC
@@ -68,8 +64,6 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetThisThreadName("Main");
-
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -91,7 +85,6 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
         Platform::ForkProcess();
     }
 
-    InstallSystemExceptionHandler();
     CreateGlobalData();
 
 #if FO_TRACY
@@ -115,22 +108,11 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
 
+    SetBadAllocCallback([] { App->RequestQuit(); });
+
 #if FO_LINUX || FO_MAC
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
-#endif
-}
-
-void ExitApp(bool success) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
-
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-    std::quick_exit(code);
-#else
-    std::exit(code);
 #endif
 }
 

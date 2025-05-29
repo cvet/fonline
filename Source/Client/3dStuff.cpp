@@ -35,10 +35,7 @@
 
 #if FO_ENABLE_3D
 
-#include "GenericUtils.h"
-#include "Log.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -389,6 +386,144 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
+static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept;
+static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept;
+static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool;
+
+auto ModelManager::MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float32 in[4];
+    in[0] = objx;
+    in[1] = objy;
+    in[2] = objz;
+    in[3] = 1.0f;
+
+    float32 out[4];
+    MultMatrixVecf(model_matrix, in, out);
+    MultMatrixVecf(proj_matrix, out, in);
+
+    if (in[3] == 0.0f) {
+        return false;
+    }
+
+    in[0] /= in[3];
+    in[1] /= in[3];
+    in[2] /= in[3];
+
+    in[0] = in[0] * 0.5f + 0.5f;
+    in[1] = in[1] * 0.5f + 0.5f;
+    in[2] = in[2] * 0.5f + 0.5f;
+
+    in[0] = in[0] * numeric_cast<float32>(viewport[2] + viewport[0]);
+    in[1] = in[1] * numeric_cast<float32>(viewport[3] + viewport[1]);
+
+    *winx = in[0];
+    *winy = in[1];
+    *winz = in[2];
+
+    return true;
+}
+
+auto ModelManager::MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float32 final_matrix[16];
+    MultMatricesf(model_matrix, proj_matrix, final_matrix);
+
+    if (!InvertMatrixf(final_matrix, final_matrix)) {
+        return false;
+    }
+
+    float32 in[4];
+    in[0] = winx;
+    in[1] = winy;
+    in[2] = winz;
+    in[3] = 1.0f;
+
+    in[0] = (in[0] - numeric_cast<float32>(viewport[0])) / numeric_cast<float32>(viewport[2]);
+    in[1] = (in[1] - numeric_cast<float32>(viewport[1])) / numeric_cast<float32>(viewport[3]);
+
+    in[0] = in[0] * 2 - 1;
+    in[1] = in[1] * 2 - 1;
+    in[2] = in[2] * 2 - 1;
+
+    float32 out[4];
+    MultMatrixVecf(final_matrix, in, out);
+
+    if (out[3] == 0.0f) {
+        return false;
+    }
+
+    out[0] /= out[3];
+    out[1] /= out[3];
+    out[2] /= out[3];
+    *objx = out[0];
+    *objy = out[1];
+    *objz = out[2];
+
+    return true;
+}
+
+static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (auto i = 0; i < 4; i++) {
+        for (auto j = 0; j < 4; j++) {
+            r[i * 4 + j] = a[i * 4 + 0] * b[0 * 4 + j] + a[i * 4 + 1] * b[1 * 4 + j] + a[i * 4 + 2] * b[2 * 4 + j] + a[i * 4 + 3] * b[3 * 4 + j];
+        }
+    }
+}
+
+static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (auto i = 0; i < 4; i++) {
+        out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
+    }
+}
+
+static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float32 inv[16];
+    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+
+    auto det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    if (det == 0.0f) {
+        return false;
+    }
+
+    det = 1.0f / det;
+
+    for (auto i = 0; i < 16; i++) {
+        inv_out[i] = inv[i] * det;
+    }
+
+    return true;
+}
+
 ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _modelMngr(model_mngr),
     _modelInfo {info}
@@ -429,7 +564,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos
 
     const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out;
-    MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    ModelManager::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     return {iround<int32>(out.x / const_numeric_cast<float32>(FRAME_SCALE)), iround<int32>(out.y / const_numeric_cast<float32>(FRAME_SCALE))};
 }
 
@@ -441,7 +576,7 @@ auto ModelInstance::Convert2dTo3d(ipos pos) const -> vec3
     const auto xf = numeric_cast<float32>(pos.x) * numeric_cast<float32>(FRAME_SCALE);
     const auto yf = numeric_cast<float32>(pos.y) * numeric_cast<float32>(FRAME_SCALE);
     vec3 out;
-    MatrixHelper::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    ModelManager::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }

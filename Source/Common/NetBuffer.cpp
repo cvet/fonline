@@ -33,8 +33,6 @@
 
 #include "NetBuffer.h"
 #include "Entity.h"
-#include "GenericUtils.h"
-#include "Log.h"
 
 FO_BEGIN_NAMESPACE();
 

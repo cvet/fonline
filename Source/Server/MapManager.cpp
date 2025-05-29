@@ -34,14 +34,11 @@
 #include "MapManager.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
-#include "GenericUtils.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
-#include "Log.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -502,7 +499,7 @@ void MapManager::RegenerateMap(Map* map)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    auto map_holder = RefCountHolder(map);
+    refcount_ptr map_holder = map;
 
     DestroyMapContent(map);
 
@@ -590,7 +587,7 @@ void MapManager::DestroyLocation(Location* loc)
     FO_STACK_TRACE_ENTRY();
 
     // Start deleting
-    auto loc_holder = RefCountHolder(loc);
+    refcount_ptr loc_holder = loc;
     auto maps = copy_hold_ref(loc->GetMaps());
 
     // Redundant calls

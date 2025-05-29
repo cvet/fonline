@@ -32,7 +32,6 @@
 //
 
 #include "ParticleSprites.h"
-#include "Log.h"
 
 FO_BEGIN_NAMESPACE();
 

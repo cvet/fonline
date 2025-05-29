@@ -32,7 +32,6 @@
 //
 
 #include "VideoClip.h"
-#include "Log.h"
 
 #include "theora/theoradec.h"
 

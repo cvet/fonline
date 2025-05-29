@@ -36,8 +36,6 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "Application.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

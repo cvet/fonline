@@ -204,6 +204,9 @@ private:
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
     [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
+    static auto MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool;
+    static auto MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool;
+
     RenderSettings& _settings;
     FileSystem& _resources;
     EffectManager& _effectMngr;

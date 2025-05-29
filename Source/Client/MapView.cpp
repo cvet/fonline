@@ -33,10 +33,8 @@
 
 #include "MapView.h"
 #include "Client.h"
-#include "GenericUtils.h"
 #include "LineTracer.h"
 #include "MapLoader.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -375,8 +373,8 @@ void MapView::Process()
             const auto day_color_time = IsNonEmptyDayColorTime() ? GetDayColorTime() : vector<int32> {300, 600, 1140, 1380};
             const auto day_color = IsNonEmptyDayColor() ? GetDayColor() : vector<uint8> {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
 
-            _mapDayColor = GenericUtils::GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
-            _globalDayColor = GenericUtils::GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
+            _mapDayColor = GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
+            _globalDayColor = GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
 
             if (_mapDayColor != _prevMapDayColor) {
                 _prevMapDayColor = _mapDayColor;
@@ -780,7 +778,7 @@ auto MapView::GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*
     const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
     for (auto* tile : field_tiles) {
-        if (layer < 0 || tile->GetTileLayer() == layer) {
+        if (layer < 0 || numeric_cast<int32>(tile->GetTileLayer()) == layer) {
             return tile;
         }
     }
@@ -1696,7 +1694,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distan
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(LightSource {id, hex, color, distance, flags, intensity, offset})).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(LightSource(id, hex, color, distance, flags, intensity, offset))).first->second.get();
     }
     else {
         ls = it->second.get();
@@ -1968,12 +1966,15 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
             }
         }
 
+        const auto map_width = numeric_cast<int32>(_mapSize.width);
+        const auto map_height = numeric_cast<int32>(_mapSize.height);
+
         if (ox != 0) {
             // Left side
             ox = old_curx1_i + ox;
 
-            if (ox < 0 || ox >= _mapSize.width || _hexField->GetCellForReading({numeric_cast<uint16>(ox), numeric_cast<uint16>(old_cury1_i)}).Flags.LightBlocked) {
-                to_hex.x = numeric_cast<uint16>(ox < 0 || ox >= _mapSize.width ? old_curx1_i : ox);
+            if (ox < 0 || ox >= map_width || _hexField->GetCellForReading({numeric_cast<uint16>(ox), numeric_cast<uint16>(old_cury1_i)}).Flags.LightBlocked) {
+                to_hex.x = numeric_cast<uint16>(ox < 0 || ox >= map_width ? old_curx1_i : ox);
                 to_hex.y = numeric_cast<uint16>(old_cury1_i);
 
                 MarkLightEnd(ls, {numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(old_cury1_i)}, to_hex, cur_inten);
@@ -1985,9 +1986,9 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
             // Right side
             oy = old_cury1_i + oy;
 
-            if (oy < 0 || oy >= _mapSize.height || _hexField->GetCellForReading({numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(oy)}).Flags.LightBlocked) {
+            if (oy < 0 || oy >= map_height || _hexField->GetCellForReading({numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(oy)}).Flags.LightBlocked) {
                 to_hex.x = numeric_cast<uint16>(old_curx1_i);
-                to_hex.y = numeric_cast<uint16>(oy < 0 || oy >= _mapSize.height ? old_cury1_i : oy);
+                to_hex.y = numeric_cast<uint16>(oy < 0 || oy >= map_height ? old_cury1_i : oy);
 
                 MarkLightEnd(ls, {numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(old_cury1_i)}, to_hex, cur_inten);
                 break;
@@ -1997,9 +1998,9 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _mapSize.width || cury1_i < 0 || cury1_i >= _mapSize.height || _hexField->GetCellForReading({numeric_cast<uint16>(curx1_i), numeric_cast<uint16>(cury1_i)}).Flags.LightBlocked) {
-            to_hex.x = numeric_cast<uint16>(curx1_i < 0 || curx1_i >= _mapSize.width ? old_curx1_i : curx1_i);
-            to_hex.y = numeric_cast<uint16>(cury1_i < 0 || cury1_i >= _mapSize.height ? old_cury1_i : cury1_i);
+        if (curx1_i < 0 || curx1_i >= map_width || cury1_i < 0 || cury1_i >= map_height || _hexField->GetCellForReading({numeric_cast<uint16>(curx1_i), numeric_cast<uint16>(cury1_i)}).Flags.LightBlocked) {
+            to_hex.x = numeric_cast<uint16>(curx1_i < 0 || curx1_i >= map_width ? old_curx1_i : curx1_i);
+            to_hex.y = numeric_cast<uint16>(cury1_i < 0 || cury1_i >= map_height ? old_cury1_i : cury1_i);
 
             MarkLightEnd(ls, {numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(old_cury1_i)}, to_hex, cur_inten);
             break;
@@ -2007,7 +2008,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
 
         MarkLightEnd(ls, {numeric_cast<uint16>(old_curx1_i), numeric_cast<uint16>(old_cury1_i)}, {numeric_cast<uint16>(curx1_i), numeric_cast<uint16>(cury1_i)}, cur_inten);
 
-        if (curx1_i == to_hex.x && cury1_i == to_hex.y) {
+        if (curx1_i == numeric_cast<int32>(to_hex.x) && cury1_i == numeric_cast<int32>(to_hex.y)) {
             break;
         }
     }
@@ -4688,6 +4689,67 @@ auto MapView::SaveToText() const -> string
     }
 
     return fomap;
+}
+
+auto MapView::GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(day_time.size() == 4);
+    FO_RUNTIME_ASSERT(colors.size() == 12);
+
+    uint8 result[3];
+    const int32 color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
+    const int32 color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
+    const int32 color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
+
+    game_time %= 1440;
+    int32 time;
+    int32 duration;
+    if (game_time >= day_time[0] && game_time < day_time[1]) {
+        time = 0;
+        game_time -= day_time[0];
+        duration = day_time[1] - day_time[0];
+    }
+    else if (game_time >= day_time[1] && game_time < day_time[2]) {
+        time = 1;
+        game_time -= day_time[1];
+        duration = day_time[2] - day_time[1];
+    }
+    else if (game_time >= day_time[2] && game_time < day_time[3]) {
+        time = 2;
+        game_time -= day_time[2];
+        duration = day_time[3] - day_time[2];
+    }
+    else {
+        time = 3;
+        if (game_time >= day_time[3]) {
+            game_time -= day_time[3];
+        }
+        else {
+            game_time += 1440 - day_time[3];
+        }
+        duration = 1440 - day_time[3] + day_time[0];
+    }
+
+    if (duration == 0) {
+        duration = 1;
+    }
+
+    result[0] = numeric_cast<uint8>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
+    result[1] = numeric_cast<uint8>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
+    result[2] = numeric_cast<uint8>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
+
+    if (light != nullptr) {
+        const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
+        const auto min_light = (std::min({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::min({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::min({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
+        const auto cur_light = (result[0] + result[1] + result[2]) / 3;
+
+        *light = GenericUtils::Percent(max_light - min_light, max_light - cur_light);
+        *light = std::clamp(*light, 0, 100);
+    }
+
+    return ucolor {result[0], result[1], result[2], 255};
 }
 
 FO_END_NAMESPACE();

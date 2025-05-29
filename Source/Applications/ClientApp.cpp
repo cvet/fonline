@@ -35,7 +35,6 @@
 
 #include "Application.h"
 #include "Client.h"
-#include "Log.h"
 #include "Settings.h"
 #include "Updater.h"
 #include "Version-Include.h"
@@ -145,7 +144,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        ShowExceptionMessageBox(true);
+        SetExceptionCallback(MessageBox::ShowErrorMessage);
         InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::ClientMode);
 
 #if FO_IOS

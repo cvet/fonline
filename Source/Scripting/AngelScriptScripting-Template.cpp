@@ -64,10 +64,8 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
-#include "Log.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
-#include "StringUtils.h"
 
 #include "AngelScriptExtensions.h"
 #include "AngelScriptReflection.h"
@@ -200,8 +198,13 @@ public:
 #define AS_VERIFY(expr) \
     as_result = expr; \
     if (as_result < 0) { \
-        throw ScriptInitException(#expr); \
+        ThrowInitException(#expr); \
     }
+
+static void ThrowInitException(const char* message)
+{
+    throw ScriptInitException(message);
+}
 
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_GENERIC(name) asFUNCTION(name)
@@ -515,7 +518,7 @@ public:
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
-    string ExceptionStackTrace {};
+    StackTraceData ExceptionStackTrace {};
     unordered_set<hstring> HashedStrings {};
     unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
     list<std::function<void*()>> Getters {};
@@ -541,7 +544,7 @@ struct FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
     std::mutex ScriptCallCacheEntriesLocker {};
 #endif
 };
-FO_GLOBAL_DATA(FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), StackTraceData);
+FO_GLOBAL_DATA(FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), AngelScriptStackTrace);
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {
@@ -555,12 +558,12 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
     {
 #if SERVER_SCRIPTING
-        std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+        std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 #endif
 
-        const auto it = StackTraceData->ScriptCallCacheEntries.find(program_pos);
+        const auto it = AngelScriptStackTrace->ScriptCallCacheEntries.find(program_pos);
 
-        if (it != StackTraceData->ScriptCallCacheEntries.end()) {
+        if (it != AngelScriptStackTrace->ScriptCallCacheEntries.end()) {
             storage = &it->second;
         }
     }
@@ -582,10 +585,10 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         {
 #if SERVER_SCRIPTING
-            std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+            std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 #endif
 
-            storage = &StackTraceData->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
+            storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
 
             safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
             safe_copy(storage->FileBuf, storage->FileBufLen, orig_file);
@@ -654,7 +657,7 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
         auto stack_trace_entry_end = ScopeCallback([]() noexcept { PopStackTrace(); });
 
         // Write to ExceptionStackTrace
-        *static_cast<string*>(param) = GetStackTrace();
+        *static_cast<StackTraceData*>(param) = GetStackTrace();
     }
 }
 
@@ -1078,8 +1081,8 @@ template<typename TRet, typename... Args>
         func_desc.RetType = script_backend->Engine->ScriptSys.ResolveEngineType(typeid(TRet));
         func_desc.ArgsType = {script_backend->Engine->ScriptSys.ResolveEngineType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
-        func_desc.Call = [script_backend, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
-            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get(), args, ret);
+        func_desc.Call = [script_backend, &func_desc, as_func = refcount_ptr(func)](initializer_list<void*> args, void* ret) noexcept { //
+            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get_no_const(), args, ret);
         };
 
         return ScriptFunc<TRet, Args...>(&func_desc);
@@ -4264,7 +4267,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     if (auto* func = as_engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
+        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = refcount_ptr(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get_no_const()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \

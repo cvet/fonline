@@ -33,7 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "GenericUtils.h"
+#include "Common.h"
 
 FO_BEGIN_NAMESPACE();
 

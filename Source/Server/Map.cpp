@@ -34,12 +34,10 @@
 #include "Map.h"
 #include "Critter.h"
 #include "CritterManager.h"
-#include "GenericUtils.h"
 #include "Item.h"
 #include "Location.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

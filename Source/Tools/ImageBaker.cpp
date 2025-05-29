@@ -35,10 +35,7 @@
 #include "Application.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
-#include "Log.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 #include "png.h"
 

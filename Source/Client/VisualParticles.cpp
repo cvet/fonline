@@ -32,7 +32,6 @@
 //
 
 #include "VisualParticles.h"
-#include "GenericUtils.h"
 #include "SparkExtension.h"
 
 #include "SPARK.h"

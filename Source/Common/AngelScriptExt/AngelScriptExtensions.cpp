@@ -33,7 +33,6 @@
 
 #include "AngelScriptExtensions.h"
 #include "AngelScriptScriptDict.h"
-#include "StringUtils.h"
 
 #include "../autowrapper/aswrappedcall.h"
 #include "scriptarray.h"

@@ -50,7 +50,6 @@ enum class LogType : uint8
 
 // Write formatted text
 extern void WriteLogMessage(LogType type, string_view message) noexcept;
-extern void WriteLogFatalMessage(string_view message) noexcept;
 
 template<typename... Args>
 void WriteLog(std::format_string<Args...>&& format, Args&&... args) noexcept
@@ -65,7 +64,6 @@ void WriteLog(LogType type, std::format_string<Args...>&& format, Args&&... args
 }
 
 // Control
-extern void LogToFile(string_view fname);
 extern void SetLogCallback(string_view key, LogFunc callback);
 extern void LogDisableTags();
 

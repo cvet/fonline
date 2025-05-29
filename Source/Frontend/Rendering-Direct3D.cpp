@@ -36,9 +36,6 @@
 #if FO_HAVE_DIRECT_3D
 
 #include "Application.h"
-#include "GenericUtils.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "SDL3/SDL_video.h"
 #include <d3d11_1.h>

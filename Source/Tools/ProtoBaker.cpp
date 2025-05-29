@@ -36,9 +36,7 @@
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "EntityProtos.h"
-#include "Log.h"
 #include "ScriptSystem.h"
-#include "StringUtils.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE();

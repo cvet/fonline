@@ -35,7 +35,6 @@
 #include "Application.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

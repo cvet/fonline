@@ -39,7 +39,6 @@
 #include "Player.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -227,7 +226,7 @@ void Critter::MoveAttachedCritters()
     auto* map = _engine->EntityMngr.GetMap(GetMapId());
     FO_RUNTIME_ASSERT(map);
 
-    vector<tuple<Critter*, mpos, RefCountHolder<Critter>>> moved_critters;
+    vector<tuple<Critter*, mpos, refcount_ptr<Critter>>> moved_critters;
 
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
@@ -247,13 +246,13 @@ void Critter::MoveAttachedCritters()
             cr->SetHex(new_hex);
             map->AddCritterToField(cr);
 
-            moved_critters.emplace_back(cr, hex, RefCountHolder {cr});
+            moved_critters.emplace_back(cr, hex, cr);
         }
     }
 
     // Callbacks time
-    auto this_ref_holder = RefCountHolder(this);
-    auto map_ref_holder = RefCountHolder(map);
+    refcount_ptr this_ref_holder = this;
+    refcount_ptr map_ref_holder = map;
     const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
 
     for (const auto& moved_critter : moved_critters) {

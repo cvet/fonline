@@ -35,8 +35,6 @@
 
 #if FO_HAVE_WEB_SOCKETS
 
-#include "Log.h"
-
 FO_DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
 // ReSharper disable once CppInconsistentNaming

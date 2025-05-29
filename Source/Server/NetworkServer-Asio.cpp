@@ -35,8 +35,6 @@
 
 #if FO_HAVE_ASIO
 
-#include "Log.h"
-
 // ReSharper disable once CppInconsistentNaming
 #define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"

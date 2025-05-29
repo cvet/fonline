@@ -34,7 +34,6 @@
 #include "HexView.h"
 #include "Client.h"
 #include "EngineBase.h"
-#include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
 

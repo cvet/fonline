@@ -34,11 +34,9 @@
 #include "ItemManager.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
-#include "Log.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
 #include "Server.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

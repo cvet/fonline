@@ -34,12 +34,10 @@
 #include "CritterHexView.h"
 #include "Client.h"
 #include "EffectManager.h"
-#include "GenericUtils.h"
 #include "ItemView.h"
 #include "MapView.h"
 #include "ResourceManager.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

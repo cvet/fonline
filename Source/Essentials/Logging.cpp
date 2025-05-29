@@ -34,96 +34,49 @@
 // Todo: server logs append not rewrite (with checking of size)
 
 #include "Logging.h"
-#include "DiskFileSystem.h"
+#include "BaseLogging.h"
 #include "GlobalData.h"
 #include "Platform.h"
 #include "StackTrace.h"
-#include "WinApi-Include.h"
+#include "TimeRelated.h"
+#include "WorkThread.h"
 
 FO_BEGIN_NAMESPACE();
 
 [[maybe_unused]] static void FlushLogAtExit();
 
-struct LogData
+struct LoggingData
 {
-    LogData()
+    LoggingData()
     {
         FO_STACK_TRACE_ENTRY();
 
         MainThreadId = std::this_thread::get_id();
-
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        FO_NO_STACK_TRACE_ENTRY();
-
-        const auto result = std::at_quick_exit(FlushLogAtExit);
-        ignore_unused(result);
-#endif
-
-#if FO_WINDOWS
-        SetConsoleOutputCP(CP_UTF8);
-#endif
     }
 
-    std::mutex LogLocker {};
-    unique_ptr<DiskFile> LogFileHandle {};
     map<string, LogFunc> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
     bool TagsDisabled {};
 };
-FO_GLOBAL_DATA(LogData, Data);
-
-static void FlushLogAtExit()
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (Data != nullptr && Data->LogLocker.try_lock()) {
-        std::scoped_lock locker(std::adopt_lock, Data->LogLocker);
-
-        if (Data->LogFileHandle) {
-            Data->LogFileHandle.reset();
-        }
-    }
-}
-
-void LogToFile(string_view fname)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker(Data->LogLocker);
-
-    auto log_file = DiskFileSystem::OpenFile(fname, true, true);
-
-    if (log_file) {
-        Data->LogFileHandle = SafeAlloc::MakeUnique<DiskFile>(std::move(log_file));
-    }
-    else {
-        const string log_err_msg = strex("Can't create log file '{}'", fname).str();
-
-        Platform::InfoLog(log_err_msg);
-
-        std::cout << log_err_msg << "\n";
-        std::cout.flush();
-    }
-}
+FO_GLOBAL_DATA(LoggingData, Logging);
 
 void SetLogCallback(string_view key, LogFunc callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(Data->LogLocker);
+    std::scoped_lock locker(GetLogLocker());
 
     if (!key.empty()) {
         if (callback) {
-            Data->LogFunctions.emplace(string(key), std::move(callback));
+            Logging->LogFunctions.emplace(key, std::move(callback));
         }
         else {
-            Data->LogFunctions.erase(string(key));
+            Logging->LogFunctions.erase(string(key));
         }
     }
     else {
-        FO_RUNTIME_ASSERT(!callback);
-        Data->LogFunctions.clear();
+        Logging->LogFunctions.clear();
     }
 }
 
@@ -131,9 +84,9 @@ void LogDisableTags()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(Data->LogLocker);
+    std::scoped_lock locker(GetLogLocker());
 
-    Data->TagsDisabled = true;
+    Logging->TagsDisabled = true;
 }
 
 void WriteLogMessage(LogType type, string_view message) noexcept
@@ -141,23 +94,18 @@ void WriteLogMessage(LogType type, string_view message) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        // Avoid recursive calls
-        if (Data->LogFunctionsInProcess) {
-            return;
-        }
-
-        std::scoped_lock locker(Data->LogLocker);
+        std::scoped_lock locker(GetLogLocker());
 
         // Make message
         string result;
         result.reserve(message.length() + 64);
 
-        if (!Data->TagsDisabled) {
+        if (!Logging->TagsDisabled) {
             const auto time = nanotime::now().desc(true);
             result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
             result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
-            if (const auto thread_id = std::this_thread::get_id(); thread_id != Data->MainThreadId) {
+            if (const auto thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
                 result += strex("[{}] ", GetThisThreadName());
             }
         }
@@ -165,16 +113,18 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         result += message;
         result += '\n';
 
-        // Write logs
-        if (Data->LogFileHandle) {
-            Data->LogFileHandle->Write(result);
-        }
+        // Write
+        WriteBaseLog(result);
 
-        if (!Data->LogFunctions.empty()) {
-            Data->LogFunctionsInProcess = true;
-            auto reset_in_process = ScopeCallback([]() noexcept { Data->LogFunctionsInProcess = false; });
+        if (!Logging->LogFunctions.empty()) {
+            if (Logging->LogFunctionsInProcess) {
+                return;
+            }
 
-            for (auto&& [func_name, func] : Data->LogFunctions) {
+            Logging->LogFunctionsInProcess = true;
+            auto reset_in_process = ScopeCallback([]() noexcept { Logging->LogFunctionsInProcess = false; });
+
+            for (auto&& [func_name, func] : Logging->LogFunctions) {
                 func(result);
             }
         }
@@ -187,6 +137,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 
         // Todo: colorize log texts
         const char* color = nullptr;
+
         switch (type) {
         case LogType::InfoSection:
             color = "\033[32m"; // Green
@@ -201,34 +152,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             break;
         }
 
-        if (color != nullptr) {
-            // std::cout << color << result << "\033[39m";
-            std::cout << result;
-        }
-        else {
-            std::cout << result;
-        }
-
-        std::cout.flush();
-    }
-    catch (...) {
-        BreakIntoDebugger();
-    }
-}
-
-extern void WriteLogFatalMessage(string_view message) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        std::scoped_lock locker(Data->LogLocker);
-
-        if (Data->LogFileHandle) {
-            Data->LogFileHandle->Write(message);
-        }
-
-        std::cout << message;
-        std::cout.flush();
+        ignore_unused(color);
     }
     catch (...) {
         BreakIntoDebugger();

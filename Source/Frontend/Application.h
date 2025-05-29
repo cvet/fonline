@@ -442,6 +442,5 @@ public:
 
 extern raw_ptr<Application> App;
 extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
-[[noreturn]] extern void ExitApp(bool success) noexcept;
 
 FO_END_NAMESPACE();

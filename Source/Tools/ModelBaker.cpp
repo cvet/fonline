@@ -36,8 +36,6 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "ufbx.h"
 

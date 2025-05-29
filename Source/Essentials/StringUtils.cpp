@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppInconsistentNaming
+
 #include "StringUtils.h"
 #include "GlobalData.h"
 #include "StackTrace.h"
@@ -38,8 +40,6 @@
 #include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
-
-// ReSharper disable CppInconsistentNaming
 
 strex::operator string&&() noexcept
 {
@@ -1324,7 +1324,7 @@ struct Utf8Data
 
     vector<uint16> UpperTable {};
 };
-FO_GLOBAL_DATA(Utf8Data, Data);
+FO_GLOBAL_DATA(Utf8Data, Utf8);
 
 auto utf8::Upper(uint32 ucs) noexcept -> uint32
 {
@@ -1334,7 +1334,7 @@ auto utf8::Upper(uint32 ucs) noexcept -> uint32
         return ucs;
     }
 
-    return Data->UpperTable[ucs];
+    return Utf8->UpperTable[ucs];
 }
 
 FO_END_NAMESPACE();

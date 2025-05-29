@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "Platform.h"
 #include "Server.h"
 #include "Settings.h"
 

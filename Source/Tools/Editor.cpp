@@ -36,7 +36,6 @@
 #include "AssetExplorer.h"
 #include "ImGuiStuff.h"
 #include "ParticleEditor.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

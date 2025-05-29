@@ -32,9 +32,6 @@
 //
 
 #include "CacheStorage.h"
-#include "DiskFileSystem.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #if FO_HAVE_UNQLITE
 #include "unqlite.h"

@@ -34,7 +34,6 @@
 #include "ItemHexView.h"
 #include "Client.h"
 #include "EffectManager.h"
-#include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
 

@@ -32,7 +32,6 @@
 //
 
 #include "DefaultSprites.h"
-#include "GenericUtils.h"
 #include "GeometryHelper.h"
 
 FO_BEGIN_NAMESPACE();

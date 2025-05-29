@@ -32,10 +32,7 @@
 //
 
 #include "DataSource.h"
-#include "DiskFileSystem.h"
 #include "EmbeddedResources-Include.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "minizip/unzip.h"
 

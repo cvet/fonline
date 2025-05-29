@@ -90,11 +90,11 @@ public:
                 _s.append("Format error: ");
                 _s.append(ex.what());
             }
-            catch (...) {
+            catch (...) { // NOLINT(bugprone-empty-catch)
                 // Bad alloc
             }
         }
-        catch (...) {
+        catch (...) { // NOLINT(bugprone-empty-catch)
         }
 
         _sv = _s;

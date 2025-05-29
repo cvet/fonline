@@ -35,7 +35,6 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Server.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

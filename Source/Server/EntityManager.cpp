@@ -34,12 +34,10 @@
 #include "EntityManager.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
-#include "Log.h"
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Server.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -654,7 +652,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
         return;
     }
 
-    auto loc_holder = RefCountHolder(loc);
+    refcount_ptr loc_holder = loc;
 
     loc->SetInitCalled();
 
@@ -683,7 +681,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
         return;
     }
 
-    auto map_holder = RefCountHolder(map);
+    refcount_ptr map_holder = map;
 
     map->SetInitCalled();
 
@@ -720,7 +718,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
         return;
     }
 
-    auto cr_holder = RefCountHolder(cr);
+    refcount_ptr cr_holder = cr;
 
     cr->SetInitCalled();
 
@@ -749,7 +747,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
         return;
     }
 
-    auto item_holder = RefCountHolder(item);
+    refcount_ptr item_holder = item;
 
     item->SetInitCalled();
 

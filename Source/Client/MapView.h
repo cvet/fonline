@@ -320,6 +320,8 @@ private:
 
     void OnScreenSizeChanged();
 
+    [[nodiscard]] static auto GetColorDay(const vector<int32>& day_time, const vector<uint8>& colors, int32 game_time, int32* light) -> ucolor;
+
     EventUnsubscriber _eventUnsubscriber {};
 
     bool _mapperMode {};

@@ -58,7 +58,6 @@
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
-#include "StringUtils.h"
 #include "TextPack.h"
 #include "VideoClip.h"
 
