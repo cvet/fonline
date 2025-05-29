@@ -33,7 +33,8 @@
 
 #pragma once
 
-#include "Common.h"
+#include "BasicCore.h"
+#include "Containers.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -83,7 +84,7 @@ public:
             _s = std::format(std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
-            BreakIntoDebugger(ex.what());
+            BreakIntoDebugger();
 
             try {
                 _s.append("Format error: ");
@@ -94,7 +95,6 @@ public:
             }
         }
         catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
 
         _sv = _s;
@@ -178,8 +178,8 @@ public:
     auto normalizeLineEndings() -> strex&;
 
 #if FO_WINDOWS
-    auto parseWideChar(const wchar_t* str) -> strex&;
-    [[nodiscard]] auto toWideChar() const -> std::wstring;
+    auto parseWideChar(const wchar_t* str) noexcept -> strex&;
+    [[nodiscard]] auto toWideChar() const noexcept -> wstring;
 #endif
 
 private:

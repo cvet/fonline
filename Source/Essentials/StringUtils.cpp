@@ -32,7 +32,8 @@
 //
 
 #include "StringUtils.h"
-#include "GenericUtils.h"
+#include "GlobalData.h"
+#include "StackTrace.h"
 #include "UcsTables-Include.h"
 #include "WinApi-Include.h"
 
@@ -144,7 +145,7 @@ auto strex::startsWith(string_view r) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= r.length() && _sv.compare(0, r.length(), r) == 0;
+    return _sv.length() >= r.length() && _sv.starts_with(r);
 }
 
 auto strex::endsWith(char r) const noexcept -> bool
@@ -158,7 +159,7 @@ auto strex::endsWith(string_view r) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _sv.length() >= r.length() && _sv.compare(_sv.length() - r.length(), r.length(), r) == 0;
+    return _sv.length() >= r.length() && _sv.ends_with(r);
 }
 
 auto strex::isValidUtf8() const noexcept -> bool
@@ -728,7 +729,15 @@ auto strex::toInt() const noexcept -> int32
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? clamp_to<int32>(value) : 0;
+    if (success) {
+        constexpr auto min = static_cast<int64>(std::numeric_limits<int32>::min());
+        constexpr auto max = static_cast<int64>(std::numeric_limits<int32>::max());
+        const auto clamped_value = static_cast<int32>(std::clamp(value, min, max));
+        return clamped_value;
+    }
+    else {
+        return 0;
+    }
 }
 
 auto strex::toUInt() const noexcept -> uint32
@@ -738,7 +747,15 @@ auto strex::toUInt() const noexcept -> uint32
     int64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? clamp_to<uint32>(value) : 0;
+    if (success) {
+        constexpr auto min = static_cast<int64>(std::numeric_limits<uint32>::min());
+        constexpr auto max = static_cast<int64>(std::numeric_limits<uint32>::max());
+        const auto clamped_value = static_cast<uint32>(std::clamp(value, min, max));
+        return clamped_value;
+    }
+    else {
+        return 0;
+    }
 }
 
 auto strex::toInt64() const noexcept -> int64
@@ -758,7 +775,7 @@ auto strex::toFloat() const noexcept -> float32
     float64 value;
     const auto success = ConvertToNumber(strex(_sv).trim(), value);
 
-    return success ? safe_numeric_cast<float32>(value) : 0.0f;
+    return success ? static_cast<float32>(value) : 0.0f;
 }
 
 auto strex::toDouble() const noexcept -> float64
@@ -968,16 +985,16 @@ auto strex::normalizeLineEndings() -> strex&
 }
 
 #if FO_WINDOWS
-auto strex::parseWideChar(const wchar_t* str) -> strex&
+auto strex::parseWideChar(const wchar_t* str) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     ownStorage();
 
-    const auto len = numeric_cast<int32>(::wcslen(str));
+    const auto len = static_cast<int32>(::wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(_malloca(numeric_cast<size_t>(len) * 4));
+        auto* buf = static_cast<char*>(_malloca(static_cast<size_t>(len) * 4));
         const auto r = ::WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += buf != nullptr ? string(buf, r) : string();
@@ -990,7 +1007,7 @@ auto strex::parseWideChar(const wchar_t* str) -> strex&
     return *this;
 }
 
-auto strex::toWideChar() const -> std::wstring
+auto strex::toWideChar() const noexcept -> wstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1000,8 +1017,8 @@ auto strex::toWideChar() const -> std::wstring
 
     auto* buf = static_cast<wchar_t*>(_malloca(_sv.length() * sizeof(wchar_t) * 2));
 
-    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), numeric_cast<int32>(_sv.length()), buf, numeric_cast<int32>(_sv.length()));
-    auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
+    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _sv.data(), static_cast<int32>(_sv.length()), buf, static_cast<int32>(_sv.length()));
+    auto result = buf != nullptr ? wstring(buf, len) : wstring();
 
     _freea(buf);
 
@@ -1054,13 +1071,12 @@ auto utf8::Decode(const char* str, size_t& length) noexcept -> uint32
         return UNICODE_BAD_CHAR;
     }
 
-    const auto make_result = [&length](uint32 ch, size_t ch_lenght) -> uint32 {
-        FO_STRONG_ASSERT(ch_lenght <= length);
+    const auto make_result = [&length](uint32 ch, size_t ch_lenght) noexcept -> uint32 {
         length = ch_lenght;
         return ch;
     };
 
-    const auto make_error = [&length]() -> uint32 {
+    const auto make_error = [&length]() noexcept -> uint32 {
         length = 1;
         return UNICODE_BAD_CHAR;
     };
@@ -1287,21 +1303,21 @@ auto utf8::Lower(uint32 ucs) noexcept -> uint32
 
 struct Utf8Data
 {
-    Utf8Data()
+    Utf8Data() noexcept
     {
         FO_STACK_TRACE_ENTRY();
 
         UpperTable.resize(0x10000);
 
         for (uint32 i = 0; i < 0x10000; i++) {
-            UpperTable[i] = numeric_cast<uint16>(i);
+            UpperTable[i] = static_cast<uint16>(i);
         }
 
         for (uint32 i = 0; i < 0x10000; i++) {
             const auto l = utf8::Lower(i);
 
             if (l != i) {
-                UpperTable[l] = numeric_cast<uint16>(i);
+                UpperTable[l] = static_cast<uint16>(i);
             }
         }
     }

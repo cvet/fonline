@@ -32,10 +32,8 @@
 //
 
 #include "Platform.h"
-#include "Application.h"
-#include "Log.h"
+#include "StackTrace.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 
 #if FO_WINDOWS
 #include "WinApi-Include.h"
@@ -72,7 +70,7 @@ static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
 }
 #endif
 
-void Platform::InfoLog(const string& str)
+void Platform::InfoLog(const string& str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -83,7 +81,7 @@ void Platform::InfoLog(const string& str)
 #endif
 }
 
-void Platform::SetThreadName(const string& str)
+void Platform::SetThreadName(const string& str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -97,15 +95,14 @@ void Platform::SetThreadName(const string& str)
 #endif
 }
 
-auto Platform::GetExePath() -> optional<string>
+auto Platform::GetExePath() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);
-
-    auto size = ::GetModuleFileNameW(nullptr, path.data(), numeric_cast<DWORD>(path.size()));
+    auto size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
 
     if (size == 0) {
         return std::nullopt;
@@ -113,7 +110,7 @@ auto Platform::GetExePath() -> optional<string>
 
     while (size == path.size()) {
         path.resize(path.size() * 2);
-        size = ::GetModuleFileNameW(nullptr, path.data(), numeric_cast<DWORD>(path.size()));
+        size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
 
         if (size == 0) {
             return std::nullopt;
@@ -124,7 +121,6 @@ auto Platform::GetExePath() -> optional<string>
 
 #elif FO_LINUX
     char path[FILENAME_MAX];
-
     const auto size = ::readlink("/proc/self/exe", path, sizeof(path) - 1);
 
     if (size == -1) {
@@ -132,7 +128,6 @@ auto Platform::GetExePath() -> optional<string>
     }
 
     path[size] = '\0';
-
     return path;
 
 #elif FO_MAC
@@ -151,15 +146,15 @@ auto Platform::GetExePath() -> optional<string>
 #endif
 }
 
-void Platform::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
+void Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_LINUX || FO_MAC
     const pid_t pid = ::fork();
+
     if (pid < 0) {
-        WriteLog(LogType::Warning, "fork() failed");
-        return;
+        return false;
     }
     else if (pid != 0) {
         ExitApp(true);
@@ -168,13 +163,12 @@ void Platform::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
     ::close(STDIN_FILENO);
     ::close(STDOUT_FILENO);
     ::close(STDERR_FILENO);
+    ::setsid();
 
-    if (::setsid() < 0) {
-        WriteLog(LogType::Warning, "setsid() failed");
-    }
+    return true;
 
 #else
-    WriteLog(LogType::Warning, "Can't fork() on this platform");
+    return false;
 #endif
 }
 

@@ -33,7 +33,8 @@
 
 #pragma once
 
-#include "Common.h"
+#include "BasicCore.h"
+#include "Containers.h"
 
 FO_BEGIN_NAMESPACE();
 

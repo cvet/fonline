@@ -33,8 +33,7 @@
 
 #pragma once
 
-#include "Common.h"
-
+#include "BasicCore.h"
 #include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();

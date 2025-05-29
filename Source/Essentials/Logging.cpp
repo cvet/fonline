@@ -32,11 +32,12 @@
 //
 
 // Todo: server logs append not rewrite (with checking of size)
-// Todo: add timestamps and process id and thread id to file logs
 
-#include "Log.h"
+#include "Logging.h"
 #include "DiskFileSystem.h"
+#include "GlobalData.h"
 #include "Platform.h"
+#include "StackTrace.h"
 #include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
@@ -91,7 +92,7 @@ void LogToFile(string_view fname)
 
     std::scoped_lock locker(Data->LogLocker);
 
-    auto log_file = DiskFile {DiskFileSystem::OpenFile(fname, true, true)};
+    auto log_file = DiskFileSystem::OpenFile(fname, true, true);
 
     if (log_file) {
         Data->LogFileHandle = SafeAlloc::MakeUnique<DiskFile>(std::move(log_file));

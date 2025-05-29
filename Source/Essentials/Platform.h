@@ -31,7 +31,8 @@
 // SOFTWARE.
 //
 
-#include "Common.h"
+#include "BasicCore.h"
+#include "Containers.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -42,21 +43,21 @@ struct Platform
     // Windows: OutputDebugStringW
     // Android: __android_log_write ANDROID_LOG_INFO
     // Other: none
-    static void InfoLog(const string& str);
+    static void InfoLog(const string& str) noexcept;
 
     // Windows (>= 10): SetThreadDescription
     // Other: none
-    static void SetThreadName(const string& str);
+    static void SetThreadName(const string& str) noexcept;
 
     // Windows: GetModuleFileNameW
     // Linux: readlink /proc/self/exe
     // Mac: proc_pidpath
     // Other: nullopt
-    static auto GetExePath() -> optional<string>;
+    static auto GetExePath() noexcept -> optional<string>;
 
     // Linux & Mac: fork
     // Other: warning log message
-    static void ForkProcess();
+    static auto ForkProcess() noexcept -> bool;
 };
 
 FO_END_NAMESPACE();

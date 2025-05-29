@@ -32,9 +32,8 @@
 //
 
 #include "DiskFileSystem.h"
+#include "StackTrace.h"
 #include "StringUtils.h"
-
-#include <filesystem>
 
 FO_BEGIN_NAMESPACE();
 
@@ -98,29 +97,37 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(!_openedForWriting);
+    if (!_file) {
+        return false;
+    }
+    if (_openedForWriting) {
+        return false;
+    }
 
     if (len == 0) {
         return true;
     }
 
-    _file.read(static_cast<char*>(buf), numeric_cast<std::streamsize>(len));
-    return !!_file && _file.gcount() == numeric_cast<std::streamsize>(len);
+    _file.read(static_cast<char*>(buf), static_cast<std::streamsize>(len));
+    return !!_file && _file.gcount() == static_cast<std::streamsize>(len);
 }
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(_openedForWriting);
+    if (!_file) {
+        return false;
+    }
+    if (!_openedForWriting) {
+        return false;
+    }
 
     if (len == 0) {
         return true;
     }
 
-    _file.write(static_cast<const char*>(buf), numeric_cast<std::streamsize>(len));
+    _file.write(static_cast<const char*>(buf), static_cast<std::streamsize>(len));
 
     if (_writeThrough && _file) {
         _file.flush();
@@ -129,22 +136,62 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
     return !!_file;
 }
 
+auto DiskFile::Write(string_view str) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_file) {
+        return false;
+    }
+    if (!_openedForWriting) {
+        return false;
+    }
+
+    if (str.empty()) {
+        return true;
+    }
+
+    return Write(str.data(), str.length());
+}
+
+auto DiskFile::Write(const_span<uint8> data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_file) {
+        return false;
+    }
+    if (!_openedForWriting) {
+        return false;
+    }
+
+    if (data.empty()) {
+        return true;
+    }
+
+    return Write(data.data(), data.size());
+}
+
 auto DiskFile::SetReadPos(int32 offset, DiskFileSeek origin) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(!_openedForWriting);
+    if (!_file) {
+        return false;
+    }
+    if (_openedForWriting) {
+        return false;
+    }
 
     switch (origin) {
     case DiskFileSeek::Set:
-        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::beg);
+        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::beg);
         break;
     case DiskFileSeek::Cur:
-        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::cur);
+        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::cur);
         break;
     case DiskFileSeek::End:
-        _file.seekg(numeric_cast<std::streamoff>(offset), std::ios_base::end);
+        _file.seekg(static_cast<std::streamoff>(offset), std::ios_base::end);
         break;
     }
 
@@ -155,62 +202,38 @@ auto DiskFile::GetReadPos() -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(!_openedForWriting);
+    if (!_file) {
+        return 0;
+    }
+    if (_openedForWriting) {
+        return 0;
+    }
 
-    const auto cur_pos = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
-    FO_RUNTIME_ASSERT(_file);
-    return cur_pos;
+    const auto cur_pos = static_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
+    return _file ? cur_pos : 0;
 }
 
 auto DiskFile::GetSize() -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_file);
+    if (!_file) {
+        return 0;
+    }
 
     size_t file_len;
 
     if (_openedForWriting) {
-        file_len = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellp()));
+        file_len = static_cast<size_t>(static_cast<std::streamoff>(_file.tellp()));
     }
     else {
         const auto cur_pos = _file.tellg();
         _file.seekg(0, std::ios_base::end);
-        file_len = numeric_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
+        file_len = static_cast<size_t>(static_cast<std::streamoff>(_file.tellg()));
         _file.seekg(cur_pos, std::ios_base::beg);
     }
 
-    FO_RUNTIME_ASSERT(_file);
-    return file_len;
-}
-
-auto DiskFile::Write(string_view str) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(_openedForWriting);
-
-    if (!str.empty()) {
-        return Write(str.data(), str.length());
-    }
-
-    return true;
-}
-
-auto DiskFile::Write(const_span<uint8> data) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_file);
-    FO_RUNTIME_ASSERT(_openedForWriting);
-
-    if (!data.empty()) {
-        return Write(data.data(), data.size());
-    }
-
-    return true;
+    return _file ? file_len : 0;
 }
 
 auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
@@ -311,9 +334,8 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
     for (const auto& dir_entry : dir_iterator) {
         const auto u8_str = dir_entry.path().filename().u8string();
         const auto path = string(u8_str.begin(), u8_str.end());
-        FO_RUNTIME_ASSERT(!path.empty());
 
-        if (path.front() != '.' && path.front() != '~') {
+        if (!path.empty() && path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
                 if (path.front() != '_' && recursive) {
                     RecursiveDirLook(base_dir, strex(cur_dir).combinePath(path), recursive, visitor);
