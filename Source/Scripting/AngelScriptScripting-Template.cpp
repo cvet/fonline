@@ -451,7 +451,7 @@ public:
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptCallException(ExceptionStackTraceData {ExceptionStackTrace}, ex_string);
+                throw ScriptCallException(ExceptionStackTrace, ex_string);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {

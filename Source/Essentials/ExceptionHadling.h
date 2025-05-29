@@ -51,11 +51,6 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32 line
 extern auto GetRealStackTrace() -> string;
 extern auto FormatStackTrace(const StackTraceData& st) -> string;
 
-struct ExceptionStackTraceData
-{
-    StackTraceData StackTrace {};
-};
-
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
 // Todo: pass name to exceptions context args
@@ -73,8 +68,8 @@ struct ExceptionStackTraceData
         { \
         } \
         template<typename... Args> \
-        exception_name(FO_NAMESPACE ExceptionStackTraceData data, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, &data, message, std::forward<Args>(args)...) \
+        exception_name(const FO_NAMESPACE StackTraceData& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+            base_exception_name(#exception_name, &st, message, std::forward<Args>(args)...) \
         { \
         } \
         exception_name(const exception_name& other) noexcept : \
@@ -96,7 +91,7 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(const char* name, ExceptionStackTraceData* st_data, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(const char* name, const StackTraceData* st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
@@ -115,8 +110,8 @@ public:
             // Do nothing
         }
 
-        if (st_data != nullptr) {
-            _stackTrace = st_data->StackTrace;
+        if (st != nullptr) {
+            _stackTrace = *st;
         }
         else {
             _stackTrace = GetStackTrace();
