@@ -53,6 +53,7 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cctype>
 #include <cfloat>
 #include <charconv>
 #include <chrono>
@@ -60,6 +61,7 @@
 #include <clocale>
 #include <cmath>
 #include <condition_variable>
+#include <csignal>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>

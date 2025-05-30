@@ -34,10 +34,6 @@
 #include "Application.h"
 #include "Version-Include.h"
 
-#if FO_LINUX || FO_MAC
-#include <signal.h>
-#endif
-
 FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
@@ -54,7 +50,7 @@ const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
 #if FO_LINUX || FO_MAC
 static void SignalHandler(int32 sig)
 {
-    signal(sig, SignalHandler);
+    std::signal(sig, SignalHandler);
 
     App->RequestQuit();
 }
@@ -111,8 +107,8 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     SetBadAllocCallback([] { App->RequestQuit(); });
 
 #if FO_LINUX || FO_MAC
-    signal(SIGINT, SignalHandler);
-    signal(SIGTERM, SignalHandler);
+    std::signal(SIGINT, SignalHandler);
+    std::signal(SIGTERM, SignalHandler);
 #endif
 }
 
