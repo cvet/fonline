@@ -36,6 +36,7 @@
 
 #if FO_LINUX
 #include <fcntl.h>
+#include <signal.h>
 #elif FO_MAC
 #include <sys/sysctl.h>
 #include <unistd.h>
