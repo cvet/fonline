@@ -39,13 +39,11 @@
 #include "CritterManager.h"
 #include "DataBase.h"
 #include "Dialogs.h"
-#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
-#include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
 #include "NetworkServer.h"
@@ -85,7 +83,7 @@ public:
     void Unlock();
     void DrawGui(string_view server_name);
 
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> FO_NON_NULL Item*;
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
 
@@ -112,7 +110,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int32 /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
     ///@ ExportEvent
@@ -124,7 +122,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
+    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32& /*speed*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
     ///@ ExportEvent
@@ -162,9 +160,9 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, uint /*talkers*/);
+    FO_ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, int32 /*talkers*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
+    FO_ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, int32 /*barterCount*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
@@ -196,7 +194,7 @@ private:
         int64 BytesRecv {};
         int64 DataReal {1};
         int64 DataCompressed {1};
-        float CompressRatio {};
+        float32 CompressRatio {};
 
         size_t MaxOnline {};
         size_t CurOnline {};
@@ -260,10 +258,10 @@ private:
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
-    auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint;
+    auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint32;
     auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
     auto DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool;
-    auto DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint;
+    auto DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint32;
 
     void LogToClients(string_view str);
     void DispatchLogToClients();
@@ -275,14 +273,14 @@ private:
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};
     std::condition_variable _syncRunSignal {};
-    int _syncRequest {};
+    int32 _syncRequest {};
     bool _syncPointReady {};
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    map<uint, nanotime> _regIp {};
+    unordered_map<uint32, nanotime> _regIp {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};

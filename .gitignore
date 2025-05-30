@@ -10,3 +10,4 @@
 /[Bb]uild-**
 /[Cc]make-[Bb]uild**
 __pycache__
+.venv

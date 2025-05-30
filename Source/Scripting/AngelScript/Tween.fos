@@ -3,7 +3,7 @@ namespace Tween
 
 class Tween
 {
-    void Init(int beginX, int beginY, int endX, int endY, uint pixelsPerSecond)
+    void Init(int beginX, int beginY, int endX, int endY, int pixelsPerSecond)
     {
         x1 = beginX;
         y1 = beginY;
@@ -78,7 +78,7 @@ class Tween
     private
     int y3;
     private
-    uint pps;
+    int pps;
     private
     nanotime startTick;
 };

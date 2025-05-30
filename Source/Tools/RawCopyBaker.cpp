@@ -33,8 +33,6 @@
 
 #include "RawCopyBaker.h"
 #include "Application.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 

@@ -34,7 +34,6 @@
 #include "ItemHexView.h"
 #include "Client.h"
 #include "EffectManager.h"
-#include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
 
@@ -97,7 +96,7 @@ void ItemHexView::Process()
     }
 
     if (_isDynamicEffect && !IsFinishing()) {
-        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float>();
+        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float32>();
 
         if (dt > 0.0f) {
             auto speed = GetFlyEffectSpeed();
@@ -113,20 +112,20 @@ void ItemHexView::Process()
 
             _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 
-            if (GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
+            if (GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
                 Finish();
             }
         }
 
-        const auto dist = GenericUtils::DistSqrt({iround(_effCurOffset.x), iround(_effCurOffset.y)}, _effStartOffset);
+        const auto dist = GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset);
         const auto proc = GenericUtils::Percent(_effDist, dist);
-        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
+        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
-            _effCurOffset.x -= static_cast<float>(x);
-            _effCurOffset.y -= static_cast<float>(y);
+            _effCurOffset.x -= numeric_cast<float32>(x);
+            _effCurOffset.y -= numeric_cast<float32>(y);
 
             RefreshOffs();
 
@@ -158,7 +157,7 @@ void ItemHexView::SetEffect(mpos to_hex)
     }
 
     _effStartOffset = SprOffset;
-    _effCurOffset = {static_cast<float>(SprOffset.x), static_cast<float>(SprOffset.y)};
+    _effCurOffset = {numeric_cast<float32>(SprOffset.x), numeric_cast<float32>(SprOffset.y)};
     _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
     _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
@@ -257,8 +256,8 @@ void ItemHexView::RefreshOffs()
     }
 
     if (_isDynamicEffect) {
-        SprOffset.x += iround(_effCurOffset.x);
-        SprOffset.y += iround(_effCurOffset.y);
+        SprOffset.x += iround<int32>(_effCurOffset.x);
+        SprOffset.y += iround<int32>(_effCurOffset.y);
     }
 }
 

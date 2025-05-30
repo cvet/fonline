@@ -33,14 +33,11 @@
 
 #include "CritterManager.h"
 #include "EntityManager.h"
-#include "GenericUtils.h"
 #include "ItemManager.h"
-#include "Log.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -141,7 +138,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
-    uint multihex;
+    int32 multihex;
 
     if (props != nullptr) {
         auto props_copy = props->Copy();
@@ -160,7 +157,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
 
         // Find in 2 hex radius
-        int pos = -1;
+        int32 pos = -1;
 
         while (true) {
             // Todo: find better place for critter in square geometry
@@ -192,7 +189,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     auto final_dir = dir;
 
     if (dir >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+        final_dir = numeric_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
 
     // Create critter
@@ -236,7 +233,7 @@ void CritterManager::DestroyCritter(Critter* cr)
         cr->LockMapTransfers++;
         auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountInvItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
+        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->HasItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             if (cr->GetMapId()) {
                 auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
                 FO_RUNTIME_ASSERT(map);
@@ -421,7 +418,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     if (!cr->Talk.IgnoreDistance) {
         ident_t map_id;
         mpos hex;
-        uint talk_distance = 0;
+        int32 talk_distance = 0;
 
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
@@ -474,7 +471,7 @@ void CritterManager::CloseTalk(Critter* cr)
             if (auto func = _engine->ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
                 func(cr, talker, &close);
             }
-            if (auto func = _engine->ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+            if (auto func = _engine->ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
                 func(cr, talker, &close);
             }
 

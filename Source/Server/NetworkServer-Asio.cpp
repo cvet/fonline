@@ -35,8 +35,6 @@
 
 #if FO_HAVE_ASIO
 
-#include "Log.h"
-
 // ReSharper disable once CppInconsistentNaming
 #define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"
@@ -110,7 +108,7 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
     FO_STACK_TRACE_ENTRY();
 
     const auto& address = _socket->remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
+    _ip = address.is_v4() ? address.to_v4().to_uint() : const_numeric_cast<uint32>(0xFFFFFFFF);
     _host = address.to_string();
     _port = _socket->remote_endpoint().port();
 
@@ -234,7 +232,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort))),
+    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();

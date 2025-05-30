@@ -35,9 +35,7 @@
 
 #include "Updater.h"
 #include "DefaultSprites.h"
-#include "Log.h"
 #include "NetCommand.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -162,8 +160,8 @@ auto Updater::Process() -> bool
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = static_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            const auto cur = numeric_cast<float32>(cur_bytes) / (1024.0f * 1024.0f);
+            const auto max = std::max(numeric_cast<float32>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
             const string name = strex(update_file.Name).formatPath();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
@@ -172,8 +170,8 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<uint>();
-    const auto dots = static_cast<int>(std::fmod((nanotime::now() - _startTime).to_ms<double>() / 100.0, 50.0)) + 1;
+    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32>();
+    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<float64>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";
@@ -238,7 +236,7 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint32>();
 
     vector<uint8> data;
     data.resize(data_size);
@@ -259,16 +257,17 @@ void Updater::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (uint file_index = 0;; file_index++) {
+        for (int32 file_index = 0;; file_index++) {
             const auto name_len = reader.Read<int16>();
+
             if (name_len == -1) {
                 break;
             }
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint>();
-            const auto hash = reader.Read<uint>();
+            const auto size = reader.Read<uint32>();
+            const auto hash = reader.Read<uint32>();
 
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
@@ -308,7 +307,7 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint>();
+    const auto data_size = numeric_cast<size_t>(_conn.InBuf.Read<int32>());
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);

@@ -34,9 +34,6 @@
 #include "SoundManager.h"
 #include "Application.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "acmstrm.h"
 #include "vorbis/codec.h"
@@ -50,16 +47,16 @@ struct SoundManager::Sound
     size_t BaseBufLen {};
     vector<uint8> ConvertedBuf {};
     size_t ConvertedBufCur {};
-    int OriginalFormat {};
-    int OriginalChannels {};
-    int OriginalRate {};
+    int32 OriginalFormat {};
+    int32 OriginalChannels {};
+    int32 OriginalRate {};
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
@@ -118,7 +115,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 
         if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), static_cast<int>(volume));
+            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32>(volume));
             ++it;
         }
         else {
@@ -250,7 +247,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     auto reader = file.GetReader();
 
-    auto dw_buf = reader.GetLEUInt();
+    auto dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
@@ -259,21 +256,21 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     reader.GoForward(4);
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
         WriteLog("'WAVE' not found");
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
         WriteLog("'fmt ' not found");
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == 0) {
         WriteLog("Unknown format");
@@ -284,8 +281,8 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     {
         uint16 WFormatTag; // Integer identifier of the format
         uint16 NChannels; // Number of audio channels
-        uint NSamplesPerSec; // Audio sample rate
-        uint NAvgBytesPerSec; // Bytes per second (possibly approximate)
+        uint32 NSamplesPerSec; // Audio sample rate
+        uint32 NAvgBytesPerSec; // Bytes per second (possibly approximate)
         uint16 NBlockAlign; // Size in bytes of a sample block (all channels)
         uint16 WBitsPerSample; // Size in bits of a single per-channel sample
         uint16 CbSize; // Bytes of extra data appended to this struct
@@ -300,12 +297,12 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     reader.GoForward(dw_buf - 16);
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == MAKEUINT('f', 'a', 'c', 't')) {
-        dw_buf = reader.GetLEUInt();
+        dw_buf = reader.GetLEUInt32();
         reader.GoForward(dw_buf);
-        dw_buf = reader.GetLEUInt();
+        dw_buf = reader.GetLEUInt32();
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
@@ -313,13 +310,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    dw_buf = reader.GetLEUInt();
+    dw_buf = reader.GetLEUInt32();
     sound->BaseBuf.resize(dw_buf);
     sound->BaseBufLen = dw_buf;
 
     // Check format
-    sound->OriginalChannels = static_cast<int>(waveformatex.NChannels);
-    sound->OriginalRate = static_cast<int>(waveformatex.NSamplesPerSec);
+    sound->OriginalChannels = numeric_cast<int32>(waveformatex.NChannels);
+    sound->OriginalRate = numeric_cast<int32>(waveformatex.NSamplesPerSec);
 
     switch (waveformatex.WBitsPerSample) {
     case 8:
@@ -352,7 +349,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), numeric_cast<int32>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -406,23 +403,23 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return bytes_read;
     };
 
-    callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
+    callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32 whence) -> int32 {
         auto* file_context = static_cast<OggFileContext*>(datasource);
 
         switch (whence) {
         case SEEK_SET:
-            file_context->Reader.SetCurPos(static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(numeric_cast<size_t>(offset));
             break;
         case SEEK_CUR:
             if (offset >= 0) {
-                file_context->Reader.GoForward(static_cast<uint>(offset));
+                file_context->Reader.GoForward(numeric_cast<size_t>(offset));
             }
             else {
-                file_context->Reader.GoBack(static_cast<uint>(-offset));
+                file_context->Reader.GoBack(numeric_cast<size_t>(-offset));
             }
             break;
         case SEEK_END:
-            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - static_cast<uint>(offset));
+            file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<size_t>(offset));
             break;
         default:
             return -1;
@@ -431,7 +428,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return 0;
     };
 
-    callbacks.close_func = [](void* datasource) -> int {
+    callbacks.close_func = [](void* datasource) -> int32 {
         const auto* file_context = static_cast<OggFileContext*>(datasource);
         delete file_context;
         return 0;
@@ -439,7 +436,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     callbacks.tell_func = [](void* datasource) -> long {
         const auto* file_context = static_cast<OggFileContext*>(datasource);
-        return static_cast<long>(file_context->Reader.GetCurPos());
+        return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
     sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) {
@@ -480,16 +477,16 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
-    sound->OriginalRate = static_cast<int>(vi->rate);
+    sound->OriginalRate = numeric_cast<int32>(vi->rate);
     sound->BaseBuf.resize(_streamingPortion);
     sound->BaseBufLen = _streamingPortion;
 
-    int result;
-    uint decoded = 0;
+    int32 result;
+    int32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
-        result = static_cast<int>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr));
+        result = numeric_cast<int32>(ov_read(sound->OggStream.get(), buf + decoded, numeric_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr));
 
         if (result <= 0) {
             break;
@@ -521,11 +518,11 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
     FO_STACK_TRACE_ENTRY();
 
     long result;
-    uint decoded = 0;
+    int32 decoded = 0;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
-        result = ov_read(sound->OggStream.get(), buf, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr);
+        result = ov_read(sound->OggStream.get(), buf, numeric_cast<int32>(_streamingPortion - decoded), 0, 2, 1, nullptr);
 
         if (result <= 0) {
             break;
@@ -584,7 +581,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Check random pattern 'NAME_X'
-    uint count = 0;
+    int32 count = 0;
 
     while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
         count++;
@@ -619,7 +616,7 @@ void SoundManager::StopSounds()
     }
 
     App->Audio.LockDevice();
-    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return !s->IsMusic; }), _playingSounds.end());
+    std::erase_if(_playingSounds, [](auto&& s) { return !s->IsMusic; });
     App->Audio.UnlockDevice();
 }
 
@@ -632,7 +629,7 @@ void SoundManager::StopMusic()
     }
 
     App->Audio.LockDevice();
-    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
+    std::erase_if(_playingSounds, [](auto&& s) { return s->IsMusic; });
     App->Audio.UnlockDevice();
 }
 

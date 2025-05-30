@@ -108,7 +108,7 @@ auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
     FO_RUNTIME_ASSERT(item->GetCritterId() == GetId());
 
     vec_add_unique_value(_invItems, item);
-    std::stable_sort(_invItems.begin(), _invItems.end(), [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
+    std::ranges::stable_sort(_invItems, [](auto&& l, auto&& r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }

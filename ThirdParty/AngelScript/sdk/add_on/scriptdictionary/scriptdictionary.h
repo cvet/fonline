@@ -147,7 +147,7 @@ public:
 	bool IsEmpty() const;
 
 	// Returns the number of key/value pairs in the dictionary
-	asUINT GetSize() const;
+	int GetSize() const;
 
 	// Deletes the key
 	bool Delete(const dictKey_t &key);

@@ -66,7 +66,7 @@ public:
 private:
     struct Impl;
 
-    auto DecodePacket() -> int;
+    auto DecodePacket() -> int32;
 
     unique_ptr<Impl> _impl;
 };

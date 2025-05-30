@@ -34,7 +34,6 @@
 #include "HexView.h"
 #include "Client.h"
 #include "EngineBase.h"
-#include "GenericUtils.h"
 #include "MapSprite.h"
 #include "MapView.h"
 
@@ -138,13 +137,13 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GetFrameTime();
-        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).to_ms<uint>() : 0);
+        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).to_ms<int32>() : 0);
 
         if (fading_proc == 100) {
             _fading = false;
         }
 
-        _curAlpha = static_cast<uint8>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
+        _curAlpha = numeric_cast<uint8>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
     }
     else {
         _curAlpha = _targetAlpha;

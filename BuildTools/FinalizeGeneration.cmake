@@ -247,15 +247,6 @@ else()
     add_compile_definitions(FO_HAVE_JSON=0)
 endif()
 
-# Fmt
-StatusMessage("+ Fmt")
-set(FO_FMT_DIR "${FO_ENGINE_ROOT}/ThirdParty/fmt")
-set(FMT_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_FMT_DIR}" EXCLUDE_FROM_ALL)
-include_directories("${FO_FMT_DIR}/include")
-list(APPEND FO_COMMON_LIBS fmt)
-DisableLibWarnings(fmt)
-
 # LibreSSL
 if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     StatusMessage("+ LibreSSL")
@@ -487,14 +478,8 @@ endif()
 # small_vector
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
 
-# span
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/span/include/tcb")
-
 # unordered_dense
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
-
-# date
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/date/include")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
@@ -637,20 +622,63 @@ configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE
 
 # Engine sources
 list(APPEND FO_COMMON_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/GlobalData.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/GlobalData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Containers.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Containers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Platform.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Platform.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/ExceptionHadling.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/ExceptionHadling.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/SafeArithmetics.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/SafeArithmetics.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DataSerialization.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DataSerialization.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/HashedString.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StrongType.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StrongType.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Compressor.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Compressor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WorkThread.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WorkThread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Logging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Logging.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.h"
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.h"
     "${FO_ENGINE_ROOT}/Source/Common/Dialogs.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Dialogs.h"
-    "${FO_ENGINE_ROOT}/Source/Common/DiskFileSystem.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/DiskFileSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/EngineBase.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/EngineBase.h"
     "${FO_ENGINE_ROOT}/Source/Common/Entity.cpp"
@@ -660,22 +688,16 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/EntityProperties.h"
     "${FO_ENGINE_ROOT}/Source/Common/FileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/FileSystem.h"
-    "${FO_ENGINE_ROOT}/Source/Common/GenericUtils.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/GenericUtils.h"
     "${FO_ENGINE_ROOT}/Source/Common/GeometryHelper.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GeometryHelper.h"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Log.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/Log.h"
     "${FO_ENGINE_ROOT}/Source/Common/MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/MapLoader.h"
     "${FO_ENGINE_ROOT}/Source/Common/NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/NetBuffer.h"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/NetCommand.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Platform.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/Platform.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.h"
     "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.cpp"
@@ -687,8 +709,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/StringUtils.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/StringUtils.h"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.cpp"
@@ -697,9 +717,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
-    "${FO_ENGINE_ROOT}/Source/Common/UcsTables-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/WinApiUndef-Include.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
@@ -899,6 +916,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
 endif()
 
 list(APPEND FO_SOURCE_META_FILES
+    "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
     "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
     "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"

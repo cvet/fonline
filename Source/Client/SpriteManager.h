@@ -51,22 +51,22 @@ FO_BEGIN_NAMESPACE();
 
 // Font flags
 // Todo: convert FT_ font flags to enum
-static constexpr uint FT_NOBREAK = 0x0001;
-static constexpr uint FT_NOBREAK_LINE = 0x0002;
-static constexpr uint FT_CENTERX = 0x0004;
-static constexpr uint FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
-static constexpr uint FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
-static constexpr uint FT_CENTERR = 0x0010;
-static constexpr uint FT_BOTTOM = 0x0020;
-static constexpr uint FT_UPPER = 0x0040;
-static constexpr uint FT_NO_COLORIZE = 0x0080;
-static constexpr uint FT_ALIGN = 0x0100;
-static constexpr uint FT_BORDERED = 0x0200;
-static constexpr auto FT_SKIPLINES(uint l) -> uint
+static constexpr uint32 FT_NOBREAK = 0x0001;
+static constexpr uint32 FT_NOBREAK_LINE = 0x0002;
+static constexpr uint32 FT_CENTERX = 0x0004;
+static constexpr uint32 FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
+static constexpr uint32 FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
+static constexpr uint32 FT_CENTERR = 0x0010;
+static constexpr uint32 FT_BOTTOM = 0x0020;
+static constexpr uint32 FT_UPPER = 0x0040;
+static constexpr uint32 FT_NO_COLORIZE = 0x0080;
+static constexpr uint32 FT_ALIGN = 0x0100;
+static constexpr uint32 FT_BORDERED = 0x0200;
+static constexpr auto FT_SKIPLINES(uint32 l) -> uint32
 {
     return 0x0400 | (l << 16);
 }
-static constexpr auto FT_SKIPLINES_END(uint l) -> uint
+static constexpr auto FT_SKIPLINES_END(uint32 l) -> uint32
 {
     return 0x0800 | (l << 16);
 }
@@ -103,7 +103,7 @@ public:
 
     virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
     virtual void SetDir(uint8 dir) { ignore_unused(dir); }
     virtual void SetDirAngle(short dir_angle) { ignore_unused(dir_angle); }
     virtual void PlayDefault() { Play({}, true, false); }
@@ -205,14 +205,14 @@ public:
     void BeginScene();
     void EndScene();
 
-    void SetSpritesZoom(float zoom);
+    void SetSpritesZoom(float32 zoom);
 
     void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
     void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color);
     void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
-    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
+    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
     void Flush();
@@ -269,7 +269,7 @@ private:
     shared_ptr<AtlasSprite> _sprEgg {};
     vector<ucolor> _eggData {};
 
-    float _spritesZoom {1.0f};
+    float32 _spritesZoom {1.0f};
 
     ipos _windowSizeDiff {};
 
@@ -279,26 +279,26 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(isize size, string_view str, int num_font) -> int;
-    [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int num_font) -> int;
-    [[nodiscard]] auto GetLineHeight(int num_font) -> int;
-    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int num_font, uint flags, isize& result_size, int& lines) -> bool;
-    [[nodiscard]] auto HaveLetter(int num_font, uint letter) -> bool;
+    [[nodiscard]] auto GetLinesCount(isize size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLineHeight(int32 num_font) -> int32;
+    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int32 num_font, uint32 flags, isize& result_size, int32& lines) -> bool;
+    [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) -> bool;
 
-    auto LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(int index);
-    void SetFontEffect(int index, RenderEffect* effect);
-    void DrawText(irect rect, string_view str, uint flags, ucolor color, int num_font);
-    auto SplitLines(irect rect, string_view cstr, int num_font) -> vector<string>;
+    auto LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
+    auto LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool;
+    void SetDefaultFont(int32 index);
+    void SetFontEffect(int32 index, RenderEffect* effect);
+    void DrawText(irect rect, string_view str, uint32 flags, ucolor color, int32 num_font);
+    auto SplitLines(irect rect, string_view cstr, int32 num_font) -> vector<string>;
     void ClearFonts();
 
 private:
-    static constexpr int FONT_BUF_LEN = 0x5000;
-    static constexpr int FONT_MAX_LINES = 1000;
-    static constexpr int FORMAT_TYPE_DRAW = 0;
-    static constexpr int FORMAT_TYPE_SPLIT = 1;
-    static constexpr int FORMAT_TYPE_LCOUNT = 2;
+    static constexpr int32 FONT_BUF_LEN = 0x5000;
+    static constexpr int32 FONT_MAX_LINES = 1000;
+    static constexpr int32 FORMAT_TYPE_DRAW = 0;
+    static constexpr int32 FORMAT_TYPE_SPLIT = 1;
+    static constexpr int32 FORMAT_TYPE_LCOUNT = 2;
 
     struct FontData
     {
@@ -307,7 +307,7 @@ private:
             ipos Pos {};
             isize Size {};
             ipos Offset {};
-            int XAdvance {};
+            int32 XAdvance {};
             FRect TexPos {};
             FRect TexBorderedPos {};
         };
@@ -315,10 +315,10 @@ private:
         RenderEffect* DrawEffect {};
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
-        unordered_map<uint, Letter> Letters {};
-        int SpaceWidth {};
-        int LineHeight {};
-        int YAdvance {};
+        unordered_map<uint32, Letter> Letters {};
+        int32 SpaceWidth {};
+        int32 LineHeight {};
+        int32 YAdvance {};
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
         bool MakeGray {};
@@ -328,31 +328,31 @@ private:
     struct FontFormatInfo
     {
         FontData* CurFont {};
-        uint Flags {};
+        uint32 Flags {};
         irect Rect {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
-        int LinesAll {1};
-        int LinesInRect {};
-        int CurX {};
-        int CurY {};
-        int MaxCurX {};
+        int32 LinesAll {1};
+        int32 LinesInRect {};
+        int32 CurX {};
+        int32 CurY {};
+        int32 MaxCurX {};
         ucolor ColorDots[FONT_BUF_LEN] {};
-        int LineWidth[FONT_MAX_LINES] {};
-        int LineSpaceWidth[FONT_MAX_LINES] {};
-        int OffsColDots {};
+        int32 LineWidth[FONT_MAX_LINES] {};
+        int32 LineSpaceWidth[FONT_MAX_LINES] {};
+        int32 OffsColDots {};
         ucolor DefColor {COLOR_TEXT};
         vector<string>* StrLines {};
         bool IsError {};
     };
 
-    [[nodiscard]] auto GetFont(int num) -> FontData*;
+    [[nodiscard]] auto GetFont(int32 num) -> FontData*;
 
-    void BuildFont(int index);
-    void FormatText(FontFormatInfo& fi, int fmt_type);
+    void BuildFont(int32 index);
+    void FormatText(FontFormatInfo& fi, int32 fmt_type);
 
     vector<unique_ptr<FontData>> _allFonts {};
-    int _defFontIndex {};
+    int32 _defFontIndex {};
     FontFormatInfo _fontFormatInfoBuf {};
 };
 

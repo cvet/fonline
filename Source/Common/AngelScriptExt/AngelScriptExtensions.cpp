@@ -33,7 +33,6 @@
 
 #include "AngelScriptExtensions.h"
 #include "AngelScriptScriptDict.h"
-#include "StringUtils.h"
 
 #include "../autowrapper/aswrappedcall.h"
 #include "scriptarray.h"
@@ -66,30 +65,34 @@ static void CScriptArray_RemoveFirst(CScriptArray* arr)
     arr->RemoveAt(0);
 }
 
-static void CScriptArray_Grow(CScriptArray* arr, asUINT numElements)
+static void CScriptArray_Grow(CScriptArray* arr, int32 count)
 {
-    if (numElements == 0) {
+    if (count <= 0) {
         return;
     }
 
-    arr->Resize(arr->GetSize() + numElements);
+    arr->Resize(arr->GetSize() + count);
 }
 
-static void CScriptArray_Reduce(CScriptArray* arr, asUINT numElements)
+static void CScriptArray_Reduce(CScriptArray* arr, int32 count)
 {
-    if (numElements == 0) {
+    if (count <= 0) {
         return;
     }
 
-    const asUINT size = arr->GetSize();
-    if (numElements > size) {
+    const auto size = numeric_cast<int32>(arr->GetSize());
+
+    if (count > size) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array size is less than reduce count");
         }
+
         return;
     }
-    arr->Resize(size - numElements);
+
+    arr->Resize(numeric_cast<asUINT>(size - count));
 }
 
 static void* CScriptArray_First(CScriptArray* arr)
@@ -116,20 +119,24 @@ static bool CScriptArray_Exists(const CScriptArray* arr, void* value)
 
 static bool CScriptArray_Remove(CScriptArray* arr, void* value)
 {
-    const int index = arr->Find(0, value);
+    const int32 index = arr->Find(0, value);
+
     if (index != -1) {
         arr->RemoveAt(index);
         return true;
     }
+
     return false;
 }
 
-static uint CScriptArray_RemoveAll(CScriptArray* arr, void* value)
+static int32 CScriptArray_RemoveAll(CScriptArray* arr, void* value)
 {
-    uint count = 0;
-    int index = 0;
-    while (index < static_cast<int>(arr->GetSize())) {
+    int32 count = 0;
+    int32 index = 0;
+
+    while (index < numeric_cast<int32>(arr->GetSize())) {
         index = arr->Find(index, value);
+
         if (index != -1) {
             arr->RemoveAt(index);
             count++;
@@ -138,6 +145,7 @@ static uint CScriptArray_RemoveAll(CScriptArray* arr, void* value)
             break;
         }
     }
+
     return count;
 }
 
@@ -145,9 +153,11 @@ static CScriptArray* CScriptArray_Factory(asITypeInfo* ti, const CScriptArray* o
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return nullptr;
     }
 
@@ -167,22 +177,30 @@ static void CScriptArray_Set(CScriptArray* arr, const CScriptArray* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return;
     }
 
     *arr = *other;
 }
 
-static void CScriptArray_InsertArrAt(CScriptArray* arr, uint index, const CScriptArray* other)
+static void CScriptArray_InsertArrAt(CScriptArray* arr, int32 index, const CScriptArray* other)
 {
+    if (index < 0) {
+        return;
+    }
+
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return;
     }
 
@@ -193,9 +211,11 @@ static void CScriptArray_InsertArrFirst(CScriptArray* arr, const CScriptArray* o
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return;
     }
 
@@ -206,9 +226,11 @@ static void CScriptArray_InsertArrLast(CScriptArray* arr, const CScriptArray* ot
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return;
     }
 
@@ -219,9 +241,11 @@ static bool CScriptArray_Equals(CScriptArray* arr, const CScriptArray* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return false;
     }
 
@@ -230,13 +254,13 @@ static bool CScriptArray_Equals(CScriptArray* arr, const CScriptArray* other)
 
 void ScriptExtensions::RegisterScriptArrayExtensions(asIScriptEngine* engine)
 {
-    int r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_InsertFirst), SCRIPT_FUNC_THIS_CONV);
+    int32 r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_InsertFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("array<T>", "void removeFirst()", SCRIPT_FUNC_THIS(CScriptArray_RemoveFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void grow(uint)", SCRIPT_FUNC_THIS(CScriptArray_Grow), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void grow(int)", SCRIPT_FUNC_THIS(CScriptArray_Grow), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void reduce(uint)", SCRIPT_FUNC_THIS(CScriptArray_Reduce), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void reduce(int)", SCRIPT_FUNC_THIS(CScriptArray_Reduce), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("array<T>", "T& first()", SCRIPT_FUNC_THIS(CScriptArray_First), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
@@ -252,7 +276,7 @@ void ScriptExtensions::RegisterScriptArrayExtensions(asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("array<T>", "bool remove(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_Remove), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "uint removeAll(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_RemoveAll), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "int removeAll(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_RemoveAll), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", SCRIPT_FUNC(CScriptArray_Factory), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
@@ -260,7 +284,7 @@ void ScriptExtensions::RegisterScriptArrayExtensions(asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("array<T>", "void set(const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_Set), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void insertAt(uint, const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrAt), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void insertAt(int, const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrAt), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
@@ -307,7 +331,7 @@ static bool ScriptDict_Equals(CScriptDict* dict, const CScriptDict* other)
 
 void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
 {
-    int r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC(ScriptDict_Factory), SCRIPT_FUNC_CONV);
+    int32 r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC(ScriptDict_Factory), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", SCRIPT_FUNC_THIS(ScriptDict_Clone), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
@@ -315,10 +339,10 @@ void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr, uint offset = 0)
+static bool IndexUtf8ToRaw(const string& str, int32& index, int32* length = nullptr, int32 offset = 0)
 {
     if (index < 0) {
-        index = static_cast<int>(strex(str).lengthUtf8()) + index;
+        index = numeric_cast<int32>(strex(str).lengthUtf8()) + index;
 
         if (index < 0) {
             index = 0;
@@ -327,7 +351,7 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
                 if (!str.empty()) {
                     size_t decode_length = str.length();
                     utf8::Decode(str.c_str(), decode_length);
-                    *length = static_cast<uint>(decode_length);
+                    *length = numeric_cast<int32>(decode_length);
                 }
                 else {
                     *length = 0;
@@ -342,7 +366,7 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
     const char* s = begin;
 
     while (*s != 0) {
-        size_t decode_length = str.length() - offset - static_cast<size_t>(s - begin);
+        size_t decode_length = str.length() - offset - numeric_cast<size_t>(s - begin);
         utf8::Decode(s, decode_length);
 
         if (index > 0) {
@@ -350,17 +374,17 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
             index--;
         }
         else {
-            index = static_cast<int>(s - begin);
+            index = numeric_cast<int32>(s - begin);
 
             if (length != nullptr) {
-                *length = static_cast<uint>(decode_length);
+                *length = numeric_cast<int32>(decode_length);
             }
 
             return true;
         }
     }
 
-    index = static_cast<int>(s - begin);
+    index = numeric_cast<int32>(s - begin);
 
     if (length != nullptr) {
         *length = 0;
@@ -369,15 +393,15 @@ static bool IndexUtf8ToRaw(const string& str, int& index, uint* length = nullptr
     return false;
 }
 
-static int IndexRawToUtf8(const string& str, int index)
+static int32 IndexRawToUtf8(const string& str, int32 index)
 {
-    int result = 0;
+    int32 result = 0;
 
     for (size_t i = 0; i < str.length() && index > 0;) {
         size_t decode_length = str.length() - i;
         utf8::Decode(&str[i], decode_length);
         i += decode_length;
-        index -= static_cast<int>(decode_length);
+        index -= numeric_cast<int32>(decode_length);
         result++;
     }
 
@@ -394,7 +418,7 @@ static string ScriptString_Replace(const string& str, const string& str_from, co
     return strex(str).replace(str_from, str_to);
 }
 
-static string ScriptString_SubString(const string& str, int start, int count)
+static string ScriptString_SubString(const string& str, int32 start, int32 count)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return "";
@@ -402,66 +426,74 @@ static string ScriptString_SubString(const string& str, int start, int count)
     if (count >= 0) {
         IndexUtf8ToRaw(str, count, nullptr, start);
     }
+
     return str.substr(start, count >= 0 ? count : std::string::npos);
 }
 
-static int ScriptString_FindFirst(const string& str, const string& sub, int start)
+static int32 ScriptString_FindFirst(const string& str, const string& sub, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.find(sub, start));
+
+    const int32 pos = numeric_cast<int32>(str.find(sub, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static int ScriptString_FindLast(const string& str, const string& sub, int start)
+static int32 ScriptString_FindLast(const string& str, const string& sub, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.rfind(sub));
+
+    const int32 pos = numeric_cast<int32>(str.rfind(sub));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static int ScriptString_FindFirstOf(const string& str, const string& chars, int start)
+static int32 ScriptString_FindFirstOf(const string& str, const string& chars, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.find_first_of(chars, start));
+
+    const int32 pos = numeric_cast<int32>(str.find_first_of(chars, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static int ScriptString_FindFirstNotOf(const string& str, const string& chars, int start)
+static int32 ScriptString_FindFirstNotOf(const string& str, const string& chars, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.find_first_not_of(chars, start));
+
+    const int32 pos = numeric_cast<int32>(str.find_first_not_of(chars, start));
     return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static int ScriptString_FindLastOf(const string& str, const string& chars, int start)
+static int32 ScriptString_FindLastOf(const string& str, const string& chars, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.find_last_of(chars));
+
+    const int32 pos = numeric_cast<int32>(str.find_last_of(chars));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static int ScriptString_FindLastNotOf(const string& str, const string& chars, int start)
+static int32 ScriptString_FindLastNotOf(const string& str, const string& chars, int32 start)
 {
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
-    const int pos = static_cast<int>(str.find_last_not_of(chars, start));
+
+    const int32 pos = numeric_cast<int32>(str.find_last_not_of(chars, start));
     return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
 }
 
-static string ScriptString_GetAt(const string& str, int i)
+static string ScriptString_GetAt(const string& str, int32 i)
 {
-    uint length;
+    int32 length;
+
     if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -472,9 +504,10 @@ static string ScriptString_GetAt(const string& str, int i)
     return string(str.c_str() + i, length);
 }
 
-static void ScriptString_SetAt(string& str, int i, string& value)
+static void ScriptString_SetAt(string& str, int32 i, string& value)
 {
-    uint length;
+    int32 length;
+
     if (!IndexUtf8ToRaw(str, i, &length)) {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -485,42 +518,42 @@ static void ScriptString_SetAt(string& str, int i, string& value)
     if (length) {
         str.erase(i, length);
     }
-    if (value.length()) {
+    if (!value.empty()) {
         str.insert(i, value.c_str());
     }
 }
 
-static uint ScriptString_Length(const string& str)
+static int32 ScriptString_Length(const string& str)
 {
-    return strex(str).lengthUtf8();
+    return numeric_cast<int32>(strex(str).lengthUtf8());
 }
 
-static uint ScriptString_RawLength(const string& str)
+static int32 ScriptString_RawLength(const string& str)
 {
-    return static_cast<uint>(str.length());
+    return numeric_cast<int32>(str.length());
 }
 
-static void ScriptString_RawResize(string& str, uint length)
+static void ScriptString_RawResize(string& str, int32 length)
 {
-    str.resize(length);
+    str.resize(numeric_cast<int32>(length));
 }
 
-static uint8 ScriptString_RawGet(const string& str, uint index)
+static uint8 ScriptString_RawGet(const string& str, int32 index)
 {
-    return index < static_cast<uint>(str.length()) ? str[index] : 0;
+    return index >= 0 && index < numeric_cast<int32>(str.length()) ? str[index] : 0;
 }
 
-static void ScriptString_RawSet(string& str, uint index, uint8 value)
+static void ScriptString_RawSet(string& str, int32 index, uint8 value)
 {
-    if (index < static_cast<uint>(str.length())) {
-        str[index] = static_cast<char>(value);
+    if (index >= 0 && index < numeric_cast<int32>(str.length())) {
+        str[index] = std::bit_cast<char>(value);
     }
 }
 
-static int ScriptString_ToInt(const string& str, int defaultValue)
+static int32 ScriptString_ToInt(const string& str, int32 defaultValue)
 {
     char* end_str = nullptr;
-    const auto result = static_cast<int>(std::strtoll(str.c_str(), &end_str, 0));
+    const auto result = numeric_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
@@ -529,10 +562,10 @@ static int ScriptString_ToInt(const string& str, int defaultValue)
     return result;
 }
 
-static float ScriptString_ToFloat(const string& str, float defaultValue)
+static float32 ScriptString_ToFloat(const string& str, float32 defaultValue)
 {
     char* end_str = nullptr;
-    const auto result = static_cast<float>(std::strtod(str.c_str(), &end_str));
+    const auto result = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
@@ -541,10 +574,10 @@ static float ScriptString_ToFloat(const string& str, float defaultValue)
     return result;
 }
 
-static bool ScriptString_TryToInt(const string& str, int& result)
+static bool ScriptString_TryToInt(const string& str, int32& result)
 {
     char* end_str = nullptr;
-    const auto result_ = static_cast<int>(std::strtoll(str.c_str(), &end_str, 0));
+    const auto result_ = numeric_cast<int32>(std::strtoll(str.c_str(), &end_str, 0));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;
@@ -554,10 +587,10 @@ static bool ScriptString_TryToInt(const string& str, int& result)
     return true;
 }
 
-static bool ScriptString_TryToFloat(const string& str, float& result)
+static bool ScriptString_TryToFloat(const string& str, float32& result)
 {
     char* end_str = nullptr;
-    const auto result_ = static_cast<float>(std::strtod(str.c_str(), &end_str));
+    const auto result_ = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;
@@ -627,8 +660,11 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
     CScriptArray* array = CScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("string[]")));
 
     // Find the existence of the delimiter in the input string
-    int pos = 0, prev = 0, count = 0;
-    while ((pos = static_cast<int>(str.find(delim, prev))) != static_cast<int>(string::npos)) {
+    size_t pos = 0;
+    size_t prev = 0;
+    int32 count = 0;
+
+    while ((pos = str.find(delim, prev)) != string::npos) {
         // Add the part to the array
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
@@ -638,7 +674,7 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
         }
 
         // Find the next part
-        prev = pos + static_cast<int>(delim.length());
+        prev = pos + delim.length();
     }
 
     // Add the remaining part
@@ -659,17 +695,21 @@ static string ScriptString_Join(const CScriptArray* array, const string& delim)
 {
     if (!array) {
         asIScriptContext* ctx = asGetActiveContext();
+
         if (ctx) {
             ctx->SetException("Array is null");
         }
+
         return "";
     }
 
     // Create the new string
     string str = "";
+
     if (array->GetSize()) {
-        int n;
-        for (n = 0; n < static_cast<int>(array->GetSize()) - 1; n++) {
+        int32 n;
+
+        for (n = 0; n < numeric_cast<int32>(array->GetSize()) - 1; n++) {
             str += *(string*)array->At(n);
             str += delim;
         }
@@ -683,28 +723,28 @@ static string ScriptString_Join(const CScriptArray* array, const string& delim)
 
 void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine)
 {
-    int r = engine->RegisterObjectMethod("string", "void clear()", SCRIPT_FUNC_THIS(ScriptString_Clear), SCRIPT_FUNC_THIS_CONV);
+    int32 r = engine->RegisterObjectMethod("string", "void clear()", SCRIPT_FUNC_THIS(ScriptString_Clear), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "uint length() const", SCRIPT_FUNC_THIS(ScriptString_Length), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int length() const", SCRIPT_FUNC_THIS(ScriptString_Length), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "uint rawLength() const", SCRIPT_FUNC_THIS(ScriptString_RawLength), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int rawLength() const", SCRIPT_FUNC_THIS(ScriptString_RawLength), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "void rawResize(uint)", SCRIPT_FUNC_THIS(ScriptString_RawResize), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "void rawResize(int)", SCRIPT_FUNC_THIS(ScriptString_RawResize), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "uint8 rawGet(uint) const", SCRIPT_FUNC_THIS(ScriptString_RawGet), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "uint8 rawGet(int) const", SCRIPT_FUNC_THIS(ScriptString_RawGet), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "void rawSet(uint, uint8)", SCRIPT_FUNC_THIS(ScriptString_RawSet), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "void rawSet(int, uint8)", SCRIPT_FUNC_THIS(ScriptString_RawSet), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
     r = engine->RegisterObjectMethod("string", "string replace(const string &in, const string &in) const", SCRIPT_FUNC_THIS(ScriptString_Replace), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", SCRIPT_FUNC_THIS(ScriptString_SubString), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "string substr(int start = 0, int count = -1) const", SCRIPT_FUNC_THIS(ScriptString_SubString), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int find(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int find(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstOf), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstOf), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstNotOf), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstNotOf), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", SCRIPT_FUNC_THIS(ScriptString_FindLast), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
@@ -779,7 +819,7 @@ static string ScriptString_AddAnyR(const string& str, const any_t& other)
 
 void ScriptExtensions::RegisterScriptStdStringAnyExtensions(asIScriptEngine* engine)
 {
-    int r = engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AssignAny), SCRIPT_FUNC_THIS_CONV);
+    int32 r = engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AssignAny), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);

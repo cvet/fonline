@@ -32,9 +32,6 @@
 //
 
 #include "EngineBase.h"
-#include "GenericUtils.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -86,14 +83,14 @@ void EngineData::RegsiterEntityHolderEntry(string_view holder_type, string_view 
     it->second.HolderEntries.emplace(Hashes.ToHashedString(entry), tuple {Hashes.ToHashedString(target_type), access});
 }
 
-void EngineData::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int>&& key_values)
+void EngineData::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int32>&& key_values)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(_enums.count(name) == 0);
 
-    unordered_map<int, string> key_values_rev;
+    unordered_map<int32, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
         FO_RUNTIME_ASSERT(key_values_rev.count(value) == 0);
@@ -114,7 +111,7 @@ void EngineData::RegisterValueType(string_view name, size_t size, BaseTypeInfo::
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(_valueTypes.count(name) == 0);
-    FO_RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), static_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
+    FO_RUNTIME_ASSERT(size == std::accumulate(layout.begin(), layout.end(), const_numeric_cast<size_t>(0), [&](const size_t& sum, const BaseTypeInfo::StructLayoutEntry& e) { return sum + e.second.Size; }));
 
     _valueTypes.emplace(name, tuple {size, std::move(layout)});
 }
@@ -221,12 +218,12 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
                 info.IsSignedInt = true;
                 info.Size = sizeof(int16);
             }},
-        {"int",
+        {"int32",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
                 info.IsInt32 = true;
                 info.IsSignedInt = true;
-                info.Size = sizeof(int);
+                info.Size = sizeof(int32);
             }},
         {"int64",
             [](BaseTypeInfo& info) {
@@ -249,12 +246,12 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint16);
             }},
-        {"uint",
+        {"uint32",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;
                 info.IsUInt32 = true;
                 info.IsSignedInt = false;
-                info.Size = sizeof(uint);
+                info.Size = sizeof(uint32);
             }},
         {"uint64",
             [](BaseTypeInfo& info) {
@@ -263,17 +260,17 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
                 info.IsSignedInt = false;
                 info.Size = sizeof(uint64);
             }},
-        {"float",
+        {"float32",
             [](BaseTypeInfo& info) {
                 info.IsFloat = true;
                 info.IsSingleFloat = true;
-                info.Size = sizeof(float);
+                info.Size = sizeof(float32);
             }},
-        {"double",
+        {"float64",
             [](BaseTypeInfo& info) {
                 info.IsFloat = true;
                 info.IsDoubleFloat = true;
-                info.Size = sizeof(double);
+                info.Size = sizeof(float64);
             }},
         {"bool",
             [](BaseTypeInfo& info) {
@@ -363,7 +360,7 @@ auto EngineData::GetValueTypeInfo(string_view type_name, size_t& size, const Bas
     return true;
 }
 
-auto EngineData::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
+auto EngineData::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -382,7 +379,7 @@ auto EngineData::ResolveEnumValue(string_view enum_value_name, bool* failed) con
     return it->second;
 }
 
-auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
+auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -413,7 +410,7 @@ auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name,
     return value_it->second;
 }
 
-auto EngineData::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> const string&
+auto EngineData::ResolveEnumValueName(string_view enum_name, int32 value, bool* failed) const -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -444,7 +441,7 @@ auto EngineData::ResolveEnumValueName(string_view enum_name, int value, bool* fa
     return value_it->second;
 }
 
-auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int
+auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 

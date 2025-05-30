@@ -33,8 +33,6 @@
 
 #include "TextBaker.h"
 #include "ConfigFile.h"
-#include "Log.h"
-#include "StringUtils.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE();

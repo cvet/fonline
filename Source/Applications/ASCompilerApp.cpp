@@ -34,9 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "DiskFileSystem.h"
 #include "FileSystem.h"
-#include "Log.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 
@@ -59,7 +57,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv, AppInitFlags::DisableLogTags);
+        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::DisableLogTags);
 
         FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 

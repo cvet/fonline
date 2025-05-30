@@ -54,7 +54,7 @@ constexpr size_t BONES_PER_VERTEX = 4;
 #endif
 
 #if FO_RENDER_32BIT_INDEX
-using vindex_t = uint;
+using vindex_t = uint32;
 #else
 using vindex_t = uint16;
 #endif
@@ -126,14 +126,14 @@ enum class BlendEquationType : uint8
 
 struct Vertex2D
 {
-    float PosX {};
-    float PosY {};
-    float PosZ {};
+    float32 PosX {};
+    float32 PosY {};
+    float32 PosZ {};
     ucolor Color {};
-    float TexU {};
-    float TexV {};
-    float EggTexU {};
-    float EggTexV {};
+    float32 TexU {};
+    float32 TexV {};
+    float32 EggTexU {};
+    float32 EggTexV {};
 };
 static_assert(std::is_standard_layout_v<Vertex2D>);
 static_assert(sizeof(Vertex2D) == 32);
@@ -143,12 +143,12 @@ struct Vertex3D
 {
     vec3 Position {};
     vec3 Normal {};
-    float TexCoord[2] {};
-    float TexCoordBase[2] {};
+    float32 TexCoord[2] {};
+    float32 TexCoordBase[2] {};
     vec3 Tangent {};
     vec3 Bitangent {};
-    float BlendWeights[BONES_PER_VERTEX] {};
-    float BlendIndices[BONES_PER_VERTEX] {};
+    float32 BlendWeights[BONES_PER_VERTEX] {};
+    float32 BlendIndices[BONES_PER_VERTEX] {};
     ucolor Color {};
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
@@ -170,7 +170,7 @@ public:
     virtual void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) = 0;
 
     const isize Size;
-    const float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
+    const float32 SizeData[4]; // Width, Height, TexelWidth, TexelHeight
     const bool LinearFiltered;
     const bool WithDepth;
 
@@ -189,7 +189,7 @@ public:
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
     virtual ~RenderDrawBuffer() = default;
 
-    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1), size_t custom_indices_size = static_cast<size_t>(-1)) = 0;
+    virtual void Upload(EffectUsage usage, optional<size_t> custom_vertices_size = std::nullopt, optional<size_t> custom_indices_size = std::nullopt) = 0;
 
     void CheckAllocBuf(size_t vcount, size_t icount);
 
@@ -215,53 +215,53 @@ class RenderEffect
 public:
     struct ProjBuffer
     {
-        float ProjMatrix[16] {}; // mat44
+        float32 ProjMatrix[16] {}; // mat44
     };
 
     struct MainTexBuffer
     {
-        float MainTexSize[4] {}; // vec4
+        float32 MainTexSize[4] {}; // vec4
     };
 
     struct ContourBuffer
     {
-        float SpriteBorder[4] {}; // vec4
+        float32 SpriteBorder[4] {}; // vec4
     };
 
     struct TimeBuffer
     {
-        float FrameTime[4] {}; // vec4
-        float GameTime[4] {}; // vec4
+        float32 FrameTime[4] {}; // vec4
+        float32 GameTime[4] {}; // vec4
     };
 
     struct RandomValueBuffer
     {
-        float RandomValue[4] {}; // vec4
+        float32 RandomValue[4] {}; // vec4
     };
 
     struct ScriptValueBuffer
     {
-        float ScriptValue[EFFECT_SCRIPT_VALUES] {}; // float
+        float32 ScriptValue[EFFECT_SCRIPT_VALUES] {}; // float32
     };
 
 #if FO_ENABLE_3D
     struct ModelBuffer
     {
-        float LightColor[4] {}; // vec4
-        float GroundPosition[4] {}; // vec4
-        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
+        float32 LightColor[4] {}; // vec4
+        float32 GroundPosition[4] {}; // vec4
+        float32 WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
     };
 
     struct ModelTexBuffer
     {
-        float TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {}; // vec4
-        float TexSize[4 * MODEL_MAX_TEXTURES] {}; // vec4
+        float32 TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {}; // vec4
+        float32 TexSize[4 * MODEL_MAX_TEXTURES] {}; // vec4
     };
 
     struct ModelAnimBuffer
     {
-        float AnimNormalizedTime[4] {}; // vec4
-        float AnimAbsoluteTime[4] {}; // vec4
+        float32 AnimNormalizedTime[4] {}; // vec4
+        float32 AnimAbsoluteTime[4] {}; // vec4
     };
 #endif
 
@@ -277,7 +277,7 @@ public:
     static_assert(sizeof(ModelAnimBuffer) % 16 == 0 && sizeof(ModelAnimBuffer) == 32);
 #endif
     // Total size: 3984
-    // Need fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
+    // Need fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float32))
 
     RenderEffect(const RenderEffect&) = delete;
     RenderEffect(RenderEffect&&) noexcept = delete;
@@ -330,7 +330,7 @@ public:
     optional<ModelAnimBuffer> ModelAnimBuf {};
 #endif
 
-    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), const RenderTexture* custom_tex = nullptr) = 0;
+    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, const RenderTexture* custom_tex = nullptr) = 0;
 
 protected:
     RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);
@@ -363,19 +363,19 @@ protected:
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif
 
-    int _posMainTex[EFFECT_MAX_PASSES] {};
-    int _posEggTex[EFFECT_MAX_PASSES] {};
-    int _posProjBuf[EFFECT_MAX_PASSES] {};
-    int _posMainTexBuf[EFFECT_MAX_PASSES] {};
-    int _posContourBuf[EFFECT_MAX_PASSES] {};
-    int _posTimeBuf[EFFECT_MAX_PASSES] {};
-    int _posRandomValueBuf[EFFECT_MAX_PASSES] {};
-    int _posScriptValueBuf[EFFECT_MAX_PASSES] {};
+    int32 _posMainTex[EFFECT_MAX_PASSES] {};
+    int32 _posEggTex[EFFECT_MAX_PASSES] {};
+    int32 _posProjBuf[EFFECT_MAX_PASSES] {};
+    int32 _posMainTexBuf[EFFECT_MAX_PASSES] {};
+    int32 _posContourBuf[EFFECT_MAX_PASSES] {};
+    int32 _posTimeBuf[EFFECT_MAX_PASSES] {};
+    int32 _posRandomValueBuf[EFFECT_MAX_PASSES] {};
+    int32 _posScriptValueBuf[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
-    int _posModelBuf[EFFECT_MAX_PASSES] {};
-    int _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
-    int _posModelTexBuf[EFFECT_MAX_PASSES] {};
-    int _posModelAnimBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
+    int32 _posModelTexBuf[EFFECT_MAX_PASSES] {};
+    int32 _posModelAnimBuf[EFFECT_MAX_PASSES] {};
 #endif
 };
 
@@ -392,7 +392,7 @@ public:
     [[nodiscard]] virtual auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 = 0;
+    [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() -> IRect = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
 
@@ -411,7 +411,7 @@ public:
     [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
 
@@ -434,7 +434,7 @@ public:
     [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return true; }
 
@@ -457,7 +457,7 @@ public:
     [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
 

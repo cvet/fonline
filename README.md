@@ -30,7 +30,7 @@
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Supporting of hexagonal and square map tiling
 * Prerendered sprites for environment but with possibility of using 3D models for characters
-* Engine core written in C++ (supported C++17 and C++20)
+* Engine core written in modern C++ (up to C++20)
 * Flexible scripting system with varies supporting languages:
   + Native C++ coding
   + AngelScript
@@ -117,7 +117,6 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
 * [Asio](https://think-async.com/Asio/) - networking library
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
-* [date](https://github.com/HowardHinnant/date) - additional chrono features
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
@@ -125,12 +124,10 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [SDL](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
-* [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [tracy](https://github.com/wolfpld/tracy) - profiler
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
-* [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
 * [libogg](https://xiph.org/ogg/) - audio library

@@ -36,8 +36,6 @@
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "../Include/Types.h"
 #include "GlslangToSpv.h"
@@ -93,7 +91,7 @@ void EffectBaker::BakeFiles(FileCollection files)
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, path = file.GetPath(), content = file.GetStr()] { BakeShaderProgram(path, content); }));
     }
 
-    int errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -195,7 +193,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         program_info.reserve(1024);
         program_info = "[EffectInfo]\n";
 
-        for (int i = 0; i < program.getNumUniformVariables(); i++) {
+        for (int32 i = 0; i < program.getNumUniformVariables(); i++) {
             const auto& uniform = program.getUniform(i);
             if (uniform.getType()->getBasicType() == glslang::EbtSampler) {
                 program_info += strex("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform.name.c_str())));
@@ -215,7 +213,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
             }
         }
 
-        for (int i = 0; i < program.getNumUniformBlocks(); i++) {
+        for (int32 i = 0; i < program.getNumUniformBlocks(); i++) {
             const auto& uniform_block = program.getUniformBlock(i);
             program_info += strex("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block.name.c_str())));
 

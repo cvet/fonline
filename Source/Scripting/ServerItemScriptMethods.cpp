@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Server.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -59,9 +58,9 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
 {
-    if (count == 0) {
+    if (count <= 0) {
         return nullptr;
     }
 
@@ -69,9 +68,9 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, uint count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, any_t stackId)
 {
-    if (count == 0) {
+    if (count <= 0) {
         return nullptr;
     }
 

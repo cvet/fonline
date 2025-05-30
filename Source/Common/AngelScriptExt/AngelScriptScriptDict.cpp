@@ -41,9 +41,6 @@
 #include <string.h>
 #include <string>
 
-#include "Common.h"
-
-using namespace std;
 FO_USING_NAMESPACE();
 
 BEGIN_AS_NAMESPACE
@@ -55,12 +52,12 @@ static const asPWORD DICT_CACHE = 1010;
 // is created.
 struct SDictCache
 {
-    int StringTypeId {};
-    int HStringTypeId {};
-    int IdentTypeId {};
-    int TimespanTypeId {};
-    int NanotimeTypeId {};
-    int SynctimeTypeId {};
+    int32 StringTypeId {};
+    int32 HStringTypeId {};
+    int32 IdentTypeId {};
+    int32 TimespanTypeId {};
+    int32 NanotimeTypeId {};
+    int32 SynctimeTypeId {};
 
     // This is called from RegisterScriptDictionary
     static SDictCache* GetOrCreate(asIScriptEngine* engine)
@@ -116,14 +113,14 @@ void CScriptDict::SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeF
 static void RegisterScriptDict_Native(asIScriptEngine* engine);
 static void RegisterScriptDict_Generic(asIScriptEngine* engine);
 
-static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value);
-static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value);
-static bool Less(SDictCache* cache, int typeId, const void* a, const void* b);
-static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b);
+static void* CopyObject(asITypeInfo* objType, int32 subTypeIndex, void* value);
+static void DestroyObject(asITypeInfo* objType, int32 subTypeIndex, void* value);
+static bool Less(SDictCache* cache, int32 typeId, const void* a, const void* b);
+static bool Equals(SDictCache* cache, int32 typeId, const void* a, const void* b);
 
 struct DictMapComparator
 {
-    DictMapComparator(SDictCache* cache, int id) :
+    DictMapComparator(SDictCache* cache, int32 id) :
         Cache {cache},
         TypeId {id}
     {
@@ -132,7 +129,7 @@ struct DictMapComparator
     bool operator()(const void* a, const void* b) const { return Less(Cache, TypeId, a, b); }
 
     SDictCache* Cache;
-    int TypeId;
+    int32 TypeId;
 };
 
 typedef std::map<void*, void*, DictMapComparator> DictMap;
@@ -180,11 +177,11 @@ CScriptDict* CScriptDict::Create(asITypeInfo* ot, void* initList)
 // subtype at compile time, instead of at runtime. The output argument dontGarbageCollect
 // allow the callback to tell the engine if the template instance type shouldn't be garbage collected,
 // i.e. no asOBJ_GC flag.
-static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, bool& dontGarbageCollect)
+static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int32 subTypeIndex, bool& dontGarbageCollect)
 {
     // Make sure the subtype can be instanciated with a default factory/constructor,
     // otherwise we won't be able to instanciate the elements.
-    const int typeId = ot->GetSubTypeId(subTypeIndex);
+    const int32 typeId = ot->GetSubTypeId(subTypeIndex);
     if (typeId == asTYPEID_VOID) {
         return false;
     }
@@ -299,7 +296,7 @@ void RegisterScriptDict(asIScriptEngine* engine)
 
 static void RegisterScriptDict_Native(asIScriptEngine* engine)
 {
-    int r = 0;
+    int32 r = 0;
     UNUSED_VAR(r);
 
     // Register the dict type as a template
@@ -341,7 +338,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", asMETHOD(CScriptDict, Remove), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", asMETHOD(CScriptDict, GetSize), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", asMETHOD(CScriptDict, GetSize), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", asMETHOD(CScriptDict, Clear), asCALL_THISCALL);
     assert(r >= 0);
@@ -349,9 +346,9 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asMETHOD(CScriptDict, GetDefault), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", asMETHOD(CScriptDict, GetKey), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", asMETHOD(CScriptDict, GetKey), asCALL_THISCALL);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", asMETHOD(CScriptDict, GetValue), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", asMETHOD(CScriptDict, GetValue), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", asMETHOD(CScriptDict, Exists), asCALL_THISCALL);
     assert(r >= 0);
@@ -506,11 +503,11 @@ CScriptDict::~CScriptDict()
     }
 }
 
-asUINT CScriptDict::GetSize() const
+int32 CScriptDict::GetSize() const
 {
     const DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    return static_cast<asUINT>(dict->size());
+    return numeric_cast<int32>(dict->size());
 }
 
 bool CScriptDict::IsEmpty() const
@@ -564,10 +561,10 @@ bool CScriptDict::Remove(void* key)
     return false;
 }
 
-asUINT CScriptDict::RemoveValues(void* value)
+int32 CScriptDict::RemoveValues(void* value)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
-    asUINT result = 0;
+    int32 result = 0;
 
     for (auto it = dict->begin(); it != dict->end();) {
         if (Equals(cache, valueTypeId, it->second, value)) {
@@ -623,11 +620,11 @@ void* CScriptDict::GetDefault(void* key, void* defaultValue)
     return it->second;
 }
 
-void* CScriptDict::GetKey(asUINT index)
+void* CScriptDict::GetKey(int32 index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= static_cast<asUINT>(dict->size())) {
+    if (index < 0 || index >= numeric_cast<int32>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");
@@ -643,11 +640,11 @@ void* CScriptDict::GetKey(asUINT index)
     return it->first;
 }
 
-void* CScriptDict::GetValue(asUINT index)
+void* CScriptDict::GetValue(int32 index)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= static_cast<asUINT>(dict->size())) {
+    if (index < 0 || index >= numeric_cast<int32>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
         if (ctx) {
             ctx->SetException("Index out of bounds");
@@ -704,7 +701,7 @@ asITypeInfo* CScriptDict::GetDictObjectType() const
     return objType;
 }
 
-int CScriptDict::GetDictTypeId() const
+int32 CScriptDict::GetDictTypeId() const
 {
     return objType->GetTypeId();
 }
@@ -760,7 +757,7 @@ void CScriptDict::Release() const
 }
 
 // GC behaviour
-int CScriptDict::GetRefCount()
+int32 CScriptDict::GetRefCount()
 {
     return refCount;
 }
@@ -787,9 +784,9 @@ void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data) const
 }
 
 // internal
-static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
+static void* CopyObject(asITypeInfo* objType, int32 subTypeIndex, void* value)
 {
-    const int subTypeId = objType->GetSubTypeId(subTypeIndex);
+    const int32 subTypeId = objType->GetSubTypeId(subTypeIndex);
     const asITypeInfo* subType = objType->GetSubType(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
@@ -797,7 +794,7 @@ static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
         return engine->CreateScriptObjectCopy(value, subType);
     }
 
-    int elementSize;
+    int32 elementSize;
     if (subTypeId & asTYPEID_MASK_OBJECT) {
         elementSize = sizeof(asPWORD);
     }
@@ -821,18 +818,18 @@ static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
         *static_cast<int16*>(ptr) = *static_cast<int16*>(value);
     }
     else if (subTypeId == asTYPEID_INT32 || subTypeId == asTYPEID_UINT32 || subTypeId == asTYPEID_FLOAT || subTypeId > asTYPEID_DOUBLE) { // enums have a type id larger than doubles
-        *static_cast<int*>(ptr) = *static_cast<int*>(value);
+        *static_cast<int32*>(ptr) = *static_cast<int32*>(value);
     }
     else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE) {
-        *static_cast<double*>(ptr) = *static_cast<double*>(value);
+        *static_cast<int64*>(ptr) = *static_cast<int64*>(value);
     }
 
     return ptr;
 }
 
-static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
+static void DestroyObject(asITypeInfo* objType, int32 subTypeIndex, void* value)
 {
-    const int subTypeId = objType->GetSubTypeId(subTypeIndex);
+    const int32 subTypeId = objType->GetSubTypeId(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
     if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE)) {
@@ -848,7 +845,7 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 }
 
 // Todo: rework objects in dict comparing (detect opLess/opEqual automatically)
-static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
+static bool Less(SDictCache* cache, int32 typeId, const void* a, const void* b)
 {
     if (typeId == cache->StringTypeId) {
         const std::string& aStr = *static_cast<const std::string*>(a);
@@ -896,19 +893,19 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
         case asTYPEID_UINT16:
             return COMPARE(uint16);
         case asTYPEID_INT32:
-            return COMPARE(int);
+            return COMPARE(int32);
         case asTYPEID_UINT32:
-            return COMPARE(uint);
+            return COMPARE(uint32);
         case asTYPEID_INT64:
             return COMPARE(int64);
         case asTYPEID_UINT64:
             return COMPARE(uint64);
         case asTYPEID_FLOAT:
-            return COMPARE(float);
+            return COMPARE(float32);
         case asTYPEID_DOUBLE:
-            return COMPARE(double);
+            return COMPARE(float64);
         default:
-            return COMPARE(int); // All enums fall in this case
+            return COMPARE(int32); // All enums fall in this case
 #undef COMPARE
         }
     }
@@ -920,7 +917,7 @@ static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
     FO_UNREACHABLE_PLACE();
 }
 
-static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
+static bool Equals(SDictCache* cache, int32 typeId, const void* a, const void* b)
 {
     if (typeId == cache->StringTypeId) {
         const std::string& aStr = *static_cast<const std::string*>(a);
@@ -968,15 +965,15 @@ static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
         case asTYPEID_UINT16:
             return COMPARE(uint16);
         case asTYPEID_INT32:
-            return COMPARE(int);
+            return COMPARE(int32);
         case asTYPEID_UINT32:
-            return COMPARE(uint);
+            return COMPARE(uint32);
         case asTYPEID_FLOAT:
-            return COMPARE(float);
+            return COMPARE(float32);
         case asTYPEID_DOUBLE:
-            return COMPARE(double);
+            return COMPARE(float64);
         default:
-            return COMPARE(int); // All enums fall here
+            return COMPARE(int32); // All enums fall here
 #undef COMPARE
         }
     }
@@ -1000,7 +997,7 @@ static CScriptDict* CScriptDict_CreateList(asITypeInfo* ti, void* list)
 
 static void RegisterScriptDict_Generic(asIScriptEngine* engine)
 {
-    int r = 0;
+    int32 r = 0;
     UNUSED_VAR(r);
     r = engine->RegisterObjectType("dict<class T1, class T2>", 0, asOBJ_REF | asOBJ_GC | asOBJ_TEMPLATE);
     assert(r >= 0);
@@ -1026,9 +1023,9 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", WRAP_MFN(CScriptDict, Remove), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint removeValues(const T2&in)", WRAP_MFN(CScriptDict, RemoveValues), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int removeValues(const T2&in)", WRAP_MFN(CScriptDict, RemoveValues), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", WRAP_MFN(CScriptDict, GetSize), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", WRAP_MFN(CScriptDict, GetSize), asCALL_GENERIC);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", WRAP_MFN(CScriptDict, Clear), asCALL_GENERIC);
     assert(r >= 0);
@@ -1036,9 +1033,9 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", WRAP_MFN(CScriptDict, GetDefault), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", WRAP_MFN(CScriptDict, GetKey), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", WRAP_MFN(CScriptDict, GetKey), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", WRAP_MFN(CScriptDict, GetValue), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", WRAP_MFN(CScriptDict, GetValue), asCALL_GENERIC);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", WRAP_MFN(CScriptDict, Exists), asCALL_GENERIC);
     assert(r >= 0);

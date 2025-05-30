@@ -32,7 +32,6 @@
 //
 
 #include "SparkExtension.h"
-#include "StringUtils.h"
 #include "VisualParticles.h"
 
 namespace SPK::FO
@@ -62,12 +61,12 @@ namespace SPK::FO
         }
 
         for (size_t i = 0; i < ibuf.size() / 6; i++) {
-            ibuf[i * 6 + 0] = static_cast<vindex_t>(i * 4 + 0);
-            ibuf[i * 6 + 1] = static_cast<vindex_t>(i * 4 + 1);
-            ibuf[i * 6 + 2] = static_cast<vindex_t>(i * 4 + 2);
-            ibuf[i * 6 + 3] = static_cast<vindex_t>(i * 4 + 2);
-            ibuf[i * 6 + 4] = static_cast<vindex_t>(i * 4 + 3);
-            ibuf[i * 6 + 5] = static_cast<vindex_t>(i * 4 + 0);
+            ibuf[i * 6 + 0] = numeric_cast<vindex_t>(i * 4 + 0);
+            ibuf[i * 6 + 1] = numeric_cast<vindex_t>(i * 4 + 1);
+            ibuf[i * 6 + 2] = numeric_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 3] = numeric_cast<vindex_t>(i * 4 + 2);
+            ibuf[i * 6 + 4] = numeric_cast<vindex_t>(i * 4 + 3);
+            ibuf[i * 6 + 5] = numeric_cast<vindex_t>(i * 4 + 0);
         }
     }
 
@@ -91,7 +90,7 @@ namespace SPK::FO
         v.Color = ucolor {color.r, color.g, color.b, color.a};
     }
 
-    void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)
+    void SparkRenderBuffer::SetNextTexCoord(float32 tu, float32 tv)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -254,7 +253,7 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        const float32 diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
         const Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
@@ -310,21 +309,21 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetDrawWidth() const -> int
+    auto SparkQuadRenderer::GetDrawWidth() const -> int32
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawWidth;
     }
 
-    auto SparkQuadRenderer::GetDrawHeight() const -> int
+    auto SparkQuadRenderer::GetDrawHeight() const -> int32
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawHeight;
     }
 
-    void SparkQuadRenderer::SetDrawSize(int width, int height)
+    void SparkQuadRenderer::SetDrawSize(int32 width, int32 height)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -403,7 +402,7 @@ namespace SPK::FO
         upVector.set(0.0f, 1.0f, 0.0f);
 
         if (const auto* attrib = descriptor.getAttributeWithValue("draw size"); attrib != nullptr) {
-            const auto tmpSize = attrib->getValues<int>();
+            const auto tmpSize = attrib->getValues<int32>();
 
             switch (tmpSize.size()) {
             case 1:
@@ -427,7 +426,7 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("scale"); attrib != nullptr) {
-            const auto tmpScale = attrib->getValues<float>();
+            const auto tmpScale = attrib->getValues<float32>();
 
             switch (tmpScale.size()) {
             case 1:
@@ -528,7 +527,7 @@ namespace SPK::FO
         const std::vector tmpScale = {scaleX, scaleY};
         descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
-        const std::vector tmpAtlasDimensions = {static_cast<uint32_t>(textureAtlasNbX), static_cast<uint32_t>(textureAtlasNbY)};
+        const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
         descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {

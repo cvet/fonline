@@ -80,7 +80,7 @@ private:
     FileSystem& _resources;
     GameTimer& _gameTime;
     TextureLoader _textureLoader;
-    uint _animUpdateThreshold {};
+    int32 _animUpdateThreshold {};
     mat44 _projMatColMaj {};
     mat44 _viewMatColMaj {};
 };
@@ -91,7 +91,7 @@ class ParticleSystem final
     friend class SafeAlloc;
 
 public:
-    static constexpr float PREWARM_STEP = 0.5f;
+    static constexpr float32 PREWARM_STEP = 0.5f;
 
     ParticleSystem(const ParticleSystem&) = delete;
     ParticleSystem(ParticleSystem&&) noexcept = default;
@@ -100,13 +100,13 @@ public:
     ~ParticleSystem();
 
     [[nodiscard]] auto IsActive() const -> bool;
-    [[nodiscard]] auto GetElapsedTime() const -> float;
+    [[nodiscard]] auto GetElapsedTime() const -> float32;
     [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
     [[nodiscard]] auto GetDrawSize() const -> isize;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float look_dir_angle, const vec3& view_offset);
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32 look_dir_angle, const vec3& view_offset);
     void Prewarm();
     void Respawn();
     void Draw();
@@ -122,7 +122,7 @@ private:
     ParticleManager& _particleMngr;
     mat44 _projMat {};
     vec3 _viewOffset {};
-    double _elapsedTime {};
+    float64 _elapsedTime {};
     bool _forceDraw {};
     nanotime _lastDrawTime {};
 };

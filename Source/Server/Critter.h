@@ -97,15 +97,15 @@ public:
     [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
-    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> uint;
-    [[nodiscard]] auto RealCountInvItems() const noexcept -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountInvItems() const noexcept -> uint;
+    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> int32;
+    [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
+    [[nodiscard]] auto CountInvItems() const noexcept -> int32;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
     [[nodiscard]] auto IsTalking() const noexcept -> bool;
-    [[nodiscard]] auto GetTalkingCritters() const noexcept -> uint;
-    [[nodiscard]] auto GetBarterCritters() const noexcept -> uint;
+    [[nodiscard]] auto GetTalkingCritters() const noexcept -> int32;
+    [[nodiscard]] auto GetBarterCritters() const noexcept -> int32;
     [[nodiscard]] auto IsFreeToTalk() const noexcept -> bool;
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
@@ -132,16 +132,16 @@ public:
     void SetItem(Item* item);
     void RemoveItem(Item* item);
     void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int dir_angle);
+    void ChangeDirAngle(int32 dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
-    void Broadcast_Action(CritterAction action, int action_data, const Item* item);
+    void Broadcast_Action(CritterAction action, int32 action_data, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
     void SendAndBroadcast(const Player* ignore_player, const std::function<void(Critter*)>& callback);
     void SendAndBroadcast_Moving();
-    void SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item);
+    void SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
@@ -163,7 +163,7 @@ public:
     void Send_Talk();
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
-    void Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item);
+    void Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
@@ -200,13 +200,12 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, int32 /*talkers*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32 /*barterCount*/);
 
     // Todo: incapsulate Critter data
-    int LockMapTransfers {};
-    uint AllowedToDownloadMap {};
+    int32 LockMapTransfers {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
     unordered_map<ident_t, Critter*> VisCrMap {};
@@ -225,22 +224,22 @@ public:
     mpos ViewMapHex {};
     uint8 ViewMapDir {};
     ident_t ViewMapLocId {};
-    uint ViewMapLocEnt {};
+    int32 ViewMapLocEnt {};
 
     struct TargetMovingData
     {
         MovingState State {MovingState::Success};
         ident_t TargId {};
         mpos TargHex {};
-        uint Cut {};
+        int32 Cut {};
         uint16 Speed {};
-        uint TraceDist {};
+        int32 TraceDist {};
         ident_t GagEntityId {};
     } TargetMoving {};
 
     struct MovingData
     {
-        uint Uid {};
+        uint32 Uid {};
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
@@ -248,8 +247,8 @@ public:
         timespan OffsetTime {};
         mpos StartHex {};
         mpos EndHex {};
-        float WholeTime {};
-        float WholeDist {};
+        float32 WholeTime {};
+        float32 WholeDist {};
         ipos16 StartHexOffset {};
         ipos16 EndHexOffset {};
     } Moving {};

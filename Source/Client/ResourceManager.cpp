@@ -35,13 +35,11 @@
 #include "3dStuff.h"
 #include "DataSource.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
-static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
-static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
+static constexpr uint32 ANIM_FLAG_FIRST_FRAME = 0x01;
+static constexpr uint32 ANIM_FLAG_LAST_FRAME = 0x02;
 
 ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) :
     _resources {resources},
@@ -96,19 +94,19 @@ void ResourceManager::CleanupCritterFrames()
     _critterFrames.clear();
 }
 
-static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint
+static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), 1};
+    const uint32 dw[4] = {model_name.as_uint(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
-static auto FalloutAnimMapId(hstring model_name, uint state_anim, uint action_anim) -> uint
+static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 action_anim) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), static_cast<uint>(-1)};
+    const uint32 dw[4] = {model_name.as_uint(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -146,12 +144,13 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         }
         else {
             // Script specific
-            uint pass_base = 0;
+            int32 pass_base = 0;
+
             while (true) {
-                auto pass = pass_base;
-                uint flags = 0;
-                auto ox = 0;
-                auto oy = 0;
+                int32 pass = pass_base;
+                uint32 flags = 0;
+                int32 ox = 0;
+                int32 oy = 0;
                 string anim_name;
 
                 if (_animNameResolver.ResolveCritterAnimation(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
@@ -159,7 +158,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(anim_name, AtlasType::MapSprites, true));
 
                         // Fix by dirs
-                        for (uint d = 0; anim && d < anim->DirCount; d++) {
+                        for (int32 d = 0; anim && d < anim->DirCount; d++) {
                             auto* dir_anim = anim->GetDir(d);
 
                             // Process flags
@@ -169,7 +168,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                                     // Append offsets
                                     if (!first) {
-                                        for (uint i = 0; i < dir_anim->CntFrm - 1; i++) {
+                                        for (int32 i = 0; i < dir_anim->CntFrm - 1; i++) {
                                             dir_anim->SprOffset[dir_anim->CntFrm - 1].x += dir_anim->SprOffset[i].x;
                                             dir_anim->SprOffset[dir_anim->CntFrm - 1].y += dir_anim->SprOffset[i].y;
                                         }
@@ -185,11 +184,13 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                             // Add offsets
                             ox = oy = 0; // Todo: why I disable offset adding?
+
                             if (ox != 0 || oy != 0) {
-                                for (uint i = 0; i < dir_anim->CntFrm; i++) {
+                                for (int32 i = 0; i < dir_anim->CntFrm; i++) {
                                     auto* spr = dir_anim->GetSpr(i);
-                                    auto fixed = false;
-                                    for (uint j = 0; j < i; j++) {
+                                    bool fixed = false;
+
+                                    for (int32 j = 0; j < i; j++) {
                                         if (dir_anim->GetSpr(j) == spr) {
                                             fixed = true;
                                             break;
@@ -234,7 +235,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
     // Store resulted animation indices
     if (anim != nullptr) {
-        for (uint d = 0; d < anim->DirCount; d++) {
+        for (int32 d = 0; d < anim->DirCount; d++) {
             anim->GetDir(d)->StateAnim = state_anim;
             anim->GetDir(d)->ActionAnim = action_anim;
         }
@@ -260,11 +261,11 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
     FO_STACK_TRACE_ENTRY();
 
     // Convert from common to fallout specific
-    uint f_state_anim = 0;
-    uint f_action_anim = 0;
-    uint f_state_anim_ex = 0;
-    uint f_action_anim_ex = 0;
-    uint flags = 0;
+    int32 f_state_anim = 0;
+    int32 f_action_anim = 0;
+    int32 f_state_anim_ex = 0;
+    int32 f_action_anim_ex = 0;
+    uint32 flags = 0;
 
     if (_animNameResolver.ResolveCritterAnimationFallout(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags)) {
         // Load
@@ -282,23 +283,24 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
             auto anim_merge_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
 
-            for (uint d = 0; d < anim->DirCount; d++) {
+            for (int32 d = 0; d < anim->DirCount; d++) {
                 auto* anim_merge = anim_merge_base->GetDir(d);
                 const auto* anim_ = anim->GetDir(d);
                 const auto* animex_ = animex->GetDir(d);
 
-                for (uint i = 0; i < anim_->CntFrm; i++) {
+                for (int32 i = 0; i < anim_->CntFrm; i++) {
                     anim_merge->Spr[i] = anim_->GetSpr(i)->MakeCopy();
                     anim_merge->SprOffset[i] = anim_->SprOffset[i];
                 }
-                for (uint i = 0; i < animex_->CntFrm; i++) {
+                for (int32 i = 0; i < animex_->CntFrm; i++) {
                     anim_merge->Spr[i + anim_->CntFrm] = animex_->GetSpr(i)->MakeCopy();
                     anim_merge->SprOffset[i + anim_->CntFrm] = animex_->SprOffset[i];
                 }
 
-                int ox = 0;
-                int oy = 0;
-                for (uint i = 0; i < anim_->CntFrm; i++) {
+                int32 ox = 0;
+                int32 oy = 0;
+
+                for (int32 i = 0; i < anim_->CntFrm; i++) {
                     ox += anim_->SprOffset[i].x;
                     oy += anim_->SprOffset[i].y;
                 }
@@ -314,12 +316,12 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         if (anim != nullptr) {
             auto anim_clone_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
 
-            for (uint d = 0; d < anim->DirCount; d++) {
+            for (int32 d = 0; d < anim->DirCount; d++) {
                 auto* anim_clone = anim_clone_base->GetDir(d);
                 const auto* anim_ = anim->GetDir(d);
 
                 if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
-                    for (uint i = 0; i < anim_->CntFrm; i++) {
+                    for (int32 i = 0; i < anim_->CntFrm; i++) {
                         anim_clone->Spr[i] = anim_->GetSpr(i)->MakeCopy();
                         anim_clone->SprOffset[i] = anim_->SprOffset[i];
                     }
@@ -330,7 +332,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
                     // Append offsets
                     if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
-                        for (uint i = 0; i < anim_->CntFrm - 1; i++) {
+                        for (int32 i = 0; i < anim_->CntFrm - 1; i++) {
                             anim_clone->SprOffset[0].x += anim_->SprOffset[i].x;
                             anim_clone->SprOffset[0].y += anim_->SprOffset[i].y;
                         }
@@ -357,12 +359,12 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
         return;
     }
 
-    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
+    for (int32 d = 0; d < stay_frm_base->DirCount; d++) {
         auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
         const auto* stay_spr = stay_frm->GetSpr(0);
 
-        for (uint i = 0; i < frames->CntFrm; i++) {
+        for (int32 i = 0; i < frames->CntFrm; i++) {
             auto* spr = frames->GetSpr(i);
 
             spr->Offset.x += stay_spr->Offset.x;
@@ -381,19 +383,19 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
         return;
     }
 
-    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
+    for (int32 d = 0; d < stay_frm_base->DirCount; d++) {
         auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
 
-        int next_x = 0;
-        int next_y = 0;
+        int32 next_x = 0;
+        int32 next_y = 0;
 
-        for (uint i = 0; i < stay_frm->CntFrm; i++) {
+        for (int32 i = 0; i < stay_frm->CntFrm; i++) {
             next_x += stay_frm->SprOffset[i].x;
             next_y += stay_frm->SprOffset[i].y;
         }
 
-        for (uint i = 0; i < frames->CntFrm; i++) {
+        for (int32 i = 0; i < frames->CntFrm; i++) {
             auto* spr = frames->GetSpr(i);
 
             spr->Offset.x += next_x;
@@ -402,7 +404,7 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
     }
 }
 
-auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_anim, uint action_anim) -> const SpriteSheet*
+auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_anim, uint32 action_anim) -> const SpriteSheet*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -410,30 +412,30 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
 
     // Fallout animations
-    static constexpr uint ANIM1_FALLOUT_UNARMED = 1;
-    static constexpr uint ANIM1_FALLOUT_DEAD = 2;
-    static constexpr uint ANIM1_FALLOUT_KNOCKOUT = 3;
-    static constexpr uint ANIM1_FALLOUT_KNIFE = 4;
-    static constexpr uint ANIM1_FALLOUT_MINIGUN = 12;
-    static constexpr uint ANIM1_FALLOUT_ROCKET_LAUNCHER = 13;
-    static constexpr uint ANIM1_FALLOUT_AIM = 14;
+    static constexpr uint32 ANIM1_FALLOUT_UNARMED = 1;
+    static constexpr uint32 ANIM1_FALLOUT_DEAD = 2;
+    static constexpr uint32 ANIM1_FALLOUT_KNOCKOUT = 3;
+    static constexpr uint32 ANIM1_FALLOUT_KNIFE = 4;
+    static constexpr uint32 ANIM1_FALLOUT_MINIGUN = 12;
+    static constexpr uint32 ANIM1_FALLOUT_ROCKET_LAUNCHER = 13;
+    static constexpr uint32 ANIM1_FALLOUT_AIM = 14;
 
-    static constexpr uint ANIM2_FALLOUT_STAY = 1;
-    static constexpr uint ANIM2_FALLOUT_WALK = 2;
-    static constexpr uint ANIM2_FALLOUT_SHOW = 3;
-    static constexpr uint ANIM2_FALLOUT_PREPARE_WEAPON = 8;
-    static constexpr uint ANIM2_FALLOUT_TURNOFF_WEAPON = 9;
-    static constexpr uint ANIM2_FALLOUT_SHOOT = 10;
-    static constexpr uint ANIM2_FALLOUT_BURST = 11;
-    static constexpr uint ANIM2_FALLOUT_FLAME = 12;
-    static constexpr uint ANIM2_FALLOUT_KNOCK_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
-    static constexpr uint ANIM2_FALLOUT_KNOCK_BACK = 2;
-    static constexpr uint ANIM2_FALLOUT_STANDUP_BACK = 8; // Only with ANIM1_FALLOUT_KNOCKOUT
-    static constexpr uint ANIM2_FALLOUT_RUN = 20;
-    static constexpr uint ANIM2_FALLOUT_DEAD_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
-    static constexpr uint ANIM2_FALLOUT_DEAD_BACK = 2;
-    static constexpr uint ANIM2_FALLOUT_DEAD_FRONT2 = 15;
-    static constexpr uint ANIM2_FALLOUT_DEAD_BACK2 = 16;
+    static constexpr uint32 ANIM2_FALLOUT_STAY = 1;
+    static constexpr uint32 ANIM2_FALLOUT_WALK = 2;
+    static constexpr uint32 ANIM2_FALLOUT_SHOW = 3;
+    static constexpr uint32 ANIM2_FALLOUT_PREPARE_WEAPON = 8;
+    static constexpr uint32 ANIM2_FALLOUT_TURNOFF_WEAPON = 9;
+    static constexpr uint32 ANIM2_FALLOUT_SHOOT = 10;
+    static constexpr uint32 ANIM2_FALLOUT_BURST = 11;
+    static constexpr uint32 ANIM2_FALLOUT_FLAME = 12;
+    static constexpr uint32 ANIM2_FALLOUT_KNOCK_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
+    static constexpr uint32 ANIM2_FALLOUT_KNOCK_BACK = 2;
+    static constexpr uint32 ANIM2_FALLOUT_STANDUP_BACK = 8; // Only with ANIM1_FALLOUT_KNOCKOUT
+    static constexpr uint32 ANIM2_FALLOUT_RUN = 20;
+    static constexpr uint32 ANIM2_FALLOUT_DEAD_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
+    static constexpr uint32 ANIM2_FALLOUT_DEAD_BACK = 2;
+    static constexpr uint32 ANIM2_FALLOUT_DEAD_FRONT2 = 15;
+    static constexpr uint32 ANIM2_FALLOUT_DEAD_BACK2 = 16;
 
     const auto it = _critterFrames.find(FalloutAnimMapId(model_name, state_anim, action_anim));
     if (it != _critterFrames.end()) {
@@ -442,8 +444,8 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
     // Try load fofrm
     static constexpr char FRM_IND[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    FO_RUNTIME_ASSERT(static_cast<uint>(state_anim) < sizeof(FRM_IND));
-    FO_RUNTIME_ASSERT(static_cast<uint>(action_anim) < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(state_anim < sizeof(FRM_IND));
+    FO_RUNTIME_ASSERT(action_anim < sizeof(FRM_IND));
 
     shared_ptr<SpriteSheet> anim;
 
@@ -452,13 +454,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 
     // Try load from fofrm
     {
-        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
+        const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
@@ -542,7 +544,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -564,7 +566,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const ModelSprite*
 {
     FO_STACK_TRACE_ENTRY();
 

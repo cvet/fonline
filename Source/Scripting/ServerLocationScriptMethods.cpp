@@ -58,9 +58,9 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Server_Location_GetMapCount(Location* self)
+FO_SCRIPT_API int32 Server_Location_GetMapCount(Location* self)
 {
-    return numeric_cast<uint>(self->GetMapsCount());
+    return numeric_cast<int32>(self->GetMapsCount());
 }
 
 ///@ ExportMethod
@@ -76,12 +76,12 @@ FO_SCRIPT_API Map* Server_Location_GetMap(Location* self, hstring mapPid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, uint index)
+FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32 index)
 {
     auto& maps = self->GetMaps();
 
-    if (index >= maps.size()) {
-        throw ScriptException("Invalid index arg");
+    if (index < 0 || index >= maps.size()) {
+        throw ScriptException("Invalid index arg", index);
     }
 
     return maps[index].get();

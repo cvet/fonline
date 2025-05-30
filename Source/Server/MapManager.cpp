@@ -34,14 +34,11 @@
 #include "MapManager.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
-#include "GenericUtils.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
-#include "Log.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -96,12 +93,12 @@ void MapManager::LoadFromResources()
 
             // Read hashes
             {
-                const auto hashes_count = reader.Read<uint>();
+                const auto hashes_count = reader.Read<uint32>();
 
                 string str;
 
-                for (uint i = 0; i < hashes_count; i++) {
-                    const auto str_len = reader.Read<uint>();
+                for (uint32 i = 0; i < hashes_count; i++) {
+                    const auto str_len = reader.Read<uint32>();
                     str.resize(str_len);
                     reader.ReadPtr(str.data(), str.length());
                     const auto hstr = _engine->Hashes.ToHashedString(str);
@@ -115,7 +112,7 @@ void MapManager::LoadFromResources()
 
                 // Read critters
                 {
-                    const auto cr_count = reader.Read<uint>();
+                    const auto cr_count = reader.Read<uint32>();
 
                     static_map->CritterBillets.reserve(cr_count);
 
@@ -129,7 +126,7 @@ void MapManager::LoadFromResources()
                         const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
                         auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint>();
+                        const auto props_data_size = reader.Read<uint32>();
                         props_data.resize(props_data_size);
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         cr_props.RestoreAllData(props_data);
@@ -147,7 +144,7 @@ void MapManager::LoadFromResources()
 
                 // Read items
                 {
-                    const auto item_count = reader.Read<uint>();
+                    const auto item_count = reader.Read<uint32>();
 
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
@@ -165,7 +162,7 @@ void MapManager::LoadFromResources()
                         const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
                         auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint>();
+                        const auto props_data_size = reader.Read<uint32>();
                         props_data.resize(props_data_size);
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
@@ -418,7 +415,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     for (auto&& [id, loc] : locations) {
         result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
 
-        uint map_index = 0;
+        int32 map_index = 0;
 
         for (const auto& map : loc->GetMaps()) {
             result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
@@ -502,7 +499,7 @@ void MapManager::RegenerateMap(Map* map)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    auto map_holder = RefCountHolder(map);
+    refcount_ptr map_holder = map;
 
     DestroyMapContent(map);
 
@@ -538,7 +535,7 @@ void MapManager::RegenerateMap(Map* map)
     }
 }
 
-auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
+auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -546,7 +543,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
 
     for (auto&& [id, map] : _engine->EntityMngr.GetMaps()) {
         if (map->GetProtoId() == map_pid) {
-            if (skip_count == 0) {
+            if (skip_count <= 0) {
                 return map;
             }
 
@@ -557,7 +554,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*
     return nullptr;
 }
 
-auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*
+auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -565,7 +562,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> 
 
     for (auto&& [id, loc] : _engine->EntityMngr.GetLocations()) {
         if (loc->GetProtoId() == loc_pid) {
-            if (skip_count == 0) {
+            if (skip_count <= 0) {
                 return loc;
             }
 
@@ -590,7 +587,7 @@ void MapManager::DestroyLocation(Location* loc)
     FO_STACK_TRACE_ENTRY();
 
     // Start deleting
-    auto loc_holder = RefCountHolder(loc);
+    refcount_ptr loc_holder = loc;
     auto maps = copy_hold_ref(loc->GetMaps());
 
     // Redundant calls
@@ -674,7 +671,7 @@ void MapManager::TraceBullet(TraceData& trace)
     trace.HasLastMovable = false;
     bool last_passed_ok = false;
 
-    for (uint i = 0;; i++) {
+    for (int32 i = 0;; i++) {
         if (i >= dist) {
             trace.IsFullTrace = true;
             break;
@@ -705,7 +702,7 @@ void MapManager::TraceBullet(TraceData& trace)
             const auto critters = map->GetCritters(next_hex, trace.FindType);
 
             for (auto* cr : critters) {
-                if (std::find(trace.Critters->begin(), trace.Critters->end(), cr) == trace.Critters->end()) {
+                if (std::ranges::find(*trace.Critters, cr) == trace.Critters->end()) {
                     trace.Critters->emplace_back(cr);
                 }
             }
@@ -765,7 +762,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     if (input.Cut <= 1 && input.Multihex == 0) {
         auto&& [rsx, rsy] = _engine->Geometry.GetHexOffsets(input.ToHex);
 
-        uint i = 0;
+        int32 i = 0;
 
         for (; i < GameSettings::MAP_DIR_COUNT; i++, rsx++, rsy++) {
             const auto ring_raw_hex = ipos {input.ToHex.x + *rsx, input.ToHex.y + *rsy};
@@ -792,7 +789,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     _mapGridOffset = input.FromHex;
 
     int16 numindex = 1;
-    _mapGrid.resize(static_cast<size_t>(_engine->Settings.MaxPathFindLength * 2 + 2) * (_engine->Settings.MaxPathFindLength * 2 + 2));
+    _mapGrid.resize(numeric_cast<size_t>(_engine->Settings.MaxPathFindLength * 2 + 2) * (_engine->Settings.MaxPathFindLength * 2 + 2));
     MemFill(_mapGrid.data(), 0, _mapGrid.size() * sizeof(int16));
     GridAt(input.FromHex) = numindex;
 
@@ -830,7 +827,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
             auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(cur_hex);
 
-            for (uint j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
+            for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 const auto raw_next_hex = ipos {cur_hex.x + sx[j], cur_hex.y + sy[j]};
 
                 if (!map_size.IsValidPos(raw_next_hex)) {
@@ -850,11 +847,11 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
                 else if (input.CheckGagItems && map->IsItemGag(next_hex)) {
                     gag_coords.emplace_back(next_hex);
-                    grid_cell = static_cast<int16>(numindex | 0x4000);
+                    grid_cell = numeric_cast<int16>(numindex | 0x2000);
                 }
                 else if (input.CheckCritter && map->IsCritter(next_hex, CritterFindType::NonDead)) {
                     cr_coords.emplace_back(next_hex);
-                    grid_cell = static_cast<int16>(numindex | 0x8000);
+                    grid_cell = numeric_cast<int16>(numindex | 0x4000);
                 }
                 else {
                     grid_cell = -1;
@@ -866,7 +863,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         if (!gag_coords.empty()) {
             auto last_index = GridAt(coords.back());
             auto& gag_hex = gag_coords.front();
-            auto gag_index = static_cast<int16>(GridAt(gag_hex) ^ static_cast<int16>(0x4000));
+            auto gag_index = numeric_cast<int16>(GridAt(gag_hex) ^ numeric_cast<int16>(0x2000));
 
             if (gag_index + 10 < last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
             {
@@ -877,19 +874,19 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         }
 
         // Add gag and critters hexes
-        p_togo = static_cast<int>(coords.size()) - p;
+        p_togo = numeric_cast<int32>(coords.size()) - p;
 
         if (p_togo == 0) {
             if (!gag_coords.empty()) {
                 auto& gag_hex = gag_coords.front();
-                GridAt(gag_hex) ^= 0x4000;
+                GridAt(gag_hex) ^= 0x2000;
                 coords.emplace_back(gag_hex);
                 gag_coords.erase(gag_coords.begin());
                 p_togo++;
             }
             else if (!cr_coords.empty()) {
                 auto& gag_hex = gag_coords.front();
-                GridAt(gag_hex) ^= static_cast<int16>(0x8000);
+                GridAt(gag_hex) ^= numeric_cast<int16>(0x4000);
                 coords.emplace_back(gag_hex);
                 cr_coords.erase(cr_coords.begin());
                 p_togo++;
@@ -907,16 +904,16 @@ label_FindOk:
     raw_steps.resize(numindex - 1);
 
     // Smooth data
-    float base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
+    float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
 
     while (numindex > 1) {
         numindex--;
 
         const auto find_path_grid = [this, &map_size, &input, base_angle, &raw_steps, &numindex](mpos& hex) -> bool {
-            int best_step_dir = -1;
-            float best_step_angle_diff = 0.0f;
+            int32 best_step_dir = -1;
+            float32 best_step_angle_diff = 0.0f;
 
-            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int dir, ipos step_raw_hex) {
+            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos step_raw_hex) {
                 if (!map_size.IsValidPos(step_raw_hex)) {
                     return;
                 }
@@ -927,8 +924,8 @@ label_FindOk:
                     return;
                 }
 
-                const float angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
-                const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+                const float32 angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
+                const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
                 if (best_step_dir == -1 || numindex == 0) {
                     best_step_dir = dir;
@@ -1074,7 +1071,7 @@ label_FindOk:
 
     // Trace
     if (input.TraceDist != 0) {
-        vector<int> trace_seq;
+        vector<int32> trace_seq;
         const mpos targ_hex = input.TraceCr->GetHex();
         bool trace_ok = false;
 
@@ -1100,7 +1097,7 @@ label_FindOk:
         trace.TargetHex = targ_hex;
         trace.FindCr = input.TraceCr;
 
-        for (int k = 0; k < 5; k++) {
+        for (int32 k = 0; k < 5; k++) {
             mpos check_hex2 = input.FromHex;
 
             for (size_t i = 0; i < raw_steps.size() - 1; i++) {
@@ -1157,7 +1154,7 @@ label_FindOk:
         while (true) {
             mpos trace_hex2 = to_hex;
 
-            for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
+            for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(trace_hex, trace_hex2, map_size, 0.0f);
                 mpos next_hex = trace_hex;
                 vector<uint8> direct_steps;
@@ -1187,7 +1184,7 @@ label_FindOk:
                     output.Steps.emplace_back(ds);
                 }
 
-                output.ControlSteps.emplace_back(static_cast<uint16>(output.Steps.size()));
+                output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
 
                 trace_hex = trace_hex2;
                 break;
@@ -1213,7 +1210,7 @@ label_FindOk:
                 }
             }
 
-            output.ControlSteps.emplace_back(static_cast<uint16>(output.Steps.size()));
+            output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
         }
     }
 
@@ -1226,7 +1223,7 @@ label_FindOk:
     return output;
 }
 
-void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius)
+void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1243,7 +1240,7 @@ void MapManager::TransitToGlobal(Critter* cr, ident_t global_cr_id)
     Transit(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
 }
 
-void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<uint> safe_radius, ident_t global_cr_id)
+void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1563,10 +1560,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
         }
     }
 
-    const uint dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
-    const uint show_cr_dist1 = cr->GetShowCritterDist1();
-    const uint show_cr_dist2 = cr->GetShowCritterDist2();
-    const uint show_cr_dist3 = cr->GetShowCritterDist3();
+    const int32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+    const int32 show_cr_dist1 = cr->GetShowCritterDist1();
+    const int32 show_cr_dist2 = cr->GetShowCritterDist2();
+    const int32 show_cr_dist3 = cr->GetShowCritterDist3();
 
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {
@@ -1622,28 +1619,28 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         is_see = _engine->OnMapCheckLook.Fire(map, cr, target);
     }
     else {
-        uint dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
-        uint look_dist = cr->GetLookDistance();
-        const int cr_dir = cr->GetDir();
+        int32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+        int32 look_dist = cr->GetLookDistance();
+        const auto cr_dir = cr->GetDir();
 
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
             const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
             auto dir_index = cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir;
 
-            if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
-                dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+            if (dir_index > numeric_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
+                dir_index = numeric_cast<int32>(GameSettings::MAP_DIR_COUNT) - dir_index;
             }
 
             look_dist -= look_dist * _engine->Settings.LookDir[dir_index] / 100;
         }
 
         if (dist > look_dist) {
-            dist = std::numeric_limits<uint>::max();
+            dist = -1;
         }
 
         // Trace
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != -1) {
             if (!trace_result.has_value()) {
                 TraceData trace;
                 trace.TraceMap = map;
@@ -1653,28 +1650,28 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
                 TraceBullet(trace);
 
                 if (!trace.IsFullTrace) {
-                    dist = std::numeric_limits<uint>::max();
+                    dist = -1;
                 }
 
                 trace_result = trace.IsFullTrace;
             }
             else {
                 if (!trace_result.value()) {
-                    dist = std::numeric_limits<uint>::max();
+                    dist = -1;
                 }
             }
         }
 
         // Sneak
-        if (target->GetInSneakMode() && dist != std::numeric_limits<uint>::max()) {
+        if (target->GetInSneakMode() && dist != -1) {
             auto sneak_opp = target->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
                 auto dir_index = (cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir);
 
-                if (dir_index > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
-                    dir_index = static_cast<int>(GameSettings::MAP_DIR_COUNT) - dir_index;
+                if (dir_index > numeric_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
+                    dir_index = numeric_cast<int32>(GameSettings::MAP_DIR_COUNT) - dir_index;
                 }
 
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[dir_index] / 100;
@@ -1684,9 +1681,7 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
             look_dist = look_dist > sneak_opp ? look_dist - sneak_opp : 0;
         }
 
-        if (look_dist < _engine->Settings.LookMinimum) {
-            look_dist = _engine->Settings.LookMinimum;
-        }
+        look_dist = std::max(look_dist, _engine->Settings.LookMinimum);
 
         is_see = look_dist >= dist;
     }
@@ -1713,7 +1708,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     auto* map = _engine->EntityMngr.GetMap(map_id);
     FO_RUNTIME_ASSERT(map);
 
-    const int look = static_cast<int>(cr->GetLookDistance());
+    const auto look = cr->GetLookDistance();
 
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
@@ -1736,7 +1731,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, cr, item);
             }
             else {
-                int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHex(), item->GetHex()));
+                auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
 
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
@@ -1761,7 +1756,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1792,8 +1787,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
             const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
             auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
-            if (i > static_cast<int>(dirs_count / 2u)) {
-                i = static_cast<int>(dirs_count) - i;
+            if (i > dirs_count / 2) {
+                i = dirs_count - i;
             }
 
             look_self -= look_self * _engine->Settings.LookDir[i] / 100;
@@ -1804,7 +1799,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
         }
 
         // Trace
-        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
+        if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != -1) {
             TraceData trace;
             trace.TraceMap = map;
             trace.StartHex = hex;
@@ -1818,7 +1813,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
         }
 
         // Hide modifier
-        uint vis;
+        int32 vis;
 
         if (cr->GetInSneakMode()) {
             auto sneak_opp = cr->GetSneakCoefficient();
@@ -1827,8 +1822,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
                 const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
                 auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
-                if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = static_cast<int>(dirs_count) - i;
+                if (i > numeric_cast<int32>(dirs_count / 2u)) {
+                    i = numeric_cast<int32>(dirs_count) - i;
                 }
 
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[i] / 100;
@@ -1841,9 +1836,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, mpos hex, int di
             vis = look_self;
         }
 
-        if (vis < _engine->Settings.LookMinimum) {
-            vis = _engine->Settings.LookMinimum;
-        }
+        vis = std::max(vis, _engine->Settings.LookMinimum);
+
         if (vis >= dist) {
             view_cr->Send_AddCritter(cr);
         }

@@ -91,6 +91,9 @@ def getHash(input, seed=0):
     else:
         return str(-((h ^ 0xFFFFFFFF) + 1))
 
+def getHashUint(input, seed=0):
+    return str(int(getHash(input, seed)) & 0xFFFFFFFF)
+
 assert getHash('abcd') == '646393889'
 assert getHash('abcde') == '1594468574'
 assert getHash('abcdef') == '1271458169'
@@ -364,8 +367,8 @@ def tokenize(text, anySymbols=[]):
 
 def parseTags():
     validTypes = set()
-    validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64',
-            'float', 'double', 'string', 'bool', 'Entity', 'void', 'hstring', 'any'])
+    validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64',
+            'float32', 'float64', 'string', 'bool', 'Entity', 'void', 'hstring', 'any'])
     
     def unifiedTypeToMetaType(t):
         if t.startswith('init-'):
@@ -393,15 +396,15 @@ def parseTags():
 
     def engineTypeToUnifiedType(t):
         typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-            'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
+            'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
             'int8&': 'int8&', 'uint8&': 'uint8&', 'int16&': 'int16&', 'uint16&': 'uint16&',
-            'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
-            'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
+            'int32&': 'int32&', 'uint32&': 'uint32&', 'int64&': 'int64&', 'uint64&': 'uint64&',
+            'float32': 'float32', 'float64': 'float64', 'float32&': 'float32&', 'float64&': 'float64&',
             'bool': 'bool', 'bool&': 'bool&', 'void': 'void',
             'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
             'int8*': 'int8&', 'uint8*': 'uint8&', 'int16*': 'int16&', 'uint16*': 'uint16&',
-            'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
-            'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'string*': 'string&',
+            'int32*': 'int32&', 'uint32*': 'uint32&', 'int64*': 'int64&', 'uint64*': 'uint64&',
+            'float32*': 'float32&', 'float64*': 'float64&', 'bool*': 'bool&', 'string*': 'string&',
             'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&',
             'any_t': 'any', 'any_t&': 'any&', 'any_t*': 'any*'}
         if t.startswith('InitFunc<'):
@@ -489,7 +492,7 @@ def parseTags():
                 assert firstLine.startswith('enum class ')
                 sep = firstLine.find(':')
                 grname = firstLine[len('enum class '):sep if sep != -1 else len(firstLine)].strip()
-                utype = engineTypeToMetaType('int' if sep == -1 else firstLine[sep + 1:].strip())
+                utype = engineTypeToMetaType('int32' if sep == -1 else firstLine[sep + 1:].strip())
                 
                 keyValues = []
                 assert tagContext[1].startswith('{')
@@ -560,7 +563,7 @@ def parseTags():
                             minValue = v if v < minValue else minValue
                             maxValue = v if v > maxValue else maxValue
                         if minValue < 0:
-                            return 'int'
+                            return 'int32'
                         else:
                             assert maxValue <= 0xFFFFFFFF
                             if maxValue <= 0xFF:
@@ -568,9 +571,9 @@ def parseTags():
                             if maxValue <= 0xFFFF:
                                 return 'uint16'
                             if maxValue <= 0x7FFFFFFF:
-                                return 'int'
+                                return 'int32'
                             if maxValue <= 0xFFFFFFFF:
-                                return 'uint'
+                                return 'uint32'
                         assert False, 'Can\'t deduce enum underlying type (' + minValue + ', ' + maxValue + ')'
                     else:
                         return 'uint8'
@@ -1073,7 +1076,7 @@ def parseTags():
                 assert target in ['Server', 'Client', 'Common'], 'Invalid target ' + target
                 stype = unifiedTypeToMetaType(tok[1])
                 isArr = tok[2] == '[' and tok[3] == ']'
-                assert stype in ['int', 'uint', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float', 'double', 'bool', 'string', 'any'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
+                assert stype in ['int32', 'uint32', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float32', 'float64', 'bool', 'string', 'any'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
                 if isArr:
                     assert False, 'Arrays not implemented yet'
                     stype = 'arr.' + stype
@@ -1151,7 +1154,7 @@ def parseTags():
                 ent, name, flags, _ = propCompTag
                 if ent == entity:
                     keyValues.append((name, getHash(name), []))
-            codeGenTags['Enum'].append([entity + 'Component', 'int', keyValues, [], []])
+            codeGenTags['Enum'].append([entity + 'Component', 'int32', keyValues, [], []])
         
         # Generate entity properties enums
         for entity in gameEntities:
@@ -1313,10 +1316,7 @@ def metaTypeToUnifiedType(t):
     elif tt[0] in refTypes or tt[0] in entityRelatives:
         r = tt[0]
     else:
-        def mapType(mt):
-            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
-            return typeMap[mt] if mt in typeMap else mt
-        r = mapType(tt[0])
+        r = tt[0]
     if tt[-1] == 'ref':
         r += '&'
     return r
@@ -1370,9 +1370,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None):
         assert r, 'Invalid native type ' + tt[0]
     else:
         def mapType(mt):
-            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-                       'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                       'any': 'any_t'}
+            typeMap = {'any': 'any_t'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1750,7 +1748,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] in refTypes or tt[0] in entityRelatives:
                 return tt[0] + '*'
             elif tt[0] in scriptEnums or tt[0] in engineEnums:
-                r = 'int'
+                r = 'int32'
             elif tt[0] in ['ScriptFunc', 'ScriptFuncName']:
                 return 'asIScriptFunction*'
             elif tt[0] in customTypes:
@@ -1761,9 +1759,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 assert r, 'Invalid native type ' + tt[0]
             else:
                 def mapType(t):
-                    typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-                               'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                               'any': 'any_t'}
+                    typeMap = {'any': 'any_t'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
@@ -1813,7 +1809,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     assert selfEntity
                     r = r.replace('SELF_ENTITY', selfEntity)
             else:
-                r = tt[0]
+                def mapType(t):
+                    typeMap = {'int32': 'int', 'uint32': 'uint', 'float32': 'float', 'float64': 'double'}
+                    return typeMap[t] if t in typeMap else t
+                r = mapType(tt[0])
             return r + '&' if tt[-1] == 'ref' else r
         
         def marshalIn(t, v, selfEntity=None):
@@ -1943,7 +1942,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('{')
                     globalLines.append('    void AddRef() { }')
                     globalLines.append('    void Release() { }')
-                    globalLines.append('    int RefCounter;')
+                    globalLines.append('    int32 RefCounter;')
                     for f in fields:
                         globalLines.append('    ' + metaTypeToASEngineType(f[0]) + ' ' + f[1] + ';')
                     for m in methods:
@@ -2033,13 +2032,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    ctx->SetArgByte(' + str(setIndex) + ', as_' + p[1] + ' ? 1 : 0);')
                 elif p[0] in ['int16', 'uint16']:
                     globalLines.append('    ctx->SetArgWord(' + str(setIndex) + ', as_' + p[1] + ');')
-                elif p[0] in ['int', 'uint'] or p[0] in engineEnums or p[0] in scriptEnums:
+                elif p[0] in ['int32', 'uint32'] or p[0] in engineEnums or p[0] in scriptEnums:
                     globalLines.append('    ctx->SetArgDWord(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in ['int64', 'uint64']:
                     globalLines.append('    ctx->SetArgQWord(' + str(setIndex) + ', as_' + p[1] + ');')
-                elif p[0] in ['float']:
+                elif p[0] in ['float32']:
                     globalLines.append('    ctx->SetArgFloat(' + str(setIndex) + ', as_' + p[1] + ');')
-                elif p[0] in ['double']:
+                elif p[0] in ['float64']:
                     globalLines.append('    ctx->SetArgDouble(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in ['hstring']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
@@ -2107,8 +2106,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
                         globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
-                        globalLines.append('    event_data.Callback = [self, as_func = RefCountHolder(func)](const initializer_list<void*>& args) {')
-                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.get(), args);')
+                        globalLines.append('    event_data.Callback = [self, as_func = refcount_ptr(func)](const initializer_list<void*>& args) {')
+                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.get_no_const(), args);')
                         globalLines.append('    };')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')
@@ -2219,10 +2218,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    return any_t {' + 'value};')
                 elif type == 'bool':
                     globalLines.append('    return strex(value).toBool();')
-                elif type in ['float', 'double']:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
+                elif type in ['float32', 'float64']:
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
                 else:
-                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
             else:
                 globalLines.append('    ignore_unused(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
@@ -2253,7 +2252,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    FO_STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
-                        globalLines.append('    constexpr uint rpc_num = "' + rcName + '"_hash;')
+                        globalLines.append('    constexpr uint32 rpc_num = "' + rcName + '"_hash;')
                         for p in rcArgs:
                             globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                         if target == 'Server':
@@ -2922,7 +2921,7 @@ def genApi(target):
             writeFile('}')
         def parseType(t):
             def mapType(t):
-                typeMap = {'int8': 'sbyte', 'uint8': 'byte', 'int16': 'short', 'uint16': 'ushort', 'int': 'int', 'uint': 'uint', 'int64': 'long', 'uint64': 'ulong',
+                typeMap = {'int8': 'sbyte', 'uint8': 'byte', 'int16': 'short', 'uint16': 'ushort', 'int32': 'int', 'uint32': 'uint', 'int64': 'long', 'uint64': 'ulong',
                         'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
                 return typeMap[t] if t in typeMap else t
             tt = t.split('.')
@@ -3347,7 +3346,7 @@ createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
-writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHash(args.buildhash) + ';')
+writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHashUint(args.buildhash) + 'u;')
 writeFile('static constexpr auto FO_DEBUGGING_MAIN_CONFIG = "' + args.maincfg + '";')
 
 # Actual writing of generated files

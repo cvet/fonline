@@ -35,7 +35,6 @@
 #include "Critter.h"
 #include "Map.h"
 #include "Server.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -47,13 +46,13 @@ Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, con
     FO_STACK_TRACE_ENTRY();
 }
 
-auto Location::GetMapByIndex(uint index) noexcept -> Map*
+auto Location::GetMapByIndex(int32 index) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (index >= _locMaps.size()) {
+    if (index < 0 || index >= numeric_cast<int>(_locMaps.size())) {
         return nullptr;
     }
 
@@ -75,7 +74,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
+auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -89,7 +88,7 @@ auto Location::GetMapIndex(hstring map_pid) const noexcept -> size_t
         index++;
     }
 
-    return static_cast<size_t>(-1);
+    throw GenericException("Map not found", map_pid);
 }
 
 void Location::AddMap(Map* map)
@@ -100,7 +99,7 @@ void Location::AddMap(Map* map)
 
     _locMaps.emplace_back(map);
     map->SetLocId(GetId());
-    map->SetLocMapIndex(static_cast<uint>(_locMaps.size()));
+    map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()));
 }
 
 FO_END_NAMESPACE();

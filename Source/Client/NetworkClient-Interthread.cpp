@@ -33,8 +33,6 @@
 
 #include "NetworkClient.h"
 
-#include "Log.h"
-
 FO_BEGIN_NAMESPACE();
 
 class NetworkClientConnection_Interthread final : public NetworkClientConnection

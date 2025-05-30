@@ -33,7 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "StringUtils.h"
+#include "Common.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -71,6 +71,9 @@ TEST_CASE("StringUtils")
         CHECK(strex("Hello   ").trim().str() == "Hello");
         CHECK(strex("  Hello").trim().str() == "Hello");
         CHECK(strex("\t\nHel lo\t \r\t").trim().str() == "Hel lo");
+        CHECK(strex("\t\nHel lo\t \r\t").trim("\t\r ").str() == "\nHel lo");
+        CHECK(strex("\t\nHel lo\t \r\t").ltrim("\t\n").str() == "Hel lo\t \r\t");
+        CHECK(strex("\t\nHel lo\t \r\t").rtrim("\t\n").str() == "\t\nHel lo\t \r");
     }
 
     SECTION("GetResult")
@@ -158,8 +161,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("00000000012").toInt() == 12);
         CHECK(strex("1").toInt() == 1);
         CHECK(strex("-156").toInt() == -156);
-        CHECK(strex("-429496729500").toInt() == std::numeric_limits<int>::min());
-        CHECK(strex("4294967295").toInt() == std::numeric_limits<int>::max());
+        CHECK(strex("-429496729500").toInt() == std::numeric_limits<int32>::min());
+        CHECK(strex("4294967295").toInt() == std::numeric_limits<int32>::max());
         CHECK(strex("0xFFFF").toInt() == 0xFFFF);
         CHECK(strex("-0xFFFF").toInt() == -0xFFFF);
         CHECK(strex("012345").toInt() == 12345); // Do not recognize octal numbers
@@ -169,8 +172,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("12.1111").toInt() == 12);
 
         CHECK(strex("111").toUInt() == 111);
-        CHECK(strex("-100").toUInt() == std::numeric_limits<uint>::min());
-        CHECK(strex("1000000000000").toUInt() == std::numeric_limits<uint>::max());
+        CHECK(strex("-100").toUInt() == std::numeric_limits<uint32>::min());
+        CHECK(strex("1000000000000").toUInt() == std::numeric_limits<uint32>::max());
         CHECK(strex("4294967295").toUInt() == 4294967295);
 
         CHECK(strex("66666666666677").toInt64() == 66666666666677ll);
@@ -191,23 +194,23 @@ TEST_CASE("StringUtils")
         CHECK(strex("9223372036854775806").toInt64() == (std::numeric_limits<int64>::max() - 1));
         CHECK_FALSE(strex("9223372036854775808").toInt64() == std::numeric_limits<int64>::max());
         CHECK_FALSE(strex("18446744073709551615").toInt64() == std::numeric_limits<int64>::max());
-        CHECK(strex("18446744073709551615").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max())); // Max 64bit 18446744073709551615
-        CHECK(strex("18446744073709551614").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max() - 1));
-        CHECK(strex("18446744073709551616").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex("184467440737095516546734734716").toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).toInt64() == static_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex("18446744073709551615").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max())); // Max 64bit 18446744073709551615
+        CHECK(strex("18446744073709551614").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max() - 1));
+        CHECK(strex("18446744073709551616").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex("184467440737095516546734734716").toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).toInt64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
         CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH + 1, '5')).toInt64() == 0);
 
         CHECK(is_float_equal(strex("455.6573").toFloat(), 455.6573f));
-        CHECK(is_float_equal(strex("0xFFFF").toFloat(), static_cast<float>(0xFFFF)));
-        CHECK(is_float_equal(strex("-0xFFFF").toFloat(), static_cast<float>(-0xFFFF)));
-        CHECK(is_float_equal(strex("0xFFFF.44").toFloat(), static_cast<float>(0)));
-        CHECK(is_float_equal(strex("f").toFloat(), static_cast<float>(0)));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float>::min()).toFloat(), std::numeric_limits<float>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float>::max()).toFloat(), std::numeric_limits<float>::max()));
+        CHECK(is_float_equal(strex("0xFFFF").toFloat(), numeric_cast<float32>(0xFFFF)));
+        CHECK(is_float_equal(strex("-0xFFFF").toFloat(), numeric_cast<float32>(-0xFFFF)));
+        CHECK(is_float_equal(strex("0xFFFF.44").toFloat(), numeric_cast<float32>(0)));
+        CHECK(is_float_equal(strex("f").toFloat(), numeric_cast<float32>(0)));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::min()).toFloat(), std::numeric_limits<float32>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::max()).toFloat(), std::numeric_limits<float32>::max()));
         CHECK(is_float_equal(strex("34567774455.65745678555").toDouble(), 34567774455.65745678555));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<double>::min()).toDouble(), std::numeric_limits<double>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<double>::max()).toDouble(), std::numeric_limits<double>::max()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::min()).toDouble(), std::numeric_limits<float64>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::max()).toDouble(), std::numeric_limits<float64>::max()));
 
         CHECK(strex(" true ").toBool() == true);
         CHECK(strex(" 1 ").toBool() == true);
@@ -223,13 +226,13 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two    \tThree   ").split('\t') == vector<string>({"One Two", "Three"}));
         CHECK(strex(" One Two    \tThree   ").split('X') == vector<string>({"One Two    \tThree"}));
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
-        CHECK(strex(" 111 222  33Three g66 7").splitToInt(' ') == vector<int>({111, 222, 0, 0, 7}));
-        CHECK(strex("").splitToInt(' ') == vector<int>({}));
-        CHECK(strex("             ").splitToInt(' ') == vector<int>({}));
-        CHECK(strex("1").splitToInt(' ') == vector<int>({1}));
-        CHECK(strex("1 -2").splitToInt(' ') == vector<int>({1, -2}));
-        CHECK(strex("\t1   X -2 X 3").splitToInt('X') == vector<int>({1, -2, 3}));
-        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").splitToInt('X') == vector<int>({1, -2, 3}));
+        CHECK(strex(" 111 222  33Three g66 7").splitToInt(' ') == vector<int32>({111, 222, 0, 0, 7}));
+        CHECK(strex("").splitToInt(' ') == vector<int32>({}));
+        CHECK(strex("             ").splitToInt(' ') == vector<int32>({}));
+        CHECK(strex("1").splitToInt(' ') == vector<int32>({1}));
+        CHECK(strex("1 -2").splitToInt(' ') == vector<int32>({1, -2}));
+        CHECK(strex("\t1   X -2 X 3").splitToInt('X') == vector<int32>({1, -2, 3}));
+        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").splitToInt('X') == vector<int32>({1, -2, 3}));
     }
 
     SECTION("Substring")

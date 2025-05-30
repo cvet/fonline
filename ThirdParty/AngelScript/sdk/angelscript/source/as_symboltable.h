@@ -86,7 +86,7 @@ public:
 
 private:
 	friend class asCSymbolTable<T>;
-	asCSymbolTableIterator<T, T2>(asCSymbolTable<T> *table);
+	asCSymbolTableIterator(asCSymbolTable<T> *table);
 
 	void Next();
 	void Previous();

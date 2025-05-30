@@ -35,11 +35,10 @@
 #include "Application.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
-static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
+static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -64,6 +63,7 @@ static auto GetPropEnumIndex(const EngineData* engine, string_view str, bool is_
     }
 
     const Property* prop = nullptr;
+
     if (prop_global != nullptr) {
         prop = prop_global;
         type = DR_PROP_GLOBAL;
@@ -109,7 +109,7 @@ void DialogManager::LoadFromResources(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int errors = 0;
+    size_t errors = 0;
     auto files = resources.FilterFiles("fodlg");
 
     while (files.MoveNext()) {
@@ -209,11 +209,11 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
 
         pack->Texts.emplace_back(lang_app, TextPack {});
 
-        uint str_num = 0;
+        uint32 str_num = 0;
 
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
             const size_t count = temp_msg.GetStrCount(str_num);
-            const uint new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
+            const uint32 new_str_num = pack->PackId.as_uint() + (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000);
 
             for (size_t n = 0; n < count; n++) {
                 string str = strex(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n[");
@@ -245,7 +245,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
             throw DialogParseException("Bad dialog id number", pack_name);
         }
 
-        uint text_id = 0;
+        uint32 text_id = 0;
         input >> text_id;
 
         if (input.fail()) {
@@ -266,7 +266,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) const -
 
         dlg.DlgScriptFuncName = _engine->Hashes.ToHashedString(script);
 
-        uint flags = 0;
+        uint32 flags = 0;
         input >> flags;
 
         if (input.fail()) {
@@ -360,16 +360,16 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) const
 
     uint8 who = DR_WHO_PLAYER;
     uint8 oper = '=';
-    int values_count = 0;
+    int32 values_count = 0;
     string svalue;
-    int ivalue = 0;
-    uint id_index = 0;
+    int32 ivalue = 0;
+    int32 id_index = 0;
     hstring id_hash;
     string type_str;
     string name;
     string script_name;
     bool no_recheck = false;
-    int script_val[5] = {0, 0, 0, 0, 0};
+    int32 script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
 

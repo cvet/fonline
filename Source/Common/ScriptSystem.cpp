@@ -45,14 +45,14 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<bool>("bool");
     MapEnginePlainType<int8>("int8");
     MapEnginePlainType<int16>("int16");
-    MapEnginePlainType<int>("int");
+    MapEnginePlainType<int32>("int32");
     MapEnginePlainType<int64>("int64");
     MapEnginePlainType<uint8>("uint8");
     MapEnginePlainType<uint16>("uint16");
-    MapEnginePlainType<uint>("uint");
+    MapEnginePlainType<uint32>("uint32");
     MapEnginePlainType<uint64>("uint64");
-    MapEnginePlainType<float>("float");
-    MapEnginePlainType<double>("double");
+    MapEnginePlainType<float32>("float32");
+    MapEnginePlainType<float64>("float64");
     MapEnginePlainType<ident_t>(FO_IDENT_NAME);
     MapEnginePlainType<timespan>(FO_TIMESPAN_NAME);
     MapEnginePlainType<nanotime>(FO_NANOTIME_NAME);
@@ -146,7 +146,7 @@ void ScriptSystem::InitModules()
     }
 }
 
-void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
+void ScriptSystem::HandleRemoteCall(uint32 rpc_num, Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -178,13 +178,13 @@ void ScriptSystem::Process()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
     FO_RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = prop_reg->GetPropertyByIndex(prop_index);
 
     if (prop == nullptr) {
         throw ScriptException("Invalid property index", type_name, prop_index);

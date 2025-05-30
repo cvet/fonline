@@ -91,7 +91,7 @@ public:
     auto operator=(ServerConnection&&) noexcept = delete;
     ~ServerConnection();
 
-    [[nodiscard]] auto GetIp() const noexcept -> uint;
+    [[nodiscard]] auto GetIp() const noexcept -> uint32;
     [[nodiscard]] auto GetHost() const noexcept -> string_view;
     [[nodiscard]] auto GetPort() const noexcept -> uint16;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
@@ -109,8 +109,8 @@ public:
     nanotime PingNextTime {};
     bool PingOk {true};
     nanotime LastActivityTime {};
-    int UpdateFileIndex {-1};
-    uint UpdateFilePortion {};
+    int32 UpdateFileIndex {-1};
+    int32 UpdateFilePortion {};
 
 private:
     void StartAsyncSend();

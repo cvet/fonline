@@ -246,7 +246,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
         for (auto& kv : *assemblies_data)
         {
             MonoImageOpenStatus status = MONO_IMAGE_OK;
-            MonoImage* image = mono_image_open_from_data((char*)&kv.second[0], (uint)kv.second.size(), TRUE, &status);
+            MonoImage* image = mono_image_open_from_data((char*)&kv.second[0], (uint32)kv.second.size(), TRUE, &status);
             RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
 
             EngineAssemblyImages[kv.first] = image;

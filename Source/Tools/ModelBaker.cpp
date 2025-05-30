@@ -36,8 +36,6 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "ufbx.h"
 
@@ -73,23 +71,23 @@ struct BakerMeshData
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto len = static_cast<uint>(Vertices.size());
+        auto len = numeric_cast<uint32>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Vertices.data(), len * sizeof(Vertex3D));
-        len = static_cast<uint>(Indices.size());
+        len = numeric_cast<uint32>(Indices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Indices.data(), len * sizeof(vindex_t));
-        len = static_cast<uint>(DiffuseTexture.length());
+        len = numeric_cast<uint32>(DiffuseTexture.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(DiffuseTexture.data(), len);
-        len = static_cast<uint>(SkinBones.size());
+        len = numeric_cast<uint32>(SkinBones.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& bone_name : SkinBones) {
-            len = static_cast<uint>(bone_name.length());
+            len = numeric_cast<uint32>(bone_name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(bone_name.data(), len);
         }
-        len = static_cast<uint>(SkinBoneOffsets.size());
+        len = numeric_cast<uint32>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(mat44));
     }
@@ -125,7 +123,7 @@ struct BakerBone
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.Write<uint>(static_cast<uint>(Name.length()));
+        writer.Write<uint32>(numeric_cast<uint32>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
@@ -138,7 +136,7 @@ struct BakerBone
             writer.Write<uint8>(0);
         }
 
-        writer.Write<uint>(static_cast<uint>(Children.size()));
+        writer.Write<uint32>(numeric_cast<uint32>(Children.size()));
 
         for (const auto& child : Children) {
             child->Save(writer);
@@ -158,11 +156,11 @@ struct BakerAnimSet
     struct BoneOutput
     {
         string Name {};
-        vector<float> ScaleTime {};
+        vector<float32> ScaleTime {};
         vector<vec3> ScaleValue {};
-        vector<float> RotationTime {};
+        vector<float32> RotationTime {};
         vector<quaternion> RotationValue {};
-        vector<float> TranslationTime {};
+        vector<float32> TranslationTime {};
         vector<vec3> TranslationValue {};
     };
 
@@ -170,39 +168,39 @@ struct BakerAnimSet
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto len = static_cast<uint>(AnimFileName.length());
+        auto len = numeric_cast<uint32>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(AnimFileName.data(), len);
-        len = static_cast<uint>(AnimName.length());
+        len = numeric_cast<uint32>(AnimName.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(AnimName.data(), len);
         writer.WritePtr(&Duration, sizeof(Duration));
-        len = static_cast<uint>(BonesHierarchy.size());
+        len = numeric_cast<uint32>(BonesHierarchy.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& i : BonesHierarchy) {
-            len = static_cast<uint>(i.size());
+            len = numeric_cast<uint32>(i.size());
             writer.WritePtr(&len, sizeof(len));
             for (const auto& bone_name : i) {
-                len = static_cast<uint>(bone_name.length());
+                len = numeric_cast<uint32>(bone_name.length());
                 writer.WritePtr(&len, sizeof(len));
                 writer.WritePtr(bone_name.data(), len);
             }
         }
-        len = static_cast<uint>(BoneOutputs.size());
+        len = numeric_cast<uint32>(BoneOutputs.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& o : BoneOutputs) {
-            len = static_cast<uint>(o.Name.length());
+            len = numeric_cast<uint32>(o.Name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.Name.data(), len);
-            len = static_cast<uint>(o.ScaleTime.size());
+            len = numeric_cast<uint32>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
             writer.WritePtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
-            len = static_cast<uint>(o.RotationTime.size());
+            len = numeric_cast<uint32>(o.RotationTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
             writer.WritePtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
-            len = static_cast<uint>(o.TranslationTime.size());
+            len = numeric_cast<uint32>(o.TranslationTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
             writer.WritePtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
@@ -211,7 +209,7 @@ struct BakerAnimSet
 
     string AnimFileName {};
     string AnimName {};
-    float Duration {};
+    float32 Duration {};
     vector<BoneOutput> BoneOutputs {};
     vector<vector<string>> BonesHierarchy {};
 };
@@ -256,7 +254,7 @@ void ModelBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -319,7 +317,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint
 
     root_bone->Save(writer);
 
-    writer.Write<uint>(static_cast<uint>(animations.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(animations.size()));
 
     for (const auto& loaded_animation : animations) {
         loaded_animation->Save(writer);
@@ -372,7 +370,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 mesh_triangles_count += triangles_count;
                 FO_RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
 
-                for (size_t i = 0; i < static_cast<size_t>(triangles_count) * 3; i++) {
+                for (size_t i = 0; i < numeric_cast<size_t>(triangles_count) * 3; i++) {
                     const uint32_t index = triangle_indices[i];
                     auto& v = mesh->Vertices.emplace_back();
 
@@ -395,8 +393,8 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     }
 
                     if (fbx_mesh->vertex_uv.exists) {
-                        v.TexCoord[0] = static_cast<float>(fbx_mesh->vertex_uv[index].x);
-                        v.TexCoord[1] = 1.0f - static_cast<float>(fbx_mesh->vertex_uv[index].y);
+                        v.TexCoord[0] = numeric_cast<float32>(fbx_mesh->vertex_uv[index].x);
+                        v.TexCoord[1] = 1.0f - numeric_cast<float32>(fbx_mesh->vertex_uv[index].y);
                         v.TexCoordBase[0] = v.TexCoord[0];
                         v.TexCoordBase[1] = v.TexCoord[1];
                     }
@@ -404,17 +402,17 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     if (fbx_skin != nullptr) {
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
-                        const size_t weights_count = std::min(static_cast<size_t>(fbx_skin_vertex.num_weights), BONES_PER_VERTEX);
+                        const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), BONES_PER_VERTEX);
 
-                        float total_weight = 0.0f;
+                        float32 total_weight = 0.0f;
 
                         for (size_t w = 0; w < weights_count; w++) {
                             const ufbx_skin_weight skin_weight = fbx_skin->weights[fbx_skin_vertex.weight_begin + w];
 
-                            v.BlendIndices[w] = static_cast<float>(skin_weight.cluster_index);
-                            v.BlendWeights[w] = static_cast<float>(skin_weight.weight);
+                            v.BlendIndices[w] = numeric_cast<float32>(skin_weight.cluster_index);
+                            v.BlendWeights[w] = numeric_cast<float32>(skin_weight.weight);
 
-                            total_weight += static_cast<float>(skin_weight.weight);
+                            total_weight += numeric_cast<float32>(skin_weight.weight);
                         }
 
                         for (size_t w = 0; w < weights_count; w++) {
@@ -438,11 +436,11 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         mesh->Vertices.resize(result_vertices);
 
         mesh->Indices.resize(indices.size());
-        std::transform(indices.begin(), indices.end(), mesh->Indices.begin(), [](const uint32_t index) { return static_cast<vindex_t>(index); });
+        std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 
 #else
         for (size_t i = 0; i < mesh->Vertices.size(); i++) {
-            mesh->Indices.emplace_back(static_cast<vindex_t>(mesh->Indices.size()));
+            mesh->Indices.emplace_back(numeric_cast<vindex_t>(mesh->Indices.size()));
         }
 #endif
 
@@ -522,26 +520,26 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;
         anim_set->AnimName = fbx_anim_stack->name.data;
-        anim_set->Duration = static_cast<float>(fbx_baked_anim->playback_duration);
+        anim_set->Duration = numeric_cast<float32>(fbx_baked_anim->playback_duration);
 
         for (const ufbx_baked_node& fbx_baked_anim_node : fbx_baked_anim->nodes) {
-            vector<float> tt;
+            vector<float32> tt;
             vector<vec3> tv;
-            vector<float> rt;
+            vector<float32> rt;
             vector<quaternion> rv;
-            vector<float> st;
+            vector<float32> st;
             vector<vec3> sv;
 
             for (const ufbx_baked_vec3& translation_key : fbx_baked_anim_node.translation_keys) {
-                tt.emplace_back(static_cast<float>(translation_key.time));
+                tt.emplace_back(numeric_cast<float32>(translation_key.time));
                 tv.emplace_back(ConvertFbxVec3(translation_key.value));
             }
             for (const ufbx_baked_quat& rotation_key : fbx_baked_anim_node.rotation_keys) {
-                rt.emplace_back(static_cast<float>(rotation_key.time));
+                rt.emplace_back(numeric_cast<float32>(rotation_key.time));
                 rv.emplace_back(ConvertFbxQuat(rotation_key.value));
             }
             for (const ufbx_baked_vec3& scale_key : fbx_baked_anim_node.scale_keys) {
-                st.emplace_back(static_cast<float>(scale_key.time));
+                st.emplace_back(numeric_cast<float32>(scale_key.time));
                 sv.emplace_back(ConvertFbxVec3(scale_key.value));
             }
 
@@ -576,9 +574,9 @@ static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3
 
     vec3 result;
 
-    result.x = static_cast<float>(v.x);
-    result.y = static_cast<float>(v.y);
-    result.z = static_cast<float>(v.z);
+    result.x = numeric_cast<float32>(v.x);
+    result.y = numeric_cast<float32>(v.y);
+    result.z = numeric_cast<float32>(v.z);
 
     return result;
 }
@@ -589,10 +587,10 @@ static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion
 
     quaternion result;
 
-    result.x = static_cast<float>(q.x);
-    result.y = static_cast<float>(q.y);
-    result.z = static_cast<float>(q.z);
-    result.w = static_cast<float>(q.w);
+    result.x = numeric_cast<float32>(q.x);
+    result.y = numeric_cast<float32>(q.y);
+    result.z = numeric_cast<float32>(q.z);
+    result.w = numeric_cast<float32>(q.w);
 
     return result;
 }
@@ -603,10 +601,10 @@ static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor
 
     ucolor color;
 
-    color.comp.r = static_cast<uint8>(iround(c.x * 255.0));
-    color.comp.g = static_cast<uint8>(iround(c.y * 255.0));
-    color.comp.b = static_cast<uint8>(iround(c.z * 255.0));
-    color.comp.a = static_cast<uint8>(iround(c.w * 255.0));
+    color.comp.r = numeric_cast<uint8>(iround<int32>(c.x * 255.0));
+    color.comp.g = numeric_cast<uint8>(iround<int32>(c.y * 255.0));
+    color.comp.b = numeric_cast<uint8>(iround<int32>(c.z * 255.0));
+    color.comp.a = numeric_cast<uint8>(iround<int32>(c.w * 255.0));
 
     return color;
 }
@@ -617,18 +615,18 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
 
     mat44 result;
 
-    result.a1 = static_cast<float>(m.m00);
-    result.a2 = static_cast<float>(m.m01);
-    result.a3 = static_cast<float>(m.m02);
-    result.a4 = static_cast<float>(m.m03);
-    result.b1 = static_cast<float>(m.m10);
-    result.b2 = static_cast<float>(m.m11);
-    result.b3 = static_cast<float>(m.m12);
-    result.b4 = static_cast<float>(m.m13);
-    result.c1 = static_cast<float>(m.m20);
-    result.c2 = static_cast<float>(m.m21);
-    result.c3 = static_cast<float>(m.m22);
-    result.c4 = static_cast<float>(m.m23);
+    result.a1 = numeric_cast<float32>(m.m00);
+    result.a2 = numeric_cast<float32>(m.m01);
+    result.a3 = numeric_cast<float32>(m.m02);
+    result.a4 = numeric_cast<float32>(m.m03);
+    result.b1 = numeric_cast<float32>(m.m10);
+    result.b2 = numeric_cast<float32>(m.m11);
+    result.b3 = numeric_cast<float32>(m.m12);
+    result.b4 = numeric_cast<float32>(m.m13);
+    result.c1 = numeric_cast<float32>(m.m20);
+    result.c2 = numeric_cast<float32>(m.m21);
+    result.c3 = numeric_cast<float32>(m.m22);
+    result.c4 = numeric_cast<float32>(m.m23);
     result.d1 = 0.0f;
     result.d2 = 0.0f;
     result.d3 = 0.0f;

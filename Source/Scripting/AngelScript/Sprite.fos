@@ -174,7 +174,7 @@ class Sprite
     uint Id = 0;
     SpriteLayout Layout = SpriteLayout::None;
     isize Size;
-    uint Ticks = 0;
+    int Ticks = 0;
     bool Hidden = false;
     hstring LoadedName;
     ucolor Color = COLOR_NEUTRAL;

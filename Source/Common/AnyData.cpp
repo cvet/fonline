@@ -32,7 +32,6 @@
 //
 
 #include "AnyData.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -133,7 +132,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     case ValueType::Int64:
         return strex("{}", value.AsInt64());
     case ValueType::Double:
-        return strex("{}", value.AsDouble());
+        return strex("{:f}", value.AsDouble()).rtrim("0").rtrim(".");
     case ValueType::Bool:
         return value.AsBool() ? "True" : "False";
     case ValueType::String:

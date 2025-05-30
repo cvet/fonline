@@ -35,7 +35,6 @@
 
 #include "Application.h"
 #include "Editor.h"
-#include "Log.h"
 #include "Settings.h"
 #include "Version-Include.h"
 
@@ -54,8 +53,8 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        ShowExceptionMessageBox(true);
-        InitApp(argc, argv);
+        SetExceptionCallback(MessageBox::ShowErrorMessage);
+        InitApp(numeric_cast<int32>(argc), argv);
 
         {
             auto editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);

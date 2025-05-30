@@ -36,8 +36,6 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "Application.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -102,7 +100,7 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {

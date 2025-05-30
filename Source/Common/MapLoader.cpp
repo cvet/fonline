@@ -33,8 +33,6 @@
 
 #include "MapLoader.h"
 #include "ConfigFile.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -65,7 +63,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
     ident_t::underlying_type last_lowest_id = 1;
 
     const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
-        if (id <= 0 || id >= std::numeric_limits<int>::max() || !busy_ids.emplace(id).second) {
+        if (id <= 0 || id >= std::numeric_limits<int32>::max() || !busy_ids.emplace(id).second) {
             auto new_id = last_lowest_id;
 
             while (!busy_ids.emplace(new_id).second) {

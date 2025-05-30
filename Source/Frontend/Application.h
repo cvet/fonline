@@ -153,7 +153,7 @@ enum class KeyCode : uint8
 };
 
 ///@ ExportEnum
-enum class MouseButton
+enum class MouseButton : uint8
 {
     Left = 0,
     Right = 1,
@@ -169,7 +169,7 @@ enum class MouseButton
 
 struct InputEvent
 {
-    enum class EventType
+    enum class EventType : uint8
     {
         NoneEvent,
         MouseMoveEvent,
@@ -182,10 +182,10 @@ struct InputEvent
 
     struct MouseMoveEvent
     {
-        int MouseX {};
-        int MouseY {};
-        int DeltaX {};
-        int DeltaY {};
+        int32 MouseX {};
+        int32 MouseY {};
+        int32 DeltaX {};
+        int32 DeltaY {};
     } MouseMove {};
 
     struct MouseDownEvent
@@ -200,7 +200,7 @@ struct InputEvent
 
     struct MouseWheelEvent
     {
-        int Delta {};
+        int32 Delta {};
     } MouseWheel {};
 
     struct KeyDownEvent
@@ -279,7 +279,7 @@ private:
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
-    int _nonConstHelper {};
+    int32 _nonConstHelper {};
 };
 
 class AppRender final
@@ -287,17 +287,17 @@ class AppRender final
     friend class Application;
 
 public:
-    static constexpr int MAX_ATLAS_SIZE = 8192;
-    static constexpr int MIN_ATLAS_SIZE = 2048;
-    static const int& MAX_ATLAS_WIDTH;
-    static const int& MAX_ATLAS_HEIGHT;
-    static const int& MAX_BONES;
+    static constexpr int32 MAX_ATLAS_SIZE = 8192;
+    static constexpr int32 MIN_ATLAS_SIZE = 2048;
+    static const int32& MAX_ATLAS_WIDTH;
+    static const int32& MAX_ATLAS_HEIGHT;
+    static const int32& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
     [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>;
-    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
 
     void SetRenderTarget(RenderTexture* tex);
@@ -308,7 +308,7 @@ public:
 private:
     AppRender() = default;
 
-    int _nonConstHelper {};
+    int32 _nonConstHelper {};
 };
 
 class AppInput final
@@ -316,7 +316,7 @@ class AppInput final
     friend class Application;
 
 public:
-    static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
+    static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
     [[nodiscard]] auto GetMousePosition() const -> ipos;
     [[nodiscard]] auto GetClipboardText() -> const string&;
@@ -332,7 +332,7 @@ private:
     AppInput() = default;
 
     string _clipboardTextStorage {};
-    int _nonConstHelper {};
+    int32 _nonConstHelper {};
 };
 
 class AppAudio final
@@ -340,24 +340,24 @@ class AppAudio final
     friend class Application;
 
 public:
-    static const int AUDIO_FORMAT_U8;
-    static const int AUDIO_FORMAT_S16;
+    static const int32 AUDIO_FORMAT_U8;
+    static const int32 AUDIO_FORMAT_S16;
 
     using AudioStreamCallback = std::function<void(uint8, span<uint8>)>;
 
     [[nodiscard]] auto IsEnabled() const -> bool;
 
-    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool;
+    [[nodiscard]] auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool;
 
     void SetSource(AudioStreamCallback stream_callback);
-    void MixAudio(uint8* output, const uint8* buf, size_t len, int volume);
+    void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume);
     void LockDevice();
     void UnlockDevice();
 
 private:
     AppAudio() = default;
 
-    int _nonConstHelper {};
+    int32 _nonConstHelper {};
 };
 
 enum class AppInitFlags : uint8
@@ -369,10 +369,10 @@ enum class AppInitFlags : uint8
 
 class Application final
 {
-    friend void InitApp(int argc, char** argv, AppInitFlags flags);
+    friend void InitApp(int32 argc, char** argv, AppInitFlags flags);
     friend class SafeAlloc;
 
-    Application(int argc, char** argv, AppInitFlags flags);
+    Application(int32 argc, char** argv, AppInitFlags flags);
 
 public:
     Application(const Application&) = delete;
@@ -415,8 +415,8 @@ private:
     uint64 _timeFrequency {};
     bool _isTablet {};
     bool _mouseCanUseGlobalState {};
-    int _pendingMouseLeaveFrame {};
-    int _mouseButtonsDown {};
+    int32 _pendingMouseLeaveFrame {};
+    int32 _mouseButtonsDown {};
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<AppWindow*> _allWindows {};
@@ -429,7 +429,7 @@ private:
     EventDispatcher<> _onResumeDispatcher {OnResume};
     EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {OnQuit};
-    int _nonConstHelper {};
+    int32 _nonConstHelper {};
 };
 
 class MessageBox final
@@ -441,7 +441,6 @@ public:
 };
 
 extern raw_ptr<Application> App;
-extern void InitApp(int argc, char** argv, AppInitFlags flags = AppInitFlags::None);
-[[noreturn]] extern void ExitApp(bool success) noexcept;
+extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 
 FO_END_NAMESPACE();

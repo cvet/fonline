@@ -36,9 +36,6 @@
 #if FO_HAVE_OPENGL
 
 #include "Application.h"
-#include "GenericUtils.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
@@ -155,7 +152,7 @@ public:
     explicit OpenGL_DrawBuffer(bool is_static);
     ~OpenGL_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
+    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
 
     GLuint VertexBufObj {};
     GLuint IndexBufObj {};
@@ -173,7 +170,7 @@ public:
     }
     ~OpenGL_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex) override;
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
@@ -236,7 +233,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
-    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
+    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int32>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
     FO_RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
@@ -280,7 +277,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
             extension_errors++; \
         } \
     }
-    uint extension_errors = 0;
+    size_t extension_errors = 0;
     CHECK_EXTENSION(version_2_0, true);
     CHECK_EXTENSION(vertex_buffer_object, true);
     CHECK_EXTENSION(uniform_buffer_object, true);
@@ -340,8 +337,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     atlas_h = std::min(max_viewport_size[1], atlas_h);
     FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int32&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int32&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -465,13 +462,13 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         // Info parser
         const auto get_shader_compile_log = [](GLuint shader) -> string {
             string result = "(no info)";
-            int len = 0;
+            int32 len = 0;
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                int chars = 0;
+                int32 chars = 0;
                 GL(glGetShaderInfoLog(shader, len, &chars, buf.data()));
                 result.assign(buf.data(), len);
             }
@@ -481,12 +478,12 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         const auto get_program_compile_log = [](GLuint program) -> string {
             string result = "(no info)";
-            int len = 0;
+            int32 len = 0;
             GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len));
 
             if (len > 0) {
                 vector<GLchar> buf;
-                int chars = 0;
+                int32 chars = 0;
                 GL(glGetProgramInfoLog(program, len, &chars, buf.data()));
                 result.assign(buf.data(), len);
             }
@@ -564,7 +561,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     return std::move(opengl_effect);
 }
 
-auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto OpenGL_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -611,12 +608,12 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int vp_ox;
-    int vp_oy;
-    int vp_width;
-    int vp_height;
-    int screen_width;
-    int screen_height;
+    int32 vp_ox;
+    int32 vp_oy;
+    int32 vp_width;
+    int32 vp_height;
+    int32 screen_width;
+    int32 screen_height;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
@@ -634,10 +631,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const float back_buf_aspect = static_cast<float>(BaseFrameBufSize.width) / static_cast<float>(BaseFrameBufSize.height);
-        const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
-        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.height) * screen_aspect : static_cast<float>(BaseFrameBufSize.height) * back_buf_aspect);
-        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufSize.width) / back_buf_aspect : static_cast<float>(BaseFrameBufSize.width) / screen_aspect);
+        const auto back_buf_aspect = explicit_div<float32>(numeric_cast<float32>(BaseFrameBufSize.width), numeric_cast<float32>(BaseFrameBufSize.height));
+        const auto screen_aspect = explicit_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
+        const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32>(BaseFrameBufSize.height) * back_buf_aspect);
+        const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32>(BaseFrameBufSize.width) / screen_aspect);
 
         vp_ox = (BaseFrameBufSize.width - fit_width) / 2;
         vp_oy = (BaseFrameBufSize.height - fit_height) / 2;
@@ -650,7 +647,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     TargetSize = {screen_width, screen_height};
@@ -663,10 +660,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
-        const auto g = static_cast<float>(color.value().comp.g) / 255.0f;
-        const auto b = static_cast<float>(color.value().comp.b) / 255.0f;
-        const auto a = static_cast<float>(color.value().comp.a) / 255.0f;
+        const auto r = numeric_cast<float32>(color.value().comp.r) / 255.0f;
+        const auto g = numeric_cast<float32>(color.value().comp.g) / 255.0f;
+        const auto b = numeric_cast<float32>(color.value().comp.b) / 255.0f;
+        const auto a = numeric_cast<float32>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -690,19 +687,19 @@ void OpenGL_Renderer::EnableScissor(irect rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int l;
-    int t;
-    int r;
-    int b;
+    int32 l;
+    int32 t;
+    int32 r;
+    int32 b;
 
     if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
-        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
+        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.Width()) / numeric_cast<float32>(TargetSize.width);
+        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.Height()) / numeric_cast<float32>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
+        l = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
         l = ViewPortRect.Left + rect.x;
@@ -777,7 +774,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucol
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
     vector<ucolor> result;
-    result.resize(static_cast<size_t>(size.width) * size.height);
+    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
@@ -822,7 +819,7 @@ static void EnableVertAtribs(EffectUsage usage)
         GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
         GL(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))));
 
-        for (uint i = 0; i <= 8; i++) {
+        for (GLuint i = 0; i <= 8; i++) {
             GL(glEnableVertexAttribArray(i));
         }
 
@@ -835,7 +832,7 @@ static void EnableVertAtribs(EffectUsage usage)
     GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))));
     GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))));
 
-    for (uint i = 0; i <= 3; i++) {
+    for (GLuint i = 0; i <= 3; i++) {
         GL(glEnableVertexAttribArray(i));
     }
 }
@@ -848,7 +845,7 @@ static void DisableVertAtribs(EffectUsage usage)
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        for (uint i = 0; i <= 8; i++) {
+        for (GLuint i = 0; i <= 8; i++) {
             GL(glDisableVertexAttribArray(i));
         }
 
@@ -856,7 +853,7 @@ static void DisableVertAtribs(EffectUsage usage)
     }
 #endif
 
-    for (uint i = 0; i <= 3; i++) {
+    for (GLuint i = 0; i <= 3; i++) {
         GL(glDisableVertexAttribArray(i));
     }
 }
@@ -882,7 +879,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
     glDeleteBuffers(1, &IndexBufObj);
 }
 
-void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
+void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -902,23 +899,23 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         FO_RUNTIME_ASSERT(Vertices.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
         FO_RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
     }
 #else
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+    upload_vertices = custom_vertices_size.value_or(VertCount);
     GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
 #endif
 
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     // Fill index buffer
-    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
+    const auto upload_indices = custom_indices_size.value_or(IndCount);
 
     GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
     GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(vindex_t), Indices.data(), buf_type));
@@ -1023,7 +1020,7 @@ OpenGL_Effect::~OpenGL_Effect()
     }
 }
 
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, const RenderTexture* custom_tex)
+void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1094,12 +1091,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
+        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float32));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
+        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32));
     }
 
     if (GL_HAS(uniform_buffer_object)) {
@@ -1128,7 +1125,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 
     const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex ? EggTex.get() : DummyTexture.get());
-    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
+    const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
     for (size_t pass = 0; pass < _passCount; pass++) {

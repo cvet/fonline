@@ -35,7 +35,6 @@
 
 #include "Application.h"
 #include "Client.h"
-#include "DiskFileSystem.h"
 #include "ImGuiStuff.h"
 #include "Server.h"
 #include "Settings.h"
@@ -55,7 +54,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv);
+        InitApp(numeric_cast<int32>(argc), argv);
 
         refcount_ptr<FOServer> server;
         vector<refcount_ptr<FOClient>> clients;
@@ -122,8 +121,8 @@ int main(int argc, char** argv) // Handled by SDL
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
-                        ShowExceptionMessageBox(true);
-                        auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
+                        SetExceptionCallback(MessageBox::ShowErrorMessage);
+                        auto hide_msg_box = ScopeCallback([]() noexcept { SetExceptionCallback(nullptr); });
 
                         try {
                             auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
@@ -136,10 +135,6 @@ int main(int argc, char** argv) // Handled by SDL
                         catch (...) {
                             FO_UNKNOWN_EXCEPTION();
                         }
-                    }
-
-                    if (ImGui::Button("Create dump", control_btn_size)) {
-                        CreateDumpMessage("ManualDump", "Manual");
                     }
 
                     if (ImGui::Button("Save log", control_btn_size)) {
@@ -227,8 +222,8 @@ int main(int argc, char** argv) // Handled by SDL
             }
 
             for (auto& client : clients) {
-                ShowExceptionMessageBox(true);
-                auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
+                SetExceptionCallback(MessageBox::ShowErrorMessage);
+                auto hide_msg_box = ScopeCallback([]() noexcept { SetExceptionCallback(nullptr); });
 
                 try {
                     App->Input.ClearEvents();

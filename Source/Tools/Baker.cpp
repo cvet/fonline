@@ -37,12 +37,10 @@
 #include "ConfigFile.h"
 #include "DialogBaker.h"
 #include "Dialogs.h"
-#include "DiskFileSystem.h"
 #include "EffectBaker.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
 #include "ImageBaker.h"
-#include "Log.h"
 #include "MapBaker.h"
 #include "MapLoader.h"
 #include "ModelBaker.h"
@@ -51,7 +49,6 @@
 #include "RawCopyBaker.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include "TextBaker.h"
 #include "Version-Include.h"
 
@@ -161,8 +158,8 @@ void MasterBaker::BakeAll()
 
         DiskFileSystem::MakeDirTree(MakeOutputPath("Configs"));
 
-        int baked_configs = 0;
-        int settings_errors = 0;
+        int32 baked_configs = 0;
+        int32 settings_errors = 0;
 
         const auto bake_config = [&](string_view sub_config) {
             FO_RUNTIME_ASSERT(App->Settings.AppliedConfigs.size() == 1);
@@ -367,9 +364,9 @@ void MasterBaker::BakeAll()
             WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
         };
 
-        int errors = 0;
+        size_t errors = 0;
 
-        for (int bake_order = 0; bake_order <= _settings.MaxBakeOrder; bake_order++) {
+        for (int32 bake_order = 0; bake_order <= _settings.MaxBakeOrder; bake_order++) {
             vector<std::future<void>> res_bakings;
             vector<string> res_baking_outputs;
 
@@ -433,7 +430,7 @@ class Critter;
 class Map;
 class Location;
 
-auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> int
+auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -448,7 +445,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     FO_RUNTIME_ASSERT(_bakedFiles);
 
-    int errors = 0;
+    size_t errors = 0;
 
     const auto* registrator = props.GetRegistrator();
 

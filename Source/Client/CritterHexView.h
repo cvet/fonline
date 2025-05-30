@@ -73,12 +73,12 @@ public:
     auto AddRawInvItem(ItemView* item) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int dir_angle);
-    void ChangeLookDirAngle(int dir_angle);
-    void ChangeMoveDirAngle(int dir_angle);
+    void ChangeDirAngle(int32 dir_angle);
+    void ChangeLookDirAngle(int32 dir_angle);
+    void ChangeMoveDirAngle(int32 dir_angle);
     void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
     void AnimateStay();
-    void Action(CritterAction action, int action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
     void Process();
     void ResetOk();
     void ClearAnim();
@@ -100,8 +100,8 @@ public:
         timespan OffsetTime {};
         mpos StartHex {};
         mpos EndHex {};
-        float WholeTime {};
-        float WholeDist {};
+        float32 WholeTime {};
+        float32 WholeDist {};
         ipos16 StartHexOffset {};
         ipos16 EndHexOffset {};
     } Moving {};
@@ -111,15 +111,15 @@ private:
     {
         const SpriteSheet* AnimFrames {};
         timespan AnimDuration {};
-        uint BeginFrm {};
-        uint EndFrm {};
+        int32 BeginFrm {};
+        int32 EndFrm {};
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         refcount_ptr<Entity> ContextItem {};
     };
 
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetModelLayersData() const -> const int*;
+    [[nodiscard]] auto GetModelLayersData() const -> const int32*;
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
@@ -127,12 +127,12 @@ private:
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
-    void SetAnimSpr(const SpriteSheet* anim, uint frm_index);
+    void SetAnimSpr(const SpriteSheet* anim, int32 frm_index);
 
     bool _needReset {};
     nanotime _resetTime {};
 
-    uint _curFrmIndex {};
+    int32 _curFrmIndex {};
     nanotime _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};

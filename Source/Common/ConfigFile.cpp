@@ -32,7 +32,6 @@
 //
 
 #include "ConfigFile.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -144,7 +143,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
 
             // Text format {}{}{}
             if (line.front() == '{') {
-                uint num = 0;
+                uint32 num = 0;
                 size_t offset = 0;
 
                 for (auto i = 0; i < 3; i++) {
@@ -159,10 +158,10 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                     offset = last + 1;
 
                     if (i == 0 && num == 0) {
-                        num = strex(str2).isNumber() ? strex(str2).toInt() : _hashResolver->ToHashedString(str2).as_int();
+                        num = strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).as_int();
                     }
                     else if (i == 1 && num != 0) {
-                        num += !str2.empty() ? (strex(str2).isNumber() ? strex(str2).toInt() : _hashResolver->ToHashedString(str2).as_int()) : 0;
+                        num += !str2.empty() ? (strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).as_int()) : 0;
                     }
                     else if (i == 2 && num != 0) {
                         (*cur_section)[strex("{}", num)] = str2;
@@ -265,7 +264,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string
     return str != nullptr ? *str : def_val;
 }
 
-auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -281,7 +280,7 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
     return str != nullptr ? strex(*str).toInt() : 0;
 }
 
-auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int def_val) const noexcept -> int
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 

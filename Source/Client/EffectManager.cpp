@@ -32,8 +32,6 @@
 //
 
 #include "EffectManager.h"
-#include "GenericUtils.h"
-#include "Log.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -86,17 +84,17 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
-        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
-        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float>() / 1000.0f;
+        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32>() / 1000.0f;
+        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32>() / 1000.0f;
     }
 
     if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
-        random_value_buf->RandomValue[0] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[1] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[2] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[3] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[0] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[1] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[2] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[3] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
     }
 
     if (effect->IsNeedScriptValueBuf()) {

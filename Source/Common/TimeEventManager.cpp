@@ -85,7 +85,7 @@ void TimeEventManager::InitPersistentTimeEvents(Entity* entity)
     }
 }
 
-auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint
+auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -128,7 +128,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, bool persistent, hstring f
     return _timeEventCounter;
 }
 
-auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id) const -> size_t
+auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint32 id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -180,7 +180,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, hstring func_name, uint id
     return 0;
 }
 
-void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint id, optional<timespan> repeat, optional<vector<any_t>> data)
+void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -273,7 +273,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint i
     }
 }
 
-void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
+void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint32 id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -293,7 +293,7 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
             }
 
             te->Id = 0;
-            timeEvents->erase(timeEvents->begin() + static_cast<ptrdiff_t>(i)); // te is not valid anymore
+            timeEvents->erase(timeEvents->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
 
             // Identifier may be only one
             if (id != 0) {
@@ -336,14 +336,14 @@ void TimeEventManager::StopTimeEvent(Entity* entity, hstring func_name, uint id)
                 te_loaded = true;
             }
 
-            te_func_name.erase(te_func_name.begin() + static_cast<ptrdiff_t>(i));
-            te_fire_time.erase(te_fire_time.begin() + static_cast<ptrdiff_t>(i));
-            te_repeat_duration.erase(te_repeat_duration.begin() + static_cast<ptrdiff_t>(i));
-            te_name.erase(te_name.begin() + static_cast<ptrdiff_t>(i));
-            te_data.erase(te_data.begin() + static_cast<ptrdiff_t>(i));
+            te_func_name.erase(te_func_name.begin() + numeric_cast<ptrdiff_t>(i));
+            te_fire_time.erase(te_fire_time.begin() + numeric_cast<ptrdiff_t>(i));
+            te_repeat_duration.erase(te_repeat_duration.begin() + numeric_cast<ptrdiff_t>(i));
+            te_name.erase(te_name.begin() + numeric_cast<ptrdiff_t>(i));
+            te_data.erase(te_data.begin() + numeric_cast<ptrdiff_t>(i));
 
             te->Id = 0;
-            persistentTimeEvents->erase(persistentTimeEvents->begin() + static_cast<ptrdiff_t>(i)); // te is not valid anymore
+            persistentTimeEvents->erase(persistentTimeEvents->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
 
             // Identifier may be only one
             if (id != 0) {
@@ -434,9 +434,9 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 // Remove event
                 const auto it = std::find_if(timeEvents->begin(), timeEvents->end(), [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
                 FO_RUNTIME_ASSERT(it != timeEvents->end());
-                const auto actual_index = static_cast<size_t>(std::distance(timeEvents->begin(), it));
+                const auto actual_index = numeric_cast<size_t>(std::distance(timeEvents->begin(), it));
 
-                timeEvents->erase(timeEvents->begin() + static_cast<ptrdiff_t>(actual_index));
+                timeEvents->erase(timeEvents->begin() + numeric_cast<ptrdiff_t>(actual_index));
                 te->Id = 0;
             }
         }
@@ -471,7 +471,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 
             const auto it = std::find_if(persistentTimeEvents->begin(), persistentTimeEvents->end(), [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
             FO_RUNTIME_ASSERT(it != persistentTimeEvents->end());
-            const auto actual_index = static_cast<size_t>(std::distance(persistentTimeEvents->begin(), it));
+            const auto actual_index = numeric_cast<size_t>(std::distance(persistentTimeEvents->begin(), it));
 
             if (te->RepeatDuration) {
                 // Prolong event
@@ -499,17 +499,17 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 FO_RUNTIME_ASSERT(te_func_name.size() == te_repeat_duration.size());
                 FO_RUNTIME_ASSERT(te_func_name.size() == te_data.size());
 
-                te_func_name.erase(te_func_name.begin() + static_cast<ptrdiff_t>(actual_index));
-                te_fire_time.erase(te_fire_time.begin() + static_cast<ptrdiff_t>(actual_index));
-                te_repeat_duration.erase(te_repeat_duration.begin() + static_cast<ptrdiff_t>(actual_index));
-                te_data.erase(te_data.begin() + static_cast<ptrdiff_t>(actual_index));
+                te_func_name.erase(te_func_name.begin() + numeric_cast<ptrdiff_t>(actual_index));
+                te_fire_time.erase(te_fire_time.begin() + numeric_cast<ptrdiff_t>(actual_index));
+                te_repeat_duration.erase(te_repeat_duration.begin() + numeric_cast<ptrdiff_t>(actual_index));
+                te_data.erase(te_data.begin() + numeric_cast<ptrdiff_t>(actual_index));
 
                 props.SetTE_FuncName(te_func_name);
                 props.SetTE_FireTime(te_fire_time);
                 props.SetTE_RepeatDuration(te_repeat_duration);
                 props.SetTE_Data(te_data);
 
-                persistentTimeEvents->erase(persistentTimeEvents->begin() + static_cast<ptrdiff_t>(actual_index));
+                persistentTimeEvents->erase(persistentTimeEvents->begin() + numeric_cast<ptrdiff_t>(actual_index));
                 te->Id = 0;
             }
         }

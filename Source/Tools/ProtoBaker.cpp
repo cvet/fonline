@@ -36,9 +36,7 @@
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "EntityProtos.h"
-#include "Log.h"
 #include "ScriptSystem.h"
-#include "StringUtils.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE();
@@ -127,7 +125,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
         }));
     }
 
-    int errors = 0;
+    size_t errors = 0;
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -333,7 +331,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     }
 
     // Validation
-    int errors = 0;
+    size_t errors = 0;
 
     for (auto&& [type_name, protos] : all_protos) {
         for (auto&& [pid, proto] : protos) {
@@ -355,7 +353,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                     const auto it = std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == proto_text.first; });
 
                     if (it != lang_packs.end()) {
-                        const auto& pack_name_str = engine->ResolveEnumValueName("TextPackName", static_cast<int>(pack_name));
+                        const auto& pack_name_str = engine->ResolveEnumValueName("TextPackName", static_cast<int32>(pack_name));
                         auto& text_pack = it->second[pack_name_str];
 
                         if (text_pack.CheckIntersections(proto_text.second)) {
@@ -399,29 +397,29 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
         vector<uint8> props_data;
 
-        writer.Write<uint>(static_cast<uint>(all_protos.size()));
+        writer.Write<uint32>(numeric_cast<uint32>(all_protos.size()));
 
         for (auto&& [type_name, protos] : all_protos) {
-            writer.Write<uint>(static_cast<uint>(protos.size()));
+            writer.Write<uint32>(numeric_cast<uint32>(protos.size()));
 
-            writer.Write<uint16>(static_cast<uint16>(type_name.as_str().length()));
+            writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
             writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
 
             for (auto&& [pid, proto] : protos) {
                 const auto proto_name = proto->GetName();
-                writer.Write<uint16>(static_cast<uint16>(proto_name.length()));
+                writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
                 writer.WritePtr(proto_name.data(), proto_name.length());
 
-                writer.Write<uint16>(static_cast<uint16>(proto->GetComponents().size()));
+                writer.Write<uint16>(numeric_cast<uint16>(proto->GetComponents().size()));
 
                 for (const auto& component : proto->GetComponents()) {
                     const auto& component_str = component.as_str();
-                    writer.Write<uint16>(static_cast<uint16>(component_str.length()));
+                    writer.Write<uint16>(numeric_cast<uint16>(component_str.length()));
                     writer.WritePtr(component_str.data(), component_str.length());
                 }
 
                 proto->GetProperties().StoreAllData(props_data, str_hashes);
-                writer.Write<uint>(static_cast<uint>(props_data.size()));
+                writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 writer.WritePtr(props_data.data(), props_data.size());
             }
         }
@@ -432,11 +430,11 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     {
         auto final_writer = DataWriter(final_data);
 
-        final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+        final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
         for (const auto& hstr : str_hashes) {
             const auto& str = hstr.as_str();
-            final_writer.Write<uint>(static_cast<uint>(str.length()));
+            final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
             final_writer.WritePtr(str.c_str(), str.length());
         }
 
