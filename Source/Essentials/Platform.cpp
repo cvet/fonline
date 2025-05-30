@@ -77,7 +77,7 @@ void Platform::InfoLog(const string& str) noexcept
 #if FO_WINDOWS
     ::OutputDebugStringW(strex(str).toWideChar().c_str());
 #elif FO_ANDROID
-    __android_log_write(ANDROID_LOG_INFO, FO_DEV_NAME, str.c_str());
+    __android_log_write(ANDROID_LOG_INFO, "FO", str.c_str());
 #endif
 }
 
