@@ -34,10 +34,7 @@
 #include "BasicCore.h"
 #include "WinApi-Include.h"
 
-#if FO_LINUX
-#include <fcntl.h>
-#include <signal.h>
-#elif FO_MAC
+#if FO_MAC
 #include <sys/sysctl.h>
 #include <unistd.h>
 #endif
@@ -65,20 +62,18 @@ extern auto IsRunInDebugger() noexcept -> bool
 
 #elif FO_LINUX
     std::call_once(RunInDebuggerOnce, [] {
-        const auto status_fd = ::open("/proc/self/status", O_RDONLY);
-        if (status_fd != -1) {
-            char buf[4096] = {0};
-            const auto num_read = ::read(status_fd, buf, sizeof(buf) - 1);
-            ::close(status_fd);
-            if (num_read > 0) {
-                const auto* tracer_pid_str = ::strstr(buf, "TracerPid:");
-                if (tracer_pid_str != nullptr) {
-                    for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
-                        if (::isspace(*s) == 0) {
-                            RunInDebugger = ::isdigit(*s) != 0 && *s != '0';
-                            break;
-                        }
+        std::ifstream status("/proc/self/status");
+        if (status.is_open()) {
+            std::string line;
+            while (std::getline(status, line)) {
+                if (line.starts_with("TracerPid:")) {
+                    std::istringstream iss(line.substr("TracerPid:"_len));
+                    std::string value;
+                    iss >> value;
+                    if (!value.empty() && std::all_of(value.begin(), value.end(), ::isdigit)) {
+                        RunInDebugger = value != "0";
                     }
+                    break;
                 }
             }
         }
@@ -112,10 +107,10 @@ extern auto BreakIntoDebugger() noexcept -> bool
 #if __has_builtin(__builtin_debugtrap)
         __builtin_debugtrap();
 #else
-        ::raise(SIGTRAP);
+        std::raise(SIGTRAP);
 #endif
 #else
-        ::raise(SIGTRAP);
+        std::raise(SIGTRAP);
 #endif
         return true;
 #elif FO_MAC
