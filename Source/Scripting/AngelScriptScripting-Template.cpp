@@ -64,10 +64,8 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
-#include "Log.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
-#include "StringUtils.h"
 
 #include "AngelScriptExtensions.h"
 #include "AngelScriptReflection.h"
@@ -200,8 +198,13 @@ public:
 #define AS_VERIFY(expr) \
     as_result = expr; \
     if (as_result < 0) { \
-        throw ScriptInitException(#expr); \
+        ThrowInitException(#expr); \
     }
+
+static void ThrowInitException(const char* message)
+{
+    throw ScriptInitException(message);
+}
 
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_GENERIC(name) asFUNCTION(name)
@@ -314,7 +317,7 @@ public:
         ctx_ext2.EndScriptCall = AngelScriptEndCall;
 #endif
 
-        int r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
+        int32 r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
         FO_RUNTIME_ASSERT(r >= 0);
 
         FreeContexts.push_back(ctx);
@@ -390,7 +393,7 @@ public:
         auto& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = asGetActiveContext();
 
-        int exec_result = 0;
+        int32 exec_result = 0;
 
         {
             ctx_ext.ExecutionActive = true;
@@ -448,7 +451,7 @@ public:
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptCallException(ExceptionStackTraceData {ExceptionStackTrace}, ex_string);
+                throw ScriptCallException(ExceptionStackTrace, ex_string);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
@@ -515,7 +518,7 @@ public:
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
-    string ExceptionStackTrace {};
+    StackTraceData ExceptionStackTrace {};
     unordered_set<hstring> HashedStrings {};
     unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
     list<std::function<void*()>> Getters {};
@@ -541,7 +544,7 @@ struct FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
     std::mutex ScriptCallCacheEntriesLocker {};
 #endif
 };
-FO_GLOBAL_DATA(FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), StackTraceData);
+FO_GLOBAL_DATA(FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS), AngelScriptStackTrace);
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos)
 {
@@ -555,22 +558,22 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
     {
 #if SERVER_SCRIPTING
-        std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+        std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 #endif
 
-        const auto it = StackTraceData->ScriptCallCacheEntries.find(program_pos);
+        const auto it = AngelScriptStackTrace->ScriptCallCacheEntries.find(program_pos);
 
-        if (it != StackTraceData->ScriptCallCacheEntries.end()) {
+        if (it != AngelScriptStackTrace->ScriptCallCacheEntries.end()) {
             storage = &it->second;
         }
     }
 
     if (storage == nullptr) {
-        int ctx_line = ctx->GetLineNumber();
+        int32 ctx_line = ctx->GetLineNumber();
 
         auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
         const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
-        const auto orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
+        const auto orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
 
         const auto* func_decl = func->GetDeclaration(true);
 
@@ -582,10 +585,10 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         {
 #if SERVER_SCRIPTING
-            std::scoped_lock lock {StackTraceData->ScriptCallCacheEntriesLocker};
+            std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 #endif
 
-            storage = &StackTraceData->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
+            storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
 
             safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
             safe_copy(storage->FileBuf, storage->FileBufLen, orig_file);
@@ -593,7 +596,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
             storage->SrcLoc.name = nullptr;
             storage->SrcLoc.function = storage->FuncBuf.data();
             storage->SrcLoc.file = storage->FileBuf.data();
-            storage->SrcLoc.line = static_cast<uint32_t>(orig_line);
+            storage->SrcLoc.line = orig_line;
         }
 
         PushStackTrace(storage->SrcLoc);
@@ -644,17 +647,17 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
 
     auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
     const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-    const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+    const auto ex_orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ex_line, lnt));
 
     const auto* func_decl = ex_func->GetDeclaration(true);
 
     {
-        auto srcloc = SourceLocationData {nullptr, func_decl, ex_orig_file.c_str(), static_cast<uint32_t>(ex_orig_line)};
+        auto srcloc = SourceLocationData {nullptr, func_decl, ex_orig_file.c_str(), ex_orig_line};
         PushStackTrace(srcloc);
         auto stack_trace_entry_end = ScopeCallback([]() noexcept { PopStackTrace(); });
 
         // Write to ExceptionStackTrace
-        *static_cast<string*>(param) = GetStackTrace();
+        *static_cast<StackTraceData*>(param) = GetStackTrace();
     }
 }
 
@@ -729,7 +732,7 @@ template<typename T, typename T2 = T>
     as_array->Resize(0);
 
     if (!vec.empty()) {
-        as_array->Resize(static_cast<asUINT>(vec.size()));
+        as_array->Resize(numeric_cast<asUINT>(vec.size()));
 
         for (const auto i : xrange(vec)) {
             *static_cast<T2*>(as_array->At(static_cast<asUINT>(i))) = static_cast<T2>(vec[i]);
@@ -838,7 +841,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     return as_dict;
 }
 
-[[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int type_id) -> string
+[[maybe_unused]] static auto GetASObjectInfo(const void* ptr, int32 type_id) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -852,7 +855,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_INT16:
         return strex("int16: {}", *static_cast<const int16*>(ptr));
     case asTYPEID_INT32:
-        return strex("int32: {}", *static_cast<const int*>(ptr));
+        return strex("int32: {}", *static_cast<const int32*>(ptr));
     case asTYPEID_INT64:
         return strex("int64: {}", *static_cast<const int64*>(ptr));
     case asTYPEID_UINT8:
@@ -860,13 +863,13 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_UINT16:
         return strex("uint16: {}", *static_cast<const uint16*>(ptr));
     case asTYPEID_UINT32:
-        return strex("uint32: {}", *static_cast<const uint*>(ptr));
+        return strex("uint32: {}", *static_cast<const uint32*>(ptr));
     case asTYPEID_UINT64:
         return strex("uint64: {}", *static_cast<const uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return strex("float: {}", *static_cast<const float*>(ptr));
+        return strex("float32: {}", *static_cast<const float32*>(ptr));
     case asTYPEID_DOUBLE:
-        return strex("double: {}", *static_cast<const double*>(ptr));
+        return strex("float64: {}", *static_cast<const float64*>(ptr));
     default:
         break;
     }
@@ -903,7 +906,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     }
 
     if (asUINT enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
-        const int enum_value = *static_cast<const int*>(ptr);
+        const auto enum_value = *static_cast<const int32*>(ptr);
 
         if (engine->GetEnumInfo(type_name, nullptr)) {
             bool failed = false;
@@ -916,7 +919,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
         }
 
         for (asUINT i = 0; i < enum_value_count; i++) {
-            int check_enum_value = 0;
+            int32 check_enum_value = 0;
             const char* enum_value_name = as_type_info->GetEnumValueByIndex(i, &check_enum_value);
 
             if (check_enum_value == enum_value) {
@@ -951,6 +954,37 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     }
 
     return hash_resolver.ToHashedString(func_name);
+}
+
+[[maybe_unused]] static auto MakePropertyASName(const Property* prop) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static unordered_map<string, string> as_type_map = {{"int32", "int"}, {"uint32", "uint"}, {"float32", "float"}, {"float64", "double"}};
+
+    const auto map_type = [](const string& name) -> const string& {
+        const auto it = as_type_map.find(name);
+        return it != as_type_map.end() ? it->second : name;
+    };
+
+    string result;
+
+    if (prop->IsDict()) {
+        if (prop->IsDictOfArray()) {
+            result = strex("dict<{}, {}[]>", map_type(prop->GetDictKeyTypeName()), map_type(prop->GetBaseTypeName()));
+        }
+        else {
+            result = strex("dict<{}, {}>", map_type(prop->GetDictKeyTypeName()), map_type(prop->GetBaseTypeName()));
+        }
+    }
+    else if (prop->IsArray()) {
+        result = strex("{}[]", map_type(prop->GetBaseTypeName()));
+    }
+    else {
+        result = map_type(prop->GetBaseTypeName());
+    }
+
+    return result;
 }
 
 #if !COMPILER_MODE
@@ -1047,8 +1081,8 @@ template<typename TRet, typename... Args>
         func_desc.RetType = script_backend->Engine->ScriptSys.ResolveEngineType(typeid(TRet));
         func_desc.ArgsType = {script_backend->Engine->ScriptSys.ResolveEngineType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
-        func_desc.Call = [script_backend, &func_desc, as_func = RefCountHolder(func)](initializer_list<void*> args, void* ret) noexcept { //
-            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get(), args, ret);
+        func_desc.Call = [script_backend, &func_desc, as_func = refcount_ptr(func)](initializer_list<void*> args, void* ret) noexcept { //
+            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get_no_const(), args, ret);
         };
 
         return ScriptFunc<TRet, Args...>(&func_desc);
@@ -1081,7 +1115,7 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
             return sizeof(hstring);
         }
         else if (prop->IsBaseTypeEnum()) {
-            return sizeof(int);
+            return sizeof(int32);
         }
         else if (prop->IsBaseTypePrimitive()) {
             return prop->GetBaseSize();
@@ -1139,8 +1173,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         const auto& hash_resolver = prop->GetRegistrator()->GetHashResolver();
         return hash_resolver.ResolveHash(hash);
     };
-    const auto resolve_enum = [](const void* eptr, size_t elen) -> int {
-        int result = 0;
+    const auto resolve_enum = [](const void* eptr, size_t elen) -> int32 {
+        int32 result = 0;
         MemCopy(&result, eptr, elen);
         return result;
     };
@@ -1155,8 +1189,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             FO_RUNTIME_ASSERT(data_size != 0);
-            FO_RUNTIME_ASSERT(data_size <= sizeof(int));
-            MemFill(construct_addr, 0, sizeof(int));
+            FO_RUNTIME_ASSERT(data_size <= sizeof(int32));
+            MemFill(construct_addr, 0, sizeof(int32));
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
@@ -1175,18 +1209,18 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         new (construct_addr) string(reinterpret_cast<const char*>(data), data_size);
     }
     else if (prop->IsArray()) {
-        auto* arr = CreateASArray(as_engine, prop->GetFullTypeName().c_str());
+        auto* arr = CreateASArray(as_engine, MakePropertyASName(prop).c_str());
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
-                uint arr_size;
+                uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
 
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
-                    uint str_size;
+                for (uint32 i = 0; i < arr_size; i++) {
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
@@ -1199,10 +1233,10 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeHash()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
                     arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
@@ -1212,16 +1246,16 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypeEnum()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                if (prop->GetBaseSize() == sizeof(int)) {
+                if (prop->GetBaseSize() == sizeof(int32)) {
                     MemCopy(arr->At(0), data, data_size);
                 }
                 else {
-                    auto* dest = static_cast<int*>(arr->At(0));
+                    auto* dest = static_cast<int32*>(arr->At(0));
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         *(dest + i) = 0;
                         MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
@@ -1230,17 +1264,17 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         }
         else if (prop->IsBaseTypePrimitive()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
                 MemCopy(arr->At(0), data, data_size);
             }
         }
         else if (prop->IsBaseTypeStruct()) {
             if (data_size != 0) {
-                const auto arr_size = static_cast<uint>(data_size / prop->GetBaseSize());
+                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
                 arr->Resize(arr_size);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     MemCopy(arr->At(i), data, prop->GetBaseSize());
                     data += prop->GetBaseSize();
                 }
@@ -1253,7 +1287,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         *static_cast<CScriptArray**>(construct_addr) = arr;
     }
     else if (prop->IsDict()) {
-        CScriptDict* dict = CreateASDict(as_engine, prop->GetFullTypeName().c_str());
+        CScriptDict* dict = CreateASDict(as_engine, MakePropertyASName(prop).c_str());
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
@@ -1263,14 +1297,14 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeySize();
                     }
 
-                    uint arr_size;
+                    uint32 arr_size;
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
@@ -1280,8 +1314,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         if (prop->IsDictOfArrayOfString()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
-                                uint str_size;
+                            for (uint32 i = 0; i < arr_size; i++) {
+                                uint32 str_size;
                                 MemCopy(&str_size, data, sizeof(str_size));
                                 data += sizeof(str_size);
 
@@ -1293,7 +1327,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         else if (prop->IsBaseTypeHash()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
                                 arr->SetValue(i, PASS_AS_PVOID(&hvalue));
 
@@ -1307,8 +1341,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                                 MemCopy(arr->At(0), data, arr_size * prop->GetBaseSize());
                             }
                             else {
-                                auto* dest = static_cast<int*>(arr->At(0));
-                                for (uint i = 0; i < arr_size; i++) {
+                                auto* dest = static_cast<int32*>(arr->At(0));
+                                for (uint32 i = 0; i < arr_size; i++) {
                                     MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
@@ -1324,7 +1358,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                         else if (prop->IsBaseTypeStruct()) {
                             arr->Resize(arr_size);
 
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 MemCopy(arr->At(i), data, prop->GetBaseSize());
                                 data += prop->GetBaseSize();
                             }
@@ -1335,7 +1369,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(PASS_AS_PVOID(&key_str), &arr);
                     }
@@ -1361,21 +1395,21 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeySize();
                     }
 
-                    uint str_size;
+                    uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
+                    data += sizeof(uint32);
 
                     auto str = string {reinterpret_cast<const char*>(data), str_size};
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(PASS_AS_PVOID(&key_str), &str);
                     }
@@ -1401,7 +1435,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1409,7 +1443,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint key_len = *reinterpret_cast<const uint*>(key);
+                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
 
                         if (prop->IsBaseTypeHash()) {
@@ -1488,27 +1522,27 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         const auto* arr = *static_cast<CScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
-            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const auto arr_size = numeric_cast<uint32>(arr != nullptr ? arr->GetSize() : 0);
 
             if (arr_size != 0) {
                 // Calculate size
-                size_t data_size = sizeof(uint);
+                size_t data_size = sizeof(uint32);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
-                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                    data_size += sizeof(uint32) + numeric_cast<uint32>(str.length());
                 }
 
                 // Make buffer
                 auto* buf = prop_data.Alloc(data_size);
 
                 MemCopy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint);
+                buf += sizeof(uint32);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (uint32 i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
-                    uint str_size = static_cast<uint>(str.length());
+                    const auto str_size = numeric_cast<uint32>(str.length());
                     MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
@@ -1520,28 +1554,28 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else {
-            const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
             const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
             if (data_size != 0) {
                 if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                         MemCopy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
                     }
                 }
                 else if (prop->IsBaseTypeEnum()) {
-                    if (prop->GetBaseSize() == sizeof(int)) {
+                    if (prop->GetBaseSize() == sizeof(int32)) {
                         prop_data.Pass(arr->At(0), data_size);
                     }
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
-                        for (uint i = 0; i < arr_size; i++) {
-                            const auto e = *static_cast<const int*>(arr->At(i));
+                        for (uint32 i = 0; i < arr_size; i++) {
+                            const auto e = *static_cast<const int32*>(arr->At(i));
                             MemCopy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
@@ -1553,7 +1587,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 else if (prop->IsBaseTypeStruct()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint i = 0; i < arr_size; i++) {
+                    for (uint32 i = 0; i < arr_size; i++) {
                         MemCopy(buf, arr->At(i), prop->GetBaseSize());
                         buf += prop->GetBaseSize();
                     }
@@ -1577,7 +1611,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1585,13 +1619,13 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
 
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
-                        for (uint i = 0; i < arr_size; i++) {
+                        for (uint32 i = 0; i < arr_size; i++) {
                             const auto& str = *static_cast<const string*>(arr->At(i));
-                            data_size += sizeof(uint) + static_cast<uint>(str.length());
+                            data_size += sizeof(uint32) + numeric_cast<uint32>(str.length());
                         }
                     }
                     else {
@@ -1607,7 +1641,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1619,7 +1653,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1628,17 +1662,17 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
 
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
-                    MemCopy(buf, &arr_size, sizeof(uint));
+                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    MemCopy(buf, &arr_size, sizeof(uint32));
                     buf += sizeof(arr_size);
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto& str = *static_cast<const string*>(arr->At(i));
-                                const auto str_size = static_cast<uint>(str.length());
+                                const auto str_size = numeric_cast<uint32>(str.length());
 
-                                MemCopy(buf, &str_size, sizeof(uint));
+                                MemCopy(buf, &str_size, sizeof(uint32));
                                 buf += sizeof(str_size);
 
                                 if (str_size != 0) {
@@ -1648,20 +1682,20 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                                 MemCopy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeEnum()) {
-                            if (prop->GetBaseSize() == sizeof(int)) {
+                            if (prop->GetBaseSize() == sizeof(int32)) {
                                 MemCopy(buf, arr->At(0), arr_size * prop->GetBaseSize());
                                 buf += arr_size * prop->GetBaseSize();
                             }
                             else {
-                                for (uint i = 0; i < arr_size; i++) {
-                                    const auto e = *static_cast<const int*>(arr->At(i));
+                                for (uint32 i = 0; i < arr_size; i++) {
+                                    const auto e = *static_cast<const int32*>(arr->At(i));
                                     MemCopy(buf, &e, prop->GetBaseSize());
                                     buf += prop->GetBaseSize();
                                 }
@@ -1672,7 +1706,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                             buf += arr_size * prop->GetBaseSize();
                         }
                         else if (prop->IsBaseTypeStruct()) {
-                            for (uint i = 0; i < arr_size; i++) {
+                            for (uint32 i = 0; i < arr_size; i++) {
                                 MemCopy(buf, arr->At(i), prop->GetBaseSize());
                                 buf += prop->GetBaseSize();
                             }
@@ -1694,7 +1728,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1702,7 +1736,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
 
                     const auto& str = *static_cast<const string*>(value);
-                    const auto str_size = static_cast<uint>(str.length());
+                    const auto str_size = numeric_cast<uint32>(str.length());
 
                     data_size += sizeof(str_size) + str_size;
                 }
@@ -1715,7 +1749,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
-                        const uint key_len = static_cast<uint>(key_str.length());
+                        const auto key_len = numeric_cast<uint32>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1727,7 +1761,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1736,8 +1770,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += prop->GetDictKeySize();
                     }
 
-                    const auto str_size = static_cast<uint>(str.length());
-                    MemCopy(buf, &str_size, sizeof(uint));
+                    const auto str_size = numeric_cast<uint32>(str.length());
+                    MemCopy(buf, &str_size, sizeof(uint32));
                     buf += sizeof(str_size);
 
                     if (str_size != 0) {
@@ -1758,7 +1792,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint key_len = static_cast<uint>(key_str.length());
+                    const auto key_len = numeric_cast<uint32>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
                     data_size += value_element_size;
                 }
@@ -1768,7 +1802,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& key_str = *static_cast<const string*>(key);
-                    const uint key_len = static_cast<uint>(key_str.length());
+                    const auto key_len = numeric_cast<uint32>(key_str.length());
 
                     MemCopy(buf, &key_len, sizeof(key_len));
                     buf += sizeof(key_len);
@@ -1805,7 +1839,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         MemCopy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int32*>(key);
                         MemCopy(buf, &ekey, key_element_size);
                     }
                     else {
@@ -1834,7 +1868,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     return prop_data;
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1847,27 +1882,27 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out_buf.Write(numeric_cast<uint>(value.size()));
+    out_buf.Write(numeric_cast<uint32>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value);
     }
 }
 
-template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
-        int> = 0>
+template<typename T, typename U>
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out_buf.Write(numeric_cast<uint>(value.size()));
+    out_buf.Write(numeric_cast<uint32>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value.first);
@@ -1875,7 +1910,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1891,32 +1927,32 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolve
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>, int> = 0>
+template<typename T>
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint>();
+    const auto inner_values_count = in_buf.Read<uint32>();
     value.reserve(inner_values_count);
 
-    for (uint i = 0; i < inner_values_count; i++) {
+    for (uint32 i = 0; i < inner_values_count; i++) {
         T inner_value;
         ReadNetBuf(in_buf, inner_value, hash_resolver);
         value.emplace_back(inner_value);
     }
 }
 
-template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>),
-        int> = 0>
+template<typename T, typename U>
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto inner_values_count = in_buf.Read<uint>();
+    const auto inner_values_count = in_buf.Read<uint32>();
 
-    for (uint i = 0; i < inner_values_count; i++) {
+    for (uint32 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
         ReadNetBuf(in_buf, inner_value_first, hash_resolver);
         U inner_value_second;
@@ -1925,7 +1961,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
     }
 }
 
-[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint rpc_num)
+[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint32 rpc_num)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2105,7 +2141,7 @@ static void Global_Assert(asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(Args);
 
-    for (int i = 1; i < gen->GetArgCount(); i++) {
+    for (int32 i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
@@ -2165,7 +2201,7 @@ static void Global_ThrowException(asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(Args);
 
-    for (int i = 1; i < gen->GetArgCount(); i++) {
+    for (int32 i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetASObjectInfo(obj, obj_type_id));
@@ -2214,7 +2250,7 @@ static void Global_ThrowException(asIScriptGeneric* gen)
 #endif
 }
 
-static void Global_Yield(uint time)
+static void Global_Yield(int32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2241,7 +2277,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
@@ -2260,13 +2296,13 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     if (func->GetReturnTypeId() == asTYPEID_VOID) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
-    if (prop->GetFullTypeName() != strex(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
+    if (MakePropertyASName(prop) != strex(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
-    int type_id;
+    int32 type_id;
     asDWORD flags;
-    int as_result;
+    int32 as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
@@ -2325,7 +2361,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(prop_index));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
 
@@ -2342,9 +2378,9 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
 
-    int type_id;
+    int32 type_id;
     asDWORD flags;
-    int as_result;
+    int32 as_result;
     AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != T::ENTITY_TYPE_NAME || flags != 0) {
@@ -2357,7 +2393,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     if (func->GetParamCount() > 1) {
         AS_VERIFY(func->GetParam(1, &type_id, &flags));
 
-        if (prop->GetFullTypeName() == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
+        if (MakePropertyASName(prop) == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
             has_value_ref = true;
             if (func->GetParamCount() == 3) {
                 throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
@@ -2373,7 +2409,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         if (func->GetParamCount() == 3) {
             AS_VERIFY(func->GetParam(2, &type_id, &flags));
 
-            if (prop->GetFullTypeName() == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
+            if (MakePropertyASName(prop) == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == asTM_INOUTREF) {
                 has_value_ref = true;
             }
             else {
@@ -2495,7 +2531,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
 }
 
 template<typename T>
-static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
+static auto Property_GetValueAsInt(const T* entity, int32 prop_index) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2527,7 +2563,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 }
 
 template<typename T>
-static void Property_SetValueAsInt(T* entity, int prop_index, int value)
+static void Property_SetValueAsInt(T* entity, int32 prop_index, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2563,7 +2599,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 }
 
 template<typename T>
-static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
+static auto Property_GetValueAsAny(const T* entity, int32 prop_index) -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2595,7 +2631,7 @@ static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 }
 
 template<typename T>
-static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
+static void Property_SetValueAsAny(T* entity, int32 prop_index, any_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2810,7 +2846,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     bool failed = false;
     auto hstr = engine->Hashes.ResolveHash(hash, &failed);
@@ -2828,7 +2864,7 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     auto hstr = engine->Hashes.ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
@@ -2934,7 +2970,7 @@ static auto HashedString_GetString(const hstring& self) -> string
 #endif
 }
 
-static auto HashedString_GetHash(const hstring& self) -> int
+static auto HashedString_GetHash(const hstring& self) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2947,7 +2983,7 @@ static auto HashedString_GetHash(const hstring& self) -> int
 #endif
 }
 
-static auto HashedString_GetUHash(const hstring& self) -> uint
+static auto HashedString_GetUHash(const hstring& self) -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3053,19 +3089,22 @@ static auto Any_Conv(const any_t& self) -> T
         return strex(self).toBool();
     }
     else if constexpr (is_strong_type_v<T>) {
-        return T {static_cast<typename T::underlying_type>(strex(self).toInt64())};
+        return T {numeric_cast<typename T::underlying_type>(strex(self).toInt64())};
     }
     else if constexpr (std::is_integral_v<T>) {
-        return static_cast<T>(strex(self).toInt64());
+        return numeric_cast<T>(strex(self).toInt64());
     }
     else if constexpr (std::is_floating_point_v<T>) {
-        return static_cast<T>(strex(self).toDouble());
+        return numeric_cast<T>(strex(self).toDouble());
     }
     else if constexpr (std::is_same_v<T, string>) {
         return self;
     }
     else {
-        return parse_from_string<T>(self);
+        T value = {};
+        istringstream istr(self);
+        istr >> value;
+        return value;
     }
 
 #else
@@ -3208,7 +3247,7 @@ static auto StrongType_AnyConv(const T& self) -> any_t
 #endif
 }
 
-static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
+static void Ucolor_ConstructRawRgba(ucolor* self, uint32 rgba)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3222,15 +3261,15 @@ static void Ucolor_ConstructRawRgba(ucolor* self, uint rgba)
 #endif
 }
 
-static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
+static void Ucolor_ConstructRgba(ucolor* self, int32 r, int32 g, int32 b, int32 a)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto clamped_r = static_cast<uint8>(std::clamp(r, 0, 255));
-    const auto clamped_g = static_cast<uint8>(std::clamp(g, 0, 255));
-    const auto clamped_b = static_cast<uint8>(std::clamp(b, 0, 255));
-    const auto clamped_a = static_cast<uint8>(std::clamp(a, 0, 255));
+    const auto clamped_r = numeric_cast<uint8>(std::clamp(r, 0, 255));
+    const auto clamped_g = numeric_cast<uint8>(std::clamp(g, 0, 255));
+    const auto clamped_b = numeric_cast<uint8>(std::clamp(b, 0, 255));
+    const auto clamped_a = numeric_cast<uint8>(std::clamp(a, 0, 255));
 
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 
@@ -3242,7 +3281,7 @@ static void Ucolor_ConstructRgba(ucolor* self, int r, int g, int b, int a)
 }
 
 template<typename T>
-static void Time_ConstructWithPlace(T* self, int64 value, int place)
+static void Time_ConstructWithPlace(T* self, int64 value, int32 place)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3270,7 +3309,7 @@ static void Time_ConstructWithPlace(T* self, int64 value, int place)
 #endif
 }
 
-static void Ipos_ConstructXandY(ipos* self, int x, int y)
+static void Ipos_ConstructXandY(ipos* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3362,21 +3401,21 @@ static auto Ipos_FitToRect(const ipos& self, irect rect) -> bool
     return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
-static void Isize_ConstructWandH(isize* self, int width, int height)
+static void Isize_ConstructWandH(isize* self, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) isize {width, height};
 }
 
-static void Irect_ConstructXandYandWandH(irect* self, int x, int y, int width, int height)
+static void Irect_ConstructXandYandWandH(irect* self, int32 x, int32 y, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) irect {x, y, width, height};
 }
 
-static void Fpos_ConstructXandY(fpos* self, float x, float y)
+static void Fpos_ConstructXandY(fpos* self, float32 x, float32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3422,14 +3461,14 @@ static auto Fpos_NegFpos(const fpos& self) -> fpos
     return fpos {-self.x, -self.y};
 }
 
-static void Fsize_ConstructWandH(isize* self, float width, float height)
+static void Fsize_ConstructWandH(isize* self, float32 width, float32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) fsize {width, height};
 }
 
-static void Mpos_ConstructXandY(mpos* self, int x, int y)
+static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3437,7 +3476,7 @@ static void Mpos_ConstructXandY(mpos* self, int x, int y)
         throw ScriptException("Invalid mpos values", x, y);
     }
 
-    new (self) mpos {static_cast<uint16>(x), static_cast<uint16>(y)};
+    new (self) mpos {numeric_cast<uint16>(x), numeric_cast<uint16>(y)};
 }
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
@@ -3647,18 +3686,18 @@ static void Enum_Parse(asIScriptGeneric* gen)
     const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
     bool failed = false;
-    int enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
+    int32 enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
 
     if (failed) {
         if (gen->GetArgCount() == 2) {
-            enum_value = *static_cast<int*>(gen->GetAddressOfArg(1));
+            enum_value = *static_cast<int32*>(gen->GetAddressOfArg(1));
         }
         else {
             throw ScriptException("Can't parse enum", enum_info->EnumName, enum_value_name);
         }
     }
 
-    new (gen->GetAddressOfReturnLocation()) int(enum_value);
+    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
 
 #else
     ignore_unused(gen);
@@ -3672,7 +3711,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
-    int enum_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    int32 enum_index = *static_cast<int32*>(gen->GetAddressOfArg(0));
     bool full_spec = *static_cast<bool*>(gen->GetAddressOfArg(1));
 
     bool failed = false;
@@ -3744,7 +3783,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     FO_STACK_TRACE_ENTRY();
 
 #if COMPILER_MODE
-    static int dummy = 0;
+    static int32 dummy = 0;
 #endif
 
     // Maybe unused
@@ -3783,7 +3822,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     [[maybe_unused]] unordered_set<hstring> hashed_strings;
 #endif
 
-    int as_result;
+    int32 as_result;
     AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(CallbackMessage), as_engine, asCALL_CDECL));
 
     AS_VERIFY(as_engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
@@ -3864,12 +3903,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
@@ -3878,12 +3917,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint32>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float32>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, engine));
     AS_VERIFY(as_engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
@@ -3913,7 +3952,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", SCRIPT_GENERIC(Global_ThrowException<8>), SCRIPT_GENERIC_CONV));
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_GENERIC(Global_ThrowException<9>), SCRIPT_GENERIC_CONV));
     AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_GENERIC(Global_ThrowException<10>), SCRIPT_GENERIC_CONV));
-    AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
 #define REGISTER_HARD_STRONG_TYPE(name, type) \
@@ -3954,7 +3993,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register timespan
     REGISTER_HARD_STRONG_TYPE(FO_TIMESPAN_NAME, timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
@@ -3967,7 +4006,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register nanotime
     REGISTER_HARD_STRONG_TYPE(FO_NANOTIME_NAME, nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
@@ -3982,7 +4021,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register synctime
     REGISTER_HARD_STRONG_TYPE(FO_SYNCTIME_NAME, synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
@@ -4228,7 +4267,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     if (auto* func = as_engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = RefCountHolder(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get()); }); \
+        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = refcount_ptr(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get_no_const()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4283,12 +4322,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         }
 
         for (const auto i : xrange(registrator->GetPropertiesCount())) {
-            const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
+            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
             const auto component = prop->GetComponent();
-            const auto is_handle = (prop->IsArray() || prop->IsDict());
+            const auto is_handle = prop->IsArray() || prop->IsDict();
 
             if (!prop->IsDisabled()) {
-                const auto decl_get = strex("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("const {}{} get_{}() const", MakePropertyASName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
@@ -4305,13 +4344,13 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             if (!prop->IsDisabled() && !prop->IsReadOnly()) {
-                const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
+                const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", MakePropertyASName(prop), is_handle ? "@+" : "").str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
             }
         }
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            vector<int> prop_enums;
+            vector<int32> prop_enums;
             prop_enums.reserve(properties.size());
             for (const auto* prop : properties) {
                 prop_enums.push_back(prop->GetRegIndex());
@@ -4319,7 +4358,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
             AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = EnumArrays.emplace(MarshalBackArray<int>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
+            const auto it_enum = EnumArrays.emplace(MarshalBackArray<int32>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             FO_RUNTIME_ASSERT(it_enum.second);
 #endif
             AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
@@ -4367,12 +4406,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         FO_RUNTIME_ASSERT(as_engine->GetModuleCount() == 1);
         auto* mod = as_engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [&](int type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
+        const auto as_type_to_type_info = [&](int32 type_id, asDWORD flags, bool is_ret) -> shared_ptr<ScriptTypeInfo> {
             const auto& engine_type_map = script_sys.GetEngineTypeMap();
             auto* as_type_info = as_engine->GetTypeInfoById(type_id);
             const auto is_array = as_type_info != nullptr && string_view(as_type_info->GetName()) == "array";
 
-            const auto get_type_name = [as_engine](int tid) -> string_view {
+            const auto get_type_name = [as_engine](int32 tid) -> string_view {
                 switch (tid) {
                 case asTYPEID_VOID:
                     return "void";
@@ -4383,7 +4422,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 case asTYPEID_INT16:
                     return "int16";
                 case asTYPEID_INT32:
-                    return "int";
+                    return "int32";
                 case asTYPEID_INT64:
                     return "int64";
                 case asTYPEID_UINT8:
@@ -4391,13 +4430,13 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 case asTYPEID_UINT16:
                     return "uint16";
                 case asTYPEID_UINT32:
-                    return "uint";
+                    return "uint32";
                 case asTYPEID_UINT64:
                     return "uint64";
                 case asTYPEID_FLOAT:
-                    return "float";
+                    return "float32";
                 case asTYPEID_DOUBLE:
-                    return "double";
+                    return "float64";
                 default:
                     break;
                 }
@@ -4483,7 +4522,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
             for (asUINT p = 0; p < func->GetParamCount(); p++) {
-                int param_type_id;
+                int32 param_type_id;
                 asDWORD param_flags;
                 AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
 
@@ -4491,7 +4530,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             asDWORD ret_flags = 0;
-            int ret_type_id = func->GetReturnTypeId(&ret_flags);
+            int32 ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc->RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
             func_desc->CallSupported = func_desc->RetType && std::find(func_desc->ArgsType.begin(), func_desc->ArgsType.end(), nullptr) == func_desc->ArgsType.end();
@@ -4614,11 +4653,11 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
     private:
         const string* _rootScript;
         const map<string, string>* _scriptFiles;
-        int _includeDeep {};
+        int32 _includeDeep {};
     };
 
     map<string, string> final_script_files;
-    vector<tuple<int, string, string>> final_script_files_order;
+    vector<tuple<int32, string, string>> final_script_files_order;
 
     for (const auto& script_file : script_files) {
         string script_name = string(script_file.GetName());
@@ -4628,7 +4667,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         const auto line_sep = script_content.find('\n');
         const auto first_line = script_content.substr(0, line_sep);
 
-        int sort = 0;
+        int32 sort = 0;
         const auto sort_pos = first_line.find("Sort ");
 
         if (sort_pos != string::npos) {
@@ -4639,7 +4678,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         final_script_files.emplace(script_path, std::move(script_content));
     }
 
-    std::stable_sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
+    std::ranges::stable_sort(final_script_files_order, [](auto&& a, auto&& b) {
         if (std::get<0>(a) == std::get<0>(b)) {
             return std::get<1>(a) < std::get<1>(b);
         }
@@ -4696,7 +4735,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
         throw ScriptCompilerException("Create root module failed");
     }
 
-    int as_result = mod->AddScriptSection("Root", result.String.c_str());
+    int32 as_result = mod->AddScriptSection("Root", result.String.c_str());
 
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to add script section", as_result);
@@ -4721,9 +4760,9 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 
     vector<uint8> data;
     auto writer = DataWriter(data);
-    writer.Write<uint>(static_cast<uint>(buf.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
-    writer.Write<uint>(static_cast<uint>(lnt_data.size()));
+    writer.Write<uint32>(numeric_cast<uint32>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
     return data;
@@ -4739,10 +4778,10 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
-    vector<asBYTE> buf(reader.Read<uint>());
+    vector<asBYTE> buf(reader.Read<uint32>());
     MemCopy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
 
-    std::vector<uint8> lnt_data(reader.Read<uint>());
+    std::vector<uint8> lnt_data(reader.Read<uint32>());
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
 
     reader.VerifyEnd();
@@ -4759,7 +4798,7 @@ static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> scri
     as_engine->SetUserData(lnt, 5);
 
     BinaryStream binary {buf};
-    int as_result = mod->LoadByteCode(&binary);
+    int32 as_result = mod->LoadByteCode(&binary);
 
     if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);

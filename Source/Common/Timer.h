@@ -55,7 +55,7 @@ public:
     [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime; }
     [[nodiscard]] auto IsTimeSynchronized() const noexcept -> bool { return !!_syncTimeBase; }
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
-    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int { return _fps; }
+    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32 { return _fps; }
 
     void SetSynchronizedTime(synctime time) noexcept;
     void FrameAdvance();
@@ -70,9 +70,9 @@ private:
     synctime _syncTimeBase {};
     nanotime _syncTimeSet {};
 
-    int _fps {};
+    int32 _fps {};
     nanotime _fpsMeasureTime {};
-    int _fpsMeasureCounter {};
+    int32 _fpsMeasureCounter {};
 };
 
 FO_END_NAMESPACE();

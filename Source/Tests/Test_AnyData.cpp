@@ -41,7 +41,7 @@ TEST_CASE("AnyData")
 {
     SECTION("Int 1")
     {
-        AnyData::Value val = static_cast<int64>(1234);
+        AnyData::Value val = numeric_cast<int64>(1234);
         CHECK(AnyData::ValueToString(val) == "1234");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Int64));
     }
@@ -56,6 +56,7 @@ TEST_CASE("AnyData")
     SECTION("Float 2")
     {
         AnyData::Value val = 0.999999;
+        CHECK(AnyData::ValueToString(val) == "0.999999");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Double));
     }
 
@@ -118,10 +119,10 @@ TEST_CASE("AnyData")
     SECTION("Array of ints")
     {
         AnyData::Array arr;
-        arr.EmplaceBack(static_cast<int64>(1));
-        arr.EmplaceBack(static_cast<int64>(2));
-        arr.EmplaceBack(static_cast<int64>(3));
-        arr.EmplaceBack(static_cast<int64>(4));
+        arr.EmplaceBack(numeric_cast<int64>(1));
+        arr.EmplaceBack(numeric_cast<int64>(2));
+        arr.EmplaceBack(numeric_cast<int64>(3));
+        arr.EmplaceBack(numeric_cast<int64>(4));
         CHECK(AnyData::ValueToString(arr.Copy()) == "1 2 3 4");
         CHECK(arr == AnyData::ParseValue(AnyData::ValueToString(arr.Copy()), false, true, AnyData::ValueType::Int64).AsArray());
     }
@@ -139,9 +140,9 @@ TEST_CASE("AnyData")
     SECTION("Dict with ints")
     {
         AnyData::Dict dict;
-        dict.Emplace("key1", static_cast<int64>(1));
-        dict.Emplace("key2", static_cast<int64>(2));
-        dict.Emplace("key3", static_cast<int64>(3));
+        dict.Emplace("key1", numeric_cast<int64>(1));
+        dict.Emplace("key2", numeric_cast<int64>(2));
+        dict.Emplace("key3", numeric_cast<int64>(3));
         CHECK(AnyData::ValueToString(dict.Copy()) == "key1 1 key2 2 key3 3");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, false, AnyData::ValueType::Int64).AsDict());
     }
@@ -159,9 +160,9 @@ TEST_CASE("AnyData")
     SECTION("Dict of array 1")
     {
         AnyData::Array arr1;
-        arr1.EmplaceBack(static_cast<int64>(1));
-        arr1.EmplaceBack(static_cast<int64>(2));
-        arr1.EmplaceBack(static_cast<int64>(3));
+        arr1.EmplaceBack(numeric_cast<int64>(1));
+        arr1.EmplaceBack(numeric_cast<int64>(2));
+        arr1.EmplaceBack(numeric_cast<int64>(3));
         AnyData::Dict dict;
         dict.Emplace("key1", std::move(arr1));
 

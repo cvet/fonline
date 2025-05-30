@@ -14,6 +14,7 @@ export ANDROID_NDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-ndk")
 export ANDROID_SDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")
 export ANDROID_NATIVE_API_LEVEL_NUMBER=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-api")
 export FO_DOTNET_RUNTIME=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/dotnet-runtime")
+export FO_IOS_SDK=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/iOS-sdk")
 
 if [[ -d "/usr/lib/android-sdk" ]]; then
     export ANDROID_HOME="/usr/lib/android-sdk"
@@ -38,3 +39,4 @@ echo "- ANDROID_NATIVE_API_LEVEL_NUMBER=$ANDROID_NATIVE_API_LEVEL_NUMBER"
 echo "- ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT"
 echo "- FO_DOTNET_RUNTIME=$FO_DOTNET_RUNTIME"
 echo "- FO_DOTNET_RUNTIME_ROOT=$FO_DOTNET_RUNTIME_ROOT"
+echo "- FO_IOS_SDK=$FO_IOS_SDK"

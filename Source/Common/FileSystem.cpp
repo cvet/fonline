@@ -32,8 +32,6 @@
 //
 
 #include "FileSystem.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -136,7 +134,7 @@ File::File(string_view path, size_t size, uint64 write_time, const DataSource* d
 }
 
 File::File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
-    FileHeader(path, static_cast<uint>(buf.size()), write_time, ds)
+    FileHeader(path, buf.size(), write_time, ds)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -282,11 +280,11 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     }
 
     for (size_t i = _curPos; i < _buf.size() - fragment.size(); i++) {
-        if (_buf[i] == static_cast<uint8>(fragment[0])) {
+        if (_buf[i] == std::bit_cast<uint8>(fragment[0])) {
             bool not_match = false;
 
-            for (uint j = 1; j < fragment.size(); j++) {
-                if (_buf[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
+            for (size_t j = 1; j < fragment.size(); j++) {
+                if (_buf[numeric_cast<size_t>(i) + j] != std::bit_cast<uint8>(fragment[j])) {
                     not_match = true;
                     break;
                 }
@@ -326,10 +324,14 @@ auto FileReader::GetStrNT() -> string
         throw FileSystemExeption("Invalid read pos");
     }
 
-    uint len = 0;
+    uint32 len = 0;
 
     while (*(_buf.data() + _curPos + len) != 0) {
         len++;
+
+        if (_curPos + len > _buf.size()) {
+            throw FileSystemExeption("Invalid null terminated string length");
+        }
     }
 
     string str(reinterpret_cast<const char*>(_buf.data() + _curPos), len);
@@ -337,7 +339,7 @@ auto FileReader::GetStrNT() -> string
     return str;
 }
 
-auto FileReader::GetUChar() -> uint8
+auto FileReader::GetUInt8() -> uint8
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -349,7 +351,7 @@ auto FileReader::GetUChar() -> uint8
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUShort() -> uint16
+auto FileReader::GetBEUInt16() -> uint16
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -365,7 +367,7 @@ auto FileReader::GetBEUShort() -> uint16
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUShort() -> uint16
+auto FileReader::GetLEUInt16() -> uint16
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -381,15 +383,15 @@ auto FileReader::GetLEUShort() -> uint16
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt() -> uint
+auto FileReader::GetBEUInt32() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint) > _buf.size()) {
+    if (_curPos + sizeof(uint32) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint res = 0;
+    uint32 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 3; i >= 0; i--) {
@@ -400,15 +402,15 @@ auto FileReader::GetBEUInt() -> uint
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt() -> uint
+auto FileReader::GetLEUInt32() -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint) > _buf.size()) {
+    if (_curPos + sizeof(uint32) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint res = 0;
+    uint32 res = 0;
     auto* cres = reinterpret_cast<uint8*>(&res);
 
     for (auto i = 0; i <= 3; i++) {
@@ -439,9 +441,9 @@ auto FileCollection::MoveNext() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
-    return ++_curFileIndex < static_cast<int>(_allFiles.size());
+    return ++_curFileIndex < numeric_cast<int32>(_allFiles.size());
 }
 
 void FileCollection::ResetCounter()
@@ -456,7 +458,7 @@ auto FileCollection::GetCurFile() const -> File
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh.GetSize();
@@ -471,7 +473,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
+    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     return FileHeader(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());

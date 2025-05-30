@@ -8,8 +8,8 @@ namespace LineTracer
 
 interface ITraceContext
 {
-    void StartExec(Map map, mpos fromHex, mpos toHex, uint maxDist);
-    void FinishExec(Map map, uint resultDist);
+    void StartExec(Map map, mpos fromHex, mpos toHex, int maxDist);
+    void FinishExec(Map map, int resultDist);
     bool Exec(Map map, mpos hex); // Return true to stop tracing
 };
 
@@ -27,7 +27,7 @@ float GetDirectionF(mpos fromHex, mpos toHex)
     return 180.0f + RAD2DEG * math::atan2(ny, nx); // In degrees, because cvet loves the degrees
 }
 
-uint LineTracerHex(mpos fromHex, mpos toHex, Map map, uint dist, ITraceContext context)
+int LineTracerHex(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext context)
 {
     if (dist == 0) {
         dist = Game.GetDistance(fromHex, toHex);
@@ -78,7 +78,7 @@ uint LineTracerHex(mpos fromHex, mpos toHex, Map map, uint dist, ITraceContext c
     float c1x, c1y, c2x, c2y; // test hex
     float dist1, dist2;
 
-    for (uint i = 1; i <= dist; i++) {
+    for (int i = 1; i <= dist; i++) {
         mpos t1 = chex;
         mpos t2 = chex;
         map.MoveHexByDir(t1, dir1, 1);
@@ -118,7 +118,7 @@ uint LineTracerHex(mpos fromHex, mpos toHex, Map map, uint dist, ITraceContext c
     return dist;
 }
 
-uint LineTracerSquare(mpos fromHex, mpos toHex, Map map, uint dist, ITraceContext context)
+int LineTracerSquare(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext context)
 {
     context.StartExec(map, fromHex, toHex, dist);
 
@@ -137,15 +137,15 @@ uint LineTracerSquare(mpos fromHex, mpos toHex, Map map, uint dist, ITraceContex
 
     float x1 = float(fromHex.x) + 0.5f;
     float y1 = float(fromHex.y) + 0.5f;
-    uint16 maxx = map.Size.width;
-    uint16 maxy = map.Size.height;
-    uint16 cx = 0, cy = 0;
+    int maxx = map.Size.width;
+    int maxy = map.Size.height;
+    int cx = 0, cy = 0;
 
-    for (uint i = 1; i <= dist; i++) {
+    for (int i = 1; i <= dist; i++) {
         x1 += dx;
         y1 += dy;
-        cx = uint16(math::floor(x1));
-        cy = uint16(math::floor(y1));
+        cx = int(math::floor(x1));
+        cy = int(math::floor(y1));
 
         if (cx >= maxx || cy >= maxy) {
             dist = i - 1;

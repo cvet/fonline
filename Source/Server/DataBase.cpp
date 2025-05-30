@@ -32,19 +32,15 @@
 //
 
 #include "DataBase.h"
-#include "DiskFileSystem.h"
-#include "Log.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 
+FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_JSON
 #include "json.hpp"
 #endif
 #if FO_HAVE_UNQLITE
 #include "unqlite.h"
 #endif
-
-FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_MONGO
 #include "mongoc/mongoc.h"
 #endif
@@ -189,29 +185,29 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), value.AsInt64())) {
+        if (!bson_append_int64(bson, key.data(), numeric_cast<int32>(key.length()), value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Double) {
-        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), value.AsDouble())) {
+        if (!bson_append_double(bson, key.data(), numeric_cast<int32>(key.length()), value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), value.AsBool())) {
+        if (!bson_append_bool(bson, key.data(), numeric_cast<int32>(key.length()), value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), value.AsString().c_str(), static_cast<int>(value.AsString().length()))) {
+        if (!bson_append_utf8(bson, key.data(), numeric_cast<int32>(key.length()), value.AsString().c_str(), numeric_cast<int32>(value.AsString().length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_begin(bson, key.data(), static_cast<int>(key.length()), &bson_arr)) {
+        if (!bson_append_array_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
@@ -230,7 +226,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson, key.data(), static_cast<int>(key.length()), &bson_doc)) {
+        if (!bson_append_document_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
@@ -265,7 +261,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
     const auto* value = bson_iter_value(iter);
 
     if (value->value_type == BSON_TYPE_INT32) {
-        return static_cast<int64>(value->value.v_int32);
+        return numeric_cast<int64>(value->value.v_int32);
     }
     else if (value->value_type == BSON_TYPE_INT64) {
         return value->value.v_int64;
@@ -569,7 +565,7 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -644,7 +640,7 @@ protected:
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), static_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -772,7 +768,7 @@ public:
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
-                [](const void* output, unsigned int output_len, void* user_data) {
+                [](const void* output, unsigned output_len, void* user_data) {
                     static_assert(sizeof(ident_t) == sizeof(int64));
                     FO_RUNTIME_ASSERT(output_len == sizeof(int64));
                     *static_cast<int64*>(user_data) = *static_cast<const int64*>(output);
@@ -814,7 +810,7 @@ protected:
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db, &id, sizeof(id),
-            [](const void* output, unsigned int output_len, void* user_data) {
+            [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
 
                 if (!bson_init_static(&bson, static_cast<const uint8*>(output), output_len)) {
@@ -847,7 +843,7 @@ protected:
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
+        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, &id, sizeof(id), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);

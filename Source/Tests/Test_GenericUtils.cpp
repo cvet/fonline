@@ -33,7 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "GenericUtils.h"
+#include "Common.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -46,7 +46,7 @@ TEST_CASE("GenericUtils")
         CHECK(Hashing::MurmurHash2(data, 5) == 1594468574U);
         CHECK(Hashing::MurmurHash2(data, 6) == 1271458169U);
         CHECK(Hashing::MurmurHash2(data, 7) == 4188131059U);
-        CHECK(static_cast<int>(Hashing::MurmurHash2(data, 7)) == -106836237);
+        CHECK(std::bit_cast<int32>(Hashing::MurmurHash2(data, 7)) == -106836237);
         CHECK(Hashing::MurmurHash2_64(data, 6) == 13226566493390071673ULL);
     }
 
@@ -76,7 +76,7 @@ TEST_CASE("GenericUtils")
         CHECK(t1 == 5);
         CHECK(t2 == 10);
 
-        const auto v = vector<int> {3, 4, 5, 6, 7};
+        const auto v = vector<int32> {3, 4, 5, 6, 7};
         auto t3 = 0;
         auto t4 = 0;
         for (const auto i : xrange(v)) {
@@ -91,17 +91,19 @@ TEST_CASE("GenericUtils")
     {
         CHECK(lerp(5, 7, -1.0f) == 5);
         CHECK(lerp(5, 7, 0.0f) == 5);
-        CHECK(lerp(5, 7, 0.49f) == 5);
-        CHECK(lerp(5, 7, 0.5f) == 6);
-        CHECK(lerp(5, 7, 0.99f) == 6);
+        CHECK(lerp(5, 7, 0.24f) == 5);
+        CHECK(lerp(5, 7, 0.26f) == 6);
+        CHECK(lerp(5, 7, 0.74f) == 6);
+        CHECK(lerp(5, 7, 0.76f) == 7);
         CHECK(lerp(5, 7, 1.0f) == 7);
         CHECK(lerp(5, 7, 2.0f) == 7);
 
         CHECK(lerp(7u, 5u, -1.0f) == 7);
         CHECK(lerp(7u, 5u, 0.0f) == 7);
-        CHECK(lerp(7u, 5u, 0.01f) == 6);
-        CHECK(lerp(7u, 5u, 0.5f) == 6);
-        CHECK(lerp(7u, 5u, 0.51f) == 5);
+        CHECK(lerp(7u, 5u, 0.24f) == 7);
+        CHECK(lerp(7u, 5u, 0.26f) == 6);
+        CHECK(lerp(7u, 5u, 0.74f) == 6);
+        CHECK(lerp(7u, 5u, 0.76f) == 5);
         CHECK(lerp(7u, 5u, 1.0f) == 5);
         CHECK(lerp(7u, 5u, 2.0f) == 5);
     }

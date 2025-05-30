@@ -71,8 +71,8 @@ public:
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        uint Index {};
-        int Scroll {};
+        int32 Index {};
+        int32 Scroll {};
     };
 
     struct EntityBuf
@@ -87,7 +87,7 @@ public:
 
     struct MessBoxMessage
     {
-        int Type {};
+        int32 Type {};
         string Mess {};
         string Time {};
     };
@@ -150,15 +150,15 @@ public:
     auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
     void ProcessMapperInput();
-    void DrawStr(const IRect& rect, string_view str, uint flags, ucolor color, int num_font);
+    void DrawStr(const IRect& rect, string_view str, uint32 flags, ucolor color, int32 num_font);
 
     void CurDraw();
     void CurRMouseUp();
     void CurMMouseDown();
 
-    auto IsCurInRect(const IRect& rect, int ax, int ay) const -> bool;
+    auto IsCurInRect(const IRect& rect, int32 ax, int32 ay) const -> bool;
     auto IsCurInRect(const IRect& rect) const -> bool;
-    auto IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int ax, int ay) const -> bool;
+    auto IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int32 ax, int32 ay) const -> bool;
     auto IsCurInInterface() const -> bool;
     auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
 
@@ -166,10 +166,10 @@ public:
     void IntLMouseDown();
     void IntLMouseUp();
     void IntMouseMove();
-    void IntSetMode(int mode);
+    void IntSetMode(int32 mode);
 
-    auto GetTabIndex() const -> uint;
-    void SetTabIndex(uint index);
+    auto GetTabIndex() const -> int32;
+    void SetTabIndex(int32 index);
     void RefreshCurProtos();
     auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
@@ -183,7 +183,7 @@ public:
     void SelectAdd(ClientEntity* entity);
     void SelectErase(ClientEntity* entity);
     void SelectAll();
-    auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
+    auto SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool;
     void SelectDelete();
 
     auto CreateCritter(hstring pid, mpos hex) -> CritterView*;
@@ -199,7 +199,7 @@ public:
     void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r);
     void ObjKeyDown(KeyCode dik, string_view dik_text);
     void ObjKeyDownApply(Entity* entity);
-    void SelectEntityProp(int line);
+    void SelectEntityProp(int32 line);
     auto GetInspectorEntity() -> ClientEntity*;
 
     void ConsoleDraw();
@@ -216,7 +216,7 @@ public:
     void AddMess(string_view message_text);
     void MessBoxDraw();
 
-    void DrawIfaceLayer(uint layer);
+    void DrawIfaceLayer(int32 layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
 
@@ -227,7 +227,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int32>& /*properties*/);
 
     FileSystem ContentFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
@@ -235,23 +235,23 @@ public:
     vector<const Property*> ShowProps {};
     bool PressedKeys[0x100] {};
     unordered_map<hstring, shared_ptr<Sprite>> IfaceSpr {};
-    int CurMode {};
+    int32 CurMode {};
     shared_ptr<Sprite> CurPDef {};
     shared_ptr<Sprite> CurPHand {};
-    int IntMode {};
-    int IntHold {};
+    int32 IntMode {};
+    int32 IntHold {};
     shared_ptr<Sprite> IntMainPic {};
     shared_ptr<Sprite> IntPTab {};
     shared_ptr<Sprite> IntPSelect {};
     shared_ptr<Sprite> IntPShow {};
-    int IntX {};
-    int IntY {};
-    int IntVectX {};
-    int IntVectY {};
+    int32 IntX {};
+    int32 IntY {};
+    int32 IntVectX {};
+    int32 IntVectY {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
     ipos SelectPos {};
-    int SelectType {};
+    int32 SelectType {};
     bool IntVisible {};
     bool IntFix {};
     IRect IntWMain {};
@@ -280,25 +280,25 @@ public:
     map<string, SubTab> Tabs[TAB_COUNT] {};
     SubTab* TabsActive[TAB_COUNT] {};
     string TabsName[INT_MODE_COUNT] {};
-    int TabsScroll[INT_MODE_COUNT] {};
+    int32 TabsScroll[INT_MODE_COUNT] {};
     bool SubTabsActive {};
-    int SubTabsActiveTab {};
+    int32 SubTabsActiveTab {};
     shared_ptr<Sprite> SubTabsPic {};
     IRect SubTabsRect {};
-    int SubTabsX {};
-    int SubTabsY {};
+    int32 SubTabsX {};
+    int32 SubTabsY {};
     vector<const ProtoItem*>* CurItemProtos {};
     vector<const ProtoCritter*>* CurNpcProtos {};
     uint8 NpcDir {};
-    int* CurProtoScroll {};
-    int ProtoWidth {};
-    uint ProtosOnScreen {};
-    uint TabIndex[INT_MODE_COUNT] {};
-    int InContScroll {};
-    int ListScroll {};
+    int32* CurProtoScroll {};
+    int32 ProtoWidth {};
+    int32 ProtosOnScreen {};
+    int32 TabIndex[INT_MODE_COUNT] {};
+    int32 InContScroll {};
+    int32 ListScroll {};
     refcount_ptr<ItemView> InContItem {};
     bool DrawRoof {};
-    int TileLayer {};
+    int32 TileLayer {};
     IRect IntBSelectItem {};
     IRect IntBSelectScen {};
     IRect IntBSelectWall {};
@@ -319,11 +319,11 @@ public:
     IRect ObjWMain {};
     IRect ObjWWork {};
     IRect ObjBToAll {};
-    int ObjX {};
-    int ObjY {};
-    int ItemVectX {};
-    int ItemVectY {};
-    int ObjCurLine {};
+    int32 ObjX {};
+    int32 ObjY {};
+    int32 ItemVectX {};
+    int32 ItemVectY {};
+    int32 ObjCurLine {};
     bool ObjCurLineIsConst {};
     string ObjCurLineInitValue {};
     string ObjCurLineValue {};
@@ -332,22 +332,22 @@ public:
     bool ObjToAll {};
     ClientEntity* InspectorEntity {};
     shared_ptr<Sprite> ConsolePic {};
-    int ConsolePicX {};
-    int ConsolePicY {};
-    int ConsoleTextX {};
-    int ConsoleTextY {};
+    int32 ConsolePicX {};
+    int32 ConsolePicY {};
+    int32 ConsoleTextX {};
+    int32 ConsoleTextY {};
     bool ConsoleEdit {};
     string ConsoleStr {};
-    uint ConsoleCur {};
+    int32 ConsoleCur {};
     vector<string> ConsoleHistory {};
-    int ConsoleHistoryCur {};
+    int32 ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};
     string ConsoleLastKeyText {};
     nanotime ConsoleKeyTime {};
-    int ConsoleAccelerate {};
+    int32 ConsoleAccelerate {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};
-    int MessBoxScroll {};
+    int32 MessBoxScroll {};
     bool SpritesCanDraw {};
     uint8 SelectAlpha {100};
 };

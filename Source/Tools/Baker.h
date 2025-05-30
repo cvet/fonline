@@ -66,7 +66,7 @@ public:
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred; }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> int;
+    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t;
 
     raw_ptr<const BakerSettings> _settings;
     string _packName;

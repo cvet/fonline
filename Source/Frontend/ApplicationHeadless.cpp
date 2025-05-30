@@ -32,24 +32,7 @@
 //
 
 #include "Application.h"
-#include "DiskFileSystem.h"
-#include "Log.h"
-#include "Platform.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
-
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-#if !FO_WINDOWS
-#if __has_include(<libunwind.h>)
-#define BACKWARD_HAS_LIBUNWIND 1
-#elif __has_include(<bfd.h>)
-#define BACKWARD_HAS_BFD 1
-#endif
-#endif
-#include "backward.hpp"
-#endif
-
-#include "WinApiUndef-Include.h"
 
 #if FO_LINUX || FO_MAC
 #include <signal.h>
@@ -59,17 +42,17 @@ FO_BEGIN_NAMESPACE();
 
 raw_ptr<Application> App;
 
-static constexpr int MAX_ATLAS_WIDTH_ = 1024;
-static constexpr int MAX_ATLAS_HEIGHT_ = 1024;
-static constexpr int MAX_BONES_ = 32;
-const int& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const int& AppRender::MAX_BONES {MAX_BONES_};
-const int AppAudio::AUDIO_FORMAT_U8 = 0;
-const int AppAudio::AUDIO_FORMAT_S16 = 1;
+static constexpr int32 MAX_ATLAS_WIDTH_ = 1024;
+static constexpr int32 MAX_ATLAS_HEIGHT_ = 1024;
+static constexpr int32 MAX_BONES_ = 32;
+const int32& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const int32& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const int32& AppRender::MAX_BONES {MAX_BONES_};
+const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
+const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
 
 #if FO_LINUX || FO_MAC
-static void SignalHandler(int sig)
+static void SignalHandler(int32 sig)
 {
     signal(sig, SignalHandler);
 
@@ -77,11 +60,9 @@ static void SignalHandler(int sig)
 }
 #endif
 
-void InitApp(int argc, char** argv, AppInitFlags flags)
+void InitApp(int32 argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
-
-    SetThisThreadName("Main");
 
     // Ensure that we call init only once
     static std::once_flag once;
@@ -93,7 +74,7 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
     }
 
     const auto need_fork = [&] {
-        for (int i = 0; i < argc; i++) {
+        for (int32 i = 0; i < argc; i++) {
             if (string_view(argv[i]) == "--fork") {
                 return true;
             }
@@ -103,14 +84,6 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
     if (need_fork()) {
         Platform::ForkProcess();
     }
-
-    // Unhandled exceptions handler
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-    if (!IsRunInDebugger()) {
-        [[maybe_unused]] static backward::SignalHandling sh;
-        assert(sh.loaded());
-    }
-#endif
 
     CreateGlobalData();
 
@@ -135,26 +108,15 @@ void InitApp(int argc, char** argv, AppInitFlags flags)
 
     App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
 
+    SetBadAllocCallback([] { App->RequestQuit(); });
+
 #if FO_LINUX || FO_MAC
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
 #endif
 }
 
-void ExitApp(bool success) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
-
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-    std::quick_exit(code);
-#else
-    std::exit(code);
-#endif
-}
-
-Application::Application(int argc, char** argv, AppInitFlags flags) :
+Application::Application(int32 argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
 {
     FO_STACK_TRACE_ENTRY();
@@ -460,7 +422,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return nullptr;
 }
 
-auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -567,7 +529,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_RUNTIME_ASSERT(IsEnabled());
 }
 
-auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
+auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -583,7 +545,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& b
     return true;
 }
 
-void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int volume)
+void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume)
 {
     FO_STACK_TRACE_ENTRY();
 

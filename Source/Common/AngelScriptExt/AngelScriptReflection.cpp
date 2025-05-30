@@ -39,16 +39,18 @@
 #include "as_typeinfo.h"
 #include "scriptarray.h"
 
-using namespace std;
+FO_USING_NAMESPACE();
 
 BEGIN_AS_NAMESPACE
 
 static asITypeInfo* GetTypeInfoById(asIScriptEngine* engine, int typeId)
 {
     const asCDataType dt = static_cast<asCScriptEngine*>(engine)->GetDataTypeFromTypeId(typeId);
+
     if (dt.IsValid()) {
         return dt.GetTypeInfo();
     }
+
     return nullptr;
 }
 
@@ -70,32 +72,33 @@ void ScriptType::Release() const
     }
 }
 
-string ScriptType::GetName() const
+std::string ScriptType::GetName() const
 {
     const char* ns = objType->GetNamespace();
+
     if (ns[0]) {
-        return string(ns).append("::").append(objType->GetName());
+        return std::string(ns).append("::").append(objType->GetName());
     }
 
     return objType->GetName();
 }
 
-string ScriptType::GetNameWithoutNamespace() const
+std::string ScriptType::GetNameWithoutNamespace() const
 {
     return objType->GetName();
 }
 
-string ScriptType::GetNamespace() const
+std::string ScriptType::GetNamespace() const
 {
     return objType->GetNamespace();
 }
 
-string ScriptType::GetModule() const
+std::string ScriptType::GetModule() const
 {
     return objType->GetModule() ? objType->GetModule()->GetName() : "(global)";
 }
 
-asUINT ScriptType::GetSize() const
+int ScriptType::GetSize() const
 {
     return objType->GetSize();
 }
@@ -137,12 +140,12 @@ ScriptType* ScriptType::GetBaseType() const
     return base ? new ScriptType(base) : nullptr;
 }
 
-asUINT ScriptType::GetInterfaceCount() const
+int ScriptType::GetInterfaceCount() const
 {
     return objType->GetInterfaceCount();
 }
 
-ScriptType* ScriptType::GetInterface(asUINT index) const
+ScriptType* ScriptType::GetInterface(int index) const
 {
     return index < objType->GetInterfaceCount() ? new ScriptType(objType->GetInterface(index)) : nullptr;
 }
@@ -217,12 +220,12 @@ void ScriptType::InstantiateCopy(void* in, int in_type_id, void* out, int out_ty
     *static_cast<void**>(out) = engine->CreateScriptObjectCopy(in, objType);
 }
 
-asUINT ScriptType::GetMethodsCount() const
+int ScriptType::GetMethodsCount() const
 {
     return objType->GetMethodCount();
 }
 
-string ScriptType::GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const
+std::string ScriptType::GetMethodDeclaration(int index, bool include_object_name, bool include_namespace, bool include_param_names) const
 {
     if (index >= objType->GetMethodCount()) {
         return "";
@@ -230,12 +233,12 @@ string ScriptType::GetMethodDeclaration(asUINT index, bool include_object_name, 
     return objType->GetMethodByIndex(index)->GetDeclaration(include_object_name, include_namespace, include_param_names);
 }
 
-asUINT ScriptType::GetPropertiesCount() const
+int ScriptType::GetPropertiesCount() const
 {
     return objType->GetPropertyCount();
 }
 
-string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) const
+std::string ScriptType::GetPropertyDeclaration(int index, bool include_namespace) const
 {
     if (index >= objType->GetPropertyCount()) {
         return "";
@@ -243,7 +246,7 @@ string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) 
     return objType->GetPropertyDeclaration(index, include_namespace);
 }
 
-asUINT ScriptType::GetEnumLength() const
+int ScriptType::GetEnumLength() const
 {
     const asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     return enum_type ? enum_type->enumValues.GetLength() : 0;
@@ -253,9 +256,11 @@ CScriptArray* ScriptType::GetEnumNames() const
 {
     asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("string[]"));
-    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
+
+    for (int i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(enum_type->enumValues[i]->name.AddressOf());
     }
+
     return result;
 }
 
@@ -263,9 +268,11 @@ CScriptArray* ScriptType::GetEnumValues() const
 {
     asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("int[]"));
-    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
+
+    for (int i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(&enum_type->enumValues[i]->value);
     }
+
     return result;
 }
 
@@ -274,6 +281,7 @@ static bool ScriptTypeOfTemplateCallback(asITypeInfo* ot, bool&)
     if (ot->GetSubTypeCount() != 1 || (ot->GetSubTypeId() & asTYPEID_MASK_SEQNBR) <= asTYPEID_DOUBLE) {
         return false;
     }
+
     return true;
 }
 
@@ -308,7 +316,7 @@ CScriptArray* GetLoadedModules()
     const asIScriptEngine* engine = ctx->GetEngine();
     CScriptArray* modules = CScriptArray::Create(engine->GetTypeInfoByDecl("string[]"));
 
-    for (asUINT i = 0; i < engine->GetModuleCount(); i++) {
+    for (int i = 0; i < engine->GetModuleCount(); i++) {
         string name = engine->GetModuleByIndex(i)->GetName();
         modules->InsertLast(&name);
     }
@@ -343,8 +351,8 @@ static CScriptArray* GetEnumsInternal(bool global, const char* module_name)
         }
     }
 
-    const asUINT count = (global ? engine->GetEnumCount() : module->GetEnumCount());
-    for (asUINT i = 0; i < count; i++) {
+    const int count = (global ? engine->GetEnumCount() : module->GetEnumCount());
+    for (int i = 0; i < count; i++) {
         asITypeInfo* enum_type;
         if (global) {
             enum_type = engine->GetEnumByIndex(i);
@@ -374,14 +382,15 @@ static CScriptArray* GetEnumsModule(string module_name)
     return GetEnumsInternal(false, module_name.c_str());
 }
 
-static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScriptArray*& lines, CScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names)
+static int GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScriptArray*& lines, CScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx) {
         return 0;
     }
 
-    asUINT count = 0, stack_size = ctx->GetCallstackSize();
+    int count = 0;
+    asUINT stack_size = ctx->GetCallstackSize();
     int line, column;
     const asIScriptFunction* func;
 
@@ -442,7 +451,7 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine)
     RegisterMethod_Native(engine, "string get_nameWithoutNamespace() const", asMETHOD(ScriptType, GetNameWithoutNamespace));
     RegisterMethod_Native(engine, "string get_namespace() const", asMETHOD(ScriptType, GetNamespace));
     RegisterMethod_Native(engine, "string get_module() const", asMETHOD(ScriptType, GetModule));
-    RegisterMethod_Native(engine, "uint get_size() const", asMETHOD(ScriptType, GetSize));
+    RegisterMethod_Native(engine, "int get_size() const", asMETHOD(ScriptType, GetSize));
     RegisterMethod_Native(engine, "bool get_isGlobal() const", asMETHOD(ScriptType, IsGlobal));
     RegisterMethod_Native(engine, "bool get_isClass() const", asMETHOD(ScriptType, IsClass));
     RegisterMethod_Native(engine, "bool get_isInterface() const", asMETHOD(ScriptType, IsInterface));
@@ -450,18 +459,18 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine)
     RegisterMethod_Native(engine, "bool get_isFunction() const", asMETHOD(ScriptType, IsFunction));
     RegisterMethod_Native(engine, "bool get_isShared() const", asMETHOD(ScriptType, IsShared));
     RegisterMethod_Native(engine, "type@ get_baseType() const", asMETHOD(ScriptType, GetBaseType));
-    RegisterMethod_Native(engine, "uint get_interfaceCount() const", asMETHOD(ScriptType, GetInterfaceCount));
-    RegisterMethod_Native(engine, "type@ getInterface(uint index) const", asMETHOD(ScriptType, GetInterface));
+    RegisterMethod_Native(engine, "int get_interfaceCount() const", asMETHOD(ScriptType, GetInterfaceCount));
+    RegisterMethod_Native(engine, "type@ getInterface(int index) const", asMETHOD(ScriptType, GetInterface));
     RegisterMethod_Native(engine, "bool implements(const type@+ other) const", asMETHOD(ScriptType, Implements));
     RegisterMethod_Native(engine, "bool opEquals(const type@+ other) const", asMETHOD(ScriptType, Equals));
     RegisterMethod_Native(engine, "bool derivesFrom(const type@+ other) const", asMETHOD(ScriptType, DerivesFrom));
     RegisterMethod_Native(engine, "void instantiate(?&out instance) const", asMETHOD(ScriptType, Instantiate));
     RegisterMethod_Native(engine, "void instantiate(?&in copyFrom, ?&out instance) const", asMETHOD(ScriptType, InstantiateCopy));
-    RegisterMethod_Native(engine, "uint get_methodsCount() const", asMETHOD(ScriptType, GetMethodsCount));
-    RegisterMethod_Native(engine, "string getMethodDeclaration(uint index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", asMETHOD(ScriptType, GetMethodDeclaration));
-    RegisterMethod_Native(engine, "uint get_propertiesCount() const", asMETHOD(ScriptType, GetPropertiesCount));
-    RegisterMethod_Native(engine, "string getPropertyDeclaration(uint index, bool includeNamespace = false) const", asMETHOD(ScriptType, GetPropertyDeclaration));
-    RegisterMethod_Native(engine, "uint get_enumLength() const", asMETHOD(ScriptType, GetEnumLength));
+    RegisterMethod_Native(engine, "int get_methodsCount() const", asMETHOD(ScriptType, GetMethodsCount));
+    RegisterMethod_Native(engine, "string getMethodDeclaration(int index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", asMETHOD(ScriptType, GetMethodDeclaration));
+    RegisterMethod_Native(engine, "int get_propertiesCount() const", asMETHOD(ScriptType, GetPropertiesCount));
+    RegisterMethod_Native(engine, "string getPropertyDeclaration(int index, bool includeNamespace = false) const", asMETHOD(ScriptType, GetPropertyDeclaration));
+    RegisterMethod_Native(engine, "int get_enumLength() const", asMETHOD(ScriptType, GetEnumLength));
     RegisterMethod_Native(engine, "string[]@ get_enumNames() const", asMETHOD(ScriptType, GetEnumNames));
     RegisterMethod_Native(engine, "int[]@ get_enumValues() const", asMETHOD(ScriptType, GetEnumValues));
 
@@ -470,7 +479,7 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine)
     engine->RegisterGlobalFunction("type@[]@ getGlobalEnums()", asFUNCTION(GetGlobalEnums), asCALL_CDECL);
     engine->RegisterGlobalFunction("type@[]@ getEnums()", asFUNCTION(GetEnums), asCALL_CDECL);
     engine->RegisterGlobalFunction("type@[]@ getEnums(string moduleName)", asFUNCTION(GetEnumsModule), asCALL_CDECL);
-    engine->RegisterGlobalFunction("uint getCallstack(string[]& modules, string[]& names, uint[]& lines, uint[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", asFUNCTION(GetCallstack), asCALL_CDECL);
+    engine->RegisterGlobalFunction("int getCallstack(string[]& modules, string[]& names, int[]& lines, int[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", asFUNCTION(GetCallstack), asCALL_CDECL);
 
     engine->SetDefaultNamespace("");
 }
@@ -511,7 +520,7 @@ void RegisterScriptReflection_Generic(asIScriptEngine* engine)
     RegisterMethod_Generic(engine, "string get_nameWithoutNamespace() const", WRAP_MFN(ScriptType, GetNameWithoutNamespace));
     RegisterMethod_Generic(engine, "string get_namespace() const", WRAP_MFN(ScriptType, GetNamespace));
     RegisterMethod_Generic(engine, "string get_module() const", WRAP_MFN(ScriptType, GetModule));
-    RegisterMethod_Generic(engine, "uint get_size() const", WRAP_MFN(ScriptType, GetSize));
+    RegisterMethod_Generic(engine, "int get_size() const", WRAP_MFN(ScriptType, GetSize));
     RegisterMethod_Generic(engine, "bool get_isGlobal() const", WRAP_MFN(ScriptType, IsGlobal));
     RegisterMethod_Generic(engine, "bool get_isClass() const", WRAP_MFN(ScriptType, IsClass));
     RegisterMethod_Generic(engine, "bool get_isInterface() const", WRAP_MFN(ScriptType, IsInterface));
@@ -519,18 +528,18 @@ void RegisterScriptReflection_Generic(asIScriptEngine* engine)
     RegisterMethod_Generic(engine, "bool get_isFunction() const", WRAP_MFN(ScriptType, IsFunction));
     RegisterMethod_Generic(engine, "bool get_isShared() const", WRAP_MFN(ScriptType, IsShared));
     RegisterMethod_Generic(engine, "type@ get_baseType() const", WRAP_MFN(ScriptType, GetBaseType));
-    RegisterMethod_Generic(engine, "uint get_interfaceCount() const", WRAP_MFN(ScriptType, GetInterfaceCount));
-    RegisterMethod_Generic(engine, "type@ getInterface(uint index) const", WRAP_MFN(ScriptType, GetInterface));
+    RegisterMethod_Generic(engine, "int get_interfaceCount() const", WRAP_MFN(ScriptType, GetInterfaceCount));
+    RegisterMethod_Generic(engine, "type@ getInterface(int index) const", WRAP_MFN(ScriptType, GetInterface));
     RegisterMethod_Generic(engine, "bool implements(const type@+ other) const", WRAP_MFN(ScriptType, Implements));
     RegisterMethod_Generic(engine, "bool opEquals(const type@+ other) const", WRAP_MFN(ScriptType, Equals));
     RegisterMethod_Generic(engine, "bool derivesFrom(const type@+ other) const", WRAP_MFN(ScriptType, DerivesFrom));
     RegisterMethod_Generic(engine, "void instantiate(?&out instance) const", asFUNCTION(ScriptType_Instantiate_Generic));
     RegisterMethod_Generic(engine, "void instantiate(?&in copyFrom, ?&out instance) const", asFUNCTION(ScriptType_InstantiateCopy_Generic));
-    RegisterMethod_Generic(engine, "uint get_methodsCount() const", WRAP_MFN(ScriptType, GetMethodsCount));
-    RegisterMethod_Generic(engine, "string getMethodDeclaration(uint index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", WRAP_MFN(ScriptType, GetMethodDeclaration));
-    RegisterMethod_Generic(engine, "uint get_propertiesCount() const", WRAP_MFN(ScriptType, GetPropertiesCount));
-    RegisterMethod_Generic(engine, "string getPropertyDeclaration(uint index, bool includeNamespace = false) const", WRAP_MFN(ScriptType, GetPropertyDeclaration));
-    RegisterMethod_Generic(engine, "uint get_enumLength() const", WRAP_MFN(ScriptType, GetEnumLength));
+    RegisterMethod_Generic(engine, "int get_methodsCount() const", WRAP_MFN(ScriptType, GetMethodsCount));
+    RegisterMethod_Generic(engine, "string getMethodDeclaration(int index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", WRAP_MFN(ScriptType, GetMethodDeclaration));
+    RegisterMethod_Generic(engine, "int get_propertiesCount() const", WRAP_MFN(ScriptType, GetPropertiesCount));
+    RegisterMethod_Generic(engine, "string getPropertyDeclaration(int index, bool includeNamespace = false) const", WRAP_MFN(ScriptType, GetPropertyDeclaration));
+    RegisterMethod_Generic(engine, "int get_enumLength() const", WRAP_MFN(ScriptType, GetEnumLength));
     RegisterMethod_Generic(engine, "string[]@ get_enumNames() const", WRAP_MFN(ScriptType, GetEnumNames));
     RegisterMethod_Generic(engine, "int[]@ get_enumValues() const", WRAP_MFN(ScriptType, GetEnumValues));
 
@@ -539,7 +548,7 @@ void RegisterScriptReflection_Generic(asIScriptEngine* engine)
     engine->RegisterGlobalFunction("type@[]@ getGlobalEnums()", WRAP_FN(GetGlobalEnums), asCALL_GENERIC);
     engine->RegisterGlobalFunction("type@[]@ getEnums()", WRAP_FN(GetEnums), asCALL_GENERIC);
     engine->RegisterGlobalFunction("type@[]@ getEnums(string moduleName)", WRAP_FN(GetEnumsModule), asCALL_GENERIC);
-    engine->RegisterGlobalFunction("uint getCallstack(string[]& modules, string[]& names, uint[]& lines, uint[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", WRAP_FN(GetCallstack), asCALL_GENERIC);
+    engine->RegisterGlobalFunction("int getCallstack(string[]& modules, string[]& names, int[]& lines, int[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", WRAP_FN(GetCallstack), asCALL_GENERIC);
 
     engine->SetDefaultNamespace("");
 }

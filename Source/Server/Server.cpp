@@ -35,11 +35,8 @@
 #include "AdminPanel.h"
 #include "AnyData.h"
 #include "Application.h"
-#include "GenericUtils.h"
 #include "ImGuiStuff.h"
-#include "Platform.h"
 #include "PropertiesSerializator.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE();
@@ -199,7 +196,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto* registrator = entity_info.PropRegistrator;
 
             for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
+                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -235,7 +232,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
                 for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
-                    const auto* prop = registrator->GetPropertyByIndex(static_cast<int>(i));
+                    const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                     if (prop->IsDisabled()) {
                         continue;
@@ -278,11 +275,11 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Properties with custom behaviours
         {
-            const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
+            const auto set_setter = [](const auto* registrator, int32 prop_index, PropertySetCallback callback) {
                 const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddSetter(std::move(callback));
             };
-            const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
+            const auto set_post_setter = [](const auto* registrator, int32 prop_index, PropertyPostSetCallback callback) {
                 const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddPostSetter(std::move(callback));
             };
@@ -363,10 +360,10 @@ FOServer::FOServer(GlobalSettings& settings) :
                 const auto data = file.GetData();
                 _updateFilesData.push_back(data);
 
-                writer.Write<int16>(static_cast<int16>(file.GetPath().length()));
+                writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
                 writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-                writer.Write<uint>(static_cast<uint>(data.size()));
-                writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+                writer.Write<uint32>(numeric_cast<uint32>(data.size()));
+                writer.Write<uint32>(Hashing::MurmurHash2(data.data(), data.size()));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -387,7 +384,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         if (Settings.AdminPanelPort != 0) {
             WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
 
-            InitAdminManager(this, static_cast<uint16>(Settings.AdminPanelPort));
+            InitAdminManager(this, numeric_cast<uint16>(Settings.AdminPanelPort));
         }
 
         return std::nullopt;
@@ -439,7 +436,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             else {
                 WriteLog("Restore world");
 
-                int errors = 0;
+                size_t errors = 0;
 
                 try {
                     EntityMngr.LoadEntities();
@@ -680,7 +677,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.Uptime = cur_time - _stats.ServerStartTime;
 
 #if FO_TRACY
-            TracyPlot("Server loops per second", static_cast<int64>(_stats.LoopsPerSecond));
+            TracyPlot("Server loops per second", numeric_cast<int64>(_stats.LoopsPerSecond));
 #endif
 
             return std::chrono::milliseconds {0};
@@ -919,7 +916,7 @@ auto FOServer::GetHealthInfo() const -> string
     buf += strex("Max loop time: {}\n", _stats.LoopMaxTime);
     buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
     buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-    buf += strex("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+    buf += strex("Compress ratio: {}\n", numeric_cast<float64>(_stats.DataReal) / numeric_cast<float64>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
     buf += strex("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
 
     return buf;
@@ -934,14 +931,16 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 
     string result = strex("Players: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
+
     for (auto&& [id, player] : players) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += strex("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
+        result += strex("{:<20} {:<10} {:<15} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
     }
+
     return result;
 }
 
@@ -1134,7 +1133,7 @@ void FOServer::ProcessConnection(ServerConnection* connection)
 
         out_buf->Write(false);
 
-        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
+        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {Settings.ClientPingTime};
         connection->PingOk = false;
     }
 }
@@ -1211,7 +1210,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
-        const auto info = buf.Read<int>();
+        const auto info = buf.Read<int32>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1320,7 +1319,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();
         const auto property_name = buf.Read<string>();
-        const auto property_value = buf.Read<int>();
+        const auto property_value = buf.Read<int32>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1351,16 +1350,16 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto wanted_access = -1;
-        if (name_access == "client" && std::find(Settings.AccessClient.begin(), Settings.AccessClient.end(), pasw_access) != Settings.AccessClient.end()) {
+        if (name_access == "client" && std::ranges::find(Settings.AccessClient, pasw_access) != Settings.AccessClient.end()) {
             wanted_access = ACCESS_CLIENT;
         }
-        else if (name_access == "tester" && std::find(Settings.AccessTester.begin(), Settings.AccessTester.end(), pasw_access) != Settings.AccessTester.end()) {
+        else if (name_access == "tester" && std::ranges::find(Settings.AccessTester, pasw_access) != Settings.AccessTester.end()) {
             wanted_access = ACCESS_TESTER;
         }
-        else if (name_access == "moder" && std::find(Settings.AccessModer.begin(), Settings.AccessModer.end(), pasw_access) != Settings.AccessModer.end()) {
+        else if (name_access == "moder" && std::ranges::find(Settings.AccessModer, pasw_access) != Settings.AccessModer.end()) {
             wanted_access = ACCESS_MODER;
         }
-        else if (name_access == "admin" && std::find(Settings.AccessAdmin.begin(), Settings.AccessAdmin.end(), pasw_access) != Settings.AccessAdmin.end()) {
+        else if (name_access == "admin" && std::ranges::find(Settings.AccessAdmin, pasw_access) != Settings.AccessAdmin.end()) {
             wanted_access = ACCESS_ADMIN;
         }
 
@@ -1375,13 +1374,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        player->Access = static_cast<uint8>(wanted_access);
+        player->Access = numeric_cast<uint8>(wanted_access);
         logcb("Access changed");
     } break;
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint>();
+        const auto count = buf.Read<uint32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1398,7 +1397,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDITEM_SELF: {
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint>();
+        const auto count = buf.Read<uint32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1457,25 +1456,25 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto param2 = ResolveGenericValue(param2_str, &failed);
 
         if (ScriptSys.CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
-            ScriptSys.CallFunc<void, Player*, int>(Hashes.ToHashedString(func_name), player, param0) || //
+            ScriptSys.CallFunc<void, Player*, int32>(Hashes.ToHashedString(func_name), player, param0) || //
             ScriptSys.CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
-            ScriptSys.CallFunc<void, Player*, int, int>(Hashes.ToHashedString(func_name), player, param0, param1) || //
+            ScriptSys.CallFunc<void, Player*, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1) || //
             ScriptSys.CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, Player*, int, int, int>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
+            ScriptSys.CallFunc<void, Player*, int32, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
             ScriptSys.CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
             ScriptSys.CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
-            ScriptSys.CallFunc<void, Critter*, int>(Hashes.ToHashedString(func_name), player_cr, param0) || //
+            ScriptSys.CallFunc<void, Critter*, int32>(Hashes.ToHashedString(func_name), player_cr, param0) || //
             ScriptSys.CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
-            ScriptSys.CallFunc<void, Critter*, int, int>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
+            ScriptSys.CallFunc<void, Critter*, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
             ScriptSys.CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, Critter*, int, int, int>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
+            ScriptSys.CallFunc<void, Critter*, int32, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
             ScriptSys.CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
             ScriptSys.CallFunc<void>(Hashes.ToHashedString(func_name)) || //
-            ScriptSys.CallFunc<void, int>(Hashes.ToHashedString(func_name), param0) || //
+            ScriptSys.CallFunc<void, int32>(Hashes.ToHashedString(func_name), param0) || //
             ScriptSys.CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
-            ScriptSys.CallFunc<void, int, int>(Hashes.ToHashedString(func_name), param0, param1) || //
+            ScriptSys.CallFunc<void, int32, int32>(Hashes.ToHashedString(func_name), param0, param1) || //
             ScriptSys.CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, int, int, int>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
+            ScriptSys.CallFunc<void, int32, int32, int32>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
             ScriptSys.CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
@@ -1991,11 +1990,11 @@ void FOServer::Process_Handshake(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
-    const auto comp_version = in_buf->Read<uint>();
-    const auto outdated = comp_version != 0 && comp_version != static_cast<uint>(FO_COMPATIBILITY_VERSION);
+    const auto comp_version = in_buf->Read<uint32>();
+    const auto outdated = comp_version != 0 && comp_version != numeric_cast<uint32>(FO_COMPATIBILITY_VERSION);
 
     // Begin data encrypting
-    const auto in_encrypt_key = in_buf->Read<uint>();
+    const auto in_encrypt_key = in_buf->Read<uint32>();
     FO_RUNTIME_ASSERT(in_encrypt_key != 0);
     in_buf->SetEncryptKey(in_encrypt_key);
 
@@ -2018,12 +2017,12 @@ void FOServer::Process_Handshake(ServerConnection* connection)
 
     if (!outdated) {
         vector<const uint8*>* global_vars_data = nullptr;
-        vector<uint>* global_vars_data_sizes = nullptr;
+        vector<uint32>* global_vars_data_sizes = nullptr;
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-        out_buf->Write(static_cast<uint>(_updateFilesDesc.size()));
+        out_buf->Write(numeric_cast<uint32>(_updateFilesDesc.size()));
         out_buf->Push(_updateFilesDesc);
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
         out_buf->Write(GameTime.GetSynchronizedTime());
@@ -2046,7 +2045,7 @@ void FOServer::Process_Ping(ServerConnection* connection)
 
     if (answer) {
         connection->PingOk = true;
-        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
+        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {Settings.ClientPingTime};
     }
     else {
         auto out_buf = connection->WriteMsg(NetMessage::Ping);
@@ -2061,7 +2060,7 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
 
     auto in_buf = connection->ReadBuf();
 
-    const auto file_index = in_buf->Read<uint>();
+    const auto file_index = in_buf->Read<uint32>();
 
     in_buf.Unlock();
 
@@ -2071,7 +2070,7 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
         return;
     }
 
-    connection->UpdateFileIndex = static_cast<int>(file_index);
+    connection->UpdateFileIndex = numeric_cast<int32>(file_index);
     connection->UpdateFilePortion = 0;
 
     Process_UpdateFileData(connection);
@@ -2090,14 +2089,14 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
     }
 
     const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    uint update_portion = Settings.UpdateFileSendSize;
+    auto update_portion = Settings.UpdateFileSendSize;
     const auto offset = connection->UpdateFilePortion * update_portion;
 
-    if (offset + update_portion < update_file_data.size()) {
+    if (offset + update_portion < numeric_cast<int32>(update_file_data.size())) {
         connection->UpdateFilePortion++;
     }
     else {
-        update_portion = update_file_data.size() % update_portion;
+        update_portion = numeric_cast<int32>(update_file_data.size()) % update_portion;
         connection->UpdateFileIndex = -1;
     }
 
@@ -2177,9 +2176,9 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.EmplaceBack(static_cast<int64>(connection->GetIp()));
+    reg_ip.EmplaceBack(numeric_cast<int64>(connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.EmplaceBack(static_cast<int64>(connection->GetPort()));
+    reg_port.EmplaceBack(numeric_cast<int64>(connection->GetPort()));
 
     AnyData::Document player_data;
     player_data.Emplace("_Name", string(name));
@@ -2310,14 +2309,15 @@ void FOServer::Process_Login(Player* unlogined_player)
         auto conn_port = player->GetConnectionPort();
         FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
 
-        auto ip_found = false;
-        for (uint i = 0; i < conn_ip.size(); i++) {
+        bool ip_found = false;
+
+        for (size_t i = 0; i < conn_ip.size(); i++) {
             if (conn_ip[i] == ip) {
                 if (i < conn_ip.size() - 1) {
-                    conn_ip.erase(conn_ip.begin() + i);
+                    conn_ip.erase(conn_ip.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_ip.push_back(ip);
                     player->SetConnectionIp(conn_ip);
-                    conn_port.erase(conn_port.begin() + i);
+                    conn_port.erase(conn_port.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_port.push_back(port);
                     player->SetConnectionPort(conn_port);
                 }
@@ -2325,6 +2325,7 @@ void FOServer::Process_Login(Player* unlogined_player)
                     conn_port.back() = port;
                     player->SetConnectionPort(conn_port);
                 }
+
                 ip_found = true;
                 break;
             }
@@ -2398,7 +2399,7 @@ void FOServer::Process_Move(Player* player)
     vector<uint8> steps;
     steps.resize(steps_count);
 
-    for (auto i = 0; i < steps_count; i++) {
+    for (uint16 i = 0; i < steps_count; i++) {
         steps[i] = in_buf->Read<uint8>();
     }
 
@@ -2406,7 +2407,7 @@ void FOServer::Process_Move(Player* player)
     vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
 
-    for (auto i = 0; i < control_steps_count; i++) {
+    for (uint16 i = 0; i < control_steps_count; i++) {
         control_steps[i] = in_buf->Read<uint16>();
     }
 
@@ -2464,7 +2465,7 @@ void FOServer::Process_Move(Player* player)
         next_start_hy = hy;
     }*/
 
-    uint corrected_speed = speed;
+    int32 corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
         BreakIntoDebugger();
@@ -2493,7 +2494,7 @@ void FOServer::Process_Move(Player* player)
 
         // Insert part of path to beginning of whole path
         for (auto& control_step : control_steps) {
-            control_step += static_cast<uint16>(find_result.Steps.size());
+            control_step += numeric_cast<uint16>(find_result.Steps.size());
         }
 
         control_steps.insert(control_steps.begin(), find_result.ControlSteps.begin(), find_result.ControlSteps.end());
@@ -2507,10 +2508,10 @@ void FOServer::Process_Move(Player* player)
         BreakIntoDebugger();
     }
 
-    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
-    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
+    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16>(-Settings.MapHexWidth / 2), numeric_cast<int16>(Settings.MapHexWidth / 2));
+    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16>(-Settings.MapHexHeight / 2), numeric_cast<int16>(Settings.MapHexHeight / 2));
 
-    StartCritterMoving(cr, static_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
+    StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
     if (corrected_speed != speed) {
         player->Send_MovingSpeed(cr);
@@ -2557,7 +2558,7 @@ void FOServer::Process_StopMove(Player* player)
         return;
     }
 
-    uint zero_speed = 0;
+    int32 zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
@@ -2615,7 +2616,7 @@ void FOServer::Process_Property(Player* player)
 
     Critter* cr = player->GetControlledCritter();
 
-    const auto data_size = in_buf->Read<uint>();
+    const auto data_size = in_buf->Read<uint32>();
 
     // Todo: control max size explicitly, add option to property registration
     if (data_size > 0xFFFF) {
@@ -2824,9 +2825,9 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         const auto time = GameTime.GetSynchronizedTime();
 
         AnyData::Document doc;
-        doc.Emplace("Time", static_cast<int64>(time.milliseconds()));
+        doc.Emplace("Time", numeric_cast<int64>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
-        doc.Emplace("EntityId", static_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlying_value()));
         doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
@@ -2990,9 +2991,9 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *static_cast<const uint*>(new_value);
+    const auto new_count = *static_cast<const uint32*>(new_value);
 
-    if (new_count == 0 || (!item->GetStackable() && new_count != 1)) {
+    if (new_count <= 0 || (!item->GetStackable() && new_count != 1)) {
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
@@ -3121,8 +3122,8 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
         if (need_find_path) {
             mpos hex;
-            uint cut;
-            uint trace_dist;
+            int32 cut;
+            int32 trace_dist;
             Critter* trace_cr;
 
             if (cr->TargetMoving.TargId) {
@@ -3273,7 +3274,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>() / cr->Moving.WholeTime;
+    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>() / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3303,26 +3304,25 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
+        auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
         dist = std::max(dist, 0.0001f);
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == cr->Moving.ControlSteps.size() - 1)) {
-            float normalized_dist = (dist_pos - cur_dist) / dist;
+            float32 normalized_dist = (dist_pos - cur_dist) / dist;
             normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
             if (normalized_time == 1.0f) {
                 normalized_dist = 1.0f;
             }
 
             // Evaluate current hex
-            const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));
-            const auto step_index = control_step_begin + static_cast<int>(step_index_f);
-            FO_RUNTIME_ASSERT(step_index >= control_step_begin);
-            FO_RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
+            const auto step_index = control_step_begin + iround<int32>(normalized_dist * numeric_cast<float32>(cr->Moving.ControlSteps[i] - control_step_begin));
+            FO_RUNTIME_ASSERT(step_index >= numeric_cast<int32>(control_step_begin));
+            FO_RUNTIME_ASSERT(step_index <= numeric_cast<int32>(cr->Moving.ControlSteps[i]));
 
             auto hex2 = next_start_hex;
 
-            for (int j2 = control_step_begin; j2 < step_index; j2++) {
+            for (int32 j2 = control_step_begin; j2 < step_index; j2++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j2], map->GetSize());
                 FO_RUNTIME_ASSERT(move_ok);
             }
@@ -3331,7 +3331,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
 
             if (old_hex != hex2) {
-                const uint multihex = cr->GetMultihex();
+                const auto multihex = cr->GetMultihex();
 
                 if (map->IsHexesMovable(hex2, multihex, cr)) {
                     map->RemoveCritterFromField(cr);
@@ -3367,29 +3367,29 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto moved = cr_hex != old_hex;
 
             auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
+
             if (i == 0) {
                 cr_ox -= cr->Moving.StartHexOffset.x;
                 cr_oy -= cr->Moving.StartHexOffset.y;
             }
 
-            const auto lerp = [](int a, int b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
+            const auto lerp = [](int32 a, int32 b, float32 t) { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
 
             auto mx = lerp(0, ox, normalized_dist);
             auto my = lerp(0, oy, normalized_dist);
 
-            mx -= static_cast<float>(cr_ox);
-            my -= static_cast<float>(cr_oy);
+            mx -= numeric_cast<float32>(cr_ox);
+            my -= numeric_cast<float32>(cr_oy);
 
-            const auto mxi = static_cast<int16>(std::round(mx));
-            const auto myi = static_cast<int16>(std::round(my));
+            const auto mxi = iround<int16>(mx);
+            const auto myi = iround<int16>(my);
 
             if (moved || cr->GetHexOffset() != ipos16 {mxi, myi}) {
                 cr->SetHexOffset({mxi, myi});
             }
 
             // Evaluate dir angle
-            const auto dir_angle_f = Geometry.GetLineDirAngle(0, 0, ox, oy);
-            const auto dir_angle = static_cast<int16>(round(dir_angle_f));
+            const auto dir_angle = iround<int16>(Geometry.GetLineDirAngle(0, 0, ox, oy));
 
             cr->SetDirAngle(dir_angle);
 
@@ -3452,7 +3452,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->Moving.WholeDist = 0.0f;
 
     FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-    const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
+    const auto base_move_speed = numeric_cast<float32>(cr->Moving.Speed);
 
     auto next_start_hex = start_hex;
     uint16 control_step_begin = 0;
@@ -3478,8 +3478,8 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
             oy += cr->Moving.EndHexOffset.y;
         }
 
-        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
 
         cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
         cr->Moving.WholeDist += dist;
@@ -3522,14 +3522,14 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
         return;
     }
 
-    const auto diff = static_cast<float>(speed) / static_cast<float>(cr->Moving.Speed);
+    const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
     const auto cur_time = GameTime.GetFrameTime();
-    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float>();
+    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
     cr->Moving.StartTime = cur_time;
-    cr->Moving.OffsetTime = std::chrono::milliseconds {iround(elapsed_time / diff)};
+    cr->Moving.OffsetTime = std::chrono::milliseconds(iround<int32>(elapsed_time / diff));
     cr->Moving.Speed = speed;
 
     cr->SetMovingSpeed(speed);
@@ -3630,7 +3630,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 break;
             }
 
-            const auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(demand.ParamIndex));
+            const auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(demand.ParamIndex));
 
             switch (demand.Op) {
             case '>':
@@ -3671,32 +3671,32 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
             const auto pid = demand.ParamHash;
             switch (demand.Op) {
             case '>':
-                if (static_cast<int>(master->CountInvItemPid(pid)) > demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) > demand.Value) {
                     continue;
                 }
                 break;
             case '<':
-                if (static_cast<int>(master->CountInvItemPid(pid)) < demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) < demand.Value) {
                     continue;
                 }
                 break;
             case '=':
-                if (static_cast<int>(master->CountInvItemPid(pid)) == demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) == demand.Value) {
                     continue;
                 }
                 break;
             case '!':
-                if (static_cast<int>(master->CountInvItemPid(pid)) != demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) != demand.Value) {
                     continue;
                 }
                 break;
             case '}':
-                if (static_cast<int>(master->CountInvItemPid(pid)) >= demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) >= demand.Value) {
                     continue;
                 }
                 break;
             case '{':
-                if (static_cast<int>(master->CountInvItemPid(pid)) <= demand.Value) {
+                if (numeric_cast<int32>(master->CountInvItemPid(pid)) <= demand.Value) {
                     continue;
                 }
                 break;
@@ -3733,7 +3733,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
     return true;
 }
 
-auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint
+auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3741,7 +3741,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
         return 0;
     }
 
-    uint force_dialog = 0;
+    uint32 force_dialog = 0;
     Critter* master = nullptr;
     Critter* slave = nullptr;
 
@@ -3792,7 +3792,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 break;
             }
 
-            auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(result.ParamIndex));
+            auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(result.ParamIndex));
 
             switch (result.Op) {
             case '+':
@@ -3814,12 +3814,12 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 break;
             }
 
-            entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int>(result.ParamIndex), val);
+            entity->GetPropertiesForEdit().SetValueAsInt(numeric_cast<int32>(result.ParamIndex), val);
         }
             continue;
         case DR_ITEM: {
             const auto pid = result.ParamHash;
-            const int cur_count = static_cast<int>(master->CountInvItemPid(pid));
+            const auto cur_count = numeric_cast<int32>(master->CountInvItemPid(pid));
             auto need_count = cur_count;
 
             switch (result.Op) {
@@ -3981,19 +3981,19 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
 
     // Predialogue installations
     auto it_d = dialogs->begin();
-    auto go_dialog = static_cast<uint>(-1);
+    auto go_dialog = 0xFFFFFFFFu;
     auto it_a = it_d->Answers.begin();
 
     for (; it_a != it_d->Answers.end(); ++it_a) {
         if (DialogCheckDemand(npc, cl, *it_a, false)) {
             go_dialog = it_a->Link;
         }
-        if (go_dialog != static_cast<uint>(-1)) {
+        if (go_dialog != 0xFFFFFFFFu) {
             break;
         }
     }
 
-    if (go_dialog == static_cast<uint>(-1)) {
+    if (go_dialog == 0xFFFFFFFFu) {
         return;
     }
 
@@ -4001,7 +4001,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     const auto force_dialog = DialogUseResult(npc, cl, *it_a);
 
     if (force_dialog != 0) {
-        if (force_dialog == static_cast<uint>(-1)) {
+        if (force_dialog == 0xFFFFFFFFu) {
             return;
         }
 
@@ -4009,7 +4009,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
     }
 
     // Find dialog
-    it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
+    it_d = std::ranges::find_if(*dialogs, [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
 
     if (it_d == dialogs->end()) {
         cl->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
@@ -4051,7 +4051,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos 
         if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
             failed = true;
         }
         cl->Talk.Locked = false;
@@ -4148,7 +4148,7 @@ void FOServer::Process_Dialog(Player* player)
     const auto* cur_dialog = &cr->Talk.CurDialog;
     const auto last_dialog = cur_dialog->Id;
 
-    uint next_dlg_id;
+    uint32 next_dlg_id;
 
     if (!cr->Talk.Barter) {
         // Barter
@@ -4200,7 +4200,7 @@ void FOServer::Process_Dialog(Player* player)
         }
 
         // Use result
-        const uint force_dlg_id = DialogUseResult(talker, cr, *answer);
+        const uint32 force_dlg_id = DialogUseResult(talker, cr, *answer);
 
         if (force_dlg_id != 0) {
             next_dlg_id = force_dlg_id;
@@ -4211,18 +4211,18 @@ void FOServer::Process_Dialog(Player* player)
 
         // Special links
         switch (next_dlg_id) {
-        case static_cast<uint>(-3):
+        case std::bit_cast<uint32>(-3):
         case DIALOG_BARTER:
             do_barter();
             return;
-        case static_cast<uint>(-2):
+        case std::bit_cast<uint32>(-2):
         case DIALOG_BACK:
             if (cr->Talk.LastDialogId != 0) {
                 next_dlg_id = cr->Talk.LastDialogId;
                 break;
             }
             [[fallthrough]];
-        case static_cast<uint>(-1):
+        case std::bit_cast<uint32>(-1):
         case DIALOG_END:
             CrMngr.CloseTalk(cr);
             return;
@@ -4241,7 +4241,7 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Find dialog
-    const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
+    const auto it_d = std::ranges::find_if(*dialogs, [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
 
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
@@ -4272,7 +4272,7 @@ void FOServer::Process_Dialog(Player* player)
         if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
         cr->Talk.Locked = false;
@@ -4314,19 +4314,19 @@ void FOServer::Process_RemoteCall(Player* player)
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    const auto rpc_num = in_buf->Read<uint>();
+    const auto rpc_num = in_buf->Read<uint32>();
 
     in_buf.Unlock();
 
     ScriptSys.HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Properties* props) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (count == 0) {
-        throw GenericException("Item count is zero");
+    if (count <= 0) {
+        throw GenericException("Invalid items cound");
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -4341,9 +4341,9 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, uint count, Prop
 
     // Non-stacked items
     if (item != nullptr && !proto->GetStackable() && count > 1) {
-        const uint fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
+        const auto fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
 
-        for (uint i = 0; i < fixed_count; i++) {
+        for (int32 i = 0; i < fixed_count; i++) {
             if (add_item() == nullptr) {
                 break;
             }
@@ -4363,52 +4363,52 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
     case 0:
         return ScriptSys.CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
     case 1:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
     case 2:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
     case 3:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
     case 4:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
     case 5:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
+        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
     default:
         FO_UNREACHABLE_PLACE();
     }
 }
 
-auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
+auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
     switch (result.ValuesCount) {
     case 0:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*>(result.AnswerScriptFuncName)) {
             return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
-        if (auto func = ScriptSys.FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;
@@ -4423,27 +4423,27 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
         }
         break;
     case 1:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
             return 0;
         }
         break;
     case 2:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
             return 0;
         }
         break;
     case 3:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
             return 0;
         }
         break;
     case 4:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
             return 0;
         }
         break;
     case 5:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
+        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
             return 0;
         }
         break;
@@ -4459,7 +4459,7 @@ auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint>(player_name.length()));
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), numeric_cast<uint32>(player_name.length()));
     FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }

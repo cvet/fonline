@@ -32,8 +32,6 @@
 //
 
 #include "RenderTarget.h"
-#include "GenericUtils.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -212,7 +210,7 @@ void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
+    const auto it = std::ranges::find_if(_rtAll, [rt](auto&& check_rt) { return check_rt.get() == rt; });
     FO_RUNTIME_ASSERT(it != _rtAll.end());
     _rtAll.erase(it);
 }
@@ -228,10 +226,10 @@ void RenderTargetManager::DumpTextures() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint atlases_memory_size = 0;
+    size_t atlases_memory_size = 0;
 
     for (const auto& rt : _rtAll) {
-        atlases_memory_size += rt->MainTex->Size.width * rt->MainTex->Size.height * 4;
+        atlases_memory_size += numeric_cast<size_t>(rt->MainTex->Size.width) * rt->MainTex->Size.height * 4;
     }
 
     const auto time = nanotime::now().desc(true);
@@ -247,11 +245,11 @@ void RenderTargetManager::DumpTextures() const
         }
     };
 
-    int cnt = 1;
+    size_t num = 1;
 
     for (const auto& rt : _rtAll) {
-        write_rt(strex("All_{}", cnt), rt.get());
-        cnt++;
+        write_rt(strex("All_{}", num), rt.get());
+        num++;
     }
 }
 

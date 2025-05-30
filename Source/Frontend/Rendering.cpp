@@ -33,7 +33,6 @@
 
 #include "Rendering.h"
 #include "ConfigFile.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -68,7 +67,7 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
     return nullptr;
 }
 
-auto Null_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -146,7 +145,7 @@ void Null_Renderer::OnResizeWindow(isize size)
 
 RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
     Size {size},
-    SizeData {static_cast<float>(size.width), static_cast<float>(size.height), 1.0f / static_cast<float>(size.width), 1.0f / static_cast<float>(size.height)},
+    SizeData {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height), 1.0f / numeric_cast<float32>(size.width), 1.0f / numeric_cast<float32>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
@@ -165,14 +164,14 @@ RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
 void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
 {
     if (VertCount + vcount >= Vertices.size()) {
-        Vertices.resize(VertCount + std::max(vcount, static_cast<size_t>(1024)));
+        Vertices.resize(VertCount + std::max(vcount, const_numeric_cast<size_t>(1024)));
 
         if constexpr (sizeof(vindex_t) == 2) {
             FO_RUNTIME_ASSERT(Vertices.size() <= 0xFFFF);
         }
     }
     if (IndCount + icount >= Indices.size()) {
-        Indices.resize(IndCount + std::max(icount, static_cast<size_t>(1024)));
+        Indices.resize(IndCount + std::max(icount, const_numeric_cast<size_t>(1024)));
     }
 }
 
@@ -188,17 +187,17 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
     FO_RUNTIME_ASSERT(passes >= 1);
-    FO_RUNTIME_ASSERT(passes <= static_cast<int>(EFFECT_MAX_PASSES));
+    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
-    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= static_cast<int>(EFFECT_MAX_PASSES)));
+    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
 #endif
 
-    _passCount = static_cast<size_t>(passes);
+    _passCount = numeric_cast<size_t>(passes);
 
     static auto get_blend_func = [](string_view s) -> BlendFuncType {
         if (s == "Zero") {

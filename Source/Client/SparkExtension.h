@@ -56,7 +56,7 @@ namespace SPK::FO
 
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
-        void SetNextTexCoord(float tu, float tv);
+        void SetNextTexCoord(float32 tu, float32 tv);
         void Render(size_t vertices, RenderEffect* effect) const;
 
     private:
@@ -90,9 +90,9 @@ namespace SPK::FO
 
         void Setup(string_view path, ParticleManager& particle_mngr);
 
-        auto GetDrawWidth() const -> int;
-        auto GetDrawHeight() const -> int;
-        void SetDrawSize(int width, int height);
+        auto GetDrawWidth() const -> int32;
+        auto GetDrawHeight() const -> int32;
+        void SetDrawSize(int32 width, int32 height);
 
         auto GetEffectName() const -> const string&;
         void SetEffectName(const string& effect_name);
@@ -123,8 +123,8 @@ namespace SPK::FO
         RenderTexture* _texture {};
         FRect _textureAtlasOffsets {};
 
-        int _drawWidth {};
-        int _drawHeight {};
+        int32 _drawWidth {};
+        int32 _drawHeight {};
 
         string _effectName {};
         string _textureName {};

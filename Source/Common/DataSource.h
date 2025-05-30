@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_DECLARE_EXCEPTION(DataSourceException);
 
-enum class DataSourceType
+enum class DataSourceType : uint8
 {
     Default,
     DirRoot,

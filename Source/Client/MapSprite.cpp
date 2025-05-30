@@ -209,15 +209,15 @@ void MapSprite::SetLight(CornerType corner, const ucolor* light, msize size)
             break;
         case CornerType::NorthSouth:
         case CornerType::West:
-            LightRight = Light + static_cast<size_t>(size.width);
-            LightLeft = Light - static_cast<size_t>(size.width);
+            LightRight = Light + numeric_cast<size_t>(size.width);
+            LightLeft = Light - numeric_cast<size_t>(size.width);
             break;
         case CornerType::South:
             LightRight = Light - 1;
-            LightLeft = Light - static_cast<size_t>(size.width);
+            LightLeft = Light - numeric_cast<size_t>(size.width);
             break;
         case CornerType::North:
-            LightRight = Light + static_cast<size_t>(size.width);
+            LightRight = Light + numeric_cast<size_t>(size.width);
             LightLeft = Light + 1;
             break;
         }
@@ -270,7 +270,7 @@ void MapSpriteList::GrowPool()
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
-    for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
+    for (uint32 i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
         _spritesPool.emplace_back(SafeAlloc::MakeRaw<MapSprite>());
     }
 }
@@ -378,10 +378,10 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
     mspr->DrawOrder = draw_order;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + mspr->Hex.y * MAXHEX_MAX + mspr->Hex.x;
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(draw_order) + mspr->Hex.y * MAXHEX_MAX + mspr->Hex.x;
     }
     else {
-        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + mspr->Hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->Hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(DrawOrderType::NormalBegin) + mspr->Hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->Hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
     }
 
     return *mspr;
@@ -399,13 +399,13 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_of
     FO_STACK_TRACE_ENTRY();
 
     // Find place
-    uint order_pos;
+    uint32 order_pos;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hex.y * MAXHEX_MAX + hex.x;
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(draw_order) + hex.y * MAXHEX_MAX + hex.x;
     }
     else {
-        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + hex.y * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hex.x * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        order_pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int32>(DrawOrderType::NormalBegin) + hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
     }
 
     auto* parent = _rootSprite;
@@ -453,7 +453,7 @@ void MapSpriteList::Sort()
         mspr = mspr->ChainChild;
     }
 
-    std::sort(_sortSprites.begin(), _sortSprites.end(), [](const MapSprite* mspr1, const MapSprite* mspr2) {
+    std::ranges::sort(_sortSprites, [](const MapSprite* mspr1, const MapSprite* mspr2) {
         if (mspr1->DrawOrderPos == mspr2->DrawOrderPos) {
             return mspr1->TreeIndex < mspr2->TreeIndex;
         }

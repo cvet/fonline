@@ -32,7 +32,6 @@
 //
 
 #include "Keyboard.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -54,7 +53,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const
+void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, int32* position, uint32 flags) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -64,14 +63,11 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
 
     const auto ctrl_shift = CtrlDwn || ShiftDwn;
     const auto dik_text_len_utf8 = strex(dik_text).lengthUtf8();
-    const auto str_len = static_cast<uint>(str.length());
+    const auto str_len = numeric_cast<int32>(str.length());
 
-    uint position_dummy = str_len;
-    uint& pos = position != nullptr ? *position : position_dummy;
-
-    if (pos > str_len) {
-        pos = str_len;
-    }
+    int32 position_dummy = str_len;
+    int32& pos = position != nullptr ? *position : position_dummy;
+    pos = std::min(pos, str_len);
 
     if (dik == KeyCode::Right && !ctrl_shift) {
         if (pos < str_len) {
@@ -93,10 +89,10 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
     else if (dik == KeyCode::Back && !ctrl_shift) {
         if (pos > 0) {
-            uint letter_len = 1;
+            int32 letter_len = 1;
             pos--;
 
-            while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
+            while (pos != 0 && (str[pos] & 0xC0) == 0x80) {
                 pos--;
                 letter_len++;
             }
@@ -106,7 +102,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
     else if (dik == KeyCode::Delete && !ctrl_shift) {
         if (pos < str_len) {
-            uint letter_len = 1;
+            int32 letter_len = 1;
             auto pos_ = pos + 1;
 
             while (pos_ < str_len && (str[pos_] & 0xC0) == 0x80) {
@@ -142,7 +138,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
 
         if (!text.empty()) {
             str.insert(pos, text);
-            pos += static_cast<uint>(text.length());
+            pos += numeric_cast<int32>(text.length());
         }
     }
     else {
@@ -154,7 +150,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
         }
 
         for (size_t i = 0; i < dik_text.length();) {
-            uint length = 0;
+            int32 length = 0;
 
             if (IsInvalidChar(dik_text.data() + i, flags, length)) {
                 return;
@@ -164,16 +160,16 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
         }
 
         str.insert(pos, dik_text);
-        pos += static_cast<uint>(dik_text.length());
+        pos += numeric_cast<int32>(dik_text.length());
     }
 }
 
-void Keyboard::RemoveInvalidChars(string& str, uint flags) const
+void Keyboard::RemoveInvalidChars(string& str, uint32 flags) const
 {
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < str.length();) {
-        uint length = 0;
+        int32 length = 0;
 
         if (IsInvalidChar(str.c_str() + i, flags, length)) {
             str.erase(i, length);
@@ -184,7 +180,7 @@ void Keyboard::RemoveInvalidChars(string& str, uint flags) const
     }
 }
 
-auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const -> bool
+auto Keyboard::IsInvalidChar(const char* str, uint32 flags, int32& length) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -195,7 +191,7 @@ auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const ->
         return true;
     }
 
-    length = static_cast<uint>(decode_length);
+    length = numeric_cast<int32>(decode_length);
 
     if (length == 1) {
         if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str == '\n' || *str == '\r' || *str == '\t')) {

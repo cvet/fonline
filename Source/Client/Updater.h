@@ -36,10 +36,8 @@
 #include "Common.h"
 
 #include "ClientConnection.h"
-#include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
@@ -61,11 +59,11 @@ public:
 private:
     struct UpdateFile
     {
-        uint Index {};
+        int32 Index {};
         string Name;
         size_t Size {};
         size_t RemaningSize {};
-        uint Hash {};
+        uint32 Hash {};
     };
 
     [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
@@ -91,7 +89,7 @@ private:
     vector<string> _messages {};
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
-    uint _filesWholeSize {};
+    size_t _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     vector<uint8> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};

@@ -56,13 +56,13 @@ FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int Server_Player_GetAccess(Player* self)
+FO_SCRIPT_API int32 Server_Player_GetAccess(Player* self)
 {
     return self->Access;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int access)
+FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int32 access)
 {
     if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
         throw ScriptException("Wrong access type");
@@ -74,8 +74,9 @@ FO_SCRIPT_API bool Server_Player_SetAccess(Player* self, int access)
 
     string pass;
     const auto allow = self->GetEngine()->OnPlayerGetAccess.Fire(self, access, pass);
+
     if (allow) {
-        self->Access = static_cast<uint8>(access);
+        self->Access = numeric_cast<uint8>(access);
     }
 
     return allow;

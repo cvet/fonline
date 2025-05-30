@@ -65,7 +65,7 @@ struct ResourcePackInfo
     bool ServerOnly {};
     bool ClientOnly {};
     bool MapperOnly {};
-    int BakeOrder {};
+    int32 BakeOrder {};
 };
 
 struct SubConfigInfo
@@ -78,7 +78,7 @@ struct SubConfigInfo
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakerSettings
 {
 public:
-    explicit GlobalSettings(int argc, char** argv);
+    explicit GlobalSettings(int32 argc, char** argv);
     explicit GlobalSettings(string_view config_path, string_view sub_config);
     GlobalSettings(const GlobalSettings&) = default;
     GlobalSettings(GlobalSettings&&) = default;

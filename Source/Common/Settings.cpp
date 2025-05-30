@@ -35,10 +35,7 @@
 #include "AnyData.h"
 #include "CacheStorage.h"
 #include "ConfigFile.h"
-#include "DiskFileSystem.h"
 #include "ImGuiStuff.h"
-#include "Log.h"
-#include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
@@ -67,23 +64,24 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::is_floating_point_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
-        entry += static_cast<float>(any_value.AsDouble());
+        entry += numeric_cast<float32>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = static_cast<T>(static_cast<int>(entry) | any_value.AsInt64());
+        entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
     }
     else if constexpr (is_strong_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = T {static_cast<typename T::underlying_type>(any_value.AsInt64())};
+        entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (is_valid_pod_type_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        entry = parse_from_string<T>(any_value.AsString());
+        istringstream istr(any_value.AsString());
+        istr >> entry;
     }
     else {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry += static_cast<T>(any_value.AsInt64());
+        entry += numeric_cast<T>(any_value.AsInt64());
     }
 }
 
@@ -117,7 +115,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<float>(arr_entry.AsDouble()));
+            entry.emplace_back(numeric_cast<float32>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -125,7 +123,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
+            entry.emplace_back(numeric_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
         }
     }
     else {
@@ -133,7 +131,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(static_cast<T>(arr_entry.AsInt64()));
+            entry.emplace_back(numeric_cast<T>(arr_entry.AsInt64()));
         }
     }
 }
@@ -155,7 +153,7 @@ static void DrawEditableEntry(string_view name, T& entry)
     DrawEntry(name, entry);
 }
 
-GlobalSettings::GlobalSettings(int argc, char** argv)
+GlobalSettings::GlobalSettings(int32 argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -254,7 +252,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         "DebuggingSubConfig",
     };
 
-    for (int i = 0; i < argc; i++) {
+    for (int32 i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -304,7 +302,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     }
 
     // Command line config
-    for (int i = 0; i < argc; i++) {
+    for (int32 i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -479,7 +477,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
             pack_info.MapperOnly = strex(mapper_only).toBool();
         }
-        if (static_cast<int>(pack_info.ServerOnly) + static_cast<int>(pack_info.ClientOnly) + static_cast<int>(pack_info.MapperOnly) > 1) {
+        if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
@@ -544,7 +542,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
         if (auto parent = get_map_value("Parent"); !parent.empty()) {
             const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent; };
-            const auto it = std::find_if(_subConfigs.begin(), _subConfigs.end(), find_predicate);
+            const auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
             if (it == _subConfigs.end()) {
                 throw SettingsException("Parent sub config not found", parent);
@@ -609,7 +607,7 @@ void GlobalSettings::ApplyAutoSettings()
 
     const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    const_cast<int32&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;
@@ -626,7 +624,7 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
     }
 
     const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
-    const auto it = std::find_if(_subConfigs.begin(), _subConfigs.end(), find_predicate);
+    const auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
     if (it == _subConfigs.end()) {
         throw SettingsException("Sub config not found", name);

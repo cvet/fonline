@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "Common.h"
+
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
@@ -54,7 +56,7 @@ public:
     std::string GetNameWithoutNamespace() const;
     std::string GetNamespace() const;
     std::string GetModule() const;
-    asUINT GetSize() const;
+    int GetSize() const;
     bool IsGlobal() const;
     bool IsClass() const;
     bool IsInterface() const;
@@ -62,18 +64,18 @@ public:
     bool IsFunction() const;
     bool IsShared() const;
     ScriptType* GetBaseType() const;
-    asUINT GetInterfaceCount() const;
-    ScriptType* GetInterface(asUINT index) const;
+    int GetInterfaceCount() const;
+    ScriptType* GetInterface(int index) const;
     bool Implements(const ScriptType* other) const;
     bool Equals(const ScriptType* other);
     bool DerivesFrom(const ScriptType* other);
     void Instantiate(void* out, int out_type_id) const;
     void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
-    asUINT GetMethodsCount() const;
-    std::string GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const;
-    asUINT GetPropertiesCount() const;
-    std::string GetPropertyDeclaration(asUINT index, bool include_namespace) const;
-    asUINT GetEnumLength() const;
+    int GetMethodsCount() const;
+    std::string GetMethodDeclaration(int index, bool include_object_name, bool include_namespace, bool include_param_names) const;
+    int GetPropertiesCount() const;
+    std::string GetPropertyDeclaration(int index, bool include_namespace) const;
+    int GetEnumLength() const;
     CScriptArray* GetEnumNames() const;
     CScriptArray* GetEnumValues() const;
 

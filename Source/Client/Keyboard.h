@@ -44,9 +44,9 @@
 FO_BEGIN_NAMESPACE();
 
 // Keyboard input flags
-static constexpr uint KIF_NO_SPEC_SYMBOLS = 1; // Ignore \n \r \t
-static constexpr uint KIF_ONLY_NUMBERS = 2; // Only 0..9
-static constexpr uint KIF_FILE_NAME = 4; // Ignore \/:*?\"<>|
+static constexpr uint32 KIF_NO_SPEC_SYMBOLS = 1; // Ignore \n \r \t
+static constexpr uint32 KIF_ONLY_NUMBERS = 2; // Only 0..9
+static constexpr uint32 KIF_FILE_NAME = 4; // Ignore \/:*?\"<>|
 
 class Keyboard final
 {
@@ -60,8 +60,8 @@ public:
     ~Keyboard() = default;
 
     void Lost();
-    void FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const;
-    void RemoveInvalidChars(string& str, uint flags) const;
+    void FillChar(KeyCode dik, string_view dik_text, string& str, int32* position, uint32 flags) const;
+    void RemoveInvalidChars(string& str, uint32 flags) const;
 
     bool ShiftDwn {};
     bool CtrlDwn {};
@@ -69,7 +69,7 @@ public:
     bool KeyPressed[0x100] {};
 
 private:
-    [[nodiscard]] auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
+    [[nodiscard]] auto IsInvalidChar(const char* str, uint32 flags, int32& length) const -> bool;
 
     InputSettings& _settings;
     SpriteManager& _sprMngr;

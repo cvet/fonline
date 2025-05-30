@@ -56,7 +56,7 @@ public:
     [[nodiscard]] auto GetItemDefaultSpr() -> shared_ptr<Sprite>;
     [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
-    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*;
+    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const Sprite*;
     [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
@@ -64,9 +64,9 @@ public:
 
 private:
     [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>;
-    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint state_anim, uint action_anim) -> const SpriteSheet*;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint32 state_anim, uint32 action_anim) -> const SpriteSheet*;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*;
+    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const ModelSprite*;
 #endif
 
     void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
@@ -75,7 +75,7 @@ private:
     FileSystem& _resources;
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
-    unordered_map<uint, shared_ptr<SpriteSheet>> _critterFrames {};
+    unordered_map<uint32, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
     map<string, string> _soundNames {};

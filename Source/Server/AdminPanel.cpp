@@ -33,11 +33,9 @@
 
 #include "AdminPanel.h"
 #include "Application.h"
-#include "Log.h"
 #include "NetBuffer.h"
 #include "NetCommand.h"
 #include "Server.h"
-#include "StringUtils.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
@@ -49,7 +47,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define SOCKET int
+#define SOCKET int32
 #define INVALID_SOCKET (-1)
 #define SOCKET_ERROR (-1)
 #define closesocket close
@@ -64,7 +62,7 @@ static constexpr size_t MAX_SESSIONS = 10;
 
 struct Session
 {
-    int RefCount {};
+    int32 RefCount {};
     SOCKET Sock {};
     sockaddr_in From {};
     nanotime StartWork {};
@@ -94,9 +92,9 @@ static void AdminManager(FOServer* server, uint16 port)
 #endif
 
 #if FO_LINUX
-    constexpr int sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+    constexpr int32 sock_type = SOCK_STREAM | SOCK_CLOEXEC;
 #else
-    constexpr int sock_type = SOCK_STREAM;
+    constexpr int32 sock_type = SOCK_STREAM;
 #endif
     const auto listen_sock = socket(AF_INET, sock_type, 0);
     if (listen_sock == INVALID_SOCKET) {
@@ -131,10 +129,10 @@ static void AdminManager(FOServer* server, uint16 port)
         fd_set sock_set;
         FD_ZERO(&sock_set);
         FD_SET(listen_sock, &sock_set);
-        if (select(static_cast<int>(listen_sock) + 1, &sock_set, nullptr, nullptr, &tv) > 0) {
+        if (select(numeric_cast<int32>(listen_sock) + 1, &sock_set, nullptr, nullptr, &tv) > 0) {
             sockaddr_in from {};
 #if FO_WINDOWS
-            int len = sizeof(from);
+            int32 len = sizeof(from);
 #else
             socklen_t len = sizeof(from);
 #endif
@@ -222,7 +220,7 @@ static void AdminWork(FOServer* server, Session* session)
 
     // Welcome to string
     const string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
-    const auto welcome_len = static_cast<int>(welcome.length()) + 1;
+    const auto welcome_len = numeric_cast<int32>(welcome.length()) + 1;
     if (::send(session->Sock, welcome.c_str(), welcome_len, 0) != welcome_len) {
         WriteLog("Admin connection first send fail, disconnect");
         goto label_Finish;
@@ -232,7 +230,7 @@ static void AdminWork(FOServer* server, Session* session)
     while (server != nullptr) {
         // Get command
         char cmd_raw[1024] = {};
-        int len = ::recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
+        int32 len = ::recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
 
         if (len <= 0 || len == 1024) {
             if (len == 0) {
@@ -252,11 +250,11 @@ static void AdminWork(FOServer* server, Session* session)
 
         // Authorization
         if (!session->Authorized) {
-            int pos = -1;
+            int32 pos = -1;
 
             for (size_t i = 0, j = server->Settings.AccessAdmin.size(); i < j; i++) {
                 if (server->Settings.AccessAdmin[i] == cmd) {
-                    pos = static_cast<int>(i);
+                    pos = numeric_cast<int32>(i);
                     break;
                 }
             }
@@ -271,7 +269,7 @@ static void AdminWork(FOServer* server, Session* session)
 
             WriteLog("Wrong access key entered in admin panel from IP '{}', disconnect", inet_ntoa(session->From.sin_addr));
             const string failstr = "Wrong access key!\n";
-            ::send(session->Sock, failstr.c_str(), static_cast<int>(failstr.length()) + 1, 0);
+            ::send(session->Sock, failstr.c_str(), numeric_cast<int32>(failstr.length()) + 1, 0);
             goto label_Finish;
         }
 
@@ -310,7 +308,7 @@ static void AdminWork(FOServer* server, Session* session)
                         buf += "\n";
                     }
 
-                    if (!send_fail && send(session->Sock, buf.c_str(), static_cast<int>(buf.length()) + 1, 0) != static_cast<int>(buf.length()) + 1) {
+                    if (!send_fail && send(session->Sock, buf.c_str(), numeric_cast<int32>(buf.length()) + 1, 0) != numeric_cast<int32>(buf.length()) + 1) {
                         WriteLog("Admin panel ({}): Send data fail, disconnect", admin_name);
                         send_fail = true;
                     }
@@ -319,7 +317,7 @@ static void AdminWork(FOServer* server, Session* session)
                 auto buf = NetOutBuffer(server->Settings.NetBufferSize);
                 PackNetCommand(cmd.substr(1), &buf, func, server->Hashes);
                 if (!buf.IsEmpty()) {
-                    // uint msg = 0;
+                    // uint32 msg = 0;
                     // buf >> msg;
                     // WriteLog("Admin panel ({}): Execute command '{}'", admin_name, cmd);
                     // server->Process_Command(buf, func, nullptr, admin_name);

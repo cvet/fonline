@@ -33,8 +33,6 @@
 
 #include "NetCommand.h"
 #include "Entity.h"
-#include "GenericUtils.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -129,7 +127,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_MOVECRIT: {
-        uint cr_id = 0;
+        ident_t cr_id;
         uint16 hex_x = 0;
         uint16 hex_y = 0;
         if (!(args_str >> cr_id >> hex_x >> hex_y)) {
@@ -144,7 +142,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_DISCONCRIT: {
-        uint cr_id = 0;
+        ident_t cr_id;
         if (!(args_str >> cr_id)) {
             logcb("Invalid arguments. Example: disconnect cr_id");
             break;
@@ -161,7 +159,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_PROPERTY: {
-        uint cr_id = 0;
+        ident_t cr_id;
         string property_name;
         auto property_value = 0;
         if (!(args_str >> cr_id >> property_name >> property_value)) {
@@ -196,7 +194,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         uint16 hex_x = 0;
         uint16 hex_y = 0;
         string proto_name;
-        uint count = 0;
+        uint32 count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additem hx hy name count");
             break;
@@ -212,7 +210,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_ADDITEM_SELF: {
         string proto_name;
-        uint count = 0;
+        uint32 count = 0;
         if (!(args_str >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additemself name count");
             break;

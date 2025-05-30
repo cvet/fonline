@@ -168,9 +168,9 @@ FO_SCRIPT_API void Client_Critter_StopAnim(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint Client_Critter_CountItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
-    uint result = 0;
+    int32 result = 0;
 
     for (const auto& item : self->GetInvItems()) {
         if (!protoId || item->GetProtoId() == protoId) {
@@ -231,7 +231,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
@@ -277,7 +277,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemC
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
+FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
     auto& inv_items = self->GetInvItems();
@@ -307,7 +307,7 @@ FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos& pos)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float moveX, float moveY, float moveZ)
+FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float32 moveX, float32 moveY, float32 moveZ)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -332,7 +332,7 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float normalizedTime, CallbackFunc<CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32 normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -396,7 +396,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos hexOffset, uint speed)
+FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos hexOffset, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -404,14 +404,14 @@ FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos he
         throw ScriptException("Critter is not on map");
     }
 
-    const auto ox = static_cast<int16>(std::clamp(hexOffset.x, -self->GetEngine()->Settings.MapHexWidth / 2, self->GetEngine()->Settings.MapHexHeight / 2));
-    const auto oy = static_cast<int16>(std::clamp(hexOffset.y, -self->GetEngine()->Settings.MapHexHeight / 2, self->GetEngine()->Settings.MapHexHeight / 2));
+    const auto ox = numeric_cast<int16>(std::clamp(hexOffset.x, -self->GetEngine()->Settings.MapHexWidth / 2, self->GetEngine()->Settings.MapHexHeight / 2));
+    const auto oy = numeric_cast<int16>(std::clamp(hexOffset.y, -self->GetEngine()->Settings.MapHexHeight / 2, self->GetEngine()->Settings.MapHexHeight / 2));
 
     self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}}, speed);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int dir, uint speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32 dir, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -489,7 +489,7 @@ FO_SCRIPT_API void Client_Critter_SetContour(CritterView* self, ContourType cont
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, uint itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32 itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto* item = self->GetInvItem(itemId);
     auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
@@ -507,7 +507,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
+            map_cr->Action(CritterAction::DropItem, static_cast<int32>(from_slot), item, true);
         }
 
         if (item->GetStackable() && itemCount < item->GetCount()) {
@@ -526,10 +526,10 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         }
 
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
+            map_cr->Action(CritterAction::MoveItem, static_cast<int32>(from_slot), item, true);
 
             if (swap_item != nullptr) {
-                map_cr->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
+                map_cr->Action(CritterAction::SwapItems, static_cast<int32>(toSlot), swap_item, true);
             }
         }
     }

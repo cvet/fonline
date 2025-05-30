@@ -125,17 +125,17 @@ void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackD
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (callback.Priority >= EventPriority::Highest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
+    if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
         throw GenericException("Highest callback already added");
     }
 
-    if (callback.Priority <= EventPriority::Lowest && std::find_if(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
+    if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
         throw GenericException("Lowest callback already added");
     }
 
     callbacks.emplace_back(std::move(callback));
 
-    std::stable_sort(callbacks.begin(), callbacks.end(), [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
+    std::ranges::stable_sort(callbacks, [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
         // From highest to lowest
         return cb1.Priority > cb2.Priority;
     });
@@ -147,7 +147,7 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* 
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (const auto it = std::find_if(callbacks.begin(), callbacks.end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
+    if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
         callbacks.erase(it);
     }
 }
@@ -215,7 +215,7 @@ void Entity::MarkAsDestroyed() noexcept
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const
+void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -236,14 +236,14 @@ void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
     _props.SetValueFromData(prop, prop_data);
 }
 
-auto Entity::GetValueAsInt(const Property* prop) const -> int
+auto Entity::GetValueAsInt(const Property* prop) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsInt(prop);
 }
 
-auto Entity::GetValueAsInt(int prop_index) const -> int
+auto Entity::GetValueAsInt(int32 prop_index) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -257,21 +257,21 @@ auto Entity::GetValueAsAny(const Property* prop) const -> any_t
     return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsAny(int prop_index) const -> any_t
+auto Entity::GetValueAsAny(int32 prop_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsAny(prop_index);
 }
 
-void Entity::SetValueAsInt(const Property* prop, int value)
+void Entity::SetValueAsInt(const Property* prop, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
-void Entity::SetValueAsInt(int prop_index, int value)
+void Entity::SetValueAsInt(int32 prop_index, int32 value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -285,7 +285,7 @@ void Entity::SetValueAsAny(const Property* prop, const any_t& value)
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsAny(int prop_index, const any_t& value)
+void Entity::SetValueAsAny(int32 prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 

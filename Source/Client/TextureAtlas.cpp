@@ -33,13 +33,10 @@
 
 #include "TextureAtlas.h"
 #include "Application.h"
-#include "DiskFileSystem.h"
-#include "GenericUtils.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
-static constexpr int ATLAS_SPRITES_PADDING = 1;
+static constexpr int32 ATLAS_SPRITES_PADDING = 1;
 
 TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos pos, isize size) :
     Parent {parent},
@@ -118,8 +115,8 @@ void TextureAtlas::SpaceNode::Free() noexcept
         }
 
         if (all_children_free) {
-            int max_x = Pos.x + Size.width;
-            int max_y = Pos.y + Size.height;
+            int32 max_x = Pos.x + Size.width;
+            int32 max_y = Pos.y + Size.height;
 
             for (const auto& child : Children) {
                 max_x = std::max(max_x, child->Pos.x + child->Size.width);
@@ -240,10 +237,10 @@ void TextureAtlasManager::DumpAtlases() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    int atlases_memory_size = 0;
+    size_t atlases_memory_size = 0;
 
     for (const auto& atlas : _allAtlases) {
-        atlases_memory_size += atlas->Size.width * atlas->Size.height * 4;
+        atlases_memory_size += numeric_cast<size_t>(atlas->Size.width) * atlas->Size.height * 4;
     }
 
     const auto time = nanotime::now().desc(true);

@@ -32,7 +32,6 @@
 //
 
 #include "ServerConnection.h"
-#include "Log.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE();
@@ -135,7 +134,7 @@ ServerConnection::~ServerConnection()
     _netConnection->Disconnect();
 }
 
-auto ServerConnection::GetIp() const noexcept -> uint
+auto ServerConnection::GetIp() const noexcept -> uint32
 {
     FO_NO_STACK_TRACE_ENTRY();
 

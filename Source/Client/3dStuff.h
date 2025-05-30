@@ -51,15 +51,15 @@ FO_BEGIN_NAMESPACE();
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
-constexpr uint ANIMATION_STAY = 0x01;
-constexpr uint ANIMATION_ONE_TIME = 0x02;
-constexpr auto ANIMATION_PERIOD(uint proc) -> uint
+constexpr uint32 ANIMATION_STAY = 0x01;
+constexpr uint32 ANIMATION_ONE_TIME = 0x02;
+constexpr auto ANIMATION_PERIOD(uint32 proc) -> uint32
 {
     return 0x04 | proc << 16;
 }
-constexpr uint ANIMATION_NO_SMOOTH = 0x08;
-constexpr uint ANIMATION_INIT = 0x10;
-constexpr uint ANIMATION_NO_ROTATE = 0x20;
+constexpr uint32 ANIMATION_NO_SMOOTH = 0x08;
+constexpr uint32 ANIMATION_INIT = 0x10;
+constexpr uint32 ANIMATION_NO_ROTATE = 0x20;
 
 struct ModelBone;
 class ModelInstance;
@@ -70,7 +70,7 @@ struct MeshTexture
 {
     hstring Name {};
     RenderTexture* MainTex {};
-    float AtlasOffsetData[4] {};
+    float32 AtlasOffsetData[4] {};
 };
 
 struct MeshData
@@ -119,13 +119,13 @@ struct ModelCutData
     {
         mat44 GlobalTransformationMatrix {};
         bool IsSphere {};
-        float SphereRadius {};
+        float32 SphereRadius {};
         vec3 BBoxMin {};
         vec3 BBoxMax {};
     };
 
     vector<Shape> Shapes {};
-    vector<int> Layers {};
+    vector<int32> Layers {};
     hstring UnskinBone1 {};
     hstring UnskinBone2 {};
     Shape UnskinShape {};
@@ -134,43 +134,43 @@ struct ModelCutData
 
 struct ModelAnimationData
 {
-    uint Id {};
-    int Layer {};
-    int LayerValue {};
+    uint32 Id {};
+    int32 Layer {};
+    int32 LayerValue {};
     hstring LinkBone {};
     string ChildName {};
     bool IsParticles {};
-    float RotX {};
-    float RotY {};
-    float RotZ {};
-    float MoveX {};
-    float MoveY {};
-    float MoveZ {};
-    float ScaleX {};
-    float ScaleY {};
-    float ScaleZ {};
-    float SpeedAjust {};
-    vector<int> DisabledLayer {};
+    float32 RotX {};
+    float32 RotY {};
+    float32 RotZ {};
+    float32 MoveX {};
+    float32 MoveY {};
+    float32 MoveZ {};
+    float32 ScaleX {};
+    float32 ScaleY {};
+    float32 ScaleZ {};
+    float32 SpeedAjust {};
+    vector<int32> DisabledLayer {};
     vector<hstring> DisabledMesh {};
-    vector<tuple<string, hstring, int>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, hstring, int32>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ModelCutData*> CutInfo {};
 };
 
 struct ModelParticleSystem
 {
-    uint Id {};
+    uint32 Id {};
     unique_ptr<ParticleSystem> Particle {};
     const ModelBone* Bone {};
     vec3 Move {};
-    float Rot {};
+    float32 Rot {};
 };
 
 struct ModelAnimationCallback
 {
     CritterStateAnim StateAnim {};
     CritterActionAnim ActionAnim {};
-    float NormalizedTime {};
+    float32 NormalizedTime {};
     std::function<void()> Callback {};
 };
 
@@ -204,6 +204,9 @@ private:
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
     [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
+    static auto MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool;
+    static auto MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool;
+
     RenderSettings& _settings;
     FileSystem& _resources;
     EffectManager& _effectMngr;
@@ -219,12 +222,13 @@ private:
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
-    float _moveTransitionTime {0.25f};
-    float _globalSpeedAdjust {1.0f};
-    uint _animUpdateThreshold {};
+    float32 _moveTransitionTime {0.25f};
+    float32 _globalSpeedAdjust {1.0f};
+    int32 _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
+    uint32 _linkId {};
     bool _nonConstHelper {};
 };
 
@@ -235,29 +239,29 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
-    constexpr static int FRAME_SCALE = 2;
+    constexpr static int32 FRAME_SCALE = 2;
 
     ModelInstance() = delete;
     ModelInstance(ModelManager& model_mngr, ModelInformation* info);
-    ModelInstance(const ModelInstance&) = default;
+    ModelInstance(const ModelInstance&) = delete;
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance() = default;
 
-    [[nodiscard]] auto Convert2dTo3d(ipos pos) const noexcept -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const noexcept -> ipos;
+    [[nodiscard]] auto Convert2dTo3d(ipos pos) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
-    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
-    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
-    [[nodiscard]] auto GetMovingAnim2() const noexcept -> CritterActionAnim;
+    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _curStateAnim; }
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _curActionAnim; }
+    [[nodiscard]] auto GetMovingAnim() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
     [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
-    [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const noexcept -> isize;
-    [[nodiscard]] auto GetViewSize() const noexcept -> isize;
+    [[nodiscard]] auto GetRenderFramesData() const -> tuple<float32, int32, int32, int32>;
+    [[nodiscard]] auto GetDrawSize() const -> isize;
+    [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
@@ -266,17 +270,17 @@ public:
     void SetupFrame(isize draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
+    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, uint32 flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
-    void SetLookDirAngle(int dir_angle);
-    void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
-    void SetRotation(float rx, float ry, float rz);
-    void SetScale(float sx, float sy, float sz);
-    void SetSpeed(float speed);
+    void SetLookDirAngle(int32 dir_angle);
+    void SetMoveDirAngle(int32 dir_angle, bool smooth_rotation);
+    void SetRotation(float32 rx, float32 ry, float32 rz);
+    void SetScale(float32 sx, float32 sy, float32 sz);
+    void SetSpeed(float32 speed);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(ipos offset);
-    void SetMoving(bool enabled, int speed = 0);
+    void SetMoving(bool enabled, int32 speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
@@ -290,9 +294,9 @@ private:
         unique_ptr<RenderDrawBuffer> MeshBuf {};
         size_t EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
-        vector<uint> MeshVertices {};
-        vector<uint> MeshIndices {};
-        vector<int> MeshAnimLayers {};
+        vector<uint32> MeshVertices {};
+        vector<uint32> MeshIndices {};
+        vector<int32> MeshAnimLayers {};
         size_t CurBoneMatrix {};
         vector<ModelBone*> SkinBones {};
         vector<mat44> SkinBoneOffsets {};
@@ -300,16 +304,16 @@ private:
     };
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
-    [[nodiscard]] auto GetSpeed() const -> float;
+    [[nodiscard]] auto GetSpeed() const -> float32;
     [[nodiscard]] auto GetTime() const -> nanotime;
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(const ModelInstance* cur);
-    void CombineMesh(const MeshInstance* mesh_instance, int anim_layer);
-    void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
+    void CombineMesh(const MeshInstance* mesh_instance, int32 anim_layer);
+    void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32 anim_layer);
     void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
-    void ProcessAnimation(float elapsed, ipos pos, float scale);
+    void ProcessAnimation(float32 elapsed, ipos pos, float32 scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
@@ -330,8 +334,8 @@ private:
     ModelInformation* _modelInfo {};
     unique_ptr<ModelAnimationController> _bodyAnimController {};
     unique_ptr<ModelAnimationController> _moveAnimController {};
-    int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
-    uint _currentTrack {};
+    int32 _currentLayers[MODEL_LAYERS_COUNT] {};
+    uint32 _currentTrack {};
     nanotime _lastDrawTime {};
     nanotime _endTime {};
     mat44 _matRot {};
@@ -339,30 +343,30 @@ private:
     mat44 _matScaleBase {};
     mat44 _matRotBase {};
     mat44 _matTransBase {};
-    float _speedAdjustBase {};
-    float _speedAdjustCur {};
-    float _speedAdjustLink {};
+    float32 _speedAdjustBase {};
+    float32 _speedAdjustCur {};
+    float32 _speedAdjustLink {};
     bool _shadowDisabled {};
-    float _lookDirAngle {};
-    float _moveDirAngle {};
-    float _targetMoveDirAngle {};
+    float32 _lookDirAngle {};
+    float32 _moveDirAngle {};
+    float32 _targetMoveDirAngle {};
     vec3 _groundPos {};
-    float _animPosProc {};
-    float _animPosTime {};
-    float _animPosPeriod {};
+    float32 _animPosProc {};
+    float32 _animPosTime {};
+    float32 _animPosPeriod {};
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
     bool _isMoving {};
     bool _isMovingBack {};
-    int _curMovingAnimIndex {-1};
+    int32 _curMovingAnimIndex {-1};
     CritterActionAnim _curMovingAnim {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
-    uint _currentMoveTrack {};
-    float _movingSpeedFactor {};
+    uint32 _currentMoveTrack {};
+    float32 _movingSpeedFactor {};
     bool _isRunning {};
     bool _noRotate {};
-    float _deferredLookDirAngle {};
+    float32 _deferredLookDirAngle {};
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
@@ -370,7 +374,7 @@ private:
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};
     ModelInstance* _parent {};
-    ModelBone* _parentBone {};
+    raw_ptr<ModelBone> _parentBone {};
     mat44 _parentMatrix {};
     vector<ModelBone*> _linkBones {};
     vector<mat44> _linkMatricles {};
@@ -396,8 +400,8 @@ public:
     ~ModelInformation() = default;
 
 private:
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed, bool combat_first) const -> int32;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, bool combat, float32* speed) const -> int32;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;
@@ -411,16 +415,17 @@ private:
     size_t _numAnimationSets {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
-    unordered_map<uint, int> _animIndexes {};
-    unordered_map<uint, float> _animSpeed {};
-    unordered_map<uint, vector<pair<int, int>>> _animLayerValues {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32> _animIndexes {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32> _animCombatIndexes {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, float32> _animSpeed {};
+    unordered_map<pair<CritterStateAnim, CritterActionAnim>, vector<pair<int32, int32>>> _animLayerValues {};
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    uint _renderAnim {};
-    int _renderAnimProcFrom {};
-    int _renderAnimProcTo {100};
-    int _renderAnimDir {};
+    int32 _renderAnim {};
+    int32 _renderAnimProcFrom {};
+    int32 _renderAnimProcTo {100};
+    int32 _renderAnimDir {};
     bool _shadowDisabled {};
     isize _drawSize {};
     isize _viewSize {};

@@ -89,8 +89,8 @@ public:
     [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation; }
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
-    [[nodiscard]] auto IsHexesMovable(mpos hex, uint radius) const -> bool;
-    [[nodiscard]] auto IsHexesMovable(mpos hex, uint radius, Critter* skip_cr) -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius) const -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius, Critter* skip_cr) -> bool;
     [[nodiscard]] auto IsBlockItem(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsItemGag(mpos hex) const noexcept -> bool;
@@ -99,16 +99,16 @@ public:
     [[nodiscard]] auto GetItemGag(mpos hex) noexcept -> Item*;
     [[nodiscard]] auto GetItems() noexcept -> const vector<Item*>&;
     [[nodiscard]] auto GetItems(mpos hex) noexcept -> const vector<Item*>&;
-    [[nodiscard]] auto GetItemsInRadius(mpos hex, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(mpos hex) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(mpos hex, const ProtoItem* proto_item) const -> bool;
-    [[nodiscard]] auto FindStartHex(mpos hex, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<mpos>;
+    [[nodiscard]] auto FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>;
     [[nodiscard]] auto IsCritter(mpos hex, CritterFindType find_type) const -> bool;
     [[nodiscard]] auto IsCritter(mpos hex, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
     [[nodiscard]] auto GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*;
-    [[nodiscard]] auto GetCritters(mpos hex, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritters(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>& { return _critters; }
     [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>& { return _playerCritters; }
@@ -117,7 +117,7 @@ public:
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItemsHex(mpos hex) noexcept -> const vector<StaticItem*>&;
-    [[nodiscard]] auto GetStaticItemsHexEx(mpos hex, uint radius, hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsHexEx(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
 
@@ -139,10 +139,6 @@ public:
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLoop);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent

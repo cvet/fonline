@@ -52,20 +52,20 @@ enum class ScriptEnum_uint8 : uint8
 enum class ScriptEnum_uint16 : uint16
 {
 };
-enum class ScriptEnum_int : int
+enum class ScriptEnum_int32 : int32
 {
 };
-enum class ScriptEnum_uint : uint
+enum class ScriptEnum_uint32 : uint32
 {
 };
 // ReSharper restore CppInconsistentNaming
 
-using GameComponent = ScriptEnum_int;
-using PlayerComponent = ScriptEnum_int;
-using ItemComponent = ScriptEnum_int;
-using CritterComponent = ScriptEnum_int;
-using MapComponent = ScriptEnum_int;
-using LocationComponent = ScriptEnum_int;
+using GameComponent = ScriptEnum_int32;
+using PlayerComponent = ScriptEnum_int32;
+using ItemComponent = ScriptEnum_int32;
+using CritterComponent = ScriptEnum_int32;
+using MapComponent = ScriptEnum_int32;
+using LocationComponent = ScriptEnum_int32;
 static_assert(sizeof(GameComponent) == sizeof(hstring::hash_t));
 
 using GameProperty = ScriptEnum_uint16;
@@ -236,7 +236,7 @@ public:
     virtual ~ScriptSystem() = default;
 
     void InitModules();
-    void HandleRemoteCall(uint rpc_num, Entity* entity);
+    void HandleRemoteCall(uint32 rpc_num, Entity* entity);
     void Process();
 
     void RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend);
@@ -289,7 +289,8 @@ public:
         return false;
     }
 
-    template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
+    template<typename TRet, typename... Args>
+        requires(!std::is_void_v<TRet>)
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
@@ -302,7 +303,8 @@ public:
         return false;
     }
 
-    template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
+    template<typename TRet = void, typename... Args>
+        requires(std::is_void_v<TRet>)
     [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
@@ -366,7 +368,7 @@ public:
     auto AddScriptFunc(hstring name) -> ScriptFuncDesc* { return &_funcMap.emplace(name, ScriptFuncDesc())->second; }
     void AddInitFunc(ScriptFuncDesc* func) { vec_add_unique_value(_initFunc, func); }
 
-    void BindRemoteCallReceiver(uint hash, std::function<void(Entity*)> func)
+    void BindRemoteCallReceiver(uint32 hash, std::function<void(Entity*)> func)
     {
         FO_RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
         _rpcReceivers.emplace(hash, std::move(func));
@@ -378,7 +380,7 @@ private:
     vector<std::function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
     vector<ScriptFuncDesc*> _initFunc {};
-    unordered_map<uint, std::function<void(Entity*)>> _rpcReceivers {};
+    unordered_map<uint32, std::function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };
 
@@ -390,10 +392,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem& script_sys, T* entity, hstring init_script, bool first_time) -> bool

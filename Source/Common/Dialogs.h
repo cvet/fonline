@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-enum class TalkType
+enum class TalkType : uint8
 {
     None,
     Critter,
@@ -73,28 +73,28 @@ struct DialogAnswerReq
 {
     uint8 Type {DR_NONE};
     uint8 Who {DR_WHO_NONE};
-    uint ParamIndex {};
+    int32 ParamIndex {};
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};
     uint8 Op {};
     uint8 ValuesCount {};
-    int Value {};
-    int ValueExt[5] {};
+    int32 Value {};
+    int32 ValueExt[5] {};
 };
 
 struct DialogAnswer
 {
-    uint Link {};
-    uint TextId {};
+    uint32 Link {};
+    uint32 TextId {};
     vector<DialogAnswerReq> Demands {};
     vector<DialogAnswerReq> Results {};
 };
 
 struct Dialog
 {
-    uint Id {};
-    uint TextId {};
+    uint32 Id {};
+    uint32 TextId {};
     vector<DialogAnswer> Answers {};
     bool NoShuffle {};
     hstring DlgScriptFuncName {};
@@ -117,7 +117,7 @@ struct TalkData
     mpos TalkHex {};
     hstring DialogPackId {};
     Dialog CurDialog {};
-    uint LastDialogId {};
+    uint32 LastDialogId {};
     nanotime StartTime {};
     timespan TalkTime {};
     bool Barter {};

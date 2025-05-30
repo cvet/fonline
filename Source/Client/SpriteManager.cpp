@@ -33,8 +33,6 @@
 
 #include "SpriteManager.h"
 #include "DefaultSprites.h"
-#include "Log.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -298,10 +296,10 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     const auto height_from_i = tex->Size.height;
     const auto width_to_i = rt_stack.empty() ? _settings.ScreenWidth : rt_stack.back()->MainTex->Size.width;
     const auto height_to_i = rt_stack.empty() ? _settings.ScreenHeight : rt_stack.back()->MainTex->Size.height;
-    const auto width_from_f = static_cast<float>(width_from_i);
-    const auto height_from_f = static_cast<float>(height_from_i);
-    const auto width_to_f = static_cast<float>(width_to_i);
-    const auto height_to_f = static_cast<float>(height_to_i);
+    const auto width_from_f = numeric_cast<float32>(width_from_i);
+    const auto height_from_f = numeric_cast<float32>(height_from_i);
+    const auto width_to_f = numeric_cast<float32>(width_to_i);
+    const auto height_to_f = numeric_cast<float32>(height_to_i);
 
     if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices;
@@ -414,8 +412,8 @@ void SpriteManager::RefreshScissor()
 
     if (!_scissorStack.empty()) {
         _scissorRect = _scissorStack.front();
-        int right = _scissorRect.x + _scissorRect.width;
-        int bottom = _scissorRect.y + _scissorRect.height;
+        int32 right = _scissorRect.x + _scissorRect.width;
+        int32 bottom = _scissorRect.y + _scissorRect.height;
 
         for (size_t i = 1; i < _scissorStack.size(); i++) {
             _scissorRect.x = std::max(_scissorStack[i].x, _scissorRect.x);
@@ -532,7 +530,7 @@ void SpriteManager::CleanupSpriteCache()
     }
 }
 
-void SpriteManager::SetSpritesZoom(float zoom)
+void SpriteManager::SetSpritesZoom(float32 zoom)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -613,8 +611,8 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, b
 
     auto xf = pos.x;
     auto yf = pos.y;
-    auto wf = static_cast<float>(spr->Size.width);
-    auto hf = static_cast<float>(spr->Size.height);
+    auto wf = numeric_cast<float32>(spr->Size.width);
+    auto hf = numeric_cast<float32>(spr->Size.height);
     const auto k = std::min(size.width / wf, size.height / hf);
 
     if (!stretch) {
@@ -675,21 +673,21 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, i
         return;
     }
 
-    auto width = static_cast<float>(atlas_spr->Size.width);
-    auto height = static_cast<float>(atlas_spr->Size.height);
+    auto width = numeric_cast<float32>(atlas_spr->Size.width);
+    auto height = numeric_cast<float32>(atlas_spr->Size.height);
 
     if (spr_size.width != 0 && spr_size.height != 0) {
-        width = static_cast<float>(spr_size.width);
-        height = static_cast<float>(spr_size.height);
+        width = numeric_cast<float32>(spr_size.width);
+        height = numeric_cast<float32>(spr_size.height);
     }
     else if (spr_size.width != 0) {
-        const auto ratio = static_cast<float>(spr_size.width) / width;
-        width = static_cast<float>(spr_size.width);
+        const auto ratio = numeric_cast<float32>(spr_size.width) / width;
+        width = numeric_cast<float32>(spr_size.width);
         height *= ratio;
     }
     else if (spr_size.height != 0) {
-        const auto ratio = static_cast<float>(spr_size.height) / height;
-        height = static_cast<float>(spr_size.height);
+        const auto ratio = numeric_cast<float32>(spr_size.height) / height;
+        height = numeric_cast<float32>(spr_size.height);
         width *= ratio;
     }
 
@@ -701,10 +699,10 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, i
     const auto last_right_offs = (atlas_spr->AtlasRect.Right - atlas_spr->AtlasRect.Left) / width;
     const auto last_bottom_offs = (atlas_spr->AtlasRect.Bottom - atlas_spr->AtlasRect.Top) / height;
 
-    for (auto yy = static_cast<float>(pos.y), end_y = static_cast<float>(pos.y + size.height); yy < end_y;) {
+    for (auto yy = numeric_cast<float32>(pos.y), end_y = numeric_cast<float32>(pos.y + size.height); yy < end_y;) {
         const auto last_y = yy + height >= end_y;
 
-        for (auto xx = static_cast<float>(pos.x), end_x = static_cast<float>(pos.x + size.width); xx < end_x;) {
+        for (auto xx = numeric_cast<float32>(pos.x), end_x = numeric_cast<float32>(pos.x + size.width); xx < end_x;) {
             const auto last_x = xx + width >= end_x;
 
             const auto local_width = last_x ? end_x - xx : width;
@@ -719,12 +717,12 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, i
             auto& ibuf = _spritesDrawBuf->Indices;
             auto& ipos = _spritesDrawBuf->IndCount;
 
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
@@ -788,12 +786,12 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos lt, fpos 
 {
     FO_STACK_TRACE_ENTRY();
 
-    points.emplace_back(PrimitivePoint {{iround(lb.x), iround(lb.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround(lt.x), iround(lt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround(rb.x), iround(rb.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround(lt.x), iround(lt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround(rt.x), iround(rt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround(rb.x), iround(rb.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(lb.x), iround<int32>(lb.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(lt.x), iround<int32>(lt.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(rb.x), iround<int32>(rb.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(lt.x), iround<int32>(lt.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(rt.x), iround<int32>(rt.y)}, color});
+    points.emplace_back(PrimitivePoint {{iround<int32>(rb.x), iround<int32>(rb.y)}, color});
 }
 
 void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
@@ -810,8 +808,8 @@ void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
     _sprEgg = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_RUNTIME_ASSERT(_sprEgg);
 
-    const auto x = iround(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.Left);
-    const auto y = iround(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->AtlasRect.Top);
+    const auto x = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.Left);
+    const auto y = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->AtlasRect.Top);
     _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion({x, y}, _sprEgg->Size);
 }
 
@@ -885,8 +883,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         use_egg = false;
     }
 
-    const int ex = _eggOffset.x + _settings.ScreenOffset.x;
-    const int ey = _eggOffset.y + _settings.ScreenOffset.y;
+    const int32 ex = _eggOffset.x + _settings.ScreenOffset.x;
+    const int32 ey = _eggOffset.y + _settings.ScreenOffset.y;
 
     for (const auto* mspr = mspr_list.RootSprite(); mspr != nullptr; mspr = mspr->ChainChild) {
         FO_RUNTIME_ASSERT(mspr->Valid);
@@ -907,8 +905,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         }
 
         // Coords
-        int x = mspr->HexOffset.x - spr->Size.width / 2 + spr->Offset.x + mspr->PHexOffset->x + _settings.ScreenOffset.x;
-        int y = mspr->HexOffset.y - spr->Size.height + spr->Offset.y + mspr->PHexOffset->y + _settings.ScreenOffset.y;
+        int32 x = mspr->HexOffset.x - spr->Size.width / 2 + spr->Offset.x + mspr->PHexOffset->x + _settings.ScreenOffset.x;
+        int32 y = mspr->HexOffset.y - spr->Size.height + spr->Offset.y + mspr->PHexOffset->y + _settings.ScreenOffset.y;
 
         if (mspr->SprOffset != nullptr) {
             x += mspr->SprOffset->x;
@@ -931,9 +929,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         // Light
         if (mspr->Light != nullptr) {
             const auto mix_light = [](ucolor& c, const ucolor* l, const ucolor* l2) {
-                c.comp.r = static_cast<uint8>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
-                c.comp.g = static_cast<uint8>(std::min(c.comp.g + (l->comp.g + l2->comp.g) / 2, 255));
-                c.comp.b = static_cast<uint8>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
+                c.comp.r = numeric_cast<uint8>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
+                c.comp.g = numeric_cast<uint8>(std::min(c.comp.g + (l->comp.g + l2->comp.g) / 2, 255));
+                c.comp.b = numeric_cast<uint8>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
             };
 
             mix_light(color_r, mspr->Light, mspr->LightRight);
@@ -951,8 +949,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         color_l = ApplyColorBrightness(color_l);
 
         // Check borders
-        if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + spr->Size.width) / zoom < 0.0f || //
-            static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + spr->Size.height) / zoom < 0.0f) {
+        if (numeric_cast<float32>(x) / zoom > numeric_cast<float32>(_settings.ScreenWidth) || numeric_cast<float32>(x + spr->Size.width) / zoom < 0.0f || //
+            numeric_cast<float32>(y) / zoom > numeric_cast<float32>(_settings.ScreenHeight - _settings.ScreenHudHeight) || numeric_cast<float32>(y + spr->Size.height) / zoom < 0.0f) {
             continue;
         }
 
@@ -964,10 +962,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         FO_RUNTIME_ASSERT(effect);
 
         // Fill buffer
-        const auto xf = static_cast<float>(x) / zoom;
-        const auto yf = static_cast<float>(y) / zoom;
-        const auto wf = static_cast<float>(spr->Size.width) / zoom;
-        const auto hf = static_cast<float>(spr->Size.height) / zoom;
+        const auto xf = numeric_cast<float32>(x) / zoom;
+        const auto yf = numeric_cast<float32>(y) / zoom;
+        const auto wf = numeric_cast<float32>(spr->Size.width) / zoom;
+        const auto hf = numeric_cast<float32>(spr->Size.height) / zoom;
 
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
 
@@ -985,10 +983,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                     x2 = std::min(x2, _sprEgg->Size.width);
                     y2 = std::min(y2, _sprEgg->Size.height);
 
-                    const auto x1_f = _sprEgg->AtlasRect.Left + static_cast<float>(x1) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto x2_f = _sprEgg->AtlasRect.Left + static_cast<float>(x2) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto y1_f = _sprEgg->AtlasRect.Top + static_cast<float>(y1) / _sprEgg->Atlas->MainTex->SizeData[1];
-                    const auto y2_f = _sprEgg->AtlasRect.Top + static_cast<float>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
+                    const auto x1_f = _sprEgg->AtlasRect.Left + numeric_cast<float32>(x1) / _sprEgg->Atlas->MainTex->SizeData[0];
+                    const auto x2_f = _sprEgg->AtlasRect.Left + numeric_cast<float32>(x2) / _sprEgg->Atlas->MainTex->SizeData[0];
+                    const auto y1_f = _sprEgg->AtlasRect.Top + numeric_cast<float32>(y1) / _sprEgg->Atlas->MainTex->SizeData[1];
+                    const auto y2_f = _sprEgg->AtlasRect.Top + numeric_cast<float32>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
 
                     auto& vbuf = _spritesDrawBuf->Vertices;
                     const auto vpos = _spritesDrawBuf->VertCount;
@@ -1050,11 +1048,11 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         // Draw order
         if (_settings.ShowDrawOrder) {
-            const auto x1 = iround(static_cast<float>(mspr->HexOffset.x + _settings.ScreenOffset.x) / zoom);
-            auto y1 = iround(static_cast<float>(mspr->HexOffset.y + _settings.ScreenOffset.y) / zoom);
+            const auto x1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.x + _settings.ScreenOffset.x) / zoom);
+            auto y1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.y + _settings.ScreenOffset.y) / zoom);
 
             if (mspr->DrawOrder < DrawOrderType::NormalBegin || mspr->DrawOrder > DrawOrderType::NormalEnd) {
-                y1 -= iround(40.0f / zoom);
+                y1 -= iround<int32>(40.0f / zoom);
             }
 
             DrawText({x1, y1, 100, 100}, strex("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
@@ -1111,8 +1109,8 @@ auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos pos, bool with_zoom) c
     }
 
     if (with_zoom && _spritesZoom != 1.0f) {
-        const auto zoomed_spr_x = iround(static_cast<float>(pos.x) * _spritesZoom);
-        const auto zoomed_spr_y = iround(static_cast<float>(pos.y) * _spritesZoom);
+        const auto zoomed_spr_x = iround<int32>(numeric_cast<float32>(pos.x) * _spritesZoom);
+        const auto zoomed_spr_y = iround<int32>(numeric_cast<float32>(pos.y) * _spritesZoom);
 
         return spr->IsHitTest({zoomed_spr_x, zoomed_spr_y});
     }
@@ -1131,23 +1129,23 @@ auto SpriteManager::IsEggTransp(ipos pos) const -> bool
 
     const auto ex = _eggHex.x + _settings.ScreenOffset.x;
     const auto ey = _eggHex.y + _settings.ScreenOffset.y;
-    auto ox = pos.x - iround(static_cast<float>(ex) / _spritesZoom);
-    auto oy = pos.y - iround(static_cast<float>(ey) / _spritesZoom);
+    auto ox = pos.x - iround<int32>(numeric_cast<float32>(ex) / _spritesZoom);
+    auto oy = pos.y - iround<int32>(numeric_cast<float32>(ey) / _spritesZoom);
 
     if (ox < 0 || oy < 0 || //
-        ox >= iround(static_cast<float>(_sprEgg->Size.width) / _spritesZoom) || //
-        oy >= iround(static_cast<float>(_sprEgg->Size.height) / _spritesZoom)) {
+        ox >= iround<int32>(numeric_cast<float32>(_sprEgg->Size.width) / _spritesZoom) || //
+        oy >= iround<int32>(numeric_cast<float32>(_sprEgg->Size.height) / _spritesZoom)) {
         return false;
     }
 
-    ox = iround(static_cast<float>(ox) * _spritesZoom);
-    oy = iround(static_cast<float>(oy) * _spritesZoom);
+    ox = iround<int32>(numeric_cast<float32>(ox) * _spritesZoom);
+    oy = iround<int32>(numeric_cast<float32>(oy) * _spritesZoom);
 
     const auto egg_color = _eggData.at(oy * _sprEgg->Size.width + ox);
     return egg_color.comp.a < 127;
 }
 
-void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, const fpos* offset, RenderEffect* custom_effect)
+void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom, const fpos* offset, RenderEffect* custom_effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1162,7 +1160,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
     // Check primitives
     const auto count = points.size();
-    auto prim_count = static_cast<int>(count);
+    auto prim_count = numeric_cast<int32>(count);
 
     switch (prim) {
     case RenderPrimitiveType::PointList:
@@ -1200,12 +1198,12 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     for (size_t i = 0; i < count; i++) {
         const auto& point = points[i];
 
-        auto x = static_cast<float>(point.PointPos.x);
-        auto y = static_cast<float>(point.PointPos.y);
+        auto x = numeric_cast<float32>(point.PointPos.x);
+        auto y = numeric_cast<float32>(point.PointPos.y);
 
         if (point.PointOffset != nullptr) {
-            x += static_cast<float>(point.PointOffset->x);
-            y += static_cast<float>(point.PointOffset->y);
+            x += numeric_cast<float32>(point.PointOffset->x);
+            y += numeric_cast<float32>(point.PointOffset->y);
         }
         if (zoom != nullptr) {
             x /= *zoom;
@@ -1220,7 +1218,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         vbuf[i].PosY = y;
         vbuf[i].Color = point.PPointColor != nullptr ? *point.PPointColor : point.PointColor;
 
-        ibuf[i] = static_cast<vindex_t>(i);
+        ibuf[i] = numeric_cast<vindex_t>(i);
     }
 
     _primitiveDrawBuf->PrimType = prim;
@@ -1282,8 +1280,8 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     FRect textureuv;
     FRect sprite_border;
 
-    const auto zoomed_screen_width = iround(static_cast<float>(_settings.ScreenWidth) * _spritesZoom);
-    const auto zoomed_screen_height = iround(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _spritesZoom);
+    const auto zoomed_screen_width = iround<int32>(numeric_cast<float32>(_settings.ScreenWidth) * _spritesZoom);
+    const auto zoomed_screen_height = iround<int32>(numeric_cast<float32>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _spritesZoom);
     if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
         return;
     }
@@ -1300,18 +1298,18 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
         }
         else {
             const auto& sr = as->AtlasRect;
-            const float txw = texture->SizeData[2];
-            const float txh = texture->SizeData[3];
+            const float32 txw = texture->SizeData[2];
+            const float32 txh = texture->SizeData[3];
             textureuv = FRect(sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh);
             sprite_border = sr;
         }
     }
     else {
         const auto& sr = as->AtlasRect;
-        const auto zoomed_x = iround(static_cast<float>(pos.x) / _spritesZoom);
-        const auto zoomed_y = iround(static_cast<float>(pos.y) / _spritesZoom);
-        const auto zoomed_x2 = iround(static_cast<float>(pos.x + as->Size.width) / _spritesZoom);
-        const auto zoomed_y2 = iround(static_cast<float>(pos.y + as->Size.height) / _spritesZoom);
+        const auto zoomed_x = iround<int32>(numeric_cast<float32>(pos.x) / _spritesZoom);
+        const auto zoomed_y = iround<int32>(numeric_cast<float32>(pos.y) / _spritesZoom);
+        const auto zoomed_x2 = iround<int32>(numeric_cast<float32>(pos.x + as->Size.width) / _spritesZoom);
+        const auto zoomed_y2 = iround<int32>(numeric_cast<float32>(pos.y + as->Size.height) / _spritesZoom);
         borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
         const auto bordersf = FRect(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
@@ -1410,7 +1408,7 @@ void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_c
     contour_buf->SpriteBorder[3] = sprite_border[3];
 
     _contourDrawBuf->Upload(contour_effect->GetUsage());
-    contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, static_cast<size_t>(-1), texture);
+    contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, std::nullopt, texture);
 
     _rtMngr.PopRenderTarget();
     _contoursAdded = true;
@@ -1421,24 +1419,24 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_settings.Brightness != 0) {
-        const auto r = std::clamp(static_cast<int>(color.comp.r) + _settings.Brightness, 0, 255);
-        const auto g = std::clamp(static_cast<int>(color.comp.g) + _settings.Brightness, 0, 255);
-        const auto b = std::clamp(static_cast<int>(color.comp.b) + _settings.Brightness, 0, 255);
-        return ucolor {static_cast<uint8>(r), static_cast<uint8>(g), static_cast<uint8>(b), color.comp.a};
+        const auto r = std::clamp(numeric_cast<int32>(color.comp.r) + _settings.Brightness, 0, 255);
+        const auto g = std::clamp(numeric_cast<int32>(color.comp.g) + _settings.Brightness, 0, 255);
+        const auto b = std::clamp(numeric_cast<int32>(color.comp.b) + _settings.Brightness, 0, 255);
+        return ucolor {numeric_cast<uint8>(r), numeric_cast<uint8>(g), numeric_cast<uint8>(b), color.comp.a};
     }
     else {
         return color;
     }
 }
 
-auto SpriteManager::GetFont(int num) -> FontData*
+auto SpriteManager::GetFont(int32 num) -> FontData*
 {
     FO_STACK_TRACE_ENTRY();
 
     if (num < 0) {
         num = _defFontIndex;
     }
-    if (num < 0 || num >= static_cast<int>(_allFonts.size())) {
+    if (num < 0 || num >= numeric_cast<int32>(_allFonts.size())) {
         return nullptr;
     }
     return _allFonts[num].get();
@@ -1451,14 +1449,14 @@ void SpriteManager::ClearFonts()
     _allFonts.clear();
 }
 
-void SpriteManager::SetDefaultFont(int index)
+void SpriteManager::SetDefaultFont(int32 index)
 {
     FO_STACK_TRACE_ENTRY();
 
     _defFontIndex = index;
 }
 
-void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
+void SpriteManager::SetFontEffect(int32 index, RenderEffect* effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1468,7 +1466,7 @@ void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
     }
 }
 
-void SpriteManager::BuildFont(int index)
+void SpriteManager::BuildFont(int32 index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1476,17 +1474,17 @@ void SpriteManager::BuildFont(int index)
 
     // Fix texture coordinates
     const auto* atlas_spr = font.ImageNormal.get();
-    auto tex_w = static_cast<float>(atlas_spr->Atlas->Size.width);
-    auto tex_h = static_cast<float>(atlas_spr->Atlas->Size.height);
+    auto tex_w = numeric_cast<float32>(atlas_spr->Atlas->Size.width);
+    auto tex_h = numeric_cast<float32>(atlas_spr->Atlas->Size.height);
     auto image_x = tex_w * atlas_spr->AtlasRect.Left;
     auto image_y = tex_h * atlas_spr->AtlasRect.Top;
     auto max_h = 0;
 
     for (auto& [letter_index, letter] : font.Letters) {
-        const auto x = static_cast<float>(letter.Pos.x);
-        const auto y = static_cast<float>(letter.Pos.y);
-        const auto w = static_cast<float>(letter.Size.width);
-        const auto h = static_cast<float>(letter.Size.height);
+        const auto x = numeric_cast<float32>(letter.Pos.x);
+        const auto y = numeric_cast<float32>(letter.Pos.y);
+        const auto w = numeric_cast<float32>(letter.Size.width);
+        const auto h = numeric_cast<float32>(letter.Size.height);
 
         letter.TexPos[0] = (image_x + x - 1.0f) / tex_w;
         letter.TexPos[1] = (image_y + y - 1.0f) / tex_h;
@@ -1502,20 +1500,20 @@ void SpriteManager::BuildFont(int index)
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
-    if (font.Letters.count(static_cast<uint>(' ')) != 0) {
-        font.SpaceWidth = font.Letters[static_cast<uint>(' ')].XAdvance;
+    if (font.Letters.count(numeric_cast<uint32>(' ')) != 0) {
+        font.SpaceWidth = font.Letters[numeric_cast<uint32>(' ')].XAdvance;
     }
 
     const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
-    const auto normal_ox = iround(tex_w * atlas_spr->AtlasRect.Left);
-    const auto normal_oy = iround(tex_h * atlas_spr->AtlasRect.Top);
-    const auto bordered_ox = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Size.width) * si_bordered->AtlasRect.Left) : 0);
-    const auto bordered_oy = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
+    const auto normal_ox = iround<int32>(tex_w * atlas_spr->AtlasRect.Left);
+    const auto normal_oy = iround<int32>(tex_h * atlas_spr->AtlasRect.Top);
+    const auto bordered_ox = (si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.width) * si_bordered->AtlasRect.Left) : 0);
+    const auto bordered_oy = (si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, uint width, int x, int y) -> ucolor& { return tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->Size);
     vector<ucolor> data_bordered;
 
@@ -1571,16 +1569,16 @@ void SpriteManager::BuildFont(int index)
         si_bordered->Atlas->MainTex->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->Size, data_bordered.data());
 
         // Fix texture coordinates on bordered texture
-        tex_w = static_cast<float>(si_bordered->Atlas->Size.width);
-        tex_h = static_cast<float>(si_bordered->Atlas->Size.height);
+        tex_w = numeric_cast<float32>(si_bordered->Atlas->Size.width);
+        tex_h = numeric_cast<float32>(si_bordered->Atlas->Size.height);
         image_x = tex_w * si_bordered->AtlasRect.Left;
         image_y = tex_h * si_bordered->AtlasRect.Top;
 
         for (auto&& [letter_index, letter] : font.Letters) {
-            const auto x = static_cast<float>(letter.Pos.x);
-            const auto y = static_cast<float>(letter.Pos.y);
-            const auto w = static_cast<float>(letter.Size.width);
-            const auto h = static_cast<float>(letter.Size.height);
+            const auto x = numeric_cast<float32>(letter.Pos.x);
+            const auto y = numeric_cast<float32>(letter.Pos.y);
+            const auto w = numeric_cast<float32>(letter.Size.width);
+            const auto h = numeric_cast<float32>(letter.Size.height);
             letter.TexBorderedPos[0] = (image_x + x - 1.0f) / tex_w;
             letter.TexBorderedPos[1] = (image_y + y - 1.0f) / tex_h;
             letter.TexBorderedPos[2] = (image_x + x + w + 1.0f) / tex_w;
@@ -1589,12 +1587,12 @@ void SpriteManager::BuildFont(int index)
     }
 }
 
-auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
+auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     // Skip if loaded
-    if (skip_if_loaded && index < static_cast<int>(_allFonts.size()) && _allFonts[index]) {
+    if (skip_if_loaded && index < numeric_cast<int32>(_allFonts.size()) && _allFonts[index]) {
         return true;
     }
 
@@ -1751,7 +1749,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     }
 
     // Register
-    if (index >= static_cast<int>(_allFonts.size())) {
+    if (index >= numeric_cast<int32>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
 
@@ -1762,12 +1760,12 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     return true;
 }
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool
+auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1788,7 +1786,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
 
     auto reader = file.GetReader();
 
-    const auto signature = reader.GetLEUInt();
+    const auto signature = reader.GetLEUInt32();
 
     if (signature != MAKEUINT('B', 'M', 'F', 3)) {
         WriteLog("Invalid signature of font '{}'", font_name);
@@ -1797,34 +1795,34 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
 
     // Info
     reader.GoForward(1);
-    auto block_len = reader.GetLEUInt();
+    auto block_len = reader.GetLEUInt32();
     auto next_block = block_len + reader.GetCurPos() + 1;
 
     reader.GoForward(7);
 
-    if (reader.GetBEUInt() != 0x01010101u) {
+    if (reader.GetBEUInt32() != 0x01010101u) {
         WriteLog("Wrong padding in font '{}'", font_name);
         return false;
     }
 
     // Common
     reader.SetCurPos(next_block);
-    block_len = reader.GetLEUInt();
+    block_len = reader.GetLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    const int line_height = reader.GetLEUShort();
-    const int base_height = reader.GetLEUShort();
+    const int32 line_height = reader.GetLEUInt16();
+    const int32 base_height = reader.GetLEUInt16();
     reader.GoForward(2); // Texture width
     reader.GoForward(2); // Texture height
 
-    if (reader.GetLEUShort() != 1) {
+    if (reader.GetLEUInt16() != 1) {
         WriteLog("Texture for font '{}' must be one", font_name);
         return false;
     }
 
     // Pages
     reader.SetCurPos(next_block);
-    block_len = reader.GetLEUInt();
+    block_len = reader.GetLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
     // Image name
@@ -1833,18 +1831,18 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
 
     // Chars
     reader.SetCurPos(next_block);
-    const auto count = reader.GetLEUInt() / 20;
+    const auto count = reader.GetLEUInt32() / 20;
 
     for ([[maybe_unused]] const auto i : xrange(count)) {
         // Read data
-        const auto id = reader.GetLEUInt();
-        const auto x = reader.GetLEUShort();
-        const auto y = reader.GetLEUShort();
-        const auto w = reader.GetLEUShort();
-        const auto h = reader.GetLEUShort();
-        const auto ox = reader.GetLEUShort();
-        const auto oy = reader.GetLEUShort();
-        const auto xa = reader.GetLEUShort();
+        const auto id = reader.GetLEUInt32();
+        const auto x = reader.GetLEUInt16();
+        const auto y = reader.GetLEUInt16();
+        const auto w = reader.GetLEUInt16();
+        const auto h = reader.GetLEUInt16();
+        const auto ox = reader.GetLEUInt16();
+        const auto oy = reader.GetLEUInt16();
+        const auto xa = reader.GetLEUInt16();
         reader.GoForward(2);
 
         // Fill data
@@ -1853,12 +1851,12 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
         let.Pos.y = y + 1;
         let.Size.width = w - 2;
         let.Size.height = h - 2;
-        let.Offset.x = -static_cast<int>(ox);
-        let.Offset.y = -static_cast<int>(oy) + (line_height - base_height);
+        let.Offset.x = -numeric_cast<int32>(ox);
+        let.Offset.y = -numeric_cast<int32>(oy) + (line_height - base_height);
         let.XAdvance = xa + 1;
     }
 
-    font->LineHeight = font->Letters.count(static_cast<uint>('W')) != 0 ? font->Letters[static_cast<uint>('W')].Size.height : base_height;
+    font->LineHeight = font->Letters.count(numeric_cast<uint32>('W')) != 0 ? font->Letters[numeric_cast<uint32>('W')].Size.height : base_height;
     font->YAdvance = font->LineHeight / 2;
     font->MakeGray = true;
 
@@ -1887,7 +1885,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     }
 
     // Register
-    if (index >= static_cast<int>(_allFonts.size())) {
+    if (index >= numeric_cast<int32>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
 
@@ -1937,7 +1935,7 @@ static void StrGoTo(char*& str, char ch)
     }
 }
 
-static void StrEraseInterval(char* str, uint len)
+static void StrEraseInterval(char* str, int32 len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1955,7 +1953,7 @@ static void StrEraseInterval(char* str, uint len)
     *str = 0;
 }
 
-static void StrInsert(char* to, const char* from, uint from_len)
+static void StrInsert(char* to, const char* from, int32 from_len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1964,7 +1962,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
     }
 
     if (from_len == 0) {
-        from_len = static_cast<uint>(string_view(from).length());
+        from_len = numeric_cast<int32>(string_view(from).length());
     }
     if (from_len == 0) {
         return;
@@ -1986,7 +1984,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
     }
 }
 
-void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
+void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2016,16 +2014,16 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     // Colorize
     ucolor* dots = nullptr;
-    uint d_offs = 0;
+    int32 d_offs = 0;
     string buf;
 
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
         dots = fi.ColorDots;
     }
 
-    constexpr uint dots_history_len = 10;
+    constexpr int32 dots_history_len = 10;
     ucolor dots_history[dots_history_len] = {fi.DefColor};
-    uint dots_history_cur = 0;
+    int32 dots_history_cur = 0;
 
     for (auto* str_ = str; *str_ != 0;) {
         auto* s0 = str_;
@@ -2035,7 +2033,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         auto* s2 = str_;
 
         if (dots != nullptr) {
-            size_t d_len = static_cast<uint>(s2 - s1) + 1;
+            auto d_len = numeric_cast<int32>(s2 - s1) + 1;
             ucolor d;
 
             if (d_len == 2) {
@@ -2048,10 +2046,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             }
             else {
                 if (*(s1 + 1) == 'x') {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16))};
+                    d = ucolor {numeric_cast<uint32>(std::strtoul(s1 + 2, nullptr, 16))};
                 }
                 else {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0))};
+                    d = ucolor {numeric_cast<uint32>(std::strtoul(s1 + 1, nullptr, 0))};
                 }
 
                 if (dots_history_cur < dots_history_len - 1) {
@@ -2059,8 +2057,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
             }
 
-            dots[static_cast<uint>(s1 - str) - d_offs] = d;
-            d_offs += static_cast<uint>(d_len);
+            dots[numeric_cast<int32>(s1 - str) - d_offs] = d;
+            d_offs += d_len;
         }
 
         *s1 = 0;
@@ -2086,7 +2084,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         auto letter_len = utf8::DecodeStrNtLen(&str[i]);
         auto letter = utf8::Decode(&str[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = static_cast<int>(letter_len);
+        i_advance = numeric_cast<int32>(letter_len);
 
         auto x_advance = 0;
         switch (letter) {
@@ -2119,6 +2117,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
             if (IsBitSet(flags, FT_NOBREAK_LINE)) {
                 auto j = i;
+
                 for (; str[j] != 0; j++) {
                     if (str[j] == '\n') {
                         break;
@@ -2126,8 +2125,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
 
                 StrEraseInterval(&str[i], j - i);
-                letter = static_cast<uint8>(str[i]);
+                letter = numeric_cast<uint8>(str[i]);
                 i_advance = 1;
+
                 if (fmt_type == FORMAT_TYPE_DRAW) {
                     for (auto k = i, l = FONT_BUF_LEN - (j - i); k < l; k++) {
                         fi.ColorDots[k] = fi.ColorDots[k + (j - i)];
@@ -2136,6 +2136,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             }
             else if (str[i] != '\n') {
                 auto j = i;
+
                 for (; j >= 0; j--) {
                     if (str[j] == ' ' || str[j] == '\t') {
                         str[j] = '\n';
@@ -2240,7 +2241,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
     if (skip_line_end != 0) {
-        auto len = static_cast<int>(string_view(str).length());
+        auto len = numeric_cast<int32>(string_view(str).length());
 
         for (auto i = len - 2; i >= 0; i--) {
             if (str[i] == '\n') {
@@ -2285,12 +2286,14 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     // Up text
     if (IsBitSet(flags, FT_UPPER) && fi.LinesAll > fi.LinesInRect) {
-        int j = 0;
-        int line_cur = 0;
+        int32 j = 0;
+        int32 line_cur = 0;
         ucolor last_color;
+
         for (; str[j] != 0; ++j) {
             if (str[j] == '\n') {
                 line_cur++;
+
                 if (line_cur >= fi.LinesAll - fi.LinesInRect) {
                     break;
                 }
@@ -2303,6 +2306,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             offs_col += j + 1;
+
             if (last_color != ucolor::clear && fi.ColorDots[j + 1] == ucolor::clear) {
                 fi.ColorDots[j + 1] = last_color;
             }
@@ -2319,18 +2323,18 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     cury = r.Top;
 
     for (const auto i : xrange(fi.LinesAll)) {
-        fi.LineWidth[i] = static_cast<int16>(curx);
+        fi.LineWidth[i] = numeric_cast<int16>(curx);
     }
 
     bool can_count = false;
-    int spaces = 0;
-    int curstr = 0;
+    int32 spaces = 0;
+    int32 curstr = 0;
 
     for (auto i = 0, i_advance = 1;; i += i_advance) {
         auto letter_len = utf8::DecodeStrNtLen(&str[i]);
         auto letter = utf8::Decode(&str[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = static_cast<int>(letter_len);
+        i_advance = numeric_cast<int32>(letter_len);
 
         switch (letter) {
         case ' ':
@@ -2344,7 +2348,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             break;
         case 0:
         case '\n':
-            fi.LineWidth[curstr] = static_cast<int16>(curx);
+            fi.LineWidth[curstr] = numeric_cast<int16>(curx);
             cury += font->LineHeight + font->YAdvance;
             curx = r.Left;
 
@@ -2396,7 +2400,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 }
 
-void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor color, int num_font)
+void SpriteManager::DrawText(irect rect, string_view str, uint32 flags, ucolor color, int32 num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2407,6 +2411,7 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
 
     // Get font
     auto* font = GetFont(num_font);
+
     if (font == nullptr) {
         return;
     }
@@ -2457,7 +2462,7 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
     const auto start_ipos = ipos;
 
     auto variable_space = false;
-    int i_advance;
+    int32 i_advance;
 
     for (auto i = 0; str_[i] != 0; i += i_advance) {
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
@@ -2478,7 +2483,7 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
         auto letter_len = utf8::DecodeStrNtLen(&str_[i]);
         auto letter = utf8::Decode(&str_[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = static_cast<int>(letter_len);
+        i_advance = numeric_cast<int32>(letter_len);
 
         switch (letter) {
         case ' ':
@@ -2520,40 +2525,40 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
             const auto x2 = texture_uv[2];
             const auto y2 = texture_uv[3];
 
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 0);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 2);
-            ibuf[ipos++] = static_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
+            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
 
             auto& v0 = vbuf[vpos++];
-            v0.PosX = static_cast<float>(x);
-            v0.PosY = static_cast<float>(y + h);
+            v0.PosX = numeric_cast<float32>(x);
+            v0.PosY = numeric_cast<float32>(y + h);
             v0.TexU = x1;
             v0.TexV = y2;
             v0.EggTexU = 0.0f;
             v0.Color = color;
 
             auto& v1 = vbuf[vpos++];
-            v1.PosX = static_cast<float>(x);
-            v1.PosY = static_cast<float>(y);
+            v1.PosX = numeric_cast<float32>(x);
+            v1.PosY = numeric_cast<float32>(y);
             v1.TexU = x1;
             v1.TexV = y1;
             v1.EggTexU = 0.0f;
             v1.Color = color;
 
             auto& v2 = vbuf[vpos++];
-            v2.PosX = static_cast<float>(x + w);
-            v2.PosY = static_cast<float>(y);
+            v2.PosX = numeric_cast<float32>(x + w);
+            v2.PosY = numeric_cast<float32>(y);
             v2.TexU = x2;
             v2.TexV = y1;
             v2.EggTexU = 0.0f;
             v2.Color = color;
 
             auto& v3 = vbuf[vpos++];
-            v3.PosX = static_cast<float>(x + w);
-            v3.PosY = static_cast<float>(y + h);
+            v3.PosX = numeric_cast<float32>(x + w);
+            v3.PosY = numeric_cast<float32>(y + h);
             v3.TexU = x2;
             v3.TexV = y2;
             v3.EggTexU = 0.0f;
@@ -2580,7 +2585,7 @@ void SpriteManager::DrawText(irect rect, string_view str, uint flags, ucolor col
     }
 }
 
-auto SpriteManager::GetLinesCount(isize size, string_view str, int num_font /* = -1 */) -> int
+auto SpriteManager::GetLinesCount(isize size, string_view str, int32 num_font /* = -1 */) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2613,7 +2618,7 @@ auto SpriteManager::GetLinesCount(isize size, string_view str, int num_font /* =
     return fi.LinesInRect;
 }
 
-auto SpriteManager::GetLinesHeight(isize size, string_view str, int num_font /* = -1 */) -> int
+auto SpriteManager::GetLinesHeight(isize size, string_view str, int32 num_font /* = -1 */) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2636,7 +2641,7 @@ auto SpriteManager::GetLinesHeight(isize size, string_view str, int num_font /* 
     return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
 }
 
-auto SpriteManager::GetLineHeight(int num_font) -> int
+auto SpriteManager::GetLineHeight(int32 num_font) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2649,7 +2654,7 @@ auto SpriteManager::GetLineHeight(int num_font) -> int
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint flags, isize& result_size, int& lines) -> bool
+auto SpriteManager::GetTextInfo(isize size, string_view str, int32 num_font, uint32 flags, isize& result_size, int32& lines) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2681,7 +2686,7 @@ auto SpriteManager::GetTextInfo(isize size, string_view str, int num_font, uint 
     return true;
 }
 
-auto SpriteManager::SplitLines(irect rect, string_view cstr, int num_font) -> vector<string>
+auto SpriteManager::SplitLines(irect rect, string_view cstr, int32 num_font) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2710,7 +2715,7 @@ auto SpriteManager::SplitLines(irect rect, string_view cstr, int num_font) -> ve
     return result;
 }
 
-auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
+auto SpriteManager::HaveLetter(int32 num_font, uint32 letter) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -23,7 +23,7 @@ DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
 DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
-DeclareOption(FO_CPP_STANDARD "C++ standard for engine compilation (17 (default) or 20)" 17)
+DeclareOption(FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
 DeclareOption(FO_DISABLE_JSON "Force disable using of Json" OFF)
@@ -94,6 +94,33 @@ endmacro()
 # Some info about build
 StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 StatusMessage("Generator: ${CMAKE_GENERATOR}")
+StatusMessage("Operating system: ${CMAKE_SYSTEM_NAME}")
+
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+	set(FO_PROCESSOR_ARCHITECTURE "x64")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "i386" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "i486" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "i586" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "i686")
+	set(FO_PROCESSOR_ARCHITECTURE "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7-a")
+	set(FO_PROCESSOR_ARCHITECTURE "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+	set(FO_PROCESSOR_ARCHITECTURE "arm64")
+else()
+	set(FO_PROCESSOR_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL FO_PROCESSOR_ARCHITECTURE)
+	StatusMessage("Processor: ${FO_PROCESSOR_ARCHITECTURE}")
+else()
+	StatusMessage("Processor: ${FO_PROCESSOR_ARCHITECTURE} (${CMAKE_SYSTEM_PROCESSOR})")
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	StatusMessage("CPU architecture: 64-bit")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+	StatusMessage("CPU architecture: 32-bit")
+else()
+	AbortMessage("Invalid pointer size, nor 8 or 4 bytes")
+endif()
 
 # Build configuration
 get_cmake_property(FO_MULTICONFIG GENERATOR_IS_MULTI_CONFIG)
@@ -149,7 +176,7 @@ else()
 endif()
 
 # Basic compiler setup
-set(CMAKE_CXX_STANDARD ${FO_CPP_STANDARD})
+set(CMAKE_CXX_STANDARD ${FO_CXX_STANDARD})
 
 add_compile_definitions($<$<CONFIG:Debug>:DEBUG>)
 add_compile_definitions($<$<CONFIG:Debug>:_DEBUG>)
@@ -192,6 +219,7 @@ add_compile_definitions(FO_RENDER_32BIT_INDEX=0)
 add_compile_definitions(FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 
 # Basic includes
+include_directories("${FO_ENGINE_ROOT}/Source/Essentials")
 include_directories("${FO_ENGINE_ROOT}/Source/Common")
 include_directories("${FO_ENGINE_ROOT}/Source/Server")
 include_directories("${FO_ENGINE_ROOT}/Source/Client")
@@ -243,8 +271,6 @@ if(WIN32)
 endif()
 
 # Per OS configurations
-StatusMessage("Operating system: ${CMAKE_SYSTEM_NAME}")
-
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(FO_WINDOWS 1)
 	set(FO_HAVE_OPENGL 1)
@@ -296,16 +322,9 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "WidnowsStore")
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	set(FO_LINUX 1)
 	set(FO_HAVE_OPENGL 1)
-
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(FO_BUILD_PLATFORM "Linux-x64")
-		set(FO_MONO_OS "linux")
-		set(FO_MONO_ARCH "x64")
-	else()
-		set(FO_BUILD_PLATFORM "Linux-x86")
-		set(FO_MONO_OS "linux")
-		set(FO_MONO_ARCH "x86")
-	endif()
+	set(FO_BUILD_PLATFORM "Linux-${FO_PROCESSOR_ARCHITECTURE}")
+	set(FO_MONO_OS "linux")
+	set(FO_MONO_ARCH ${FO_PROCESSOR_ARCHITECTURE})
 
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(X11 REQUIRED)
@@ -321,24 +340,20 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	add_link_options(-no-pie)
 	add_link_options(-rdynamic)
 
-	# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
-	# Bug somehow connected with rpmalloc new operators overloading
-	#if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	#	add_compile_options_C_CXX(-stdlib=libc++)
-	#	add_link_options(-stdlib=libc++)
-	#endif()
-
-elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-	if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-		AbortMessage("Invalid pointer size for macOS build")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
+		# Bug somehow connected with rpmalloc new operators overloading
+		# add_compile_options_C_CXX(-stdlib=libc++)
+		# add_link_options(-stdlib=libc++)
 	endif()
 
+elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 	set(FO_MAC 1)
 	set(FO_HAVE_OPENGL 1)
 	set(FO_HAVE_METAL 1)
-	set(FO_BUILD_PLATFORM "macOS-x64")
+	set(FO_BUILD_PLATFORM "macOS-${FO_PROCESSOR_ARCHITECTURE}")
 	set(FO_MONO_OS "osx")
-	set(FO_MONO_ARCH "x64")
+	set(FO_MONO_ARCH ${FO_PROCESSOR_ARCHITECTURE})
 
 	if(NOT FO_HEADLESS_ONLY)
 		find_package(OpenGL REQUIRED)
@@ -354,10 +369,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
 	StatusMessage("Deployment target: ${DEPLOYMENT_TARGET}")
-
-	if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-		AbortMessage("Invalid pointer size for iOS build")
-	endif()
 
 	set(FO_IOS 1)
 	set(FO_HAVE_OPENGL 1)
@@ -500,15 +511,6 @@ if(FO_CODE_COVERAGE)
 		add_compile_options_C_CXX(--coverage)
 		add_link_options(--coverage)
 	endif()
-endif()
-
-# Information about CPU architecture
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	StatusMessage("CPU architecture: 64-bit")
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-	StatusMessage("CPU architecture: 32-bit")
-else()
-	AbortMessage("Invalid pointer size, nor 8 or 4 bytes")
 endif()
 
 # Output path

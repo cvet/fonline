@@ -39,7 +39,6 @@
 #include "Player.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -183,7 +182,7 @@ void Critter::AttachToCritter(Critter* cr)
         SendAndBroadcast_Moving();
     }
 
-    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    const auto it = std::ranges::find(cr->AttachedCritters, this);
     FO_RUNTIME_ASSERT(it == cr->AttachedCritters.end());
     cr->AttachedCritters.emplace_back(this);
 
@@ -204,7 +203,7 @@ void Critter::DetachFromCritter()
     auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    const auto it = std::find(cr->AttachedCritters.begin(), cr->AttachedCritters.end(), this);
+    const auto it = std::ranges::find(cr->AttachedCritters, this);
     FO_RUNTIME_ASSERT(it != cr->AttachedCritters.end());
     cr->AttachedCritters.erase(it);
 
@@ -227,7 +226,7 @@ void Critter::MoveAttachedCritters()
     auto* map = _engine->EntityMngr.GetMap(GetMapId());
     FO_RUNTIME_ASSERT(map);
 
-    vector<tuple<Critter*, mpos, RefCountHolder<Critter>>> moved_critters;
+    vector<tuple<Critter*, mpos, refcount_ptr<Critter>>> moved_critters;
 
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
@@ -247,13 +246,13 @@ void Critter::MoveAttachedCritters()
             cr->SetHex(new_hex);
             map->AddCritterToField(cr);
 
-            moved_critters.emplace_back(cr, hex, RefCountHolder {cr});
+            moved_critters.emplace_back(cr, hex, cr);
         }
     }
 
     // Callbacks time
-    auto this_ref_holder = RefCountHolder(this);
-    auto map_ref_holder = RefCountHolder(map);
+    refcount_ptr this_ref_holder = this;
+    refcount_ptr map_ref_holder = map;
     const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
 
     for (const auto& moved_critter : moved_critters) {
@@ -295,7 +294,7 @@ void Critter::ClearVisible()
     FO_STACK_TRACE_ENTRY();
 
     for (auto* cr : VisCr) {
-        auto it_ = std::find(cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this);
+        auto it_ = std::ranges::find(cr->VisCrSelf, this);
         if (it_ != cr->VisCrSelf.end()) {
             cr->VisCrSelf.erase(it_);
             cr->VisCrSelfMap.erase(GetId());
@@ -307,7 +306,7 @@ void Critter::ClearVisible()
     VisCrMap.clear();
 
     for (auto* cr : VisCrSelf) {
-        auto it_ = std::find(cr->VisCr.begin(), cr->VisCr.end(), this);
+        auto it_ = std::ranges::find(cr->VisCr, this);
         if (it_ != cr->VisCr.end()) {
             cr->VisCr.erase(it_);
             cr->VisCrMap.erase(GetId());
@@ -398,11 +397,11 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
     FO_RUNTIME_ASSERT(it_map2 != del_cr->VisCrSelfMap.end());
     del_cr->VisCrSelfMap.erase(it_map2);
 
-    const auto it = std::find(VisCr.begin(), VisCr.end(), del_cr);
+    const auto it = std::ranges::find(VisCr, del_cr);
     FO_RUNTIME_ASSERT(it != VisCr.end());
     VisCr.erase(it);
 
-    const auto it2 = std::find(del_cr->VisCrSelf.begin(), del_cr->VisCrSelf.end(), this);
+    const auto it2 = std::ranges::find(del_cr->VisCrSelf, this);
     FO_RUNTIME_ASSERT(it2 != del_cr->VisCrSelf.end());
     del_cr->VisCrSelf.erase(it2);
 
@@ -476,18 +475,18 @@ void Critter::ChangeDir(uint8 dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir = static_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
+    const auto normalized_dir = numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
     const auto dir_angle = GeometryHelper::DirToAngle(normalized_dir);
 
     SetDirAngle(dir_angle);
     SetDir(normalized_dir);
 }
 
-void Critter::ChangeDirAngle(int dir_angle)
+void Critter::ChangeDirAngle(int32 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
+    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(numeric_cast<int16>(dir_angle));
     const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
 
     SetDirAngle(normalized_dir_angle);
@@ -575,11 +574,11 @@ auto Critter::GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>
     return vec_filter(_invItems, [&](const Item* item) { return item->GetCritterSlot() == slot; });
 }
 
-auto Critter::CountInvItemPid(hstring pid) const noexcept -> uint
+auto Critter::CountInvItemPid(hstring pid) const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint count = 0;
+    int32 count = 0;
 
     for (const auto* item : _invItems) {
         if (item->GetProtoId() == pid) {
@@ -590,11 +589,11 @@ auto Critter::CountInvItemPid(hstring pid) const noexcept -> uint
     return count;
 }
 
-auto Critter::CountInvItems() const noexcept -> uint
+auto Critter::CountInvItems() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint count = 0;
+    int32 count = 0;
 
     for (const auto* item : _invItems) {
         count += item->GetCount();
@@ -614,7 +613,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Action(CritterAction action, int action_data, const Item* item)
+void Critter::Broadcast_Action(CritterAction action, int32 action_data, const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -673,7 +672,7 @@ void Critter::SendAndBroadcast_Moving()
     }
 }
 
-void Critter::SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item)
+void Critter::SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -735,11 +734,11 @@ auto Critter::IsTalking() const noexcept -> bool
     return Talk.Type != TalkType::None;
 }
 
-auto Critter::GetTalkingCritters() const noexcept -> uint
+auto Critter::GetTalkingCritters() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint talkers = 0;
+    int32 talkers = 0;
 
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
@@ -750,7 +749,7 @@ auto Critter::GetTalkingCritters() const noexcept -> uint
     return talkers;
 }
 
-auto Critter::GetBarterCritters() const noexcept -> uint
+auto Critter::GetBarterCritters() const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -922,7 +921,7 @@ void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
+void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 

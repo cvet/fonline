@@ -48,8 +48,8 @@ struct ServerServiceAppData
 {
     refcount_ptr<FOServer> Server {};
     std::thread ServerThread {};
-    uint LastState {};
-    uint CheckPoint {};
+    uint32 LastState {};
+    uint32 CheckPoint {};
 #if FO_WINDOWS
     SERVICE_STATUS_HANDLE FOServiceStatusHandle {};
 #endif
@@ -59,7 +59,7 @@ FO_GLOBAL_DATA(ServerServiceAppData, Data);
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv);
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode);
-static void SetFOServiceStatus(uint state);
+static void SetFOServiceStatus(uint32 state);
 #endif
 
 static void ServerEntry()
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp(argc, argv);
+        InitApp(numeric_cast<int32>(argc), argv);
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -213,7 +213,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             args[i] = args_holder.back().data();
         }
 
-        InitApp(static_cast<int>(argc), args.data());
+        InitApp(numeric_cast<int32>(argc), args.data());
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
 
@@ -270,9 +270,9 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
     }
 }
 
-static void SetFOServiceStatus(uint state)
+static void SetFOServiceStatus(uint32 state)
 {
-    if (state == 0u) {
+    if (state == 0) {
         state = Data->LastState;
     }
     else {

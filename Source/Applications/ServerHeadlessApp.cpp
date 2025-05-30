@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(argc, argv);
+        InitApp(numeric_cast<int32>(argc), argv);
 
         {
             auto server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);

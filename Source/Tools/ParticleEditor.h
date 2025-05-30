@@ -54,7 +54,7 @@ private:
 
     struct Impl;
     unique_ptr<Impl> _impl;
-    float _dirAngle {};
+    float32 _dirAngle {};
     bool _autoReplay {};
 };
 

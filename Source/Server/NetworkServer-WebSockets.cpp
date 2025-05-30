@@ -35,8 +35,6 @@
 
 #if FO_HAVE_WEB_SOCKETS
 
-#include "Log.h"
-
 FO_DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
 // ReSharper disable once CppInconsistentNaming
@@ -142,7 +140,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     FO_STACK_TRACE_ENTRY();
 
     const auto& address = _connection->get_raw_socket().remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+    _ip = address.is_v4() ? address.to_v4().to_ulong() : const_numeric_cast<uint32>(0xFFFFFFFF);
     _host = address.to_string();
     _port = _connection->get_raw_socket().remote_endpoint().port();
 
@@ -271,7 +269,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
         _server.set_tls_init_handler([this](auto&& hdl) { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetworkServer_WebSockets::Run, this);
