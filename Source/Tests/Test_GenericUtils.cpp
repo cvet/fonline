@@ -91,17 +91,19 @@ TEST_CASE("GenericUtils")
     {
         CHECK(lerp(5, 7, -1.0f) == 5);
         CHECK(lerp(5, 7, 0.0f) == 5);
-        CHECK(lerp(5, 7, 0.49f) == 5);
-        CHECK(lerp(5, 7, 0.5f) == 6);
-        CHECK(lerp(5, 7, 0.99f) == 6);
+        CHECK(lerp(5, 7, 0.24f) == 5);
+        CHECK(lerp(5, 7, 0.26f) == 6);
+        CHECK(lerp(5, 7, 0.74f) == 6);
+        CHECK(lerp(5, 7, 0.76f) == 7);
         CHECK(lerp(5, 7, 1.0f) == 7);
         CHECK(lerp(5, 7, 2.0f) == 7);
 
         CHECK(lerp(7u, 5u, -1.0f) == 7);
         CHECK(lerp(7u, 5u, 0.0f) == 7);
-        CHECK(lerp(7u, 5u, 0.01f) == 6);
-        CHECK(lerp(7u, 5u, 0.5f) == 6);
-        CHECK(lerp(7u, 5u, 0.51f) == 5);
+        CHECK(lerp(7u, 5u, 0.24f) == 7);
+        CHECK(lerp(7u, 5u, 0.26f) == 6);
+        CHECK(lerp(7u, 5u, 0.74f) == 6);
+        CHECK(lerp(7u, 5u, 0.76f) == 5);
         CHECK(lerp(7u, 5u, 1.0f) == 5);
         CHECK(lerp(7u, 5u, 2.0f) == 5);
     }
