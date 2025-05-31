@@ -431,6 +431,8 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    BreakIntoDebugger();
+
     char itoa_buf[64] = {};
 
     WriteBaseLog("\nBAD ALLOC!\n\n");

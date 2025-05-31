@@ -198,7 +198,11 @@ class refcount_ptr final
     friend class refcount_ptr;
 
 public:
-    FO_FORCE_INLINE refcount_ptr() noexcept :
+    struct adopt_tag
+    {
+    };
+
+    FO_FORCE_INLINE constexpr refcount_ptr() noexcept :
         _ptr(nullptr)
     {
     }
@@ -222,6 +226,11 @@ public:
         safe_addref();
     }
 
+    FO_FORCE_INLINE explicit refcount_ptr(adopt_tag /*tag*/, T* p) noexcept
+    {
+        _ptr = p;
+    }
+
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
     {
         _ptr = other._ptr;
@@ -235,7 +244,7 @@ public:
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr refcount_ptr(const refcount_ptr<U>& other) noexcept
+    FO_FORCE_INLINE refcount_ptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
         safe_addref();
@@ -243,7 +252,7 @@ public:
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr refcount_ptr(refcount_ptr<U>&& other) noexcept
+    FO_FORCE_INLINE refcount_ptr(refcount_ptr<U>&& other) noexcept
     {
         _ptr = other._ptr;
         other._ptr = nullptr;
@@ -368,15 +377,15 @@ public:
         _smartPtr(std::move(p))
     {
     }
-    FO_FORCE_INLINE explicit constexpr propagate_const(const T& p) noexcept :
+    FO_FORCE_INLINE constexpr explicit propagate_const(const T& p) noexcept :
         _smartPtr(p)
     {
     }
-    FO_FORCE_INLINE explicit constexpr propagate_const(element_type* p) noexcept :
+    FO_FORCE_INLINE constexpr explicit propagate_const(element_type* p) noexcept :
         _smartPtr(p)
     {
     }
-    FO_FORCE_INLINE explicit constexpr propagate_const(element_type* p, std::function<void(element_type*)>&& deleter) noexcept :
+    FO_FORCE_INLINE constexpr explicit propagate_const(element_type* p, std::function<void(element_type*)>&& deleter) noexcept :
         _smartPtr(p, std::move(deleter))
     {
     }
