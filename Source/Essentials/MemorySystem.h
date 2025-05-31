@@ -164,7 +164,7 @@ public:
             }
         }
 
-        return ptr;
+        return refcount_ptr<T>(refcount_ptr<T>::adopt_tag(), ptr);
     }
 
     template<typename T, typename... Args>
