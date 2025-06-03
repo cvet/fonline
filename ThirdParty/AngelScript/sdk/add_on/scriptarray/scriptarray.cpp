@@ -639,7 +639,7 @@ void CScriptArray::Resize(int numElements)
 	if( !CheckMaxSize(numElements) )
 		return;
 
-	Resize(numElements - buffer->numElements, -1);
+	Resize(numElements - buffer->numElements, std::numeric_limits<int>::max());
 }
 
 void CScriptArray::RemoveRange(int start, int count)
