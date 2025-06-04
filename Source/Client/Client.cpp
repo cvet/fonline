@@ -72,7 +72,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
-    Cache(strex(Settings.ClientResources).combinePath("Cache.fobin")),
+    Cache(Settings.CacheResources),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();

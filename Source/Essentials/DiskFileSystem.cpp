@@ -250,7 +250,7 @@ auto DiskFileSystem::IsExists(string_view path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return !std::filesystem::exists(MakeFilesystemPath(path), ec) && !ec;
+    return std::filesystem::exists(MakeFilesystemPath(path), ec) && !ec;
 }
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
@@ -298,10 +298,10 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
 
     if (!ec) {
         const auto u8_str = resolved.u8string();
-        return string(u8_str.begin(), u8_str.end());
+        return strex(string(u8_str.begin(), u8_str.end())).normalizePathSlashes();
     }
     else {
-        return string(path);
+        return strex(path).normalizePathSlashes();
     }
 }
 

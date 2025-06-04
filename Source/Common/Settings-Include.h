@@ -59,6 +59,7 @@ FIXED_SETTING(string, BaseServerResourcesName, "ServerResources");
 FIXED_SETTING(string, BaseClientResourcesName, "Resources");
 FIXED_SETTING(string, ServerResources, "Baking");
 FIXED_SETTING(string, ClientResources, "Baking");
+FIXED_SETTING(string, CacheResources, "Cache");
 FIXED_SETTING(vector<string>, ServerResourceEntries); // Auto
 FIXED_SETTING(vector<string>, ClientResourceEntries); // Auto
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Auto
