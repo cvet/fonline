@@ -141,6 +141,18 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     CreateGlobalData();
 
+    SetExceptionCallback([flags](string_view message, string_view traceback, bool fatal_error) {
+        WriteLog(LogType::Error, "{}\n{}", message, traceback);
+
+        if (fatal_error) {
+            WriteLog(LogType::Error, "Shutdown!");
+        }
+
+        if (IsEnumSet(flags, AppInitFlags::ShowMessageOnException)) {
+            MessageBox::ShowErrorMessage(message, traceback, fatal_error);
+        }
+    });
+
 #if FO_TRACY
     TracySetProgramName(FO_NICE_NAME);
 #endif

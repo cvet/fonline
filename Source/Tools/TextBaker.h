@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(TextBakerException);
 class TextBaker final : public BaseBaker
 {
 public:
-    TextBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit TextBaker(BakerData& data);
     TextBaker(const TextBaker&) = delete;
     TextBaker(TextBaker&&) noexcept = delete;
     auto operator=(const TextBaker&) = delete;

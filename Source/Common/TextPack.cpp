@@ -381,7 +381,6 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
 
     _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
     _textPacks[static_cast<size_t>(TextPackName::Game)] = SafeAlloc::MakeUnique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Dialogs)] = SafeAlloc::MakeUnique<TextPack>();
     _textPacks[static_cast<size_t>(TextPackName::Items)] = SafeAlloc::MakeUnique<TextPack>();
     _textPacks[static_cast<size_t>(TextPackName::Locations)] = SafeAlloc::MakeUnique<TextPack>();
 }

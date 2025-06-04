@@ -677,8 +677,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Dialogs.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/Dialogs.h"
     "${FO_ENGINE_ROOT}/Source/Common/EngineBase.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/EngineBase.h"
     "${FO_ENGINE_ROOT}/Source/Common/Entity.cpp"
@@ -853,8 +851,6 @@ list(APPEND FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.h"
     "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.cpp"
 
-    # "${FO_ENGINE_ROOT}/Source/Tools/DialogEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/DialogEditor.cpp"
     # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.h"
     # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.cpp"
     # "${FO_ENGINE_ROOT}/Source/Tools/ProtoEditor.h"
@@ -880,8 +876,6 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/DialogBaker.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/DialogBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.h"
@@ -1034,6 +1028,10 @@ list(APPEND FO_CODEGEN_META_SOURCE
 
 foreach(entry ${FO_CODEGEN_META_SOURCE})
     list(APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry})
+endforeach()
+
+foreach (entry ${FO_ADDED_COMMON_HEADERS})
+    list(APPEND FO_CODEGEN_COMMAND_ARGS -commonheader ${entry})
 endforeach()
 
 list(APPEND FO_CODEGEN_OUTPUT

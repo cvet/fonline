@@ -45,14 +45,23 @@ FO_BEGIN_NAMESPACE();
 class Properties;
 class ScriptSystem;
 
+using BakeCheckerCallback = std::function<bool(const string&, uint64)>;
+using AsyncWriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
+
+struct BakerData
+{
+    const BakerSettings* Settings {};
+    string PackName {};
+    BakeCheckerCallback BakeChecker {};
+    AsyncWriteDataCallback WriteData {};
+    const FileSystem* BakedFiles {};
+};
+
 class BaseBaker
 {
 public:
-    using BakeCheckerCallback = std::function<bool(const string&, uint64)>;
-    using AsyncWriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
-
     BaseBaker() = delete;
-    BaseBaker(const BakerSettings& settings, string&& pack_name, BakeCheckerCallback&& bake_checker, AsyncWriteDataCallback&& write_data, const FileSystem* baked_files);
+    explicit BaseBaker(BakerData& data);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = delete;
     auto operator=(const BaseBaker&) = delete;

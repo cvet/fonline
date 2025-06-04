@@ -46,7 +46,6 @@ enum class TextPackName : uint8
 {
     None = 0,
     Game = 1,
-    Dialogs = 2,
     Items = 3,
     Maps = 4,
     Locations = 5,

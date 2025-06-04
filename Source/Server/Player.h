@@ -82,7 +82,6 @@ public:
     void Send_ChosenAddItem(const Item* item);
     void Send_ChosenRemoveItem(const Item* item);
     void Send_Teleport(const Critter* cr, mpos to_hex);
-    void Send_Talk();
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
     void Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item);
@@ -119,7 +118,6 @@ private:
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
     Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
-    nanotime _talkNextTime {};
 };
 
 FO_END_NAMESPACE();

@@ -47,7 +47,7 @@ FO_DECLARE_EXCEPTION(ModelBakerException);
 class ModelBaker final : public BaseBaker
 {
 public:
-    ModelBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit ModelBaker(BakerData& data);
     ModelBaker(const ModelBaker&) = delete;
     ModelBaker(ModelBaker&&) noexcept = delete;
     auto operator=(const ModelBaker&) = delete;

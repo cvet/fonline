@@ -214,8 +214,8 @@ struct BakerAnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
-    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
+ModelBaker::ModelBaker(BakerData& data) :
+    BaseBaker(data)
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -238,7 +238,6 @@ void ModelBaker::BakeFiles(FileCollection files)
         if (!IsExtSupported(ext)) {
             continue;
         }
-
         if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
             continue;
         }

@@ -544,6 +544,12 @@ macro(AddEngineSource target)
 		StatusMessage("Add engine source (${target}): ${resultEntry}")
 		list(APPEND FO_${target}_SOURCE ${resultEntry})
 		list(APPEND FO_SOURCE_META_FILES ${resultEntry})
+
+		string(REGEX MATCH "\\.h$" isHeader "${resultEntry}")
+
+		if(${target} STREQUAL "COMMON" AND isHeader)
+			list(APPEND FO_ADDED_COMMON_HEADERS ${resultEntry})
+		endif()
 	endforeach()
 endmacro()
 

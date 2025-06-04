@@ -542,7 +542,7 @@ FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint32 strNum, uint32 skipCount)
+FO_SCRIPT_API string Client_Game_GetText(FOClient* client, TextPackName textPack, uint32 strNum, int32 skipCount)
 {
     return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
 }
@@ -585,14 +585,6 @@ FO_SCRIPT_API string Client_Game_ReplaceText(FOClient* client, string_view text,
     ignore_unused(client);
 
     return strex(text).replace(from, strex("{}", to));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API string Client_Game_FormatTags(FOClient* client, string_view text, string_view lexems)
-{
-    auto text_copy = string(text);
-    client->FormatTags(text_copy, client->GetChosen(), nullptr, lexems);
-    return text_copy;
 }
 
 ///@ ExportMethod

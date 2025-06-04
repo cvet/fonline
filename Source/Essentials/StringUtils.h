@@ -52,19 +52,19 @@ public:
     {
     };
 
-    strex() noexcept = default;
+    constexpr strex() noexcept = default;
 
-    explicit strex(const char* s) noexcept :
+    constexpr explicit strex(const char* s) noexcept :
         _sv {s}
     {
     }
 
-    explicit strex(string_view s) noexcept :
+    constexpr explicit strex(string_view s) noexcept :
         _sv {s}
     {
     }
 
-    explicit strex(string&& s) noexcept :
+    constexpr explicit strex(string&& s) noexcept :
         _s {std::move(s)},
         _sv {_s}
     {
@@ -111,15 +111,15 @@ public:
     strex(strex&&) noexcept = delete;
     auto operator=(const strex&) -> strex& = delete;
     auto operator=(strex&&) noexcept -> strex& = delete;
-    ~strex() = default;
+    constexpr ~strex() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&() noexcept;
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const noexcept { return _sv; }
+    constexpr operator string_view() const noexcept { return _sv; }
 
-    auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
-    auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
+    constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
+    constexpr auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
 
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;

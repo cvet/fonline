@@ -49,7 +49,7 @@ class ProtoEntity;
 class ProtoBaker final : public BaseBaker
 {
 public:
-    ProtoBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit ProtoBaker(BakerData& data);
     ProtoBaker(const ProtoBaker&) = delete;
     ProtoBaker(ProtoBaker&&) noexcept = delete;
     auto operator=(const ProtoBaker&) = delete;

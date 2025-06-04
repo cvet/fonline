@@ -66,22 +66,19 @@ struct SpritePattern
     FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Finished {};
-    string SprName {};
-    int32 SprCount {};
     ipos EveryHex {1, 1};
     bool InteractWithRoof {};
     bool CheckTileProperty {};
     ItemProperty TileProperty {};
     int32 ExpectedTilePropertyValue {};
 
-    void Finish() { FO_NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
+    void Finish();
 
     FO_SCRIPTABLE_OBJECT_END();
 
-    std::function<void()> FinishCallback {};
-    vector<shared_ptr<Sprite>> Sprites {};
+    unique_ptr<vector<shared_ptr<Sprite>>> Sprites {};
 };
-// Todo: fix static_assert(std::is_standard_layout_v<SpritePattern>);
+static_assert(std::is_standard_layout_v<SpritePattern>);
 
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {

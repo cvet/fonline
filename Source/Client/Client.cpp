@@ -155,7 +155,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn.AddMessageHandler(NetMessage::InfoMessage, [this] { Net_OnInfoMessage(); });
     _conn.AddMessageHandler(NetMessage::ChosenAddItem, [this] { Net_OnChosenAddItem(); });
     _conn.AddMessageHandler(NetMessage::ChosenRemoveItem, [this] { Net_OnChosenRemoveItem(); });
-    _conn.AddMessageHandler(NetMessage::TalkNpc, [this] { Net_OnChosenTalk(); });
     _conn.AddMessageHandler(NetMessage::TimeSync, [this] { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NetMessage::ViewMap, [this] { Net_OnViewMap(); });
     _conn.AddMessageHandler(NetMessage::LoadMap, [this] { Net_OnLoadMap(); });
@@ -757,19 +756,6 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     _conn.OutBuf.Write(prop->GetRegIndex());
     _conn.OutBuf.Push(prop_raw_data);
-    _conn.OutBuf.EndMsg();
-}
-
-void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NetMessage::SendTalkNpc);
-    _conn.OutBuf.Write(cr_id);
-    _conn.OutBuf.Write(dlg_pack_id);
-    _conn.OutBuf.Write(answer);
     _conn.OutBuf.EndMsg();
 }
 
@@ -1852,47 +1838,6 @@ void FOClient::Net_OnProperty()
     }
 }
 
-void FOClient::Net_OnChosenTalk()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto is_npc = _conn.InBuf.Read<bool>();
-    const auto talk_cr_id = _conn.InBuf.Read<ident_t>();
-    const auto talk_dlg_id = _conn.InBuf.Read<hstring>(Hashes);
-    const auto count_answ = _conn.InBuf.Read<int32>();
-
-    if (count_answ == 0) {
-        OnDialogData.Fire({}, {}, {}, {}, {});
-        return;
-    }
-
-    const auto lexems = _conn.InBuf.Read<string>();
-    auto* npc = is_npc ? _curMap->GetCritter(talk_cr_id) : nullptr;
-    const auto text_id = _conn.InBuf.Read<uint32>();
-
-    vector<uint32> answer_ids;
-
-    for (int32 i = 0; i < count_answ; i++) {
-        const auto answ_text_id = _conn.InBuf.Read<uint32>();
-        answer_ids.push_back(answ_text_id);
-    }
-
-    string text = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(text_id));
-    FormatTags(text, GetChosen(), npc, lexems);
-
-    vector<string> answers;
-
-    for (const auto answer_id : answer_ids) {
-        string str = copy(_curLang.GetTextPack(TextPackName::Dialogs).GetStr(answer_id));
-        FormatTags(str, GetChosen(), npc, lexems);
-        answers.emplace_back(std::move(str));
-    }
-
-    const auto talk_time = _conn.InBuf.Read<int32>();
-
-    OnDialogData.Fire(talk_cr_id, talk_dlg_id, text, answers, talk_time);
-}
-
 void FOClient::Net_OnTimeSync()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2163,14 +2108,14 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     const auto steps_count = _conn.InBuf.Read<uint16>();
     vector<uint8> steps;
     steps.resize(steps_count);
-    for (auto i = 0; i < steps_count; i++) {
+    for (uint16 i = 0; i < steps_count; i++) {
         steps[i] = _conn.InBuf.Read<uint8>();
     }
 
     const auto control_steps_count = _conn.InBuf.Read<uint16>();
     vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
-    for (auto i = 0; i < control_steps_count; i++) {
+    for (uint16 i = 0; i < control_steps_count; i++) {
         control_steps[i] = _conn.InBuf.Read<uint16>();
     }
 
@@ -2651,146 +2596,6 @@ void FOClient::ChangeLanguage(string_view lang_name)
     Settings.Language = lang_name;
 }
 
-// Todo: move targs formatting to scripts
-void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    if (text == "error") {
-        text = "Text not found!";
-        return;
-    }
-
-    vector<string> dialogs;
-    auto sex = 0;
-    auto sex_tags = false;
-    string tag;
-
-    for (size_t i = 0; i < text.length();) {
-        switch (text[i]) {
-        case '#': {
-            text[i] = '\n';
-        } break;
-        case '|': {
-            if (sex_tags) {
-                tag = strex(text.substr(i + 1)).substringUntil('|');
-                text.erase(i, tag.length() + 2);
-
-                if (sex != 0) {
-                    if (sex == 1) {
-                        text.insert(i, tag);
-                    }
-                    sex--;
-                }
-                continue;
-            }
-        } break;
-        case '@': {
-            if (text[i + 1] == '@') {
-                dialogs.push_back(text.substr(0, i));
-                text.erase(0, i + 2);
-                i = 0;
-                continue;
-            }
-
-            tag = strex(text.substr(i + 1)).substringUntil('@');
-            text.erase(i, tag.length() + 2);
-            if (tag.empty()) {
-                break;
-            }
-
-            // Player name
-            if (strex(tag).compareIgnoreCase("pname")) {
-                tag = (cr != nullptr ? cr->GetName() : "");
-            }
-            // Npc name
-            else if (strex(tag).compareIgnoreCase("nname")) {
-                tag = (npc != nullptr ? npc->GetName() : "");
-            }
-            // Sex
-            else if (strex(tag).compareIgnoreCase("sex")) {
-                sex = (cr != nullptr && cr->GetSexTagFemale() ? 2 : 1);
-                sex_tags = true;
-                continue;
-            }
-            // Random
-            else if (strex(tag).compareIgnoreCase("rnd")) {
-                auto first = text.find_first_of('|', i);
-                auto last = text.find_last_of('|', i);
-                auto rnd = strex(text.substr(first, last - first + 1)).split('|');
-                text.erase(first, last - first + 1);
-                if (!rnd.empty()) {
-                    text.insert(first, rnd[GenericUtils::Random(0, numeric_cast<int32>(rnd.size()) - 1)]);
-                }
-            }
-            // Lexems
-            else if (tag.length() > 4 && tag[0] == 'l' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == ' ') {
-                auto lex = "$" + tag.substr(4);
-                auto pos = lexems.find(lex);
-                if (pos != string::npos) {
-                    pos += lex.length();
-                    tag = strex(lexems.substr(pos)).substringUntil('$').trim();
-                }
-                else {
-                    tag = "<lexem not found>";
-                }
-            }
-            // Text pack
-            else if (tag.length() > 5 && tag[0] == 't' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == 't' && tag[4] == ' ') {
-                tag = tag.substr(5);
-                tag = strex(tag).erase('(').erase(')');
-
-                istringstream itag(tag);
-                string pack_name_str;
-                uint32 str_num = 0;
-
-                if (itag >> pack_name_str >> str_num) {
-                    bool failed = false;
-                    const auto pack_name = _curLang.ResolveTextPackName(pack_name_str, &failed);
-                    const auto& text_pack = _curLang.GetTextPack(pack_name);
-
-                    if (failed) {
-                        tag = "<text tag, invalid pack name>";
-                    }
-                    else if (text_pack.GetStrCount(str_num) == 0) {
-                        tag = strex("<text tag, string {} not found>", str_num);
-                    }
-                    else {
-                        tag = text_pack.GetStr(str_num);
-                    }
-                }
-                else {
-                    tag = "<text tag parse fail>";
-                }
-            }
-            // Script
-            else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
-                string func_name = strex(tag.substr(7)).substringUntil('$');
-                if (!ScriptSys.CallFunc<string, string>(Hashes.ToHashedString(func_name), string(lexems), tag)) {
-                    tag = "<script function not found>";
-                }
-            }
-            // Error
-            else {
-                tag = "<error>";
-            }
-
-            text.insert(i, tag);
-        }
-            continue;
-        default:
-            break;
-        }
-
-        ++i;
-    }
-
-    dialogs.push_back(text);
-    text = dialogs[GenericUtils::Random(0, numeric_cast<int32>(dialogs.size()) - 1)];
-}
-
 void FOClient::UnloadMap()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2852,7 +2657,7 @@ void FOClient::LmapPrepareMap()
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
-            if (i1 < 0 || i2 < 0 || i1 >= _curMap->GetSize().width || i2 >= _curMap->GetSize().height) {
+            if (i1 < 0 || i2 < 0 || i1 >= numeric_cast<int32>(_curMap->GetSize().width) || i2 >= numeric_cast<int32>(_curMap->GetSize().height)) {
                 continue;
             }
 
@@ -2999,14 +2804,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "DialogAnswer" && args.size() >= 4) {
-        const auto is_cr = strex(args[1]).toBool();
-        const auto cr_id = is_cr ? ident_t {strex(args[2]).toInt64()} : ident_t {};
-        const auto dlg_pack_id = is_cr ? hstring() : Hashes.ResolveHash(strex(args[2]).toUInt());
-        const auto answer_index = numeric_cast<uint8>(strex(args[3]).toUInt());
-
-        Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
         const int32 zoom = strex(args[1]).toInt();

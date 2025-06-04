@@ -194,7 +194,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         uint16 hex_x = 0;
         uint16 hex_y = 0;
         string proto_name;
-        uint32 count = 0;
+        int32 count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additem hx hy name count");
             break;
@@ -210,7 +210,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_ADDITEM_SELF: {
         string proto_name;
-        uint32 count = 0;
+        int32 count = 0;
         if (!(args_str >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additemself name count");
             break;

@@ -50,7 +50,7 @@ FO_DECLARE_EXCEPTION(EffectBakerException);
 class EffectBaker final : public BaseBaker
 {
 public:
-    EffectBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit EffectBaker(BakerData& data);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;

@@ -86,6 +86,10 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
+#if !COMPILER_MODE
+///@ CodeGen Includes
+#endif
+
 // Reset garbage from WinApi
 #include "WinApiUndef-Include.h"
 
@@ -540,6 +544,7 @@ struct StackTraceEntryStorage
 struct FO_CONCAT(AngelScriptStackTraceData_, SCRIPT_BACKEND_CLASS)
 {
     unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
+    list<StackTraceEntryStorage> ScriptCallExceptionEntries {};
 #if SERVER_SCRIPTING
     std::mutex ScriptCallCacheEntriesLocker {};
 #endif
@@ -577,18 +582,18 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         const auto* func_decl = func->GetDeclaration(true);
 
-        const auto safe_copy = [](auto& to, size_t& len, string_view from) {
-            len = std::min(from.length(), to.size() - 1);
-            MemCopy(to.data(), from.data(), len);
-            to[len] = 0;
-        };
-
         {
 #if SERVER_SCRIPTING
             std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 #endif
 
             storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
+
+            const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+                len = std::min(from.length(), to.size() - 1);
+                MemCopy(to.data(), from.data(), len);
+                to[len] = 0;
+            };
 
             safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
             safe_copy(storage->FileBuf, storage->FileBufLen, orig_file);
@@ -652,8 +657,31 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
     const auto* func_decl = ex_func->GetDeclaration(true);
 
     {
-        auto srcloc = SourceLocationData {nullptr, func_decl, ex_orig_file.c_str(), ex_orig_line};
-        PushStackTrace(srcloc);
+        StackTraceEntryStorage* storage = nullptr;
+
+        {
+#if SERVER_SCRIPTING
+            std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
+#endif
+
+            storage = &AngelScriptStackTrace->ScriptCallExceptionEntries.emplace_back(StackTraceEntryStorage {});
+
+            const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+                len = std::min(from.length(), to.size() - 1);
+                MemCopy(to.data(), from.data(), len);
+                to[len] = 0;
+            };
+
+            safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
+            safe_copy(storage->FileBuf, storage->FileBufLen, ex_orig_file);
+
+            storage->SrcLoc.name = nullptr;
+            storage->SrcLoc.function = storage->FuncBuf.data();
+            storage->SrcLoc.file = storage->FileBuf.data();
+            storage->SrcLoc.line = ex_orig_line;
+        }
+
+        PushStackTrace(storage->SrcLoc);
         auto stack_trace_entry_end = ScopeCallback([]() noexcept { PopStackTrace(); });
 
         // Write to ExceptionStackTrace
