@@ -282,9 +282,16 @@ GlobalSettings::GlobalSettings(int32 argc, char** argv)
         throw SettingsException("No config applied");
     }
 
+    // Apply sub configs
+    ApplySubConfigSection(ApplySubConfig);
+
+    if (IsRunInDebugger()) {
+        ApplySubConfigSection(DebuggingSubConfig);
+    }
+
     // Local config
-    if (const string cache_path = strex(ClientResources).combinePath("Cache.fobin"); DiskFileSystem::IsExists(cache_path)) {
-        const auto cache = CacheStorage(cache_path);
+    if (DiskFileSystem::IsDir(CacheResources)) {
+        const auto cache = CacheStorage(CacheResources);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             WriteLog("Load local config {}", LOCAL_CONFIG_NAME);
@@ -292,13 +299,6 @@ GlobalSettings::GlobalSettings(int32 argc, char** argv)
             auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
             ApplyConfigFile(config, ClientResources);
         }
-    }
-
-    // Apply sub configs
-    ApplySubConfigSection(ApplySubConfig);
-
-    if (IsRunInDebugger()) {
-        ApplySubConfigSection(DebuggingSubConfig);
     }
 
     // Command line config

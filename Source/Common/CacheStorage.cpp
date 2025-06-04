@@ -53,12 +53,9 @@ public:
     [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
     [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8> = 0;
 
-    virtual auto CreateCacheStorage() -> bool = 0;
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
-
-    std::optional<bool> CacheCreated {};
 };
 
 class FileCacheStorage final : public CacheStorageImpl
@@ -75,7 +72,7 @@ public:
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
-    auto CreateCacheStorage() -> bool override;
+    auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
@@ -101,7 +98,7 @@ public:
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
-    auto CreateCacheStorage() -> bool override;
+    auto InitCacheStorage() -> bool;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
@@ -114,14 +111,16 @@ private:
 
 CacheStorage::CacheStorage(string_view path)
 {
-    if (strex(path).startsWith("unqlite:/")) {
 #if FO_HAVE_UNQLITE
-        _impl = SafeAlloc::MakeUnique<UnqliteCacheStorage>(strex(path).replace("unqlite:/", ""));
-        return;
-#endif
+    // Todo: add engine hook to allow user to override cache storage
+    if (string_view(path).find("unqlite") != string::npos) {
+        _impl = SafeAlloc::MakeUnique<UnqliteCacheStorage>(path);
     }
+#endif
 
-    _impl = SafeAlloc::MakeUnique<FileCacheStorage>(strex(path).replace("unqlite:/", ""));
+    if (!_impl) {
+        _impl = SafeAlloc::MakeUnique<FileCacheStorage>(path);
+    }
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
@@ -152,26 +151,14 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_impl->CacheCreated.has_value()) {
-        _impl->CacheCreated = _impl->CreateCacheStorage();
-    }
-
-    if (_impl->CacheCreated.value()) {
-        _impl->SetString(entry_name, str);
-    }
+    _impl->SetString(entry_name, str);
 }
 
 void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_impl->CacheCreated.has_value()) {
-        _impl->CacheCreated = _impl->CreateCacheStorage();
-    }
-
-    if (_impl->CacheCreated.value()) {
-        _impl->SetData(entry_name, data);
-    }
+    _impl->SetData(entry_name, data);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
@@ -188,16 +175,14 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
     return strex(work_path).combinePath(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
-FileCacheStorage::FileCacheStorage(string_view real_path) :
-    _workPath {strex(real_path).eraseFileExtension()}
+FileCacheStorage::FileCacheStorage(string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workPath = DiskFileSystem::ResolvePath(_workPath);
+    _workPath = DiskFileSystem::ResolvePath(real_path);
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
-auto FileCacheStorage::CreateCacheStorage() -> bool
+auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -268,6 +253,10 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!CreateCacheStorage()) {
+        return;
+    }
+
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
 
@@ -285,6 +274,10 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!CreateCacheStorage()) {
+        return;
+    }
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -313,16 +306,20 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workPath = real_path;
-    _workPath = DiskFileSystem::ResolvePath(_workPath);
+    _workPath = DiskFileSystem::ResolvePath(real_path);
+    _workPath = strex(_workPath).combinePath("Cache.db");
+
+    if (DiskFileSystem::IsExists(_workPath)) {
+        InitCacheStorage();
+    }
 }
 
-auto UnqliteCacheStorage::CreateCacheStorage() -> bool
+auto UnqliteCacheStorage::InitCacheStorage() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
-        DiskFileSystem::MakeDirTree(_workPath);
+        DiskFileSystem::MakeDirTree(strex(_workPath).extractDir());
 
         unqlite* db = nullptr;
 
@@ -452,7 +449,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_db) {
+    if (!InitCacheStorage()) {
         return;
     }
 
@@ -474,7 +471,7 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_db) {
+    if (!InitCacheStorage()) {
         return;
     }
 
