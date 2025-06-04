@@ -296,7 +296,6 @@ constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_
 
 // Generic constants
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
-static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr float32 MIN_ZOOM = 0.1f;
 static constexpr float32 MAX_ZOOM = 20.0f;
 
@@ -304,11 +303,6 @@ static constexpr float32 MAX_ZOOM = 20.0f;
 static constexpr uint16 MAXHEX_DEFAULT = 200;
 static constexpr uint16 MAXHEX_MIN = 10;
 static constexpr uint16 MAXHEX_MAX = 4000;
-
-// Answer
-static constexpr uint8 ANSWER_BEGIN = 0xF0;
-static constexpr uint8 ANSWER_END = 0xF1;
-static constexpr uint8 ANSWER_BARTER = 0xF2;
 
 // Look checks
 static constexpr uint32 LOOK_CHECK_DIR = 0x01;
@@ -386,14 +380,6 @@ static constexpr auto CMD_LOG = 37;
 enum class EngineInfoMessage : uint16
 {
     None = 0,
-
-    BarterNoBarterNow = 486,
-    DialogNpcNotLife = 801,
-    DialogDistTooLong = 803,
-    DialogFromLinkNotFound = 807,
-    DialogCompileFail = 808,
-    DialogNpcNotFound = 809,
-    DialogManyTalkers = 805,
 
     NetWrongLogin = 1001,
     NetWrongPass = 1002,
@@ -488,8 +474,6 @@ enum class NetMessage : uint8
     Effect = 100,
     FlyEffect = 101,
     PlaySound = 102,
-    SendTalkNpc = 103,
-    TalkNpc = 105,
     TimeSync = 107,
     LoadMap = 109,
     RemoteCall = 111,

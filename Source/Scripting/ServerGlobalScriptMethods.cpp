@@ -876,78 +876,6 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, Critter* npc, bool ignoreDistance)
-{
-    if (cr == nullptr) {
-        throw ScriptException("Player arg is null");
-    }
-    if (!cr->GetControlledByPlayer()) {
-        throw ScriptException("Player arg is not player");
-    }
-    if (npc == nullptr) {
-        throw ScriptException("Npc arg is null");
-    }
-    if (npc->GetControlledByPlayer()) {
-        throw ScriptException("Npc arg is not npc");
-    }
-
-    if (cr->Talk.Locked) {
-        throw ScriptException("Can't open new dialog from demand, result or dialog functions");
-    }
-
-    server->BeginDialog(cr, npc, {}, {}, ignoreDistance);
-
-    return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, Critter* npc, hstring dlgPack, bool ignoreDistance)
-{
-    if (cr == nullptr) {
-        throw ScriptException("Player arg is null");
-    }
-    if (!cr->GetControlledByPlayer()) {
-        throw ScriptException("Player arg is not player");
-    }
-    if (npc == nullptr) {
-        throw ScriptException("Npc arg is null");
-    }
-    if (npc->GetControlledByPlayer()) {
-        throw ScriptException("Npc arg is not npc");
-    }
-
-    if (cr->Talk.Locked) {
-        throw ScriptException("Can't open new dialog from demand, result or dialog functions");
-    }
-
-    server->BeginDialog(cr, npc, dlgPack, {}, ignoreDistance);
-
-    return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, mpos hex, bool ignoreDistance)
-{
-    if (cr == nullptr) {
-        throw ScriptException("Player arg is null");
-    }
-    if (!cr->GetControlledByPlayer()) {
-        throw ScriptException("Player arg is not player");
-    }
-    if (server->DlgMngr.GetDialog(dlgPack) == nullptr) {
-        throw ScriptException("Dialog not found");
-    }
-
-    if (cr->Talk.Locked) {
-        throw ScriptException("Can't open new dialog from demand, result or dialog functions");
-    }
-
-    server->BeginDialog(cr, nullptr, dlgPack, hex, ignoreDistance);
-
-    return cr->Talk.Type == TalkType::Hex && cr->Talk.TalkHex == hex;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
@@ -1025,21 +953,6 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(FOServer* server, Critter*
     }
 
     return staticItem->StaticScriptFunc(cr, staticItem, usedItem, param) && staticItem->StaticScriptFunc.GetResult();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<hstring> Server_Game_GetDialogs(FOServer* server)
-{
-    const auto& dlg_packs = server->DlgMngr.GetDialogs();
-
-    vector<hstring> result;
-    result.reserve(dlg_packs.size());
-
-    for (const auto* dlg_pack : dlg_packs) {
-        result.emplace_back(dlg_pack->PackId);
-    }
-
-    return result;
 }
 
 ///@ ExportMethod

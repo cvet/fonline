@@ -328,12 +328,6 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Protected, int32, LookDistance);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int32, TalkDistance);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, int32, MaxTalkers);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, hstring, DialogId);
-    ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Protected, bool, InSneakMode);

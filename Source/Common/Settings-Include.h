@@ -70,7 +70,6 @@ SETTING_GROUP_END();
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
 FIXED_SETTING(int32, MinNameLength, 4);
 FIXED_SETTING(int32, MaxNameLength, 12);
-FIXED_SETTING(int32, TalkDistance, 3);
 FIXED_SETTING(uint32, LookChecks, 0);
 FIXED_SETTING(vector<int32>, LookDir, 0, 20, 40, 60, 60);
 FIXED_SETTING(vector<int32>, LookSneakDir, 90, 60, 30, 0, 0);
@@ -83,10 +82,6 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
 FIXED_SETTING(int32, RegistrationTimeout, 5);
-FIXED_SETTING(int32, NpcMaxTalkers, 1);
-FIXED_SETTING(int32, DlgTalkMaxTime, 0);
-FIXED_SETTING(int32, DlgBarterMaxTime, 0);
-FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(int32, SneakDivider, 6);
 SETTING_GROUP_END();
 

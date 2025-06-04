@@ -167,35 +167,26 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
         string traceback;
 
-        if (base_engine_ex != nullptr) {
+        if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
             traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->StackTrace()));
-            WriteBaseLog(strex("{}\n{}\nShutdown!", ex.what(), traceback));
         }
         else {
-            traceback = FormatStackTrace(GetStackTrace());
-            WriteBaseLog(strex("{}\nCatched at: {}\nShutdown!", ex.what(), FormatStackTrace(GetStackTrace())));
-        }
-
-        if (BreakIntoDebugger()) {
-            ExitApp(false);
+            traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
         }
 
         if (const auto callback = GetExceptionCallback()) {
-            if (base_engine_ex != nullptr) {
-                callback(ex.what(), traceback, true);
-            }
-            else {
-                callback(ex.what(), strex("Catched at: {}", traceback), true);
-            }
+            callback(ex.what(), traceback, true);
+        }
+        else {
+            WriteBaseLog(strex("{}\n{}\nShutdown!", ex.what(), traceback));
         }
     }
     catch (...) {
-        BreakIntoDebugger();
     }
 
+    BreakIntoDebugger();
     ExitApp(false);
 }
 
@@ -204,36 +195,26 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex);
         string traceback;
 
-        if (base_engine_ex != nullptr) {
+        if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
             traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->StackTrace()));
-            WriteBaseLog(strex("{}\n{}", ex.what(), traceback));
         }
         else {
-            traceback = FormatStackTrace(GetStackTrace());
-            WriteBaseLog(strex("{}\nCatched at: {}", ex.what(), traceback));
+            traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
         }
-
-        if (BreakIntoDebugger()) {
-            return;
-        }
-
-        std::scoped_lock locker(ExceptionHandling->CallbackLocker);
 
         if (const auto callback = GetExceptionCallback()) {
-            if (base_engine_ex != nullptr) {
-                callback(ex.what(), traceback, false);
-            }
-            else {
-                callback(ex.what(), strex("Catched at: {}", traceback), false);
-            }
+            callback(ex.what(), traceback, false);
+        }
+        else {
+            WriteBaseLog(strex("{}\n{}", ex.what(), traceback));
         }
     }
     catch (...) {
-        BreakIntoDebugger();
     }
+
+    BreakIntoDebugger();
 }
 
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept

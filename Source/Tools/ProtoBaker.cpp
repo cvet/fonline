@@ -41,8 +41,8 @@
 
 FO_BEGIN_NAMESPACE();
 
-ProtoBaker::ProtoBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
-    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
+ProtoBaker::ProtoBaker(BakerData& data) :
+    BaseBaker(data)
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -370,7 +370,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
             }
         };
 
-        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Critter")], TextPackName::Dialogs);
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Item")], TextPackName::Items);
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Map")], TextPackName::Maps);
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Location")], TextPackName::Locations);

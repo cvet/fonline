@@ -71,8 +71,6 @@ public:
     void DestroyInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;
     void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
-    void ProcessTalk(Critter* cr, bool force);
-    void CloseTalk(Critter* cr);
 
 private:
     FOServer* _engine;

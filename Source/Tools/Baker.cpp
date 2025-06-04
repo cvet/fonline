@@ -35,8 +35,6 @@
 #include "AngelScriptBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
-#include "DialogBaker.h"
-#include "Dialogs.h"
 #include "EffectBaker.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
@@ -60,18 +58,18 @@ extern auto GetClientSettings() -> unordered_set<string>;
 extern void Baker_RegisterData(EngineData*);
 extern auto Baker_GetRestoreInfo() -> vector<uint8>;
 
-extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&);
+extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&, BakerData&);
 
 #if FO_ANGELSCRIPT_SCRIPTING
 extern void Init_AngelScriptCompiler_ServerScriptSystem_Validation(EngineData*, ScriptSystem&, const FileSystem&);
 #endif
 
-BaseBaker::BaseBaker(const BakerSettings& settings, string&& pack_name, BakeCheckerCallback&& bake_checker, AsyncWriteDataCallback&& write_data, const FileSystem* baked_files) :
-    _settings {&settings},
-    _packName {std::move(pack_name)},
-    _bakeChecker {std::move(bake_checker)},
-    _writeData {std::move(write_data)},
-    _bakedFiles {baked_files}
+BaseBaker::BaseBaker(BakerData& data) :
+    _settings {data.Settings},
+    _packName {data.PackName},
+    _bakeChecker {data.BakeChecker},
+    _writeData {data.WriteData},
+    _bakedFiles {data.BakedFiles}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -84,21 +82,22 @@ auto BaseBaker::SetupBakers(const string& pack_name, const BakerSettings& settin
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(settings, pack_name, bake_checker, write_data, baked_files));
-    bakers.emplace_back(SafeAlloc::MakeUnique<DialogBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    auto baker_data = BakerData(&settings, pack_name, bake_checker, write_data, baked_files);
+
+    bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(baker_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(baker_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(baker_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(baker_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(baker_data));
+    bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(baker_data));
 #if FO_ENABLE_3D
-    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(baker_data));
 #endif
 #if FO_ANGELSCRIPT_SCRIPTING
-    bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(settings, pack_name, bake_checker, write_data, baked_files));
+    bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(baker_data));
 #endif
 
-    SetupBakersHook(bakers);
+    SetupBakersHook(bakers, baker_data);
 
     return bakers;
 }

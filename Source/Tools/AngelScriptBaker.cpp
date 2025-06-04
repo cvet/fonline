@@ -45,8 +45,8 @@ extern vector<uint8> Init_AngelScriptCompiler_MapperScriptSystem(const vector<Fi
 
 unordered_set<string> CompilerPassedMessages;
 
-AngelScriptBaker::AngelScriptBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
-    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
+AngelScriptBaker::AngelScriptBaker(BakerData& data) :
+    BaseBaker(data)
 {
     FO_STACK_TRACE_ENTRY();
 }

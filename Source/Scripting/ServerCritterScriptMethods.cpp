@@ -312,40 +312,6 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetTalkingCritters(Critter* self)
-{
-    vector<Critter*> result;
-
-    for (auto* cr : self->VisCr) {
-        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == self->GetId()) {
-            result.push_back(cr);
-        }
-    }
-
-    std::ranges::stable_sort(result, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex()) - cr2->GetMultihex();
-        return dist1 < dist2;
-    });
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32 Server_Critter_GetTalkingCrittersCount(Critter* self)
-{
-    int32 result = 0;
-
-    for (const auto* cr : self->VisCr) {
-        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == self->GetId()) {
-            result++;
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self, CritterFindType findType)
 {
     if (self->GetMapId()) {
@@ -648,14 +614,6 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_CloseDialog(Critter* self)
-{
-    if (self->IsTalking()) {
-        self->GetEngine()->CrMngr.CloseTalk(self);
-    }
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32 actionData, AbstractItem* contextItem)
 {
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
@@ -854,13 +812,6 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(Critter* self)
 {
     return self->GetOfflineTime();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_RefreshDialogTime(Critter* self)
-{
-    self->Talk.StartTime = self->GetEngine()->GameTime.GetFrameTime();
-    self->Talk.TalkTime = std::chrono::milliseconds {self->Talk.Barter ? self->GetEngine()->Settings.DlgBarterMaxTime : self->GetEngine()->Settings.DlgTalkMaxTime};
 }
 
 FO_END_NAMESPACE();

@@ -168,6 +168,7 @@ private:
     T* _ptr;
 };
 static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
+static_assert(std::is_standard_layout_v<raw_ptr<int>>);
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
@@ -226,10 +227,7 @@ public:
         safe_addref();
     }
 
-    FO_FORCE_INLINE explicit refcount_ptr(adopt_tag /*tag*/, T* p) noexcept
-    {
-        _ptr = p;
-    }
+    FO_FORCE_INLINE explicit refcount_ptr(adopt_tag /*tag*/, T* p) noexcept { _ptr = p; }
 
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
     {
@@ -338,6 +336,7 @@ private:
 
     T* _ptr {};
 };
+static_assert(std::is_standard_layout_v<refcount_ptr<int>>);
 
 FO_END_NAMESPACE();
 template<typename T>
@@ -495,6 +494,8 @@ using weak_ptr = propagate_const<std::weak_ptr<T>>;
 
 template<typename T>
 using unique_del_ptr = propagate_const<std::unique_ptr<T, std::function<void(T*)>>>;
+
+static_assert(std::is_standard_layout_v<unique_ptr<int>>);
 
 FO_END_NAMESPACE();
 template<typename T>

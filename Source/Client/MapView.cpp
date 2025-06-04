@@ -67,6 +67,16 @@ static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
     return cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
 }
 
+void SpritePattern::Finish()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!Finished) {
+        Sprites.reset();
+        Finished = true;
+    }
+}
+
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
@@ -147,9 +157,7 @@ void MapView::OnDestroySelf()
     }
 
     for (auto& pattern : _spritePatterns) {
-        pattern->Sprites.clear();
-        pattern->FinishCallback = nullptr;
-        pattern->Finished = true;
+        pattern->Finish();
     }
 
     _mapSprites.Invalidate();
@@ -169,6 +177,7 @@ void MapView::OnDestroySelf()
     _nonTileItems.clear();
     _processingItems.clear();
     _itemsMap.clear();
+    _spritePatterns.clear();
 }
 
 void MapView::EnableMapperMode()
@@ -881,9 +890,8 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
 
     auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
 
-    pattern->SprName = name;
-    pattern->SprCount = numeric_cast<int>(count);
-    pattern->Sprites.emplace_back(std::move(spr));
+    pattern->Sprites = SafeAlloc::MakeUnique<vector<shared_ptr<Sprite>>>();
+    pattern->Sprites->emplace_back(std::move(spr));
 
     for (size_t i = 1; i < count; i++) {
         auto next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
@@ -891,20 +899,11 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
         next_spr->Prewarm();
         next_spr->PlayDefault();
 
-        pattern->Sprites.emplace_back(std::move(next_spr));
+        pattern->Sprites->emplace_back(std::move(next_spr));
     }
 
-    pattern->FinishCallback = [this, ppattern = pattern.get()]() {
-        const auto it = std::ranges::find_if(_spritePatterns, [ppattern](auto&& p) { return p.get() == ppattern; });
-        FO_RUNTIME_ASSERT(it != _spritePatterns.end());
-        it->get()->Sprites.clear();
-        _spritePatterns.erase(it);
-        ppattern->FinishCallback = nullptr;
-        ppattern->Finished = true;
-    };
-
-    _spritePatterns.emplace_back(std::move(pattern));
-    return _spritePatterns.back().get();
+    _spritePatterns.emplace_back(pattern);
+    return pattern.get();
 }
 
 void MapView::SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool refresh)
@@ -1157,7 +1156,16 @@ void MapView::RebuildMap(ipos screen_raw_hex)
 
         // Patterns
         if (!_spritePatterns.empty()) {
-            for (const auto& pattern : _spritePatterns) {
+            for (auto it = _spritePatterns.begin(); it != _spritePatterns.end();) {
+                const auto& pattern = *it;
+
+                if (pattern->Finished) {
+                    it = _spritePatterns.erase(it);
+                    continue;
+                }
+
+                ++it;
+
                 if ((hex.x % pattern->EveryHex.x) != 0) {
                     continue;
                 }
@@ -1181,7 +1189,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
                     continue;
                 }
 
-                const auto* spr = pattern->Sprites[(hex.y * (pattern->Sprites.size() / 5) + hex.x) % pattern->Sprites.size()].get();
+                const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
                 auto& mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
                     {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
                     spr, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1457,7 +1465,16 @@ void MapView::RebuildMapOffset(ipos hex_offset)
 
         // Patterns
         if (!_spritePatterns.empty()) {
-            for (const auto& pattern : _spritePatterns) {
+            for (auto it = _spritePatterns.begin(); it != _spritePatterns.end();) {
+                const auto& pattern = *it;
+
+                if (pattern->Finished) {
+                    it = _spritePatterns.erase(it);
+                    continue;
+                }
+
+                ++it;
+
                 if ((hex.x % pattern->EveryHex.x) != 0) {
                     continue;
                 }
@@ -1481,7 +1498,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
                     continue;
                 }
 
-                const auto* spr = pattern->Sprites[(hex.y * (pattern->Sprites.size() / 5) + hex.x) % pattern->Sprites.size()].get();
+                const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
                 auto& mspr = _mapSprites.InsertSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
                     {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
                     spr, nullptr, nullptr, nullptr, nullptr, nullptr);

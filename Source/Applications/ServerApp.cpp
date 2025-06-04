@@ -121,9 +121,6 @@ int main(int argc, char** argv) // Handled by SDL
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
-                        SetExceptionCallback(MessageBox::ShowErrorMessage);
-                        auto hide_msg_box = ScopeCallback([]() noexcept { SetExceptionCallback(nullptr); });
-
                         try {
                             auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
                             clients.emplace_back(std::move(client));
@@ -222,9 +219,6 @@ int main(int argc, char** argv) // Handled by SDL
             }
 
             for (auto& client : clients) {
-                SetExceptionCallback(MessageBox::ShowErrorMessage);
-                auto hide_msg_box = ScopeCallback([]() noexcept { SetExceptionCallback(nullptr); });
-
                 try {
                     App->Input.ClearEvents();
 

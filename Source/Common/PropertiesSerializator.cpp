@@ -139,7 +139,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
-    FO_RUNTIME_ASSERT(!prop->IsTemporary());
 
     props->ValidateForRawData(prop);
 
@@ -228,7 +227,6 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
-    FO_RUNTIME_ASSERT(!prop->IsTemporary());
 
     const BaseTypeInfo& base_type_info = prop->GetBaseTypeInfo();
     const auto* pdata = raw_data.data();
@@ -383,7 +381,6 @@ void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
 
     const auto set_data = [props, prop](const_span<uint8> raw_data) { props->SetRawData(prop, raw_data); };
 
@@ -583,7 +580,6 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
 
     const auto& base_type_info = prop->GetBaseTypeInfo();
 

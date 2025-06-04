@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE();
 
-RawCopyBaker::RawCopyBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
-    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
+RawCopyBaker::RawCopyBaker(BakerData& data) :
+    BaseBaker(data)
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -71,7 +71,6 @@ void RawCopyBaker::BakeFiles(FileCollection files)
         if (!IsExtSupported(ext)) {
             continue;
         }
-
         if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
             continue;
         }

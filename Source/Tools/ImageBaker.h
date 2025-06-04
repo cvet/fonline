@@ -79,7 +79,7 @@ public:
 
     using LoadFunc = std::function<FrameCollection(string_view, string_view, FileReader)>;
 
-    ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit ImageBaker(BakerData& data);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = delete;
     auto operator=(const ImageBaker&) = delete;

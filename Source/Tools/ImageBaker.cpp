@@ -100,8 +100,8 @@ static uint8 FoPalette[] = {
 static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
-ImageBaker::ImageBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files) :
-    BaseBaker(settings, std::move(pack_name), std::move(bake_checker), std::move(write_data), baked_files)
+ImageBaker::ImageBaker(BakerData& data) :
+    BaseBaker(data)
 {
     FO_STACK_TRACE_ENTRY();
 

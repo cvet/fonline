@@ -83,6 +83,14 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     CreateGlobalData();
 
+    SetExceptionCallback([](string_view message, string_view traceback, bool fatal_error) {
+        WriteLog(LogType::Error, "{}\n{}", message, traceback);
+
+        if (fatal_error) {
+            WriteLog(LogType::Error, "Shutdown!");
+        }
+    });
+
 #if FO_TRACY
     TracySetProgramName(FO_NICE_NAME);
 #endif

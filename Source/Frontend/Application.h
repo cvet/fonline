@@ -365,6 +365,7 @@ enum class AppInitFlags : uint8
     None = 0,
     ClientMode = 1 << 0,
     DisableLogTags = 1 << 1,
+    ShowMessageOnException = 1 << 2,
 };
 
 class Application final

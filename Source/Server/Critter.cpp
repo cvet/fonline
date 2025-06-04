@@ -727,56 +727,6 @@ void Critter::SendAndBroadcast_Attachments()
     }
 }
 
-auto Critter::IsTalking() const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return Talk.Type != TalkType::None;
-}
-
-auto Critter::GetTalkingCritters() const noexcept -> int32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    int32 talkers = 0;
-
-    for (const auto* cr : VisCr) {
-        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
-            talkers++;
-        }
-    }
-
-    return talkers;
-}
-
-auto Critter::GetBarterCritters() const noexcept -> int32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto barter = 0;
-
-    for (const auto* cr : VisCr) {
-        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId() && cr->Talk.Barter) {
-            barter++;
-        }
-    }
-
-    return barter;
-}
-
-auto Critter::IsFreeToTalk() const noexcept -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto max_talkers = GetMaxTalkers();
-
-    if (max_talkers == 0) {
-        max_talkers = _engine->Settings.NpcMaxTalkers;
-    }
-
-    return GetTalkingCritters() < max_talkers;
-}
-
 void Critter::Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
@@ -891,15 +841,6 @@ void Critter::Send_Teleport(const Critter* cr, mpos to_hex)
 
     if (_player) {
         _player->Send_Teleport(cr, to_hex);
-    }
-}
-
-void Critter::Send_Talk()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_Talk();
     }
 }
 

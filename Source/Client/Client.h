@@ -78,7 +78,7 @@ struct VideoPlayback
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
 };
-// Todo: fix static_assert(std::is_standard_layout_v<VideoPlayback>);
+static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
 enum class EffectType : uint32
@@ -146,7 +146,6 @@ public:
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
-    void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int32 noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
@@ -246,8 +245,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenSizeChanged);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnDialogData, ident_t /*talkerId*/, hstring /*dialogId*/, string /*text*/, vector<string> /*answers*/, int32 /*dialogTime*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
     EffectManager EffectMngr;
@@ -302,7 +299,6 @@ protected:
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
-    void Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
@@ -335,7 +331,6 @@ protected:
     void Net_OnCritterAttachments();
     void Net_OnChosenAddItem();
     void Net_OnChosenRemoveItem();
-    void Net_OnChosenTalk();
     void Net_OnTimeSync();
     void Net_OnLoadMap();
     void Net_OnSomeItems();

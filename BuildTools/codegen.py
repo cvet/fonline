@@ -18,6 +18,7 @@ parser.add_argument('-buildhash', dest='buildhash', required=True, help='build h
 parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
 parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
+parser.add_argument('-commonheader', dest='commonheader', action='append', help='path to common header file')
 parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
 parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
@@ -475,8 +476,8 @@ def parseTags():
                     braces += 1
                 elif c == '>':
                     braces -= 1
-        assert r.strip()
-        result.append(r.strip())
+        if r.strip():
+            result.append(r.strip())
         return result
 
     def parseTypeTags1():
@@ -753,17 +754,36 @@ def parseTags():
                             line = line[:commPos]
                         if not line:
                             continue
-                        sep = line.find(' ')
-                        assert sep != -1
+                        
                         lTok = tokenize(line)
                         assert len(lTok) >= 2
-                        if lTok[0] != 'void':
+                        
+                        if lTok[0] not in ['void', 'auto']:
                             if lTok[0] == 'vector':
                                 fields.append((engineTypeToMetaType(lTok[0] + lTok[1] + lTok[2] + lTok[3]), lTok[4], []))
                             else:
                                 fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
                         else:
-                            methods.append((lTok[1], 'void', [], []))
+                            if lTok[0] == 'auto':
+                                end = lTok[1].find(';')
+                                offs =  lTok[end::-1].index('>') - 1
+                                ret = ''.join(lTok[end-offs:end])
+                            else:
+                                ret = 'void'
+                            
+                            funcBegin = line.index('(')
+                            funcEnd = line.index(')')
+                            assert funcBegin != -1 and funcEnd != -1 and funcBegin < funcEnd, 'Invalid function definition'
+                            funcArgs = line[funcBegin+1:funcEnd]
+                            resultArgs = []
+                            for arg in splitEngineArgs(funcArgs):
+                                arg = arg.strip()
+                                sep = arg.rfind(' ')
+                                argType = engineTypeToMetaType(arg[:sep].rstrip())
+                                argName = arg[sep + 1:]
+                                resultArgs.append((argType, argName))
+                            
+                            methods.append((lTok[1], engineTypeToMetaType(ret), resultArgs, []))
                 
                 codeGenTags['ExportRefType'].append((target, refTypeName, fields, methods, exportFlags, comment))
                 
@@ -851,7 +871,7 @@ def parseTags():
                 ret = engineTypeToMetaType(tagContext[tagContext.rfind(' ', 0, retSpace - 1):retSpace].strip())
                 
                 resultArgs = []
-                for arg in splitEngineArgs(funcArgs)[1 if entity != 'Global' else 1:]:
+                for arg in splitEngineArgs(funcArgs)[1:]:
                     arg = arg.strip()
                     sep = arg.rfind(' ')
                     argType = engineTypeToMetaType(arg[:sep].rstrip())
@@ -1406,7 +1426,8 @@ def genGenericCode():
         globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
     if not isHookEnabled('SetupBakersHook'):
         globalLines.append('class BaseBaker;')
-        globalLines.append('void SetupBakersHook(vector<unique_ptr<BaseBaker>>&) { /* Stub */ }')
+        globalLines.append('class BakerData;')
+        globalLines.append('void SetupBakersHook(vector<unique_ptr<BaseBaker>>&, BakerData&) { /* Stub */ }')
     globalLines.append('')
     
     # Engine properties
@@ -1946,7 +1967,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     for f in fields:
                         globalLines.append('    ' + metaTypeToASEngineType(f[0]) + ' ' + f[1] + ';')
                     for m in methods:
-                        globalLines.append('    ' + metaTypeToASEngineType(m[1]) + ' ' + m[0] + '() { }')
+                        #argsStr = ', '.join([metaTypeToASEngineType(p[0]) for p in m[2]])
+                        #globalLines.append('    ' + metaTypeToASEngineType(m[1]) + ' ' + m[0] + '(' + argsStr + ') { ' + ('return {' + '};' if m[1] != 'void' else '') + ' }')
+                        globalLines.append('    void ' + m[0] + '() { }')
                     globalLines.append('};')
                     globalLines.append('')
             
@@ -2368,7 +2391,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 for f in fields:
                     registerLines.append('AS_VERIFY(as_engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
                 for m in methods:
-                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
+                    argsStr = ', '.join([metaTypeToASType(p[0], forceNoConst=True) + ' ' + p[1] for p in m[2]])
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '(' + argsStr + ')", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
@@ -2508,10 +2532,15 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             registerLines.append('')
             postRegisterLines.append('')
         
+        includeLines = []
+        for commonheader in args.commonheader:
+            includeLines.append('#include "' + commonheader + '"')
+        
         # Modify file content (from bottom to top)
         insertCodeGenLines(postRegisterLines, 'PostRegister')
         insertCodeGenLines(registerLines, 'Register')
         insertCodeGenLines(globalLines, 'Global')
+        insertCodeGenLines(includeLines, 'Includes')
         insertCodeGenLines(defineLines, 'Defines')
 
     elif lang == 'Mono':

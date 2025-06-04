@@ -46,8 +46,7 @@ FO_BEGIN_NAMESPACE();
 Player::Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
-    _connection {std::move(connection)},
-    _talkNextTime {_engine->GameTime.GetFrameTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
+    _connection {std::move(connection)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -447,46 +446,6 @@ void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 
     out_buf->Write(cr->GetId());
     out_buf->Write(to_hex);
-}
-
-void Player::Send_Talk()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_controlledCr);
-
-    const auto close = _controlledCr->Talk.Type == TalkType::None;
-    const auto is_npc = _controlledCr->Talk.Type == TalkType::Critter;
-
-    auto out_buf = _connection->WriteMsg(NetMessage::TalkNpc);
-
-    if (close) {
-        out_buf->Write(is_npc);
-        out_buf->Write(_controlledCr->Talk.CritterId);
-        out_buf->Write(_controlledCr->Talk.DialogPackId);
-        out_buf->Write(numeric_cast<int32>(0));
-    }
-    else {
-        const auto all_answers = numeric_cast<int32>(_controlledCr->Talk.CurDialog.Answers.size());
-
-        auto talk_time = _controlledCr->Talk.TalkTime;
-
-        if (talk_time) {
-            const auto diff = _engine->GameTime.GetFrameTime() - _controlledCr->Talk.StartTime;
-            talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds(1);
-        }
-
-        out_buf->Write(is_npc);
-        out_buf->Write(_controlledCr->Talk.CritterId);
-        out_buf->Write(_controlledCr->Talk.DialogPackId);
-        out_buf->Write(all_answers);
-        out_buf->Write(_controlledCr->Talk.Lexems);
-        out_buf->Write(_controlledCr->Talk.CurDialog.TextId);
-        for (const auto& answer : _controlledCr->Talk.CurDialog.Answers) {
-            out_buf->Write(answer.TextId);
-        }
-        out_buf->Write(talk_time.to_ms<int32>());
-    }
 }
 
 void Player::Send_TimeSync()

@@ -1,12 +1,6 @@
 namespace Core // Sort -10
 {
 
-// Dialog links
-#define DIALOG_END    (-1)
-#define DIALOG_BACK   (-2)
-#define DIALOG_BARTER (-3)
-#define DIALOG_ATTACK (-4)
-
 // Access levels
 #define ACCESS_CLIENT (0)
 #define ACCESS_TESTER (1)

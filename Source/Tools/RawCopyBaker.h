@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(RawCopyBakerException);
 class RawCopyBaker final : public BaseBaker
 {
 public:
-    RawCopyBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit RawCopyBaker(BakerData& data);
     RawCopyBaker(const RawCopyBaker&) = delete;
     RawCopyBaker(RawCopyBaker&&) noexcept = delete;
     auto operator=(const RawCopyBaker&) = delete;

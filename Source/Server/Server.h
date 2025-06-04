@@ -38,7 +38,6 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
-#include "Dialogs.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "Item.h"
@@ -85,7 +84,6 @@ public:
 
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
     void VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
-    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos hex, bool ignore_distance);
 
     auto CreateCritter(hstring pid, bool for_player) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
@@ -160,10 +158,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*talker*/, bool /*begin*/, int32 /*talkers*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, int32 /*barterCount*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemFinish, Item* /*item*/);
@@ -174,7 +168,6 @@ public:
     MapManager MapMngr;
     CritterManager CrMngr;
     ItemManager ItemMngr;
-    DialogManager DlgMngr;
 
     DataBase DbStorage {};
     const hstring GameCollectionName = Hashes.ToHashedString("Game");
@@ -232,7 +225,6 @@ private:
     void Process_Dir(Player* player);
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
-    void Process_Dialog(Player* player);
     void Process_Property(Player* player);
     void Process_RemoteCall(Player* player);
 
@@ -252,16 +244,9 @@ private:
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemBlockLines(Entity* entity, const Property* prop);
 
-    void ProcessCritter(Critter* cr);
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
-
-    auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
-    auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint32;
-    auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool;
-    auto DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint32;
 
     void LogToClients(string_view str);
     void DispatchLogToClients();

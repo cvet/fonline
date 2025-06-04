@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(MapBakerException);
 class MapBaker final : public BaseBaker
 {
 public:
-    MapBaker(const BakerSettings& settings, string pack_name, BakeCheckerCallback bake_checker, AsyncWriteDataCallback write_data, const FileSystem* baked_files);
+    explicit MapBaker(BakerData& data);
     MapBaker(const MapBaker&) = delete;
     MapBaker(MapBaker&&) noexcept = delete;
     auto operator=(const MapBaker&) = delete;

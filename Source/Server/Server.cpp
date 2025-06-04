@@ -53,8 +53,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
-    ItemMngr(this),
-    DlgMngr(*this)
+    ItemMngr(this)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -298,17 +297,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
         }
-
-        return std::nullopt;
-    });
-
-    // Dialogs
-    _starter.AddJob([this] {
-        FO_STACK_TRACE_ENTRY_NAMED("InitDialogsJob");
-
-        WriteLog("Load dialogs data");
-
-        DlgMngr.LoadFromResources(Resources);
 
         return std::nullopt;
     });
@@ -598,7 +586,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
 
                 try {
-                    ProcessCritter(cr);
+                    ProcessCritterMoving(cr);
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
@@ -1083,9 +1071,6 @@ void FOServer::ProcessPlayer(Player* player)
         case NetMessage::SendStopCritterMove:
             Process_StopMove(player);
             break;
-        case NetMessage::SendTalkNpc:
-            Process_Dialog(player);
-            break;
         case NetMessage::RemoteCall:
             Process_RemoteCall(player);
             break;
@@ -1380,7 +1365,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint32>();
+        const auto count = buf.Read<int32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1397,7 +1382,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDITEM_SELF: {
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<uint32>();
+        const auto count = buf.Read<int32>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1582,21 +1567,6 @@ void FOServer::DispatchLogToClients()
     }
 
     _logLines.clear();
-}
-
-void FOServer::ProcessCritter(Critter* cr)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Moving
-    if (!cr->IsDestroyed()) {
-        ProcessCritterMoving(cr);
-    }
-
-    // Talking
-    if (!cr->IsDestroyed()) {
-        CrMngr.ProcessTalk(cr, false);
-    }
 }
 
 auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
@@ -1899,12 +1869,6 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         }
     }
 
-    // Check active talk
-    if (cr->Talk.Type != TalkType::None) {
-        CrMngr.ProcessTalk(cr, true);
-        cr->Send_Talk();
-    }
-
     OnCritterSendInitialInfo.Fire(cr);
 
     cr->Send_PlaceToGameComplete();
@@ -2128,7 +2092,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     }
 
     // Check name length
-    const auto name_len_utf8 = strex(name).lengthUtf8();
+    const auto name_len_utf8 = numeric_cast<int32>(strex(name).lengthUtf8());
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
@@ -2231,7 +2195,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     }
 
     // Check for name length
-    const auto name_len_utf8 = strex(name).lengthUtf8();
+    const auto name_len_utf8 = numeric_cast<int32>(strex(name).lengthUtf8());
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
@@ -2369,7 +2333,9 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
     }
     else {
-        if (auto* cr = player->GetControlledCritter(); cr != nullptr) {
+        auto* cr = player->GetControlledCritter();
+
+        if (cr != nullptr) {
             SendCritterInitialInfo(cr, nullptr);
         }
     }
@@ -2513,7 +2479,7 @@ void FOServer::Process_Move(Player* player)
 
     StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
-    if (corrected_speed != speed) {
+    if (corrected_speed != numeric_cast<int32>(speed)) {
         player->Send_MovingSpeed(cr);
     }
 }
@@ -3537,776 +3503,6 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
     cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
 }
 
-auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (base_dlg.Id < 2) {
-        WriteLog("Wrong dialog id {}", base_dlg.Id);
-        return false;
-    }
-
-    compiled_dlg = base_dlg;
-
-    for (auto it_a = compiled_dlg.Answers.begin(); it_a != compiled_dlg.Answers.end();) {
-        if (!DialogCheckDemand(npc, cl, *it_a, false)) {
-            it_a = compiled_dlg.Answers.erase(it_a);
-        }
-        else {
-            ++it_a;
-        }
-    }
-
-    if (!Settings.NoAnswerShuffle && !compiled_dlg.NoShuffle) {
-        static thread_local std::random_device rd;
-        static thread_local std::mt19937 rnd(rd());
-        std::shuffle(compiled_dlg.Answers.begin(), compiled_dlg.Answers.end(), rnd);
-    }
-
-    return true;
-}
-
-auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (answer.Demands.empty()) {
-        return true;
-    }
-
-    Critter* master = nullptr;
-    Critter* slave = nullptr;
-
-    for (auto it = answer.Demands.begin(), end = answer.Demands.end(); it != end; ++it) {
-        const auto& demand = *it;
-
-        if (recheck && demand.NoRecheck) {
-            continue;
-        }
-
-        switch (demand.Who) {
-        case DR_WHO_PLAYER:
-            master = cl;
-            slave = npc;
-            break;
-        case DR_WHO_NPC:
-            master = npc;
-            slave = cl;
-            break;
-        default:
-            continue;
-        }
-
-        if (master == nullptr) {
-            continue;
-        }
-
-        switch (demand.Type) {
-        case DR_PROP_GLOBAL:
-        case DR_PROP_CRITTER:
-        case DR_PROP_ITEM:
-        case DR_PROP_LOCATION:
-        case DR_PROP_MAP: {
-            const Entity* entity = nullptr;
-
-            if (demand.Type == DR_PROP_GLOBAL) {
-                entity = this;
-            }
-            else if (demand.Type == DR_PROP_CRITTER) {
-                entity = master;
-            }
-            else if (demand.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(CritterItemSlot::Main);
-            }
-            else if (demand.Type == DR_PROP_LOCATION) {
-                auto* map = EntityMngr.GetMap(master->GetMapId());
-                entity = (map != nullptr ? map->GetLocation() : nullptr);
-            }
-            else if (demand.Type == DR_PROP_MAP) {
-                entity = EntityMngr.GetMap(master->GetMapId());
-            }
-
-            if (entity == nullptr) {
-                break;
-            }
-
-            const auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(demand.ParamIndex));
-
-            switch (demand.Op) {
-            case '>':
-                if (val > demand.Value) {
-                    continue;
-                }
-                break;
-            case '<':
-                if (val < demand.Value) {
-                    continue;
-                }
-                break;
-            case '=':
-                if (val == demand.Value) {
-                    continue;
-                }
-                break;
-            case '!':
-                if (val != demand.Value) {
-                    continue;
-                }
-                break;
-            case '}':
-                if (val >= demand.Value) {
-                    continue;
-                }
-                break;
-            case '{':
-                if (val <= demand.Value) {
-                    continue;
-                }
-                break;
-            default:
-                break;
-            }
-        } break;
-        case DR_ITEM: {
-            const auto pid = demand.ParamHash;
-            switch (demand.Op) {
-            case '>':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) > demand.Value) {
-                    continue;
-                }
-                break;
-            case '<':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) < demand.Value) {
-                    continue;
-                }
-                break;
-            case '=':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) == demand.Value) {
-                    continue;
-                }
-                break;
-            case '!':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) != demand.Value) {
-                    continue;
-                }
-                break;
-            case '}':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) >= demand.Value) {
-                    continue;
-                }
-                break;
-            case '{':
-                if (numeric_cast<int32>(master->CountInvItemPid(pid)) <= demand.Value) {
-                    continue;
-                }
-                break;
-            default:
-                break;
-            }
-        } break;
-        case DR_SCRIPT: {
-            cl->Talk.Locked = true;
-            if (DialogScriptDemand(demand, master, slave)) {
-                cl->Talk.Locked = false;
-                continue;
-            }
-            cl->Talk.Locked = false;
-        } break;
-        case DR_OR:
-            return true;
-        default:
-            continue;
-        }
-
-        auto or_mod = false;
-        for (; it != end; ++it) {
-            if (it->Type == DR_OR) {
-                or_mod = true;
-                break;
-            }
-        }
-        if (!or_mod) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (answer.Results.empty()) {
-        return 0;
-    }
-
-    uint32 force_dialog = 0;
-    Critter* master = nullptr;
-    Critter* slave = nullptr;
-
-    for (const auto& result : answer.Results) {
-        switch (result.Who) {
-        case DR_WHO_PLAYER:
-            master = cl;
-            slave = npc;
-            break;
-        case DR_WHO_NPC:
-            master = npc;
-            slave = cl;
-            break;
-        default:
-            continue;
-        }
-
-        if (master == nullptr) {
-            continue;
-        }
-
-        switch (result.Type) {
-        case DR_PROP_GLOBAL:
-        case DR_PROP_CRITTER:
-        case DR_PROP_ITEM:
-        case DR_PROP_LOCATION:
-        case DR_PROP_MAP: {
-            Entity* entity = nullptr;
-
-            if (result.Type == DR_PROP_GLOBAL) {
-                entity = this;
-            }
-            else if (result.Type == DR_PROP_CRITTER) {
-                entity = master;
-            }
-            else if (result.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(CritterItemSlot::Main);
-            }
-            else if (result.Type == DR_PROP_LOCATION) {
-                auto* map = EntityMngr.GetMap(master->GetMapId());
-                entity = (map != nullptr ? map->GetLocation() : nullptr);
-            }
-            else if (result.Type == DR_PROP_MAP) {
-                entity = EntityMngr.GetMap(master->GetMapId());
-            }
-
-            if (entity == nullptr) {
-                break;
-            }
-
-            auto val = entity->GetProperties().GetValueAsInt(numeric_cast<int32>(result.ParamIndex));
-
-            switch (result.Op) {
-            case '+':
-                val += result.Value;
-                break;
-            case '-':
-                val -= result.Value;
-                break;
-            case '*':
-                val *= result.Value;
-                break;
-            case '/':
-                val /= result.Value;
-                break;
-            case '=':
-                val = result.Value;
-                break;
-            default:
-                break;
-            }
-
-            entity->GetPropertiesForEdit().SetValueAsInt(numeric_cast<int32>(result.ParamIndex), val);
-        }
-            continue;
-        case DR_ITEM: {
-            const auto pid = result.ParamHash;
-            const auto cur_count = numeric_cast<int32>(master->CountInvItemPid(pid));
-            auto need_count = cur_count;
-
-            switch (result.Op) {
-            case '+':
-                need_count += result.Value;
-                break;
-            case '-':
-                need_count -= result.Value;
-                break;
-            case '*':
-                need_count *= result.Value;
-                break;
-            case '/':
-                need_count /= result.Value;
-                break;
-            case '=':
-                need_count = result.Value;
-                break;
-            default:
-                continue;
-            }
-
-            need_count = std::max(need_count, 0);
-
-            if (cur_count == need_count) {
-                continue;
-            }
-
-            ItemMngr.SetItemCritter(master, pid, need_count);
-        }
-            continue;
-        case DR_SCRIPT: {
-            cl->Talk.Locked = true;
-            force_dialog = DialogScriptResult(result, master, slave);
-            cl->Talk.Locked = false;
-        }
-            continue;
-        default:
-            continue;
-        }
-    }
-
-    return force_dialog;
-}
-
-void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, mpos dlg_hex, bool ignore_distance)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (cl->Talk.Locked) {
-        WriteLog("Dialog locked, client '{}'", cl->GetName());
-        return;
-    }
-    if (cl->Talk.Type != TalkType::None) {
-        CrMngr.CloseTalk(cl);
-    }
-
-    hstring selected_dlg_pack_id = dlg_pack_id;
-    DialogPack* dialog_pack;
-    vector<Dialog>* dialogs;
-
-    // Talk with npc
-    if (npc != nullptr) {
-        if (!selected_dlg_pack_id) {
-            const auto npc_dlg_id = npc->GetDialogId();
-            if (!npc_dlg_id) {
-                return;
-            }
-
-            selected_dlg_pack_id = npc_dlg_id;
-        }
-
-        if (!ignore_distance) {
-            if (cl->GetMapId() != npc->GetMapId()) {
-                WriteLog("Different maps, npc '{}' {}, client '{}' {}", npc->GetName(), npc->GetMapId(), cl->GetName(), cl->GetMapId());
-                return;
-            }
-
-            auto talk_distance = npc->GetTalkDistance();
-            talk_distance = (talk_distance != 0 ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-
-            if (!GeometryHelper::CheckDist(cl->GetHex(), npc->GetHex(), talk_distance)) {
-                cl->Send_Moving(cl);
-                cl->Send_Moving(npc);
-                cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
-                WriteLog("Wrong distance to npc '{}', client '{}'", npc->GetName(), cl->GetName());
-                return;
-            }
-
-            auto* map = EntityMngr.GetMap(cl->GetMapId());
-            if (map == nullptr) {
-                return;
-            }
-
-            TraceData trace;
-            trace.TraceMap = map;
-            trace.StartHex = cl->GetHex();
-            trace.TargetHex = npc->GetHex();
-            trace.MaxDist = talk_distance;
-            trace.FindCr = npc;
-            MapMngr.TraceBullet(trace);
-
-            if (!trace.IsCritterFound) {
-                cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
-                return;
-            }
-        }
-
-        if (!npc->IsAlive()) {
-            cl->Send_InfoMessage(EngineInfoMessage::DialogNpcNotLife);
-            WriteLog("Npc '{}' bad condition, client '{}'", npc->GetName(), cl->GetName());
-            return;
-        }
-
-        if (!npc->IsFreeToTalk()) {
-            cl->Send_InfoMessage(EngineInfoMessage::DialogManyTalkers);
-            return;
-        }
-
-        // Todo: don't remeber but need check (IsPlaneNoTalk)
-
-        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkingCritters() + 1) || !OnCritterTalk.Fire(cl, npc, true, npc->GetTalkingCritters() + 1)) {
-            return;
-        }
-
-        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
-        dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-
-        if (dialogs == nullptr || dialogs->empty()) {
-            return;
-        }
-
-        if (!ignore_distance) {
-            const auto dir = GeometryHelper::GetFarDir(cl->GetHex(), npc->GetHex());
-
-            npc->ChangeDir(GeometryHelper::ReverseDir(dir));
-            npc->Broadcast_Dir();
-            cl->ChangeDir(dir);
-            cl->Broadcast_Dir();
-            cl->Send_Dir(cl);
-        }
-    }
-    // Talk with hex
-    else {
-        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHex(), dlg_hex, Settings.TalkDistance + cl->GetMultihex())) {
-            cl->Send_Moving(cl);
-            cl->Send_InfoMessage(EngineInfoMessage::DialogDistTooLong);
-            WriteLog("Wrong distance to hexes, hex {}, client '{}'", dlg_hex, cl->GetName());
-            return;
-        }
-
-        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
-        dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-        if (dialogs == nullptr || dialogs->empty()) {
-            WriteLog("No dialogs, hex {}, client '{}'", dlg_hex, cl->GetName());
-            return;
-        }
-    }
-
-    // Predialogue installations
-    auto it_d = dialogs->begin();
-    auto go_dialog = 0xFFFFFFFFu;
-    auto it_a = it_d->Answers.begin();
-
-    for (; it_a != it_d->Answers.end(); ++it_a) {
-        if (DialogCheckDemand(npc, cl, *it_a, false)) {
-            go_dialog = it_a->Link;
-        }
-        if (go_dialog != 0xFFFFFFFFu) {
-            break;
-        }
-    }
-
-    if (go_dialog == 0xFFFFFFFFu) {
-        return;
-    }
-
-    // Use result
-    const auto force_dialog = DialogUseResult(npc, cl, *it_a);
-
-    if (force_dialog != 0) {
-        if (force_dialog == 0xFFFFFFFFu) {
-            return;
-        }
-
-        go_dialog = force_dialog;
-    }
-
-    // Find dialog
-    it_d = std::ranges::find_if(*dialogs, [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
-
-    if (it_d == dialogs->end()) {
-        cl->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", go_dialog, cl->GetName(), dialog_pack->PackId);
-        return;
-    }
-
-    // Compile
-    if (!DialogCompile(npc, cl, *it_d, cl->Talk.CurDialog)) {
-        cl->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
-        return;
-    }
-
-    if (npc != nullptr) {
-        cl->Talk.Type = TalkType::Critter;
-        cl->Talk.CritterId = npc->GetId();
-    }
-    else {
-        cl->Talk.Type = TalkType::Hex;
-        cl->Talk.TalkHexMap = cl->GetMapId();
-        cl->Talk.TalkHex = dlg_hex;
-    }
-
-    cl->Talk.DialogPackId = selected_dlg_pack_id;
-    cl->Talk.LastDialogId = go_dialog;
-    cl->Talk.StartTime = GameTime.GetFrameTime();
-    cl->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgTalkMaxTime};
-    cl->Talk.Barter = false;
-    cl->Talk.IgnoreDistance = ignore_distance;
-
-    // Get lexems
-    cl->Talk.Lexems.clear();
-
-    if (cl->Talk.CurDialog.DlgScriptFuncName) {
-        auto failed = false;
-
-        cl->Talk.Locked = true;
-        if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
-            failed = true;
-        }
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
-            failed = true;
-        }
-        cl->Talk.Locked = false;
-
-        if (failed) {
-            CrMngr.CloseTalk(cl);
-            cl->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
-            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
-            return;
-        }
-    }
-
-    // On head text
-    if (cl->Talk.CurDialog.Answers.empty()) {
-        /*if (npc != nullptr) {
-            npc->SendAndBroadcast_MsgLex(npc->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cl->Talk.CurDialog.TextId, cl->Talk.Lexems);
-        }
-        else {
-            auto* map = EntityMngr.GetMap(cl->GetMapId());
-
-            if (map != nullptr) {
-                map->SetTextMsg(dlg_hex, ucolor::clear, TextPackName::Dialogs, cl->Talk.CurDialog.TextId);
-            }
-        }*/
-
-        CrMngr.CloseTalk(cl);
-        return;
-    }
-
-    // Open dialog window
-    cl->Send_Talk();
-}
-
-void FOServer::Process_Dialog(Player* player)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto* connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
-
-    Critter* cr = player->GetControlledCritter();
-
-    const auto cr_id = in_buf->Read<ident_t>();
-    const auto dlg_pack_id = in_buf->Read<hstring>(Hashes);
-    const auto num_answer = in_buf->Read<uint8>();
-
-    in_buf.Unlock();
-
-    if (cr->Talk.Type == TalkType::None) {
-        BreakIntoDebugger();
-        CrMngr.CloseTalk(cr);
-        return;
-    }
-
-    if ((cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId != cr_id) || (cr->Talk.Type == TalkType::Hex && cr->Talk.DialogPackId != dlg_pack_id)) {
-        WriteLog("Invalid talk data '{}' {} {} {}", cr->GetName(), cr->Talk.Type, cr_id, dlg_pack_id);
-        BreakIntoDebugger();
-        CrMngr.CloseTalk(cr);
-        return;
-    }
-
-    CrMngr.ProcessTalk(cr, true);
-
-    if (cr->Talk.Type == TalkType::None) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    Critter* talker = nullptr;
-
-    if (cr->Talk.Type == TalkType::Critter) {
-        talker = EntityMngr.GetCritter(cr_id);
-
-        if (talker == nullptr) {
-            WriteLog("Critter with id {} not found, client '{}'", cr_id, cr->GetName());
-            BreakIntoDebugger();
-            cr->Send_InfoMessage(EngineInfoMessage::DialogNpcNotFound);
-            CrMngr.CloseTalk(cr);
-            return;
-        }
-    }
-
-    // Set dialogs
-    auto* dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
-    auto* dialogs = dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr;
-
-    if (dialogs == nullptr || dialogs->empty()) {
-        WriteLog("No dialogs, npc '{}', client '{}'", talker->GetName(), cr->GetName());
-        CrMngr.CloseTalk(cr);
-        return;
-    }
-
-    // Continue dialog
-    const auto* cur_dialog = &cr->Talk.CurDialog;
-    const auto last_dialog = cur_dialog->Id;
-
-    uint32 next_dlg_id;
-
-    if (!cr->Talk.Barter) {
-        // Barter
-        const auto do_barter = [&] {
-            if (cur_dialog->DlgScriptFuncName) {
-                cr->Send_InfoMessage(EngineInfoMessage::BarterNoBarterNow);
-                return;
-            }
-
-            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterCritters() + 1) || !OnCritterBarter.Fire(cr, talker, true, talker->GetBarterCritters() + 1)) {
-                cr->Talk.Barter = true;
-                cr->Talk.StartTime = GameTime.GetFrameTime();
-                cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgBarterMaxTime};
-            }
-        };
-
-        if (num_answer == ANSWER_BARTER) {
-            do_barter();
-            return;
-        }
-
-        // Refresh
-        if (num_answer == ANSWER_BEGIN) {
-            cr->Send_Talk();
-            return;
-        }
-
-        // End
-        if (num_answer == ANSWER_END) {
-            CrMngr.CloseTalk(cr);
-            return;
-        }
-
-        // Invalid answer
-        if (num_answer >= cur_dialog->Answers.size()) {
-            WriteLog("Wrong number of answer {}, client '{}'", num_answer, cr->GetName());
-            cr->Send_Talk(); // Refresh
-            return;
-        }
-
-        // Find answer
-        const auto* answer = &cur_dialog->Answers[num_answer];
-
-        // Check demand again
-        if (!DialogCheckDemand(talker, cr, *answer, true)) {
-            WriteLog("Secondary check of dialog demands fail, client '{}'", cr->GetName());
-            CrMngr.CloseTalk(cr); // End
-            return;
-        }
-
-        // Use result
-        const uint32 force_dlg_id = DialogUseResult(talker, cr, *answer);
-
-        if (force_dlg_id != 0) {
-            next_dlg_id = force_dlg_id;
-        }
-        else {
-            next_dlg_id = answer->Link;
-        }
-
-        // Special links
-        switch (next_dlg_id) {
-        case std::bit_cast<uint32>(-3):
-        case DIALOG_BARTER:
-            do_barter();
-            return;
-        case std::bit_cast<uint32>(-2):
-        case DIALOG_BACK:
-            if (cr->Talk.LastDialogId != 0) {
-                next_dlg_id = cr->Talk.LastDialogId;
-                break;
-            }
-            [[fallthrough]];
-        case std::bit_cast<uint32>(-1):
-        case DIALOG_END:
-            CrMngr.CloseTalk(cr);
-            return;
-        default:
-            break;
-        }
-    }
-    else {
-        cr->Talk.Barter = false;
-        next_dlg_id = cur_dialog->Id;
-
-        if (talker != nullptr) {
-            talker->OnBarter.Fire(cr, false, talker->GetBarterCritters() + 1);
-            OnCritterBarter.Fire(cr, talker, false, talker->GetBarterCritters() + 1);
-        }
-    }
-
-    // Find dialog
-    const auto it_d = std::ranges::find_if(*dialogs, [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
-
-    if (it_d == dialogs->end()) {
-        CrMngr.CloseTalk(cr);
-        cr->Send_InfoMessage(EngineInfoMessage::DialogFromLinkNotFound);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", next_dlg_id, cr->GetName(), dialog_pack->PackId);
-        return;
-    }
-
-    // Compile
-    if (!DialogCompile(talker, cr, *it_d, cr->Talk.CurDialog)) {
-        CrMngr.CloseTalk(cr);
-        cr->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
-        return;
-    }
-
-    if (next_dlg_id != last_dialog) {
-        cr->Talk.LastDialogId = last_dialog;
-    }
-
-    // Get lexems
-    cr->Talk.Lexems.clear();
-
-    if (cr->Talk.CurDialog.DlgScriptFuncName) {
-        bool failed = false;
-
-        cr->Talk.Locked = true;
-        if (auto func = ScriptSys.FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
-            failed = true;
-        }
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
-            failed = true;
-        }
-        cr->Talk.Locked = false;
-
-        if (failed) {
-            CrMngr.CloseTalk(cr);
-            cr->Send_InfoMessage(EngineInfoMessage::DialogCompileFail);
-            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
-            return;
-        }
-    }
-
-    // On head text
-    if (cr->Talk.CurDialog.Answers.empty()) {
-        /*if (talker != nullptr) {
-            talker->SendAndBroadcast_MsgLex(talker->VisCr, SAY_NORM_ON_HEAD, TextPackName::Dialogs, cr->Talk.CurDialog.TextId, cr->Talk.Lexems);
-        }
-        else {
-            auto* map = EntityMngr.GetMap(cr->GetMapId());
-
-            if (map != nullptr) {
-                map->SetTextMsg(cr->Talk.TalkHex, ucolor::clear, TextPackName::Dialogs, cr->Talk.CurDialog.TextId);
-            }
-        }*/
-
-        CrMngr.CloseTalk(cr);
-        return;
-    }
-
-    cr->Talk.StartTime = GameTime.GetFrameTime();
-    cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgTalkMaxTime};
-    cr->Send_Talk();
-}
-
 void FOServer::Process_RemoteCall(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4351,107 +3547,6 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Pro
     }
 
     return item;
-}
-
-auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    bool result = false;
-
-    switch (demand.ValuesCount) {
-    case 0:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
-    case 1:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
-    case 2:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
-    case 3:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
-    case 4:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
-    case 5:
-        return ScriptSys.CallFunc<bool, Critter*, Critter*, int32, int32, int32, int32, int32>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
-    default:
-        FO_UNREACHABLE_PLACE();
-    }
-}
-
-auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    switch (result.ValuesCount) {
-    case 0:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*>(result.AnswerScriptFuncName)) {
-            return func(master, slave) ? func.GetResult() : 0;
-        }
-        break;
-    case 1:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
-        }
-        break;
-    case 2:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
-        }
-        break;
-    case 3:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
-        }
-        break;
-    case 4:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
-        }
-        break;
-    case 5:
-        if (auto func = ScriptSys.FindFunc<uint32, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName)) {
-            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
-        }
-        break;
-    default:
-        FO_UNREACHABLE_PLACE();
-    }
-
-    switch (result.ValuesCount) {
-    case 0:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
-            return 0;
-        }
-        break;
-    case 1:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
-            return 0;
-        }
-        break;
-    case 2:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
-            return 0;
-        }
-        break;
-    case 3:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
-            return 0;
-        }
-        break;
-    case 4:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
-            return 0;
-        }
-        break;
-    case 5:
-        if (!ScriptSys.CallFunc<void, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
-            return 0;
-        }
-        break;
-    default:
-        FO_UNREACHABLE_PLACE();
-    }
-
-    return 0;
 }
 
 auto FOServer::MakePlayerId(string_view player_name) const -> ident_t

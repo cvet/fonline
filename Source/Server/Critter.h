@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "Dialogs.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "ServerEntity.h"
@@ -103,10 +102,6 @@ public:
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
-    [[nodiscard]] auto IsTalking() const noexcept -> bool;
-    [[nodiscard]] auto GetTalkingCritters() const noexcept -> int32;
-    [[nodiscard]] auto GetBarterCritters() const noexcept -> int32;
-    [[nodiscard]] auto IsFreeToTalk() const noexcept -> bool;
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
@@ -160,7 +155,6 @@ public:
     void Send_ChosenAddItem(const Item* item);
     void Send_ChosenRemoveItem(const Item* item);
     void Send_Teleport(const Critter* cr, mpos to_hex);
-    void Send_Talk();
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
     void Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item);
@@ -216,7 +210,6 @@ public:
     unordered_set<ident_t> VisItem {};
 
     shared_ptr<vector<Critter*>> GlobalMapGroup {};
-    TalkData Talk {};
 
     ident_t ViewMapId {};
     hstring ViewMapPid {};
@@ -259,7 +252,6 @@ private:
     refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
     vector<Item*> _invItems {};
-    nanotime _talkNextTime {};
 };
 
 FO_END_NAMESPACE();

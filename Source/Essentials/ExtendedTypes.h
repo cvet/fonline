@@ -53,7 +53,7 @@ struct ucolor
         rgba {}
     {
     }
-    explicit constexpr ucolor(uint32 rgba_) noexcept :
+    constexpr explicit ucolor(uint32 rgba_) noexcept :
         rgba {rgba_}
     {
     }
@@ -65,7 +65,7 @@ struct ucolor
         comp {r_, g_, b_, a_}
     {
     }
-    explicit constexpr ucolor(const ucolor& other, uint8 a_) noexcept :
+    constexpr explicit ucolor(const ucolor& other, uint8 a_) noexcept :
         rgba {other.rgba}
     {
         comp.a = a_;
