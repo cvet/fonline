@@ -32,7 +32,7 @@
 //
 
 #include "LineTracer.h"
-#include "GeometryHelper.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE();
 
