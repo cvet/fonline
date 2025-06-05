@@ -146,6 +146,14 @@ public:
     }
 
     template<typename T, typename... Args>
+    static auto MakeUniq(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> uniq_ptr<T>
+    {
+        static_assert(!is_refcounted_v<T>);
+
+        return uniq_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+    }
+
+    template<typename T, typename... Args>
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
         static_assert(is_refcounted_v<T>);

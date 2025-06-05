@@ -496,8 +496,8 @@ FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, s
         throw ScriptException("Video file not found", videoName);
     }
 
-    auto clip = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    auto tex = App->Render.CreateTexture(clip->GetSize(), true, false);
+    auto clip = SafeAlloc::MakeUniq<VideoClip>(file.GetData());
+    auto tex = SafeAlloc::MakeUniq<unique_ptr<RenderTexture>>(App->Render.CreateTexture(clip->GetSize(), true, false));
 
     clip->SetLooped(looped);
 
@@ -522,10 +522,10 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback
     }
 
     if (size.width > 0 && size.height > 0) {
-        video->Tex->UpdateTextureRegion({}, video->Tex->Size, video->Clip->RenderFrame().data());
+        (*video->Tex)->UpdateTextureRegion({}, (*video->Tex)->Size, video->Clip->RenderFrame().data());
 
         const auto r = IRect {pos.x, pos.y, pos.x + size.width, pos.y + size.height};
-        client->SprMngr.DrawTexture(video->Tex.get(), false, nullptr, &r);
+        client->SprMngr.DrawTexture((*video->Tex).get(), false, nullptr, &r);
     }
 
     if (video->Clip->IsStopped()) {

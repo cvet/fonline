@@ -82,6 +82,7 @@
 #include <numeric>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <set>
 #include <shared_mutex>
 #include <span>
