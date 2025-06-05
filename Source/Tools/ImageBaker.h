@@ -77,7 +77,7 @@ public:
         string NewName {};
     };
 
-    using LoadFunc = std::function<FrameCollection(string_view, string_view, FileReader)>;
+    using LoadFunc = function<FrameCollection(string_view, string_view, FileReader)>;
 
     explicit ImageBaker(BakerData& data);
     ImageBaker(const ImageBaker&) = delete;

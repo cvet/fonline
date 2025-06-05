@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-using LogFunc = std::function<void(string_view)>;
+using LogFunc = function<void(string_view)>;
 
 enum class LogType : uint8
 {

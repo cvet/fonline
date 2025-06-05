@@ -707,7 +707,7 @@ auto GeometryHelper::GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const ->
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const std::function<void(mpos)>& callback)
+void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 

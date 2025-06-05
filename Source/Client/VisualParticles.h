@@ -61,7 +61,7 @@ class ParticleManager final
     friend class SPK::FO::SparkQuadRenderer;
 
 public:
-    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
+    using TextureLoader = function<pair<RenderTexture*, FRect>(string_view)>;
 
     ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;

@@ -574,7 +574,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
     pdata += base_type_info.Size;
 }
 
-void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const std::function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 

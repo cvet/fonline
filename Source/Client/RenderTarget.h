@@ -61,7 +61,7 @@ struct RenderTarget
 class RenderTargetManager
 {
 public:
-    using FlushCallback = std::function<void()>;
+    using FlushCallback = function<void()>;
 
     RenderTargetManager(RenderSettings& settings, AppWindow* window, FlushCallback flush);
     RenderTargetManager(const RenderTargetManager&) = delete;

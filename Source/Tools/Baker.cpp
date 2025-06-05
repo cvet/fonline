@@ -433,7 +433,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 {
     FO_STACK_TRACE_ENTRY();
 
-    static unordered_map<string, std::function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
+    static unordered_map<string, function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
         {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Item*, bool>(func_name); }},
         {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, Critter*, StaticItem*, Item*, any_t>(func_name); }},
         {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},

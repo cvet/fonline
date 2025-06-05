@@ -2464,7 +2464,7 @@ void FOMapper::BufferCopy()
     BufferRawHex = _curMap->GetScreenRawHex();
 
     // Clear buffers
-    std::function<void(EntityBuf*)> free_entity = [&free_entity](EntityBuf* entity_buf) {
+    function<void(EntityBuf*)> free_entity = [&free_entity](EntityBuf* entity_buf) {
         delete entity_buf->Props;
         for (auto* child : entity_buf->Children) {
             free_entity(child);
@@ -2477,7 +2477,7 @@ void FOMapper::BufferCopy()
     EntitiesBuffer.clear();
 
     // Add entities to buffer
-    std::function<void(EntityBuf*, ClientEntity*)> add_entity;
+    function<void(EntityBuf*, ClientEntity*)> add_entity;
     add_entity = [&add_entity, this](EntityBuf* entity_buf, ClientEntity* entity) {
         mpos hex;
 
@@ -2543,7 +2543,7 @@ void FOMapper::BufferPaste()
 
         const mpos hex = _curMap->GetSize().FromRawPos(ipos {raw_hx, raw_hy});
 
-        std::function<void(const EntityBuf*, ItemView*)> add_item_inner_items;
+        function<void(const EntityBuf*, ItemView*)> add_item_inner_items;
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {

@@ -45,8 +45,8 @@ FO_BEGIN_NAMESPACE();
 class Properties;
 class ScriptSystem;
 
-using BakeCheckerCallback = std::function<bool(const string&, uint64)>;
-using AsyncWriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
+using BakeCheckerCallback = function<bool(const string&, uint64)>;
+using AsyncWriteDataCallback = function<void(string_view, const_span<uint8>)>;
 
 struct BakerData
 {

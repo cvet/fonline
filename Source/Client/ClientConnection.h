@@ -55,9 +55,9 @@ public:
         Failed,
     };
 
-    using ConnectCallback = std::function<void(ConnectResult result)>;
-    using DisconnectCallback = std::function<void()>;
-    using MessageCallback = std::function<void()>;
+    using ConnectCallback = function<void(ConnectResult result)>;
+    using DisconnectCallback = function<void()>;
+    using MessageCallback = function<void()>;
 
     ClientConnection() = delete;
     explicit ClientConnection(ClientNetworkSettings& settings);

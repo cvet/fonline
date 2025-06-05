@@ -171,7 +171,7 @@ struct ModelAnimationCallback
     CritterStateAnim StateAnim {};
     CritterActionAnim ActionAnim {};
     float32 NormalizedTime {};
-    std::function<void()> Callback {};
+    function<void()> Callback {};
 };
 
 class ModelManager final
@@ -181,7 +181,7 @@ class ModelManager final
     friend class ModelHierarchy;
 
 public:
-    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
+    using TextureLoader = function<pair<RenderTexture*, FRect>(string_view)>;
 
     ModelManager() = delete;
     ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);

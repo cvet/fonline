@@ -93,7 +93,7 @@ FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view re
     return engine->Resources.ReadFileText(resourcePath);
 }
 
-static void PrintLog(string& log, bool last_call, const std::function<void(string_view)>& log_callback)
+static void PrintLog(string& log, bool last_call, const function<void(string_view)>& log_callback)
 {
     // Normalize new lines to \n
     while (true) {
@@ -125,7 +125,7 @@ static void PrintLog(string& log, bool last_call, const std::function<void(strin
     }
 }
 
-static auto SystemCall(string_view command, const std::function<void(string_view)>& log_callback) -> int32
+static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
 {
 #if FO_WINDOWS && !FO_UWP
     HANDLE out_read = nullptr;
