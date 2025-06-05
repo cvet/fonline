@@ -1694,7 +1694,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::function<void(Entity*)> unload_inner_entities;
+    function<void(Entity*)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](Entity* holder) {
         for (auto&& [entry, entities] : holder->GetInnerEntities()) {
@@ -1718,7 +1718,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
         unload_inner_entities(cr);
     }
 
-    std::function<void(Item*)> unload_item;
+    function<void(Item*)> unload_item;
 
     unload_item = [this, &unload_item, &unload_inner_entities](Item* item) {
         if (item->HasInnerItems()) {

@@ -493,7 +493,7 @@ public:
         _smartPtr(p)
     {
     }
-    FO_FORCE_INLINE constexpr explicit propagate_const(element_type* p, std::function<void(element_type*)>&& deleter) noexcept :
+    FO_FORCE_INLINE constexpr explicit propagate_const(element_type* p, function<void(element_type*)>&& deleter) noexcept :
         _smartPtr(p, std::move(deleter))
     {
     }
@@ -602,7 +602,7 @@ template<typename T>
 using weak_ptr = propagate_const<std::weak_ptr<T>>;
 
 template<typename T>
-using unique_del_ptr = propagate_const<std::unique_ptr<T, std::function<void(T*)>>>;
+using unique_del_ptr = propagate_const<std::unique_ptr<T, function<void(T*)>>>;
 
 FO_END_NAMESPACE();
 template<typename T>

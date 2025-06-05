@@ -78,7 +78,7 @@ private:
 class DiskFileSystem final
 {
 public:
-    using FileVisitor = std::function<void(string_view, size_t, uint64)>;
+    using FileVisitor = function<void(string_view, size_t, uint64)>;
 
     DiskFileSystem() = delete;
 

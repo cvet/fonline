@@ -120,7 +120,7 @@ public:
     auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*;
     auto GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*;
     void DestroyCustomEntity(CustomEntity* entity);
-    void ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback);
+    void ForEachCustomEntityView(CustomEntity* entity, const function<void(Player* player, bool owner)>& callback);
 
     void DestroyEntity(Entity* entity);
     void DestroyInnerEntities(Entity* holder);

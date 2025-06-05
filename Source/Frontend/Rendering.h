@@ -59,7 +59,7 @@ using vindex_t = uint32;
 using vindex_t = uint16;
 #endif
 
-using RenderEffectLoader = std::function<string(string_view)>;
+using RenderEffectLoader = function<string(string_view)>;
 
 enum class RenderType : uint8
 {

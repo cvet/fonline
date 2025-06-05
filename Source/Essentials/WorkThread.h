@@ -45,8 +45,8 @@ extern auto GetThisThreadName() noexcept -> const string&;
 class WorkThread
 {
 public:
-    using Job = std::function<optional<timespan>()>;
-    using ExceptionHandler = std::function<bool(const std::exception&)>; // Return true to clear jobs
+    using Job = function<optional<timespan>()>;
+    using ExceptionHandler = function<bool(const std::exception&)>; // Return true to clear jobs
 
     explicit WorkThread(string_view name);
     WorkThread(const WorkThread&) = delete;

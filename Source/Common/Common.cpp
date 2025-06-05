@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 FrameBalancer::FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},

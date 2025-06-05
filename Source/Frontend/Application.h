@@ -343,7 +343,7 @@ public:
     static const int32 AUDIO_FORMAT_U8;
     static const int32 AUDIO_FORMAT_S16;
 
-    using AudioStreamCallback = std::function<void(uint8, span<uint8>)>;
+    using AudioStreamCallback = function<void(uint8, span<uint8>)>;
 
     [[nodiscard]] auto IsEnabled() const -> bool;
 

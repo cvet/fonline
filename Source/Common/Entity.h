@@ -295,7 +295,7 @@ class Entity
     friend class EntityEventBase;
 
 public:
-    using EventCallback = std::function<bool(const initializer_list<void*>&)>;
+    using EventCallback = function<bool(const initializer_list<void*>&)>;
 
     ///@ ExportEnum
     enum class EventExceptionPolicy : uint8

@@ -60,7 +60,7 @@ struct ParticleEditor::Impl
     void DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj);
     void DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj);
     // Zones
-    void DrawSparkInnerZone(const char* name, const std::function<SPK::Ref<SPK::Zone>()>& get, const std::function<void(const SPK::Ref<SPK::Zone>&)>& set);
+    void DrawSparkInnerZone(const char* name, const function<SPK::Ref<SPK::Zone>()>& get, const function<void(const SPK::Ref<SPK::Zone>&)>& set);
     void DrawSparkZone(const SPK::Ref<SPK::Zone>& obj);
     void DrawSparkObject(const SPK::Ref<SPK::Point>& obj);
     void DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj);
@@ -96,8 +96,8 @@ struct ParticleEditor::Impl
     // Renderers
     void DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj);
     // Helpers
-    void DrawSparkArray(const char* label, bool opened, const std::function<size_t()>& get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw);
-    void DrawSparkNullableField(const char* label, const std::function<SPK::Ref<SPK::SPKObject>()>& get, const std::function<void()>& del, const std::function<void()>& add_draw);
+    void DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw);
+    void DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw);
 
     unique_ptr<EffectManager> EffectMngr {};
     unique_ptr<GameTimer> GameTime {};
@@ -856,7 +856,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 }
 
 // Zones
-void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const std::function<SPK::Ref<SPK::Zone>()>& get, const std::function<void(const SPK::Ref<SPK::Zone>&)>& set)
+void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const function<SPK::Ref<SPK::Zone>()>& get, const function<void(const SPK::Ref<SPK::Zone>&)>& set)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1268,7 +1268,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 }
 
 // Helpers
-void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const std::function<size_t()>& get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw)
+void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1306,7 +1306,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
     }
 }
 
-void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const std::function<SPK::Ref<SPK::SPKObject>()>& get, const std::function<void()>& del, const std::function<void()>& add_draw)
+void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw)
 {
     FO_STACK_TRACE_ENTRY();
 

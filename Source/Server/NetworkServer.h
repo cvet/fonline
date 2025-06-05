@@ -45,9 +45,9 @@ FO_DECLARE_EXCEPTION(NetworkServerException);
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    using AsyncSendCallback = std::function<const_span<uint8>()>;
-    using AsyncReceiveCallback = std::function<void(const_span<uint8>)>;
-    using DisconnectCallback = std::function<void()>;
+    using AsyncSendCallback = function<const_span<uint8>()>;
+    using AsyncReceiveCallback = function<void(const_span<uint8>)>;
+    using DisconnectCallback = function<void()>;
 
     NetworkServerConnection(const NetworkServerConnection&) = delete;
     NetworkServerConnection(NetworkServerConnection&&) noexcept = delete;
@@ -92,7 +92,7 @@ private:
 class NetworkServer
 {
 public:
-    using NewConnectionCallback = std::function<void(shared_ptr<NetworkServerConnection>)>;
+    using NewConnectionCallback = function<void(shared_ptr<NetworkServerConnection>)>;
 
     NetworkServer() = default;
     NetworkServer(const NetworkServer&) = delete;

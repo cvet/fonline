@@ -52,7 +52,7 @@ public:
     [[nodiscard]] static auto SavePropertyToValue(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] static auto SavePropertyToValue(const Property* prop, const_span<uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
     static void LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver);
-    static void LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const std::function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver);
+    static void LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver);
 };
 
 FO_END_NAMESPACE();

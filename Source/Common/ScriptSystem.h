@@ -175,7 +175,7 @@ struct ScriptFuncDesc
     shared_ptr<ScriptTypeInfo> RetType {};
     vector<shared_ptr<ScriptTypeInfo>> ArgsType {};
     bool CallSupported {};
-    std::function<bool(initializer_list<void*>, void*) /*noexcept*/> Call {};
+    function<bool(initializer_list<void*>, void*) /*noexcept*/> Call {};
     bool Delegate {};
 };
 
@@ -364,11 +364,11 @@ public:
         _engineToScriptType.emplace(typeid(vector<T*>).name(), arr_type);
     }
 
-    void AddLoopCallback(std::function<void()> callback) { _loopCallbacks.emplace_back(std::move(callback)); }
+    void AddLoopCallback(function<void()> callback) { _loopCallbacks.emplace_back(std::move(callback)); }
     auto AddScriptFunc(hstring name) -> ScriptFuncDesc* { return &_funcMap.emplace(name, ScriptFuncDesc())->second; }
     void AddInitFunc(ScriptFuncDesc* func) { vec_add_unique_value(_initFunc, func); }
 
-    void BindRemoteCallReceiver(uint32 hash, std::function<void(Entity*)> func)
+    void BindRemoteCallReceiver(uint32 hash, function<void(Entity*)> func)
     {
         FO_RUNTIME_ASSERT(_rpcReceivers.count(hash) == 0);
         _rpcReceivers.emplace(hash, std::move(func));
@@ -377,10 +377,10 @@ public:
 private:
     vector<shared_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<string, shared_ptr<ScriptTypeInfo>> _engineToScriptType {};
-    vector<std::function<void()>> _loopCallbacks {};
+    vector<function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
     vector<ScriptFuncDesc*> _initFunc {};
-    unordered_map<uint32, std::function<void(Entity*)>> _rpcReceivers {};
+    unordered_map<uint32, function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };
 

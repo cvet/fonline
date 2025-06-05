@@ -51,7 +51,7 @@ FO_DECLARE_EXCEPTION(DataRegistrationException);
 class EngineData : public NameResolver
 {
 public:
-    using EngineDataRegistrator = std::function<void()>;
+    using EngineDataRegistrator = function<void()>;
 
     explicit EngineData(PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
     EngineData(const EngineData&) = delete;

@@ -525,7 +525,7 @@ public:
     StackTraceData ExceptionStackTrace {};
     unordered_set<hstring> HashedStrings {};
     unordered_map<asIScriptFunction*, ScriptFuncDesc> FuncMap {};
-    list<std::function<void*()>> Getters {};
+    list<function<void*()>> Getters {};
 };
 
 struct StackTraceEntryStorage
@@ -2532,7 +2532,7 @@ static void Global_GetExt(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& getter = *static_cast<std::function<void*()>*>(gen->GetAuxiliary());
+    const auto& getter = *static_cast<function<void*()>*>(gen->GetAuxiliary());
     auto value = static_cast<T>(getter());
     *static_cast<T*>(gen->GetAddressOfReturnLocation()) = value;
 

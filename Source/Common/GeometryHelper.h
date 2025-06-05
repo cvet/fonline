@@ -80,7 +80,7 @@ public:
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static auto MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos& hex, uint8 dir);
-    static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const std::function<void(mpos)>& callback);
+    static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
     void InitializeHexOffsets() const;

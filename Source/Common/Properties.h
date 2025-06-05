@@ -104,9 +104,9 @@ private:
     void* _passedPtr {};
 };
 
-using PropertyGetCallback = std::function<PropertyRawData(Entity*, const Property*)>;
-using PropertySetCallback = std::function<void(Entity*, const Property*, PropertyRawData&)>;
-using PropertyPostSetCallback = std::function<void(Entity*, const Property*)>;
+using PropertyGetCallback = function<PropertyRawData(Entity*, const Property*)>;
+using PropertySetCallback = function<void(Entity*, const Property*, PropertyRawData&)>;
+using PropertyPostSetCallback = function<void(Entity*, const Property*)>;
 
 class Property final
 {

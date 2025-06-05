@@ -203,7 +203,7 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
 {
     FO_STACK_TRACE_ENTRY();
 
-    static unordered_map<string_view, std::function<void(BaseTypeInfo&)>> builtin_types = {//
+    static unordered_map<string_view, function<void(BaseTypeInfo&)>> builtin_types = {//
         {"int8",
             [](BaseTypeInfo& info) {
                 info.IsInt = true;

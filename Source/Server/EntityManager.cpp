@@ -1190,7 +1190,7 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     UnregisterCustomEntity(entity, true);
 }
 
-void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback)
+void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function<void(Player* player, bool owner)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1200,7 +1200,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::fun
         }
     };
 
-    std::function<void(Entity*, EntityHolderEntryAccess)> find_players_recursively;
+    function<void(Entity*, EntityHolderEntryAccess)> find_players_recursively;
 
     find_players_recursively = [this, &find_players_recursively, &view_callback](Entity* holder, EntityHolderEntryAccess derived_access) {
         if (const auto* custom_entity = dynamic_cast<CustomEntity*>(holder); custom_entity != nullptr) {

@@ -134,7 +134,7 @@ public:
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
-    void SendAndBroadcast(const Player* ignore_player, const std::function<void(Critter*)>& callback);
+    void SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& callback);
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
