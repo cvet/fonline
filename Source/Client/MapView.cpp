@@ -890,7 +890,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
 
     auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
 
-    pattern->Sprites = SafeAlloc::MakeUnique<vector<shared_ptr<Sprite>>>();
+    pattern->Sprites = SafeAlloc::MakeUniq<vector<shared_ptr<Sprite>>>();
     pattern->Sprites->emplace_back(std::move(spr));
 
     for (size_t i = 1; i < count; i++) {

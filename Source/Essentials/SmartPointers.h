@@ -193,6 +193,115 @@ struct FO_HASH_NAMESPACE hash<FO_NAMESPACE raw_ptr<T>>
 FO_BEGIN_NAMESPACE();
 
 template<typename T>
+class uniq_ptr
+{
+    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
+
+    template<typename U>
+    friend class uniq_ptr;
+
+public:
+    FO_FORCE_INLINE constexpr uniq_ptr() noexcept :
+        _ptr(nullptr)
+    {
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE constexpr uniq_ptr(std::nullptr_t) noexcept :
+        _ptr(nullptr)
+    {
+    }
+    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> uniq_ptr&
+    {
+        reset();
+        _ptr = nullptr;
+        return *this;
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE constexpr uniq_ptr(T* p) noexcept :
+        _ptr(p)
+    {
+    }
+    FO_FORCE_INLINE uniq_ptr(uniq_ptr&& p) noexcept
+    {
+        _ptr = std::move(p._ptr);
+        p._ptr = nullptr;
+    }
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE constexpr uniq_ptr(uniq_ptr<U>&& p) noexcept
+    {
+        _ptr = p._ptr;
+        p._ptr = nullptr;
+    }
+    FO_FORCE_INLINE auto operator=(uniq_ptr&& p) noexcept -> uniq_ptr&
+    {
+        reset();
+        _ptr = std::move(p._ptr);
+        p._ptr = nullptr;
+        return *this;
+    }
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
+    FO_FORCE_INLINE auto operator=(uniq_ptr<U>&& p) noexcept -> uniq_ptr&
+    {
+        reset();
+        _ptr = std::move(p._ptr);
+        p._ptr = nullptr;
+        return *this;
+    }
+
+    FO_FORCE_INLINE uniq_ptr(const uniq_ptr& p) noexcept = delete;
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE constexpr uniq_ptr(const uniq_ptr<U>& p) noexcept = delete;
+    FO_FORCE_INLINE auto operator=(const uniq_ptr& p) noexcept -> uniq_ptr& = delete;
+    template<typename U>
+        requires(std::is_convertible_v<U, T>)
+    FO_FORCE_INLINE auto operator=(const uniq_ptr<U>& p) noexcept -> uniq_ptr& = delete;
+
+    FO_FORCE_INLINE ~uniq_ptr() noexcept { reset(); }
+
+    [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(const uniq_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const uniq_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator<(const uniq_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+
+    FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
+    {
+        auto* old = std::exchange(_ptr, p);
+        delete old;
+    }
+
+private:
+    T* _ptr;
+};
+static_assert(sizeof(uniq_ptr<int32>) == sizeof(int32*));
+static_assert(std::is_standard_layout_v<uniq_ptr<int>>);
+
+FO_END_NAMESPACE();
+template<typename T>
+struct FO_HASH_NAMESPACE hash<FO_NAMESPACE uniq_ptr<T>>
+{
+    using is_avalanching = void;
+    auto operator()(const FO_NAMESPACE uniq_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
+};
+FO_BEGIN_NAMESPACE();
+
+template<typename T>
 class refcount_ptr final
 {
     template<typename U>
