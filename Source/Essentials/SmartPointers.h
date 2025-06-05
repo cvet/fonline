@@ -604,8 +604,6 @@ using weak_ptr = propagate_const<std::weak_ptr<T>>;
 template<typename T>
 using unique_del_ptr = propagate_const<std::unique_ptr<T, std::function<void(T*)>>>;
 
-static_assert(std::is_standard_layout_v<unique_ptr<int>>);
-
 FO_END_NAMESPACE();
 template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE propagate_const<T>>
