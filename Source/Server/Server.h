@@ -40,6 +40,7 @@
 #include "DataBase.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
+#include "Geometry.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"

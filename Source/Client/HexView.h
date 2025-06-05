@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "Geometry.h"
 #include "MapSprite.h"
 
 FO_BEGIN_NAMESPACE();

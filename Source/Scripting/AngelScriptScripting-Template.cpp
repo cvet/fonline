@@ -64,6 +64,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
+#include "Geometry.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
 

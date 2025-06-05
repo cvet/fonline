@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "Critter.h"
-#include "Entity.h"
+#include "Geometry.h"
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"

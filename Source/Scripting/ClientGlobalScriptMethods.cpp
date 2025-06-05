@@ -35,7 +35,7 @@
 
 #include "Client.h"
 #include "FileSystem.h"
-#include "GeometryHelper.h"
+#include "Geometry.h"
 #include "NetCommand.h"
 
 FO_BEGIN_NAMESPACE();

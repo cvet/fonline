@@ -34,6 +34,7 @@
 #include "ScriptSystem.h"
 #include "Application.h"
 #include "EngineBase.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE();
 

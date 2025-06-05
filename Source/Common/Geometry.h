@@ -39,12 +39,83 @@
 
 FO_BEGIN_NAMESPACE();
 
+///@ ExportValueType mpos mpos HardStrong Layout = uint16-x+uint16-y
+struct mpos
+{
+    constexpr mpos() noexcept = default;
+    constexpr mpos(uint16 x_, uint16 y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const mpos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const mpos& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x + other.x), numeric_cast<uint16>(y + other.y)}; }
+    [[nodiscard]] constexpr auto operator-(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x - other.x), numeric_cast<uint16>(y - other.y)}; }
+    [[nodiscard]] constexpr auto operator*(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
+    [[nodiscard]] constexpr auto operator/(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
+
+    uint16 x {};
+    uint16 y {};
+};
+static_assert(std::is_standard_layout_v<mpos>);
+static_assert(sizeof(mpos) == 4);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
+
+///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
+struct msize
+{
+    constexpr msize() noexcept = default;
+    constexpr msize(uint16 width_, uint16 height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto GetSquare() const -> int32 { return numeric_cast<int32>(width * height); }
+    template<typename T>
+    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
+    {
+        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
+    }
+    template<typename T>
+    [[nodiscard]] constexpr auto ClampPos(T pos) const -> mpos
+    {
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
+        return {numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.x), 0, width - 1)), numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.y), 0, height - 1))};
+    }
+    template<typename T>
+    [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
+    {
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
+        FO_RUNTIME_ASSERT(pos.x >= 0);
+        FO_RUNTIME_ASSERT(pos.y >= 0);
+        FO_RUNTIME_ASSERT(pos.x < width);
+        FO_RUNTIME_ASSERT(pos.y < height);
+        return {numeric_cast<uint16>(pos.x), numeric_cast<uint16>(pos.y)};
+    }
+
+    uint16 width {};
+    uint16 height {};
+};
+static_assert(std::is_standard_layout_v<msize>);
+static_assert(sizeof(msize) == 4);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
+
 constexpr auto MAX_HEX_OFFSET = 50; // Todo: remove hex offset limit
 
 class GeometryHelper final
 {
 public:
-    GeometryHelper() = delete;
     explicit GeometryHelper(GeometrySettings& settings);
     GeometryHelper(const GeometryHelper&) = delete;
     GeometryHelper(GeometryHelper&&) = default;

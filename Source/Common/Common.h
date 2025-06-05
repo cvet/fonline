@@ -595,6 +595,114 @@ public:
 using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
 extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
+///@ ExportEnum
+enum class CritterItemSlot : uint8
+{
+    Inventory = 0,
+    Main = 1,
+    Outside = 255,
+};
+
+///@ ExportEnum
+enum class CritterCondition : uint8
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
+
+// Critter actions
+// Flags for chosen:
+// l - hardcoded local call
+// s - hardcoded server call
+// for all others critters actions call only server
+//  flags actionExt item
+///@ ExportEnum
+enum class CritterAction : uint16
+{
+    None = 0,
+    MoveItem = 2,
+    SwapItems = 3,
+    DropItem = 5,
+    Knockout = 16,
+    StandUp = 17,
+    Fidget = 18,
+    Dead = 19,
+    Connect = 20,
+    Disconnect = 21,
+    Respawn = 22,
+    Refresh = 23,
+};
+
+///@ ExportEnum
+enum class CritterStateAnim : uint16
+{
+    None = 0,
+    Unarmed = 1,
+};
+
+///@ ExportEnum
+enum class CritterActionAnim : uint16
+{
+    None = 0,
+    Idle = 1,
+    Walk = 3,
+    WalkBack = 15,
+    Limp = 4,
+    Run = 5,
+    RunBack = 16,
+    TurnRight = 17,
+    TurnLeft = 18,
+    PanicRun = 6,
+    SneakWalk = 7,
+    SneakRun = 8,
+    IdleProneFront = 86,
+    DeadFront = 102,
+};
+
+///@ ExportEnum
+enum class CritterFindType : uint8
+{
+    Any = 0,
+    NonDead = 0x01,
+    Dead = 0x02,
+    Players = 0x10,
+    Npc = 0x20,
+    NonDeadPlayers = 0x11,
+    DeadPlayers = 0x12,
+    NonDeadNpc = 0x21,
+    DeadNpc = 0x22,
+};
+
+///@ ExportEnum
+enum class ItemOwnership : uint8
+{
+    MapHex = 0,
+    CritterInventory = 1,
+    ItemContainer = 2,
+    Nowhere = 3,
+};
+
+///@ ExportEnum
+enum class CornerType : uint8
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
+
+class AnimationResolver
+{
+public:
+    virtual ~AnimationResolver() = default;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool = 0;
+};
+
 FO_END_NAMESPACE();
 
 #endif // FO_PRECOMPILED_HEADER_GUARD

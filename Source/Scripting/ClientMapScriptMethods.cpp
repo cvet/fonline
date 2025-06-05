@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Client.h"
+#include "Geometry.h"
 #include "MapSprite.h"
 
 FO_BEGIN_NAMESPACE();

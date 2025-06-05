@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "Geometry.h"
 #include "HexView.h"
 #include "ItemView.h"
 #include "SpriteManager.h"

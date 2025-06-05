@@ -37,9 +37,9 @@
 
 #include "ClientEntity.h"
 #include "CritterHexView.h"
-#include "Entity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "Geometry.h"
 #include "ItemHexView.h"
 #include "MapSprite.h"
 #include "ScriptSystem.h"

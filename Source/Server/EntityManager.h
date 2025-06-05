@@ -37,7 +37,6 @@
 
 #include "Critter.h"
 #include "DataBase.h"
-#include "Entity.h"
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"

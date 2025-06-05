@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Geometry.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE();

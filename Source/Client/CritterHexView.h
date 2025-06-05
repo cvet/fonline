@@ -39,6 +39,7 @@
 #include "CritterView.h"
 #include "DefaultSprites.h"
 #include "EntityProtos.h"
+#include "Geometry.h"
 #include "HexView.h"
 #include "ModelSprites.h"
 #include "SpriteManager.h"

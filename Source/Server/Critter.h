@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "Geometry.h"
 #include "ServerEntity.h"
 
 FO_BEGIN_NAMESPACE();

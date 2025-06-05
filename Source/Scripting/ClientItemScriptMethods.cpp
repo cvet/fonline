@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Client.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE();
 
