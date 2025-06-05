@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "Geometry.h"
 #include "MapLoader.h"
 #include "ScriptSystem.h"
 #include "ServerEntity.h"

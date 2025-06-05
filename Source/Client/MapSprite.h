@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE();
 

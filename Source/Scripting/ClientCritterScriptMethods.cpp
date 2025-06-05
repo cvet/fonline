@@ -36,6 +36,7 @@
 #include "Client.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE();
 

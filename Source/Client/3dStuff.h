@@ -41,7 +41,7 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
-#include "GeometryHelper.h"
+#include "Geometry.h"
 #include "Settings.h"
 #include "VisualParticles.h"
 

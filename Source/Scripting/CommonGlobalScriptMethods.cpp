@@ -35,6 +35,7 @@
 
 #include "Application.h"
 #include "EngineBase.h"
+#include "Geometry.h"
 #include "ScriptSystem.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"

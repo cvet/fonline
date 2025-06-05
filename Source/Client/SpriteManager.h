@@ -41,6 +41,7 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "Geometry.h"
 #include "MapSprite.h"
 #include "RenderTarget.h"
 #include "Settings.h"

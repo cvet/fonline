@@ -32,7 +32,6 @@
 //
 
 #include "NetBuffer.h"
-#include "Entity.h"
 
 FO_BEGIN_NAMESPACE();
 

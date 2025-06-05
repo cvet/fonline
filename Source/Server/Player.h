@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "Geometry.h"
 #include "ServerConnection.h"
 #include "ServerEntity.h"
 

@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "Entity.h"
 #include "ScriptSystem.h"
 #include "Timer.h"
 

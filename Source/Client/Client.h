@@ -45,6 +45,7 @@
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
+#include "Geometry.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"

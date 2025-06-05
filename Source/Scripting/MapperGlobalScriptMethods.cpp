@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "FileSystem.h"
+#include "Geometry.h"
 #include "Mapper.h"
 
 FO_BEGIN_NAMESPACE();

@@ -35,9 +35,6 @@
 
 #include "Common.h"
 
-// ReSharper disable once CppUnusedIncludeDirective
-#include "Entity.h"
-
 FO_BEGIN_NAMESPACE();
 
 FO_DECLARE_EXCEPTION(SettingsException);
