@@ -74,6 +74,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
