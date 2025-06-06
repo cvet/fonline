@@ -153,25 +153,13 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     auto final_hex = hex;
 
     if (!map->IsHexesMovable(hex, multihex)) {
-        const auto map_size = map->GetSize();
-        const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
-
         // Find in 2 hex radius
-        int32 pos = -1;
+        const auto steps_count = GenericUtils::NumericalNumber(2) * GameSettings::MAP_DIR_COUNT;
+        const auto map_size = map->GetSize();
 
-        while (true) {
-            // Todo: find better place for critter in square geometry
-            if (GameSettings::SQUARE_GEOMETRY) {
-                break;
-            }
-
-            pos++;
-
-            if (pos >= 18) {
-                break;
-            }
-
-            const auto raw_check_hex = ipos {hex.x + sx[pos], hex.y + sy[pos]};
+        for (int32 i = 0; i < steps_count; i++) {
+            auto raw_check_hex = ipos {hex.x, hex.y};
+            GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
             if (!map_size.IsValidPos(raw_check_hex)) {
                 continue;

@@ -41,97 +41,6 @@ GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     FO_STACK_TRACE_ENTRY();
 }
 
-void GeometryHelper::InitializeHexOffsets() const
-{
-    FO_STACK_TRACE_ENTRY();
-
-    constexpr auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        _sxEven = SafeAlloc::MakeUniqueArr<int16>(size);
-        _syEven = SafeAlloc::MakeUniqueArr<int16>(size);
-        _sxOdd = SafeAlloc::MakeUniqueArr<int16>(size);
-        _syOdd = SafeAlloc::MakeUniqueArr<int16>(size);
-
-        size_t iter = 0;
-        ipos pos1 = {0, 0};
-        ipos pos2 = {1, 0};
-
-        for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(pos1, 0);
-            MoveHexByDirUnsafe(pos2, 0);
-
-            for (auto j = 0; j < 6; j++) {
-                const uint8 dir = (j + 2) % 6;
-
-                for (auto k = 0; k < i + 1; k++) {
-                    _sxEven[iter] = numeric_cast<int16>(pos1.x);
-                    _syEven[iter] = numeric_cast<int16>(pos1.y);
-                    _sxOdd[iter] = numeric_cast<int16>(pos2.x - 1);
-                    _syOdd[iter] = numeric_cast<int16>(pos2.y);
-
-                    iter++;
-
-                    MoveHexByDirUnsafe(pos1, dir);
-                    MoveHexByDirUnsafe(pos2, dir);
-                }
-            }
-        }
-    }
-    else {
-        _sxEven = SafeAlloc::MakeUniqueArr<int16>(size);
-        _syEven = SafeAlloc::MakeUniqueArr<int16>(size);
-        _sxOdd = SafeAlloc::MakeUniqueArr<int16>(size);
-        _syOdd = SafeAlloc::MakeUniqueArr<int16>(size);
-
-        size_t iter = 0;
-        ipos pos;
-
-        for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(pos, 0);
-
-            for (auto j = 0; j < 5; j++) {
-                uint8 dir;
-                int32 steps;
-
-                switch (j) {
-                case 0:
-                    dir = 2;
-                    steps = i + 1;
-                    break;
-                case 1:
-                    dir = 4;
-                    steps = (i + 1) * 2;
-                    break;
-                case 2:
-                    dir = 6;
-                    steps = (i + 1) * 2;
-                    break;
-                case 3:
-                    dir = 0;
-                    steps = (i + 1) * 2;
-                    break;
-                case 4:
-                    dir = 2;
-                    steps = i + 1;
-                    break;
-                default:
-                    FO_UNREACHABLE_PLACE();
-                }
-
-                for (auto k = 0; k < steps; k++) {
-                    _sxEven[iter] = numeric_cast<int16>(pos.x);
-                    _syEven[iter] = numeric_cast<int16>(pos.y);
-
-                    iter++;
-
-                    MoveHexByDirUnsafe(pos, dir);
-                }
-            }
-        }
-    }
-}
-
 auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -170,6 +79,13 @@ auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 }
 
 auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> int32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y);
+}
+
+auto GeometryHelper::DistGame(ipos hex1, ipos hex2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -616,6 +532,42 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
     }
 }
 
+void GeometryHelper::MoveHexAroundAway(ipos& hex, int32 index)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Move to first hex around
+    constexpr uint8 init_dir = GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7;
+    MoveHexByDirUnsafe(hex, init_dir);
+
+    uint8 dir = 2;
+    int32 round = 1;
+    int32 round_count = GameSettings::MAP_DIR_COUNT;
+
+    // Move around in a spiral away from the start position
+    for (int32 i = 1; i <= index; i++) {
+        MoveHexByDirUnsafe(hex, dir);
+
+        if (i >= round_count) {
+            round++;
+            round_count = GenericUtils::NumericalNumber(round) * GameSettings::MAP_DIR_COUNT;
+            MoveHexByDirUnsafe(hex, init_dir);
+            FO_RUNTIME_ASSERT(dir == 1);
+        }
+
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            if (i % round == 0) {
+                dir = numeric_cast<uint8>((dir + 1) % GameSettings::MAP_DIR_COUNT);
+            }
+        }
+        else {
+            if (i % (round * 2) == 0) {
+                dir = numeric_cast<uint8>((dir + 2) % GameSettings::MAP_DIR_COUNT);
+            }
+        }
+    }
+}
+
 auto GeometryHelper::GetYProj() const -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -645,21 +597,6 @@ auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) con
     FO_RUNTIME_ASSERT(angle < 360.0f);
 
     return angle;
-}
-
-auto GeometryHelper::GetHexOffsets(mpos hex) const -> tuple<const int16*, const int16*>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!_sxEven) {
-        InitializeHexOffsets();
-    }
-
-    const auto odd = (hex.x % 2) != 0;
-    const auto* sx = odd ? _sxOdd.get() : _sxEven.get();
-    const auto* sy = odd ? _syOdd.get() : _syEven.get();
-
-    return {sx, sy};
 }
 
 auto GeometryHelper::GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos

@@ -112,8 +112,6 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 
-constexpr auto MAX_HEX_OFFSET = 50; // Todo: remove hex offset limit
-
 class GeometryHelper final
 {
 public:
@@ -127,12 +125,12 @@ public:
     // Todo: move all geometry helper methods to static
     [[nodiscard]] auto GetYProj() const -> float32;
     [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
-    [[nodiscard]] auto GetHexOffsets(mpos hex) const -> tuple<const int16*, const int16*>;
     [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
     [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
 
     [[nodiscard]] static auto DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto DistGame(mpos hex1, mpos hex2) -> int32;
+    [[nodiscard]] static auto DistGame(ipos hex1, ipos hex2) -> int32;
     [[nodiscard]] static auto GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
     [[nodiscard]] static auto GetNearDir(mpos from_hex, mpos to_hex) -> uint8;
     [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
@@ -152,16 +150,11 @@ public:
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static auto MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos& hex, uint8 dir);
+    static void MoveHexAroundAway(ipos& hex, int32 index);
     static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
-    void InitializeHexOffsets() const;
-
     GeometrySettings& _settings;
-    mutable unique_ptr<int16[]> _sxEven {};
-    mutable unique_ptr<int16[]> _syEven {};
-    mutable unique_ptr<int16[]> _sxOdd {};
-    mutable unique_ptr<int16[]> _syOdd {};
 };
 
 FO_END_NAMESPACE();
