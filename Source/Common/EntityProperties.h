@@ -192,8 +192,6 @@ public:
     ///@ ExportProperty Resource
     FO_ENTITY_PROPERTY(Public, hstring, PicInv);
     ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, float32, FlyEffectSpeed);
-    ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, bool, IsWall);

@@ -538,28 +538,36 @@ FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, b
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, int32 steps)
+FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
-    if (steps == 0) {
-        throw ScriptException("DirSteps arg is zero");
-    }
 
-    bool result = false;
-
-    if (steps > 1) {
-        for (int32 i = 0; i < steps; i++) {
-            result = GeometryHelper::MoveHexByDir(hex, dir, self->GetSize());
-
-            if (!result) {
-                break;
-            }
-        }
+    if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
+        return true;
     }
     else {
-        result = GeometryHelper::MoveHexByDir(hex, dir, self->GetSize());
+        return false;
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, int32 steps)
+{
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
+        throw ScriptException("Invalid dir arg");
+    }
+
+    int32 result = 0;
+
+    for (int32 i = 0; i < steps; i++) {
+        if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
+            result++;
+        }
+        else {
+            break;
+        }
     }
 
     return result;
@@ -761,6 +769,29 @@ FO_SCRIPT_API void Client_Map_ResetCritterContour(MapView* self)
 FO_SCRIPT_API isize Client_Map_GetHexContentSize(MapView* self, mpos hex)
 {
     return self->GetHexContentSize(hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ItemView* Client_Map_RunEffect(MapView* self, hstring eff_pid, mpos hex)
+{
+    if (!self->GetSize().IsValidPos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    return self->RunEffectItem(eff_pid, hex, hex, 0.0f);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ItemView* Client_Map_RunEffect(MapView* self, hstring eff_pid, mpos fromHex, mpos toHex, float32 speed)
+{
+    if (!self->GetSize().IsValidPos(fromHex)) {
+        throw ScriptException("Invalid from hex arg");
+    }
+    if (!self->GetSize().IsValidPos(toHex)) {
+        throw ScriptException("Invalid to hex arg");
+    }
+
+    return self->RunEffectItem(eff_pid, fromHex, toHex, speed);
 }
 
 FO_END_NAMESPACE();

@@ -99,14 +99,8 @@ void ItemHexView::Process()
         const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float32>();
 
         if (dt > 0.0f) {
-            auto speed = GetFlyEffectSpeed();
-
-            if (speed == 0.0f) {
-                speed = 1.0f;
-            }
-
-            _effCurOffset.x += _effStepOffset.x * dt * speed;
-            _effCurOffset.y += _effStepOffset.y * dt * speed;
+            _effCurOffset.x += _effStepOffset.x * dt * _effSpeed;
+            _effCurOffset.y += _effStepOffset.y * dt * _effSpeed;
 
             RefreshOffs();
 
@@ -134,7 +128,7 @@ void ItemHexView::Process()
     }
 }
 
-void ItemHexView::SetEffect(mpos to_hex)
+void ItemHexView::SetEffect(mpos to_hex, float32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -145,6 +139,7 @@ void ItemHexView::SetEffect(mpos to_hex)
 
     if (cur_hex != to_hex) {
         _isDynamicEffect = true;
+        _effSpeed = speed;
 
         _effSteps.emplace_back(cur_hex);
         _map->TraceBullet(cur_hex, to_hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_effSteps, false);

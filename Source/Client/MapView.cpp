@@ -859,7 +859,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize
     return isize {result.Width(), result.Height()};
 }
 
-void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
+auto MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -870,9 +870,9 @@ void MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex)
     auto effect_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
 
     effect_item->SetHex(from_hex);
-    effect_item->SetEffect(to_hex);
+    effect_item->SetEffect(to_hex, speed);
 
-    AddItemInternal(effect_item.get());
+    return AddItemInternal(effect_item.get());
 }
 
 auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*

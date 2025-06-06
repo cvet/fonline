@@ -455,8 +455,6 @@ enum class NetMessage : uint8
     CritterMoveItem = 93,
     CritterAnimate = 95,
     CritterSetAnims = 96,
-    Effect = 100,
-    FlyEffect = 101,
     PlaySound = 102,
     TimeSync = 107,
     LoadMap = 109,

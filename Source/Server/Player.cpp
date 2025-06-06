@@ -455,30 +455,6 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
     out_buf->Write(extra_text);
 }
 
-void Player::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::Effect);
-
-    out_buf->Write(eff_pid);
-    out_buf->Write(hex);
-    out_buf->Write(radius);
-}
-
-void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::FlyEffect);
-
-    out_buf->Write(eff_pid);
-    out_buf->Write(from_cr_id);
-    out_buf->Write(to_cr_id);
-    out_buf->Write(from_hex);
-    out_buf->Write(to_hex);
-}
-
 void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     FO_STACK_TRACE_ENTRY();
