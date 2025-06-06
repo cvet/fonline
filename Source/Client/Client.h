@@ -314,8 +314,6 @@ protected:
     void Net_OnInfoMessage();
     void Net_OnAddItemOnMap();
     void Net_OnRemoveItemFromMap();
-    void Net_OnEffect();
-    void Net_OnFlyEffect();
     void Net_OnPlaySound();
     void Net_OnPlaceToGameComplete();
     void Net_OnProperty();

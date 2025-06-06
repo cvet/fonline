@@ -248,8 +248,7 @@ public:
     void SetSkipRoof(mpos hex);
     void MarkRoofNum(ipos raw_hex, int16 num);
 
-    void RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex);
-
+    auto RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*;
     auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
 
     void SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool refresh);

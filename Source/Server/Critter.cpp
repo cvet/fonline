@@ -889,24 +889,6 @@ void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critt
     }
 }
 
-void Critter::Send_Effect(hstring eff_pid, mpos hex, uint16 radius)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_Effect(eff_pid, hex, radius);
-    }
-}
-
-void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
-    }
-}
-
 void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     FO_STACK_TRACE_ENTRY();

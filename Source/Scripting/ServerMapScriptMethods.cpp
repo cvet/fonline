@@ -654,7 +654,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
     for (auto* cr : map_critters) {
         const auto hex = cr->GetHex();
 
-        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, numeric_cast<int32>(cr->GetLookDistance()), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
+        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.push_back(cr);
         }
     }
@@ -867,38 +867,6 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_RunEffect(Map* self, hstring effPid, mpos hex, int32 radius)
-{
-    if (!effPid) {
-        throw ScriptException("Effect pid invalid arg");
-    }
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    self->SendEffect(effPid, hex, numeric_cast<uint16>(radius));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Map_RunFlyEffect(Map* self, hstring effPid, Critter* fromCr, Critter* toCr, mpos fromHex, mpos toHex)
-{
-    if (!effPid) {
-        throw ScriptException("Effect pid invalid arg");
-    }
-    if (!self->GetSize().IsValidPos(fromHex)) {
-        throw ScriptException("Invalid from hexes args");
-    }
-    if (!self->GetSize().IsValidPos(toHex)) {
-        throw ScriptException("Invalid to hexes args");
-    }
-
-    const auto from_crid = fromCr != nullptr ? fromCr->GetId() : ident_t {};
-    const auto to_crid = toCr != nullptr ? toCr->GetId() : ident_t {};
-
-    self->SendFlyEffect(effPid, from_crid, to_crid, fromHex, toHex);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid)
 {
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
@@ -953,6 +921,21 @@ FO_SCRIPT_API void Server_Map_PlaySound(Map* self, string_view soundName, mpos h
 FO_SCRIPT_API void Server_Map_Regenerate(Map* self)
 {
     self->GetEngine()->MapMngr.RegenerateMap(self);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir)
+{
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
+        throw ScriptException("Invalid dir arg");
+    }
+
+    if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 ///@ ExportMethod

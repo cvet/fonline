@@ -62,7 +62,7 @@ public:
     void Process();
     void RefreshAlpha();
     void RefreshAnim();
-    void SetEffect(mpos to_hex);
+    void SetEffect(mpos to_hex, float32 speed);
     void RefreshOffs();
 
 private:
@@ -72,6 +72,7 @@ private:
 
     bool _isEffect {};
     bool _isDynamicEffect {};
+    float32 _effSpeed {};
     fpos _effStepOffset {};
     ipos _effStartOffset {};
     fpos _effCurOffset {};

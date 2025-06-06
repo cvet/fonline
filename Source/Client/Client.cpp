@@ -162,8 +162,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn.AddMessageHandler(NetMessage::RemoteCall, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NetMessage::AddItemOnMap, [this] { Net_OnAddItemOnMap(); });
     _conn.AddMessageHandler(NetMessage::RemoveItemFromMap, [this] { Net_OnRemoveItemFromMap(); });
-    _conn.AddMessageHandler(NetMessage::Effect, [this] { Net_OnEffect(); });
-    _conn.AddMessageHandler(NetMessage::FlyEffect, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
@@ -1597,68 +1595,6 @@ void FOClient::Net_OnRemoveItemFromMap()
 
         item->Finish();
     }
-}
-
-void FOClient::Net_OnEffect()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto radius = _conn.InBuf.Read<uint16>();
-    FO_RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
-
-    if (_curMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    _curMap->RunEffectItem(eff_pid, hex, hex);
-
-    const auto [sx, sy] = Geometry.GetHexOffsets(hex);
-    const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
-
-    for (int32 i = 0; i < count; i++) {
-        const auto ex = numeric_cast<int16>(hex.x) + sx[i];
-        const auto ey = numeric_cast<int16>(hex.y) + sy[i];
-
-        if (_curMap->GetSize().IsValidPos(ipos {ex, ey})) {
-            _curMap->RunEffectItem(eff_pid, {numeric_cast<uint16>(ex), numeric_cast<uint16>(ey)}, {numeric_cast<uint16>(ex), numeric_cast<uint16>(ey)});
-        }
-    }
-}
-
-void FOClient::Net_OnFlyEffect()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto eff_pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
-    const auto eff_cr2_id = _conn.InBuf.Read<ident_t>();
-
-    auto eff_cr1_hex = _conn.InBuf.Read<mpos>();
-    auto eff_cr2_hex = _conn.InBuf.Read<mpos>();
-
-    if (_curMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    const auto* cr1 = _curMap->GetCritter(eff_cr1_id);
-    if (cr1 != nullptr) {
-        eff_cr1_hex = cr1->GetHex();
-    }
-
-    const auto* cr2 = _curMap->GetCritter(eff_cr2_id);
-    if (cr2 != nullptr) {
-        eff_cr2_hex = cr2->GetHex();
-    }
-
-    _curMap->RunEffectItem(eff_pid, eff_cr1_hex, eff_cr2_hex);
 }
 
 void FOClient::Net_OnPlaySound()

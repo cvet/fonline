@@ -856,32 +856,6 @@ auto Map::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>
     return critters;
 }
 
-void Map::SendEffect(hstring eff_pid, mpos hex, uint16 radius)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
-            cr->Send_Effect(eff_pid, hex, radius);
-        }
-    }
-}
-
-void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (GenericUtils::IntersectCircleLine(cr->GetHex().x, cr->GetHex().y, cr->GetLookDistance(), from_hex.x, from_hex.y, to_hex.x, to_hex.y)) {
-            cr->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hex, to_hex);
-        }
-    }
-}
-
 auto Map::IsStaticItemTrigger(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
