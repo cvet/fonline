@@ -450,7 +450,6 @@ enum class NetMessage : uint8
     ChosenRemoveItem = 66,
     AddItemOnMap = 71,
     RemoveItemFromMap = 74,
-    AnimateItem = 75,
     SomeItems = 83,
     CritterAction = 91,
     CritterMoveItem = 93,

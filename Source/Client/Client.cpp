@@ -162,7 +162,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn.AddMessageHandler(NetMessage::RemoteCall, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NetMessage::AddItemOnMap, [this] { Net_OnAddItemOnMap(); });
     _conn.AddMessageHandler(NetMessage::RemoveItemFromMap, [this] { Net_OnRemoveItemFromMap(); });
-    _conn.AddMessageHandler(NetMessage::AnimateItem, [this] { Net_OnAnimateItem(); });
     _conn.AddMessageHandler(NetMessage::Effect, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NetMessage::FlyEffect, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
@@ -1597,29 +1596,6 @@ void FOClient::Net_OnRemoveItemFromMap()
         }
 
         item->Finish();
-    }
-}
-
-void FOClient::Net_OnAnimateItem()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto anim_name = _conn.InBuf.Read<hstring>(Hashes);
-    const auto looped = _conn.InBuf.Read<bool>();
-    const auto reversed = _conn.InBuf.Read<bool>();
-
-    if (_curMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    auto* item = _curMap->GetItem(item_id);
-
-    if (item != nullptr) {
-        item->GetAnim()->Play(anim_name, looped, reversed);
     }
 }
 

@@ -231,25 +231,4 @@ FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
     return cr;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API void Server_Item_Animate(Item* self, hstring animName, bool looped, bool reversed)
-{
-    switch (self->GetOwnership()) {
-    case ItemOwnership::CritterInventory: {
-        if (auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId()); cr != nullptr) {
-            cr->Send_AnimateItem(self, animName, looped, reversed);
-        }
-    } break;
-    case ItemOwnership::MapHex: {
-        if (auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId()); map != nullptr) {
-            map->AnimateItem(self, animName, looped, reversed);
-        }
-    } break;
-    case ItemOwnership::ItemContainer:
-        break;
-    default:
-        break;
-    }
-}
-
 FO_END_NAMESPACE();

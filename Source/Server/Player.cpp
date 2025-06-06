@@ -408,18 +408,6 @@ void Player::Send_RemoveItemFromMap(const Item* item)
     out_buf->Write(item->GetId());
 }
 
-void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::AnimateItem);
-
-    out_buf->Write(item->GetId());
-    out_buf->Write(anim_name);
-    out_buf->Write(looped);
-    out_buf->Write(reversed);
-}
-
 void Player::Send_ChosenAddItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();

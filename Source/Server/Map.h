@@ -130,7 +130,6 @@ public:
     void RemoveItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
-    void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);
     void SendEffect(hstring eff_pid, mpos hex, uint16 radius);
     void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, mpos from_hex, mpos to_hex);
     void SetHexManualBlock(mpos hex, bool enable, bool full);

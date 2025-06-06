@@ -808,15 +808,6 @@ void Critter::Send_RemoveItemFromMap(const Item* item)
     }
 }
 
-void Critter::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_AnimateItem(item, anim_name, looped, reversed);
-    }
-}
-
 void Critter::Send_ChosenAddItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
