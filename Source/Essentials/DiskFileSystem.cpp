@@ -32,6 +32,8 @@
 //
 
 #include "DiskFileSystem.h"
+
+#include "ExceptionHadling.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -342,7 +344,8 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
                 }
             }
             else {
-                visitor(strex(cur_dir).combinePath(path), dir_entry.file_size(), dir_entry.last_write_time().time_since_epoch().count());
+                FO_RUNTIME_ASSERT(std::cmp_less_equal(dir_entry.file_size(), std::numeric_limits<size_t>::max()));
+                visitor(strex(cur_dir).combinePath(path), static_cast<size_t>(dir_entry.file_size()), dir_entry.last_write_time().time_since_epoch().count());
             }
         }
     }

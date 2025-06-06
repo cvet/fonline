@@ -152,7 +152,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _preallocatedCells.resize(safe_numeric_cast<int64>(base::_size.width) * base::_size.height);
+        const auto count = static_cast<size_t>(static_cast<int64>(base::_size.width) * base::_size.height);
+        _preallocatedCells.resize(count);
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
@@ -161,7 +162,8 @@ public:
 
         FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
 
-        auto& cell = _preallocatedCells[safe_numeric_cast<int64>(pos.y) * base::_size.width + pos.x];
+        const auto index = static_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
+        auto& cell = _preallocatedCells[index];
 
         if (!cell) {
             return _emptyCell;
@@ -176,7 +178,8 @@ public:
 
         FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
 
-        auto& cell = _preallocatedCells[safe_numeric_cast<int64>(pos.y) * base::_size.width + pos.x];
+        const auto index = numeric_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
+        auto& cell = _preallocatedCells[index];
 
         if (!cell) {
             cell = SafeAlloc::MakeUnique<TCell>();
@@ -198,13 +201,15 @@ public:
         base::_size = size;
 
         vector<unique_ptr<TCell>> new_cells;
-
-        new_cells.resize(numeric_cast<int64>(base::_size.width) * base::_size.height);
+        const auto new_count = numeric_cast<size_t>(numeric_cast<int64>(base::_size.width) * base::_size.height);
+        new_cells.resize(new_count);
 
         for (int64 y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64 x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    new_cells[y * base::_size.width + x] = std::move(_preallocatedCells[y * prev_width + x]);
+                    const auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
+                    const auto prev_index = numeric_cast<size_t>(y * prev_width + x);
+                    new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
             }
         }

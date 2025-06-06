@@ -131,7 +131,7 @@ struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T>>
     auto operator()(const FO_NAMESPACE strong_type<T>& v) const noexcept -> size_t
     {
         static_assert(std::has_unique_object_representations_v<FO_NAMESPACE strong_type<T>>);
-        return detail::wyhash::hash(v.underlying_value());
+        return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
     }
 };
 FO_BEGIN_NAMESPACE();
