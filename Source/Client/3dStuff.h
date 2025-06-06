@@ -47,8 +47,6 @@
 
 FO_BEGIN_NAMESPACE();
 
-// Todo: remove unnecessary allocations from 3d
-
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
 constexpr uint32 ANIMATION_STAY = 0x01;

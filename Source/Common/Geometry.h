@@ -56,6 +56,7 @@ struct mpos
     [[nodiscard]] constexpr auto operator*(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
     [[nodiscard]] constexpr auto operator/(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
 
+    // Todo: make hex position customizable, to allow to add third Z coordinate
     uint16 x {};
     uint16 y {};
 };

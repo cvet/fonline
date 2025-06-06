@@ -1211,7 +1211,7 @@ void FOClient::Net_OnCritterMoveItem()
         return;
     }
 
-    // Todo: rework critters inventory updating
+    // Todo: refactor critters inventory updating
     const auto items_count = _conn.InBuf.Read<uint32>();
 
     if (items_count != 0) {

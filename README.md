@@ -122,7 +122,6 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [SDL](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
-* SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [small_vector](https://github.com/gharveymn/small_vector) - vector with a small buffer optimization
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [tracy](https://github.com/wolfpld/tracy) - profiler
@@ -176,46 +175,18 @@ Please follow these instructions to understand how to use this engine by design:
 
 ### Todo list *(generated from source code)*
 
-* Common: make entities positioning free in space, without hard-linking to hex
-* Common: add third 'up' coordinate to positioning that allow create multidimensional maps
-* Common: use smart pointers instead raw
-* Common: fix all PVS Studio warnings
-* Common: SHA replace to openssl SHA
-* Common: wrap fonline code to namespace
-* Common: hash_t 8 byte integer
-* Common: c-style arrays to std::array
-* Common: use more noexcept
-* Common: use more constexpr
-* Common: improve BitReader/BitWriter to better network/disk space utilization
-* Common: improve custom exceptions for every subsustem
-* Common: temporary entities, disable writing to data base
-* Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-* Common: split meanings of int8/char and uint8/byte in code
-* Common: improve named enums
 * Common: export any_t with ExportType
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
-* Common: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
-* Common: pass name to exceptions context args
 * Common: recursion guard for EventDispatcher
-* Common: move IRect to irect
-* Common: move FRect to frect
-* Common: eliminate as much defines as possible
-* Common: convert all defines to constants and enums
-* Common: optimize copy() to pass placement storage for value
-* Common: schedule job repeat with last duration?
-* ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: move texcoord offset calculation to gpu
 * 3dStuff: merge all bones in one hierarchy and disable offset copying
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
-* 3dStuff: remove unnecessary allocations from 3d
 * 3dStuff: incapsulate model animation callbacks
-* Client: rework critters inventory updating
+* Client: refactor critters inventory updating
 * Client: synchronize effects showing (for example shot and kill)
-* Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
-* Client: fix static_assert(std::is_standard_layout_v<VideoPlayback>);
 * Client: make IfaceAnim scriptable object
 * Client: move screen fading to scripts
 * Client: move screen quake effect to scripts
@@ -227,7 +198,6 @@ Please follow these instructions to understand how to use this engine by design:
 * HexView: incapsulate hex view fileds
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * MapSprite: : incapsulate all sprite data
-* MapView: fix static_assert(std::is_standard_layout_v<SpritePattern>);
 * ParticleSprites: optimize sprite atlas filling
 * RenderTarget: optimize sprite atlas filling
 * ResourceManager: why I disable offset adding?
@@ -242,8 +212,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Updater: support restoring file downloading from interrupted position
 * Updater: add update file files checking by hashes
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
+* CacheStorage: add engine hook to allow user to override cache storage
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* ConfigFile: rework ConfigFile entries to string_view
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
@@ -252,11 +224,9 @@ Please follow these instructions to understand how to use this engine by design:
 * EntityProperties: exclude critter properties from engine:
 * EntityProperties: exclude map properties from engine:
 * EntityProperties: implement Location InitScript
-* GeometryHelper: remove hex offset limit
-* GeometryHelper: move all geometry helper methods to static
-* Log: server logs append not rewrite (with checking of size)
-* Log: add timestamps and process id and thread id to file logs
-* Log: colorize log texts
+* Geometry: make hex position customizable, to allow to add third Z coordinate
+* Geometry: remove hex offset limit
+* Geometry: move all geometry helper methods to static
 * MapLoader: restore supporting of the map old text format
 * Properties: validate property name identifier
 * Properties: don't preserve memory for not allocated components in entity
@@ -265,6 +235,16 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings-Include: move HeadBone to fo3d settings
 * Settings-Include: move LegBones to fo3d settings
 * Settings: improve editable entries
+* BasicCore: optimize copy() to pass placement storage for value
+* BasicCore: improve named enums
+* ExceptionHadling: pass name to exceptions context args
+* ExtendedTypes: move IRect to irect
+* ExtendedTypes: move FRect to frect
+* Logging: server logs append not rewrite (with checking of size)
+* Logging: colorize log texts
+* MemorySystem: fix use after possible move
+* StackTrace: improve automatic checker of FO_STACK_TRACE_ENTRY/FO_NO_STACK_TRACE_ENTRY in every .cpp function
+* WorkThread: schedule job repeat with last duration?
 * Application: move all these statics to App class fields
 * Rendering-OpenGL: make workarounds for work without ARB_uniform_buffer_object
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
@@ -278,7 +258,6 @@ Please follow these instructions to understand how to use this engine by design:
 * AdminPanel: admin panel network to Asio
 * Critter: incapsulate Critter data
 * CritterManager: find better place for critter in square geometry
-* CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * EntityManager: load global map critters
 * Map: make movable checks without critter removing
 * Map: optimize iterms radius search by using GetHexOffsets
@@ -292,7 +271,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: verify property data from client
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
-* Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ServerConnection: incapsulate ServerConnection data
 * EffectBaker: pre-compile HLSH shaders with D3DCompile

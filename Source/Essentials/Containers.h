@@ -92,7 +92,8 @@ FO_BEGIN_NAMESPACE();
 // Vector formatter
 FO_END_NAMESPACE();
 template<typename T>
-struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_vector_v<T>, char>> : formatter<FO_NAMESPACE string_view>
+    requires(FO_NAMESPACE is_vector_v<T>)
+struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
