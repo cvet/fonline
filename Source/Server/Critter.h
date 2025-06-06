@@ -152,7 +152,6 @@ public:
     void Send_LoadMap(const Map* map);
     void Send_AddItemOnMap(const Item* item);
     void Send_RemoveItemFromMap(const Item* item);
-    void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);
     void Send_ChosenAddItem(const Item* item);
     void Send_ChosenRemoveItem(const Item* item);
     void Send_Teleport(const Critter* cr, mpos to_hex);

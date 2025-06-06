@@ -510,19 +510,6 @@ void Map::ChangeViewItem(Item* item)
     }
 }
 
-void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    for (auto* cr : _playerCritters) {
-        if (cr->CountIdVisItem(item->GetId())) {
-            cr->Send_AnimateItem(item, anim_name, looped, reversed);
-        }
-    }
-}
-
 auto Map::IsBlockItem(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
