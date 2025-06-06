@@ -122,7 +122,7 @@ TEST_CASE("GeometryHelper")
     // ForEachBlockLines
     vector<uint8> lines = {2, 2, 4, 1};
     mpos start {5, 5};
-    int count = 0;
+    int32 count = 0;
     GeometryHelper::ForEachBlockLines(lines, start, map_size, [&](mpos pos) {
         CHECK(map_size.IsValidPos(pos));
         count++;

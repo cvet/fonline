@@ -80,7 +80,7 @@ FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32 index)
 {
     auto& maps = self->GetMaps();
 
-    if (index < 0 || index >= maps.size()) {
+    if (index < 0 || index >= numeric_cast<int32>(maps.size())) {
         throw ScriptException("Invalid index arg", index);
     }
 
