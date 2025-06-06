@@ -314,7 +314,6 @@ protected:
     void Net_OnInfoMessage();
     void Net_OnAddItemOnMap();
     void Net_OnRemoveItemFromMap();
-    void Net_OnPlaySound();
     void Net_OnPlaceToGameComplete();
     void Net_OnProperty();
     void Net_OnCritterDir();

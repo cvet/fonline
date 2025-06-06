@@ -162,7 +162,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn.AddMessageHandler(NetMessage::RemoteCall, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NetMessage::AddItemOnMap, [this] { Net_OnAddItemOnMap(); });
     _conn.AddMessageHandler(NetMessage::RemoveItemFromMap, [this] { Net_OnRemoveItemFromMap(); });
-    _conn.AddMessageHandler(NetMessage::PlaySound, [this] { Net_OnPlaySound(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this] { Net_OnRemoveCustomEntity(); });
@@ -1595,17 +1594,6 @@ void FOClient::Net_OnRemoveItemFromMap()
 
         item->Finish();
     }
-}
-
-void FOClient::Net_OnPlaySound()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Todo: synchronize effects showing (for example shot and kill)
-    [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<ident_t>();
-    const auto sound_name = _conn.InBuf.Read<string>();
-
-    SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
 }
 
 void FOClient::Net_OnPlaceToGameComplete()

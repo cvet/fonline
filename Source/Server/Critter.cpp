@@ -889,15 +889,6 @@ void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, Critt
     }
 }
 
-void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_PlaySound(cr_id_synchronize, sound_name);
-    }
-}
-
 void Critter::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();
