@@ -646,6 +646,21 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos hex, int32 radius, CritterFindType findType)
+{
+    vector<Critter*> critters;
+    const auto& map_critters = self->GetCritters();
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
+            critters.push_back(cr);
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<Critter*> critters;
@@ -893,28 +908,6 @@ FO_SCRIPT_API void Server_Map_UnblockHex(Map* self, mpos hex)
     }
 
     self->SetHexManualBlock(hex, false, false);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Map_PlaySound(Map* self, string_view soundName)
-{
-    for (Critter* cr : self->GetPlayerCritters()) {
-        cr->Send_PlaySound(ident_t {}, soundName);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Map_PlaySound(Map* self, string_view soundName, mpos hex, int32 radius)
-{
-    if (!self->GetSize().IsValidPos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    for (Critter* cr : self->GetPlayerCritters()) {
-        if (GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetLookDistance() + cr->GetMultihex())) {
-            cr->Send_PlaySound(ident_t {}, soundName);
-        }
-    }
 }
 
 ///@ ExportMethod

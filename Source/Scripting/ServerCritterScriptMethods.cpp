@@ -646,19 +646,6 @@ FO_SCRIPT_API void Server_Critter_SetConditionAnims(Critter* self, CritterCondit
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_PlaySound(Critter* self, string_view soundName, bool sendSelf)
-{
-    if (sendSelf) {
-        self->Send_PlaySound(self->GetId(), soundName);
-    }
-
-    for (auto it = self->VisCr.begin(), end = self->VisCr.end(); it != end; ++it) {
-        auto* cr_ = *it;
-        cr_->Send_PlaySound(self->GetId(), soundName);
-    }
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, const vector<Item*>& items)
 {
     self->Send_SomeItems(items, false, false, {});

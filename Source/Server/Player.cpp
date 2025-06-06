@@ -455,16 +455,6 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
     out_buf->Write(extra_text);
 }
 
-void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::PlaySound);
-
-    out_buf->Write(cr_id_synchronize);
-    out_buf->Write(sound_name);
-}
-
 void Player::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();
