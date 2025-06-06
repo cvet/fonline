@@ -10,7 +10,6 @@
 * glslang - [glslang-1.4.309.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
 * SDL - [SDL-3.2.10](https://github.com/libsdl-org/SDL)
-* SHA - SHA-1 & SHA-2 hash generators
 * small_vector - [small_vector](https://github.com/gharveymn/small_vector)
 * SPIRV-Cross - [SPIRV-Cross-1.4.309.0](https://github.com/KhronosGroup/SPIRV-Cross)
 * tracy - [tracy-0.11.1](https://github.com/wolfpld/tracy)

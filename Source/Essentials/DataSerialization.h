@@ -79,17 +79,6 @@ public:
     }
 
     template<typename T>
-    void ReadPtr(T* ptr)
-    {
-        if (_readPos + sizeof(T) > _dataBuf.size()) {
-            throw DataReadingException("Unexpected end of buffer");
-        }
-
-        MemCopy(ptr, _dataBuf.data() + _readPos, sizeof(T));
-        _readPos += sizeof(T);
-    }
-
-    template<typename T>
     void ReadPtr(T* ptr, size_t size)
     {
         if (_readPos + size > _dataBuf.size()) {
@@ -123,32 +112,25 @@ public:
         _dataBuf->reserve(BUF_RESERVE_SIZE);
     }
 
-    template<typename T>
-        requires(std::is_arithmetic_v<T>)
-    void Write(std::enable_if_t<true, T> data) noexcept
+    template<typename T, typename U = T>
+        requires(std::is_arithmetic_v<U>)
+    void Write(U data) noexcept
     {
-        ResizeBuf(sizeof(T));
-        *reinterpret_cast<T*>(_dataBuf->data() + _dataBuf->size() - sizeof(T)) = data;
-    }
-
-    template<typename T>
-    void WritePtr(const T* data) noexcept
-    {
-        ResizeBuf(sizeof(T));
-        MemCopy(_dataBuf->data() + _dataBuf->size() - sizeof(T), data, sizeof(T));
+        GrowBuf(sizeof(U));
+        *reinterpret_cast<U*>(_dataBuf->data() + _dataBuf->size() - sizeof(U)) = data;
     }
 
     template<typename T>
     void WritePtr(const T* data, size_t size) noexcept
     {
         if (size != 0) {
-            ResizeBuf(size);
+            GrowBuf(size);
             MemCopy(_dataBuf->data() + _dataBuf->size() - size, data, size);
         }
     }
 
 private:
-    void ResizeBuf(size_t size) noexcept
+    void GrowBuf(size_t size) noexcept
     {
         while (size > _dataBuf->capacity() - _dataBuf->size()) {
             _dataBuf->reserve(_dataBuf->capacity() * 2);

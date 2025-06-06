@@ -31,22 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: make entities positioning free in space, without hard-linking to hex
-// Todo: add third 'up' coordinate to positioning that allow create multidimensional maps
-// Todo: use smart pointers instead raw
-// Todo: fix all PVS Studio warnings
-// Todo: SHA replace to openssl SHA
-// Todo: wrap fonline code to namespace
-// Todo: hash_t 8 byte integer
-// Todo: c-style arrays to std::array
-// Todo: use more noexcept
-// Todo: use more constexpr
-// Todo: improve BitReader/BitWriter to better network/disk space utilization
-// Todo: improve custom exceptions for every subsustem
-// Todo: temporary entities, disable writing to data base
-// Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-// Todo: split meanings of int8/char and uint8/byte in code
-
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 // ReSharper disable CppInconsistentNaming
 
@@ -139,7 +123,8 @@ auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
-struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_atomic_v<T>, char>> : formatter<decltype(std::declval<T>().load())>
+    requires(FO_NAMESPACE is_atomic_v<T>)
+struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const

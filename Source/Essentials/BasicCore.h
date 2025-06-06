@@ -413,7 +413,8 @@ constexpr auto CombineEnum(T v1, T v2) noexcept -> T
 // Todo: improve named enums
 FO_END_NAMESPACE();
 template<typename T>
-struct std::formatter<T, std::enable_if_t<std::is_enum_v<T>, char>> : formatter<std::underlying_type_t<T>> // NOLINT(cert-dcl58-cpp)
+    requires(std::is_enum_v<T>)
+struct std::formatter<T> : formatter<std::underlying_type_t<T>> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const

@@ -94,7 +94,8 @@ constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
-struct std::formatter<T, std::enable_if_t<FO_NAMESPACE is_strong_type_v<T>, char>> : formatter<typename T::underlying_type> // NOLINT(cert-dcl58-cpp)
+    requires(FO_NAMESPACE is_strong_type_v<T>)
+struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
