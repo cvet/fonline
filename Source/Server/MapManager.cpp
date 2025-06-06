@@ -760,12 +760,11 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Ring check
     if (input.Cut <= 1 && input.Multihex == 0) {
-        auto&& [rsx, rsy] = _engine->Geometry.GetHexOffsets(input.ToHex);
-
         int32 i = 0;
 
-        for (; i < GameSettings::MAP_DIR_COUNT; i++, rsx++, rsy++) {
-            const auto ring_raw_hex = ipos {input.ToHex.x + *rsx, input.ToHex.y + *rsy};
+        for (; i < GameSettings::MAP_DIR_COUNT; i++) {
+            auto ring_raw_hex = ipos {input.ToHex.x, input.ToHex.y};
+            GeometryHelper::MoveHexAroundAway(ring_raw_hex, i);
 
             if (map_size.IsValidPos(ring_raw_hex)) {
                 const auto ring_hex = map_size.FromRawPos(ring_raw_hex);
@@ -825,10 +824,9 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 return output;
             }
 
-            auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(cur_hex);
-
             for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
-                const auto raw_next_hex = ipos {cur_hex.x + sx[j], cur_hex.y + sy[j]};
+                auto raw_next_hex = ipos {cur_hex.x, cur_hex.y};
+                GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
                 if (!map_size.IsValidPos(raw_next_hex)) {
                     continue;

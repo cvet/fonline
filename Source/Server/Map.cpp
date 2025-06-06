@@ -85,9 +85,6 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         return std::nullopt;
     }
 
-    seek_radius = std::min(seek_radius, MAX_HEX_OFFSET);
-
-    const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
     const auto max_pos = GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT;
     int32 pos = GenericUtils::Random(0, max_pos - 1);
     int32 iterations = 0;
@@ -100,7 +97,8 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
             pos = 0;
         }
 
-        const auto raw_check_hex = ipos {hex.x + sx[pos], hex.y + sy[pos]};
+        auto raw_check_hex = ipos {hex.x, hex.y};
+        GeometryHelper::MoveHexAroundAway(raw_check_hex, pos);
 
         if (!_mapSize.IsValidPos(raw_check_hex)) {
             continue;
@@ -118,7 +116,9 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         break;
     }
 
-    const auto result_hex = _mapSize.FromRawPos(ipos {hex.x + sx[pos], hex.y + sy[pos]});
+    auto raw_hex = ipos {hex.x, hex.y};
+    GeometryHelper::MoveHexAroundAway(raw_hex, pos);
+    const auto result_hex = _mapSize.FromRawPos(ipos {raw_hex.x, raw_hex.y});
 
     return result_hex;
 }
@@ -198,10 +198,11 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
 
     if (multihex != 0) {
         const auto hex = cr->GetHex();
-        auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
+        const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
 
-        for (int32 i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
-            const auto raw_mh_hex = ipos {hex.x + sx[i], hex.y + sy[i]};
+        for (int32 i = 0; i < max_hexes; i++) {
+            auto raw_mh_hex = ipos {hex.x, hex.y};
+            GeometryHelper::MoveHexAroundAway(raw_mh_hex, i);
 
             if (_mapSize.IsValidPos(raw_mh_hex)) {
                 const auto mh_hex = _mapSize.FromRawPos(raw_mh_hex);
@@ -410,11 +411,11 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     }
 
     // Neighbors
-    const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (int32 i = 0; i < count; i++) {
-        const auto raw_check_hex = ipos {hex.x + sx[i], hex.y + sy[i]};
+        auto raw_check_hex = ipos {hex.x, hex.y};
+        GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
         if (_mapSize.IsValidPos(raw_check_hex)) {
             if (!IsHexMovable(_mapSize.FromRawPos(raw_check_hex))) {
@@ -600,7 +601,7 @@ auto Map::GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>
 
     vector<Item*> items;
 
-    // Todo: optimize iterms radius search by using GetHexOffsets
+    // Todo: optimize items radius search by checking directly hexes in radius
     for (auto* item : _items) {
         if ((!pid || item->GetProtoId() == pid) && GeometryHelper::CheckDist(item->GetHex(), hex, radius)) {
             items.emplace_back(item);
@@ -824,7 +825,7 @@ auto Map::GetCritters(mpos hex, int32 radius, CritterFindType find_type) -> vect
 
     FO_NON_CONST_METHOD_HINT();
 
-    // Todo: optimize critters radius search by using GetHexOffsets
+    // Todo: optimize items radius search by checking directly hexes in radius
     return vec_filter(_critters, [&](const Critter* cr) -> bool { //
         return cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex());
     });

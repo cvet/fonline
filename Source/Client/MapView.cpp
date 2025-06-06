@@ -3619,10 +3619,11 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
 
     if (multihex != 0) {
         const auto hex = cr->GetHex();
-        auto&& [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
+        const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
 
-        for (int32 i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
-            const auto multihex_raw_hex = ipos {numeric_cast<int32>(hex.x) + sx[i], numeric_cast<int32>(hex.y) + sy[i]};
+        for (int32 i = 0; i < max_hexes; i++) {
+            auto multihex_raw_hex = ipos {numeric_cast<int32>(hex.x), numeric_cast<int32>(hex.y)};
+            GeometryHelper::MoveHexAroundAway(multihex_raw_hex, i);
 
             if (_mapSize.IsValidPos(multihex_raw_hex)) {
                 auto& field = _hexField->GetCellForWriting(_mapSize.FromRawPos(multihex_raw_hex));
@@ -3880,10 +3881,9 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         for (auto i = 0; i < p_togo && !find_ok; ++i, ++p) {
             auto hex = coords[p];
 
-            const auto [sx, sy] = _engine->Geometry.GetHexOffsets(hex);
-
             for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
-                const auto raw_next_hex = ipos {hex.x + sx[j], hex.y + sy[j]};
+                auto raw_next_hex = ipos {hex.x, hex.y};
+                GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
                 if (!_mapSize.IsValidPos(raw_next_hex)) {
                     continue;
