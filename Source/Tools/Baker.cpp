@@ -283,7 +283,6 @@ void MasterBaker::BakeAll()
 
         // Resource packs
         const auto bake_resource_pack = [ // clang-format off
-            &thiz = std::as_const(*this),
             &settings = std::as_const(_settings),
             &baking_output_ = std::as_const(baking_output),
             &force_baking_ = force_baking,
