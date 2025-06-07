@@ -288,7 +288,7 @@ FO_SCRIPT_API int32 Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos 
 {
     ignore_unused(engine);
 
-    return GeometryHelper::DistGame(hex1, hex2);
+    return GeometryHelper::GetDistance(hex1, hex2);
 }
 
 ///@ ExportMethod
@@ -296,7 +296,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 {
     ignore_unused(engine);
 
-    return GeometryHelper::GetFarDir(fromHex, toHex);
+    return GeometryHelper::GetDir(fromHex, toHex);
 }
 
 ///@ ExportMethod
@@ -304,7 +304,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 {
     ignore_unused(engine);
 
-    return GeometryHelper::GetFarDir(fromHex, toHex, offset);
+    return GeometryHelper::GetDir(fromHex, toHex, offset);
 }
 
 ///@ ExportMethod

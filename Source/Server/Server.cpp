@@ -3294,7 +3294,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
 
             const auto old_hex = cr->GetHex();
-            const uint8 dir = GeometryHelper::GetFarDir(old_hex, hex2);
+            const uint8 dir = GeometryHelper::GetDir(old_hex, hex2);
 
             if (old_hex != hex2) {
                 const auto multihex = cr->GetMultihex();

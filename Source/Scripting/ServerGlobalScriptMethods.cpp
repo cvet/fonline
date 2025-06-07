@@ -129,7 +129,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Critter* cr1, Crit
         throw ScriptException("Critters not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr1->GetHex(), cr2->GetHex());
+    const auto dist = GeometryHelper::GetDistance(cr1->GetHex(), cr2->GetHex());
     const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
@@ -152,7 +152,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Item* item1, Item*
         throw ScriptException("Items not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(item1->GetHex(), item2->GetHex());
+    const auto dist = GeometryHelper::GetDistance(item1->GetHex(), item2->GetHex());
     return dist;
 }
 
@@ -174,7 +174,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Critter* cr, Item*
         throw ScriptException("Critter/Item not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
+    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
     const auto multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
@@ -197,7 +197,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Item* item, Critte
         throw ScriptException("Item/Critter not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
+    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
     const auto multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
@@ -214,7 +214,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Critter* cr, mpos 
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr->GetHex(), hex);
+    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
     const auto multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
@@ -231,7 +231,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, mpos hex, Critter*
         throw ScriptException("Critter not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(cr->GetHex(), hex);
+    const auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
     const auto multihex = cr->GetMultihex();
     return multihex < dist ? dist - multihex : 0;
 }
@@ -248,7 +248,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, Item* item, mpos h
         throw ScriptException("Item not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(item->GetHex(), hex);
+    const auto dist = GeometryHelper::GetDistance(item->GetHex(), hex);
     return dist;
 }
 
@@ -264,7 +264,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(FOServer* server, mpos hex, Item* it
         throw ScriptException("Item not on map");
     }
 
-    const auto dist = GeometryHelper::DistGame(item->GetHex(), hex);
+    const auto dist = GeometryHelper::GetDistance(item->GetHex(), hex);
     return dist;
 }
 

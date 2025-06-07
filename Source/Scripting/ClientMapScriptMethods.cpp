@@ -288,8 +288,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
     }
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
-        const auto dist1 = GeometryHelper::DistGame(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const auto dist2 = GeometryHelper::DistGame(hex, cr2->GetHex()) - cr2->GetMultihex();
+        const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
         return dist1 < dist2;
     });
 
@@ -357,9 +357,9 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
         throw ScriptException("Invalid toHex arg");
     }
 
-    if (GeometryHelper::DistGame(fromHex, toHex) <= 1) {
-        if (GeometryHelper::DistGame(fromHex, toHex) > 0 && cut == 0) {
-            return {GeometryHelper::GetFarDir(fromHex, toHex)};
+    if (GeometryHelper::GetDistance(fromHex, toHex) <= 1) {
+        if (GeometryHelper::GetDistance(fromHex, toHex) > 0 && cut == 0) {
+            return {GeometryHelper::GetDir(fromHex, toHex)};
         }
         return {};
     }
@@ -371,7 +371,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(fromHex, init_to_hex) <= cut && GeometryHelper::DistGame(fromHex, to_hex) <= 1) {
+    if (cut > 0 && GeometryHelper::GetDistance(fromHex, init_to_hex) <= cut && GeometryHelper::GetDistance(fromHex, to_hex) <= 1) {
         return {};
     }
 
@@ -395,9 +395,9 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::DistGame(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
-        if (GeometryHelper::DistGame(cr->GetHex(), toHex) > cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetFarDir(cr->GetHex(), toHex)};
+    if (GeometryHelper::GetDistance(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
+        if (GeometryHelper::GetDistance(cr->GetHex(), toHex) > cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetDir(cr->GetHex(), toHex)};
         }
         return {};
     }
@@ -409,7 +409,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::GetDistance(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::GetDistance(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
@@ -431,7 +431,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos t
         throw ScriptException("Invalid toHex arg");
     }
 
-    if (GeometryHelper::DistGame(fromHex, toHex) <= 1) {
+    if (GeometryHelper::GetDistance(fromHex, toHex) <= 1) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -442,7 +442,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos t
         return 0;
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(fromHex, init_to_hex) <= cut && GeometryHelper::DistGame(fromHex, to_hex) <= 1) {
+    if (cut > 0 && GeometryHelper::GetDistance(fromHex, init_to_hex) <= cut && GeometryHelper::GetDistance(fromHex, to_hex) <= 1) {
         return 0;
     }
 
@@ -468,7 +468,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpo
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::DistGame(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
+    if (GeometryHelper::GetDistance(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -479,7 +479,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpo
         return 0;
     }
 
-    if (cut > 0 && GeometryHelper::DistGame(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::GetDistance(cr->GetHex(), init_to_hex) <= cut + cr->GetMultihex() && GeometryHelper::GetDistance(cr->GetHex(), to_hex) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 

@@ -86,7 +86,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr1, 
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
 
     if (hex_cr1 != nullptr && hex_cr2 != nullptr && hex_cr1->GetMapId() == hex_cr2->GetMapId()) {
-        const auto dist = GeometryHelper::DistGame(hex_cr1->GetHex(), hex_cr2->GetHex());
+        const auto dist = GeometryHelper::GetDistance(hex_cr1->GetHex(), hex_cr2->GetHex());
         const auto multihex = cr1->GetMultihex() + cr2->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
@@ -111,7 +111,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item1, I
     const auto* hex_item2 = dynamic_cast<ItemHexView*>(item2);
 
     if (hex_item1 != nullptr && hex_item2 != nullptr && hex_item1->GetMapId() == hex_item2->GetMapId()) {
-        const auto dist = GeometryHelper::DistGame(hex_item1->GetHex(), hex_item2->GetHex());
+        const auto dist = GeometryHelper::GetDistance(hex_item1->GetHex(), hex_item2->GetHex());
         return dist;
     }
     else {
@@ -135,7 +135,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr, I
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
     if (hex_cr != nullptr && hex_item != nullptr && hex_cr->GetMapId() == hex_item->GetMapId()) {
-        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex_item->GetHex());
+        const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
         const auto multihex = hex_cr->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
@@ -160,7 +160,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item, Cr
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
     if (hex_cr != nullptr && hex_item != nullptr && hex_cr->GetMapId() == hex_item->GetMapId()) {
-        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex_item->GetHex());
+        const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex_item->GetHex());
         const auto multihex = hex_cr->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
@@ -181,7 +181,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, CritterView* cr, m
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
 
     if (hex_cr != nullptr) {
-        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex);
+        const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
         const auto multihex = hex_cr->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
@@ -202,7 +202,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, mpos hex, CritterV
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
 
     if (hex_cr != nullptr) {
-        const auto dist = GeometryHelper::DistGame(hex_cr->GetHex(), hex);
+        const auto dist = GeometryHelper::GetDistance(hex_cr->GetHex(), hex);
         const auto multihex = hex_cr->GetMultihex();
         return multihex < dist ? dist - multihex : 0;
     }
@@ -223,7 +223,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, mpos hex, ItemView
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
     if (hex_item != nullptr) {
-        const auto dist = GeometryHelper::DistGame(hex_item->GetHex(), hex);
+        const auto dist = GeometryHelper::GetDistance(hex_item->GetHex(), hex);
         return dist;
     }
     else {
@@ -243,7 +243,7 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(FOClient* client, ItemView* item, mp
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
     if (hex_item != nullptr) {
-        const auto dist = GeometryHelper::DistGame(hex_item->GetHex(), hex);
+        const auto dist = GeometryHelper::GetDistance(hex_item->GetHex(), hex);
         return dist;
     }
     else {

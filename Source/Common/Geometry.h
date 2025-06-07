@@ -122,21 +122,18 @@ public:
     auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
     ~GeometryHelper() = default;
 
-    // Todo: move all geometry helper methods to static
     [[nodiscard]] auto GetYProj() const -> float32;
     [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
     [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
     [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
 
-    [[nodiscard]] static auto DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
-    [[nodiscard]] static auto DistGame(mpos hex1, mpos hex2) -> int32;
-    [[nodiscard]] static auto DistGame(ipos hex1, ipos hex2) -> int32;
-    [[nodiscard]] static auto GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
-    [[nodiscard]] static auto GetNearDir(mpos from_hex, mpos to_hex) -> uint8;
-    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
-    [[nodiscard]] static auto GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8;
-    [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex) -> uint8;
-    [[nodiscard]] static auto GetFarDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8;
+    [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
+    [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;
+    [[nodiscard]] static auto GetDistance(ipos hex1, ipos hex2) -> int32;
+    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
+    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8;
+    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex) -> uint8;
+    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8;
     [[nodiscard]] static auto GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32;
     [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float32;
     [[nodiscard]] static auto GetDirAngleDiff(float32 a1, float32 a2) -> float32;
@@ -148,10 +145,9 @@ public:
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
-    static auto MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos& hex, uint8 dir);
     static void MoveHexAroundAway(ipos& hex, int32 index);
-    static void ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const function<void(mpos)>& callback);
+    static void ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
     GeometrySettings& _settings;

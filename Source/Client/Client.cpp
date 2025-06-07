@@ -2562,7 +2562,7 @@ void FOClient::LmapPrepareMap()
             }
 
             bool is_far = false;
-            const auto dist = GeometryHelper::DistGame(hex.x, hex.y, i1, i2);
+            const auto dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
 
             if (dist > vis) {
                 is_far = true;

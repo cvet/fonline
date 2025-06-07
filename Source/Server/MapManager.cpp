@@ -659,7 +659,7 @@ void MapManager::TraceBullet(TraceData& trace)
     const auto map_size = map->GetSize();
     const auto start_hex = trace.StartHex;
     const auto target_hex = trace.TargetHex;
-    const auto dist = trace.MaxDist != 0 ? trace.MaxDist : GeometryHelper::DistGame(start_hex, target_hex);
+    const auto dist = trace.MaxDist != 0 ? trace.MaxDist : GeometryHelper::GetDistance(start_hex, target_hex);
 
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
@@ -1558,7 +1558,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
         }
     }
 
-    const int32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+    const int32 dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
     const int32 show_cr_dist1 = cr->GetShowCritterDist1();
     const int32 show_cr_dist2 = cr->GetShowCritterDist2();
     const int32 show_cr_dist3 = cr->GetShowCritterDist3();
@@ -1617,13 +1617,13 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         is_see = _engine->OnMapCheckLook.Fire(map, cr, target);
     }
     else {
-        int32 dist = GeometryHelper::DistGame(cr->GetHex(), target->GetHex());
+        int32 dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
         int32 look_dist = cr->GetLookDistance();
         const auto cr_dir = cr->GetDir();
 
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-            const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
+            const auto real_dir = GeometryHelper::GetDir(cr->GetHex(), target->GetHex());
             auto dir_index = cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir;
 
             if (dir_index > numeric_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
@@ -1665,7 +1665,7 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
             auto sneak_opp = target->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto real_dir = GeometryHelper::GetFarDir(cr->GetHex(), target->GetHex());
+                const auto real_dir = GeometryHelper::GetDir(cr->GetHex(), target->GetHex());
                 auto dir_index = (cr_dir > real_dir ? cr_dir - real_dir : real_dir - cr_dir);
 
                 if (dir_index > numeric_cast<int32>(GameSettings::MAP_DIR_COUNT / 2)) {
@@ -1729,7 +1729,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, cr, item);
             }
             else {
-                auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
+                auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
 
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
@@ -1777,12 +1777,12 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8
             continue;
         }
 
-        const auto dist = GeometryHelper::DistGame(hex, cr->GetHex());
+        const auto dist = GeometryHelper::GetDistance(hex, cr->GetHex());
         auto look_self = look;
 
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-            const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
+            const auto real_dir = GeometryHelper::GetDir(hex, cr->GetHex());
             auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
             if (i > dirs_count / 2) {
@@ -1817,7 +1817,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8
             auto sneak_opp = cr->GetSneakCoefficient();
 
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto real_dir = GeometryHelper::GetFarDir(hex, cr->GetHex());
+                const auto real_dir = GeometryHelper::GetDir(hex, cr->GetHex());
                 auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
 
                 if (i > numeric_cast<int32>(dirs_count / 2u)) {
@@ -1860,7 +1860,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, view_cr, item);
             }
             else {
-                auto dist = GeometryHelper::DistGame(hex, item->GetHex());
+                auto dist = GeometryHelper::GetDistance(hex, item->GetHex());
 
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();

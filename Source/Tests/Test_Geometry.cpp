@@ -42,20 +42,16 @@ FO_BEGIN_NAMESPACE();
 
 TEST_CASE("GeometryHelper")
 {
-    // DistGame
-    CHECK(GeometryHelper::DistGame(0, 0, 0, 0) == 0);
-    CHECK(GeometryHelper::DistGame(0, 0, 1, 0) >= 0);
-    CHECK(GeometryHelper::DistGame(mpos {0, 0}, mpos {1, 1}) >= 0);
+    // GetDistance
+    CHECK(GeometryHelper::GetDistance(0, 0, 0, 0) == 0);
+    CHECK(GeometryHelper::GetDistance(0, 0, 1, 0) >= 0);
+    CHECK(GeometryHelper::GetDistance(mpos {0, 0}, mpos {1, 1}) >= 0);
 
-    // GetNearDir
-    CHECK(GeometryHelper::GetNearDir(0, 0, 1, 0) <= 7);
-    CHECK(GeometryHelper::GetNearDir(mpos {0, 0}, mpos {1, 0}) <= 7);
-
-    // GetFarDir
-    CHECK(GeometryHelper::GetFarDir(0, 0, 1, 0) <= 7);
-    CHECK(GeometryHelper::GetFarDir(mpos {0, 0}, mpos {1, 0}) <= 7);
-    CHECK(GeometryHelper::GetFarDir(0, 0, 1, 0, 10.0f) <= 7);
-    CHECK(GeometryHelper::GetFarDir(mpos {0, 0}, mpos {1, 0}, 10.0f) <= 7);
+    // GetDir
+    CHECK(GeometryHelper::GetDir(0, 0, 1, 0) <= 7);
+    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}) <= 7);
+    CHECK(GeometryHelper::GetDir(0, 0, 1, 0, 10.0f) <= 7);
+    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}, 10.0f) <= 7);
 
     // GetDirAngle
     CHECK(GeometryHelper::GetDirAngle(0, 0, 1, 0) >= 0.0f);
@@ -95,14 +91,8 @@ TEST_CASE("GeometryHelper")
 
     // MoveHexByDirUnsafe
     ipos ihex {5, 5};
-    bool ok = GeometryHelper::MoveHexByDirUnsafe(ihex, 2, map_size);
-    CHECK(ok);
+    GeometryHelper::MoveHexByDirUnsafe(ihex, 2);
     CHECK(map_size.IsValidPos(ihex));
-
-    // MoveHexByDirUnsafe(ipos&)
-    ipos ihex2 {5, 5};
-    GeometryHelper::MoveHexByDirUnsafe(ihex2, 2);
-    // No assertion, just check it doesn't throw
 
     // MoveHexAroundAway
     constexpr ipos ihex3 {5, 5};
@@ -111,13 +101,13 @@ TEST_CASE("GeometryHelper")
     ipos ihex6 = ihex3;
     ipos ihex7 = ihex3;
     GeometryHelper::MoveHexAroundAway(ihex4, 0);
-    CHECK(GeometryHelper::DistGame(ihex3, ihex4) == 1);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex4) == 1);
     GeometryHelper::MoveHexAroundAway(ihex5, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(1));
-    CHECK(GeometryHelper::DistGame(ihex3, ihex5) == 2);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex5) == 2);
     GeometryHelper::MoveHexAroundAway(ihex6, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(2));
-    CHECK(GeometryHelper::DistGame(ihex3, ihex6) == 3);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex6) == 3);
     GeometryHelper::MoveHexAroundAway(ihex7, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(3));
-    CHECK(GeometryHelper::DistGame(ihex3, ihex7) == 4);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex7) == 4);
 
     // ForEachBlockLines
     vector<uint8> lines = {2, 2, 4, 1};
@@ -127,7 +117,7 @@ TEST_CASE("GeometryHelper")
         CHECK(map_size.IsValidPos(pos));
         count++;
     });
-    CHECK(count > 0);
+    CHECK(count == 3);
 }
 
 FO_END_NAMESPACE();

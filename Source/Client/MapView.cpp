@@ -1858,7 +1858,7 @@ void MapView::ApplyLightFan(LightSource* ls)
                 bool use_offsets = false;
 
                 if (ipos {traced_hex.x, traced_hex.y} != raw_traced_hex) {
-                    traced_alpha = numeric_cast<uint8>(lerp(numeric_cast<int32>(center_alpha), 0, numeric_cast<float32>(GeometryHelper::DistGame(center_hex, traced_hex)) / numeric_cast<float32>(distance)));
+                    traced_alpha = numeric_cast<uint8>(lerp(numeric_cast<int32>(center_alpha), 0, numeric_cast<float32>(GeometryHelper::GetDistance(center_hex, traced_hex)) / numeric_cast<float32>(distance)));
 
                     if (traced_hex == center_hex) {
                         use_offsets = true;
@@ -2039,7 +2039,7 @@ void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32 i
 
     if (field.Flags.HasTransparentWall) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
-        const auto dir = GeometryHelper::GetFarDir(from_hex, to_hex);
+        const auto dir = GeometryHelper::GetDir(from_hex, to_hex);
 
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
             MarkLight(ls, to_hex, intensity);
@@ -2066,7 +2066,7 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
         }
     }
 
-    const int32 dir = GeometryHelper::GetFarDir(from_hex, to_hex);
+    const int32 dir = GeometryHelper::GetDir(from_hex, to_hex);
 
     if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
         MarkLight(ls, to_hex, intensity);
@@ -2891,7 +2891,7 @@ void MapView::PrepareFogToDraw()
                     auto target_hex = _mapSize.ClampPos(target_raw_hex);
 
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-                        const int32 dir_ = GeometryHelper::GetFarDir(base_hex, target_hex);
+                        const int32 dir_ = GeometryHelper::GetDir(base_hex, target_hex);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
                         if (ii > GameSettings::MAP_DIR_COUNT / 2) {
                             ii = GameSettings::MAP_DIR_COUNT - ii;
@@ -2910,7 +2910,7 @@ void MapView::PrepareFogToDraw()
                         target_hex = block;
                     }
 
-                    auto dist_look = GeometryHelper::DistGame(base_hex, target_hex);
+                    auto dist_look = GeometryHelper::GetDistance(base_hex, target_hex);
 
                     if (_drawLookBorders) {
                         const auto hex_pos = GetHexPosition(target_hex);
@@ -2931,7 +2931,7 @@ void MapView::PrepareFogToDraw()
                         TraceBullet(base_hex, target_hex, max_shoot_dist, 0.0f, nullptr, CritterFindType::Any, nullptr, &block_hex, nullptr, true);
 
                         const auto block_hex_pos = GetHexPosition(block_hex);
-                        const auto result_shoot_dist = GeometryHelper::DistGame(base_hex, block_hex);
+                        const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
                         const auto color = ucolor {255, numeric_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
                         const auto* offset = result_shoot_dist == max_shoot_dist ? &chosen->SprOffset : nullptr;
 
@@ -4264,7 +4264,7 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 a
         ClearHexTrack();
     }
 
-    const auto check_dist = dist != 0 ? dist : GeometryHelper::DistGame(start_hex, target_hex);
+    const auto check_dist = dist != 0 ? dist : GeometryHelper::GetDistance(start_hex, target_hex);
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
 

@@ -253,7 +253,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    auto dist = GeometryHelper::DistGame(cr->GetHex(), hex);
+                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
 
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
@@ -466,7 +466,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
+                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
 
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
@@ -490,7 +490,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    auto dist = GeometryHelper::DistGame(cr->GetHex(), item->GetHex());
+                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
 
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
@@ -916,7 +916,7 @@ auto Map::GetStaticItemsHexEx(mpos hex, int32 radius, hstring pid) -> vector<Sta
     vector<StaticItem*> items;
 
     for (auto* item : _staticMap->StaticItems) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::DistGame(item->GetHex(), hex) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::GetDistance(item->GetHex(), hex) <= radius) {
             items.emplace_back(item);
         }
     }

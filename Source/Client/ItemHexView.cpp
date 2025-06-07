@@ -153,7 +153,7 @@ void ItemHexView::SetEffect(mpos to_hex, float32 speed)
 
     _effStartOffset = SprOffset;
     _effCurOffset = {numeric_cast<float32>(SprOffset.x), numeric_cast<float32>(SprOffset.y)};
-    _effDir = GeometryHelper::GetFarDir(cur_hex, to_hex);
+    _effDir = GeometryHelper::GetDir(cur_hex, to_hex);
     _effUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
