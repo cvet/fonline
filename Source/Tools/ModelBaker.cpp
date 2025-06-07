@@ -129,11 +129,11 @@ struct BakerBone
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
 
         if (AttachedMesh) {
-            writer.Write<uint8>(1);
+            writer.Write<uint8>(const_numeric_cast<uint8>(1));
             AttachedMesh->Save(writer);
         }
         else {
-            writer.Write<uint8>(0);
+            writer.Write<uint8>(const_numeric_cast<uint8>(0));
         }
 
         writer.Write<uint32>(numeric_cast<uint32>(Children.size()));

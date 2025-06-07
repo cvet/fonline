@@ -112,12 +112,12 @@ public:
         _dataBuf->reserve(BUF_RESERVE_SIZE);
     }
 
-    template<typename T, typename U = T>
-        requires(std::is_arithmetic_v<U>)
+    template<typename T, typename U>
+        requires(std::is_arithmetic_v<T> && std::is_same_v<T, U>)
     void Write(U data) noexcept
     {
-        GrowBuf(sizeof(U));
-        *reinterpret_cast<U*>(_dataBuf->data() + _dataBuf->size() - sizeof(U)) = data;
+        GrowBuf(sizeof(T));
+        *reinterpret_cast<T*>(_dataBuf->data() + _dataBuf->size() - sizeof(T)) = data;
     }
 
     template<typename T>
