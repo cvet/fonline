@@ -203,12 +203,12 @@ public:
 #define AS_VERIFY(expr) \
     as_result = expr; \
     if (as_result < 0) { \
-        ThrowInitException(#expr); \
+        ThrowInitException(__LINE__, as_result); \
     }
 
-static void ThrowInitException(const char* message)
+static void ThrowInitException(int32 line, int32 result)
 {
-    throw ScriptInitException(message);
+    throw ScriptInitException(strex("Line: {}", line).str(), strex("Result: {}", result).str());
 }
 
 #ifdef AS_MAX_PORTABILITY
