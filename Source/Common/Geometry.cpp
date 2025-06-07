@@ -41,7 +41,7 @@ GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
+auto GeometryHelper::GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -78,104 +78,21 @@ auto GeometryHelper::DistGame(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
     }
 }
 
-auto GeometryHelper::DistGame(mpos hex1, mpos hex2) -> int32
+auto GeometryHelper::GetDistance(mpos hex1, mpos hex2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y);
+    return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
-auto GeometryHelper::DistGame(ipos hex1, ipos hex2) -> int32
+auto GeometryHelper::GetDistance(ipos hex1, ipos hex2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y);
+    return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
-auto GeometryHelper::GetNearDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        if ((x1 % 2) != 0) {
-            if (x1 > x2 && y1 > y2) {
-                return 0;
-            }
-            else if (x1 > x2 && y1 == y2) {
-                return 1;
-            }
-            else if (x1 == x2 && y1 < y2) {
-                return 2;
-            }
-            else if (x1 < x2 && y1 == y2) {
-                return 3;
-            }
-            else if (x1 < x2 && y1 > y2) {
-                return 4;
-            }
-            else if (x1 == x2 && y1 > y2) {
-                return 5;
-            }
-        }
-        else {
-            if (x1 > x2 && y1 == y2) {
-                return 0;
-            }
-            else if (x1 > x2 && y1 < y2) {
-                return 1;
-            }
-            else if (x1 == x2 && y1 < y2) {
-                return 2;
-            }
-            else if (x1 < x2 && y1 < y2) {
-                return 3;
-            }
-            else if (x1 < x2 && y1 == y2) {
-                return 4;
-            }
-            else if (x1 == x2 && y1 > y2) {
-                return 5;
-            }
-        }
-    }
-    else {
-        if (x1 > x2 && y1 == y2) {
-            return 0;
-        }
-        else if (x1 > x2 && y1 < y2) {
-            return 1;
-        }
-        else if (x1 == x2 && y1 < y2) {
-            return 2;
-        }
-        else if (x1 < x2 && y1 < y2) {
-            return 3;
-        }
-        else if (x1 < x2 && y1 == y2) {
-            return 4;
-        }
-        else if (x1 < x2 && y1 > y2) {
-            return 5;
-        }
-        else if (x1 == x2 && y1 > y2) {
-            return 6;
-        }
-        else if (x1 > x2 && y1 > y2) {
-            return 7;
-        }
-    }
-
-    return 0;
-}
-
-auto GeometryHelper::GetNearDir(mpos from_hex, mpos to_hex) -> uint8
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return GetNearDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
-}
-
-auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
+auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -235,7 +152,7 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
     }
 }
 
-auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8
+auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -309,18 +226,18 @@ auto GeometryHelper::GetFarDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 o
     }
 }
 
-auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex) -> uint8
+auto GeometryHelper::GetDir(mpos from_hex, mpos to_hex) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
+    return GetDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
-auto GeometryHelper::GetFarDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8
+auto GeometryHelper::GetDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetFarDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
+    return GetDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
 }
 
 auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32
@@ -422,7 +339,7 @@ auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return DistGame(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
+    return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
 }
 
 auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
@@ -437,23 +354,15 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     auto raw_pos = ipos {hex.x, hex.y};
+    MoveHexByDirUnsafe(raw_pos, dir);
 
-    if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
+    if (map_size.IsValidPos(raw_pos)) {
         hex.x = numeric_cast<uint16>(raw_pos.x);
         hex.y = numeric_cast<uint16>(raw_pos.y);
         return true;
     }
 
     return false;
-}
-
-auto GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir, msize map_size) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    MoveHexByDirUnsafe(hex, dir);
-
-    return map_size.IsValidPos(hex);
 }
 
 void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
@@ -644,22 +553,24 @@ auto GeometryHelper::GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const ->
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, mpos hex, msize map_size, const function<void(mpos)>& callback)
+void GeometryHelper::ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto raw_pos = ipos {hex.x, hex.y};
 
-    for (size_t i = 0; i < lines.size() / 2; i++) {
-        const auto dir = lines[i * 2];
-        const auto steps = lines[i * 2 + 1];
+    for (size_t i = 0; i < dir_line.size() / 2; i++) {
+        const auto dir = dir_line[i * 2];
+        const auto steps = dir_line[i * 2 + 1];
 
-        if (dir >= GameSettings::MAP_DIR_COUNT || steps == 0 || steps > 9) {
+        if (dir >= GameSettings::MAP_DIR_COUNT) {
             continue;
         }
 
-        for (uint8 k = 0; k < steps; k++) {
-            if (MoveHexByDirUnsafe(raw_pos, dir, map_size)) {
+        for (uint8 j = 0; j < steps; j++) {
+            MoveHexByDirUnsafe(raw_pos, dir);
+
+            if (map_size.IsValidPos(raw_pos)) {
                 callback({numeric_cast<uint16>(raw_pos.x), numeric_cast<uint16>(raw_pos.y)});
             }
         }
