@@ -308,11 +308,6 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
 };
 
-template<typename...>
-struct always_false : std::false_type
-{
-};
-
 // End of scope callback
 template<typename T>
 class [[nodiscard]] ScopeCallback

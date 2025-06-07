@@ -220,8 +220,8 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         writer.WritePtr(_podData.get() + start_pos, len);
     }
 
-    writer.Write<uint32>(0);
-    writer.Write<uint32>(0);
+    writer.Write<uint32>(const_numeric_cast<uint32>(0));
+    writer.Write<uint32>(const_numeric_cast<uint32>(0));
 
     // Store complex properties
     writer.Write<uint32>(numeric_cast<uint32>(_registrator->_complexProperties.size()));

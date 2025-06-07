@@ -359,7 +359,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
 
             // Complete files list
-            writer.Write<int16>(-1);
+            writer.Write<int16>(const_numeric_cast<int16>(-1));
         }
 
         return std::nullopt;
