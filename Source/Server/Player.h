@@ -61,13 +61,14 @@ public:
     ~Player() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr; }
-    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr; }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
+    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr.get(); }
     [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);
     void SwapConnection(Player* other) noexcept;
+    void SetIgnoreSendEntityProperty(const Entity* entity, const Property* prop) noexcept;
 
     void Send_LoginSuccess();
     void Send_Moving(const Critter* from_cr);
@@ -102,11 +103,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLogout);
 
-    // Todo: incapsulate Player data
-    uint8 Access {ACCESS_CLIENT};
-    const Entity* SendIgnoreEntity {};
-    const Property* SendIgnoreProperty {};
-
 private:
     void SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool owned);
@@ -114,7 +110,9 @@ private:
 
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
-    Critter* _controlledCr {}; // Todo: allow attach many critters to sigle player
+    raw_ptr<Critter> _controlledCr {}; // Todo: allow attach many critters to sigle player
+    raw_ptr<const Entity> _sendIgnoreEntity {};
+    raw_ptr<const Property> _sendIgnoreProperty {};
 };
 
 FO_END_NAMESPACE();

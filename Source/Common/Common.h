@@ -337,30 +337,6 @@ static constexpr auto LIGHT_DISABLE_DIR(int32 dir) -> uint8
 static constexpr uint8 LIGHT_GLOBAL = 0x40;
 static constexpr uint8 LIGHT_INVERSE = 0x80;
 
-// Access
-static constexpr uint8 ACCESS_CLIENT = 0;
-static constexpr uint8 ACCESS_TESTER = 1;
-static constexpr uint8 ACCESS_MODER = 2;
-static constexpr uint8 ACCESS_ADMIN = 3;
-
-// Commands
-static constexpr auto CMD_EXIT = 1;
-static constexpr auto CMD_MYINFO = 2;
-static constexpr auto CMD_GAMEINFO = 3;
-static constexpr auto CMD_CRITID = 4;
-static constexpr auto CMD_MOVECRIT = 5;
-static constexpr auto CMD_DISCONCRIT = 7;
-static constexpr auto CMD_TOGLOBAL = 8;
-static constexpr auto CMD_PROPERTY = 10;
-static constexpr auto CMD_GETACCESS = 11;
-static constexpr auto CMD_ADDITEM = 12;
-static constexpr auto CMD_ADDITEM_SELF = 14;
-static constexpr auto CMD_ADDNPC = 15;
-static constexpr auto CMD_ADDLOCATION = 16;
-static constexpr auto CMD_RUNSCRIPT = 20;
-static constexpr auto CMD_REGENMAP = 25;
-static constexpr auto CMD_LOG = 37;
-
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16
 {

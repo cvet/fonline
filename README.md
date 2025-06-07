@@ -185,7 +185,6 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: process default animations
 * 3dStuff: incapsulate model animation callbacks
 * Client: refactor critters inventory updating
-* Client: synchronize effects showing (for example shot and kill)
 * Client: fix soft scroll if critter teleports
 * Client: make IfaceAnim scriptable object
 * Client: move screen fading to scripts
@@ -225,8 +224,6 @@ Please follow these instructions to understand how to use this engine by design:
 * EntityProperties: exclude map properties from engine:
 * EntityProperties: implement Location InitScript
 * Geometry: make hex position customizable, to allow to add third Z coordinate
-* Geometry: remove hex offset limit
-* Geometry: move all geometry helper methods to static
 * MapLoader: restore supporting of the map old text format
 * Properties: validate property name identifier
 * Properties: don't preserve memory for not allocated components in entity
@@ -256,13 +253,10 @@ Please follow these instructions to understand how to use this engine by design:
 * MonoScripting-Template: get Mono domain user data
 * ServerMapScriptMethods: notify clients about manual hex block
 * Critter: incapsulate Critter data
-* CritterManager: find better place for critter in square geometry
 * EntityManager: load global map critters
 * Map: make movable checks without critter removing
-* Map: optimize iterms radius search by using GetHexOffsets
-* Map: optimize critters radius search by using GetHexOffsets
+* Map: optimize items radius search by checking directly hexes in radius (2)
 * MapManager: if path finding not be reworked than migrate magic number to scripts
-* Player: incapsulate Player data
 * Player: allow attach many critters to sigle player
 * Server: validate player moving path
 * Server: validate stop position and place critter in it

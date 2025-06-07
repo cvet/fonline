@@ -51,7 +51,6 @@ static constexpr CmdDef CMD_LIST[] = {
     {"disconnect", CMD_DISCONCRIT},
     {"toglobal", CMD_TOGLOBAL},
     {"prop", CMD_PROPERTY},
-    {"getaccess", CMD_GETACCESS},
     {"additem", CMD_ADDITEM},
     {"additemself", CMD_ADDITEM_SELF},
     {"ais", CMD_ADDITEM_SELF},
@@ -172,22 +171,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.Write(cr_id);
         buf.Write(property_name);
         buf.Write(property_value);
-        buf.EndMsg();
-    } break;
-    case CMD_GETACCESS: {
-        string name_access;
-        string pasw_access;
-        if (!(args_str >> name_access >> pasw_access)) {
-            logcb("Invalid arguments. Example: getaccess name password");
-            break;
-        }
-        name_access = strex(name_access).replace('*', ' ');
-        pasw_access = strex(pasw_access).replace('*', ' ');
-
-        buf.StartMsg(msg);
-        buf.Write(cmd);
-        buf.Write(name_access);
-        buf.Write(pasw_access);
         buf.EndMsg();
     } break;
     case CMD_ADDITEM: {
