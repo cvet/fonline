@@ -255,7 +255,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * ServerMapScriptMethods: notify clients about manual hex block
-* AdminPanel: admin panel network to Asio
 * Critter: incapsulate Critter data
 * CritterManager: find better place for critter in square geometry
 * EntityManager: load global map critters

@@ -32,7 +32,6 @@
 //
 
 #include "Server.h"
-#include "AdminPanel.h"
 #include "AnyData.h"
 #include "Application.h"
 #include "ImGuiStuff.h"
@@ -360,19 +359,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             // Complete files list
             writer.Write<int16>(const_numeric_cast<int16>(-1));
-        }
-
-        return std::nullopt;
-    });
-
-    // Admin manager
-    _starter.AddJob([this] {
-        FO_STACK_TRACE_ENTRY_NAMED("InitAdminPanelJob");
-
-        if (Settings.AdminPanelPort != 0) {
-            WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
-
-            InitAdminManager(this, numeric_cast<uint16>(Settings.AdminPanelPort));
         }
 
         return std::nullopt;

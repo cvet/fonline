@@ -709,8 +709,6 @@ list(APPEND FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
 
 list(APPEND FO_SERVER_BASE_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Server/AdminPanel.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/AdminPanel.h"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/CritterManager.cpp"
