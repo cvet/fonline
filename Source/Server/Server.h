@@ -109,9 +109,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int32 /*arg1*/, string& /*arg2*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8 /*arg2*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
@@ -224,8 +222,7 @@ private:
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
-    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
-    void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player);
     void Process_Property(Player* player);
     void Process_RemoteCall(Player* player);
 

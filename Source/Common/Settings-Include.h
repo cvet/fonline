@@ -308,10 +308,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual DataSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
-FIXED_SETTING(vector<string>, AccessAdmin);
-FIXED_SETTING(vector<string>, AccessClient);
-FIXED_SETTING(vector<string>, AccessModer);
-FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(bool, CollapseLogOnStart, false);

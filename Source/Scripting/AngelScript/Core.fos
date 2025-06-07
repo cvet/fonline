@@ -1,12 +1,6 @@
 namespace Core // Sort -10
 {
 
-// Access levels
-#define ACCESS_CLIENT (0)
-#define ACCESS_TESTER (1)
-#define ACCESS_MODER  (2)
-#define ACCESS_ADMIN  (3)
-
 // Look checks
 #define LOOK_CHECK_DIR          (0x01) // Nerfe look by directions of look
 #define LOOK_CHECK_SNEAK_DIR    (0x02) // Nerfe opponent sneak by directions of look
@@ -17,41 +11,21 @@ namespace Core // Sort -10
 #define LOOK_CHECK_TRACE_CLIENT (0x40) // Tracing for wall aviablility (client side)
 
 // Internal server commands
-#define COMMAND_EXIT                  (1)
-#define COMMAND_MYINFO                (2)
-#define COMMAND_GAMEINFO              (3)
-#define COMMAND_CRITID                (4)
-#define COMMAND_MOVECRIT              (5)
-#define COMMAND_KILLCRIT              (6)
-#define COMMAND_DISCONCRIT            (7)
-#define COMMAND_TOGLOBAL              (8)
-#define COMMAND_RESPAWN               (9)
-#define COMMAND_PARAM                 (10)
-#define COMMAND_GETACCESS             (11)
-#define COMMAND_ADDITEM               (12)
-#define COMMAND_CRASH                 (13)
-#define COMMAND_ADDITEM_SELF          (14)
-#define COMMAND_ADDNPC                (15)
-#define COMMAND_ADDLOCATION           (16)
-#define COMMAND_RELOADSCRIPTS         (17)
-#define COMMAND_RELOAD_CLIENT_SCRIPTS (19)
-#define COMMAND_RUNSCRIPT             (20)
-#define COMMAND_RELOAD_PROTOS         (21)
-#define COMMAND_REGENMAP              (25)
-#define COMMAND_RELOADDIALOGS         (26)
-#define COMMAND_LOADDIALOG            (27)
-#define COMMAND_RELOADTEXTS           (28)
-#define COMMAND_RELOADAI              (29)
-#define COMMAND_CHECKVAR              (30)
-#define COMMAND_SETVAR                (31)
-#define COMMAND_SETTIME               (32)
-#define COMMAND_DELETE_ACCOUNT        (34)
-#define COMMAND_CHANGE_PASSWORD       (35)
-#define COMMAND_DROP_UID              (36)
-#define COMMAND_LOG                   (37)
-#define COMMAND_DEV_EXEC              (38)
-#define COMMAND_DEV_FUNC              (39)
-#define COMMAND_DEV_GVAR              (40)
+#define COMMAND_EXIT         (1)
+#define COMMAND_MYINFO       (2)
+#define COMMAND_GAMEINFO     (3)
+#define COMMAND_CRITID       (4)
+#define COMMAND_MOVECRIT     (5)
+#define COMMAND_DISCONCRIT   (7)
+#define COMMAND_TOGLOBAL     (8)
+#define COMMAND_PROPERTY     (10)
+#define COMMAND_ADDITEM      (12)
+#define COMMAND_ADDITEM_SELF (14)
+#define COMMAND_ADDNPC       (15)
+#define COMMAND_ADDLOCATION  (16)
+#define COMMAND_RUNSCRIPT    (20)
+#define COMMAND_REGENMAP     (25)
+#define COMMAND_LOG          (37)
 
 // Client lighting
 #define MAX_LIGHT_VALUE   (10000)

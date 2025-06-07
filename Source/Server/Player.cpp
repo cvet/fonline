@@ -80,6 +80,14 @@ void Player::SwapConnection(Player* other) noexcept
     std::swap(_connection, other->_connection);
 }
 
+void Player::SetIgnoreSendEntityProperty(const Entity* entity, const Property* prop) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _sendIgnoreEntity = entity;
+    _sendIgnoreProperty = prop;
+}
+
 void Player::Send_LoginSuccess()
 {
     FO_STACK_TRACE_ENTRY();
@@ -223,7 +231,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     FO_RUNTIME_ASSERT(entity);
     FO_RUNTIME_ASSERT(prop);
 
-    if (SendIgnoreEntity == entity && SendIgnoreProperty == prop) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 

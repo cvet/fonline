@@ -35,6 +35,7 @@
 #include "AnyData.h"
 #include "Application.h"
 #include "ImGuiStuff.h"
+#include "NetCommand.h"
 #include "PropertiesSerializator.h"
 #include "Version-Include.h"
 
@@ -1045,7 +1046,7 @@ void FOServer::ProcessPlayer(Player* player)
 
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strex(s).trim()); }, player, "");
+            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strex(s).trim()); }, player);
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:
@@ -1109,81 +1110,32 @@ void FOServer::ProcessConnection(ServerConnection* connection)
     }
 }
 
-void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
+void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
     SetLogCallback("Process_Command", logcb);
-    Process_CommandReal(buf, logcb, player, admin_panel);
-    SetLogCallback("Process_Command", nullptr);
-}
-
-void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto* player_cr = player->GetControlledCritter();
+    auto remove_log_callback = ScopeCallback([this]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
 
     const auto cmd = buf.Read<uint8>();
+    auto* player_cr = player->GetControlledCritter();
+    auto allow_command = OnPlayerAllowCommand.Fire(player, cmd);
 
-    auto sstr = string(player_cr != nullptr ? "" : admin_panel);
-    auto allow_command = OnPlayerAllowCommand.Fire(player, sstr, cmd);
-
-    if (!allow_command && (player_cr == nullptr)) {
-        logcb("Command refused by script");
+    if (!allow_command) {
+        logcb("Command refused");
         return;
     }
 
-#define CHECK_ALLOW_COMMAND() \
-    do { \
-        if (!allow_command) { \
-            return; \
-        } \
-    } while (0)
-
-#define CHECK_ADMIN_PANEL() \
-    do { \
-        if (player_cr == nullptr) { \
-            logcb("Can't execute this command in admin panel"); \
-            return; \
-        } \
-    } while (0)
-
     switch (cmd) {
     case CMD_EXIT: {
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
         player->GetConnection()->GracefulDisconnect();
     } break;
     case CMD_MYINFO: {
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
-        string istr = strex("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", player_cr->GetName(), player_cr->GetId());
-        switch (player->Access) {
-        case ACCESS_CLIENT:
-            istr += "|0xFFFF0000 Client|0xFF00FF00";
-            break;
-        case ACCESS_TESTER:
-            istr += "|0xFFFF0000 Tester|0xFF00FF00";
-            break;
-        case ACCESS_MODER:
-            istr += "|0xFFFF0000 Moderator|0xFF00FF00";
-            break;
-        case ACCESS_ADMIN:
-            istr += "|0xFFFF0000 Administrator|0xFF00FF00";
-            break;
-        default:
-            break;
-        }
-
+        string istr = strex("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}", player_cr->GetName(), player_cr->GetId());
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
         const auto info = buf.Read<int32>();
-
-        CHECK_ALLOW_COMMAND();
 
         string result;
         switch (info) {
@@ -1214,9 +1166,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_CRITID: {
         const auto name = buf.Read<string>();
-
-        CHECK_ALLOW_COMMAND();
-
         const auto player_id = MakePlayerId(name);
 
         if (DbStorage.Valid(PlayersCollectionName, player_id)) {
@@ -1230,15 +1179,15 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto cr_id = buf.Read<ident_t>();
         const auto cr_hex = buf.Read<mpos>();
 
-        CHECK_ALLOW_COMMAND();
-
         auto* cr = EntityMngr.GetCritter(cr_id);
+
         if (cr == nullptr) {
             logcb("Critter not found");
             break;
         }
 
         auto* map = EntityMngr.GetMap(cr->GetMapId());
+
         if (map == nullptr) {
             logcb("Critter is on global");
             break;
@@ -1254,14 +1203,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
 
-        CHECK_ALLOW_COMMAND();
-
         if (player_cr != nullptr && player_cr->GetId() == cr_id) {
             logcb("To kick yourself type <~exit>");
             return;
         }
 
         auto* cr = EntityMngr.GetCritter(cr_id);
+
         if (cr == nullptr) {
             logcb("Critter not found");
             return;
@@ -1282,9 +1230,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_TOGLOBAL: {
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
         MapMngr.TransitToGlobal(player_cr, {});
     } break;
     case CMD_PROPERTY: {
@@ -1292,11 +1237,11 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto property_name = buf.Read<string>();
         const auto property_value = buf.Read<int32>();
 
-        CHECK_ALLOW_COMMAND();
-
         auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
+
         if (cr != nullptr) {
             const auto* prop = GetPropertyRegistrator("Critter")->FindProperty(property_name);
+
             if (prop == nullptr) {
                 logcb("Property not found");
                 return;
@@ -1313,48 +1258,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             logcb("Critter not found");
         }
     } break;
-    case CMD_GETACCESS: {
-        const auto name_access = buf.Read<string>();
-        const auto pasw_access = buf.Read<string>();
-
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
-        auto wanted_access = -1;
-        if (name_access == "client" && std::ranges::find(Settings.AccessClient, pasw_access) != Settings.AccessClient.end()) {
-            wanted_access = ACCESS_CLIENT;
-        }
-        else if (name_access == "tester" && std::ranges::find(Settings.AccessTester, pasw_access) != Settings.AccessTester.end()) {
-            wanted_access = ACCESS_TESTER;
-        }
-        else if (name_access == "moder" && std::ranges::find(Settings.AccessModer, pasw_access) != Settings.AccessModer.end()) {
-            wanted_access = ACCESS_MODER;
-        }
-        else if (name_access == "admin" && std::ranges::find(Settings.AccessAdmin, pasw_access) != Settings.AccessAdmin.end()) {
-            wanted_access = ACCESS_ADMIN;
-        }
-
-        auto allow = false;
-        if (wanted_access != -1) {
-            auto pass = pasw_access;
-            allow = OnPlayerGetAccess.Fire(player, wanted_access, pass);
-        }
-
-        if (!allow) {
-            logcb("Access denied");
-            break;
-        }
-
-        player->Access = numeric_cast<uint8>(wanted_access);
-        logcb("Access changed");
-    } break;
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(Hashes);
         const auto count = buf.Read<int32>();
-
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
 
@@ -1370,9 +1277,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto pid = buf.Read<hstring>(Hashes);
         const auto count = buf.Read<int32>();
 
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
         if (count > 0) {
             ItemMngr.AddItemCritter(player_cr, pid, count);
             logcb("Item(s) added");
@@ -1386,9 +1290,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto dir = buf.Read<uint8>();
         const auto pid = buf.Read<hstring>(Hashes);
 
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
         CrMngr.CreateCritterOnMap(pid, nullptr, map, hex, dir);
 
@@ -1396,9 +1297,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDLOCATION: {
         const auto pid = buf.Read<hstring>(Hashes);
-
-        CHECK_ALLOW_COMMAND();
-
         auto* loc = MapMngr.CreateLocation(pid, nullptr);
 
         if (loc == nullptr) {
@@ -1413,8 +1311,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto param0_str = any_t {buf.Read<string>()};
         const auto param1_str = any_t {buf.Read<string>()};
         const auto param2_str = any_t {buf.Read<string>()};
-
-        CHECK_ALLOW_COMMAND();
 
         if (func_name.empty()) {
             logcb("Fail, length is zero");
@@ -1454,9 +1350,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_REGENMAP: {
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
         // Check global
         if (!player_cr->GetMapId()) {
             logcb("Only on local map");
@@ -1465,6 +1358,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         // Find map
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
+
         if (map == nullptr) {
             logcb("Map not found");
             return;
@@ -1480,9 +1374,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_LOG: {
         char flags[16];
         buf.Pop(flags, 16);
-
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
 
         SetLogCallback("LogToClients", nullptr);
 
@@ -1511,9 +1402,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Unknown command");
         break;
     }
-
-#undef CHECK_ALLOW_COMMAND
-#undef CHECK_ADMIN_PANEL
 }
 
 void FOServer::LogToClients(string_view str)
@@ -2723,13 +2611,8 @@ void FOServer::Process_Property(Player* player)
     }
 
     {
-        player->SendIgnoreEntity = entity;
-        player->SendIgnoreProperty = prop;
-
-        auto revert_send_ignore = ScopeCallback([player]() noexcept {
-            player->SendIgnoreEntity = nullptr;
-            player->SendIgnoreProperty = nullptr;
-        });
+        player->SetIgnoreSendEntityProperty(entity, prop);
+        auto revert_send_ignore = ScopeCallback([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
 
         // Todo: verify property data from client
         entity->SetValueFromData(prop, prop_data);
