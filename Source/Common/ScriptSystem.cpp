@@ -67,7 +67,7 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<ipos8>("ipos8");
     MapEnginePlainType<fsize32>("fsize32");
     MapEnginePlainType<fpos32>("fpos32");
-    MapEnginePlainType<frect>("frect");
+    MapEnginePlainType<frect32>("frect32");
     MapEnginePlainType<mpos>("mpos");
     MapEnginePlainType<msize>("msize");
     MapEngineObjectType<string>("string");

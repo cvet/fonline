@@ -363,50 +363,50 @@ static_assert(sizeof(fpos32) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
-///@ ExportValueType frect frect HardStrong Layout = float32-x+float32-y+float32-width+float32-height
-struct frect
+///@ ExportValueType frect frect32 HardStrong Layout = float32-x+float32-y+float32-width+float32-height
+struct frect32
 {
-    constexpr frect() noexcept = default;
-    constexpr frect(fpos32 pos, fsize32 size) noexcept :
+    constexpr frect32() noexcept = default;
+    constexpr frect32(fpos32 pos, fsize32 size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr frect(float32 x_, float32 y_, fsize32 size) noexcept :
+    constexpr frect32(float32 x_, float32 y_, fsize32 size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr frect(fpos32 pos, float32 width_, float32 height_) noexcept :
+    constexpr frect32(fpos32 pos, float32 width_, float32 height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
         height {height_}
     {
     }
-    constexpr frect(float32 x_, float32 y_, float32 width_, float32 height_) noexcept :
+    constexpr frect32(float32 x_, float32 y_, float32 width_, float32 height_) noexcept :
         x {x_},
         y {y_},
         width {width_},
         height {height_}
     {
     }
-    [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto operator!=(const frect& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator==(const frect32& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const frect32& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
 
     float32 x {};
     float32 y {};
     float32 width {};
     float32 height {};
 };
-static_assert(std::is_standard_layout_v<frect>);
-static_assert(sizeof(frect) == 16);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect, "{} {} {} {}", value.x, value.y, value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect, value.x >> value.y >> value.width >> value.height);
+static_assert(std::is_standard_layout_v<frect32>);
+static_assert(sizeof(frect32) == 16);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect32, value.x >> value.y >> value.width >> value.height);
 
 // Flex rect
 template<typename T>
@@ -498,6 +498,6 @@ struct TRect
     T Bottom {};
 };
 using IRect = TRect<int32>; // Todo: move IRect to irect32
-using FRect = TRect<float32>; // Todo: move FRect to frect
+using FRect = TRect<float32>; // Todo: move FRect to frect32
 
 FO_END_NAMESPACE();
