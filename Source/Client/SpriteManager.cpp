@@ -602,10 +602,10 @@ void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    DrawSpriteSizeExt(spr, fpos(pos), fsize(size), fit, center, false, color);
+    DrawSpriteSizeExt(spr, fpos(pos), fsize32(size), fit, center, false, color);
 }
 
-void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color)
+void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -3490,11 +3490,11 @@ static auto Fpos_NegFpos(const fpos& self) -> fpos
     return fpos {-self.x, -self.y};
 }
 
-static void Fsize_ConstructWandH(fsize* self, float32 width, float32 height)
+static void Fsize_ConstructWandH(fsize32* self, float32 width, float32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) fsize {width, height};
+    new (self) fsize32 {width, height};
 }
 
 static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
@@ -4103,10 +4103,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opNeg() const", SCRIPT_FUNC_THIS(Fpos_NegFpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
-    REGISTER_HARD_STRONG_TYPE("fsize", fsize);
+    REGISTER_HARD_STRONG_TYPE("fsize", fsize32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("fsize", asBEHAVE_CONSTRUCT, "void f(float width, float height)", SCRIPT_FUNC_THIS(Fsize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize, width)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize, height)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize32, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize32, height)));
 
     // Register mpos
     REGISTER_HARD_STRONG_TYPE("mpos", mpos);
