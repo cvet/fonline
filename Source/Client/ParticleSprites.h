@@ -56,7 +56,7 @@ public:
     auto operator=(ParticleSprite&&) noexcept -> ParticleSprite& = delete;
     ~ParticleSprite() override = default;
 
-    [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
     [[nodiscard]] auto GetParticle() -> ParticleSystem* { FO_NON_CONST_METHOD_HINT_ONELINE() return _particle.get(); }

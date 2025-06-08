@@ -65,7 +65,7 @@ struct SpritePattern
     FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Finished {};
-    ipos EveryHex {1, 1};
+    ipos32 EveryHex {1, 1};
     bool InteractWithRoof {};
     bool CheckTileProperty {};
     ItemProperty TileProperty {};
@@ -90,7 +90,7 @@ public:
         int32 Distance {};
         uint8 Flags {};
         int32 Intensity {};
-        const ipos* Offset {};
+        const ipos32* Offset {};
         bool Applied {};
         bool NeedReapply {};
         int32 StartIntensity {};
@@ -98,7 +98,7 @@ public:
         int32 CurIntensity {};
         ucolor CenterColor {};
         int32 Capacity {};
-        ipos LastOffset {};
+        ipos32 LastOffset {};
         vector<tuple<mpos, uint8, bool>> FanHexes {}; // Hex, Alpha, UseOffsets
         vector<mpos> MarkedHexes {};
         nanotime Time {};
@@ -107,8 +107,8 @@ public:
 
     struct ViewField
     {
-        ipos RawHex {};
-        ipos Offset {};
+        ipos32 RawHex {};
+        ipos32 Offset {};
         fpos Offsetf {};
     };
 
@@ -126,7 +126,7 @@ public:
     struct Field
     {
         bool IsView {};
-        ipos Offset {};
+        ipos32 Offset {};
         MapSprite* SpriteChain {};
         vector<CritterHexView*> Critters {};
         vector<CritterHexView*> MultihexCritters {};
@@ -192,23 +192,23 @@ public:
 
     void ChangeZoom(int32 zoom); // < 0 in, > 0 out, 0 normalize
 
-    auto GetScreenRawHex() const -> ipos;
-    auto GetHexPosition(mpos hex) const -> ipos;
+    auto GetScreenRawHex() const -> ipos32;
+    auto GetHexPosition(mpos hex) const -> ipos32;
 
     void FindSetCenter(mpos hex);
-    void RebuildMap(ipos screen_raw_hex);
-    void RebuildMapOffset(ipos hex_offset);
+    void RebuildMap(ipos32 screen_raw_hex);
+    void RebuildMapOffset(ipos32 hex_offset);
     void RefreshMap() { RebuildMap(_screenRawHex); }
     void RebuildFog() { _rebuildFog = true; }
     void SetShootBorders(bool enabled, int32 dist);
-    auto MeasureMapBorders(const Sprite* spr, ipos offset) -> bool;
+    auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
     void Resize(msize size);
 
     auto Scroll() -> bool;
     void ScrollToHex(mpos hex, float32 speed, bool can_stop);
-    void ScrollOffset(ipos offset, float32 speed, bool can_stop);
+    void ScrollOffset(ipos32 offset, float32 speed, bool can_stop);
 
     void SwitchShowHex();
 
@@ -241,22 +241,22 @@ public:
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
-    auto GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> bool;
-    auto GetItemAtScreenPos(ipos pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*;
-    auto GetEntityAtScreenPos(ipos pos, int32 extra_range, bool check_transparent) -> ClientEntity*;
+    auto GetHexAtScreenPos(ipos32 pos, mpos& hex, ipos32* hex_offset) const -> bool;
+    auto GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
+    auto GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*;
+    auto GetEntityAtScreenPos(ipos32 pos, int32 extra_range, bool check_transparent) -> ClientEntity*;
 
     void UpdateCritterLightSource(const CritterHexView* cr);
     void UpdateItemLightSource(const ItemHexView* item);
     void UpdateHexLightSources(mpos hex);
 
     void SetSkipRoof(mpos hex);
-    void MarkRoofNum(ipos raw_hex, int16 num);
+    void MarkRoofNum(ipos32 raw_hex, int16 num);
 
     auto RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*;
     auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
 
-    void SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool refresh);
+    void SetCursorPos(CritterHexView* cr, ipos32 pos, bool show_steps, bool refresh);
     void DrawCursor(const Sprite* spr);
     void DrawCursor(string_view text);
 
@@ -279,7 +279,7 @@ public:
     AutoScrollInfo AutoScroll {};
 
 private:
-    [[nodiscard]] auto IsVisible(const Sprite* spr, ipos offset) const -> bool;
+    [[nodiscard]] auto IsVisible(const Sprite* spr, ipos32 offset) const -> bool;
     [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto ScrollCheckPos(int32 (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
     [[nodiscard]] auto ScrollCheck(int32 xmod, int32 ymod) const -> bool;
@@ -298,7 +298,7 @@ private:
     void RecacheHexFlags(Field& field);
 
     void PrepareFogToDraw();
-    void InitView(ipos screen_raw_hex);
+    void InitView(ipos32 screen_raw_hex);
     void ResizeView();
 
     void AddSpriteToChain(Field& field, MapSprite* mspr);
@@ -306,7 +306,7 @@ private:
 
     // Lighting
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distance, uint8 flags, int32 intensity, const ipos* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distance, uint8 flags, int32 intensity, const ipos32* offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);
@@ -359,7 +359,7 @@ private:
     int32 _rtScreenOx {};
     int32 _rtScreenOy {};
 
-    ipos _screenRawHex {};
+    ipos32 _screenRawHex {};
     int32 _hTop {};
     int32 _hBottom {};
     int32 _wLeft {};
@@ -368,8 +368,8 @@ private:
     int32 _hVisible {};
     vector<ViewField> _viewField {};
 
-    const ipos* _fogOffset {};
-    ipos _fogLastOffset {};
+    const ipos32* _fogOffset {};
+    ipos32 _fogLastOffset {};
     bool _fogForceRerender {};
     bool _rebuildFog {};
     bool _drawLookBorders {true};

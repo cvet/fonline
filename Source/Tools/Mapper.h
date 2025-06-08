@@ -251,7 +251,7 @@ public:
     int32 IntVectY {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
-    ipos SelectPos {};
+    ipos32 SelectPos {};
     int32 SelectType {};
     bool IntVisible {};
     bool IntFix {};
@@ -312,7 +312,7 @@ public:
     bool IsSelectCrit {};
     bool IsSelectTile {};
     bool IsSelectRoof {};
-    ipos BufferRawHex {};
+    ipos32 BufferRawHex {};
     vector<ClientEntity*> SelectedEntities {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};

@@ -77,7 +77,7 @@ const int32 AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static string_view_nt WebCanvasId = "#canvas";
 
-static auto WindowPosToScreenPos(ipos pos) -> ipos
+static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
@@ -87,7 +87,7 @@ static auto WindowPosToScreenPos(ipos pos) -> ipos
     return {screen_x, screen_y};
 }
 
-static auto ScreenPosToWindowPos(ipos pos) -> ipos
+static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
@@ -1154,7 +1154,7 @@ void AppWindow::SetScreenSize(isize size)
     }
 }
 
-auto AppWindow::GetPosition() const -> ipos
+auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1168,7 +1168,7 @@ auto AppWindow::GetPosition() const -> ipos
     return {x, y};
 }
 
-void AppWindow::SetPosition(ipos pos)
+void AppWindow::SetPosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1376,7 +1376,7 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return ActiveRenderer->IsRenderTargetFlipped();
 }
 
-auto AppInput::GetMousePosition() const -> ipos
+auto AppInput::GetMousePosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1390,7 +1390,7 @@ auto AppInput::GetMousePosition() const -> ipos
     return WindowPosToScreenPos({iround<int32>(x), iround<int32>(y)});
 }
 
-void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 

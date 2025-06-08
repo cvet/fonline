@@ -124,12 +124,12 @@ public:
 
     [[nodiscard]] auto GetYProj() const -> float32;
     [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
-    [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos;
-    [[nodiscard]] auto GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos;
+    [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos32;
+    [[nodiscard]] auto GetHexInterval(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32;
 
     [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;
-    [[nodiscard]] static auto GetDistance(ipos hex1, ipos hex2) -> int32;
+    [[nodiscard]] static auto GetDistance(ipos32 hex1, ipos32 hex2) -> int32;
     [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
     [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8;
     [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex) -> uint8;
@@ -145,8 +145,8 @@ public:
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
-    static void MoveHexByDirUnsafe(ipos& hex, uint8 dir);
-    static void MoveHexAroundAway(ipos& hex, int32 index);
+    static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir);
+    static void MoveHexAroundAway(ipos32& hex, int32 index);
     static void ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:

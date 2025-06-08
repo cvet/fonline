@@ -90,16 +90,16 @@ TEST_CASE("GeometryHelper")
     CHECK(map_size.IsValidPos(hex));
 
     // MoveHexByDirUnsafe
-    ipos ihex {5, 5};
+    ipos32 ihex {5, 5};
     GeometryHelper::MoveHexByDirUnsafe(ihex, 2);
     CHECK(map_size.IsValidPos(ihex));
 
     // MoveHexAroundAway
-    constexpr ipos ihex3 {5, 5};
-    ipos ihex4 = ihex3;
-    ipos ihex5 = ihex3;
-    ipos ihex6 = ihex3;
-    ipos ihex7 = ihex3;
+    constexpr ipos32 ihex3 {5, 5};
+    ipos32 ihex4 = ihex3;
+    ipos32 ihex5 = ihex3;
+    ipos32 ihex6 = ihex3;
+    ipos32 ihex7 = ihex3;
     GeometryHelper::MoveHexAroundAway(ihex4, 0);
     CHECK(GeometryHelper::GetDistance(ihex3, ihex4) == 1);
     GeometryHelper::MoveHexAroundAway(ihex5, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(1));

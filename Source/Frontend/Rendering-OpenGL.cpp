@@ -137,9 +137,9 @@ public:
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos pos) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) override;
+    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -743,7 +743,7 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
+auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -762,7 +762,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos pos) const -> ucolor
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
+auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -787,7 +787,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucol
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data)
 {
     FO_STACK_TRACE_ENTRY();
 

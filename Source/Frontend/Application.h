@@ -255,14 +255,14 @@ class AppWindow final
 public:
     [[nodiscard]] auto GetSize() const -> isize;
     [[nodiscard]] auto GetScreenSize() const -> isize;
-    [[nodiscard]] auto GetPosition() const -> ipos;
+    [[nodiscard]] auto GetPosition() const -> ipos32;
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
     void GrabInput(bool enable);
     void SetSize(isize size);
     void SetScreenSize(isize size);
-    void SetPosition(ipos pos);
+    void SetPosition(ipos32 pos);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
     void Blink();
@@ -318,13 +318,13 @@ class AppInput final
 public:
     static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
-    [[nodiscard]] auto GetMousePosition() const -> ipos;
+    [[nodiscard]] auto GetMousePosition() const -> ipos32;
     [[nodiscard]] auto GetClipboardText() -> const string&;
 
     [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
 
     void ClearEvents();
-    void SetMousePosition(ipos pos, const AppWindow* relative_to = nullptr);
+    void SetMousePosition(ipos32 pos, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
     void SetClipboardText(string_view text);
 

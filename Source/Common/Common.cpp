@@ -180,7 +180,7 @@ auto GenericUtils::IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x
     return a + b + c < 0;
 }
 
-auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> int32
+auto GenericUtils::DistSqrt(ipos32 pos1, ipos32 pos2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -190,7 +190,7 @@ auto GenericUtils::DistSqrt(ipos pos1, ipos pos2) -> int32
     return iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy)));
 }
 
-auto GenericUtils::GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos
+auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos
 {
     FO_NO_STACK_TRACE_ENTRY();
 

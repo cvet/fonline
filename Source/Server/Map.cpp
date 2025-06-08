@@ -97,7 +97,7 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
             pos = 0;
         }
 
-        auto raw_check_hex = ipos {hex.x, hex.y};
+        auto raw_check_hex = ipos32 {hex.x, hex.y};
         GeometryHelper::MoveHexAroundAway(raw_check_hex, pos);
 
         if (!_mapSize.IsValidPos(raw_check_hex)) {
@@ -116,9 +116,9 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         break;
     }
 
-    auto raw_hex = ipos {hex.x, hex.y};
+    auto raw_hex = ipos32 {hex.x, hex.y};
     GeometryHelper::MoveHexAroundAway(raw_hex, pos);
-    const auto result_hex = _mapSize.FromRawPos(ipos {raw_hex.x, raw_hex.y});
+    const auto result_hex = _mapSize.FromRawPos(ipos32 {raw_hex.x, raw_hex.y});
 
     return result_hex;
 }
@@ -201,7 +201,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
         const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
 
         for (int32 i = 0; i < max_hexes; i++) {
-            auto raw_mh_hex = ipos {hex.x, hex.y};
+            auto raw_mh_hex = ipos32 {hex.x, hex.y};
             GeometryHelper::MoveHexAroundAway(raw_mh_hex, i);
 
             if (_mapSize.IsValidPos(raw_mh_hex)) {
@@ -414,7 +414,7 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (int32 i = 0; i < count; i++) {
-        auto raw_check_hex = ipos {hex.x, hex.y};
+        auto raw_check_hex = ipos32 {hex.x, hex.y};
         GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
         if (_mapSize.IsValidPos(raw_check_hex)) {

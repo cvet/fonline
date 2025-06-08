@@ -158,7 +158,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         const auto map_size = map->GetSize();
 
         for (int32 i = 0; i < steps_count; i++) {
-            auto raw_check_hex = ipos {hex.x, hex.y};
+            auto raw_check_hex = ipos32 {hex.x, hex.y};
             GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
             if (!map_size.IsValidPos(raw_check_hex)) {

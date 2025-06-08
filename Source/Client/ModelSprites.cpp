@@ -43,7 +43,7 @@ ModelSprite::ModelSprite(SpriteManager& spr_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ModelSprite::IsHitTest(ipos pos) const -> bool
+auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

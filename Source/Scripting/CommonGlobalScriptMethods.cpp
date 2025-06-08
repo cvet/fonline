@@ -316,7 +316,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos fromPos, ipos toPos)
+FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPos, ipos32 toPos)
 {
     ignore_unused(engine);
 
@@ -372,7 +372,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, int16 dirAng
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, mpos toHex, ipos& hexOffset)
+FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, mpos toHex, ipos32& hexOffset)
 {
     ignore_unused(engine);
 

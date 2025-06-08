@@ -70,7 +70,7 @@ AtlasSprite::~AtlasSprite()
     }
 }
 
-auto AtlasSprite::IsHitTest(ipos pos) const -> bool
+auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -166,7 +166,7 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, int32 frames, int32 ticks, int
     }
 }
 
-auto SpriteSheet::IsHitTest(ipos pos) const -> bool
+auto SpriteSheet::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

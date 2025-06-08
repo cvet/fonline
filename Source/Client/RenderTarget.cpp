@@ -164,7 +164,7 @@ void RenderTargetManager::PopRenderTarget()
     }
 }
 
-auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos pos) const -> ucolor
+auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 

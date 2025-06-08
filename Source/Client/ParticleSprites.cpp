@@ -41,7 +41,7 @@ ParticleSprite::ParticleSprite(SpriteManager& spr_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ParticleSprite::IsHitTest(ipos pos) const -> bool
+auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

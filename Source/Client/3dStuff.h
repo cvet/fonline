@@ -247,8 +247,8 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance() = default;
 
-    [[nodiscard]] auto Convert2dTo3d(ipos pos) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos;
+    [[nodiscard]] auto Convert2dTo3d(ipos32 pos) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos32;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _curStateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _curActionAnim; }
@@ -261,7 +261,7 @@ public:
     [[nodiscard]] auto GetDrawSize() const -> isize;
     [[nodiscard]] auto GetViewSize() const -> isize;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
-    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
@@ -277,7 +277,7 @@ public:
     void SetSpeed(float32 speed);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
-    void MoveModel(ipos offset);
+    void MoveModel(ipos32 offset);
     void SetMoving(bool enabled, int32 speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
@@ -311,7 +311,7 @@ private:
     void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32 anim_layer);
     void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
-    void ProcessAnimation(float32 elapsed, ipos pos, float32 scale);
+    void ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();

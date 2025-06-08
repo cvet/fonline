@@ -164,10 +164,10 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
     virtual ~RenderTexture() = default;
 
-    [[nodiscard]] virtual auto GetTexturePixel(ipos pos) const -> ucolor = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> = 0;
+    [[nodiscard]] virtual auto GetTexturePixel(ipos32 pos) const -> ucolor = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> = 0;
 
-    virtual void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) = 0;
+    virtual void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) = 0;
 
     const isize Size;
     const float32 SizeData[4]; // Width, Height, TexelWidth, TexelHeight

@@ -508,7 +508,7 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, int32 spe
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos offset, int32 speed, bool canStop)
+FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos32 offset, int32 speed, bool canStop)
 {
     self->ScrollOffset(offset, numeric_cast<float32>(speed) / 1000.0f, canStop);
 }
@@ -650,7 +650,7 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& screenPos)
+FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos32& screenPos)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hex provided");
@@ -664,32 +664,32 @@ FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos& scr
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex)
+FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex)
 {
     return self->GetHexAtScreenPos(pos, hex, nullptr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos pos, mpos& hex, ipos& hexOffset)
+FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex, ipos32& hexOffset)
 {
     return self->GetHexAtScreenPos(pos, hex, &hexOffset);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos pos)
+FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;
     return self->GetItemAtScreenPos(pos, item_egg, 0, true);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos)
+FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetCritterAtScreenPos(pos, false, 0, true);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos pos, int32 extraRange)
+FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32 extraRange)
 {
     auto* cr = self->GetCritterAtScreenPos(pos, false, 0, true);
 
@@ -701,7 +701,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos pos)
+FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetEntityAtScreenPos(pos, 0, true);
 }
@@ -743,7 +743,7 @@ FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_v
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetCursorPos(MapView* self, CritterView* cr, ipos mousePos, bool showSteps, bool forceRefresh)
+FO_SCRIPT_API void Client_Map_SetCursorPos(MapView* self, CritterView* cr, ipos32 mousePos, bool showSteps, bool forceRefresh)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     if (hex_cr == nullptr) {

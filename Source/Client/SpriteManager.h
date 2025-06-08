@@ -94,7 +94,7 @@ public:
     auto operator=(Sprite&&) noexcept -> Sprite& = delete;
     virtual ~Sprite() = default;
 
-    [[nodiscard]] virtual auto IsHitTest(ipos pos) const -> bool;
+    [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTex() const -> RenderTexture* { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<IRect> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
@@ -114,7 +114,7 @@ public:
 
     // Todo: incapsulate sprite data
     isize Size {};
-    ipos Offset {};
+    ipos32 Offset {};
     RenderEffect* DrawEffect {};
 
 protected:
@@ -142,9 +142,9 @@ public:
 
 struct PrimitivePoint
 {
-    ipos PointPos {};
+    ipos32 PointPos {};
     ucolor PointColor {};
-    const ipos* PointOffset {};
+    const ipos32* PointOffset {};
     const ucolor* PPointColor {};
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
@@ -179,8 +179,8 @@ public:
     [[nodiscard]] auto GetScreenSize() const -> isize;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos pos, bool with_zoom) const -> bool;
-    [[nodiscard]] auto IsEggTransp(ipos pos) const -> bool;
+    [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom) const -> bool;
+    [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
@@ -188,7 +188,7 @@ public:
     void SetWindowSize(isize size);
     void SetScreenSize(isize size);
     void ToggleFullscreen();
-    void SetMousePosition(ipos pos);
+    void SetMousePosition(ipos32 pos);
     void MinimizeWindow();
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
@@ -208,10 +208,10 @@ public:
 
     void SetSpritesZoom(float32 zoom);
 
-    void DrawSprite(const Sprite* spr, ipos pos, ucolor color);
-    void DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color);
+    void DrawSprite(const Sprite* spr, ipos32 pos, ucolor color);
+    void DrawSpriteSize(const Sprite* spr, ipos32 pos, isize size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color);
-    void DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color);
+    void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize size, isize spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
@@ -230,7 +230,7 @@ private:
     void EnableScissor();
     void DisableScissor();
 
-    void CollectContour(ipos pos, const Sprite* spr, ucolor contour_color);
+    void CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color);
 
     RenderSettings& _settings;
     AppWindow* _window;
@@ -266,13 +266,13 @@ private:
 
     bool _eggValid {};
     mpos _eggHex {};
-    ipos _eggOffset {};
+    ipos32 _eggOffset {};
     shared_ptr<AtlasSprite> _sprEgg {};
     vector<ucolor> _eggData {};
 
     float32 _spritesZoom {1.0f};
 
-    ipos _windowSizeDiff {};
+    ipos32 _windowSizeDiff {};
 
     EventUnsubscriber _eventUnsubscriber {};
 
@@ -305,9 +305,9 @@ private:
     {
         struct Letter
         {
-            ipos Pos {};
+            ipos32 Pos {};
             isize Size {};
-            ipos Offset {};
+            ipos32 Offset {};
             int32 XAdvance {};
             FRect TexPos {};
             FRect TexBorderedPos {};

@@ -42,7 +42,7 @@ Sprite::Sprite(SpriteManager& spr_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto Sprite::IsHitTest(ipos pos) const -> bool
+auto Sprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -158,7 +158,7 @@ void SpriteManager::ToggleFullscreen()
     }
     else {
         if (_window->ToggleFullscreen(false)) {
-            if (_windowSizeDiff != ipos {}) {
+            if (_windowSizeDiff != ipos32 {}) {
                 const auto window_pos = _window->GetPosition();
 
                 _window->SetPosition({window_pos.x - _windowSizeDiff.x, window_pos.y - _windowSizeDiff.y});
@@ -168,7 +168,7 @@ void SpriteManager::ToggleFullscreen()
     }
 }
 
-void SpriteManager::SetMousePosition(ipos pos)
+void SpriteManager::SetMousePosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -573,7 +573,7 @@ void SpriteManager::Flush()
     _spritesDrawBuf->IndCount = 0;
 }
 
-void SpriteManager::DrawSprite(const Sprite* spr, ipos pos, ucolor color)
+void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -598,7 +598,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos pos, ucolor color)
     }
 }
 
-void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos pos, isize size, bool fit, bool center, ucolor color)
+void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos32 pos, isize size, bool fit, bool center, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -661,7 +661,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, b
     }
 }
 
-void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos pos, isize size, isize spr_size, ucolor color)
+void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize size, isize spr_size, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1100,7 +1100,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
     }
 }
 
-auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos pos, bool with_zoom) const -> bool
+auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1119,7 +1119,7 @@ auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos pos, bool with_zoom) c
     }
 }
 
-auto SpriteManager::IsEggTransp(ipos pos) const -> bool
+auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1255,7 +1255,7 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(ipos pos, const Sprite* spr, ucolor contour_color)
+void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -2227,13 +2227,13 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     }
     else {
         for (auto* entity : SelectedEntities) {
-            ipos raw_hex;
+            ipos32 raw_hex;
 
             if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                raw_hex = ipos {cr->GetHex().x, cr->GetHex().y};
+                raw_hex = ipos32 {cr->GetHex().x, cr->GetHex().y};
             }
             else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                raw_hex = ipos {item->GetHex().x, item->GetHex().y};
+                raw_hex = ipos32 {item->GetHex().x, item->GetHex().y};
             }
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -2275,13 +2275,13 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
             item->RefreshAnim();
         }
         else {
-            ipos raw_hex;
+            ipos32 raw_hex;
 
             if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                raw_hex = ipos {cr->GetHex().x, cr->GetHex().y};
+                raw_hex = ipos32 {cr->GetHex().x, cr->GetHex().y};
             }
             else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                raw_hex = ipos {item->GetHex().x, item->GetHex().y};
+                raw_hex = ipos32 {item->GetHex().x, item->GetHex().y};
             }
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -2530,7 +2530,7 @@ void FOMapper::BufferPaste()
         return;
     }
 
-    const ipos screen_raw_hex = _curMap->GetScreenRawHex();
+    const ipos32 screen_raw_hex = _curMap->GetScreenRawHex();
     const auto hx_offset = screen_raw_hex.x - BufferRawHex.x;
     const auto hy_offset = screen_raw_hex.y - BufferRawHex.y;
 
@@ -2540,11 +2540,11 @@ void FOMapper::BufferPaste()
         const auto raw_hx = numeric_cast<int32>(entity_buf.Hex.x) + hx_offset;
         const auto raw_hy = numeric_cast<int32>(entity_buf.Hex.y) + hy_offset;
 
-        if (!_curMap->GetSize().IsValidPos(ipos {raw_hx, raw_hy})) {
+        if (!_curMap->GetSize().IsValidPos(ipos32 {raw_hx, raw_hy})) {
             continue;
         }
 
-        const mpos hex = _curMap->GetSize().FromRawPos(ipos {raw_hx, raw_hy});
+        const mpos hex = _curMap->GetSize().FromRawPos(ipos32 {raw_hx, raw_hy});
 
         function<void(const EntityBuf*, ItemView*)> add_item_inner_items;
 

@@ -333,7 +333,7 @@ void MapView::LoadStaticData()
     for (const auto hx : xrange(_mapSize.width)) {
         for (const auto hy : xrange(_mapSize.height)) {
             if (!_hexField->GetCellForReading({hx, hy}).RoofTiles.empty()) {
-                MarkRoofNum(ipos {hx, hy}, numeric_cast<int16>(roof_num));
+                MarkRoofNum(ipos32 {hx, hy}, numeric_cast<int16>(roof_num));
                 roof_num++;
             }
         }
@@ -906,7 +906,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
     return pattern.get();
 }
 
-void MapView::SetCursorPos(CritterHexView* cr, ipos pos, bool show_steps, bool refresh)
+void MapView::SetCursorPos(CritterHexView* cr, ipos32 pos, bool show_steps, bool refresh)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -990,7 +990,7 @@ void MapView::DrawCursor(string_view text)
     _engine->SprMngr.DrawText({x, y, width, height}, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, -1);
 }
 
-void MapView::RebuildMap(ipos screen_raw_hex)
+void MapView::RebuildMap(ipos32 screen_raw_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1043,7 +1043,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Track
         if (_isShowTrack && GetHexTrack(hex) != 0) {
             const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
-            const auto hex_offset = ipos {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (spr ? spr->Size.height / 2 : 0)};
+            const auto hex_offset = ipos32 {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (spr ? spr->Size.height / 2 : 0)};
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
 
@@ -1053,7 +1053,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
         // Hex lines
         if (_isShowHex) {
             const auto& spr = _picHex[0];
-            const auto hex_offset = ipos {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0};
+            const auto hex_offset = ipos32 {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0};
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
 
@@ -1208,7 +1208,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
     _engine->OnRenderMap.Fire();
 }
 
-void MapView::RebuildMapOffset(ipos hex_offset)
+void MapView::RebuildMapOffset(ipos32 hex_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1702,7 +1702,7 @@ void MapView::UpdateHexLightSources(mpos hex)
     }
 }
 
-void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distance, uint8 flags, int32 intensity, const ipos* offset)
+void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distance, uint8 flags, int32 intensity, const ipos32* offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1824,7 +1824,7 @@ void MapView::ApplyLightFan(LightSource* ls)
 
     MarkLight(ls, center_hex, intensity);
 
-    ipos raw_traced_hex = {center_hex.x, center_hex.y};
+    ipos32 raw_traced_hex = {center_hex.x, center_hex.y};
     bool seek_start = true;
     mpos last_traced_hex = {const_numeric_cast<uint16>(0xFFFF), const_numeric_cast<uint16>(0xFFFF)};
 
@@ -1857,7 +1857,7 @@ void MapView::ApplyLightFan(LightSource* ls)
                 uint8 traced_alpha;
                 bool use_offsets = false;
 
-                if (ipos {traced_hex.x, traced_hex.y} != raw_traced_hex) {
+                if (ipos32 {traced_hex.x, traced_hex.y} != raw_traced_hex) {
                     traced_alpha = numeric_cast<uint8>(lerp(numeric_cast<int32>(center_alpha), 0, numeric_cast<float32>(GeometryHelper::GetDistance(center_hex, traced_hex)) / numeric_cast<float32>(distance)));
 
                     if (traced_hex == center_hex) {
@@ -2074,31 +2074,31 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
         if (is_wall) {
             if (north_south) {
                 if (to_hex.y > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x, to_hex.y - 1}), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x, to_hex.y - 1}), true, intensity);
                 }
                 if (to_hex.y < _mapSize.height - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x, to_hex.y + 1}), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x, to_hex.y + 1}), true, intensity);
                 }
             }
             else {
                 if (to_hex.x > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x - 1, to_hex.y}), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x - 1, to_hex.y}), false, intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x - 1, to_hex.y - 1}), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x - 1, to_hex.y - 1}), false, intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x - 1, to_hex.y + 1}), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x - 1, to_hex.y + 1}), false, intensity);
                     }
                 }
                 if (to_hex.x < _mapSize.width - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x + 1, to_hex.y}), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x + 1, to_hex.y}), false, intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x + 1, to_hex.y - 1}), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x + 1, to_hex.y - 1}), false, intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos {to_hex.x + 1, to_hex.y + 1}), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.FromRawPos(ipos32 {to_hex.x + 1, to_hex.y + 1}), false, intensity);
                     }
                 }
             }
@@ -2176,7 +2176,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         return;
     }
 
-    ipos center_pos = GetHexPosition(ls->Hex);
+    ipos32 center_pos = GetHexPosition(ls->Hex);
     center_pos.x += _engine->Settings.MapHexWidth / 2;
     center_pos.y += _engine->Settings.MapHexHeight / 2;
 
@@ -2243,7 +2243,7 @@ void MapView::SetSkipRoof(mpos hex)
     }
 }
 
-void MapView::MarkRoofNum(ipos raw_hex, int16 num)
+void MapView::MarkRoofNum(ipos32 raw_hex, int16 num)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2262,8 +2262,8 @@ void MapView::MarkRoofNum(ipos raw_hex, int16 num)
 
     for (auto x = 0; x < _engine->Settings.MapTileStep; x++) {
         for (auto y = 0; y < _engine->Settings.MapTileStep; y++) {
-            if (_mapSize.IsValidPos(ipos {hex.x + x, hex.y + y})) {
-                _hexField->GetCellForWriting(_mapSize.FromRawPos(ipos {hex.x + x, hex.y + y})).RoofNum = num;
+            if (_mapSize.IsValidPos(ipos32 {hex.x + x, hex.y + y})) {
+                _hexField->GetCellForWriting(_mapSize.FromRawPos(ipos32 {hex.x + x, hex.y + y})).RoofNum = num;
             }
         }
     }
@@ -2274,7 +2274,7 @@ void MapView::MarkRoofNum(ipos raw_hex, int16 num)
     MarkRoofNum({hex.x, hex.y - _engine->Settings.MapTileStep}, num);
 }
 
-auto MapView::IsVisible(const Sprite* spr, ipos offset) const -> bool
+auto MapView::IsVisible(const Sprite* spr, ipos32 offset) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2290,7 +2290,7 @@ auto MapView::IsVisible(const Sprite* spr, ipos offset) const -> bool
     return top <= zoomed_screen_height && bottom >= 0 && left <= zoomed_screen_width && right >= 0;
 }
 
-auto MapView::MeasureMapBorders(const Sprite* spr, ipos offset) -> bool
+auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2526,7 +2526,7 @@ void MapView::SwitchShowTrack()
     RefreshMap();
 }
 
-void MapView::InitView(ipos screen_raw_hex)
+void MapView::InitView(ipos32 screen_raw_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2732,20 +2732,20 @@ void MapView::ChangeZoom(int32 zoom)
     }
 }
 
-auto MapView::GetScreenRawHex() const -> ipos
+auto MapView::GetScreenRawHex() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _screenRawHex;
 }
 
-auto MapView::GetHexPosition(mpos hex) const -> ipos
+auto MapView::GetHexPosition(mpos hex) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& center_field = _viewField[_hVisible / 2 * _wVisible + _wVisible / 2];
     const auto center_hex = center_field.RawHex;
-    const auto hex_offset = _engine->Geometry.GetHexInterval(center_hex, ipos {hex.x, hex.y});
+    const auto hex_offset = _engine->Geometry.GetHexInterval(center_hex, ipos32 {hex.x, hex.y});
 
     return {center_field.Offset.x + hex_offset.x, center_field.Offset.y + hex_offset.y};
 }
@@ -2859,11 +2859,11 @@ void MapView::PrepareFogToDraw()
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
-            const ipos base_pos = GetHexPosition(base_hex);
+            const ipos32 base_pos = GetHexPosition(base_hex);
             const auto center_look_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 0}, &chosen->SprOffset};
             const auto center_shoot_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 255}, &chosen->SprOffset};
 
-            auto target_raw_hex = ipos {base_hex.x, base_hex.y};
+            auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
 
             size_t look_points_added = 0;
             size_t shoot_points_added = 0;
@@ -2945,7 +2945,7 @@ void MapView::PrepareFogToDraw()
             }
 
             _fogOffset = chosen != nullptr ? &chosen->SprOffset : nullptr;
-            _fogLastOffset = _fogOffset != nullptr ? *_fogOffset : ipos {};
+            _fogLastOffset = _fogOffset != nullptr ? *_fogOffset : ipos32 {};
             _fogForceRerender = true;
         }
     }
@@ -3011,7 +3011,7 @@ auto MapView::Scroll() -> bool
     if (AutoScroll.HardLockedCritter && !is_scroll) {
         const auto* cr = GetCritter(AutoScroll.HardLockedCritter);
 
-        if (cr != nullptr && ipos {cr->GetHex().x, cr->GetHex().y} != _screenRawHex) {
+        if (cr != nullptr && ipos32 {cr->GetHex().x, cr->GetHex().y} != _screenRawHex) {
             ScrollToHex(cr->GetHex(), 0.02f, true);
         }
     }
@@ -3317,13 +3317,13 @@ void MapView::ScrollToHex(mpos hex, float32 speed, bool can_stop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex_offset = _engine->Geometry.GetHexInterval(_screenRawHex, ipos {hex.x, hex.y});
+    const auto hex_offset = _engine->Geometry.GetHexInterval(_screenRawHex, ipos32 {hex.x, hex.y});
 
     AutoScroll.Active = false;
     ScrollOffset(hex_offset, speed, can_stop);
 }
 
-void MapView::ScrollOffset(ipos offset, float32 speed, bool can_stop)
+void MapView::ScrollOffset(ipos32 offset, float32 speed, bool can_stop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3622,7 +3622,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
         const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
 
         for (int32 i = 0; i < max_hexes; i++) {
-            auto multihex_raw_hex = ipos {numeric_cast<int32>(hex.x), numeric_cast<int32>(hex.y)};
+            auto multihex_raw_hex = ipos32 {numeric_cast<int32>(hex.x), numeric_cast<int32>(hex.y)};
             GeometryHelper::MoveHexAroundAway(multihex_raw_hex, i);
 
             if (_mapSize.IsValidPos(multihex_raw_hex)) {
@@ -3644,7 +3644,7 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
     }
 }
 
-auto MapView::GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> bool
+auto MapView::GetHexAtScreenPos(ipos32 pos, mpos& hex, ipos32* hex_offset) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3662,7 +3662,7 @@ auto MapView::GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> 
             const float32 vf_oy = _viewField[vf_index].Offsetf.y / spr_zoom;
 
             if (xf >= vf_ox && xf < vf_ox + ox && yf >= vf_oy && yf < vf_oy + oy) {
-                ipos raw_hex = _viewField[vf_index].RawHex;
+                ipos32 raw_hex = _viewField[vf_index].RawHex;
 
                 // Correct with hex color mask
                 if (_picHexMask) {
@@ -3703,7 +3703,7 @@ auto MapView::GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> 
     return false;
 }
 
-auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*
+auto MapView::GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3769,7 +3769,7 @@ auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int32 extra_range, bo
     return pix_item[0];
 }
 
-auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*
+auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3819,7 +3819,7 @@ auto MapView::GetCritterAtScreenPos(ipos pos, bool ignore_dead_and_chosen, int32
     return critters.front();
 }
 
-auto MapView::GetEntityAtScreenPos(ipos pos, int32 extra_range, bool check_transparent) -> ClientEntity*
+auto MapView::GetEntityAtScreenPos(ipos32 pos, int32 extra_range, bool check_transparent) -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3882,7 +3882,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
             auto hex = coords[p];
 
             for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
-                auto raw_next_hex = ipos {hex.x, hex.y};
+                auto raw_next_hex = ipos32 {hex.x, hex.y};
                 GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
                 if (!_mapSize.IsValidPos(raw_next_hex)) {
@@ -4003,7 +4003,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         int32 best_step_dir = -1;
         float32 best_step_angle_diff = 0.0f;
 
-        const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, &grid_at, start_hex, base_angle, this](uint8 dir, ipos raw_step_hex) {
+        const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, &grid_at, start_hex, base_angle, this](uint8 dir, ipos32 raw_step_hex) {
             if (_mapSize.IsValidPos(raw_step_hex)) {
                 const auto step_hex = _mapSize.FromRawPos(raw_step_hex);
 
@@ -4026,12 +4026,12 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         };
 
         if ((x1 % 2) != 0) {
-            check_hex(3, ipos {x1 - 1, y1 - 1});
-            check_hex(2, ipos {x1, y1 - 1});
-            check_hex(5, ipos {x1, y1 + 1});
-            check_hex(0, ipos {x1 + 1, y1});
-            check_hex(4, ipos {x1 - 1, y1});
-            check_hex(1, ipos {x1 + 1, y1 - 1});
+            check_hex(3, ipos32 {x1 - 1, y1 - 1});
+            check_hex(2, ipos32 {x1, y1 - 1});
+            check_hex(5, ipos32 {x1, y1 + 1});
+            check_hex(0, ipos32 {x1 + 1, y1});
+            check_hex(4, ipos32 {x1 - 1, y1});
+            check_hex(1, ipos32 {x1 + 1, y1 - 1});
 
             if (best_step_dir == 3) {
                 raw_steps[numindex - 1] = 3;
@@ -4067,12 +4067,12 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
             }
         }
         else {
-            check_hex(3, ipos {x1 - 1, y1});
-            check_hex(2, ipos {x1, y1 - 1});
-            check_hex(5, ipos {x1, y1 + 1});
-            check_hex(0, ipos {x1 + 1, y1 + 1});
-            check_hex(4, ipos {x1 - 1, y1 + 1});
-            check_hex(1, ipos {x1 + 1, y1});
+            check_hex(3, ipos32 {x1 - 1, y1});
+            check_hex(2, ipos32 {x1, y1 - 1});
+            check_hex(5, ipos32 {x1, y1 + 1});
+            check_hex(0, ipos32 {x1 + 1, y1 + 1});
+            check_hex(4, ipos32 {x1 - 1, y1 + 1});
+            check_hex(1, ipos32 {x1 + 1, y1});
 
             if (best_step_dir == 3) {
                 raw_steps[numindex - 1] = 3;
@@ -4312,7 +4312,7 @@ void MapView::FindSetCenter(mpos hex)
 
     FO_RUNTIME_ASSERT(!_viewField.empty());
 
-    RebuildMap(ipos {hex.x, hex.y});
+    RebuildMap(ipos32 {hex.x, hex.y});
 
     if (_mapperMode) {
         return;
@@ -4365,7 +4365,7 @@ void MapView::FindSetCenter(mpos hex)
         find_set_center_dir({2, 1}, ih); // Down-Right
     }
 
-    RebuildMap(ipos {corrected_hex.x, corrected_hex.y});
+    RebuildMap(ipos32 {corrected_hex.x, corrected_hex.y});
 }
 
 void MapView::SetShootBorders(bool enabled, int32 dist)
@@ -4498,7 +4498,7 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
             }
 
             for (auto i = 0; i <= adx; i++) {
-                if (_mapSize.IsValidPos(ipos {hx, hy})) {
+                if (_mapSize.IsValidPos(ipos32 {hx, hy})) {
                     hexes.emplace_back(numeric_cast<uint16>(hx), numeric_cast<uint16>(hy));
                 }
 
@@ -4573,8 +4573,8 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
             }
 
             for (auto j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
-                if (_mapSize.IsValidPos(ipos {hx, hy})) {
-                    hexes.emplace_back(_mapSize.FromRawPos(ipos {hx, hy}));
+                if (_mapSize.IsValidPos(ipos32 {hx, hy})) {
+                    hexes.emplace_back(_mapSize.FromRawPos(ipos32 {hx, hy}));
                 }
 
                 if (rw > 0) {

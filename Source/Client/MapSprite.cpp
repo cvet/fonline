@@ -138,7 +138,7 @@ auto MapSprite::GetViewRect() const -> IRect
     return rect;
 }
 
-auto MapSprite::CheckHit(ipos pos, bool check_transparent) const -> bool
+auto MapSprite::CheckHit(ipos32 pos, bool check_transparent) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -284,7 +284,7 @@ auto MapSpriteList::RootSprite() noexcept -> MapSprite*
     return _rootSprite;
 }
 
-auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -387,14 +387,14 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, mpos h
     return *mspr;
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     FO_STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hex, hex_offset, phex_offset, spr, pspr, spr_offset, alpha, effect, callback);
 }
 
-auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::InsertSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     FO_STACK_TRACE_ENTRY();
 
