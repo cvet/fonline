@@ -808,7 +808,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
@@ -818,7 +818,7 @@ FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, u
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int32>& props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int32>& props)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
@@ -835,7 +835,7 @@ FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, u
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddNpc(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
 {
     if (!self->GetSize().IsValidPos(hex)) {
         throw ScriptException("Invalid hexes args");

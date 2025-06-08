@@ -54,11 +54,10 @@ class FOClient;
 class ItemHexView;
 class CritterHexView;
 
-struct FindPathResult
-{
-    vector<uint8> DirSteps {};
-    vector<uint16> ControlSteps {};
-};
+// Light flags
+static constexpr uint8 LIGHT_GLOBAL = 0x40;
+static constexpr uint8 LIGHT_INVERSE = 0x80;
+static constexpr uint32 LIGHT_DISABLE_DIR_MASK = 0x0F;
 
 ///@ ExportRefType Client
 struct SpritePattern
@@ -151,6 +150,12 @@ public:
         ident_t HardLockedCritter {};
         ident_t SoftLockedCritter {};
         mpos CritterLastHex {};
+    };
+
+    struct FindPathResult
+    {
+        vector<uint8> DirSteps {};
+        vector<uint16> ControlSteps {};
     };
 
     MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);

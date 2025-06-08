@@ -31,7 +31,7 @@ namespace Core // Sort -10
 #define MAX_LIGHT_VALUE   (10000)
 #define MAX_LIGHT_HEX     (200)
 #define MAX_LIGHT_ALPHA   (255)
-#define LIGHT_DISABLE_DIR #(dir)(1 << Math::Clamp(dir, 0, 5))
+#define LIGHT_DISABLE_DIR #(dir)(1 << Math::Clamp(dir, 0, 7))
 #define LIGHT_GLOBAL      (0x40)
 #define LIGHT_INVERSE     (0x80)
 
