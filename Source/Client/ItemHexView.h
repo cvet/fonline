@@ -73,9 +73,9 @@ private:
     bool _isEffect {};
     bool _isDynamicEffect {};
     float32 _effSpeed {};
-    fpos _effStepOffset {};
+    fpos32 _effStepOffset {};
     ipos32 _effStartOffset {};
-    fpos _effCurOffset {};
+    fpos32 _effCurOffset {};
     int32 _effDist {};
     nanotime _effUpdateLastTime {};
     uint8 _effDir {};

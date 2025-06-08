@@ -602,10 +602,10 @@ void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    DrawSpriteSizeExt(spr, fpos(pos), fsize32(size), fit, center, false, color);
+    DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), fit, center, false, color);
 }
 
-void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color)
+void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -782,7 +782,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r
     points.emplace_back(PrimitivePoint {{r.Right, r.Bottom}, color});
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos lt, fpos rt, fpos lb, fpos rb, ucolor color) const
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1026,18 +1026,18 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), ucolor {0x5F00FFFF});
                 break;
             case EggAppearenceType::ByX:
-                PrepareSquare(corner, fpos {xf + cx - 5.0f, yf + hf - 55.0f}, fpos {xf + cx + 5.0f, yf + hf - 45.0f}, fpos {xf + cx - 5.0f, yf + hf - 5.0f}, fpos {xf + cx + 5.0f, yf + hf + 5.0f}, ucolor {0x5F00AF00});
+                PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 55.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 45.0f}, fpos32 {xf + cx - 5.0f, yf + hf - 5.0f}, fpos32 {xf + cx + 5.0f, yf + hf + 5.0f}, ucolor {0x5F00AF00});
                 break;
             case EggAppearenceType::ByY:
-                PrepareSquare(corner, fpos {xf + cx - 5.0f, yf + hf - 49.0f}, fpos {xf + cx + 5.0f, yf + hf - 52.0f}, fpos {xf + cx - 5.0f, yf + hf + 1.0f}, fpos {xf + cx + 5.0f, yf + hf - 2.0f}, ucolor {0x5F00FF00});
+                PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 49.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 52.0f}, fpos32 {xf + cx - 5.0f, yf + hf + 1.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 2.0f}, ucolor {0x5F00FF00});
                 break;
             case EggAppearenceType::ByXAndY:
-                PrepareSquare(corner, fpos {xf + cx - 10.0f, yf + hf - 49.0f}, fpos {xf + cx, yf + hf - 52.0f}, fpos {xf + cx - 10.0f, yf + hf + 1.0f}, fpos {xf + cx, yf + hf - 2.0f}, ucolor {0x5F0000FF});
-                PrepareSquare(corner, fpos {xf + cx, yf + hf - 55.0f}, fpos {xf + cx + 10.0f, yf + hf - 45.0f}, fpos {xf + cx, yf + hf - 5.0f}, fpos {xf + cx + 10.0f, yf + hf + 5.0f}, ucolor {0x5F0000FF});
+                PrepareSquare(corner, fpos32 {xf + cx - 10.0f, yf + hf - 49.0f}, fpos32 {xf + cx, yf + hf - 52.0f}, fpos32 {xf + cx - 10.0f, yf + hf + 1.0f}, fpos32 {xf + cx, yf + hf - 2.0f}, ucolor {0x5F0000FF});
+                PrepareSquare(corner, fpos32 {xf + cx, yf + hf - 55.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 45.0f}, fpos32 {xf + cx, yf + hf - 5.0f}, fpos32 {xf + cx + 10.0f, yf + hf + 5.0f}, ucolor {0x5F0000FF});
                 break;
             case EggAppearenceType::ByXOrY:
-                PrepareSquare(corner, fpos {xf + cx, yf + hf - 49.0f}, fpos {xf + cx + 10.0f, yf + hf - 52.0f}, fpos {xf + cx, yf + hf + 1.0f}, fpos {xf + cx + 10.0f, yf + hf - 2.0f}, ucolor {0x5F0000AF});
-                PrepareSquare(corner, fpos {xf + cx - 10.0f, yf + hf - 55.0f}, fpos {xf + cx, yf + hf - 45.0f}, fpos {xf + cx - 10.0f, yf + hf - 5.0f}, fpos {xf + cx, yf + hf + 5.0f}, ucolor {0x5F0000AF});
+                PrepareSquare(corner, fpos32 {xf + cx, yf + hf - 49.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 52.0f}, fpos32 {xf + cx, yf + hf + 1.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 2.0f}, ucolor {0x5F0000AF});
+                PrepareSquare(corner, fpos32 {xf + cx - 10.0f, yf + hf - 55.0f}, fpos32 {xf + cx, yf + hf - 45.0f}, fpos32 {xf + cx - 10.0f, yf + hf - 5.0f}, fpos32 {xf + cx, yf + hf + 5.0f}, ucolor {0x5F0000AF});
                 break;
             default:
                 break;
@@ -1145,7 +1145,7 @@ auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
     return egg_color.comp.a < 127;
 }
 
-void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom, const fpos* offset, RenderEffect* custom_effect)
+void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom, const fpos32* offset, RenderEffect* custom_effect)
 {
     FO_STACK_TRACE_ENTRY();
 

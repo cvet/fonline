@@ -1633,7 +1633,7 @@ void MapView::ProcessLighting()
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
         const auto zoom = GetSpritesZoom();
-        const auto offset = fpos {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
+        const auto offset = fpos32 {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
 
         for (auto& points : _lightPoints) {
             if (!points.empty()) {
@@ -2958,7 +2958,7 @@ void MapView::PrepareFogToDraw()
         }
 
         const float32 zoom = GetSpritesZoom();
-        const auto offset = fpos {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
+        const auto offset = fpos32 {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
 
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);

@@ -190,7 +190,7 @@ auto GenericUtils::DistSqrt(ipos32 pos1, ipos32 pos2) -> int32
     return iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy)));
 }
 
-auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos
+auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -212,7 +212,7 @@ auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fp
     return {sx, sy};
 }
 
-auto GenericUtils::ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos
+auto GenericUtils::ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 

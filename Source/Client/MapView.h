@@ -109,7 +109,7 @@ public:
     {
         ipos32 RawHex {};
         ipos32 Offset {};
-        fpos Offsetf {};
+        fpos32 Offsetf {};
     };
 
     struct FieldFlags
@@ -144,8 +144,8 @@ public:
     {
         bool Active {};
         bool CanStop {};
-        fpos Offset {};
-        fpos OffsetStep {};
+        fpos32 Offset {};
+        fpos32 OffsetStep {};
         float32 Speed {};
         ident_t HardLockedCritter {};
         ident_t SoftLockedCritter {};

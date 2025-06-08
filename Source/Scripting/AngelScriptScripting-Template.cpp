@@ -3444,14 +3444,14 @@ static void Irect_ConstructXandYandWandH(irect32* self, int32 x, int32 y, int32 
     new (self) irect32 {x, y, width, height};
 }
 
-static void Fpos_ConstructXandY(fpos* self, float32 x, float32 y)
+static void Fpos_ConstructXandY(fpos32* self, float32 x, float32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) fpos {x, y};
+    new (self) fpos32 {x, y};
 }
 
-static auto Fpos_AddAssignFpos(fpos& self, const fpos& pos) -> fpos&
+static auto Fpos_AddAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3460,7 +3460,7 @@ static auto Fpos_AddAssignFpos(fpos& self, const fpos& pos) -> fpos&
     return self;
 }
 
-static auto Fpos_SubAssignFpos(fpos& self, const fpos& pos) -> fpos&
+static auto Fpos_SubAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3469,25 +3469,25 @@ static auto Fpos_SubAssignFpos(fpos& self, const fpos& pos) -> fpos&
     return self;
 }
 
-static auto Fpos_AddFpos(const fpos& self, const fpos& pos) -> fpos
+static auto Fpos_AddFpos(const fpos32& self, const fpos32& pos) -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return fpos {self.x + pos.x, self.y + pos.y};
+    return fpos32 {self.x + pos.x, self.y + pos.y};
 }
 
-static auto Fpos_SubFpos(const fpos& self, const fpos& pos) -> fpos
+static auto Fpos_SubFpos(const fpos32& self, const fpos32& pos) -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return fpos {self.x - pos.x, self.y - pos.y};
+    return fpos32 {self.x - pos.x, self.y - pos.y};
 }
 
-static auto Fpos_NegFpos(const fpos& self) -> fpos
+static auto Fpos_NegFpos(const fpos32& self) -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return fpos {-self.x, -self.y};
+    return fpos32 {-self.x, -self.y};
 }
 
 static void Fsize_ConstructWandH(fsize32* self, float32 width, float32 height)
@@ -4092,10 +4092,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
 
     // Register fpos
-    REGISTER_HARD_STRONG_TYPE("fpos", fpos);
+    REGISTER_HARD_STRONG_TYPE("fpos", fpos32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos, x)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos, y)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos32, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos32, y)));
     AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos& opAddAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_AddAssignFpos), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos& opSubAssign(const fpos &in)", SCRIPT_FUNC_THIS(Fpos_SubAssignFpos), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opAdd(const fpos &in) const", SCRIPT_FUNC_THIS(Fpos_AddFpos), SCRIPT_FUNC_THIS_CONV));
