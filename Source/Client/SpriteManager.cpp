@@ -106,14 +106,14 @@ SpriteManager::~SpriteManager()
     _window->Destroy();
 }
 
-auto SpriteManager::GetWindowSize() const -> isize
+auto SpriteManager::GetWindowSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _window->GetSize();
 }
 
-void SpriteManager::SetWindowSize(isize size)
+void SpriteManager::SetWindowSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -122,14 +122,14 @@ void SpriteManager::SetWindowSize(isize size)
     _window->SetSize(size);
 }
 
-auto SpriteManager::GetScreenSize() const -> isize
+auto SpriteManager::GetScreenSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _window->GetScreenSize();
 }
 
-void SpriteManager::SetScreenSize(isize size)
+void SpriteManager::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -598,7 +598,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
     }
 }
 
-void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos32 pos, isize size, bool fit, bool center, ucolor color)
+void SpriteManager::DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -661,7 +661,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, b
     }
 }
 
-void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize size, isize spr_size, ucolor color)
+void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2585,7 +2585,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     }
 }
 
-auto SpriteManager::GetLinesCount(isize size, string_view str, int32 num_font /* = -1 */) -> int32
+auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font /* = -1 */) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2618,7 +2618,7 @@ auto SpriteManager::GetLinesCount(isize size, string_view str, int32 num_font /*
     return fi.LinesInRect;
 }
 
-auto SpriteManager::GetLinesHeight(isize size, string_view str, int32 num_font /* = -1 */) -> int32
+auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font /* = -1 */) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2654,7 +2654,7 @@ auto SpriteManager::GetLineHeight(int32 num_font) -> int32
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(isize size, string_view str, int32 num_font, uint32 flags, isize& result_size, int32& lines) -> bool
+auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

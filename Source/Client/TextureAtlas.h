@@ -55,7 +55,7 @@ public:
     class SpaceNode final
     {
     public:
-        SpaceNode(SpaceNode* parent, ipos32 pos, isize size);
+        SpaceNode(SpaceNode* parent, ipos32 pos, isize32 size);
         SpaceNode(const SpaceNode&) = delete;
         SpaceNode(SpaceNode&&) noexcept = default;
         auto operator=(const SpaceNode&) = delete;
@@ -64,12 +64,12 @@ public:
 
         [[nodiscard]] auto IsBusyRecursively() const noexcept -> bool;
 
-        auto FindPosition(isize size) -> SpaceNode*;
+        auto FindPosition(isize32 size) -> SpaceNode*;
         void Free() noexcept;
 
         SpaceNode* Parent {};
         ipos32 Pos {};
-        isize Size {};
+        isize32 Size {};
         bool Busy {};
         vector<unique_ptr<SpaceNode>> Children {};
     };
@@ -85,7 +85,7 @@ public:
     AtlasType Type {};
     RenderTarget* RTarg {};
     RenderTexture* MainTex {};
-    isize Size {};
+    isize32 Size {};
     unique_ptr<SpaceNode> RootNode {};
 };
 
@@ -99,8 +99,8 @@ public:
     auto operator=(TextureAtlasManager&&) noexcept -> TextureAtlasManager& = delete;
     ~TextureAtlasManager() = default;
 
-    auto CreateAtlas(AtlasType atlas_type, isize request_size) -> TextureAtlas*;
-    auto FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>;
+    auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> TextureAtlas*;
+    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>;
     void DumpAtlases() const;
 
 private:

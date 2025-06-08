@@ -253,15 +253,15 @@ class AppWindow final
     friend class AppInput;
 
 public:
-    [[nodiscard]] auto GetSize() const -> isize;
-    [[nodiscard]] auto GetScreenSize() const -> isize;
+    [[nodiscard]] auto GetSize() const -> isize32;
+    [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto GetPosition() const -> ipos32;
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
     void GrabInput(bool enable);
-    void SetSize(isize size);
-    void SetScreenSize(isize size);
+    void SetSize(isize32 size);
+    void SetScreenSize(isize32 size);
     void SetPosition(ipos32 pos);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
@@ -294,7 +294,7 @@ public:
     static const int32& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44;
@@ -383,7 +383,7 @@ public:
     ~Application() = default;
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
-    [[nodiscard]] auto CreateChildWindow(isize size) -> AppWindow*;
+    [[nodiscard]] auto CreateChildWindow(isize32 size) -> AppWindow*;
 
     void OpenLink(string_view link);
     void SetImGuiEffect(unique_ptr<RenderEffect> effect);
@@ -410,7 +410,7 @@ public:
     AppAudio Audio;
 
 private:
-    [[nodiscard]] auto CreateInternalWindow(isize size) -> WindowInternalHandle*;
+    [[nodiscard]] auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
 
     uint64 _time {};
     uint64 _timeFrequency {};

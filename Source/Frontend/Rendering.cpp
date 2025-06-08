@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-auto Null_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
+auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -136,14 +136,14 @@ void Null_Renderer::DisableScissor()
     FO_STACK_TRACE_ENTRY();
 }
 
-void Null_Renderer::OnResizeWindow(isize size)
+void Null_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(size);
 }
 
-RenderTexture::RenderTexture(isize size, bool linear_filtered, bool with_depth) :
+RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth) :
     Size {size},
     SizeData {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height), 1.0f / numeric_cast<float32>(size.width), 1.0f / numeric_cast<float32>(size.height)},
     LinearFiltered {linear_filtered},

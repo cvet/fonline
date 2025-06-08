@@ -173,7 +173,7 @@ public:
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
-    [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize;
+    [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
 
     void EnableMapperMode();
     void LoadFromFile(string_view map_name, const string& str);
@@ -280,7 +280,7 @@ public:
 
 private:
     [[nodiscard]] auto IsVisible(const Sprite* spr, ipos32 offset) const -> bool;
-    [[nodiscard]] auto GetViewSize() const -> isize;
+    [[nodiscard]] auto GetViewSize() const -> isize32;
     [[nodiscard]] auto ScrollCheckPos(int32 (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool;
     [[nodiscard]] auto ScrollCheck(int32 xmod, int32 ymod) const -> bool;
 

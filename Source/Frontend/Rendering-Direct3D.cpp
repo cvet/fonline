@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE();
 class Direct3D_Texture final : public RenderTexture
 {
 public:
-    Direct3D_Texture(isize size, bool linear_filtered, bool with_depth) :
+    Direct3D_Texture(isize32 size, bool linear_filtered, bool with_depth) :
         RenderTexture(size, linear_filtered, with_depth)
     {
     }
@@ -59,8 +59,8 @@ public:
     ~Direct3D_Texture() override;
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) override;
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -152,8 +152,8 @@ static D3D11_RECT ScissorRect {};
 static D3D11_RECT DisabledScissorRect {};
 static D3D11_VIEWPORT ViewPort {};
 static IRect ViewPortRect {};
-static isize BackBufSize {};
-static isize TargetSize {};
+static isize32 BackBufSize {};
+static isize32 TargetSize {};
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
@@ -484,7 +484,7 @@ void Direct3D_Renderer::Present()
     D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 }
 
-auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
+auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -905,7 +905,7 @@ void Direct3D_Renderer::DisableScissor()
     ScissorEnabled = false;
 }
 
-void Direct3D_Renderer::OnResizeWindow(isize size)
+void Direct3D_Renderer::OnResizeWindow(isize32 size)
 {
     const auto is_cur_rt = CurRenderTarget == MainRenderTarget;
 
@@ -984,7 +984,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor>
+auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1040,7 +1040,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data)
+void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
 {
     FO_STACK_TRACE_ENTRY();
 

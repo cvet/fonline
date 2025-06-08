@@ -127,7 +127,7 @@ auto ModelSprite::Update() -> bool
     return true;
 }
 
-void ModelSprite::SetSize(isize size)
+void ModelSprite::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -230,7 +230,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     FO_RUNTIME_ASSERT(_modelMngr);
 
     // Find place for render
-    const auto frame_size = isize {model_spr->Size.width * ModelInstance::FRAME_SCALE, model_spr->Size.height * ModelInstance::FRAME_SCALE};
+    const auto frame_size = isize32 {model_spr->Size.width * ModelInstance::FRAME_SCALE, model_spr->Size.height * ModelInstance::FRAME_SCALE};
     RenderTarget* rt_model = nullptr;
 
     for (auto* rt : _rtIntermediate) {

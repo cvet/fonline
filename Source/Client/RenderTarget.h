@@ -54,7 +54,7 @@ struct RenderTarget
     unique_ptr<RenderTexture> MainTex {};
     RenderEffect* CustomDrawEffect {};
     SizeKindType SizeKind {};
-    isize BaseSize {};
+    isize32 BaseSize {};
     vector<tuple<ipos32, ucolor>> LastPixelPicks {};
 };
 
@@ -70,7 +70,7 @@ public:
     auto operator=(RenderTargetManager&&) noexcept -> RenderTargetManager& = delete;
     ~RenderTargetManager() = default;
 
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
     [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;

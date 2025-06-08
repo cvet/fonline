@@ -449,7 +449,7 @@ void MapView::Process()
     }
 }
 
-auto MapView::GetViewSize() const -> isize
+auto MapView::GetViewSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -805,7 +805,7 @@ auto MapView::GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&
     return field_tiles;
 }
 
-auto MapView::GetHexContentSize(mpos hex) -> isize
+auto MapView::GetHexContentSize(mpos hex) -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -856,7 +856,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize
         }
     }
 
-    return isize {result.Width(), result.Height()};
+    return isize32 {result.Width(), result.Height()};
 }
 
 auto MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*

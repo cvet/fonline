@@ -113,7 +113,7 @@ public:
     virtual auto Update() -> bool { return false; }
 
     // Todo: incapsulate sprite data
-    isize Size {};
+    isize32 Size {};
     ipos32 Offset {};
     RenderEffect* DrawEffect {};
 
@@ -175,8 +175,8 @@ public:
     [[nodiscard]] auto GetAtlasMngr() -> TextureAtlasManager& { return _atlasMngr; }
     [[nodiscard]] auto GetTimer() const -> GameTimer& { return _gameTimer; }
     [[nodiscard]] auto GetWindow() -> AppWindow* { FO_NON_CONST_METHOD_HINT_ONELINE() return _window; }
-    [[nodiscard]] auto GetWindowSize() const -> isize;
-    [[nodiscard]] auto GetScreenSize() const -> isize;
+    [[nodiscard]] auto GetWindowSize() const -> isize32;
+    [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom) const -> bool;
@@ -185,8 +185,8 @@ public:
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
 
-    void SetWindowSize(isize size);
-    void SetScreenSize(isize size);
+    void SetWindowSize(isize32 size);
+    void SetScreenSize(isize32 size);
     void ToggleFullscreen();
     void SetMousePosition(ipos32 pos);
     void MinimizeWindow();
@@ -209,9 +209,9 @@ public:
     void SetSpritesZoom(float32 zoom);
 
     void DrawSprite(const Sprite* spr, ipos32 pos, ucolor color);
-    void DrawSpriteSize(const Sprite* spr, ipos32 pos, isize size, bool fit, bool center, ucolor color);
+    void DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos pos, fsize size, bool fit, bool center, bool stretch, ucolor color);
-    void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize size, isize spr_size, ucolor color);
+    void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
@@ -280,10 +280,10 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(isize size, string_view str, int32 num_font) -> int32;
-    [[nodiscard]] auto GetLinesHeight(isize size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32 num_font) -> int32;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32 num_font) -> int32;
     [[nodiscard]] auto GetLineHeight(int32 num_font) -> int32;
-    [[nodiscard]] auto GetTextInfo(isize size, string_view str, int32 num_font, uint32 flags, isize& result_size, int32& lines) -> bool;
+    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) -> bool;
     [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) -> bool;
 
     auto LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
@@ -306,7 +306,7 @@ private:
         struct Letter
         {
             ipos32 Pos {};
-            isize Size {};
+            isize32 Size {};
             ipos32 Offset {};
             int32 XAdvance {};
             FRect TexPos {};

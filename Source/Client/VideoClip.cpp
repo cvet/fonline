@@ -175,7 +175,7 @@ auto VideoClip::GetTime() const -> timespan
     }
 }
 
-auto VideoClip::GetSize() const -> isize
+auto VideoClip::GetSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 

@@ -38,8 +38,8 @@ FO_BEGIN_NAMESPACE();
 [[maybe_unused]] static void TestSpecializations()
 {
     if constexpr (FO_DEBUG) {
-        [[maybe_unused]] auto grid1 = StaticTwoDimensionalGrid<int32, ipos32, isize>({100, 100});
-        [[maybe_unused]] auto grid2 = DynamicTwoDimensionalGrid<int32, ipos32, isize>({100, 100});
+        [[maybe_unused]] auto grid1 = StaticTwoDimensionalGrid<int32, ipos32, isize32>({100, 100});
+        [[maybe_unused]] auto grid2 = DynamicTwoDimensionalGrid<int32, ipos32, isize32>({100, 100});
     }
 }
 

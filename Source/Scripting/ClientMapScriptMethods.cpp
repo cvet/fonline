@@ -766,7 +766,7 @@ FO_SCRIPT_API void Client_Map_ResetCritterContour(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API isize Client_Map_GetHexContentSize(MapView* self, mpos hex)
+FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 {
     return self->GetHexContentSize(hex);
 }

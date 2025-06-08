@@ -636,7 +636,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::CreateChildWindow(isize size) -> AppWindow*
+auto Application::CreateChildWindow(isize32 size) -> AppWindow*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -653,7 +653,7 @@ auto Application::CreateChildWindow(isize size) -> AppWindow*
     return window;*/
 }
 
-auto Application::CreateInternalWindow(isize size) -> WindowInternalHandle*
+auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1110,7 +1110,7 @@ void Application::WaitForRequestedQuit()
     }
 }
 
-auto AppWindow::GetSize() const -> isize
+auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1124,7 +1124,7 @@ auto AppWindow::GetSize() const -> isize
     return {width, height};
 }
 
-void AppWindow::SetSize(isize size)
+void AppWindow::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1135,14 +1135,14 @@ void AppWindow::SetSize(isize size)
     }
 }
 
-auto AppWindow::GetScreenSize() const -> isize
+auto AppWindow::GetScreenSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
     return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
-void AppWindow::SetScreenSize(isize size)
+void AppWindow::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1285,7 +1285,7 @@ void AppWindow::Destroy()
     }
 }
 
-auto AppRender::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
+auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 

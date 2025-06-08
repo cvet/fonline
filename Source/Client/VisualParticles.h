@@ -102,7 +102,7 @@ public:
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float32;
     [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
-    [[nodiscard]] auto GetDrawSize() const -> isize;
+    [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 

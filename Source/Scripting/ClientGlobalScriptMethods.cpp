@@ -511,7 +511,7 @@ FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos32 pos, isize size)
+FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, ipos32 pos, isize32 size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -830,7 +830,7 @@ FO_SCRIPT_API void Client_Game_FreeSprite(FOClient* client, uint32 sprId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API isize Client_Game_GetSpriteSize(FOClient* client, uint32 sprId)
+FO_SCRIPT_API isize32 Client_Game_GetSpriteSize(FOClient* client, uint32 sprId)
 {
     const auto* spr = client->AnimGetSpr(sprId);
 
@@ -890,7 +890,7 @@ FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint32 sprId, hstrin
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize size, int32 font, uint32 flags, isize& resultSize, int32& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, isize32 size, int32 font, uint32 flags, isize32& resultSize, int32& resultLines)
 {
     if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -898,7 +898,7 @@ FO_SCRIPT_API void Client_Game_GetTextInfo(FOClient* client, string_view text, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Game_GetTextLines(FOClient* client, isize size, int32 font)
+FO_SCRIPT_API int32 Client_Game_GetTextLines(FOClient* client, isize32 size, int32 font)
 {
     return client->SprMngr.GetLinesCount(size, "", font);
 }
@@ -960,7 +960,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize size)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize32 size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -976,7 +976,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize size, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize32 size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1024,7 +1024,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize size, ucolor color, bool fit, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32 pos, isize32 size, ucolor color, bool fit, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1048,7 +1048,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint32 sprId, ipos32 pos, isize size, isize sprSize, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint32 sprId, ipos32 pos, isize32 size, isize32 sprSize, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1064,7 +1064,7 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint32 sprId,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos32 pos, isize size, ucolor color, int32 font, uint32 flags)
+FO_SCRIPT_API void Client_Game_DrawText(FOClient* client, string_view text, ipos32 pos, isize32 size, ucolor color, int32 font, uint32 flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1230,7 +1230,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PushDrawScissor(FOClient* client, ipos32 pos, isize size)
+FO_SCRIPT_API void Client_Game_PushDrawScissor(FOClient* client, ipos32 pos, isize32 size)
 {
     client->SprMngr.PushScissor(irect32 {pos, size});
 }
@@ -1304,7 +1304,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 effectSubtype, ipos32 pos, isize size)
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 effectSubtype, ipos32 pos, isize32 size)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
