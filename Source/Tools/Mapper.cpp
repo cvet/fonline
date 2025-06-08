@@ -903,7 +903,7 @@ void FOMapper::IntDraw()
         if (GetTabIndex() < numeric_cast<int32>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
 
-            SprMngr.DrawText(irect(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawText(irect32(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IsCritMode()) {
@@ -968,10 +968,10 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize(spr, {x, y}, {w, h}, false, true, col);
 
-            SprMngr.DrawText(irect(x, y + h - 15, w, h), strex("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            SprMngr.DrawText(irect32(x, y + h - 15, w, h), strex("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
 
             if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && inner_item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                SprMngr.DrawText(irect(x, y, w, h), strex("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                SprMngr.DrawText(irect32(x, y, w, h), strex("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
         }
     }
@@ -981,7 +981,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i].get();
-            SprMngr.DrawText(irect(x, y, w, h), strex(" '{}'", map->GetName()), 0, _curMap == map ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawText(irect32(x, y, w, h), strex(" '{}'", map->GetName()), 0, _curMap == map ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 

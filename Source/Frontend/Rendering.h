@@ -400,7 +400,7 @@ public:
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
     virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
-    virtual void EnableScissor(irect rect) = 0;
+    virtual void EnableScissor(irect32 rect) = 0;
     virtual void DisableScissor() = 0;
     virtual void OnResizeWindow(isize size) = 0;
 };
@@ -419,7 +419,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(irect rect) override;
+    void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };
@@ -442,7 +442,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(irect rect) override;
+    void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };
@@ -465,7 +465,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(irect rect) override;
+    void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };

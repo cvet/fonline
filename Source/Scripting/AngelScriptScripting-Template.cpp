@@ -3423,7 +3423,7 @@ static auto Ipos_FitToSize(const ipos& self, isize size) -> bool
     return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
 
-static auto Ipos_FitToRect(const ipos& self, irect rect) -> bool
+static auto Ipos_FitToRect(const ipos& self, irect32 rect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3437,11 +3437,11 @@ static void Isize_ConstructWandH(isize* self, int32 width, int32 height)
     new (self) isize {width, height};
 }
 
-static void Irect_ConstructXandYandWandH(irect* self, int32 x, int32 y, int32 width, int32 height)
+static void Irect_ConstructXandYandWandH(irect32* self, int32 x, int32 y, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) irect {x, y, width, height};
+    new (self) irect32 {x, y, width, height};
 }
 
 static void Fpos_ConstructXandY(fpos* self, float32 x, float32 y)
@@ -4083,12 +4083,12 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(isize size) const", SCRIPT_FUNC_THIS(Ipos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Register irect
-    REGISTER_HARD_STRONG_TYPE("irect", irect);
+    REGISTER_HARD_STRONG_TYPE("irect", irect32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("irect", asBEHAVE_CONSTRUCT, "void f(int x, int y, int width, int height)", SCRIPT_FUNC_THIS(Irect_ConstructXandYandWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int x", offsetof(irect, x)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int y", offsetof(irect, y)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int width", offsetof(irect, width)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int height", offsetof(irect, height)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int x", offsetof(irect32, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int y", offsetof(irect32, y)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int width", offsetof(irect32, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int height", offsetof(irect32, height)));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
 
     // Register fpos

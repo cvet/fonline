@@ -61,7 +61,7 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize>("isize");
     MapEnginePlainType<ipos>("ipos");
-    MapEnginePlainType<irect>("irect");
+    MapEnginePlainType<irect32>("irect32");
     MapEnginePlainType<ipos16>("ipos16");
     MapEnginePlainType<upos16>("upos16");
     MapEnginePlainType<ipos8>("ipos8");

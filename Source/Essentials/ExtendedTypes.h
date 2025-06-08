@@ -167,51 +167,51 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos);
 
-///@ ExportValueType irect irect HardStrong Layout = int32-x+int32-y+int32-width+int32-height
-struct irect
+///@ ExportValueType irect irect32 HardStrong Layout = int32-x+int32-y+int32-width+int32-height
+struct irect32
 {
-    constexpr irect() noexcept = default;
-    constexpr irect(ipos pos, isize size) noexcept :
+    constexpr irect32() noexcept = default;
+    constexpr irect32(ipos pos, isize size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect(int32 x_, int32 y_, isize size) noexcept :
+    constexpr irect32(int32 x_, int32 y_, isize size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect(ipos pos, int32 width_, int32 height_) noexcept :
+    constexpr irect32(ipos pos, int32 width_, int32 height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
         height {height_}
     {
     }
-    constexpr irect(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
+    constexpr irect32(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
         x {x_},
         y {y_},
         width {width_},
         height {height_}
     {
     }
-    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
-    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto operator==(const irect32& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const irect32& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
 
     int32 x {};
     int32 y {};
     int32 width {};
     int32 height {};
 };
-static_assert(std::is_standard_layout_v<irect>);
-static_assert(sizeof(irect) == 16);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect, "{} {} {} {}", value.x, value.y, value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect, value.x >> value.y >> value.width >> value.height);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect);
+static_assert(std::is_standard_layout_v<irect32>);
+static_assert(sizeof(irect32) == 16);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
 ///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
 struct ipos16
@@ -497,7 +497,7 @@ struct TRect
     T Right {};
     T Bottom {};
 };
-using IRect = TRect<int32>; // Todo: move IRect to irect
+using IRect = TRect<int32>; // Todo: move IRect to irect32
 using FRect = TRect<float32>; // Todo: move FRect to frect
 
 FO_END_NAMESPACE();

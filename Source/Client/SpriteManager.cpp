@@ -382,7 +382,7 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
     }
 }
 
-void SpriteManager::PushScissor(irect rect)
+void SpriteManager::PushScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2400,7 +2400,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     }
 }
 
-void SpriteManager::DrawText(irect rect, string_view str, uint32 flags, ucolor color, int32 num_font)
+void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor color, int32 num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2686,7 +2686,7 @@ auto SpriteManager::GetTextInfo(isize size, string_view str, int32 num_font, uin
     return true;
 }
 
-auto SpriteManager::SplitLines(irect rect, string_view cstr, int32 num_font) -> vector<string>
+auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
