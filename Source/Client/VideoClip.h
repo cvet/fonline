@@ -54,7 +54,7 @@ public:
     [[nodiscard]] auto IsPaused() const noexcept -> bool;
     [[nodiscard]] auto IsLooped() const noexcept -> bool;
     [[nodiscard]] auto GetTime() const -> timespan;
-    [[nodiscard]] auto GetSize() const -> isize;
+    [[nodiscard]] auto GetSize() const -> isize32;
 
     void Stop();
     void Pause();

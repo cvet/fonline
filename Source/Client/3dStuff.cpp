@@ -543,7 +543,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     SetupFrame(_modelInfo->_drawSize);
 }
 
-void ModelInstance::SetupFrame(isize draw_size)
+void ModelInstance::SetupFrame(isize32 draw_size)
 {
     _frameSize.width = draw_size.width * FRAME_SCALE;
     _frameSize.height = draw_size.height * FRAME_SCALE;
@@ -1179,7 +1179,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, 
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const -> isize
+auto ModelInstance::GetDrawSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1189,7 +1189,7 @@ auto ModelInstance::GetDrawSize() const -> isize
     return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
 
-auto ModelInstance::GetViewSize() const -> isize
+auto ModelInstance::GetViewSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 

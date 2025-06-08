@@ -59,7 +59,7 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<nanotime>(FO_NANOTIME_NAME);
     MapEnginePlainType<synctime>(FO_SYNCTIME_NAME);
     MapEnginePlainType<ucolor>("ucolor");
-    MapEnginePlainType<isize>("isize");
+    MapEnginePlainType<isize32>("isize32");
     MapEnginePlainType<ipos32>("ipos32");
     MapEnginePlainType<irect32>("irect32");
     MapEnginePlainType<ipos16>("ipos16");

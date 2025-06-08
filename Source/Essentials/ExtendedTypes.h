@@ -113,18 +113,18 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
 FO_BEGIN_NAMESPACE();
 
 // Position types
-///@ ExportValueType isize isize HardStrong Layout = int32-width+int32-height
-struct isize
+///@ ExportValueType isize isize32 HardStrong Layout = int32-width+int32-height
+struct isize32
 {
-    constexpr isize() noexcept = default;
-    constexpr isize(int32 width_, int32 height_) noexcept :
+    constexpr isize32() noexcept = default;
+    constexpr isize32(int32 width_, int32 height_) noexcept :
         width {width_},
         height {height_}
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
-    [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto operator==(const isize32& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const isize32& other) const noexcept -> bool { return width != other.width || height != other.height; }
     [[nodiscard]] constexpr auto GetSquare() const noexcept -> int32 { return width * height; }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
@@ -135,11 +135,11 @@ struct isize
     int32 width {};
     int32 height {};
 };
-static_assert(std::is_standard_layout_v<isize>);
-static_assert(sizeof(isize) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize, value.width >> value.height);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize);
+static_assert(std::is_standard_layout_v<isize32>);
+static_assert(sizeof(isize32) == 8);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
 ///@ ExportValueType ipos ipos32 HardStrong Layout = int32-x+int32-y
 struct ipos32
@@ -171,14 +171,14 @@ FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 struct irect32
 {
     constexpr irect32() noexcept = default;
-    constexpr irect32(ipos32 pos, isize size) noexcept :
+    constexpr irect32(ipos32 pos, isize32 size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect32(int32 x_, int32 y_, isize size) noexcept :
+    constexpr irect32(int32 x_, int32 y_, isize32 size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
@@ -305,7 +305,7 @@ struct fsize
         height {safe_numeric_cast<float32>(height_)}
     {
     }
-    constexpr explicit fsize(isize size) noexcept :
+    constexpr explicit fsize(isize32 size) noexcept :
         width {safe_numeric_cast<float32>(size.width)},
         height {safe_numeric_cast<float32>(size.height)}
     {

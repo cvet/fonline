@@ -156,7 +156,7 @@ void ParticleSystem::SetBaseSystem(SPK::System* system)
     _impl->BaseSystem = system;
 }
 
-auto ParticleSystem::GetDrawSize() const -> isize
+auto ParticleSystem::GetDrawSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 

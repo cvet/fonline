@@ -258,14 +258,14 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float32, int32, int32, int32>;
-    [[nodiscard]] auto GetDrawSize() const -> isize;
-    [[nodiscard]] auto GetViewSize() const -> isize;
+    [[nodiscard]] auto GetDrawSize() const -> isize32;
+    [[nodiscard]] auto GetViewSize() const -> isize32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto IsCombatMode() const noexcept -> bool;
 
-    void SetupFrame(isize draw_size);
+    void SetupFrame(isize32 draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
     auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, uint32 flags) -> bool;
@@ -319,7 +319,7 @@ private:
     void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
-    isize _frameSize {};
+    isize32 _frameSize {};
     mat44 _frameProj {};
     mat44 _frameProjColMaj {};
     CritterStateAnim _curStateAnim {};
@@ -425,8 +425,8 @@ private:
     int32 _renderAnimProcTo {100};
     int32 _renderAnimDir {};
     bool _shadowDisabled {};
-    isize _drawSize {};
-    isize _viewSize {};
+    isize32 _drawSize {};
+    isize32 _viewSize {};
     hstring _rotationBone {};
 };
 

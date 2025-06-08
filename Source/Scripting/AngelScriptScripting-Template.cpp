@@ -3384,7 +3384,7 @@ static auto Ipos_NegIpos(const ipos32& self) -> ipos32
     return ipos32 {-self.x, -self.y};
 }
 
-static auto Ipos_AddAssignIsize(ipos32& self, const isize& size) -> ipos32&
+static auto Ipos_AddAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3393,7 +3393,7 @@ static auto Ipos_AddAssignIsize(ipos32& self, const isize& size) -> ipos32&
     return self;
 }
 
-static auto Ipos_SubAssignIsize(ipos32& self, const isize& size) -> ipos32&
+static auto Ipos_SubAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3402,21 +3402,21 @@ static auto Ipos_SubAssignIsize(ipos32& self, const isize& size) -> ipos32&
     return self;
 }
 
-static auto Ipos_AddIsize(const ipos32& self, const isize& size) -> ipos32
+static auto Ipos_AddIsize(const ipos32& self, const isize32& size) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return ipos32 {self.x + size.width, self.y + size.height};
 }
 
-static auto Ipos_SubIsize(const ipos32& self, const isize& size) -> ipos32
+static auto Ipos_SubIsize(const ipos32& self, const isize32& size) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return ipos32 {self.x - size.width, self.y - size.height};
 }
 
-static auto Ipos_FitToSize(const ipos32& self, isize size) -> bool
+static auto Ipos_FitToSize(const ipos32& self, isize32 size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3430,11 +3430,11 @@ static auto Ipos_FitToRect(const ipos32& self, irect32 rect) -> bool
     return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
-static void Isize_ConstructWandH(isize* self, int32 width, int32 height)
+static void Isize_ConstructWandH(isize32* self, int32 width, int32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) isize {width, height};
+    new (self) isize32 {width, height};
 }
 
 static void Irect_ConstructXandYandWandH(irect32* self, int32 x, int32 y, int32 width, int32 height)
@@ -3490,7 +3490,7 @@ static auto Fpos_NegFpos(const fpos& self) -> fpos
     return fpos {-self.x, -self.y};
 }
 
-static void Fsize_ConstructWandH(isize* self, float32 width, float32 height)
+static void Fsize_ConstructWandH(fsize* self, float32 width, float32 height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -4072,10 +4072,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opNeg() const", SCRIPT_FUNC_THIS(Ipos_NegIpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
-    REGISTER_HARD_STRONG_TYPE("isize", isize);
+    REGISTER_HARD_STRONG_TYPE("isize", isize32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int width", offsetof(isize, width)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int height", offsetof(isize, height)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int width", offsetof(isize32, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int height", offsetof(isize32, height)));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIsize), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const isize &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIsize), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opAdd(const isize &in) const", SCRIPT_FUNC_THIS(Ipos_AddIsize), SCRIPT_FUNC_THIS_CONV));

@@ -537,7 +537,7 @@ public:
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
 
     static void SetRandomSeed(int32 seed);
-    static void WriteSimpleTga(string_view fname, isize size, vector<ucolor> data);
+    static void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 };
 
 // Interthread communication between server and client

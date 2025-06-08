@@ -165,11 +165,11 @@ public:
     virtual ~RenderTexture() = default;
 
     [[nodiscard]] virtual auto GetTexturePixel(ipos32 pos) const -> ucolor = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> = 0;
 
-    virtual void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) = 0;
+    virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) = 0;
 
-    const isize Size;
+    const isize32 Size;
     const float32 SizeData[4]; // Width, Height, TexelWidth, TexelHeight
     const bool LinearFiltered;
     const bool WithDepth;
@@ -177,7 +177,7 @@ public:
     bool FlippedHeight {};
 
 protected:
-    RenderTexture(isize size, bool linear_filtered, bool with_depth);
+    RenderTexture(isize32 size, bool linear_filtered, bool with_depth);
 };
 
 class RenderDrawBuffer
@@ -389,7 +389,7 @@ public:
     auto operator=(Renderer&&) noexcept -> Renderer& = delete;
     virtual ~Renderer() = default;
 
-    [[nodiscard]] virtual auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
@@ -402,13 +402,13 @@ public:
     virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(irect32 rect) = 0;
     virtual void DisableScissor() = 0;
-    virtual void OnResizeWindow(isize size) = 0;
+    virtual void OnResizeWindow(isize32 size) = 0;
 };
 
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
@@ -421,7 +421,7 @@ public:
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
-    void OnResizeWindow(isize size) override;
+    void OnResizeWindow(isize32 size) override;
 };
 
 #if FO_HAVE_OPENGL
@@ -431,7 +431,7 @@ class OpenGL_Renderer final : public Renderer
 public:
     static constexpr auto RING_BUFFER_LENGTH = 300;
 
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
@@ -444,7 +444,7 @@ public:
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
-    void OnResizeWindow(isize size) override;
+    void OnResizeWindow(isize32 size) override;
 };
 
 #endif
@@ -454,7 +454,7 @@ public:
 class Direct3D_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
@@ -467,7 +467,7 @@ public:
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
-    void OnResizeWindow(isize size) override;
+    void OnResizeWindow(isize32 size) override;
 };
 
 #endif

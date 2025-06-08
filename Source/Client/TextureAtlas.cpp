@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE();
 
 static constexpr int32 ATLAS_SPRITES_PADDING = 1;
 
-TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos32 pos, isize size) :
+TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos32 pos, isize32 size) :
     Parent {parent},
     Pos {pos},
     Size {size}
@@ -63,7 +63,7 @@ auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
     return false;
 }
 
-auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
+auto TextureAtlas::SpaceNode::FindPosition(isize32 size) -> SpaceNode*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -77,16 +77,16 @@ auto TextureAtlas::SpaceNode::FindPosition(isize size) -> SpaceNode*
         Busy = true;
 
         if (Size.width == size.width && Size.height > size.height) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
             Size.height = size.height;
         }
         else if (Size.height == size.height && Size.width > size.width) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, Size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, Size.height}));
             Size.width = size.width;
         }
         else if (Size.width > size.width && Size.height > size.height) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize {Size.width - size.width, size.height}));
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
             Size.width = size.width;
             Size.height = size.height;
         }
@@ -142,7 +142,7 @@ TextureAtlasManager::TextureAtlasManager(RenderSettings& settings, RenderTargetM
 {
 }
 
-auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) -> TextureAtlas*
+auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size) -> TextureAtlas*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -163,7 +163,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     auto atlas = SafeAlloc::MakeUnique<TextureAtlas>();
     atlas->Type = atlas_type;
 
-    isize result_size;
+    isize32 result_size;
 
     switch (atlas->Type) {
     case AtlasType::IfaceSprites:
@@ -196,14 +196,14 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize request_size) 
     return _allAtlases.back().get();
 }
 
-auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>
+auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>
 {
     FO_STACK_TRACE_ENTRY();
 
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
     TextureAtlas::SpaceNode* atlas_node = nullptr;
-    const isize size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
+    const isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
         for (auto& check_atlas : _allAtlases) {

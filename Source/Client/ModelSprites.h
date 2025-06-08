@@ -70,7 +70,7 @@ public:
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
-    void SetSize(isize size);
+    void SetSize(isize32 size);
     void DrawToAtlas();
 
 private:

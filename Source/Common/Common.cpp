@@ -99,7 +99,7 @@ void FrameBalancer::EndLoop()
     }
 }
 
-void GenericUtils::WriteSimpleTga(string_view fname, isize size, vector<ucolor> data)
+void GenericUtils::WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -113,8 +113,8 @@ static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static bool BaseFrameBufObjBinded {};
-static isize BaseFrameBufSize {};
-static isize TargetSize {};
+static isize32 BaseFrameBufSize {};
+static isize32 TargetSize {};
 static mat44 ProjectionMatrixColMaj {};
 static unique_ptr<RenderTexture> DummyTexture {};
 static IRect ViewPortRect {};
@@ -131,15 +131,15 @@ static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work wit
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(isize size, bool linear_filtered, bool with_depth) :
+    OpenGL_Texture(isize32 size, bool linear_filtered, bool with_depth) :
         RenderTexture(size, linear_filtered, with_depth)
     {
     }
     ~OpenGL_Texture() override;
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) override;
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -374,7 +374,7 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
+auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -719,7 +719,7 @@ void OpenGL_Renderer::DisableScissor()
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
-void OpenGL_Renderer::OnResizeWindow(isize size)
+void OpenGL_Renderer::OnResizeWindow(isize32 size)
 {
     BaseFrameBufSize = size;
 
@@ -762,7 +762,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor>
+auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -787,7 +787,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<uc
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
 {
     FO_STACK_TRACE_ENTRY();
 

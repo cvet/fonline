@@ -43,6 +43,8 @@ RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* wi
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(_flush);
+
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
@@ -62,7 +64,7 @@ auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
     return !_rtStack.empty() ? _rtStack.back() : nullptr;
 }
 
-auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*
+auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -101,7 +103,7 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 
     FO_NON_CONST_METHOD_HINT();
 
-    isize tex_size = rt->BaseSize;
+    auto tex_size = rt->BaseSize;
 
     if (rt->SizeKind == RenderTarget::SizeKindType::Screen) {
         tex_size.width += _settings.ScreenWidth;
