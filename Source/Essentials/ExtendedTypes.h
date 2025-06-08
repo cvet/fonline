@@ -291,28 +291,28 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-///@ ExportValueType fsize fsize HardStrong Layout = float32-width+float32-height
-struct fsize
+///@ ExportValueType fsize fsize32 HardStrong Layout = float32-width+float32-height
+struct fsize32
 {
-    constexpr fsize() noexcept = default;
-    constexpr fsize(float32 width_, float32 height_) noexcept :
+    constexpr fsize32() noexcept = default;
+    constexpr fsize32(float32 width_, float32 height_) noexcept :
         width {width_},
         height {height_}
     {
     }
-    constexpr fsize(int32 width_, int32 height_) noexcept :
+    constexpr fsize32(int32 width_, int32 height_) noexcept :
         width {safe_numeric_cast<float32>(width_)},
         height {safe_numeric_cast<float32>(height_)}
     {
     }
-    constexpr explicit fsize(isize32 size) noexcept :
+    constexpr explicit fsize32(isize32 size) noexcept :
         width {safe_numeric_cast<float32>(size.width)},
         height {safe_numeric_cast<float32>(size.height)}
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator==(const fsize32& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const fsize32& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto GetSquare() const noexcept -> float32 { return width * height; }
     template<typename T>
     [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
@@ -323,10 +323,10 @@ struct fsize
     float32 width {};
     float32 height {};
 };
-static_assert(std::is_standard_layout_v<fsize>);
-static_assert(sizeof(fsize) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize, value.width >> value.height);
+static_assert(std::is_standard_layout_v<fsize32>);
+static_assert(sizeof(fsize32) == 8);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
 ///@ ExportValueType fpos fpos HardStrong Layout = float32-x+float32-y
 struct fpos
@@ -367,14 +367,14 @@ FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos, value.x >> value.y);
 struct frect
 {
     constexpr frect() noexcept = default;
-    constexpr frect(fpos pos, fsize size) noexcept :
+    constexpr frect(fpos pos, fsize32 size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr frect(float32 x_, float32 y_, fsize size) noexcept :
+    constexpr frect(float32 x_, float32 y_, fsize32 size) noexcept :
         x {x_},
         y {y_},
         width {size.width},

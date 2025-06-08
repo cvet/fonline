@@ -974,7 +974,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize(size), true, true, true, COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize32(size), true, true, true, COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -990,7 +990,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize(size), true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -1006,11 +1006,11 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos p
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize(spr->Size), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->Size), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos pos, fsize size, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos pos, fsize32 size, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1046,7 +1046,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
         y += spr->Offset.y;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, fsize(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
