@@ -141,8 +141,8 @@ private:
     nanotime _fidgetTime {};
 
     ipos32 _offsAnim {};
-    fpos _offsExt {};
-    fpos _offsExtSpeed {};
+    fpos32 _offsExt {};
+    fpos32 _offsExtSpeed {};
     nanotime _offsExtNextTime {};
 
 #if FO_ENABLE_3D

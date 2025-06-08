@@ -533,8 +533,8 @@ public:
     [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
     [[nodiscard]] static auto DistSqrt(ipos32 pos1, ipos32 pos2) -> int32;
-    [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos;
-    [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
+    [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
+    [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
 
     static void SetRandomSeed(int32 seed);
     static void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
