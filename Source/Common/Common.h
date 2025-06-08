@@ -329,14 +329,6 @@ struct GameSettings
 #endif
 };
 
-// Light
-static constexpr auto LIGHT_DISABLE_DIR(int32 dir) -> uint8
-{
-    return numeric_cast<uint8>(1u << std::clamp(dir, 0, 5));
-}
-static constexpr uint8 LIGHT_GLOBAL = 0x40;
-static constexpr uint8 LIGHT_INVERSE = 0x80;
-
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16
 {

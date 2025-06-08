@@ -1828,7 +1828,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     bool seek_start = true;
     mpos last_traced_hex = {const_numeric_cast<uint16>(0xFFFF), const_numeric_cast<uint16>(0xFFFF)};
 
-    for (int32 i = 0, ii = (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i < ii; i++) {
+    for (int32 i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
         const auto dir = numeric_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
         for (int32 j = 0, jj = GameSettings::HEXAGONAL_GEOMETRY ? distance : distance * 2; j < jj; j++) {
@@ -1846,7 +1846,7 @@ void MapView::ApplyLightFan(LightSource* ls)
 
             auto traced_hex = _mapSize.ClampPos(raw_traced_hex);
 
-            if (IsBitSet(ls->Flags, LIGHT_DISABLE_DIR(i))) {
+            if (IsBitSet(ls->Flags & LIGHT_DISABLE_DIR_MASK, 1u << i)) {
                 traced_hex = center_hex;
             }
             else {
