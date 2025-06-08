@@ -188,7 +188,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnScreenScroll, ipos /*offsetPos*/);
+    FO_ENTITY_EVENT(OnScreenScroll, ipos32 /*offsetPos*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
@@ -198,7 +198,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMouseMove, ipos /*offsetPos*/);
+    FO_ENTITY_EVENT(OnMouseMove, ipos32 /*offsetPos*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent

@@ -296,7 +296,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemP
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos& pos)
+FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos32& pos)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -363,7 +363,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, ipos& boneOffset)
+FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, ipos32& boneOffset)
 {
 #if FO_ENABLE_3D
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
@@ -397,7 +397,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos hexOffset, int32 speed)
+FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 

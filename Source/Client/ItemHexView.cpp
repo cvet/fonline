@@ -237,7 +237,7 @@ void ItemHexView::RefreshOffs()
 
     const auto offset = GetOffset();
 
-    SprOffset = ipos {offset.x, offset.y};
+    SprOffset = ipos32 {offset.x, offset.y};
 
     if (GetIsTile()) {
         if (GetIsRoofTile()) {

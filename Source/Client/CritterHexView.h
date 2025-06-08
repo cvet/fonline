@@ -83,9 +83,9 @@ public:
     void Process();
     void ResetOk();
     void ClearAnim();
-    void AddExtraOffs(ipos offset);
+    void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
-    auto GetNameTextPos(ipos& pos) const -> bool;
+    auto GetNameTextPos(ipos32& pos) const -> bool;
     void ClearMove();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -140,7 +140,7 @@ private:
 
     nanotime _fidgetTime {};
 
-    ipos _offsAnim {};
+    ipos32 _offsAnim {};
     fpos _offsExt {};
     fpos _offsExtSpeed {};
     nanotime _offsExtNextTime {};

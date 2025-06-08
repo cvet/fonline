@@ -55,7 +55,7 @@ struct RenderTarget
     RenderEffect* CustomDrawEffect {};
     SizeKindType SizeKind {};
     isize BaseSize {};
-    vector<tuple<ipos, ucolor>> LastPixelPicks {};
+    vector<tuple<ipos32, ucolor>> LastPixelPicks {};
 };
 
 class RenderTargetManager
@@ -71,7 +71,7 @@ public:
     ~RenderTargetManager() = default;
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize base_size, bool linear_filtered) -> RenderTarget*;
-    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos pos) const -> ucolor;
+    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
     [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
 

@@ -261,7 +261,7 @@ void AppWindow::SetScreenSize(isize size)
     ignore_unused(size);
 }
 
-auto AppWindow::GetPosition() const -> ipos
+auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,7 +271,7 @@ auto AppWindow::GetPosition() const -> ipos
     return {x, y};
 }
 
-void AppWindow::SetPosition(ipos pos)
+void AppWindow::SetPosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -451,7 +451,7 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return false;
 }
 
-auto AppInput::GetMousePosition() const -> ipos
+auto AppInput::GetMousePosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -461,7 +461,7 @@ auto AppInput::GetMousePosition() const -> ipos
     return {x, y};
 }
 
-void AppInput::SetMousePosition(ipos pos, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 

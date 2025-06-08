@@ -55,7 +55,7 @@ public:
     class SpaceNode final
     {
     public:
-        SpaceNode(SpaceNode* parent, ipos pos, isize size);
+        SpaceNode(SpaceNode* parent, ipos32 pos, isize size);
         SpaceNode(const SpaceNode&) = delete;
         SpaceNode(SpaceNode&&) noexcept = default;
         auto operator=(const SpaceNode&) = delete;
@@ -68,7 +68,7 @@ public:
         void Free() noexcept;
 
         SpaceNode* Parent {};
-        ipos Pos {};
+        ipos32 Pos {};
         isize Size {};
         bool Busy {};
         vector<unique_ptr<SpaceNode>> Children {};
@@ -100,7 +100,7 @@ public:
     ~TextureAtlasManager() = default;
 
     auto CreateAtlas(AtlasType atlas_type, isize request_size) -> TextureAtlas*;
-    auto FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos>;
+    auto FindAtlasPlace(AtlasType atlas_type, isize size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>;
     void DumpAtlases() const;
 
 private:

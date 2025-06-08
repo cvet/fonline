@@ -141,37 +141,37 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize, "{} {}", value.width, value.height
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize);
 
-///@ ExportValueType ipos ipos HardStrong Layout = int32-x+int32-y
-struct ipos
+///@ ExportValueType ipos ipos32 HardStrong Layout = int32-x+int32-y
+struct ipos32
 {
-    constexpr ipos() noexcept = default;
-    constexpr ipos(int32 x_, int32 y_) noexcept :
+    constexpr ipos32() noexcept = default;
+    constexpr ipos32(int32 x_, int32 y_) noexcept :
         x {x_},
         y {y_}
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
-    [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
-    [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
-    [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
+    [[nodiscard]] constexpr auto operator==(const ipos32& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos32& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos32& other) const noexcept -> ipos32 { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const ipos32& other) const noexcept -> ipos32 { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const ipos32& other) const noexcept -> ipos32 { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const ipos32& other) const noexcept -> ipos32 { return {x / other.x, y / other.y}; }
 
     int32 x {};
     int32 y {};
 };
-static_assert(std::is_standard_layout_v<ipos>);
-static_assert(sizeof(ipos) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos, value.x >> value.y);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos);
+static_assert(std::is_standard_layout_v<ipos32>);
+static_assert(sizeof(ipos32) == 8);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
 ///@ ExportValueType irect irect32 HardStrong Layout = int32-x+int32-y+int32-width+int32-height
 struct irect32
 {
     constexpr irect32() noexcept = default;
-    constexpr irect32(ipos pos, isize size) noexcept :
+    constexpr irect32(ipos32 pos, isize size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
@@ -185,7 +185,7 @@ struct irect32
         height {size.height}
     {
     }
-    constexpr irect32(ipos pos, int32 width_, int32 height_) noexcept :
+    constexpr irect32(ipos32 pos, int32 width_, int32 height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
@@ -342,7 +342,7 @@ struct fpos
         y {safe_numeric_cast<float32>(y_)}
     {
     }
-    constexpr explicit fpos(ipos pos) noexcept :
+    constexpr explicit fpos(ipos32 pos) noexcept :
         x {safe_numeric_cast<float32>(pos.x)},
         y {safe_numeric_cast<float32>(pos.y)}
     {

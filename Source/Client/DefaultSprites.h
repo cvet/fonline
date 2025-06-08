@@ -50,7 +50,7 @@ public:
     auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = delete;
     ~AtlasSprite() override;
 
-    [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetBatchTex() const -> RenderTexture* override { return Atlas->MainTex; }
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
@@ -73,7 +73,7 @@ public:
     auto operator=(SpriteSheet&&) noexcept -> SpriteSheet& = delete;
     ~SpriteSheet() override = default;
 
-    [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetBatchTex() const -> RenderTexture* override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
@@ -96,7 +96,7 @@ public:
 
     // Todo: incapsulate sprite sheet data
     vector<shared_ptr<Sprite>> Spr {};
-    vector<ipos> SprOffset {};
+    vector<ipos32> SprOffset {};
     int32 CntFrm {}; // Todo: Spr.size()
     int32 WholeTicks {};
     CritterStateAnim StateAnim {};

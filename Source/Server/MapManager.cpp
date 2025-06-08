@@ -763,7 +763,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         int32 i = 0;
 
         for (; i < GameSettings::MAP_DIR_COUNT; i++) {
-            auto ring_raw_hex = ipos {input.ToHex.x, input.ToHex.y};
+            auto ring_raw_hex = ipos32 {input.ToHex.x, input.ToHex.y};
             GeometryHelper::MoveHexAroundAway(ring_raw_hex, i);
 
             if (map_size.IsValidPos(ring_raw_hex)) {
@@ -825,7 +825,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             }
 
             for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
-                auto raw_next_hex = ipos {cur_hex.x, cur_hex.y};
+                auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
                 GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
                 if (!map_size.IsValidPos(raw_next_hex)) {
@@ -911,7 +911,7 @@ label_FindOk:
             int32 best_step_dir = -1;
             float32 best_step_angle_diff = 0.0f;
 
-            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos step_raw_hex) {
+            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos32 step_raw_hex) {
                 if (!map_size.IsValidPos(step_raw_hex)) {
                     return;
                 }
@@ -938,12 +938,12 @@ label_FindOk:
             };
 
             if ((hex.x % 2) != 0) {
-                check_hex(3, ipos {hex.x - 1, hex.y - 1});
-                check_hex(2, ipos {hex.x, hex.y - 1});
-                check_hex(5, ipos {hex.x, hex.y + 1});
-                check_hex(0, ipos {hex.x + 1, hex.y});
-                check_hex(4, ipos {hex.x - 1, hex.y});
-                check_hex(1, ipos {hex.x + 1, hex.y - 1});
+                check_hex(3, ipos32 {hex.x - 1, hex.y - 1});
+                check_hex(2, ipos32 {hex.x, hex.y - 1});
+                check_hex(5, ipos32 {hex.x, hex.y + 1});
+                check_hex(0, ipos32 {hex.x + 1, hex.y});
+                check_hex(4, ipos32 {hex.x - 1, hex.y});
+                check_hex(1, ipos32 {hex.x + 1, hex.y - 1});
 
                 if (best_step_dir == 3) {
                     raw_steps[numindex - 1] = 3;
@@ -979,12 +979,12 @@ label_FindOk:
                 }
             }
             else {
-                check_hex(3, ipos {hex.x - 1, hex.y});
-                check_hex(2, ipos {hex.x, hex.y - 1});
-                check_hex(5, ipos {hex.x, hex.y + 1});
-                check_hex(0, ipos {hex.x + 1, hex.y + 1});
-                check_hex(4, ipos {hex.x - 1, hex.y + 1});
-                check_hex(1, ipos {hex.x + 1, hex.y});
+                check_hex(3, ipos32 {hex.x - 1, hex.y});
+                check_hex(2, ipos32 {hex.x, hex.y - 1});
+                check_hex(5, ipos32 {hex.x, hex.y + 1});
+                check_hex(0, ipos32 {hex.x + 1, hex.y + 1});
+                check_hex(4, ipos32 {hex.x - 1, hex.y + 1});
+                check_hex(1, ipos32 {hex.x + 1, hex.y});
 
                 if (best_step_dir == 3) {
                     raw_steps[numindex - 1] = 3;

@@ -85,7 +85,7 @@ auto GeometryHelper::GetDistance(mpos hex1, mpos hex2) -> int32
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
-auto GeometryHelper::GetDistance(ipos hex1, ipos hex2) -> int32
+auto GeometryHelper::GetDistance(ipos32 hex1, ipos32 hex2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -353,7 +353,7 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto raw_pos = ipos {hex.x, hex.y};
+    auto raw_pos = ipos32 {hex.x, hex.y};
     MoveHexByDirUnsafe(raw_pos, dir);
 
     if (map_size.IsValidPos(raw_pos)) {
@@ -365,7 +365,7 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     return false;
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
+void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -441,7 +441,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos& hex, uint8 dir)
     }
 }
 
-void GeometryHelper::MoveHexAroundAway(ipos& hex, int32 index)
+void GeometryHelper::MoveHexAroundAway(ipos32& hex, int32 index)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -508,14 +508,14 @@ auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) con
     return angle;
 }
 
-auto GeometryHelper::GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos
+auto GeometryHelper::GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetHexInterval(ipos {from_hex.x, from_hex.y}, ipos {to_hex.x, to_hex.y});
+    return GetHexInterval(ipos32 {from_hex.x, from_hex.y}, ipos32 {to_hex.x, to_hex.y});
 }
 
-auto GeometryHelper::GetHexInterval(ipos from_raw_hex, ipos to_raw_hex) const -> ipos
+auto GeometryHelper::GetHexInterval(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -557,7 +557,7 @@ void GeometryHelper::ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msi
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto raw_pos = ipos {hex.x, hex.y};
+    auto raw_pos = ipos32 {hex.x, hex.y};
 
     for (size_t i = 0; i < dir_line.size() / 2; i++) {
         const auto dir = dir_line[i * 2];

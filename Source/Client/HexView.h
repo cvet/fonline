@@ -66,8 +66,8 @@ public:
     [[nodiscard]] auto IsFinishing() const noexcept -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const noexcept -> bool;
 
-    auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*;
-    auto InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos* phex_offset) -> MapSprite*;
+    auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*;
+    auto InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*;
     void Finish();
     auto StoreFading() -> tuple<bool, bool, nanotime> { return {_fading, _fadeUp, _fadingTime}; }
     void RestoreFading(const tuple<bool, bool, nanotime>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
@@ -81,7 +81,7 @@ public:
 
     // Todo: incapsulate hex view fileds
     const Sprite* Spr {};
-    ipos SprOffset {};
+    ipos32 SprOffset {};
     RenderEffect* DrawEffect {};
 
 protected:

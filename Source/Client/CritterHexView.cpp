@@ -784,7 +784,7 @@ void CritterHexView::ProcessMoving()
             if (moved || hex_offset.x != mxi || hex_offset.y != myi) {
 #if FO_ENABLE_3D
                 if (_model != nullptr) {
-                    ipos model_offset;
+                    ipos32 model_offset;
 
                     if (moved) {
                         model_offset = _engine->Geometry.GetHexInterval(prev_hex, cur_hex);
@@ -867,7 +867,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
     RefreshOffs();
 }
 
-void CritterHexView::AddExtraOffs(ipos offset)
+void CritterHexView::AddExtraOffs(ipos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -889,14 +889,14 @@ void CritterHexView::RefreshOffs()
 
     const auto hex_offset = GetHexOffset();
 
-    SprOffset = ipos {hex_offset.x, hex_offset.y} + ipos {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)} + _offsAnim;
+    SprOffset = ipos32 {hex_offset.x, hex_offset.y} + ipos32 {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)} + _offsAnim;
 
     if (IsSpriteValid() && GetIsChosen()) {
         _engine->SprMngr.SetEgg(GetHex(), GetSprite());
     }
 }
 
-auto CritterHexView::GetNameTextPos(ipos& pos) const -> bool
+auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

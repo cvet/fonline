@@ -532,8 +532,8 @@ public:
     [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
     [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
-    [[nodiscard]] static auto DistSqrt(ipos pos1, ipos pos2) -> int32;
-    [[nodiscard]] static auto GetStepsCoords(ipos from_pos, ipos to_pos) noexcept -> fpos;
+    [[nodiscard]] static auto DistSqrt(ipos32 pos1, ipos32 pos2) -> int32;
+    [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos;
     [[nodiscard]] static auto ChangeStepsCoords(fpos pos, float32 deq) noexcept -> fpos;
 
     static void SetRandomSeed(int32 seed);

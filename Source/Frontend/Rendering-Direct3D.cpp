@@ -58,9 +58,9 @@ public:
     auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos pos) const -> ucolor override;
-    [[nodiscard]] auto GetTextureRegion(ipos pos, isize size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos pos, isize size, const ucolor* data) override;
+    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor> override;
+    void UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -957,7 +957,7 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
+auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -984,7 +984,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos pos) const -> ucolor
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<ucolor>
+auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize size) const -> vector<ucolor>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1040,7 +1040,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos pos, isize size) const -> vector<uc
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(ipos pos, isize size, const ucolor* data)
+void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize size, const ucolor* data)
 {
     FO_STACK_TRACE_ENTRY();
 

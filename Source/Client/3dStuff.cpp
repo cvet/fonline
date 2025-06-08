@@ -558,7 +558,7 @@ void ModelInstance::SetupFrame(isize draw_size)
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos
+auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -568,7 +568,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos
     return {iround<int32>(out.x / const_numeric_cast<float32>(FRAME_SCALE)), iround<int32>(out.y / const_numeric_cast<float32>(FRAME_SCALE))};
 }
 
-auto ModelInstance::Convert2dTo3d(ipos pos) const -> vec3
+auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -978,7 +978,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     return mesh_changed;
 }
 
-void ModelInstance::MoveModel(ipos offset)
+void ModelInstance::MoveModel(ipos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1976,7 +1976,7 @@ void ModelInstance::Draw()
     DrawAllParticles();
 }
 
-void ModelInstance::ProcessAnimation(float32 elapsed, ipos pos, float32 scale)
+void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2208,7 +2208,7 @@ auto ModelInstance::FindBone(hstring bone_name) const noexcept -> const ModelBon
     return bone;
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
+auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2226,7 +2226,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos>
     const auto x = p.x - _frameSize.width / FRAME_SCALE / 2;
     const auto y = -(p.y - _frameSize.height / FRAME_SCALE / 4);
 
-    return ipos {x, y};
+    return ipos32 {x, y};
 }
 
 auto ModelInstance::GetAnimDuration() const -> timespan

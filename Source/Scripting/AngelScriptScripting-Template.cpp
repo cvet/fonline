@@ -3338,14 +3338,14 @@ static void Time_ConstructWithPlace(T* self, int64 value, int32 place)
 #endif
 }
 
-static void Ipos_ConstructXandY(ipos* self, int32 x, int32 y)
+static void Ipos_ConstructXandY(ipos32* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) ipos {x, y};
+    new (self) ipos32 {x, y};
 }
 
-static auto Ipos_AddAssignIpos(ipos& self, const ipos& pos) -> ipos&
+static auto Ipos_AddAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3354,7 +3354,7 @@ static auto Ipos_AddAssignIpos(ipos& self, const ipos& pos) -> ipos&
     return self;
 }
 
-static auto Ipos_SubAssignIpos(ipos& self, const ipos& pos) -> ipos&
+static auto Ipos_SubAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3363,28 +3363,28 @@ static auto Ipos_SubAssignIpos(ipos& self, const ipos& pos) -> ipos&
     return self;
 }
 
-static auto Ipos_AddIpos(const ipos& self, const ipos& pos) -> ipos
+static auto Ipos_AddIpos(const ipos32& self, const ipos32& pos) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ipos {self.x + pos.x, self.y + pos.y};
+    return ipos32 {self.x + pos.x, self.y + pos.y};
 }
 
-static auto Ipos_SubIpos(const ipos& self, const ipos& pos) -> ipos
+static auto Ipos_SubIpos(const ipos32& self, const ipos32& pos) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ipos {self.x - pos.x, self.y - pos.y};
+    return ipos32 {self.x - pos.x, self.y - pos.y};
 }
 
-static auto Ipos_NegIpos(const ipos& self) -> ipos
+static auto Ipos_NegIpos(const ipos32& self) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ipos {-self.x, -self.y};
+    return ipos32 {-self.x, -self.y};
 }
 
-static auto Ipos_AddAssignIsize(ipos& self, const isize& size) -> ipos&
+static auto Ipos_AddAssignIsize(ipos32& self, const isize& size) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3393,7 +3393,7 @@ static auto Ipos_AddAssignIsize(ipos& self, const isize& size) -> ipos&
     return self;
 }
 
-static auto Ipos_SubAssignIsize(ipos& self, const isize& size) -> ipos&
+static auto Ipos_SubAssignIsize(ipos32& self, const isize& size) -> ipos32&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -3402,28 +3402,28 @@ static auto Ipos_SubAssignIsize(ipos& self, const isize& size) -> ipos&
     return self;
 }
 
-static auto Ipos_AddIsize(const ipos& self, const isize& size) -> ipos
+static auto Ipos_AddIsize(const ipos32& self, const isize& size) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ipos {self.x + size.width, self.y + size.height};
+    return ipos32 {self.x + size.width, self.y + size.height};
 }
 
-static auto Ipos_SubIsize(const ipos& self, const isize& size) -> ipos
+static auto Ipos_SubIsize(const ipos32& self, const isize& size) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ipos {self.x - size.width, self.y - size.height};
+    return ipos32 {self.x - size.width, self.y - size.height};
 }
 
-static auto Ipos_FitToSize(const ipos& self, isize size) -> bool
+static auto Ipos_FitToSize(const ipos32& self, isize size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
 
-static auto Ipos_FitToRect(const ipos& self, irect32 rect) -> bool
+static auto Ipos_FitToRect(const ipos32& self, irect32 rect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -4061,10 +4061,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
-    REGISTER_HARD_STRONG_TYPE("ipos", ipos);
+    REGISTER_HARD_STRONG_TYPE("ipos", ipos32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos, x)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos, y)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos32, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos32, y)));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opAddAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_AddAssignIpos), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos& opSubAssign(const ipos &in)", SCRIPT_FUNC_THIS(Ipos_SubAssignIpos), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opAdd(const ipos &in) const", SCRIPT_FUNC_THIS(Ipos_AddIpos), SCRIPT_FUNC_THIS_CONV));

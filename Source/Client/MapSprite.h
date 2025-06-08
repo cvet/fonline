@@ -107,7 +107,7 @@ struct MapSpriteData
     uint32 SprId {};
     mpos Hex {};
     hstring ProtoId {};
-    ipos Offset {};
+    ipos32 Offset {};
     bool IsFlat {};
     bool NoLight {};
     DrawOrderType DrawOrder {};
@@ -117,7 +117,7 @@ struct MapSpriteData
     ucolor Color {};
     ucolor ContourColor {};
     bool IsTweakOffs {};
-    ipos TweakOffset {};
+    ipos32 TweakOffset {};
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
 
@@ -137,7 +137,7 @@ public:
 
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetViewRect() const -> IRect;
-    [[nodiscard]] auto CheckHit(ipos pos, bool check_transparent) const -> bool;
+    [[nodiscard]] auto CheckHit(ipos32 pos, bool check_transparent) const -> bool;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
 
     void Invalidate();
@@ -158,9 +158,9 @@ public:
     const Sprite* Spr {};
     const Sprite* const* PSpr {};
     mpos Hex {};
-    ipos HexOffset {};
-    const ipos* PHexOffset {};
-    const ipos* SprOffset {};
+    ipos32 HexOffset {};
+    const ipos32* PHexOffset {};
+    const ipos32* SprOffset {};
     const uint8* Alpha {};
     const ucolor* Light {};
     const ucolor* LightRight {};
@@ -201,13 +201,13 @@ public:
 
     [[nodiscard]] auto RootSprite() noexcept -> MapSprite*;
 
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    auto InsertSprite(DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto InsertSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void Invalidate();
     void Sort();
 
 private:
-    auto PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos hex_offset, const ipos* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void GrowPool();
 
     SpriteManager& _sprMngr;

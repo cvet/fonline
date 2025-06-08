@@ -56,7 +56,7 @@ public:
     auto operator=(ModelSprite&&) noexcept -> ModelSprite& = delete;
     ~ModelSprite() override = default;
 
-    [[nodiscard]] auto IsHitTest(ipos pos) const -> bool override;
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<IRect> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
