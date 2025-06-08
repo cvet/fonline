@@ -1232,7 +1232,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PushDrawScissor(FOClient* client, ipos pos, isize size)
 {
-    client->SprMngr.PushScissor(irect {pos, size});
+    client->SprMngr.PushScissor(irect32 {pos, size});
 }
 
 ///@ ExportMethod

@@ -197,7 +197,7 @@ public:
     auto GetSpriteFactory(std::type_index ti) -> SpriteFactory*;
     void CleanupSpriteCache();
 
-    void PushScissor(irect rect);
+    void PushScissor(irect32 rect);
     void PopScissor();
 
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
@@ -258,8 +258,8 @@ private:
     unique_ptr<RenderDrawBuffer> _contourDrawBuf {};
     size_t _flushVertCount {};
 
-    vector<irect> _scissorStack {};
-    irect _scissorRect {};
+    vector<irect32> _scissorStack {};
+    irect32 _scissorRect {};
 
     bool _contoursAdded {};
     bool _contourClearMid {};
@@ -290,8 +290,8 @@ public:
     auto LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool;
     void SetDefaultFont(int32 index);
     void SetFontEffect(int32 index, RenderEffect* effect);
-    void DrawText(irect rect, string_view str, uint32 flags, ucolor color, int32 num_font);
-    auto SplitLines(irect rect, string_view cstr, int32 num_font) -> vector<string>;
+    void DrawText(irect32 rect, string_view str, uint32 flags, ucolor color, int32 num_font);
+    auto SplitLines(irect32 rect, string_view cstr, int32 num_font) -> vector<string>;
     void ClearFonts();
 
 private:
@@ -330,7 +330,7 @@ private:
     {
         FontData* CurFont {};
         uint32 Flags {};
-        irect Rect {};
+        irect32 Rect {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
         int32 LinesAll {1};

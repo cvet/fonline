@@ -683,7 +683,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     }
 }
 
-void OpenGL_Renderer::EnableScissor(irect rect)
+void OpenGL_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 

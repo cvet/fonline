@@ -302,7 +302,7 @@ public:
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
-    void EnableScissor(irect rect);
+    void EnableScissor(irect32 rect);
     void DisableScissor();
 
 private:

@@ -386,7 +386,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     ignore_unused(stencil);
 }
 
-void AppRender::EnableScissor(irect rect)
+void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 

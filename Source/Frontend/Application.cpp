@@ -1322,7 +1322,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void AppRender::EnableScissor(irect rect)
+void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 

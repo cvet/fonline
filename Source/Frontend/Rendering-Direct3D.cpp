@@ -875,7 +875,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     }
 }
 
-void Direct3D_Renderer::EnableScissor(irect rect)
+void Direct3D_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
