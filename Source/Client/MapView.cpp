@@ -682,6 +682,8 @@ void MapView::DestroyItem(ItemHexView* item)
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
 
+    refcount_ptr item_holder = item;
+
     if (item->IsSpriteValid()) {
         item->InvalidateSprite();
     }
@@ -2868,7 +2870,8 @@ void MapView::PrepareFogToDraw()
             size_t look_points_added = 0;
             size_t shoot_points_added = 0;
 
-            auto seek_start = true;
+            bool seek_start = true;
+
             for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
                 // ReSharper disable once CppUnreachableCode
                 const auto dir = (GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
@@ -2893,6 +2896,7 @@ void MapView::PrepareFogToDraw()
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
                         const int32 dir_ = GeometryHelper::GetDir(base_hex, target_hex);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
+
                         if (ii > GameSettings::MAP_DIR_COUNT / 2) {
                             ii = GameSettings::MAP_DIR_COUNT - ii;
                         }
@@ -3491,6 +3495,8 @@ void MapView::DestroyCritter(CritterHexView* cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(cr->GetMap() == this);
+
+    refcount_ptr cr_holder = cr;
 
     vec_remove_unique_value(_critters, cr);
 

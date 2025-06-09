@@ -1681,7 +1681,7 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
 
         look_dist = std::max(look_dist, _engine->Settings.LookMinimum);
 
-        is_see = look_dist >= dist;
+        is_see = dist != -1 && look_dist >= dist;
     }
 
     return is_see;
