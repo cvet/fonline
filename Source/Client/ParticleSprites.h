@@ -94,7 +94,7 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto LoadTexture(hstring path) -> pair<RenderTexture*, FRect>;
+    auto LoadTexture(hstring path) -> pair<RenderTexture*, frect32>;
     void DrawParticleToAtlas(ParticleSprite* particle_spr);
 
     SpriteManager& _sprMngr;

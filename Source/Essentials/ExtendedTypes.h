@@ -395,6 +395,20 @@ struct frect32
         height {height_}
     {
     }
+    constexpr frect32(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
+        x {safe_numeric_cast<float32>(x_)},
+        y {safe_numeric_cast<float32>(y_)},
+        width {safe_numeric_cast<float32>(width_)},
+        height {safe_numeric_cast<float32>(height_)}
+    {
+    }
+    constexpr explicit frect32(irect32 size) noexcept :
+        x {safe_numeric_cast<float32>(size.x)},
+        y {safe_numeric_cast<float32>(size.y)},
+        width {safe_numeric_cast<float32>(size.width)},
+        height {safe_numeric_cast<float32>(size.height)}
+    {
+    }
     [[nodiscard]] constexpr auto operator==(const frect32& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const frect32& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
 
@@ -407,97 +421,5 @@ static_assert(std::is_standard_layout_v<frect32>);
 static_assert(sizeof(frect32) == 16);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect32, value.x >> value.y >> value.width >> value.height);
-
-// Flex rect
-template<typename T>
-struct TRect
-{
-    static_assert(std::is_arithmetic_v<T>);
-
-    TRect() noexcept = default;
-    template<typename T2>
-        requires(std::is_floating_point_v<T2>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    TRect(const TRect<T2>& other) noexcept :
-        Left(iround<T>(other.Left)),
-        Top(iround<T>(other.Top)),
-        Right(iround<T>(other.Right)),
-        Bottom(iround<T>(other.Bottom))
-    {
-    }
-    template<typename T2>
-        requires(std::is_integral_v<T2>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    TRect(const TRect<T2>& other) noexcept :
-        Left(numeric_cast<T>(other.Left)),
-        Top(numeric_cast<T>(other.Top)),
-        Right(numeric_cast<T>(other.Right)),
-        Bottom(numeric_cast<T>(other.Bottom))
-    {
-    }
-    TRect(T l, T t, T r, T b) noexcept :
-        Left(l),
-        Top(t),
-        Right(r),
-        Bottom(b)
-    {
-    }
-    TRect(T l, T t, T r, T b, T ox, T oy) noexcept :
-        Left(l + ox),
-        Top(t + oy),
-        Right(r + ox),
-        Bottom(b + oy)
-    {
-    }
-    TRect(const TRect& fr, T ox, T oy) noexcept :
-        Left(fr.Left + ox),
-        Top(fr.Top + oy),
-        Right(fr.Right + ox),
-        Bottom(fr.Bottom + oy)
-    {
-    }
-
-    template<typename T2>
-    auto operator=(const TRect<T2>& fr) noexcept -> TRect&
-    {
-        Left = numeric_cast<T>(fr.Left);
-        Top = numeric_cast<T>(fr.Top);
-        Right = numeric_cast<T>(fr.Right);
-        Bottom = numeric_cast<T>(fr.Bottom);
-        return *this;
-    }
-
-    [[nodiscard]] auto IsZero() const noexcept -> bool { return !Left && !Top && !Right && !Bottom; }
-    [[nodiscard]] auto Width() const noexcept -> T { return Right - Left; }
-    [[nodiscard]] auto Height() const noexcept -> T { return Bottom - Top; }
-    [[nodiscard]] auto CenterX() const noexcept -> T { return Left + Width() / 2; }
-    [[nodiscard]] auto CenterY() const noexcept -> T { return Top + Height() / 2; }
-
-    [[nodiscard]] auto operator[](int32 index) -> T&
-    {
-        switch (index) {
-        case 0:
-            return Left;
-        case 1:
-            return Top;
-        case 2:
-            return Right;
-        case 3:
-            return Bottom;
-        default:
-            break;
-        }
-        throw InvalidOperationException(FO_LINE_STR);
-    }
-
-    [[nodiscard]] auto operator[](int32 index) const noexcept -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
-
-    T Left {};
-    T Top {};
-    T Right {};
-    T Bottom {};
-};
-using IRect = TRect<int32>; // Todo: move IRect to irect32
-using FRect = TRect<float32>; // Todo: move FRect to frect32
 
 FO_END_NAMESPACE();

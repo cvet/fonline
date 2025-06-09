@@ -154,19 +154,19 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     particle_spr->Atlas = atlas;
     particle_spr->AtlasNode = atlas_node;
-    particle_spr->AtlasRect.Left = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->Size.width);
-    particle_spr->AtlasRect.Top = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->Size.height);
-    particle_spr->AtlasRect.Right = numeric_cast<float32>(pos.x + draw_size.width) / numeric_cast<float32>(atlas->Size.width);
-    particle_spr->AtlasRect.Bottom = numeric_cast<float32>(pos.y + draw_size.height) / numeric_cast<float32>(atlas->Size.height);
+    particle_spr->AtlasRect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->Size.width);
+    particle_spr->AtlasRect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->Size.height);
+    particle_spr->AtlasRect.width = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(atlas->Size.width);
+    particle_spr->AtlasRect.height = numeric_cast<float32>(draw_size.height) / numeric_cast<float32>(atlas->Size.height);
 
     return particle_spr;
 }
 
-auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FRect>
+auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, frect32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto result = pair<RenderTexture*, FRect>();
+    auto result = pair<RenderTexture*, frect32>();
 
     if (const auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
         auto any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
@@ -174,7 +174,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FR
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;
-            result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
+            result = pair {atlas_spr->Atlas->MainTex, atlas_spr->AtlasRect};
         }
         else {
             BreakIntoDebugger();
@@ -183,7 +183,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, FR
         }
     }
     else if (const auto& atlas_spr = it->second) {
-        result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
+        result = pair {atlas_spr->Atlas->MainTex, atlas_spr->AtlasRect};
     }
 
     return result;
@@ -221,25 +221,25 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     _sprMngr.GetRtMngr().PopRenderTarget();
 
     // Copy render
-    IRect region_to;
+    irect32 region_to;
 
     // Render to atlas
     if (rt_intermediate->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround<int32>(particle_spr->AtlasRect.Left * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto t = iround<int32>((1.0f - particle_spr->AtlasRect.Top) * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-        const auto r = iround<int32>(particle_spr->AtlasRect.Right * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto b = iround<int32>((1.0f - particle_spr->AtlasRect.Bottom) * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+        const auto l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+        const auto t = iround<int32>((1.0f - particle_spr->AtlasRect.y) * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+        const auto w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+        const auto h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
 
-        region_to = IRect(l, t, r, b);
+        region_to = irect32(l, t, w, h);
     }
     else {
-        const auto l = iround<int32>(particle_spr->AtlasRect.Left * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto t = iround<int32>(particle_spr->AtlasRect.Top * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-        const auto r = iround<int32>(particle_spr->AtlasRect.Right * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto b = iround<int32>(particle_spr->AtlasRect.Bottom * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+        const auto l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+        const auto t = iround<int32>(particle_spr->AtlasRect.y * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+        const auto w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+        const auto h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
 
-        region_to = IRect(l, t, r, b);
+        region_to = irect32(l, t, w, h);
     }
 
     _sprMngr.GetRtMngr().PushRenderTarget(particle_spr->Atlas->RTarg);

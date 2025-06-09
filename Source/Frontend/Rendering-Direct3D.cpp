@@ -151,7 +151,7 @@ static bool ScissorEnabled {};
 static D3D11_RECT ScissorRect {};
 static D3D11_RECT DisabledScissorRect {};
 static D3D11_VIEWPORT ViewPort {};
-static IRect ViewPortRect {};
+static irect32 ViewPortRect {};
 static isize32 BackBufSize {};
 static isize32 TargetSize {};
 
@@ -776,7 +776,7 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 b
     return result;
 }
 
-auto Direct3D_Renderer::GetViewPort() -> IRect
+auto Direct3D_Renderer::GetViewPort() -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -825,7 +825,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
     D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 
-    ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
+    ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
 
     ViewPort.Width = numeric_cast<FLOAT>(vp_width);
     ViewPort.Height = numeric_cast<FLOAT>(vp_height);
@@ -879,20 +879,20 @@ void Direct3D_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.Width()) / numeric_cast<float32>(TargetSize.width);
-        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.Height()) / numeric_cast<float32>(TargetSize.height);
+    if (ViewPortRect.width != TargetSize.width || ViewPortRect.height != TargetSize.height) {
+        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.width) / numeric_cast<float32>(TargetSize.width);
+        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.height) / numeric_cast<float32>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
+        ScissorRect.left = ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
-        ScissorRect.left = ViewPortRect.Left + rect.x;
-        ScissorRect.top = ViewPortRect.Top + rect.y;
-        ScissorRect.right = ViewPortRect.Left + rect.x + rect.width;
-        ScissorRect.bottom = ViewPortRect.Top + rect.y + rect.height;
+        ScissorRect.left = ViewPortRect.x + rect.x;
+        ScissorRect.top = ViewPortRect.y + rect.y;
+        ScissorRect.right = ViewPortRect.x + rect.x + rect.width;
+        ScissorRect.bottom = ViewPortRect.y + rect.y + rect.height;
     }
 
     ScissorEnabled = true;

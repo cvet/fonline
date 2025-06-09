@@ -408,7 +408,7 @@ void FOClient::ProcessScreenEffectFading()
     SprMngr.Flush();
 
     vector<PrimitivePoint> full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), ucolor::clear);
+    SprMngr.PrepareSquare(full_screen_quad, irect32(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), ucolor::clear);
 
     for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
         auto& screen_effect = *it;
@@ -2542,15 +2542,15 @@ void FOClient::LmapPrepareMap()
     }
 
     const auto hex = chosen->GetHex();
-    const auto maxpixx = (_lmapWMap[2] - _lmapWMap[0]) / 2 / _lmapZoom;
-    const auto maxpixy = (_lmapWMap[3] - _lmapWMap[1]) / 2 / _lmapZoom;
+    const auto maxpixx = _lmapWMap.width / 2 / _lmapZoom;
+    const auto maxpixy = _lmapWMap.height / 2 / _lmapZoom;
     const auto bx = hex.x - maxpixx;
     const auto by = hex.y - maxpixy;
     const auto ex = hex.x + maxpixx;
     const auto ey = hex.y + maxpixy;
 
     const auto vis = chosen->GetLookDistance();
-    auto pix_x = _lmapWMap[2] - _lmapWMap[0];
+    auto pix_x = _lmapWMap.width;
     auto pix_y = 0;
 
     for (auto i1 = bx; i1 < ex; i1++) {
@@ -2573,8 +2573,8 @@ void FOClient::LmapPrepareMap()
 
             if (const auto* cr = _curMap->GetNonDeadCritter({numeric_cast<uint16>(i1), numeric_cast<uint16>(i2)}); cr != nullptr) {
                 cur_color = cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0};
-                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y}, cur_color});
-                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, cur_color});
             }
             else if (field.Flags.HasWall || field.Flags.HasScenery) {
                 if (field.Flags.ScrollBlock) {
@@ -2593,8 +2593,8 @@ void FOClient::LmapPrepareMap()
                 cur_color.comp.a = 0x22;
             }
 
-            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y}, cur_color});
-            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y + (_lmapZoom - 1) / 2}, cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x, _lmapWMap.y + pix_y}, cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, cur_color});
         }
 
         pix_x -= _lmapZoom;
@@ -2709,15 +2709,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         const int32 zoom = strex(args[1]).toInt();
         const int32 x = strex(args[2]).toInt();
         const int32 y = strex(args[3]).toInt();
-        const int32 x2 = x + strex(args[4]).toInt();
-        const int32 y2 = y + strex(args[5]).toInt();
+        const int32 w = strex(args[4]).toInt();
+        const int32 h = strex(args[5]).toInt();
 
-        if (zoom != _lmapZoom || x != _lmapWMap[0] || y != _lmapWMap[1] || x2 != _lmapWMap[2] || y2 != _lmapWMap[3]) {
+        if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
             _lmapZoom = zoom;
-            _lmapWMap[0] = x;
-            _lmapWMap[1] = y;
-            _lmapWMap[2] = x2;
-            _lmapWMap[3] = y2;
+            _lmapWMap.x = x;
+            _lmapWMap.y = y;
+            _lmapWMap.width = w;
+            _lmapWMap.height = h;
             LmapPrepareMap();
         }
         else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {

@@ -159,10 +159,10 @@ namespace SPK::FO
 
         ignore_unused(particle);
 
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 0.0f * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + 0.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 0.0f * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + 0.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 1.0f * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 1.0f * _textureAtlasOffset.height);
     }
 
     void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const
@@ -171,10 +171,10 @@ namespace SPK::FO
 
         computeAtlasCoordinates(particle);
 
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV0() * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU0() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV0() * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU0() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
-        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + textureAtlasU1() * _textureAtlasOffset.width, _textureAtlasOffset.y + textureAtlasV0() * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + textureAtlasU0() * _textureAtlasOffset.width, _textureAtlasOffset.y + textureAtlasV0() * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + textureAtlasU0() * _textureAtlasOffset.width, _textureAtlasOffset.y + textureAtlasV1() * _textureAtlasOffset.height);
+        render_buffer.SetNextTexCoord(_textureAtlasOffset.x + textureAtlasU1() * _textureAtlasOffset.width, _textureAtlasOffset.y + textureAtlasV1() * _textureAtlasOffset.height);
     }
 
     RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
@@ -369,7 +369,7 @@ namespace SPK::FO
             const string tex_path = strex(_path).extractDir().combinePath(_textureName);
             auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;
-            _textureAtlasOffsets = tex_data;
+            _textureAtlasOffset = tex_data;
         }
         else {
             _texture = nullptr;

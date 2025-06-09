@@ -111,8 +111,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     if (_picHexMask) {
         const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
         FO_RUNTIME_ASSERT(atlas_spr);
-        const auto mask_x = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.width) * atlas_spr->AtlasRect.Left);
-        const auto mask_y = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.height) * atlas_spr->AtlasRect.Top);
+        const auto mask_x = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.width) * atlas_spr->AtlasRect.x);
+        const auto mask_y = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.height) * atlas_spr->AtlasRect.y);
         _picHexMaskData = atlas_spr->Atlas->MainTex->GetTextureRegion({mask_x, mask_y}, atlas_spr->Size);
     }
 
@@ -809,7 +809,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto result = IRect();
+    auto result = irect32();
 
     if (const auto& field = _hexField->GetCellForReading(hex); field.IsView) {
         if (!field.Critters.empty()) {
@@ -817,14 +817,14 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                 if (cr->IsSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
 
-                    if (result.IsZero()) {
+                    if (result == irect32()) {
                         result = rect;
                     }
                     else {
-                        result.Left = std::min(result.Left, rect.Left);
-                        result.Top = std::min(result.Top, rect.Top);
-                        result.Right = std::max(result.Right, rect.Right);
-                        result.Bottom = std::max(result.Bottom, rect.Bottom);
+                        result.x = std::min(result.x, rect.x);
+                        result.y = std::min(result.y, rect.y);
+                        result.width = std::max(result.width, rect.x + rect.width - result.x);
+                        result.height = std::max(result.height, rect.y + rect.height - result.y);
                     }
                 }
             }
@@ -841,14 +841,14 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                         const auto r = l + spr->Size.width;
                         const auto b = t + spr->Size.height;
 
-                        if (result.IsZero()) {
-                            result = IRect {l, t, r, b};
+                        if (result == irect32()) {
+                            result = irect32 {l, t, r, b};
                         }
                         else {
-                            result.Left = std::min(result.Left, l);
-                            result.Top = std::min(result.Top, t);
-                            result.Right = std::max(result.Right, r);
-                            result.Bottom = std::max(result.Bottom, b);
+                            result.x = std::min(result.x, l);
+                            result.y = std::min(result.y, t);
+                            result.width = std::max(result.width, r - result.x);
+                            result.height = std::max(result.height, b - result.y);
                         }
                     }
                 }
@@ -856,7 +856,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
         }
     }
 
-    return isize32 {result.Width(), result.Height()};
+    return isize32 {result.width, result.height};
 }
 
 auto MapView::RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*
@@ -2766,7 +2766,7 @@ void MapView::DrawMap()
     // Prerendered offsets
     const auto ox = _rtScreenOx - iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenOffset.x) / GetSpritesZoom());
     const auto oy = _rtScreenOy - iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenOffset.y) / GetSpritesZoom());
-    const auto prerendered_rect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + (_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight));
+    const auto prerendered_rect = irect32(ox, oy, _engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight);
 
     // Separate render target
     if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
@@ -3788,16 +3788,16 @@ auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int
         }
 
         const auto rect = cr->GetViewRect();
-        const auto l = iround<int32>(numeric_cast<float32>(rect.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) - extra_range;
-        const auto r = iround<int32>(numeric_cast<float32>(rect.Right + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) + extra_range;
-        const auto t = iround<int32>(numeric_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) - extra_range;
-        const auto b = iround<int32>(numeric_cast<float32>(rect.Bottom + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) + extra_range;
+        const auto l = iround<int32>(numeric_cast<float32>(rect.x + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) - extra_range;
+        const auto t = iround<int32>(numeric_cast<float32>(rect.y + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) - extra_range;
+        const auto r = iround<int32>(numeric_cast<float32>(rect.x + rect.width + _engine->Settings.ScreenOffset.x) / GetSpritesZoom()) + extra_range;
+        const auto b = iround<int32>(numeric_cast<float32>(rect.y + rect.height + _engine->Settings.ScreenOffset.y) / GetSpritesZoom()) + extra_range;
 
         if (pos.x >= l && pos.x <= r && pos.y >= t && pos.y <= b) {
             if (check_transparent) {
                 const auto rect_draw = cr->GetSprite()->GetDrawRect();
-                const auto l_draw = iround<int32>(numeric_cast<float32>(rect_draw.Left + _engine->Settings.ScreenOffset.x) / GetSpritesZoom());
-                const auto t_draw = iround<int32>(numeric_cast<float32>(rect_draw.Top + _engine->Settings.ScreenOffset.y) / GetSpritesZoom());
+                const auto l_draw = iround<int32>(numeric_cast<float32>(rect_draw.x + _engine->Settings.ScreenOffset.x) / GetSpritesZoom());
+                const auto t_draw = iround<int32>(numeric_cast<float32>(rect_draw.y + _engine->Settings.ScreenOffset.y) / GetSpritesZoom());
 
                 if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - l_draw, pos.y - t_draw}, true)) {
                     critters.emplace_back(cr.get());

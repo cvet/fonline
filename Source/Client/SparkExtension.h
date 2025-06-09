@@ -121,7 +121,7 @@ namespace SPK::FO
         ParticleManager* _particleMngr {};
         RenderEffect* _effect {};
         RenderTexture* _texture {};
-        FRect _textureAtlasOffsets {};
+        frect32 _textureAtlasOffset {};
 
         int32 _drawWidth {};
         int32 _drawHeight {};

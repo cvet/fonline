@@ -284,7 +284,7 @@ void SpriteManager::EndScene()
     FO_RUNTIME_ASSERT(_scissorStack.empty());
 }
 
-void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from, const IRect* region_to, RenderEffect* custom_effect)
+void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const irect32* region_from, const irect32* region_to, RenderEffect* custom_effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -306,58 +306,58 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         size_t vpos = 0;
 
         vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = flipped_height ? height_to_f : 0.0f;
+        vbuf[vpos].PosY = 0.0f;
         vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = 0.0f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f : 0.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = flipped_height ? 0.0f : height_to_f;
+        vbuf[vpos].PosY = height_to_f;
         vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = 1.0f;
+        vbuf[vpos].TexV = flipped_height ? 0.0f : 1.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = flipped_height ? 0.0f : height_to_f;
+        vbuf[vpos].PosY = height_to_f;
         vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = 1.0f;
+        vbuf[vpos].TexV = flipped_height ? 0.0f : 1.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = flipped_height ? height_to_f : 0.0f;
+        vbuf[vpos].PosY = 0.0f;
         vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = 0.0f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f : 0.0f;
         vbuf[vpos].EggTexU = 0.0f;
     }
     else {
-        const FRect rect_from = region_from != nullptr ? *region_from : IRect(0, 0, width_from_i, height_from_i);
-        const FRect rect_to = region_to != nullptr ? *region_to : IRect(0, 0, width_to_i, height_to_i);
+        const auto rect_from = frect32(region_from != nullptr ? *region_from : irect32(0, 0, width_from_i, height_from_i));
+        const auto rect_to = frect32(region_to != nullptr ? *region_to : irect32(0, 0, width_to_i, height_to_i));
 
         auto& vbuf = _flushDrawBuf->Vertices;
         size_t vpos = 0;
 
-        vbuf[vpos].PosX = rect_to.Left;
-        vbuf[vpos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
-        vbuf[vpos].TexU = rect_from.Left / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
+        vbuf[vpos].PosX = rect_to.x;
+        vbuf[vpos].PosY = flipped_height ? rect_to.y - rect_to.height : rect_to.y;
+        vbuf[vpos].TexU = rect_from.x / width_from_f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = rect_to.Left;
-        vbuf[vpos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
-        vbuf[vpos].TexU = rect_from.Left / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[vpos].PosX = rect_to.x;
+        vbuf[vpos].PosY = flipped_height ? rect_to.y : rect_to.y + rect_to.height;
+        vbuf[vpos].TexU = rect_from.x / width_from_f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.y / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = rect_to.Right;
-        vbuf[vpos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
-        vbuf[vpos].TexU = rect_from.Right / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[vpos].PosX = rect_to.x + rect_to.width;
+        vbuf[vpos].PosY = flipped_height ? rect_to.y : rect_to.y + rect_to.height;
+        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.y / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = rect_to.Right;
-        vbuf[vpos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
-        vbuf[vpos].TexU = rect_from.Right / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
+        vbuf[vpos].PosX = rect_to.x + rect_to.width;
+        vbuf[vpos].PosY = flipped_height ? rect_to.y - rect_to.height : rect_to.y;
+        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
+        vbuf[vpos].TexV = flipped_height ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos].EggTexU = 0.0f;
     }
 
@@ -369,12 +369,12 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     effect->DrawBuffer(_flushDrawBuf.get());
 }
 
-void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
+void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const irect32* region_from, const irect32* region_to)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (region_to == nullptr && rt->SizeKind == RenderTarget::SizeKindType::Map) {
-        const IRect region_without_hud = {0, 0, _settings.ScreenWidth, _settings.ScreenHeight - _settings.ScreenHudHeight};
+        const irect32 region_without_hud = {0, 0, _settings.ScreenWidth, _settings.ScreenHeight - _settings.ScreenHudHeight};
         DrawTexture(rt->MainTex.get(), alpha_blend, region_from, &region_without_hud, rt->CustomDrawEffect);
     }
     else {
@@ -582,11 +582,11 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), IRect {pos.x, pos.y, pos.x + spr->Size.width, pos.y + spr->Size.height}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), frect32 {pos.x, pos.y, spr->Size.width, spr->Size.height}, {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+            _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
         }
         else {
             _dipQueue.back().IndCount += ind_count;
@@ -645,11 +645,11 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, xf + wf, yf + hf}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+            _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
         }
         else {
             _dipQueue.back().IndCount += ind_count;
@@ -696,8 +696,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
     auto* effect = atlas_spr->DrawEffect != nullptr ? atlas_spr->DrawEffect : _effectMngr.Effects.Iface;
     FO_RUNTIME_ASSERT(effect);
 
-    const auto last_right_offs = (atlas_spr->AtlasRect.Right - atlas_spr->AtlasRect.Left) / width;
-    const auto last_bottom_offs = (atlas_spr->AtlasRect.Bottom - atlas_spr->AtlasRect.Top) / height;
+    const auto last_right_offs = atlas_spr->AtlasRect.width / width;
+    const auto last_bottom_offs = atlas_spr->AtlasRect.height / height;
 
     for (auto yy = numeric_cast<float32>(pos.y), end_y = numeric_cast<float32>(pos.y + size.height); yy < end_y;) {
         const auto last_y = yy + height >= end_y;
@@ -707,8 +707,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             const auto local_width = last_x ? end_x - xx : width;
             const auto local_height = last_y ? end_y - yy : height;
-            const auto local_right = last_x ? atlas_spr->AtlasRect.Left + last_right_offs * local_width : atlas_spr->AtlasRect.Right;
-            const auto local_bottom = last_y ? atlas_spr->AtlasRect.Top + last_bottom_offs * local_height : atlas_spr->AtlasRect.Bottom;
+            const auto local_right = last_x ? atlas_spr->AtlasRect.x + last_right_offs * local_width : atlas_spr->AtlasRect.x + atlas_spr->AtlasRect.width;
+            const auto local_bottom = last_y ? atlas_spr->AtlasRect.y + last_bottom_offs * local_height : atlas_spr->AtlasRect.y + atlas_spr->AtlasRect.height;
 
             _spritesDrawBuf->CheckAllocBuf(4, 6);
 
@@ -726,22 +726,22 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
-            vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
+            vbuf[vpos].TexU = atlas_spr->AtlasRect.x;
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
-            vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
-            vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
+            vbuf[vpos].TexU = atlas_spr->AtlasRect.x;
+            vbuf[vpos].TexV = atlas_spr->AtlasRect.y;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = local_right;
-            vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
+            vbuf[vpos].TexV = atlas_spr->AtlasRect.y;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
@@ -753,7 +753,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
             vbuf[vpos++].Color = color;
 
             if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {atlas_spr->GetBatchTex(), effect, 6});
+                _dipQueue.emplace_back(DipData {.MainTex = atlas_spr->GetBatchTex(), .SourceEffect = effect, .IndCount = 6});
             }
             else {
                 _dipQueue.back().IndCount += 6;
@@ -770,28 +770,28 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
     }
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    points.emplace_back(PrimitivePoint {{r.Left, r.Bottom}, color});
-    points.emplace_back(PrimitivePoint {{r.Left, r.Top}, color});
-    points.emplace_back(PrimitivePoint {{r.Right, r.Bottom}, color});
-    points.emplace_back(PrimitivePoint {{r.Left, r.Top}, color});
-    points.emplace_back(PrimitivePoint {{r.Right, r.Top}, color});
-    points.emplace_back(PrimitivePoint {{r.Right, r.Bottom}, color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x, r.y + r.height}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x, r.y}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x + r.width, r.y + r.height}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x, r.y}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x + r.width, r.y}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {r.x + r.width, r.y + r.height}, .PointColor = color});
 }
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    points.emplace_back(PrimitivePoint {{iround<int32>(lb.x), iround<int32>(lb.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround<int32>(lt.x), iround<int32>(lt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround<int32>(rb.x), iround<int32>(rb.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround<int32>(lt.x), iround<int32>(lt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround<int32>(rt.x), iround<int32>(rt.y)}, color});
-    points.emplace_back(PrimitivePoint {{iround<int32>(rb.x), iround<int32>(rb.y)}, color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lb.x), iround<int32>(lb.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lt.x), iround<int32>(lt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rb.x), iround<int32>(rb.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lt.x), iround<int32>(lt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rt.x), iround<int32>(rt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rb.x), iround<int32>(rb.y)}, .PointColor = color});
 }
 
 void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
@@ -808,8 +808,8 @@ void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
     _sprEgg = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_RUNTIME_ASSERT(_sprEgg);
 
-    const auto x = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.Left);
-    const auto y = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->AtlasRect.Top);
+    const auto x = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.x);
+    const auto y = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->AtlasRect.y);
     _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion({x, y}, _sprEgg->Size);
 }
 
@@ -967,7 +967,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         const auto wf = numeric_cast<float32>(spr->Size.width) / zoom;
         const auto hf = numeric_cast<float32>(spr->Size.height) / zoom;
 
-        const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
+        const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
         // Setup egg
         if (use_egg && ind_count == 6 && CheckEggAppearence(mspr->Hex, mspr->EggAppearence)) {
@@ -983,10 +983,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                     x2 = std::min(x2, _sprEgg->Size.width);
                     y2 = std::min(y2, _sprEgg->Size.height);
 
-                    const auto x1_f = _sprEgg->AtlasRect.Left + numeric_cast<float32>(x1) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto x2_f = _sprEgg->AtlasRect.Left + numeric_cast<float32>(x2) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto y1_f = _sprEgg->AtlasRect.Top + numeric_cast<float32>(y1) / _sprEgg->Atlas->MainTex->SizeData[1];
-                    const auto y2_f = _sprEgg->AtlasRect.Top + numeric_cast<float32>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
+                    const auto x1_f = _sprEgg->AtlasRect.x + numeric_cast<float32>(x1) / _sprEgg->Atlas->MainTex->SizeData[0];
+                    const auto x2_f = _sprEgg->AtlasRect.x + numeric_cast<float32>(x2) / _sprEgg->Atlas->MainTex->SizeData[0];
+                    const auto y1_f = _sprEgg->AtlasRect.y + numeric_cast<float32>(y1) / _sprEgg->Atlas->MainTex->SizeData[1];
+                    const auto y2_f = _sprEgg->AtlasRect.y + numeric_cast<float32>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
 
                     auto& vbuf = _spritesDrawBuf->Vertices;
                     const auto vpos = _spritesDrawBuf->VertCount;
@@ -1005,7 +1005,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         if (ind_count != 0) {
             if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+                _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
             }
             else {
                 _dipQueue.back().IndCount += ind_count;
@@ -1023,7 +1023,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
             switch (mspr->EggAppearence) {
             case EggAppearenceType::Always:
-                PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), ucolor {0x5F00FFFF});
+                PrepareSquare(corner, irect32(iround<int32>(xf + cx - 2.0f), iround<int32>(yf + hf - 50.0f), 4, 50), ucolor {0x5F00FFFF});
                 break;
             case EggAppearenceType::ByX:
                 PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 55.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 45.0f}, fpos32 {xf + cx - 5.0f, yf + hf - 5.0f}, fpos32 {xf + cx + 5.0f, yf + hf + 5.0f}, ucolor {0x5F00AF00});
@@ -1084,10 +1084,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         if (_settings.ShowSpriteBorders && mspr->DrawOrder > DrawOrderType::Tile4) {
             auto rect = mspr->GetViewRect();
 
-            rect.Left += _settings.ScreenOffset.x;
-            rect.Right += _settings.ScreenOffset.x;
-            rect.Top += _settings.ScreenOffset.y;
-            rect.Bottom += _settings.ScreenOffset.y;
+            rect.x += _settings.ScreenOffset.x;
+            rect.y += _settings.ScreenOffset.y;
 
             PrepareSquare(borders, rect, ucolor {0, 0, 255, 50});
         }
@@ -1275,14 +1273,14 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         return;
     }
 
-    auto borders = IRect(pos.x - 1, pos.y - 1, pos.x + as->Size.width + 1, pos.y + as->Size.height + 1);
+    auto borders = irect32(pos.x - 1, pos.y - 1, as->Size.width + 2, as->Size.height + 2);
     const auto* texture = as->Atlas->MainTex;
-    FRect textureuv;
-    FRect sprite_border;
+    frect32 textureuv;
+    frect32 sprite_border;
 
     const auto zoomed_screen_width = iround<int32>(numeric_cast<float32>(_settings.ScreenWidth) * _spritesZoom);
     const auto zoomed_screen_height = iround<int32>(numeric_cast<float32>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _spritesZoom);
-    if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
+    if (borders.x >= zoomed_screen_width || borders.x + borders.width < 0 || borders.y >= zoomed_screen_height || borders.y + borders.height < 0) {
         return;
     }
 
@@ -1291,16 +1289,16 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
             const auto& sr = as->AtlasRect;
             textureuv = sr;
             sprite_border = sr;
-            borders.Left++;
-            borders.Top++;
-            borders.Right--;
-            borders.Bottom--;
+            borders.x -= 1;
+            borders.y -= 1;
+            borders.width -= 2;
+            borders.height -= 2;
         }
         else {
             const auto& sr = as->AtlasRect;
             const float32 txw = texture->SizeData[2];
             const float32 txh = texture->SizeData[3];
-            textureuv = FRect(sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh);
+            textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
             sprite_border = sr;
         }
     }
@@ -1308,10 +1306,10 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         const auto& sr = as->AtlasRect;
         const auto zoomed_x = iround<int32>(numeric_cast<float32>(pos.x) / _spritesZoom);
         const auto zoomed_y = iround<int32>(numeric_cast<float32>(pos.y) / _spritesZoom);
-        const auto zoomed_x2 = iround<int32>(numeric_cast<float32>(pos.x + as->Size.width) / _spritesZoom);
-        const auto zoomed_y2 = iround<int32>(numeric_cast<float32>(pos.y + as->Size.height) / _spritesZoom);
-        borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
-        const auto bordersf = FRect(borders);
+        const auto zoomed_w = iround<int32>(numeric_cast<float32>(as->Size.width) / _spritesZoom);
+        const auto zoomed_h = iround<int32>(numeric_cast<float32>(as->Size.height) / _spritesZoom);
+        borders = {zoomed_x, zoomed_y, zoomed_w, zoomed_h};
+        const auto bordersf = frect32(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
         const auto flipped_height = _rtContoursMid->MainTex->FlippedHeight;
 
@@ -1321,28 +1319,28 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         auto& vbuf = _flushDrawBuf->Vertices;
         size_t vpos = 0;
 
-        vbuf[vpos].PosX = bordersf.Left;
-        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
-        vbuf[vpos].TexU = sr.Left;
-        vbuf[vpos].TexV = sr.Bottom;
+        vbuf[vpos].PosX = bordersf.x;
+        vbuf[vpos].PosY = flipped_height ? mid_height - (bordersf.y + bordersf.height) : bordersf.y + bordersf.height;
+        vbuf[vpos].TexU = sr.x;
+        vbuf[vpos].TexV = sr.y + sr.height;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = bordersf.Left;
-        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
-        vbuf[vpos].TexU = sr.Left;
-        vbuf[vpos].TexV = sr.Top;
+        vbuf[vpos].PosX = bordersf.x;
+        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.y : bordersf.y;
+        vbuf[vpos].TexU = sr.x;
+        vbuf[vpos].TexV = sr.y;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = bordersf.Right;
-        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
-        vbuf[vpos].TexU = sr.Right;
-        vbuf[vpos].TexV = sr.Top;
+        vbuf[vpos].PosX = bordersf.x + bordersf.width;
+        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.y : bordersf.y;
+        vbuf[vpos].TexU = sr.x + sr.width;
+        vbuf[vpos].TexV = sr.y;
         vbuf[vpos++].EggTexU = 0.0f;
 
-        vbuf[vpos].PosX = bordersf.Right;
-        vbuf[vpos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
-        vbuf[vpos].TexU = sr.Right;
-        vbuf[vpos].TexV = sr.Bottom;
+        vbuf[vpos].PosX = bordersf.x + bordersf.width;
+        vbuf[vpos].PosY = flipped_height ? mid_height - (bordersf.y + bordersf.height) : bordersf.y + bordersf.height;
+        vbuf[vpos].TexU = sr.x + sr.width;
+        vbuf[vpos].TexV = sr.y + sr.height;
         vbuf[vpos].EggTexU = 0.0f;
 
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->GetUsage());
@@ -1353,59 +1351,59 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         texture = _rtContoursMid->MainTex.get();
         const auto tw = texture->SizeData[0];
         const auto th = texture->SizeData[1];
-        borders.Left--;
-        borders.Top--;
-        borders.Right++;
-        borders.Bottom++;
+        borders.x -= 1;
+        borders.y -= 1;
+        borders.width += 2;
+        borders.height += 2;
 
-        textureuv = FRect(borders);
-        textureuv = {textureuv.Left / tw, textureuv.Top / th, textureuv.Right / tw, textureuv.Bottom / th};
+        textureuv = frect32(borders);
+        textureuv = {textureuv.x / tw, textureuv.y / th, textureuv.width / tw, textureuv.height / th};
         sprite_border = textureuv;
     }
 
     contour_color = ApplyColorBrightness(contour_color);
 
-    const auto bordersf = FRect(borders);
+    const auto bordersf = frect32(borders);
 
     _rtMngr.PushRenderTarget(_rtContours);
 
     auto& vbuf = _contourDrawBuf->Vertices;
     size_t vpos = 0;
 
-    vbuf[vpos].PosX = bordersf.Left;
-    vbuf[vpos].PosY = bordersf.Bottom;
-    vbuf[vpos].TexU = textureuv.Left;
-    vbuf[vpos].TexV = textureuv.Bottom;
+    vbuf[vpos].PosX = bordersf.x;
+    vbuf[vpos].PosY = bordersf.y + bordersf.height;
+    vbuf[vpos].TexU = textureuv.x;
+    vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggTexU = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
-    vbuf[vpos].PosX = bordersf.Left;
-    vbuf[vpos].PosY = bordersf.Top;
-    vbuf[vpos].TexU = textureuv.Left;
-    vbuf[vpos].TexV = textureuv.Top;
+    vbuf[vpos].PosX = bordersf.x;
+    vbuf[vpos].PosY = bordersf.y;
+    vbuf[vpos].TexU = textureuv.x;
+    vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggTexU = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
-    vbuf[vpos].PosX = bordersf.Right;
-    vbuf[vpos].PosY = bordersf.Top;
-    vbuf[vpos].TexU = textureuv.Right;
-    vbuf[vpos].TexV = textureuv.Top;
+    vbuf[vpos].PosX = bordersf.x + bordersf.width;
+    vbuf[vpos].PosY = bordersf.y;
+    vbuf[vpos].TexU = textureuv.x + textureuv.width;
+    vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggTexU = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
-    vbuf[vpos].PosX = bordersf.Right;
-    vbuf[vpos].PosY = bordersf.Bottom;
-    vbuf[vpos].TexU = textureuv.Right;
-    vbuf[vpos].TexV = textureuv.Bottom;
+    vbuf[vpos].PosX = bordersf.x + bordersf.width;
+    vbuf[vpos].PosY = bordersf.y + bordersf.height;
+    vbuf[vpos].TexU = textureuv.x + textureuv.width;
+    vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggTexU = 0.0f;
     vbuf[vpos].Color = contour_color;
 
     auto& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
 
-    contour_buf->SpriteBorder[0] = sprite_border[0];
-    contour_buf->SpriteBorder[1] = sprite_border[1];
-    contour_buf->SpriteBorder[2] = sprite_border[2];
-    contour_buf->SpriteBorder[3] = sprite_border[3];
+    contour_buf->SpriteBorder[0] = sprite_border.x;
+    contour_buf->SpriteBorder[1] = sprite_border.y;
+    contour_buf->SpriteBorder[2] = sprite_border.x + sprite_border.width;
+    contour_buf->SpriteBorder[3] = sprite_border.y + sprite_border.height;
 
     _contourDrawBuf->Upload(contour_effect->GetUsage());
     contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, std::nullopt, texture);
@@ -1476,20 +1474,20 @@ void SpriteManager::BuildFont(int32 index)
     const auto* atlas_spr = font.ImageNormal.get();
     auto tex_w = numeric_cast<float32>(atlas_spr->Atlas->Size.width);
     auto tex_h = numeric_cast<float32>(atlas_spr->Atlas->Size.height);
-    auto image_x = tex_w * atlas_spr->AtlasRect.Left;
-    auto image_y = tex_h * atlas_spr->AtlasRect.Top;
+    auto image_x = tex_w * atlas_spr->AtlasRect.x;
+    auto image_y = tex_h * atlas_spr->AtlasRect.y;
     auto max_h = 0;
 
-    for (auto& [letter_index, letter] : font.Letters) {
+    for (auto& letter : font.Letters | std::views::values) {
         const auto x = numeric_cast<float32>(letter.Pos.x);
         const auto y = numeric_cast<float32>(letter.Pos.y);
         const auto w = numeric_cast<float32>(letter.Size.width);
         const auto h = numeric_cast<float32>(letter.Size.height);
 
-        letter.TexPos[0] = (image_x + x - 1.0f) / tex_w;
-        letter.TexPos[1] = (image_y + y - 1.0f) / tex_h;
-        letter.TexPos[2] = (image_x + x + w + 1.0f) / tex_w;
-        letter.TexPos[3] = (image_y + y + h + 1.0f) / tex_h;
+        letter.TexPos.x = (image_x + x - 1.0f) / tex_w;
+        letter.TexPos.y = (image_y + y - 1.0f) / tex_h;
+        letter.TexPos.width = (w + 2.0f) / tex_w;
+        letter.TexPos.height = (h + 2.0f) / tex_h;
 
         max_h = std::max(letter.Size.height, max_h);
     }
@@ -1507,10 +1505,10 @@ void SpriteManager::BuildFont(int32 index)
     const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
-    const auto normal_ox = iround<int32>(tex_w * atlas_spr->AtlasRect.Left);
-    const auto normal_oy = iround<int32>(tex_h * atlas_spr->AtlasRect.Top);
-    const auto bordered_ox = (si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.width) * si_bordered->AtlasRect.Left) : 0);
-    const auto bordered_oy = (si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.Top) : 0);
+    const auto normal_ox = iround<int32>(tex_w * atlas_spr->AtlasRect.x);
+    const auto normal_oy = iround<int32>(tex_h * atlas_spr->AtlasRect.y);
+    const auto bordered_ox = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.width) * si_bordered->AtlasRect.x) : 0;
+    const auto bordered_oy = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.y) : 0;
 
     // Read texture data
     const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
@@ -1571,18 +1569,18 @@ void SpriteManager::BuildFont(int32 index)
         // Fix texture coordinates on bordered texture
         tex_w = numeric_cast<float32>(si_bordered->Atlas->Size.width);
         tex_h = numeric_cast<float32>(si_bordered->Atlas->Size.height);
-        image_x = tex_w * si_bordered->AtlasRect.Left;
-        image_y = tex_h * si_bordered->AtlasRect.Top;
+        image_x = tex_w * si_bordered->AtlasRect.x;
+        image_y = tex_h * si_bordered->AtlasRect.y;
 
-        for (auto&& [letter_index, letter] : font.Letters) {
+        for (auto& letter : font.Letters | std::views::values) {
             const auto x = numeric_cast<float32>(letter.Pos.x);
             const auto y = numeric_cast<float32>(letter.Pos.y);
             const auto w = numeric_cast<float32>(letter.Size.width);
             const auto h = numeric_cast<float32>(letter.Size.height);
-            letter.TexBorderedPos[0] = (image_x + x - 1.0f) / tex_w;
-            letter.TexBorderedPos[1] = (image_y + y - 1.0f) / tex_h;
-            letter.TexBorderedPos[2] = (image_x + x + w + 1.0f) / tex_w;
-            letter.TexBorderedPos[3] = (image_y + y + h + 1.0f) / tex_h;
+            letter.TexBorderedPos.x = (image_x + x - 1.0f) / tex_w;
+            letter.TexBorderedPos.y = (image_y + y - 1.0f) / tex_h;
+            letter.TexBorderedPos.width = (w + 2.0f) / tex_w;
+            letter.TexBorderedPos.height = (h + 2.0f) / tex_h;
         }
     }
 }
@@ -1995,9 +1993,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     auto* str = fi.PStr;
     auto flags = fi.Flags;
     auto* font = fi.CurFont;
-    auto r = IRect {fi.Rect.x, fi.Rect.y, fi.Rect.x + fi.Rect.width, fi.Rect.y + fi.Rect.height};
-    auto infinity_w = r.Left == r.Right;
-    auto infinity_h = r.Top == r.Bottom;
+    auto r = fi.Rect;
+    auto infinity_w = r.width == 0;
+    auto infinity_h = r.height == 0;
     auto curx = 0;
     auto cury = 0;
     auto& offs_col = fi.OffsColDots;
@@ -2077,8 +2075,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     auto skip_line_end = IsBitSet(flags, FT_SKIPLINES_END(0)) ? flags >> 16 : 0;
 
     // Format
-    curx = r.Left;
-    cury = r.Top;
+    curx = r.x;
+    cury = r.y;
 
     for (auto i = 0, i_advance = 1; str[i] != 0; i += i_advance) {
         auto letter_len = utf8::DecodeStrNtLen(&str[i]);
@@ -2107,7 +2105,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
             break;
         }
 
-        if (!infinity_w && curx + x_advance > r.Right) {
+        if (!infinity_w && curx + x_advance > r.x + r.width) {
             fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
             if (fmt_type == FORMAT_TYPE_DRAW && IsBitSet(flags, FT_NOBREAK)) {
@@ -2191,7 +2189,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
         case '\n':
             if (skip_line == 0) {
                 cury += font->LineHeight + font->YAdvance;
-                if (!infinity_h && cury + font->LineHeight > r.Bottom && fi.LinesInRect == 0) {
+                if (!infinity_h && cury + font->LineHeight > r.y + r.height && fi.LinesInRect == 0) {
                     fi.LinesInRect = fi.LinesAll;
                 }
 
@@ -2224,7 +2222,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
             }
 
             fi.MaxCurX = std::max(curx, fi.MaxCurX);
-            curx = r.Left;
+            curx = r.x;
             continue;
         case 0:
             break;
@@ -2319,8 +2317,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     }
 
     // Align
-    curx = r.Left;
-    cury = r.Top;
+    curx = r.x;
+    cury = r.y;
 
     for (const auto i : xrange(fi.LinesAll)) {
         fi.LineWidth[i] = numeric_cast<int16>(curx);
@@ -2350,11 +2348,11 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
         case '\n':
             fi.LineWidth[curstr] = numeric_cast<int16>(curx);
             cury += font->LineHeight + font->YAdvance;
-            curx = r.Left;
+            curx = r.x;
 
             // Align
             if (fi.LineSpaceWidth[curstr] == 1 && spaces > 0 && !infinity_w) {
-                fi.LineSpaceWidth[curstr] = font->SpaceWidth + (r.Right - fi.LineWidth[curstr]) / spaces;
+                fi.LineSpaceWidth[curstr] = font->SpaceWidth + ((r.x + r.width) - fi.LineWidth[curstr]) / spaces;
             }
             else {
                 fi.LineSpaceWidth[curstr] = font->SpaceWidth;
@@ -2381,22 +2379,23 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     }
 
     // Initial position
-    fi.CurX = r.Left;
-    fi.CurY = r.Top;
+    fi.CurX = r.x;
+    fi.CurY = r.y;
 
     // Align X
     if (IsBitSet(flags, FT_CENTERX)) {
-        fi.CurX += (r.Right - fi.LineWidth[0]) / 2;
+        fi.CurX += ((r.x + r.width) - fi.LineWidth[0]) / 2;
     }
     else if (IsBitSet(flags, FT_CENTERR)) {
-        fi.CurX += r.Right - fi.LineWidth[0];
+        fi.CurX += (r.x + r.width) - fi.LineWidth[0];
     }
+
     // Align Y
     if (IsBitSet(flags, FT_CENTERY)) {
-        fi.CurY = r.Top + (r.Bottom - r.Top + 1 - fi.LinesInRect * font->LineHeight - (fi.LinesInRect - 1) * font->YAdvance) / 2 + (IsBitSet(flags, FT_CENTERY_ENGINE) ? 1 : 0);
+        fi.CurY = r.y + (r.height + 1 - fi.LinesInRect * font->LineHeight - (fi.LinesInRect - 1) * font->YAdvance) / 2 + (IsBitSet(flags, FT_CENTERY_ENGINE) ? 1 : 0);
     }
     else if (IsBitSet(flags, FT_BOTTOM)) {
-        fi.CurY = r.Bottom - (fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
+        fi.CurY = (r.y + r.height) - (fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
     }
 }
 
@@ -2419,7 +2418,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     // Format
     color = ApplyColorBrightness(color);
 
-    auto& fi = _fontFormatInfoBuf = {font, flags, rect};
+    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = flags, .Rect = rect};
     StrCopy(fi.Str, str);
     fi.DefColor = color;
 
@@ -2520,10 +2519,10 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             const auto h = l.Size.height + 2;
 
             const auto& texture_uv = IsBitSet(flags, FT_BORDERED) ? l.TexBorderedPos : l.TexPos;
-            const auto x1 = texture_uv[0];
-            const auto y1 = texture_uv[1];
-            const auto x2 = texture_uv[2];
-            const auto y2 = texture_uv[3];
+            const auto x1 = texture_uv.x;
+            const auto y1 = texture_uv.y;
+            const auto x2 = texture_uv.x + texture_uv.width;
+            const auto y2 = texture_uv.y + texture_uv.height;
 
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
@@ -2573,7 +2572,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTex != texture || _dipQueue.back().SourceEffect != font->DrawEffect) {
-            _dipQueue.emplace_back(DipData {texture, font->DrawEffect, ind_count});
+            _dipQueue.emplace_back(DipData {.MainTex = texture, .SourceEffect = font->DrawEffect, .IndCount = ind_count});
         }
         else {
             _dipQueue.back().IndCount += ind_count;
@@ -2606,7 +2605,7 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
     const auto width = size.width != 0 ? size.width : _settings.ScreenWidth;
     const auto height = size.height != 0 ? size.height : _settings.ScreenHeight;
 
-    auto& fi = _fontFormatInfoBuf = {font, 0, {0, 0, width, height}};
+    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = {0, 0, width, height}};
     StrCopy(fi.Str, str);
 
     FormatText(fi, FORMAT_TYPE_LCOUNT);
@@ -2671,7 +2670,7 @@ auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, u
         return true;
     }
 
-    auto& fi = _fontFormatInfoBuf = {font, flags, {0, 0, size}};
+    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = flags, .Rect = {0, 0, size}};
     StrCopy(fi.Str, str);
 
     FormatText(fi, FORMAT_TYPE_LCOUNT);
@@ -2702,7 +2701,7 @@ auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -
         return {};
     }
 
-    auto& fi = _fontFormatInfoBuf = {font, 0, rect};
+    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = rect};
     StrCopy(fi.Str, cstr);
     fi.StrLines = &result;
 

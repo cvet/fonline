@@ -524,7 +524,7 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback
     if (size.width > 0 && size.height > 0) {
         (*video->Tex)->UpdateTextureRegion({}, (*video->Tex)->Size, video->Clip->RenderFrame().data());
 
-        const auto r = IRect {pos.x, pos.y, pos.x + size.width, pos.y + size.height};
+        const auto r = irect32 {pos.x, pos.y, size.width, size.height};
         client->SprMngr.DrawTexture((*video->Tex).get(), false, nullptr, &r);
     }
 
@@ -1331,8 +1331,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
     const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
     const auto r = std::clamp(pos.x + size.width, 0, client->Settings.ScreenWidth);
     const auto b = std::clamp(pos.y + size.height, 0, client->Settings.ScreenHeight);
-    const auto from = IRect(l, t, r, b);
-    const auto to = IRect(from);
+    const auto from = irect32(l, t, r - l, b - t);
+    const auto to = irect32(from);
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1359,14 +1359,14 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    const auto from = IRect(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
+    const auto from = irect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
         std::clamp(fromY, 0, client->Settings.ScreenHeight), //
-        std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), //
-        std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
-    const auto to = IRect(std::clamp(toX, 0, client->Settings.ScreenWidth), //
+        std::clamp(fromW, 0, client->Settings.ScreenWidth - fromX), //
+        std::clamp(fromH, 0, client->Settings.ScreenHeight - fromY));
+    const auto to = irect32(std::clamp(toX, 0, client->Settings.ScreenWidth), //
         std::clamp(toY, 0, client->Settings.ScreenHeight), //
-        std::clamp(toX + toW, 0, client->Settings.ScreenWidth), //
-        std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
+        std::clamp(toW, 0, client->Settings.ScreenWidth - toX), //
+        std::clamp(toH, 0, client->Settings.ScreenHeight - toY));
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }

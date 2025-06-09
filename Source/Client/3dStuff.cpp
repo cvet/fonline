@@ -287,10 +287,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     auto* mesh_tex = SafeAlloc::MakeRaw<MeshTexture>();
     mesh_tex->Name = _hashResolver.ToHashedString(texture_name);
     mesh_tex->MainTex = tex;
-    mesh_tex->AtlasOffsetData[0] = tex_data[0];
-    mesh_tex->AtlasOffsetData[1] = tex_data[1];
-    mesh_tex->AtlasOffsetData[2] = tex_data[2];
-    mesh_tex->AtlasOffsetData[3] = tex_data[3];
+    mesh_tex->AtlasOffsetData = tex_data;
 
     return mesh_tex;
 }
@@ -1604,8 +1601,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     if (mesh_instance->CurTexures[0] != nullptr) {
         const auto* mesh_tex = mesh_instance->CurTexures[0];
         for (auto i = vertices_old_size, j = vertices.size(); i < j; i++) {
-            vertices[i].TexCoord[0] = (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData[2]) + mesh_tex->AtlasOffsetData[0];
-            vertices[i].TexCoord[1] = (vertices[i].TexCoord[1] * mesh_tex->AtlasOffsetData[3]) + mesh_tex->AtlasOffsetData[1];
+            vertices[i].TexCoord[0] = (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData.width) + mesh_tex->AtlasOffsetData.x;
+            vertices[i].TexCoord[1] = (vertices[i].TexCoord[1] * mesh_tex->AtlasOffsetData.height) + mesh_tex->AtlasOffsetData.y;
         }
     }
 
@@ -2153,7 +2150,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i] != nullptr) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32));
+                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32)], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32));
                 MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float32)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float32));
             }
             else {

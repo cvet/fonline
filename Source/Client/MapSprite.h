@@ -135,8 +135,8 @@ public:
     auto operator=(MapSprite&&) noexcept = delete;
     ~MapSprite() = default;
 
-    [[nodiscard]] auto GetDrawRect() const -> IRect;
-    [[nodiscard]] auto GetViewRect() const -> IRect;
+    [[nodiscard]] auto GetDrawRect() const -> irect32;
+    [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto CheckHit(ipos32 pos, bool check_transparent) const -> bool;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
 
