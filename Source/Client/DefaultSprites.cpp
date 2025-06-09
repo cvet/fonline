@@ -93,7 +93,7 @@ auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
     return const_cast<AtlasSprite*>(this)->shared_from_this();
 }
 
-auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -112,34 +112,34 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
 
     auto& v0 = vbuf[vpos++];
-    v0.PosX = pos.Left;
-    v0.PosY = pos.Bottom;
-    v0.TexU = AtlasRect.Left;
-    v0.TexV = AtlasRect.Bottom;
+    v0.PosX = pos.x;
+    v0.PosY = pos.y + pos.height;
+    v0.TexU = AtlasRect.x;
+    v0.TexV = AtlasRect.y + AtlasRect.height;
     v0.EggTexU = 0.0f;
     v0.Color = std::get<0>(colors);
 
     auto& v1 = vbuf[vpos++];
-    v1.PosX = pos.Left;
-    v1.PosY = pos.Top;
-    v1.TexU = AtlasRect.Left;
-    v1.TexV = AtlasRect.Top;
+    v1.PosX = pos.x;
+    v1.PosY = pos.y;
+    v1.TexU = AtlasRect.x;
+    v1.TexV = AtlasRect.y;
     v1.EggTexU = 0.0f;
     v1.Color = std::get<0>(colors);
 
     auto& v2 = vbuf[vpos++];
-    v2.PosX = pos.Right;
-    v2.PosY = pos.Top;
-    v2.TexU = AtlasRect.Right;
-    v2.TexV = AtlasRect.Top;
+    v2.PosX = pos.x + pos.width;
+    v2.PosY = pos.y;
+    v2.TexU = AtlasRect.x + AtlasRect.width;
+    v2.TexV = AtlasRect.y;
     v2.EggTexU = 0.0f;
     v2.Color = std::get<1>(colors);
 
     auto& v3 = vbuf[vpos++];
-    v3.PosX = pos.Right;
-    v3.PosY = pos.Bottom;
-    v3.TexU = AtlasRect.Right;
-    v3.TexV = AtlasRect.Bottom;
+    v3.PosX = pos.x + pos.width;
+    v3.PosY = pos.y + pos.height;
+    v3.TexU = AtlasRect.x + AtlasRect.width;
+    v3.TexV = AtlasRect.y + AtlasRect.height;
     v3.EggTexU = 0.0f;
     v3.Color = std::get<1>(colors);
 
@@ -221,7 +221,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
     return copy;
 }
 
-auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -546,10 +546,10 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
     // Set parameters
     atlas_spr->Atlas = atlas;
     atlas_spr->AtlasNode = atlas_node;
-    atlas_spr->AtlasRect.Left = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->Size.width);
-    atlas_spr->AtlasRect.Top = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->Size.height);
-    atlas_spr->AtlasRect.Right = numeric_cast<float32>(pos.x + size.width) / numeric_cast<float32>(atlas->Size.width);
-    atlas_spr->AtlasRect.Bottom = numeric_cast<float32>(pos.y + size.height) / numeric_cast<float32>(atlas->Size.height);
+    atlas_spr->AtlasRect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->Size.width);
+    atlas_spr->AtlasRect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->Size.height);
+    atlas_spr->AtlasRect.width = numeric_cast<float32>(size.width) / numeric_cast<float32>(atlas->Size.width);
+    atlas_spr->AtlasRect.height = numeric_cast<float32>(size.height) / numeric_cast<float32>(atlas->Size.height);
 }
 
 FO_END_NAMESPACE();

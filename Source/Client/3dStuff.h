@@ -68,7 +68,7 @@ struct MeshTexture
 {
     hstring Name {};
     RenderTexture* MainTex {};
-    float32 AtlasOffsetData[4] {};
+    frect32 AtlasOffsetData {};
 };
 
 struct MeshData
@@ -179,7 +179,7 @@ class ModelManager final
     friend class ModelHierarchy;
 
 public:
-    using TextureLoader = function<pair<RenderTexture*, FRect>(string_view)>;
+    using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
 
     ModelManager() = delete;
     ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);

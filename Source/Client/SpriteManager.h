@@ -96,13 +96,13 @@ public:
 
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTex() const -> RenderTexture* { return nullptr; }
-    [[nodiscard]] virtual auto GetViewSize() const -> optional<IRect> { return std::nullopt; }
+    [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
 
-    virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
+    virtual auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
     virtual void SetDir(uint8 dir) { ignore_unused(dir); }
@@ -200,7 +200,7 @@ public:
     void PushScissor(irect32 rect);
     void PopScissor();
 
-    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
+    void PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const;
     void PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const;
 
     void BeginScene();
@@ -214,8 +214,8 @@ public:
     void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
     void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos32* offset = nullptr, RenderEffect* custom_effect = nullptr);
-    void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
-    void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
+    void DrawTexture(const RenderTexture* tex, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr, RenderEffect* custom_effect = nullptr);
+    void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr);
     void Flush();
 
     void DrawContours();
@@ -309,8 +309,8 @@ private:
             isize32 Size {};
             ipos32 Offset {};
             int32 XAdvance {};
-            FRect TexPos {};
-            FRect TexBorderedPos {};
+            frect32 TexPos {};
+            frect32 TexBorderedPos {};
         };
 
         RenderEffect* DrawEffect {};

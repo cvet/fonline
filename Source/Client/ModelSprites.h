@@ -57,7 +57,7 @@ public:
     ~ModelSprite() override = default;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
-    [[nodiscard]] auto GetViewSize() const -> optional<IRect> override;
+    [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { FO_NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
@@ -98,7 +98,7 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto LoadTexture(hstring path) -> pair<RenderTexture*, FRect>;
+    auto LoadTexture(hstring path) -> pair<RenderTexture*, frect32>;
     void DrawModelToAtlas(ModelSprite* model_spr);
 
     SpriteManager& _sprMngr;

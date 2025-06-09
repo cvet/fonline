@@ -188,10 +188,10 @@ void FOMapper::InitIface()
 
     IfaceLoadRect(IntWMain, "IntMain");
     if (IntX == -1) {
-        IntX = (Settings.ScreenWidth - IntWMain.Width()) / 2;
+        IntX = (Settings.ScreenWidth - IntWMain.width) / 2;
     }
     if (IntY == -1) {
-        IntY = Settings.ScreenHeight - IntWMain.Height();
+        IntY = Settings.ScreenHeight - IntWMain.height;
     }
 
     IfaceLoadRect(IntWWork, "IntWork");
@@ -242,7 +242,7 @@ void FOMapper::InitIface()
     IntMode = INT_MODE_MESS;
     SelectType = SELECT_TYPE_NEW;
     ProtoWidth = ini.GetAsInt("", "ProtoWidth", 50);
-    ProtosOnScreen = (IntWWork[2] - IntWWork[0]) / ProtoWidth;
+    ProtosOnScreen = IntWWork.width / ProtoWidth;
     MemFill(TabIndex, 0, sizeof(TabIndex));
     NpcDir = 3;
     CurMode = CUR_MODE_DEFAULT;
@@ -287,7 +287,7 @@ void FOMapper::InitIface()
     WriteLog("Init interface complete");
 }
 
-auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
+auto FOMapper::IfaceLoadRect(irect32& rect, string_view name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -298,12 +298,15 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
         return false;
     }
 
+    int32 comp[4] = {};
+
     if (auto istr = istringstream(res); !(istr >> comp[0] && istr >> comp[1] && istr >> comp[2] && istr >> comp[3])) {
         WriteLog("Unable to parse signature '{}'", name);
-        comp = {};
+        rect = {};
         return false;
     }
 
+    rect = irect32 {comp[0], comp[1], comp[2] - comp[0], comp[3] - comp[1]};
     return true;
 }
 
@@ -758,119 +761,119 @@ void FOMapper::IntDraw()
 
     switch (IntMode) {
     case INT_MODE_CUSTOM0:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[0][0] + IntX, IntBCust[0][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[0].x + IntX, IntBCust[0].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM1:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[1][0] + IntX, IntBCust[1][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[1].x + IntX, IntBCust[1].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM2:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[2][0] + IntX, IntBCust[2][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[2].x + IntX, IntBCust[2].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM3:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[3][0] + IntX, IntBCust[3][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[3].x + IntX, IntBCust[3].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM4:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[4][0] + IntX, IntBCust[4][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[4].x + IntX, IntBCust[4].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM5:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[5][0] + IntX, IntBCust[5][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[5].x + IntX, IntBCust[5].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM6:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[6][0] + IntX, IntBCust[6][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[6].x + IntX, IntBCust[6].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM7:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[7][0] + IntX, IntBCust[7][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[7].x + IntX, IntBCust[7].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM8:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[8][0] + IntX, IntBCust[8][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[8].x + IntX, IntBCust[8].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM9:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[9][0] + IntX, IntBCust[9][1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[9].x + IntX, IntBCust[9].y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_ITEM:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBItem[0] + IntX, IntBItem[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBItem.x + IntX, IntBItem.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_TILE:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBTile[0] + IntX, IntBTile[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBTile.x + IntX, IntBTile.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_CRIT:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCrit[0] + IntX, IntBCrit[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBCrit.x + IntX, IntBCrit.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_FAST:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBFast[0] + IntX, IntBFast[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBFast.x + IntX, IntBFast.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_IGNORE:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBIgnore[0] + IntX, IntBIgnore[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBIgnore.x + IntX, IntBIgnore.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_INCONT:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBInCont[0] + IntX, IntBInCont[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBInCont.x + IntX, IntBInCont.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_MESS:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBMess[0] + IntX, IntBMess[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBMess.x + IntX, IntBMess.y + IntY}, COLOR_SPRITE);
         break;
     case INT_MODE_LIST:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBList[0] + IntX, IntBList[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPTab.get(), {IntBList.x + IntX, IntBList.y + IntY}, COLOR_SPRITE);
         break;
     default:
         break;
     }
 
     for (auto i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++) {
-        DrawStr(IRect(IntBCust[i], IntX, IntY), TabsName[INT_MODE_CUSTOM0 + i], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+        DrawStr(irect32(IntBCust[i].x + IntX, IntBCust[i].y + IntY, IntBCust[i].width, IntBCust[i].height), TabsName[INT_MODE_CUSTOM0 + i], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
     }
-    DrawStr(IRect(IntBItem, IntX, IntY), TabsName[INT_MODE_ITEM], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBTile, IntX, IntY), TabsName[INT_MODE_TILE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBCrit, IntX, IntY), TabsName[INT_MODE_CRIT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBFast, IntX, IntY), TabsName[INT_MODE_FAST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBIgnore, IntX, IntY), TabsName[INT_MODE_IGNORE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBInCont, IntX, IntY), TabsName[INT_MODE_INCONT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBMess, IntX, IntY), TabsName[INT_MODE_MESS], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(IRect(IntBList, IntX, IntY), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBItem.x + IntX, IntBItem.y + IntY, IntBItem.width, IntBItem.height), TabsName[INT_MODE_ITEM], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBTile.x + IntX, IntBTile.y + IntY, IntBTile.width, IntBTile.height), TabsName[INT_MODE_TILE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBCrit.x + IntX, IntBCrit.y + IntY, IntBCrit.width, IntBCrit.height), TabsName[INT_MODE_CRIT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBFast.x + IntX, IntBFast.y + IntY, IntBFast.width, IntBFast.height), TabsName[INT_MODE_FAST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBIgnore.x + IntX, IntBIgnore.y + IntY, IntBIgnore.width, IntBIgnore.height), TabsName[INT_MODE_IGNORE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBInCont.x + IntX, IntBInCont.y + IntY, IntBInCont.width, IntBInCont.height), TabsName[INT_MODE_INCONT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBMess.x + IntX, IntBMess.y + IntY, IntBMess.width, IntBMess.height), TabsName[INT_MODE_MESS], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    DrawStr(irect32(IntBList.x + IntX, IntBList.y + IntY, IntBList.width, IntBList.height), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
 
     if (Settings.ShowItem) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowItem[0] + IntX, IntBShowItem[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowItem.x + IntX, IntBShowItem.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowScen) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowScen[0] + IntX, IntBShowScen[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowScen.x + IntX, IntBShowScen.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowWall) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowWall[0] + IntX, IntBShowWall[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowWall.x + IntX, IntBShowWall.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowCrit) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowCrit.x + IntX, IntBShowCrit.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowTile) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowTile[0] + IntX, IntBShowTile[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowTile.x + IntX, IntBShowTile.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowRoof) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowRoof.x + IntX, IntBShowRoof.y + IntY}, COLOR_SPRITE);
     }
     if (Settings.ShowFast) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowFast[0] + IntX, IntBShowFast[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPShow.get(), {IntBShowFast.x + IntX, IntBShowFast.y + IntY}, COLOR_SPRITE);
     }
 
     if (IsSelectItem) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectItem[0] + IntX, IntBSelectItem[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectItem.x + IntX, IntBSelectItem.y + IntY}, COLOR_SPRITE);
     }
     if (IsSelectScen) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectScen[0] + IntX, IntBSelectScen[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectScen.x + IntX, IntBSelectScen.y + IntY}, COLOR_SPRITE);
     }
     if (IsSelectWall) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectWall[0] + IntX, IntBSelectWall[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectWall.x + IntX, IntBSelectWall.y + IntY}, COLOR_SPRITE);
     }
     if (IsSelectCrit) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectCrit[0] + IntX, IntBSelectCrit[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectCrit.x + IntX, IntBSelectCrit.y + IntY}, COLOR_SPRITE);
     }
     if (IsSelectTile) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectTile[0] + IntX, IntBSelectTile[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectTile.x + IntX, IntBSelectTile.y + IntY}, COLOR_SPRITE);
     }
     if (IsSelectRoof) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectRoof[0] + IntX, IntBSelectRoof[1] + IntY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectRoof.x + IntX, IntBSelectRoof.y + IntY}, COLOR_SPRITE);
     }
 
-    auto x = IntWWork[0] + IntX;
-    auto y = IntWWork[1] + IntY;
-    auto h = IntWWork[3] - IntWWork[1];
+    auto x = IntWWork.x + IntX;
+    auto y = IntWWork.y + IntY;
+    auto h = IntWWork.height;
     int32 w = ProtoWidth;
 
     if (IsItemMode()) {
@@ -894,22 +897,19 @@ void FOMapper::IntDraw()
                 }
             }
 
-            DrawStr(IRect(x, y + h - 15, x + w, y + h), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            DrawStr(irect32(x, y + h - 15, w, h), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
         if (GetTabIndex() < numeric_cast<int32>(CurItemProtos->size())) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
 
-            SprMngr.DrawText(irect32(IntWHint.Left + IntX, IntWHint.Top + IntY, IntWHint.Width(), IntWHint.Height()), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawText(irect32(IntWHint.x + IntX, IntWHint.y + IntY, IntWHint.width, IntWHint.height), proto_item->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IsCritMode()) {
         auto i = *CurProtoScroll;
         auto j = i + ProtosOnScreen;
-
-        if (j > numeric_cast<int32>(CurNpcProtos->size())) {
-            j = numeric_cast<int32>(CurNpcProtos->size());
-        }
+        j = std::min(j, numeric_cast<int32>(CurNpcProtos->size()));
 
         for (; i < j; i++, x += w) {
             const auto* proto = (*CurNpcProtos)[i];
@@ -928,12 +928,12 @@ void FOMapper::IntDraw()
             }
 
             SprMngr.DrawSpriteSize(anim, {x, y}, {w, h / 2}, false, true, col);
-            DrawStr(IRect(x, y + h - 15, x + w, y + h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            DrawStr(irect32(x, y + h - 15, w, h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
         if (GetTabIndex() < numeric_cast<int32>(CurNpcProtos->size())) {
             const auto* proto = (*CurNpcProtos)[GetTabIndex()];
-            DrawStr(IRect(IntWHint, IntX, IntY), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
+            DrawStr(irect32(IntWHint.x + IntX, IntWHint.y + IntY, IntWHint.width, IntWHint.height), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
@@ -943,9 +943,7 @@ void FOMapper::IntDraw()
         auto i = InContScroll;
         auto j = i + ProtosOnScreen;
 
-        if (j > numeric_cast<int32>(inner_items.size())) {
-            j = numeric_cast<int32>(inner_items.size());
-        }
+        j = std::min(j, numeric_cast<int32>(inner_items.size()));
 
         for (; i < j; i++, x += w) {
             auto& inner_item = inner_items[i];
@@ -992,7 +990,7 @@ void FOMapper::IntDraw()
         SprMngr.DrawSprite(SubTabsPic.get(), {SubTabsX, SubTabsY}, COLOR_SPRITE);
 
         auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
-        auto posy = SubTabsRect.Height() - line_height - 2;
+        auto posy = SubTabsRect.height - line_height - 2;
         auto i = 0;
         auto& stabs = Tabs[SubTabsActiveTab];
 
@@ -1007,7 +1005,7 @@ void FOMapper::IntDraw()
             auto& stab = snd;
 
             auto color = (TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT);
-            auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + Settings.ScreenWidth, SubTabsRect.Top + SubTabsY + posy + line_height - 1);
+            auto r = irect32(SubTabsRect.x + SubTabsX + 5, SubTabsRect.y + SubTabsY + posy, Settings.ScreenWidth, line_height - 1);
 
             if (IsCurInRect(r)) {
                 color = COLOR_TEXT_DWHITE;
@@ -1041,7 +1039,7 @@ void FOMapper::IntDraw()
 
         auto day_time = GetGlobalDayTime();
 
-        DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
+        DrawStr(irect32(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             strex("Map '{}'\n"
                   "Hex {}\n"
                   "Time {} : {}\n"
@@ -1062,24 +1060,27 @@ void FOMapper::ObjDraw()
     }
 
     auto* entity = GetInspectorEntity();
+
     if (entity == nullptr) {
         return;
     }
 
     const auto* item = dynamic_cast<ItemView*>(entity);
     const auto* cr = dynamic_cast<CritterView*>(entity);
-    auto r = IRect(ObjWWork, ObjX, ObjY);
-    const auto x = r.Left;
-    const auto y = r.Top;
-    const auto w = r.Width();
+    auto r = irect32(ObjWWork.x + ObjX, ObjWWork.y + ObjY, ObjWWork.width, ObjWWork.height);
+    const auto x = r.x;
+    const auto y = r.y;
+    const auto w = r.width;
 
     SprMngr.DrawSprite(ObjWMainPic.get(), {ObjX, ObjY}, COLOR_SPRITE);
+
     if (ObjToAll) {
-        SprMngr.DrawSprite(ObjPbToAllDn.get(), {ObjBToAll[0] + ObjX, ObjBToAll[1] + ObjY}, COLOR_SPRITE);
+        SprMngr.DrawSprite(ObjPbToAllDn.get(), {ObjBToAll.x + ObjX, ObjBToAll.y + ObjY}, COLOR_SPRITE);
     }
 
     if (item != nullptr) {
         const auto* spr = GetIfaceSpr(item->GetPicMap());
+
         if (spr == nullptr) {
             spr = ResMngr.GetItemDefaultSpr().get();
         }
@@ -1096,6 +1097,7 @@ void FOMapper::ObjDraw()
 
     DrawLine("Id", "", strex("{}", entity->GetId()), true, r);
     DrawLine("ProtoName", "", entity->GetName(), true, r);
+
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
     }
@@ -1115,20 +1117,19 @@ void FOMapper::ObjDraw()
             DrawLine(prop->GetName(), prop->GetViewTypeName(), value, prop->IsReadOnly(), r);
         }
         else {
-            r.Top += DRAW_NEXT_HEIGHT;
-            r.Bottom += DRAW_NEXT_HEIGHT;
+            r.y += DRAW_NEXT_HEIGHT;
         }
     }
 }
 
-void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r)
+void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, irect32& r)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto x = r.Left;
-    const auto y = r.Top;
-    const auto w = r.Width();
-    const auto h = r.Height();
+    const auto x = r.x;
+    const auto y = r.y;
+    const auto w = r.width;
+    const auto h = r.height;
 
     ucolor color = COLOR_TEXT;
 
@@ -1138,7 +1139,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
     auto result_text = text;
 
-    if (ObjCurLine == (y - ObjWWork[1] - ObjY) / DRAW_NEXT_HEIGHT) {
+    if (ObjCurLine == (y - ObjWWork.y - ObjY) / DRAW_NEXT_HEIGHT) {
         color = COLOR_TEXT_WHITE;
 
         if (!is_const && ObjCurLineValue != ObjCurLineInitValue) {
@@ -1149,11 +1150,10 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
     string str = strex("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
     str += "........................................................................................................";
-    DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, FONT_DEFAULT);
-    DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, FONT_DEFAULT);
+    DrawStr(irect32(x, y, w / 2, h), str, FT_NOBREAK, color, FONT_DEFAULT);
+    DrawStr(irect32(x + w / 2, y, w / 2, h), result_text, FT_NOBREAK, color, FONT_DEFAULT);
 
-    r.Top += DRAW_NEXT_HEIGHT;
-    r.Bottom += DRAW_NEXT_HEIGHT;
+    r.y += DRAW_NEXT_HEIGHT;
 }
 
 void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
@@ -1285,10 +1285,11 @@ void FOMapper::IntLMouseDown()
     if (IntVisible && SubTabsActive) {
         if (IsCurInRect(SubTabsRect, SubTabsX, SubTabsY)) {
             const auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
-            auto posy = SubTabsRect.Height() - line_height - 2;
+            auto posy = SubTabsRect.height - line_height - 2;
             auto i = 0;
             auto& stabs = Tabs[SubTabsActiveTab];
-            for (auto&& [fst, snd] : stabs) {
+
+            for (auto& snd : stabs | std::views::values) {
                 i++;
                 if (i - 1 < TabsScroll[SubTabsActiveTab]) {
                     continue;
@@ -1296,7 +1297,8 @@ void FOMapper::IntLMouseDown()
 
                 auto& stab = snd;
 
-                auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + SubTabsRect.Width(), SubTabsRect.Top + SubTabsY + posy + line_height - 1);
+                auto r = irect32(SubTabsRect.x + SubTabsX + 5, SubTabsRect.y + SubTabsY + posy, SubTabsRect.width, line_height - 1);
+
                 if (IsCurInRect(r)) {
                     TabsActive[SubTabsActiveTab] = &stab;
                     RefreshCurProtos();
@@ -1304,6 +1306,7 @@ void FOMapper::IntLMouseDown()
                 }
 
                 posy -= line_height;
+
                 if (posy < 0) {
                     break;
                 }
@@ -1378,7 +1381,7 @@ void FOMapper::IntLMouseDown()
     // Object editor
     if (ObjVisible && !SelectedEntities.empty() && IsCurInRect(ObjWMain, ObjX, ObjY)) {
         if (IsCurInRect(ObjWWork, ObjX, ObjY)) {
-            SelectEntityProp((Settings.MousePos.y - ObjY - ObjWWork[1]) / DRAW_NEXT_HEIGHT);
+            SelectEntityProp((Settings.MousePos.y - ObjY - ObjWWork.y) / DRAW_NEXT_HEIGHT);
         }
 
         if (IsCurInRect(ObjBToAll, ObjX, ObjY)) {
@@ -1401,7 +1404,7 @@ void FOMapper::IntLMouseDown()
     }
 
     if (IsCurInRect(IntWWork, IntX, IntY)) {
-        int32 ind = (Settings.MousePos.x - IntX - IntWWork[0]) / ProtoWidth;
+        int32 ind = (Settings.MousePos.x - IntX - IntWWork.x) / ProtoWidth;
 
         if (IsItemMode() && !CurItemProtos->empty()) {
             ind += *CurProtoScroll;
@@ -1948,44 +1951,44 @@ void FOMapper::IntSetMode(int32 mode)
 
         // Calculate position
         if (mode <= INT_MODE_CUSTOM9) {
-            SubTabsX = IntBCust[mode - INT_MODE_CUSTOM0].CenterX();
-            SubTabsY = IntBCust[mode - INT_MODE_CUSTOM0].Top;
+            SubTabsX = IntBCust[mode - INT_MODE_CUSTOM0].x + IntBCust[mode - INT_MODE_CUSTOM0].width / 2;
+            SubTabsY = IntBCust[mode - INT_MODE_CUSTOM0].y;
         }
         else if (mode == INT_MODE_ITEM) {
-            SubTabsX = IntBItem.CenterX();
-            SubTabsY = IntBItem.Top;
+            SubTabsX = IntBItem.x + IntBItem.width / 2;
+            SubTabsY = IntBItem.y;
         }
         else if (mode == INT_MODE_TILE) {
-            SubTabsX = IntBTile.CenterX();
-            SubTabsY = IntBTile.Top;
+            SubTabsX = IntBTile.x + IntBTile.width / 2;
+            SubTabsY = IntBTile.y;
         }
         else if (mode == INT_MODE_CRIT) {
-            SubTabsX = IntBCrit.CenterX();
-            SubTabsY = IntBCrit.Top;
+            SubTabsX = IntBCrit.x + IntBCrit.width / 2;
+            SubTabsY = IntBCrit.y;
         }
         else if (mode == INT_MODE_FAST) {
-            SubTabsX = IntBFast.CenterX();
-            SubTabsY = IntBFast.Top;
+            SubTabsX = IntBFast.x + IntBFast.width / 2;
+            SubTabsY = IntBFast.y;
         }
         else if (mode == INT_MODE_IGNORE) {
-            SubTabsX = IntBIgnore.CenterX();
-            SubTabsY = IntBIgnore.Top;
+            SubTabsX = IntBIgnore.x + IntBIgnore.width / 2;
+            SubTabsY = IntBIgnore.y;
         }
         else {
             FO_UNREACHABLE_PLACE();
         }
 
-        SubTabsX += IntX - SubTabsRect.Width() / 2;
-        SubTabsY += IntY - SubTabsRect.Height();
+        SubTabsX += IntX - SubTabsRect.width / 2;
+        SubTabsY += IntY - SubTabsRect.height;
 
         SubTabsX = std::max(SubTabsX, 0);
-        if (SubTabsX + SubTabsRect.Width() > Settings.ScreenWidth) {
-            SubTabsX -= SubTabsX + SubTabsRect.Width() - Settings.ScreenWidth;
+        if (SubTabsX + SubTabsRect.width > Settings.ScreenWidth) {
+            SubTabsX -= SubTabsX + SubTabsRect.width - Settings.ScreenWidth;
         }
 
         SubTabsY = std::max(SubTabsY, 0);
-        if (SubTabsY + SubTabsRect.Height() > Settings.ScreenHeight) {
-            SubTabsY -= SubTabsY + SubTabsRect.Height() - Settings.ScreenHeight;
+        if (SubTabsY + SubTabsRect.height > Settings.ScreenHeight) {
+            SubTabsY -= SubTabsY + SubTabsRect.height - Settings.ScreenHeight;
         }
 
         return;
@@ -2574,11 +2577,11 @@ void FOMapper::BufferPaste()
     }
 }
 
-void FOMapper::DrawStr(const IRect& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
+void FOMapper::DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SprMngr.DrawText({rect.Left, rect.Top, rect.Width(), rect.Height()}, str, flags, color, num_font);
+    SprMngr.DrawText({rect.x, rect.y, rect.width, rect.height}, str, flags, color, num_font);
 }
 
 void FOMapper::CurDraw()
@@ -2707,25 +2710,25 @@ void FOMapper::CurMMouseDown()
     }
 }
 
-auto FOMapper::IsCurInRect(const IRect& rect, int32 ax, int32 ay) const -> bool
+auto FOMapper::IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return Settings.MousePos.x >= rect[0] + ax && Settings.MousePos.y >= rect[1] + ay && Settings.MousePos.x <= rect[2] + ax && Settings.MousePos.y <= rect[3] + ay;
+    return Settings.MousePos.x >= rect.x + ax && Settings.MousePos.y >= rect.y + ay && Settings.MousePos.x < rect.x + rect.width + ax && Settings.MousePos.y < rect.y + rect.height + ay;
 }
 
-auto FOMapper::IsCurInRect(const IRect& rect) const -> bool
+auto FOMapper::IsCurInRect(const irect32& rect) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return Settings.MousePos.x >= rect[0] && Settings.MousePos.y >= rect[1] && Settings.MousePos.x <= rect[2] && Settings.MousePos.y <= rect[3];
+    return Settings.MousePos.x >= rect.x && Settings.MousePos.y >= rect.y && Settings.MousePos.x < rect.x + rect.width && Settings.MousePos.y < rect.y + rect.height;
 }
 
-auto FOMapper::IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int32 ax, int32 ay) const -> bool
+auto FOMapper::IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32 ax, int32 ay) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.Left - ax, Settings.MousePos.y - rect.Top - ay}, false);
+    return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.x - ax, Settings.MousePos.y - rect.y - ay}, false);
 }
 
 auto FOMapper::IsCurInInterface() const -> bool
@@ -2767,7 +2770,7 @@ void FOMapper::ConsoleDraw()
 
         auto str = ConsoleStr;
         str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<int32>() % 800 < 400 ? "!" : ".");
-        DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
+        DrawStr(irect32(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
 
@@ -3207,10 +3210,10 @@ void FOMapper::AddMess(string_view message_text)
     MessBoxScroll = 0;
     MessBoxCurText = "";
 
-    const IRect ir(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY);
-    int32 max_lines = ir.Height() / 10;
+    const irect32 ir(IntWWork.x + IntX, IntWWork.y + IntY, IntWWork.width, IntWWork.height);
+    int32 max_lines = ir.height / 10;
 
-    if (ir.IsZero()) {
+    if (ir == irect32()) {
         max_lines = 20;
     }
 
@@ -3244,7 +3247,7 @@ void FOMapper::MessBoxDraw()
         return;
     }
 
-    DrawStr(IRect(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
+    DrawStr(irect32(IntWWork.x + IntX, IntWWork.y + IntY, IntWWork.width, IntWWork.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
 void FOMapper::DrawIfaceLayer(int32 layer)

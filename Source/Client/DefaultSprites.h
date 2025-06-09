@@ -55,11 +55,11 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
 
-    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
 
     TextureAtlas* Atlas {};
     TextureAtlas::SpaceNode* AtlasNode {};
-    FRect AtlasRect {};
+    frect32 AtlasRect {};
     vector<bool> HitTestData {};
 };
 
@@ -85,7 +85,7 @@ public:
     [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
 
-    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float32 normalized_time) override;
     void SetDir(uint8 dir) override;

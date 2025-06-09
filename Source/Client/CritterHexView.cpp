@@ -835,7 +835,7 @@ void CritterHexView::ProcessMoving()
     }
 }
 
-auto CritterHexView::GetViewRect() const -> IRect
+auto CritterHexView::GetViewRect() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -902,9 +902,9 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 
     if (IsSpriteValid()) {
         const auto rect = GetViewRect();
-        const auto rect_half_width = rect.Width() / 2;
-        const auto x = iround<int32>(numeric_cast<float32>(rect.Left + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
-        const auto y = iround<int32>(numeric_cast<float32>(rect.Top + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
+        const auto rect_half_width = rect.width / 2;
+        const auto x = iround<int32>(numeric_cast<float32>(rect.x + rect_half_width + _engine->Settings.ScreenOffset.x) / _map->GetSpritesZoom());
+        const auto y = iround<int32>(numeric_cast<float32>(rect.y + _engine->Settings.ScreenOffset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
 
         pos = {x, y};
         return true;

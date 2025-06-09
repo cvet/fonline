@@ -81,7 +81,7 @@ auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 botto
     return {};
 }
 
-auto Null_Renderer::GetViewPort() -> IRect
+auto Null_Renderer::GetViewPort() -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 

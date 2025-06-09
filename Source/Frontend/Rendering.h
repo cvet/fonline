@@ -393,7 +393,7 @@ public:
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
-    [[nodiscard]] virtual auto GetViewPort() -> IRect = 0;
+    [[nodiscard]] virtual auto GetViewPort() -> irect32 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
@@ -412,7 +412,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto GetViewPort() -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
@@ -435,7 +435,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto GetViewPort() -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return true; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
@@ -458,7 +458,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto GetViewPort() -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;

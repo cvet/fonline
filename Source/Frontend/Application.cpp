@@ -81,8 +81,8 @@ static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.Left) / numeric_cast<float32>(vp.Width()) * numeric_cast<float32>(App->Settings.ScreenWidth));
-    const auto screen_y = iround<int32>(numeric_cast<float32>(pos.y - vp.Top) / numeric_cast<float32>(vp.Height()) * numeric_cast<float32>(App->Settings.ScreenHeight));
+    const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.x) / numeric_cast<float32>(vp.width) * numeric_cast<float32>(App->Settings.ScreenWidth));
+    const auto screen_y = iround<int32>(numeric_cast<float32>(pos.y - vp.y) / numeric_cast<float32>(vp.height) * numeric_cast<float32>(App->Settings.ScreenHeight));
 
     return {screen_x, screen_y};
 }
@@ -91,8 +91,8 @@ static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
 {
     const auto vp = ActiveRenderer->GetViewPort();
 
-    const auto win_x = vp.Left + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(App->Settings.ScreenWidth) * numeric_cast<float32>(vp.Width()));
-    const auto win_y = vp.Top + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(App->Settings.ScreenHeight) * numeric_cast<float32>(vp.Height()));
+    const auto win_x = vp.x + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(App->Settings.ScreenWidth) * numeric_cast<float32>(vp.width));
+    const auto win_y = vp.y + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(App->Settings.ScreenHeight) * numeric_cast<float32>(vp.height));
 
     return {win_x, win_y};
 }
@@ -768,8 +768,8 @@ void Application::BeginFrame()
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
-            const auto x_ratio = numeric_cast<float32>(App->Settings.ScreenWidth) / numeric_cast<float32>(vp.Width());
-            const auto y_ratio = numeric_cast<float32>(App->Settings.ScreenHeight) / numeric_cast<float32>(vp.Height());
+            const auto x_ratio = numeric_cast<float32>(App->Settings.ScreenWidth) / numeric_cast<float32>(vp.width);
+            const auto y_ratio = numeric_cast<float32>(App->Settings.ScreenHeight) / numeric_cast<float32>(vp.height);
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
             EventsQueue->emplace_back(ev);

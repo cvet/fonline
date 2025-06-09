@@ -124,7 +124,7 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
     _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor.Settings);
 
-    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
+    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
         const auto file = editor.BakedResources.ReadFile(path);
         FO_RUNTIME_ASSERT(file);
         auto reader = file.GetReader();

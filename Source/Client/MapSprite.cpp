@@ -96,7 +96,7 @@ void MapSprite::Invalidate()
     Root = nullptr;
 }
 
-auto MapSprite::GetDrawRect() const -> IRect
+auto MapSprite::GetDrawRect() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -111,10 +111,10 @@ auto MapSprite::GetDrawRect() const -> IRect
         y += SprOffset->y;
     }
 
-    return {x, y, x + spr->Size.width, y + spr->Size.height};
+    return {x, y, spr->Size.width, spr->Size.height};
 }
 
-auto MapSprite::GetViewRect() const -> IRect
+auto MapSprite::GetViewRect() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -124,15 +124,15 @@ auto MapSprite::GetViewRect() const -> IRect
     FO_RUNTIME_ASSERT(spr);
 
     if (const auto view_rect = spr->GetViewSize(); view_rect.has_value()) {
-        const auto view_width = view_rect->Left;
-        const auto view_height = view_rect->Top;
-        const auto view_ox = view_rect->Right;
-        const auto view_oy = view_rect->Bottom;
+        const auto view_ox = view_rect->x;
+        const auto view_oy = view_rect->y;
+        const auto view_width = view_rect->width;
+        const auto view_height = view_rect->height;
 
-        rect.Left = rect.CenterX() - view_width / 2 + view_ox;
-        rect.Right = rect.Left + view_width;
-        rect.Bottom = rect.Bottom + view_oy;
-        rect.Top = rect.Bottom - view_height;
+        rect.x = rect.x + rect.width / 2 - view_width / 2 + view_ox;
+        rect.y = rect.y + rect.height - view_height + view_oy;
+        rect.width = view_width;
+        rect.height = view_height;
     }
 
     return rect;

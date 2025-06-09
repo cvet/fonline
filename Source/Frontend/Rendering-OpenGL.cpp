@@ -117,7 +117,7 @@ static isize32 BaseFrameBufSize {};
 static isize32 TargetSize {};
 static mat44 ProjectionMatrixColMaj {};
 static unique_ptr<RenderTexture> DummyTexture {};
-static IRect ViewPortRect {};
+static irect32 ViewPortRect {};
 
 // ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
@@ -597,7 +597,7 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bot
     return result;
 }
 
-auto OpenGL_Renderer::GetViewPort() -> IRect
+auto OpenGL_Renderer::GetViewPort() -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -644,7 +644,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         screen_height = Settings->ScreenHeight;
     }
 
-    ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
+    ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
     ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
@@ -692,24 +692,24 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
     int32 r;
     int32 b;
 
-    if (ViewPortRect.Width() != TargetSize.width || ViewPortRect.Height() != TargetSize.height) {
-        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.Width()) / numeric_cast<float32>(TargetSize.width);
-        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.Height()) / numeric_cast<float32>(TargetSize.height);
+    if (ViewPortRect.width != TargetSize.width || ViewPortRect.height != TargetSize.height) {
+        const float32 x_ratio = numeric_cast<float32>(ViewPortRect.width) / numeric_cast<float32>(TargetSize.width);
+        const float32 y_ratio = numeric_cast<float32>(ViewPortRect.height) / numeric_cast<float32>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
-        t = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
-        r = ViewPortRect.Left + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
-        b = ViewPortRect.Top + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
+        l = ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
+        t = ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
+        r = ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
     }
     else {
-        l = ViewPortRect.Left + rect.x;
-        t = ViewPortRect.Top + rect.y;
-        r = ViewPortRect.Left + rect.x + rect.width;
-        b = ViewPortRect.Top + rect.y + rect.height;
+        l = ViewPortRect.x + rect.x;
+        t = ViewPortRect.y + rect.y;
+        r = ViewPortRect.x + rect.x + rect.width;
+        b = ViewPortRect.y + rect.y + rect.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(l, ViewPortRect.Top + ViewPortRect.Bottom - b, r - l, b - t));
+    GL(glScissor(l, TargetSize.height - b, r - l, b - t));
 }
 
 void OpenGL_Renderer::DisableScissor()

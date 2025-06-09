@@ -399,7 +399,7 @@ protected:
     nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
-    IRect _lmapWMap {};
+    irect32 _lmapWMap {};
     int32 _lmapZoom {2};
     bool _lmapSwitchHi {};
     nanotime _lmapPrepareNextTime {};
