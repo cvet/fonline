@@ -79,7 +79,7 @@ void ClientEntity::DestroySelf()
     }
 
     if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetInnerEntities()) {
+        for (auto& entities : GetInnerEntities() | std::views::values) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
                 FO_RUNTIME_ASSERT(custom_entity);
