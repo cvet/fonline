@@ -426,18 +426,18 @@ public:
                 uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
-                result.resize(arr_size);
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for (const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
                     uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
                     if constexpr (std::is_same_v<T, vector<string>>) {
-                        result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                        result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                     }
                     else {
-                        result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
+                        result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
                     }
 
                     data += str_size;
@@ -448,17 +448,19 @@ public:
                 FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
-                result.resize(arr_size);
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for (const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
                     const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
-                    result[i] = hvalue;
+                    result.emplace_back(hvalue);
                     data += sizeof(hstring::hash_t);
                 }
             }
             else {
                 FO_RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
-                result.resize(data_size / prop->GetBaseSize());
+                const auto arr_size = data_size / prop->GetBaseSize();
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+                result.resize(arr_size);
                 MemCopy(result.data(), data, data_size);
             }
         }
@@ -544,18 +546,18 @@ public:
                 uint32 arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
-                result.resize(arr_size);
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for (const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
                     uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
                     if constexpr (std::is_same_v<T, vector<string>>) {
-                        result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                        result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                     }
                     else {
-                        result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
+                        result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
                     }
 
                     data += str_size;
@@ -566,17 +568,19 @@ public:
                 FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
-                result.resize(arr_size);
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for (const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
                     const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
-                    result[i] = hvalue;
+                    result.emplace_back(hvalue);
                     data += sizeof(hstring::hash_t);
                 }
             }
             else {
                 FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
-                result.resize(data_size / prop->GetBaseSize());
+                const auto arr_size = data_size / prop->GetBaseSize();
+                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+                result.resize(arr_size);
                 MemCopy(result.data(), data, data_size);
             }
         }
