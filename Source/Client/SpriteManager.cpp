@@ -1831,7 +1831,7 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     reader.SetCurPos(next_block);
     const auto count = reader.GetLEUInt32() / 20;
 
-    for ([[maybe_unused]] const auto i : xrange(count)) {
+    for ([[maybe_unused]] const auto i : iterate_range(count)) {
         // Read data
         const auto id = reader.GetLEUInt32();
         const auto x = reader.GetLEUInt16();
@@ -2320,7 +2320,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     curx = r.x;
     cury = r.y;
 
-    for (const auto i : xrange(fi.LinesAll)) {
+    for (const auto i : iterate_range(fi.LinesAll)) {
         fi.LineWidth[i] = numeric_cast<int16>(curx);
     }
 

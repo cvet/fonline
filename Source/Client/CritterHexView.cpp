@@ -858,7 +858,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
         // ...
     }
     else {
-        for (const auto i : xrange(_curFrmIndex + 1)) {
+        for (const auto i : iterate_range(_curFrmIndex + 1)) {
             _offsAnim.x += anim->SprOffset[i].x;
             _offsAnim.y += anim->SprOffset[i].y;
         }

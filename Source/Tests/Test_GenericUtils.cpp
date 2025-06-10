@@ -65,11 +65,11 @@ TEST_CASE("GenericUtils")
         CHECK(rnd64() == 9981545732273789042UL);
     }
 
-    SECTION("xrange")
+    SECTION("iterate_range")
     {
         auto t1 = 0;
         auto t2 = 0;
-        for (const auto i : xrange(5)) {
+        for (const auto i : iterate_range(5)) {
             t1++;
             t2 += i;
         }
@@ -79,7 +79,7 @@ TEST_CASE("GenericUtils")
         const auto v = vector<int32> {3, 4, 5, 6, 7};
         auto t3 = 0;
         auto t4 = 0;
-        for (const auto i : xrange(v)) {
+        for (const auto i : iterate_range(v)) {
             t3++;
             t4 += v[i];
         }

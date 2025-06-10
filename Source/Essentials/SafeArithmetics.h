@@ -346,7 +346,7 @@ private:
 
 template<typename T>
     requires(std::is_integral_v<T>)
-constexpr auto xrange(T value) noexcept
+constexpr auto iterate_range(T value) noexcept
 {
     return irange_loop<T> {0, value};
 }
@@ -355,7 +355,7 @@ FO_TYPE_HAS_MEMBER(has_size, size);
 
 template<typename T>
     requires(has_size_v<T>)
-constexpr auto xrange(T value) noexcept
+constexpr auto iterate_range(T value) noexcept
 {
     return irange_loop<decltype(value.size())> {0, value.size()};
 }

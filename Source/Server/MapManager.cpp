@@ -116,7 +116,7 @@ void MapManager::LoadFromResources()
 
                     static_map->CritterBillets.reserve(cr_count);
 
-                    for (const auto i : xrange(cr_count)) {
+                    for (const auto i : iterate_range(cr_count)) {
                         ignore_unused(i);
 
                         const auto cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
@@ -152,7 +152,7 @@ void MapManager::LoadFromResources()
                     static_map->StaticItems.reserve(item_count);
                     static_map->StaticItemsById.reserve(item_count);
 
-                    for (const auto i : xrange(item_count)) {
+                    for (const auto i : iterate_range(item_count)) {
                         ignore_unused(i);
 
                         const auto item_id = ident_t {reader.Read<ident_t::underlying_type>()};

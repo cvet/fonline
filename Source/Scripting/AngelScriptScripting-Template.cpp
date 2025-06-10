@@ -740,7 +740,7 @@ template<typename T, typename T2 = T>
     vector<T> vec;
     vec.resize(as_array->GetSize());
 
-    for (const auto i : xrange(as_array->GetSize())) {
+    for (const auto i : iterate_range(as_array->GetSize())) {
         vec[i] = static_cast<T>(*static_cast<T2*>(as_array->At(i)));
 
         if constexpr (std::is_pointer_v<T>) {
@@ -763,7 +763,7 @@ template<typename T, typename T2 = T>
     if (!vec.empty()) {
         as_array->Resize(numeric_cast<asUINT>(vec.size()));
 
-        for (const auto i : xrange(vec)) {
+        for (const auto i : iterate_range(vec)) {
             *static_cast<T2*>(as_array->At(static_cast<asUINT>(i))) = static_cast<T2>(vec[i]);
 
             if constexpr (std::is_pointer_v<T>) {
@@ -4350,7 +4350,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
         }
 
-        for (const auto i : xrange(registrator->GetPropertiesCount())) {
+        for (const auto i : iterate_range(registrator->GetPropertiesCount())) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = prop->IsArray() || prop->IsDict();

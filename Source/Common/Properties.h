@@ -428,7 +428,7 @@ public:
                 data += sizeof(arr_size);
                 result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                     uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
@@ -450,7 +450,7 @@ public:
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
                 result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                     const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
                     result.emplace_back(hvalue);
                     data += sizeof(hstring::hash_t);
@@ -548,7 +548,7 @@ public:
                 data += sizeof(arr_size);
                 result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                     uint32 str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
@@ -570,7 +570,7 @@ public:
                 const auto arr_size = data_size / sizeof(hstring::hash_t);
                 result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-                for ([[maybe_unused]] const auto i : xrange(arr_size)) {
+                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                     const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
                     result.emplace_back(hvalue);
                     data += sizeof(hstring::hash_t);
