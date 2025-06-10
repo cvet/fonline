@@ -80,8 +80,7 @@ struct ident_t_traits
     using underlying_type = int64;
 };
 using ident_t = strong_type<ident_t_traits>;
-static_assert(sizeof(ident_t) == sizeof(ident_t_traits::underlying_type));
-static_assert(std::is_standard_layout_v<ident_t>);
+static_assert(is_strong_type<ident_t>);
 
 // Custom any as string
 // Todo: export any_t with ExportType
@@ -275,8 +274,8 @@ private:
 
 // Valid plain data for properties
 template<typename T>
-concept is_valid_property_plain_type = std::is_standard_layout_v<T> && !is_strong_type<T> && !std::is_same_v<T, any_t> && //
-    !std::is_same_v<T, string> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && //
+concept is_valid_property_plain_type = std::is_standard_layout_v<T> && !is_strong_type<T> && !std::same_as<T, any_t> && //
+    !std::same_as<T, string> && !std::same_as<T, string_view> && !std::same_as<T, hstring> && !std::is_arithmetic_v<T> && //
     !std::is_enum_v<T> && !is_vector_collection<T> && !is_map_collection<T> && std::has_unique_object_representations_v<T>;
 
 // Generic constants

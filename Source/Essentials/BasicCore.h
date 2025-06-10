@@ -60,6 +60,7 @@
 #include <climits>
 #include <clocale>
 #include <cmath>
+#include <concepts>
 #include <condition_variable>
 #include <csignal>
 #include <cstdarg>

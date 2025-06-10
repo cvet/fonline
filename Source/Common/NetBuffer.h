@@ -100,7 +100,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, string_view> || std::is_same_v<T, string>)
+        requires(std::same_as<T, string_view> || std::same_as<T, string>)
     void Write(T value)
     {
         const auto len = numeric_cast<uint32>(value.length());
@@ -109,7 +109,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, hstring>)
+        requires(std::same_as<T, hstring>)
     void Write(T value)
     {
         const auto hash = value.as_hash();
@@ -158,7 +158,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, string>)
+        requires(std::same_as<T, string>)
     [[nodiscard]] auto Read() -> string
     {
         string result;
@@ -170,7 +170,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, hstring>)
+        requires(std::same_as<T, hstring>)
     [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
     {
         return ReadHashedString(hash_resolver);

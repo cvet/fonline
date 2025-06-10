@@ -50,7 +50,7 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry = {};
     }
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::same_as<T, string>) {
         if (append && !entry.empty()) {
             entry += " ";
         }
@@ -58,11 +58,11 @@ static void SetEntry(T& entry, string_view value, bool append)
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         entry += any_value.AsString();
     }
-    else if constexpr (std::is_same_v<T, bool>) {
+    else if constexpr (std::same_as<T, bool>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
         entry |= any_value.AsBool();
     }
-    else if constexpr (std::is_floating_point_v<T>) {
+    else if constexpr (std::floating_point<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
         entry += numeric_cast<float32>(any_value.AsDouble());
     }
@@ -94,7 +94,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         entry.clear();
     }
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::same_as<T, string>) {
         const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
         const auto& arr = arr_value.AsArray();
 
@@ -102,7 +102,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
             entry.emplace_back(arr_entry.AsString());
         }
     }
-    else if constexpr (std::is_same_v<T, bool>) {
+    else if constexpr (std::same_as<T, bool>) {
         const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
         const auto& arr = arr_value.AsArray();
 
@@ -110,7 +110,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
             entry.emplace_back(arr_entry.AsBool());
         }
     }
-    else if constexpr (std::is_floating_point_v<T>) {
+    else if constexpr (std::floating_point<T>) {
         const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Double);
         const auto& arr = arr_value.AsArray();
 

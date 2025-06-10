@@ -37,6 +37,7 @@
 
 #include "BasicCore.h"
 #include "SafeArithmetics.h"
+#include "StrongType.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -57,11 +58,11 @@ struct ucolor
     {
     }
     constexpr ucolor(uint8 r_, uint8 g_, uint8 b_) noexcept :
-        comp {r_, g_, b_, 255}
+        comp {.r = r_, .g = g_, .b = b_, .a = 255}
     {
     }
     constexpr ucolor(uint8 r_, uint8 g_, uint8 b_, uint8 a_) noexcept :
-        comp {r_, g_, b_, a_}
+        comp {.r = r_, .g = g_, .b = b_, .a = a_}
     {
     }
     constexpr explicit ucolor(const ucolor& other, uint8 a_) noexcept :
@@ -93,8 +94,7 @@ struct ucolor
 
     static const ucolor clear;
 };
-static_assert(sizeof(ucolor) == sizeof(uint32));
-static_assert(std::is_standard_layout_v<ucolor>);
+static_assert(is_strong_type<ucolor>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
 FO_END_NAMESPACE();

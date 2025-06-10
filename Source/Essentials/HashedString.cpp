@@ -41,7 +41,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+    static_assert(std::same_as<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
         return {};

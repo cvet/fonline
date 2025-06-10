@@ -99,10 +99,10 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
         FO_NAMESPACE string result;
 
         for (const auto& e : value) {
-            if constexpr (std::is_same_v<T, FO_NAMESPACE vector<FO_NAMESPACE string>>) {
+            if constexpr (std::same_as<T, FO_NAMESPACE vector<FO_NAMESPACE string>>) {
                 result += e + " ";
             }
-            else if constexpr (std::is_same_v<T, FO_NAMESPACE vector<bool>>) {
+            else if constexpr (std::same_as<T, FO_NAMESPACE vector<bool>>) {
                 result += e ? "True " : "False ";
             }
             else {

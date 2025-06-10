@@ -411,7 +411,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     FO_STACK_TRACE_ENTRY();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (std::same_as<T, bool>) {
             result_value = value.AsInt64() != 0;
         }
         else {
@@ -419,10 +419,10 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else if (value.Type() == AnyData::ValueType::Double) {
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (std::same_as<T, bool>) {
             result_value = !is_float_equal(value.AsDouble(), 0.0);
         }
-        else if constexpr (std::is_integral_v<T>) {
+        else if constexpr (std::integral<T>) {
             result_value = iround<T>(value.AsDouble());
         }
         else {
@@ -430,10 +430,10 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (std::same_as<T, bool>) {
             result_value = value.AsBool();
         }
-        else if constexpr (std::is_floating_point_v<T>) {
+        else if constexpr (std::floating_point<T>) {
             result_value = value.AsBool() ? 1.0f : 0.0f;
         }
         else {
@@ -444,10 +444,10 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         const auto& str = value.AsString();
 
         if (strex(str).isNumber()) {
-            if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (std::same_as<T, bool>) {
                 result_value = strex(str).toBool();
             }
-            else if constexpr (std::is_floating_point_v<T>) {
+            else if constexpr (std::floating_point<T>) {
                 result_value = numeric_cast<T>(strex(str).toDouble());
             }
             else {
@@ -455,10 +455,10 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
             }
         }
         else if (strex(str).isExplicitBool()) {
-            if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (std::same_as<T, bool>) {
                 result_value = strex(str).toBool();
             }
-            else if constexpr (std::is_floating_point_v<T>) {
+            else if constexpr (std::floating_point<T>) {
                 result_value = strex(str).toBool() ? 1.0f : 0.0f;
             }
             else {

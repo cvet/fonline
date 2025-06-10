@@ -332,7 +332,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, hstring>)
+        requires(std::same_as<T, hstring>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -363,7 +363,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -420,7 +420,7 @@ public:
         T result;
 
         if (data_size != 0) {
-            if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
+            if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
                 FO_RUNTIME_ASSERT(prop->IsArrayOfString());
 
                 uint32 arr_size;
@@ -433,7 +433,7 @@ public:
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
-                    if constexpr (std::is_same_v<T, vector<string>>) {
+                    if constexpr (std::same_as<T, vector<string>>) {
                         result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                     }
                     else {
@@ -443,7 +443,7 @@ public:
                     data += str_size;
                 }
             }
-            else if constexpr (std::is_same_v<T, vector<hstring>>) {
+            else if constexpr (std::same_as<T, vector<hstring>>) {
                 FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
                 FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
@@ -485,7 +485,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, hstring>)
+        requires(std::same_as<T, hstring>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -503,7 +503,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -540,7 +540,7 @@ public:
         T result;
 
         if (data_size != 0) {
-            if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
+            if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
                 FO_STRONG_ASSERT(prop->IsArrayOfString());
 
                 uint32 arr_size;
@@ -553,7 +553,7 @@ public:
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
-                    if constexpr (std::is_same_v<T, vector<string>>) {
+                    if constexpr (std::same_as<T, vector<string>>) {
                         result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                     }
                     else {
@@ -563,7 +563,7 @@ public:
                     data += str_size;
                 }
             }
-            else if constexpr (std::is_same_v<T, vector<hstring>>) {
+            else if constexpr (std::same_as<T, vector<hstring>>) {
                 FO_STRONG_ASSERT(prop->IsBaseTypeHash());
                 FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
@@ -615,7 +615,7 @@ public:
             auto& cur_value = *reinterpret_cast<T*>(&_podData[*prop->_podDataOffset]);
             bool equal;
 
-            if constexpr (std::is_floating_point_v<T>) {
+            if constexpr (std::floating_point<T>) {
                 equal = is_float_equal(new_value, cur_value);
             }
             else {
@@ -647,7 +647,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, hstring>)
+        requires(std::same_as<T, hstring>)
     void SetValue(const Property* prop, T new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -697,7 +697,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_same_v<T, string> || std::is_same_v<T, any_t>)
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
     void SetValue(const Property* prop, const T& new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -751,7 +751,7 @@ public:
 
         PropertyRawData prop_data;
 
-        if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
+        if constexpr (std::same_as<T, string> || std::same_as<T, any_t>) {
             if (!new_value.empty()) {
                 size_t data_size = sizeof(uint32);
 
@@ -777,7 +777,7 @@ public:
                 }
             }
         }
-        else if constexpr (std::is_same_v<T, hstring>) {
+        else if constexpr (std::same_as<T, hstring>) {
             FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
             if (!new_value.empty()) {

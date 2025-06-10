@@ -32,3 +32,15 @@
 //
 
 #include "StrongType.h"
+
+FO_BEGIN_NAMESPACE();
+
+struct test_type_traits
+{
+    static constexpr string_view name = "test";
+    static constexpr string_view underlying_type_name = "int32";
+    using underlying_type = int32;
+};
+static_assert(is_strong_type<strong_type<test_type_traits>>);
+
+FO_END_NAMESPACE();

@@ -40,7 +40,7 @@
 FO_BEGIN_NAMESPACE();
 
 // Strong types
-template<typename T>
+template<typename T, bool HasArithmetics = false>
 struct strong_type
 {
     using underlying_type = typename T::underlying_type;
@@ -68,11 +68,33 @@ struct strong_type
     [[nodiscard]] constexpr auto operator<=(const strong_type& other) const noexcept -> bool { return _value <= other._value; }
     [[nodiscard]] constexpr auto operator>(const strong_type& other) const noexcept -> bool { return _value > other._value; }
     [[nodiscard]] constexpr auto operator>=(const strong_type& other) const noexcept -> bool { return _value >= other._value; }
-    [[nodiscard]] constexpr auto operator+(const strong_type& other) const noexcept -> strong_type { return strong_type(_value + other._value); }
-    [[nodiscard]] constexpr auto operator-(const strong_type& other) const noexcept -> strong_type { return strong_type(_value - other._value); }
-    [[nodiscard]] constexpr auto operator*(const strong_type& other) const noexcept -> strong_type { return strong_type(_value * other._value); }
-    [[nodiscard]] constexpr auto operator/(const strong_type& other) const noexcept -> strong_type { return strong_type(_value / other._value); }
-    [[nodiscard]] constexpr auto operator%(const strong_type& other) const noexcept -> strong_type { return strong_type(_value % other._value); }
+
+    [[nodiscard]] constexpr auto operator+(const strong_type& other) const noexcept -> strong_type
+        requires(HasArithmetics)
+    {
+        return strong_type(_value + other._value);
+    }
+    [[nodiscard]] constexpr auto operator-(const strong_type& other) const noexcept -> strong_type
+        requires(HasArithmetics)
+    {
+        return strong_type(_value - other._value);
+    }
+    [[nodiscard]] constexpr auto operator*(const strong_type& other) const noexcept -> strong_type
+        requires(HasArithmetics)
+    {
+        return strong_type(_value * other._value);
+    }
+    [[nodiscard]] constexpr auto operator/(const strong_type& other) const noexcept -> strong_type
+        requires(HasArithmetics)
+    {
+        return strong_type(_value / other._value);
+    }
+    [[nodiscard]] constexpr auto operator%(const strong_type& other) const noexcept -> strong_type
+        requires(HasArithmetics)
+    {
+        return strong_type(_value % other._value);
+    }
+
     [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
     [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
@@ -81,9 +103,11 @@ private:
 };
 
 template<typename T>
-concept is_strong_type = requires(T t) {
-    std::has_unique_object_representations_v<T>;
+concept is_strong_type = requires {
     typename T::underlying_type;
+    std::has_unique_object_representations_v<T>;
+    std::is_standard_layout_v<T>;
+    sizeof(T) == sizeof(typename T::underlying_type);
 };
 
 FO_END_NAMESPACE();

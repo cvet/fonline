@@ -40,14 +40,14 @@ FO_BEGIN_NAMESPACE();
 
 // Float comparator
 template<typename T>
-    requires(std::is_floating_point_v<T>)
+    requires(std::floating_point<T>)
 [[nodiscard]] constexpr auto float_abs(T f) noexcept -> T
 {
     return f < 0 ? -f : f;
 }
 
 template<typename T>
-    requires(std::is_floating_point_v<T>)
+    requires(std::floating_point<T>)
 [[nodiscard]] constexpr auto is_float_equal(T f1, T f2) noexcept -> bool
 {
     if (float_abs(f1 - f2) <= 1.0e-5f) {
@@ -61,14 +61,13 @@ FO_DECLARE_EXCEPTION(OverflowException);
 FO_DECLARE_EXCEPTION(DivisionByZeroException);
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::is_arithmetic_v<U>)
 [[nodiscard]] constexpr auto numeric_cast(U value) -> T
 {
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+    static_assert(!std::same_as<T, bool> && !std::same_as<U, bool>, "Bool type is not convertible");
 
-    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+    if constexpr (std::floating_point<T> || std::floating_point<U>) {
+        static_assert(std::floating_point<T>, "Use iround for float to int conversion");
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -115,18 +114,20 @@ template<typename T, typename U>
             throw OverflowException("Numeric cast overflow", typeid(U).name(), typeid(T).name(), value, std::numeric_limits<T>::max());
         }
     }
+    else {
+        static_assert(false);
+    }
 
     return static_cast<T>(value);
 }
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::is_arithmetic_v<U>)
 [[nodiscard]] constexpr auto safe_numeric_cast(U value) noexcept -> T
 {
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+    static_assert(!std::same_as<T, bool> && !std::same_as<U, bool>, "Bool type is not convertible");
 
-    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
+    if constexpr (std::floating_point<T> || std::floating_point<U>) {
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -155,6 +156,9 @@ template<typename T, typename U>
     else if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U> && sizeof(T) < sizeof(U)) {
         static_assert(false, "Safe conversion not possible");
     }
+    else {
+        static_assert(false);
+    }
 
     return static_cast<T>(value);
 }
@@ -166,14 +170,13 @@ template<typename T, typename U>
 }
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::is_arithmetic_v<U>)
 [[nodiscard]] constexpr auto clamp_to(U value) noexcept -> T
 {
-    static_assert(std::is_arithmetic_v<T>);
-    static_assert(std::is_arithmetic_v<U>);
-    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool>, "Bool type is not convertible");
+    static_assert(!std::same_as<T, bool> && !std::same_as<U, bool>, "Bool type is not convertible");
 
-    if constexpr (std::is_floating_point_v<T> || std::is_floating_point_v<U>) {
-        static_assert(std::is_floating_point_v<T>, "Use iround for float to int conversion");
+    if constexpr (std::floating_point<T> || std::floating_point<U>) {
+        static_assert(std::floating_point<T>, "Use iround for float to int conversion");
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -220,52 +223,47 @@ template<typename T, typename U>
             value = static_cast<U>(std::numeric_limits<T>::max());
         }
     }
+    else {
+        static_assert(false);
+    }
 
     return static_cast<T>(value);
 }
 
 template<typename T, typename U>
+    requires(std::floating_point<U> && std::integral<T>)
 [[nodiscard]] constexpr auto iround(U value) -> T
 {
-    static_assert(std::is_floating_point_v<U> && std::is_integral_v<T>);
     return numeric_cast<T>(std::llround(value));
 }
 
 // Safe arithmetics
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto explicit_add(const U& value1, const U& value2) -> U
 {
-    static_assert(std::is_same_v<T, U>);
-    static_assert(std::is_arithmetic_v<T>);
-
     return numeric_cast<T>(value1 + value2);
 }
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto explicit_sub(const U& value1, const U& value2) -> U
 {
-    static_assert(std::is_same_v<T, U>);
-    static_assert(std::is_arithmetic_v<T>);
-
     return numeric_cast<T>(value1 - value2);
 }
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto explicit_mul(const U& value1, const U& value2) -> U
 {
-    static_assert(std::is_same_v<T, U>);
-    static_assert(std::is_arithmetic_v<T>);
-
     return numeric_cast<T>(value1 * value2);
 }
 
 template<typename T, typename U>
+    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto explicit_div(const U& value1, const U& value2) -> U
 {
-    static_assert(std::is_same_v<T, U>);
-    static_assert(std::is_arithmetic_v<T>);
-
-    if constexpr (std::is_floating_point_v<T>) {
+    if constexpr (std::floating_point<T>) {
         if (std::fabs(value2) < std::numeric_limits<T>::epsilon()) {
             throw DivisionByZeroException("Float division by zero", typeid(T).name(), value1, value2);
         }
@@ -281,21 +279,21 @@ template<typename T, typename U>
 
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
-    requires(std::is_floating_point_v<U>)
+    requires(std::floating_point<U>)
 [[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
-    requires(std::is_integral_v<U> && std::is_signed_v<U>)
+    requires(std::signed_integral<U>)
 [[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + iround<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
-    requires(std::is_integral_v<U> && std::is_unsigned_v<U>)
+    requires(std::unsigned_integral<U>)
 [[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : iround<U>(v1 * (1 - t) + v2 * t));
@@ -345,7 +343,7 @@ private:
 };
 
 template<typename T>
-    requires(std::is_integral_v<T>)
+    requires(std::integral<T>)
 constexpr auto iterate_range(T value) noexcept
 {
     return irange_loop<T> {0, value};
