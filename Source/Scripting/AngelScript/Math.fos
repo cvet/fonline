@@ -174,4 +174,11 @@ fpos MoveTowards(fpos v1, fpos v2, float step)
     }
 }
 
+int DistanceToRect(ipos p, irect r)
+{
+    float dx = MaxF(MaxF(r.x - p.x, p.x - (r.x + r.width)), 0.0);
+    float dy = MaxF(MaxF(r.y - p.y, p.y - (r.y + r.height)), 0.0);
+    return RoundToInt(math::sqrt(dx * dx + dy * dy));
+}
+
 }

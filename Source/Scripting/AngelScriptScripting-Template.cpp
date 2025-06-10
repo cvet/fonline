@@ -811,8 +811,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     ignore_unused(as_engine);
 
-    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
-    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
+    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type<T> || is_valid_property_plain_type<T>);
+    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type<U> || is_valid_property_plain_type<U>);
 
     if (as_dict == nullptr || as_dict->GetSize() == 0) {
         return {};
@@ -839,8 +839,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     ignore_unused(as_engine);
 
-    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
-    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
+    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type<T> || is_valid_property_plain_type<T>);
+    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type<U> || is_valid_property_plain_type<U>);
 
     as_dict->Clear();
 
@@ -858,8 +858,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     FO_STACK_TRACE_ENTRY();
 
-    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T> || is_valid_pod_type_v<T>);
-    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U> || is_valid_pod_type_v<U>);
+    static_assert(std::is_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type<T> || is_valid_property_plain_type<T>);
+    static_assert(std::is_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type<U> || is_valid_property_plain_type<U>);
 
     auto* as_dict = CreateASDict(as_engine, type);
 
@@ -1898,7 +1898,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 }
 
 template<typename T>
-    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1912,7 +1912,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 }
 
 template<typename T>
-    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>)
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1925,8 +1925,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 }
 
 template<typename T, typename U>
-    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type<U> || is_valid_property_plain_type<U>))
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1940,7 +1940,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 }
 
 template<typename T>
-    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1957,7 +1957,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolve
 }
 
 template<typename T>
-    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>)
+    requires(std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>)
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1973,8 +1973,8 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash
 }
 
 template<typename T, typename U>
-    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type_v<T> || is_valid_pod_type_v<T>) && //
-        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type_v<U> || is_valid_pod_type_v<U>))
+    requires((std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || std::is_enum_v<T> || is_strong_type<T> || is_valid_property_plain_type<T>) && //
+        (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || std::is_enum_v<U> || is_strong_type<U> || is_valid_property_plain_type<U>))
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3117,7 +3117,7 @@ static auto Any_Conv(const any_t& self) -> T
     if constexpr (std::is_same_v<T, bool>) {
         return strex(self).toBool();
     }
-    else if constexpr (is_strong_type_v<T>) {
+    else if constexpr (is_strong_type<T>) {
         return T {numeric_cast<typename T::underlying_type>(strex(self).toInt64())};
     }
     else if constexpr (std::is_integral_v<T>) {
@@ -3999,7 +3999,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     }
 
 #define REGISTER_RELAXED_STRONG_TYPE(name, type) \
-    static_assert(is_strong_type_v<type>); \
+    static_assert(is_strong_type<type>); \
     if (strong_type_registered.count(name) == 0) { \
         REGISTER_HARD_STRONG_TYPE(name, type); \
         AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, strex("void f(const {} &in)", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \

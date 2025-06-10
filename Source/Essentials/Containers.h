@@ -71,12 +71,10 @@ template<typename T>
 using vector = std::vector<T, SafeAllocator<T>>;
 
 // Template helpers
-FO_TYPE_HAS_MEMBER(has_inlined, inlined); // small_vector test
-
 template<typename T>
-static constexpr bool is_vector_v = is_specialization<T, std::vector>::value || has_inlined_v<T> /*small_vector test*/;
+concept is_vector_collection = is_specialization<T, std::vector>::value || has_member<T, &T::inlined> /*small_vector test*/;
 template<typename T>
-static constexpr bool is_map_v = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
+concept is_map_collection = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
 
 // String formatter
 FO_END_NAMESPACE();
@@ -92,7 +90,7 @@ FO_BEGIN_NAMESPACE();
 // Vector formatter
 FO_END_NAMESPACE();
 template<typename T>
-    requires(FO_NAMESPACE is_vector_v<T>)
+    requires(FO_NAMESPACE is_vector_collection<T>)
 struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>

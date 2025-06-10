@@ -45,7 +45,6 @@ FO_BEGIN_NAMESPACE();
 struct ucolor
 {
     using underlying_type = uint32;
-    static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = "ucolor";
     static constexpr string_view underlying_type_name = "uint32";
 

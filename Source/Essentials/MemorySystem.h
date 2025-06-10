@@ -116,10 +116,9 @@ public:
     SafeAlloc() = delete;
 
     template<typename T, typename... Args>
+        requires(!is_refcounted<T>)
     static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
     {
-        static_assert(!is_refcounted_v<T>);
-
         auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
 
         if (ptr == nullptr) {
@@ -138,26 +137,23 @@ public:
     }
 
     template<typename T, typename... Args>
+        requires(!is_refcounted<T>)
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        static_assert(!is_refcounted_v<T>);
-
         return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
+        requires(!is_refcounted<T>)
     static auto MakeUniq(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> uniq_ptr<T>
     {
-        static_assert(!is_refcounted_v<T>);
-
         return uniq_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
+        requires(is_refcounted<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        static_assert(is_refcounted_v<T>);
-
         auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
 
         if (ptr == nullptr) {
@@ -176,10 +172,9 @@ public:
     }
 
     template<typename T, typename... Args>
+        requires(!is_refcounted<T>)
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        static_assert(!is_refcounted_v<T>);
-
         try {
             return std::make_shared<T>(std::forward<Args>(args)...);
         }
@@ -202,10 +197,9 @@ public:
     }
 
     template<typename T>
+        requires(!is_refcounted<T>)
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
-        static_assert(!is_refcounted_v<T>);
-
         if (count == 0) {
             return nullptr;
         }
@@ -233,10 +227,9 @@ public:
     }
 
     template<typename T>
+        requires(!is_refcounted<T>)
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_ptr<T[]>
     {
-        static_assert(!is_refcounted_v<T>);
-
         return unique_ptr<T[]>(MakeRawArr<T>(count));
     }
 };

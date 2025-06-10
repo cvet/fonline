@@ -93,7 +93,7 @@ public:
     void DiscardWriteBuf(size_t len);
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
     void Write(T value)
     {
         Push(&value, sizeof(T));
@@ -149,7 +149,7 @@ public:
     void ResetBuf() noexcept override;
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
     [[nodiscard]] auto Read() -> T
     {
         T result = {};

@@ -52,7 +52,6 @@ class timespan
 {
 public:
     using underlying_type = int64;
-    static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = FO_TIMESPAN_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
@@ -147,7 +146,6 @@ class nanotime
 {
 public:
     using underlying_type = int64;
-    static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = FO_NANOTIME_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
@@ -225,7 +223,6 @@ class synctime
 {
 public:
     using underlying_type = int64;
-    static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = FO_SYNCTIME_NAME;
     static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::milliseconds;

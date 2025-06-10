@@ -614,10 +614,10 @@ struct FO_HASH_NAMESPACE hash<FO_NAMESPACE propagate_const<T>>
 FO_BEGIN_NAMESPACE();
 
 // Template helpers
-FO_TYPE_HAS_MEMBER(has_addref, AddRef);
-FO_TYPE_HAS_MEMBER(has_release, Release);
-
 template<typename T>
-static constexpr bool is_refcounted_v = has_addref_v<T> && has_release_v<T>;
+concept is_refcounted = requires(T t) {
+    t.AddRef();
+    t.Release();
+};
 
 FO_END_NAMESPACE();
