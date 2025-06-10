@@ -534,8 +534,8 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         return false;
     }
 
-    if constexpr (std::is_integral_v<T>) {
-        static_assert(std::is_signed_v<T>);
+    if constexpr (std::integral<T>) {
+        static_assert(std::signed_integral<T>);
 
         const char* ptr = sv.data();
         const char* end_ptr = ptr + len;

@@ -121,8 +121,7 @@ public:
 private:
     int64 _value {};
 };
-static_assert(sizeof(timespan) == sizeof(int64));
-static_assert(std::is_standard_layout_v<timespan>);
+static_assert(is_strong_type<timespan>);
 
 struct time_desc_t
 {
@@ -214,8 +213,7 @@ public:
 private:
     int64 _value {};
 };
-static_assert(sizeof(nanotime) == sizeof(int64));
-static_assert(std::is_standard_layout_v<nanotime>);
+static_assert(is_strong_type<nanotime>);
 
 ///@ ExportValueType synctime synctime HardStrong Layout = int64-value
 #define FO_SYNCTIME_NAME "synctime"
@@ -280,8 +278,7 @@ public:
 private:
     int64 _value {};
 };
-static_assert(sizeof(synctime) == sizeof(int64));
-static_assert(std::is_standard_layout_v<synctime>);
+static_assert(is_strong_type<synctime>);
 
 FO_END_NAMESPACE();
 template<>

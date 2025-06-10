@@ -1257,7 +1257,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_cbuffer));
 
 #if FO_ENABLE_3D
-        if constexpr (std::is_same_v<std::decay_t<decltype(buf)>, ModelBuffer>) {
+        if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
             const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32) * 16;
             MemCopy(cbuffer_resource.pData, &buf, bind_size);
         }

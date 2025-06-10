@@ -113,7 +113,7 @@ public:
     }
 
     template<typename T, typename U>
-        requires(std::is_arithmetic_v<T> && std::is_same_v<T, U>)
+        requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
     void Write(U data) noexcept
     {
         GrowBuf(sizeof(T));
