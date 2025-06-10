@@ -3068,7 +3068,7 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
         auto vmin = mesh->Vertices[0].Position.x;
         auto vmax = mesh->Vertices[0].Position.x;
 
-        for (const auto i : xrange(mesh->Vertices)) {
+        for (const auto i : iterate_range(mesh->Vertices)) {
             const auto& v = mesh->Vertices[i];
             if (v.Position.x < vmin) {
                 vmin = v.Position.x;

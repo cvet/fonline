@@ -93,7 +93,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
 
     const auto info_size = reader.Read<uint32>();
 
-    for (const auto i : xrange(info_size)) {
+    for (const auto i : iterate_range(info_size)) {
         ignore_unused(i);
 
         const auto name_size = reader.Read<uint32>();
@@ -105,7 +105,7 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
         auto data = vector<string>();
         data.reserve(data_size);
 
-        for (const auto e : xrange(data_size)) {
+        for (const auto e : iterate_range(data_size)) {
             ignore_unused(e);
 
             const auto entry_size = reader.Read<uint32>();

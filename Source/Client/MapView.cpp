@@ -330,8 +330,8 @@ void MapView::LoadStaticData()
     // Index roof
     auto roof_num = 1;
 
-    for (const auto hx : xrange(_mapSize.width)) {
-        for (const auto hy : xrange(_mapSize.height)) {
+    for (const auto hx : iterate_range(_mapSize.width)) {
+        for (const auto hy : iterate_range(_mapSize.height)) {
             if (!_hexField->GetCellForReading({hx, hy}).RoofTiles.empty()) {
                 MarkRoofNum(ipos32 {hx, hy}, numeric_cast<int16>(roof_num));
                 roof_num++;
@@ -340,12 +340,12 @@ void MapView::LoadStaticData()
     }
 
     // Scroll blocks borders
-    for (const auto hx : xrange(_mapSize.width)) {
-        for (const auto hy : xrange(_mapSize.height)) {
+    for (const auto hx : iterate_range(_mapSize.width)) {
+        for (const auto hy : iterate_range(_mapSize.height)) {
             const auto& field = _hexField->GetCellForReading({hx, hy});
 
             if (field.Flags.ScrollBlock) {
-                for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
+                for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
                     auto pos_around = mpos {hx, hy};
                     GeometryHelper::MoveHexByDir(pos_around, numeric_cast<uint8>(dir), _mapSize);
                     _hexField->GetCellForWriting(pos_around).Flags.MoveBlocked = true;
@@ -1021,7 +1021,7 @@ void MapView::RebuildMap(ipos32 screen_raw_hex)
     _needReapplyLights = true;
 
     // Begin generate new sprites
-    for (const auto i : xrange(_hVisible * _wVisible)) {
+    for (const auto i : iterate_range(_hVisible * _wVisible)) {
         const auto& vf = _viewField[i];
 
         if (!_mapSize.IsValidPos(vf.RawHex)) {
@@ -1283,7 +1283,7 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
     _screenRawHex.x += _viewField[vpos2].RawHex.x - _viewField[vpos1].RawHex.x;
     _screenRawHex.y += _viewField[vpos2].RawHex.y - _viewField[vpos1].RawHex.y;
 
-    for (const auto i : xrange(_wVisible * _hVisible)) {
+    for (const auto i : iterate_range(_wVisible * _hVisible)) {
         auto& vf = _viewField[i];
 
         if (ox < 0) {
@@ -3887,7 +3887,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         for (auto i = 0; i < p_togo && !find_ok; ++i, ++p) {
             auto hex = coords[p];
 
-            for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
+            for (const auto j : iterate_range(GameSettings::MAP_DIR_COUNT)) {
                 auto raw_next_hex = ipos32 {hex.x, hex.y};
                 GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
