@@ -3070,12 +3070,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
 
         for (const auto i : iterate_range(mesh->Vertices)) {
             const auto& v = mesh->Vertices[i];
-            if (v.Position.x < vmin) {
-                vmin = v.Position.x;
-            }
-            if (v.Position.x > vmax) {
-                vmax = v.Position.x;
-            }
+            vmin = std::min(v.Position.x, vmin);
+            vmax = std::max(v.Position.x, vmax);
         }
 
         shape.SphereRadius = (vmax - vmin) / 2.0f;
@@ -3089,30 +3085,19 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
 
         for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++) {
             const Vertex3D& v = mesh->Vertices[i];
+
             if (i == 0) {
                 vmin[0] = vmax[0] = v.Position.x;
                 vmin[1] = vmax[1] = v.Position.y;
                 vmin[2] = vmax[2] = v.Position.z;
             }
             else {
-                if (vmin[0] < v.Position.x) {
-                    vmin[0] = v.Position.x;
-                }
-                if (vmin[1] < v.Position.y) {
-                    vmin[1] = v.Position.y;
-                }
-                if (vmin[2] < v.Position.z) {
-                    vmin[2] = v.Position.z;
-                }
-                if (vmax[0] > v.Position.x) {
-                    vmax[0] = v.Position.x;
-                }
-                if (vmax[1] > v.Position.y) {
-                    vmax[1] = v.Position.y;
-                }
-                if (vmax[2] > v.Position.z) {
-                    vmax[2] = v.Position.z;
-                }
+                vmin[0] = std::max(vmin[0], v.Position.x);
+                vmin[1] = std::max(vmin[1], v.Position.y);
+                vmin[2] = std::max(vmin[2], v.Position.z);
+                vmax[0] = std::min(vmax[0], v.Position.x);
+                vmax[1] = std::min(vmax[1], v.Position.y);
+                vmax[2] = std::min(vmax[2], v.Position.z);
             }
         }
 

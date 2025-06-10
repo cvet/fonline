@@ -275,28 +275,10 @@ auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
 #define FO_LINE_STR FO_STRINGIFY(__LINE__)
 
 // Template helpers
-#define FO_TYPE_HAS_MEMBER(name, member) \
-    template<typename T> \
-    class name \
-    { \
-        using one = char; \
-        struct two \
-        { \
-            char x[2]; \
-        }; \
-        template<typename C> \
-        static auto test(decltype(&C::member)) -> one; \
-        template<typename C> \
-        static auto test(...) -> two; \
-\
-    public: \
-        enum \
-        { \
-            value = sizeof(test<T>(0)) == sizeof(char) \
-        }; \
-    }; \
-    template<typename T> \
-    static constexpr bool name##_v = name<T>::value
+template<typename T, auto Member, typename Ret = void, typename... Args>
+concept has_member = std::is_member_function_pointer_v<decltype(Member)> && requires(T t) {
+    { (t.*Member)(std::declval<Args>()...) } -> std::convertible_to<Ret>;
+};
 
 template<typename Test, template<typename...> typename Ref>
 struct is_specialization : std::false_type

@@ -304,7 +304,7 @@ public:
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -391,7 +391,7 @@ public:
     }
 
     template<typename T>
-        requires(is_vector_v<T>)
+        requires(is_vector_collection<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -469,7 +469,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -519,7 +519,7 @@ public:
     }
 
     template<typename T>
-        requires(is_vector_v<T>)
+        requires(is_vector_collection<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -589,7 +589,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_pod_type_v<T> || is_strong_type_v<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
     void SetValue(const Property* prop, T new_value)
     {
         FO_NO_STACK_TRACE_ENTRY();
@@ -826,10 +826,10 @@ public:
     }
 
     template<typename T>
-        requires(is_map_v<T>)
+        requires(is_map_collection<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
     template<typename T>
-        requires(is_map_v<T>)
+        requires(is_map_collection<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const -> T = delete;
     template<typename T, typename U>
     void SetValue(const Property* prop, const map<T, U>& new_value) = delete;

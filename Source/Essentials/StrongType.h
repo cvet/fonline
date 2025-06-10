@@ -44,7 +44,6 @@ template<typename T>
 struct strong_type
 {
     using underlying_type = typename T::underlying_type;
-    static constexpr bool is_strong_type = true;
     static constexpr string_view type_name = T::name;
     static constexpr string_view underlying_type_name = T::underlying_type_name;
 
@@ -81,20 +80,15 @@ private:
     underlying_type _value;
 };
 
-template<typename T, typename = int>
-struct has_is_strong_type : std::false_type
-{
-};
 template<typename T>
-struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_type
-{
+concept is_strong_type = requires(T t) {
+    std::has_unique_object_representations_v<T>;
+    typename T::underlying_type;
 };
-template<typename T>
-constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
-    requires(FO_NAMESPACE is_strong_type_v<T>)
+    requires(FO_NAMESPACE is_strong_type<T>)
 struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
@@ -107,7 +101,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
 template<typename T>
-    requires(FO_NAMESPACE is_strong_type_v<T>)
+    requires(FO_NAMESPACE is_strong_type<T>)
 inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 {
     typename T::underlying_type uv;

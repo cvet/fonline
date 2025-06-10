@@ -351,11 +351,9 @@ constexpr auto iterate_range(T value) noexcept
     return irange_loop<T> {0, value};
 }
 
-FO_TYPE_HAS_MEMBER(has_size, size);
-
 template<typename T>
-    requires(has_size_v<T>)
-constexpr auto iterate_range(T value) noexcept
+    requires has_member<T, &T::size, size_t>
+constexpr auto iterate_range(const T& value) noexcept
 {
     return irange_loop<decltype(value.size())> {0, value.size()};
 }

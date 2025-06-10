@@ -70,11 +70,11 @@ static void SetEntry(T& entry, string_view value, bool append)
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
     }
-    else if constexpr (is_strong_type_v<T>) {
+    else if constexpr (is_strong_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
-    else if constexpr (is_valid_pod_type_v<T>) {
+    else if constexpr (is_valid_property_plain_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         istringstream istr(any_value.AsString());
         istr >> entry;

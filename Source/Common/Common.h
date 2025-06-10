@@ -273,11 +273,11 @@ private:
     ObserverType& _observer;
 };
 
-// Plain data detector
+// Valid plain data for properties
 template<typename T>
-constexpr bool is_valid_pod_type_v = std::is_standard_layout_v<T> && !is_strong_type_v<T> && !std::is_same_v<T, any_t> && //
+concept is_valid_property_plain_type = std::is_standard_layout_v<T> && !is_strong_type<T> && !std::is_same_v<T, any_t> && //
     !std::is_same_v<T, string> && !std::is_same_v<T, string_view> && !std::is_same_v<T, hstring> && !std::is_arithmetic_v<T> && //
-    !std::is_enum_v<T> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value && !is_vector_v<T> && !is_map_v<T>;
+    !std::is_enum_v<T> && !is_vector_collection<T> && !is_map_collection<T> && std::has_unique_object_representations_v<T>;
 
 // Generic constants
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
