@@ -223,8 +223,6 @@ public:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PublicModifiable, int16, SortValue);
-    ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, bool, IsTrap);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Protected, int16, TrapValue);

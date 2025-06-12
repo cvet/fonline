@@ -69,8 +69,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         }
     }
 
-    item->EvaluateSortValue(cr->_invItems);
-
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritterSlot(CritterItemSlot::Inventory);
     }

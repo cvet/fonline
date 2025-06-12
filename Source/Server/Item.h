@@ -72,7 +72,6 @@ public:
     auto AddItemToContainer(Item* item, const any_t& stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);
     void SetItemToContainer(Item* item);
-    void EvaluateSortValue(const vector<Item*>& items);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

@@ -46,24 +46,6 @@ Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Propertie
     FO_STACK_TRACE_ENTRY();
 }
 
-void Item::EvaluateSortValue(const vector<Item*>& items)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    int16 sort_value = 0;
-    for (const auto* item : items) {
-        if (item == this) {
-            continue;
-        }
-
-        if (sort_value >= item->GetSortValue()) {
-            sort_value = numeric_cast<int16>(item->GetSortValue() - 1);
-        }
-    }
-
-    SetSortValue(sort_value);
-}
-
 auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
@@ -176,7 +158,6 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
     make_if_not_exists(_innerItems);
 
     item->SetContainerStack(stack_id);
-    item->EvaluateSortValue(*_innerItems);
     SetItemToContainer(item);
 
     auto inner_item_ids = GetInnerItemIds();
