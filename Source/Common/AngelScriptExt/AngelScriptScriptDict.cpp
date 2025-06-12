@@ -72,13 +72,13 @@ struct SDictCache
             FO_RUNTIME_ASSERT(cache->StringTypeId > 0);
             cache->HStringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
             FO_RUNTIME_ASSERT(cache->HStringTypeId > 0);
-            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_IDENT_NAME);
+            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("ident");
             FO_RUNTIME_ASSERT(cache->IdentTypeId > 0);
-            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_TIMESPAN_NAME);
+            cache->TimespanTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("timespan");
             FO_RUNTIME_ASSERT(cache->TimespanTypeId > 0);
-            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_NANOTIME_NAME);
+            cache->NanotimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("nanotime");
             FO_RUNTIME_ASSERT(cache->NanotimeTypeId > 0);
-            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(FO_SYNCTIME_NAME);
+            cache->SynctimeTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("synctime");
             FO_RUNTIME_ASSERT(cache->SynctimeTypeId > 0);
         }
         return cache;

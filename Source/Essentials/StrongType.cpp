@@ -35,12 +35,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-struct test_type_traits
-{
-    static constexpr string_view name = "test";
-    static constexpr string_view underlying_type_name = "int32";
-    using underlying_type = int32;
-};
-static_assert(is_strong_type<strong_type<test_type_traits>>);
+using test_strong_type = strong_type<int32, struct test_strong_type_>;
+static_assert(is_strong_type<test_strong_type>);
 
 FO_END_NAMESPACE();

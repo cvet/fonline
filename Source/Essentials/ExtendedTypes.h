@@ -42,12 +42,10 @@
 FO_BEGIN_NAMESPACE();
 
 // Color type
-///@ ExportValueType ucolor ucolor HardStrong HasValueAccessor Layout = uint32-value
+///@ ExportValueType ucolor ucolor Layout = uint32-value
 struct ucolor
 {
     using underlying_type = uint32;
-    static constexpr string_view type_name = "ucolor";
-    static constexpr string_view underlying_type_name = "uint32";
 
     constexpr ucolor() noexcept :
         rgba {}
@@ -87,7 +85,6 @@ struct ucolor
 
     union
     {
-        uint32 rgb : 24;
         uint32 rgba;
         components comp;
     };
@@ -112,7 +109,7 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
 FO_BEGIN_NAMESPACE();
 
 // Position types
-///@ ExportValueType isize isize32 HardStrong Layout = int32-width+int32-height
+///@ ExportValueType isize isize32 Layout = int32-width+int32-height
 struct isize32
 {
     constexpr isize32() noexcept = default;
@@ -140,7 +137,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.heig
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
-///@ ExportValueType ipos ipos32 HardStrong Layout = int32-x+int32-y
+///@ ExportValueType ipos ipos32 Layout = int32-x+int32-y
 struct ipos32
 {
     constexpr ipos32() noexcept = default;
@@ -166,7 +163,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
-///@ ExportValueType irect irect32 HardStrong Layout = int32-x+int32-y+int32-width+int32-height
+///@ ExportValueType irect irect32 Layout = int32-x+int32-y+int32-width+int32-height
 struct irect32
 {
     constexpr irect32() noexcept = default;
@@ -212,7 +209,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y,
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
-///@ ExportValueType ipos16 ipos16 HardStrong Layout = int16-x+int16-y
+///@ ExportValueType ipos16 ipos16 Layout = int16-x+int16-y
 struct ipos16
 {
     constexpr ipos16() noexcept = default;
@@ -238,7 +235,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
-///@ ExportValueType upos16 upos16 HardStrong Layout = uint16-x+uint16-y
+///@ ExportValueType upos16 upos16 Layout = uint16-x+uint16-y
 struct upos16
 {
     constexpr upos16() noexcept = default;
@@ -264,7 +261,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE upos16, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE upos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE upos16);
 
-///@ ExportValueType ipos8 ipos8 HardStrong Layout = int8-x+int8-y
+///@ ExportValueType ipos8 ipos8 Layout = int8-x+int8-y
 struct ipos8
 {
     constexpr ipos8() noexcept = default;
@@ -290,7 +287,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-///@ ExportValueType fsize fsize32 HardStrong Layout = float32-width+float32-height
+///@ ExportValueType fsize fsize32 Layout = float32-width+float32-height
 struct fsize32
 {
     constexpr fsize32() noexcept = default;
@@ -327,7 +324,7 @@ static_assert(sizeof(fsize32) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
-///@ ExportValueType fpos fpos32 HardStrong Layout = float32-x+float32-y
+///@ ExportValueType fpos fpos32 Layout = float32-x+float32-y
 struct fpos32
 {
     constexpr fpos32() noexcept = default;
@@ -362,7 +359,7 @@ static_assert(sizeof(fpos32) == 8);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
-///@ ExportValueType frect frect32 HardStrong Layout = float32-x+float32-y+float32-width+float32-height
+///@ ExportValueType frect frect32 Layout = float32-x+float32-y+float32-width+float32-height
 struct frect32
 {
     constexpr frect32() noexcept = default;

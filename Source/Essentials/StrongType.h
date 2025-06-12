@@ -40,12 +40,10 @@
 FO_BEGIN_NAMESPACE();
 
 // Strong types
-template<typename T, bool HasArithmetics = false>
+template<typename T, typename Tag, bool HasArithmetics = false>
 struct strong_type
 {
-    using underlying_type = typename T::underlying_type;
-    static constexpr string_view type_name = T::name;
-    static constexpr string_view underlying_type_name = T::underlying_type_name;
+    using underlying_type = T;
 
     constexpr strong_type() noexcept :
         _value {}
@@ -142,13 +140,13 @@ inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
-template<typename T>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T>>
+template<typename T, typename Tag>
+struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T, Tag>>
 {
     using is_avalanching = void;
-    auto operator()(const FO_NAMESPACE strong_type<T>& v) const noexcept -> size_t
+    auto operator()(const FO_NAMESPACE strong_type<T, Tag>& v) const noexcept -> size_t
     {
-        static_assert(std::has_unique_object_representations_v<FO_NAMESPACE strong_type<T>>);
+        static_assert(std::has_unique_object_representations_v<FO_NAMESPACE strong_type<T, Tag>>);
         return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
     }
 };

@@ -71,15 +71,8 @@ FO_BEGIN_NAMESPACE();
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_NON_NULL // Pointer annotation
 
-///@ ExportValueType ident ident_t HardStrong HasValueAccessor Layout = int64-value
-#define FO_IDENT_NAME "ident"
-struct ident_t_traits
-{
-    static constexpr string_view name = FO_IDENT_NAME;
-    static constexpr string_view underlying_type_name = "int64";
-    using underlying_type = int64;
-};
-using ident_t = strong_type<ident_t_traits>;
+///@ ExportValueType ident ident_t Layout = int64-value
+using ident_t = strong_type<int64, struct ident_t_>;
 static_assert(is_strong_type<ident_t>);
 
 // Custom any as string
@@ -275,8 +268,12 @@ private:
 // Valid plain data for properties
 template<typename T>
 concept is_valid_property_plain_type = std::is_standard_layout_v<T> && !is_strong_type<T> && !std::same_as<T, any_t> && //
-    !std::same_as<T, string> && !std::same_as<T, string_view> && !std::same_as<T, hstring> && !std::is_arithmetic_v<T> && //
-    !std::is_enum_v<T> && !is_vector_collection<T> && !is_map_collection<T> && std::has_unique_object_representations_v<T>;
+    !std::is_arithmetic_v<T> && !std::is_enum_v<T> && !is_vector_collection<T> && !is_map_collection<T> && //
+    std::has_unique_object_representations_v<T> && !std::is_convertible_v<T, string_view>;
+static_assert(!is_valid_property_plain_type<string>);
+static_assert(!is_valid_property_plain_type<string_view>);
+static_assert(!is_valid_property_plain_type<hstring>);
+static_assert(!is_valid_property_plain_type<any_t>);
 
 // Generic constants
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
