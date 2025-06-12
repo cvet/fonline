@@ -46,14 +46,11 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
-///@ ExportValueType timespan timespan HardStrong Layout = int64-value
-#define FO_TIMESPAN_NAME "timespan"
+///@ ExportValueType timespan timespan Layout = int64-value
 class timespan
 {
 public:
     using underlying_type = int64;
-    static constexpr string_view type_name = FO_TIMESPAN_NAME;
-    static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
 
     constexpr timespan() noexcept = default;
@@ -139,14 +136,11 @@ struct time_desc_t
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
 auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond, bool local) -> timespan;
 
-///@ ExportValueType nanotime nanotime HardStrong Layout = int64-value
-#define FO_NANOTIME_NAME "nanotime"
+///@ ExportValueType nanotime nanotime Layout = int64-value
 class nanotime
 {
 public:
     using underlying_type = int64;
-    static constexpr string_view type_name = FO_NANOTIME_NAME;
-    static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::nanoseconds;
 
     constexpr nanotime() noexcept = default;
@@ -215,14 +209,11 @@ private:
 };
 static_assert(is_strong_type<nanotime>);
 
-///@ ExportValueType synctime synctime HardStrong Layout = int64-value
-#define FO_SYNCTIME_NAME "synctime"
+///@ ExportValueType synctime synctime Layout = int64-value
 class synctime
 {
 public:
     using underlying_type = int64;
-    static constexpr string_view type_name = FO_SYNCTIME_NAME;
-    static constexpr string_view underlying_type_name = "int64";
     using resolution = std::chrono::milliseconds;
 
     constexpr synctime() noexcept = default;

@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-///@ ExportValueType mpos mpos HardStrong Layout = uint16-x+uint16-y
+///@ ExportValueType mpos mpos Layout = uint16-x+uint16-y
 struct mpos
 {
     constexpr mpos() noexcept = default;
@@ -66,7 +66,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
-///@ ExportValueType msize msize HardStrong Layout = uint16-x+uint16-y
+///@ ExportValueType msize msize Layout = uint16-x+uint16-y
 struct msize
 {
     constexpr msize() noexcept = default;

@@ -54,10 +54,10 @@ ScriptSystem::ScriptSystem()
     MapEnginePlainType<uint64>("uint64");
     MapEnginePlainType<float32>("float32");
     MapEnginePlainType<float64>("float64");
-    MapEnginePlainType<ident_t>(FO_IDENT_NAME);
-    MapEnginePlainType<timespan>(FO_TIMESPAN_NAME);
-    MapEnginePlainType<nanotime>(FO_NANOTIME_NAME);
-    MapEnginePlainType<synctime>(FO_SYNCTIME_NAME);
+    MapEnginePlainType<ident_t>("ident");
+    MapEnginePlainType<timespan>("timespan");
+    MapEnginePlainType<nanotime>("nanotime");
+    MapEnginePlainType<synctime>("synctime");
     MapEnginePlainType<ucolor>("ucolor");
     MapEnginePlainType<isize32>("isize32");
     MapEnginePlainType<ipos32>("ipos32");

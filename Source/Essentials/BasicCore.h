@@ -228,6 +228,29 @@ public:
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
+FO_END_NAMESPACE();
+template<typename T>
+    requires(std::is_same_v<T, FO_NAMESPACE string_view_nt>)
+struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
+{
+    template<typename FormatContext>
+    auto format(const T& value, FormatContext& ctx) const
+    {
+        return formatter<FO_NAMESPACE string_view>::format(static_cast<FO_NAMESPACE string_view>(value), ctx);
+    }
+};
+FO_BEGIN_NAMESPACE();
+
+// String for use in templates
+template<size_t N>
+struct fixed_string
+{
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    constexpr fixed_string(char const (&s)[N]) { std::copy_n(s, N, data); }
+    constexpr auto operator<=>(fixed_string const&) const = default;
+    char data[N] {};
+};
+
 // Generic helpers
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 

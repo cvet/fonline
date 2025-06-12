@@ -128,7 +128,7 @@ genFileList = ['EmbeddedResources-Include.h',
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
-        'ExportValueType': [], # (name, native type, representation type, [flags], [comment])
+        'ExportValueType': [], # (name, native type, [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -527,14 +527,12 @@ def parseTags():
                 
                 name = tok[0]
                 ntype = tok[1]
-                rtype = tok[2]
-                exportFlags = tok[3:]
+                exportFlags = tok[2:]
                 
-                assert rtype in ['RelaxedStrong', 'HardStrong'], 'Wrong type type'
                 assert 'Layout' in exportFlags, 'No Layout specified in ExportValueType'
                 assert exportFlags[exportFlags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
                 
-                codeGenTags['ExportValueType'].append((name, ntype, rtype, exportFlags, comment))
+                codeGenTags['ExportValueType'].append((name, ntype, exportFlags, comment))
                 assert name not in validTypes, 'Type already in valid types'
                 validTypes.add(name)
                 assert name not in customTypes, 'Type already in custom types'
@@ -1517,7 +1515,7 @@ def genDataRegistration(target, isASCompiler):
     # Exported types
     registerLines.append('// Exported types')
     for et in codeGenTags['ExportValueType']:
-        name, ntype, rtype, flags, _ = et
+        name, ntype, flags, _ = et
         registerLines.append('engine->RegisterValueType("' + name + '", sizeof(' + ntype + '), {')
         for layoutEntry in ''.join(flags[flags.index('Layout') + 2:]).split('+'):
             type, name = layoutEntry.split('-')
@@ -2368,13 +2366,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Register custom types
         registerLines.append('// Exported types')
         for et in codeGenTags['ExportValueType']:
-            name, ntype, rtype, flags, _ = et
-            if rtype == 'RelaxedStrong':
-                registerLines.append('REGISTER_RELAXED_STRONG_TYPE("' + name + '", ' + ntype + ');')
-            elif rtype == 'HardStrong':
-                registerLines.append('REGISTER_HARD_STRONG_TYPE("' + name + '", ' + ntype + ');')
-            if 'HasValueAccessor' in flags:
-                registerLines.append('REGISTER_STRONG_TYPE_VALUE_ACCESSOR("' + name + '", ' + ntype + ');')
+            name, ntype, flags, _ = et
+            registerLines.append('REGISTER_VALUE_TYPE("' + name + '", ' + ntype + ');')
         registerLines.append('')
         
         # Register exported objects
@@ -2706,10 +2699,9 @@ def genApiMarkdown():
             writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
             writeComm(m[2], 0)
     for etTag in codeGenTags['ExportValueType']:
-        name, ntype, rtype, flags, comm = etTag
+        name, ntype, flags, comm = etTag
         writeFile('### ' + name + ' value object')
         writeComm(comm, 0)
-        writeFile('* `Type: ' + rtype + '`')
         if flags:
             writeFile('* `Flags: ' + ', '.join(flags) + '`')
         writeFile('')

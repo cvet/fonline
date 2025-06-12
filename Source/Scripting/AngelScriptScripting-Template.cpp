@@ -921,17 +921,17 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     if (type_name == "any") {
         return strex("any: {}", *static_cast<const any_t*>(ptr));
     }
-    if (type_name == FO_IDENT_NAME) {
-        return strex(FO_IDENT_NAME ": {}", *static_cast<const ident_t*>(ptr));
+    if (type_name == "ident") {
+        return strex("ident: {}", *static_cast<const ident_t*>(ptr));
     }
-    if (type_name == FO_TIMESPAN_NAME) {
-        return strex(FO_TIMESPAN_NAME ": {}", *static_cast<const timespan*>(ptr));
+    if (type_name == "timespan") {
+        return strex("timespan: {}", *static_cast<const timespan*>(ptr));
     }
-    if (type_name == FO_NANOTIME_NAME) {
-        return strex(FO_NANOTIME_NAME ": {}", *static_cast<const nanotime*>(ptr));
+    if (type_name == "nanotime") {
+        return strex("nanotime: {}", *static_cast<const nanotime*>(ptr));
     }
-    if (type_name == FO_SYNCTIME_NAME) {
-        return strex(FO_SYNCTIME_NAME ": {}", *static_cast<const synctime*>(ptr));
+    if (type_name == "synctime") {
+        return strex("synctime: {}", *static_cast<const synctime*>(ptr));
     }
 
     if (asUINT enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
@@ -3984,9 +3984,9 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
 
     // Strong type registrators
-#define REGISTER_HARD_STRONG_TYPE(name, type) \
-    if (strong_type_registered.count(name) == 0) { \
-        strong_type_registered.emplace(name); \
+#define REGISTER_VALUE_TYPE(name, type) \
+    if (value_type_registered.count(name) == 0) { \
+        value_type_registered.emplace(name); \
         AS_VERIFY(as_engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
         AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -3998,29 +3998,24 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         AS_VERIFY(as_engine->RegisterGlobalFunction(strex(name " get_ZERO_{}()", strex(name).upper()).c_str(), SCRIPT_GENERIC((Global_Get<type>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(ZERO_##type))); \
     }
 
-#define REGISTER_RELAXED_STRONG_TYPE(name, type) \
-    static_assert(is_strong_type<type>); \
-    if (strong_type_registered.count(name) == 0) { \
-        REGISTER_HARD_STRONG_TYPE(name, type); \
-        AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, strex("void f(const {} &in)", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("{} opImplConv() const", type::underlying_type_name).c_str(), SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    }
+    unordered_set<string> value_type_registered;
 
-#define REGISTER_STRONG_TYPE_VALUE_ACCESSOR(name, type) AS_VERIFY(as_engine->RegisterObjectProperty(name, strex("{} value", type::underlying_type_name).c_str(), 0));
-
-    unordered_set<string> strong_type_registered;
+    // Register ident
+    REGISTER_VALUE_TYPE("ident", ident_t);
+    AS_VERIFY(as_engine->RegisterObjectProperty("ident", "int64 value", 0 /*offsetof(ident_t, _value)*/));
 
     // Register ucolor
-    REGISTER_HARD_STRONG_TYPE("ucolor", ucolor);
+    REGISTER_VALUE_TYPE("ucolor", ucolor);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(uint rgba)", SCRIPT_FUNC_THIS(Ucolor_ConstructRawRgba), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("ucolor", asBEHAVE_CONSTRUCT, "void f(int r, int g, int b, int a = 255)", SCRIPT_FUNC_THIS(Ucolor_ConstructRgba), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 red", offsetof(ucolor, comp.r)));
     AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 green", offsetof(ucolor, comp.g)));
     AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 blue", offsetof(ucolor, comp.b)));
     AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint8 alpha", offsetof(ucolor, comp.a)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("ucolor", "uint value", offsetof(ucolor, rgba)));
 
     // Register timespan
-    REGISTER_HARD_STRONG_TYPE(FO_TIMESPAN_NAME, timespan);
+    REGISTER_VALUE_TYPE("timespan", timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
@@ -4033,7 +4028,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_PR(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
 
     // Register nanotime
-    REGISTER_HARD_STRONG_TYPE(FO_NANOTIME_NAME, nanotime);
+    REGISTER_VALUE_TYPE("nanotime", nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
@@ -4048,7 +4043,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register synctime
-    REGISTER_HARD_STRONG_TYPE(FO_SYNCTIME_NAME, synctime);
+    REGISTER_VALUE_TYPE("synctime", synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int32), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
@@ -4061,7 +4056,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
-    REGISTER_HARD_STRONG_TYPE("ipos", ipos32);
+    REGISTER_VALUE_TYPE("ipos", ipos32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("ipos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Ipos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int x", offsetof(ipos32, x)));
     AS_VERIFY(as_engine->RegisterObjectProperty("ipos", "int y", offsetof(ipos32, y)));
@@ -4072,7 +4067,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "ipos opNeg() const", SCRIPT_FUNC_THIS(Ipos_NegIpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
-    REGISTER_HARD_STRONG_TYPE("isize", isize32);
+    REGISTER_VALUE_TYPE("isize", isize32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("isize", asBEHAVE_CONSTRUCT, "void f(int width, int height)", SCRIPT_FUNC_THIS(Isize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int width", offsetof(isize32, width)));
     AS_VERIFY(as_engine->RegisterObjectProperty("isize", "int height", offsetof(isize32, height)));
@@ -4083,7 +4078,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(isize size) const", SCRIPT_FUNC_THIS(Ipos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Register irect
-    REGISTER_HARD_STRONG_TYPE("irect", irect32);
+    REGISTER_VALUE_TYPE("irect", irect32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("irect", asBEHAVE_CONSTRUCT, "void f(int x, int y, int width, int height)", SCRIPT_FUNC_THIS(Irect_ConstructXandYandWandH), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int x", offsetof(irect32, x)));
     AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int y", offsetof(irect32, y)));
@@ -4092,7 +4087,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", SCRIPT_FUNC_THIS(Ipos_FitToRect), SCRIPT_FUNC_THIS_CONV));
 
     // Register fpos
-    REGISTER_HARD_STRONG_TYPE("fpos", fpos32);
+    REGISTER_VALUE_TYPE("fpos", fpos32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("fpos", asBEHAVE_CONSTRUCT, "void f(float x, float y)", SCRIPT_FUNC_THIS(Fpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos32, x)));
     AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos32, y)));
@@ -4103,19 +4098,19 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opNeg() const", SCRIPT_FUNC_THIS(Fpos_NegFpos), SCRIPT_FUNC_THIS_CONV));
 
     // Register isize
-    REGISTER_HARD_STRONG_TYPE("fsize", fsize32);
+    REGISTER_VALUE_TYPE("fsize", fsize32);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("fsize", asBEHAVE_CONSTRUCT, "void f(float width, float height)", SCRIPT_FUNC_THIS(Fsize_ConstructWandH), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize32, width)));
     AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize32, height)));
 
     // Register mpos
-    REGISTER_HARD_STRONG_TYPE("mpos", mpos);
+    REGISTER_VALUE_TYPE("mpos", mpos);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("mpos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Mpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 x", offsetof(mpos, x)));
     AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 y", offsetof(mpos, y)));
 
     // Register msize
-    REGISTER_HARD_STRONG_TYPE("msize", msize);
+    REGISTER_VALUE_TYPE("msize", msize);
     AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
     AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
     AS_VERIFY(as_engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", SCRIPT_FUNC_THIS(Mpos_FitToSize), SCRIPT_FUNC_THIS_CONV));
@@ -4163,7 +4158,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, FO_IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "ident get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -4173,7 +4168,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
-    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, FO_IDENT_NAME " get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "ident get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
@@ -4212,7 +4207,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, FO_IDENT_NAME " get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("Static" class_name, "ident get_StaticId() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \
