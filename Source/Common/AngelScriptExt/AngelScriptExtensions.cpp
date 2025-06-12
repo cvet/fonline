@@ -436,8 +436,8 @@ static int32 ScriptString_FindFirst(const string& str, const string& sub, int32 
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.find(sub, start));
-    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.find(sub, start);
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static int32 ScriptString_FindLast(const string& str, const string& sub, int32 start)
@@ -446,8 +446,8 @@ static int32 ScriptString_FindLast(const string& str, const string& sub, int32 s
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.rfind(sub));
-    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.rfind(sub);
+    return pos != string::npos && numeric_cast<int32>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static int32 ScriptString_FindFirstOf(const string& str, const string& chars, int32 start)
@@ -456,8 +456,8 @@ static int32 ScriptString_FindFirstOf(const string& str, const string& chars, in
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.find_first_of(chars, start));
-    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.find_first_of(chars, start);
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static int32 ScriptString_FindFirstNotOf(const string& str, const string& chars, int32 start)
@@ -466,8 +466,8 @@ static int32 ScriptString_FindFirstNotOf(const string& str, const string& chars,
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.find_first_not_of(chars, start));
-    return pos != -1 ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.find_first_not_of(chars, start);
+    return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static int32 ScriptString_FindLastOf(const string& str, const string& chars, int32 start)
@@ -476,8 +476,8 @@ static int32 ScriptString_FindLastOf(const string& str, const string& chars, int
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.find_last_of(chars));
-    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.find_last_of(chars);
+    return pos != string::npos && numeric_cast<int32>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static int32 ScriptString_FindLastNotOf(const string& str, const string& chars, int32 start)
@@ -486,8 +486,8 @@ static int32 ScriptString_FindLastNotOf(const string& str, const string& chars, 
         return -1;
     }
 
-    const int32 pos = numeric_cast<int32>(str.find_last_not_of(chars, start));
-    return pos != -1 && pos >= start ? IndexRawToUtf8(str, pos) : -1;
+    const auto pos = str.find_last_not_of(chars, start);
+    return pos != string::npos && numeric_cast<int32>(pos) >= start ? IndexRawToUtf8(str, numeric_cast<int32>(pos)) : -1;
 }
 
 static string ScriptString_GetAt(const string& str, int32 i)
