@@ -1888,6 +1888,7 @@ void FOClient::Net_OnRemoveCustomEntity()
         return;
     }
 
+    refcount_ptr entity_ref_holder = entity;
     auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
 
     if (custom_entity == nullptr) {
@@ -2132,7 +2133,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
 
         iface_anim->Anim->PlayDefault();
 
-        _ifaceAnimations[++_ifaceAnimCounter] = std::move(iface_anim);
+        _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(iface_anim));
         _ifaceAnimationsCache.erase(it);
 
         return _ifaceAnimCounter;
@@ -2152,7 +2153,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
     iface_anim->Name = name;
     iface_anim->Anim = anim;
 
-    _ifaceAnimations[++_ifaceAnimCounter] = std::move(iface_anim);
+    _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(iface_anim));
 
     return _ifaceAnimCounter;
 }

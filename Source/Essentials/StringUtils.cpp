@@ -625,7 +625,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return true;
             }
 
-            // Try read as float32
+            // Try read as float
             if (base == 10) {
                 if (float64 fvalue; ConvertToNumber(sv, fvalue)) {
                     value = static_cast<T>(std::clamp(fvalue, static_cast<float64>(std::numeric_limits<T>::min()), static_cast<float64>(std::numeric_limits<T>::max())));

@@ -682,7 +682,7 @@ void MapView::DestroyItem(ItemHexView* item)
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
 
-    refcount_ptr item_holder = item;
+    refcount_ptr item_ref_holder = item;
 
     if (item->IsSpriteValid()) {
         item->InvalidateSprite();
@@ -3496,8 +3496,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
 
     FO_RUNTIME_ASSERT(cr->GetMap() == this);
 
-    refcount_ptr cr_holder = cr;
-
+    refcount_ptr cr_ref_holder = cr;
     vec_remove_unique_value(_critters, cr);
 
     if (cr->GetId()) {

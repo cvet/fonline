@@ -1104,15 +1104,10 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(FOClient* client, RenderPrimitiveTy
 
     vector<PrimitivePoint> points;
     const auto size = data.size() / 3;
-    points.resize(size);
+    points.reserve(size);
 
     for (size_t i = 0; i < size; i++) {
-        auto& pp = points[i];
-
-        pp.PointPos = {data[i * 3], data[i * 3 + 1]};
-        pp.PointColor = ucolor {numeric_cast<uint32>(data[i * 3 + 2])};
-        pp.PointOffset = nullptr;
-        pp.PPointColor = nullptr;
+        points.emplace_back(ipos32 {data[i * 3], data[i * 3 + 1]}, ucolor {std::bit_cast<uint32>(data[i * 3 + 2])});
     }
 
     client->SprMngr.DrawPoints(points, primitiveType);
