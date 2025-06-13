@@ -106,7 +106,7 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
     FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
     FO_RUNTIME_ASSERT(item->GetContainerId() == GetId());
 
-    vec_add_unique_value(_innerItems, refcount_ptr {item});
+    vec_add_unique_value(_innerItems, item);
 
     return item;
 }
@@ -115,7 +115,8 @@ void ItemView::DestroyInnerItem(ItemView* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vec_remove_unique_value(_innerItems, refcount_ptr {item});
+    refcount_ptr item_ref_holder = item;
+    vec_remove_unique_value(_innerItems, item);
 
     item->DestroySelf();
 }

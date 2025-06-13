@@ -118,6 +118,7 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 
     ignore_unused(animate);
 
+    refcount_ptr item_ref_holder = item;
     vec_remove_unique_value(_invItems, item);
 
     item->DestroySelf();

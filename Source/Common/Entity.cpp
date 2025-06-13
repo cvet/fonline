@@ -350,11 +350,11 @@ void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 
     auto& entities = _innerEntities->at(entry);
 
+    refcount_ptr entity_ref_holder = entity;
     vec_remove_unique_value(entities, entity);
 
     if (entities.empty()) {
         _innerEntities->erase(entry);
-
         destroy_if_empty(_innerEntities);
     }
 }
