@@ -72,7 +72,7 @@ FO_BEGIN_NAMESPACE();
 #define FO_NON_NULL // Pointer annotation
 
 ///@ ExportValueType ident ident_t Layout = int64-value
-using ident_t = strong_type<int64, struct ident_t_>;
+using ident_t = strong_type<int64, struct ident_t_, strong_type_bool_test_tag>;
 static_assert(is_strong_type<ident_t>);
 
 // Custom any as string

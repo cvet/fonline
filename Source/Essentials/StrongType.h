@@ -39,18 +39,25 @@
 
 FO_BEGIN_NAMESPACE();
 
-// Strong types
-template<typename T, typename Tag, bool HasArithmetics = false>
+struct strong_type_bool_test_tag
+{
+};
+
+struct strong_type_arithmetics_tag
+{
+};
+
+template<typename T, typename Tag, class... Opts>
+    requires(std::is_arithmetic_v<T>)
 struct strong_type
 {
     using underlying_type = T;
+    static constexpr bool has_bool_test = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_bool_test_tag> || ...);
+    static constexpr bool has_arithmetics = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_arithmetics_tag> || ...);
 
-    constexpr strong_type() noexcept :
-        _value {}
-    {
-    }
+    constexpr strong_type() noexcept = default;
     constexpr explicit strong_type(underlying_type v) noexcept :
-        _value {v}
+        _value {std::move(v)}
     {
     }
     strong_type(const strong_type&) noexcept = default;
@@ -59,7 +66,12 @@ struct strong_type
     auto operator=(strong_type&&) noexcept -> strong_type& = default;
     ~strong_type() = default;
 
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != underlying_type {}; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept
+        requires(has_bool_test)
+    {
+        return _value != underlying_type {};
+    }
+
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
     [[nodiscard]] constexpr auto operator<(const strong_type& other) const noexcept -> bool { return _value < other._value; }
@@ -68,27 +80,27 @@ struct strong_type
     [[nodiscard]] constexpr auto operator>=(const strong_type& other) const noexcept -> bool { return _value >= other._value; }
 
     [[nodiscard]] constexpr auto operator+(const strong_type& other) const noexcept -> strong_type
-        requires(HasArithmetics)
+        requires(has_arithmetics)
     {
         return strong_type(_value + other._value);
     }
     [[nodiscard]] constexpr auto operator-(const strong_type& other) const noexcept -> strong_type
-        requires(HasArithmetics)
+        requires(has_arithmetics)
     {
         return strong_type(_value - other._value);
     }
     [[nodiscard]] constexpr auto operator*(const strong_type& other) const noexcept -> strong_type
-        requires(HasArithmetics)
+        requires(has_arithmetics)
     {
         return strong_type(_value * other._value);
     }
     [[nodiscard]] constexpr auto operator/(const strong_type& other) const noexcept -> strong_type
-        requires(HasArithmetics)
+        requires(has_arithmetics)
     {
         return strong_type(_value / other._value);
     }
     [[nodiscard]] constexpr auto operator%(const strong_type& other) const noexcept -> strong_type
-        requires(HasArithmetics)
+        requires(has_arithmetics)
     {
         return strong_type(_value % other._value);
     }
@@ -97,7 +109,7 @@ struct strong_type
     [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
 private:
-    underlying_type _value;
+    underlying_type _value {};
 };
 
 template<typename T>
@@ -140,14 +152,20 @@ inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 FO_BEGIN_NAMESPACE();
 
 FO_END_NAMESPACE();
-template<typename T, typename Tag>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE strong_type<T, Tag>>
+template<typename T>
+    requires(FO_NAMESPACE is_strong_type<T>)
+struct FO_HASH_NAMESPACE hash<T>
 {
     using is_avalanching = void;
-    auto operator()(const FO_NAMESPACE strong_type<T, Tag>& v) const noexcept -> size_t
+    auto operator()(const T& v) const noexcept -> size_t
     {
-        static_assert(std::has_unique_object_representations_v<FO_NAMESPACE strong_type<T, Tag>>);
-        return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
+        static_assert(std::has_unique_object_representations_v<T>);
+        if constexpr (sizeof(v) <= sizeof(uint64_t)) {
+            return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
+        }
+        else {
+            return static_cast<size_t>(detail::wyhash::hash(&v, sizeof(v)));
+        }
     }
 };
 FO_BEGIN_NAMESPACE();
