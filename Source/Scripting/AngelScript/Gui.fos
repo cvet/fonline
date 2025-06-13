@@ -698,7 +698,7 @@ class Object
 
     bool _IsCatchable()
     {
-        bool result = (!_IsNotCatchable && !_IsDraggable && cast<Panel>(this) != null && cast<Button>(this) == null && cast<Grid>(this) == null);
+        bool result = !_IsNotCatchable && !_IsDraggable;
         return result && (Parent != null ? Parent._IsCatchable() : true);
     }
 
@@ -1606,6 +1606,7 @@ class TextInput : Text
 
         SetCarriage(false);
         _TextColorFocused = COLOR_TEXT_FOCUSED;
+        _IsNotCatchable = true;
     }
 
     void _Focus() override
@@ -1820,6 +1821,7 @@ class Button : Panel
         Panel::_Construct();
 
         _DeferredMousePressed = true;
+        _IsNotCatchable = true;
     }
 
     void _Draw(bool callCallback) override
@@ -2490,6 +2492,7 @@ class MessageBox : Text
         _MessageTypes = array<MessageBoxType>();
         _MessageTimes = array<string>();
         _DisplayedMessages = array<MessageBoxType>();
+        _IsNotCatchable = true;
 
         _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
         _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
@@ -2738,7 +2741,7 @@ class MessageBox : Text
     }
 };
 
-const string ConsoleDataPrefix = "console_";
+const string ConsoleDataPrefix = "Console";
 class Console : TextInput
 {
     bool get_DisableDeactivation() final
@@ -2772,7 +2775,7 @@ class Console : TextInput
         _History = array<string>();
 
         SetCarriage(true);
-        _HistoryStorageName = "";
+        _HistoryStorageName = "Main";
     }
 
     void _FixClone() override
@@ -2822,17 +2825,16 @@ class Console : TextInput
         }
 
         // Load history
-        string name = (Game.GetChosen() != null ? Game.GetChosen().Name : "");
         string actualStorageName = "";
-        if (!_HistoryStorageName.isEmpty() && !name.isEmpty()) {
-            actualStorageName = ConsoleDataPrefix + name + _HistoryStorageName;
+        if (!_HistoryStorageName.isEmpty()) {
+            actualStorageName = ConsoleDataPrefix + "_" + _HistoryStorageName;
         }
 
         if (_HistoryActualStorageName != actualStorageName) {
             _History.clear();
             _HistoryActualStorageName = actualStorageName;
             if (_HistoryActualStorageName != "") {
-                Serializator::Serializator data;
+                Serializator::Serializator data = Serializator::Serializator();
                 if (data.LoadFromCache(_HistoryActualStorageName) > 0) {
                     data.Get(_History);
                 }
@@ -2879,8 +2881,17 @@ class Console : TextInput
 
         // Save history
         if (_HistoryActualStorageName != "") {
-            Serializator::Serializator data;
-            data.Set(_History);
+            // Filter commands
+            string[] filteredHistory = array<string>();
+
+            for (int i = 0; i < _History.length(); i++) {
+                if (_History[i].startsWith("~")) {
+                    filteredHistory.insertLast(_History[i]);
+                }
+            }
+
+            Serializator::Serializator data = Serializator::Serializator();
+            data.Set(filteredHistory);
             data.SaveToCache(_HistoryActualStorageName);
         }
 
@@ -2996,6 +3007,7 @@ class ItemView : Grid
         Grid::_Construct();
 
         _Items = array<Item>();
+        _IsNotCatchable = true;
     }
 
     void _FixClone() override
