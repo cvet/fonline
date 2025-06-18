@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE();
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, mpos hex)
 {
-    if (!mapper->GetCurMap()->GetSize().IsValidPos(hex)) {
+    if (!mapper->GetCurMap()->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -52,7 +52,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, mpos hex)
 {
-    if (!mapper->GetCurMap()->GetSize().IsValidPos(hex)) {
+    if (!mapper->GetCurMap()->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -96,7 +96,7 @@ FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, mpo
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, mpos hex)
 {
-    if (!mapper->GetCurMap()->GetSize().IsValidPos(hex)) {
+    if (!mapper->GetCurMap()->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -174,7 +174,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, mpos 
     if (mapper->GetCurMap() == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (!mapper->GetCurMap()->GetSize().IsValidPos(hex)) {
+    if (!mapper->GetCurMap()->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -243,7 +243,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, strin
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_ResizeMap(FOMapper* mapper, uint16 width, uint16 height)
+FO_SCRIPT_API void Mapper_Game_ResizeMap(FOMapper* mapper, int32 width, int32 height)
 {
     if (mapper->GetCurMap() == nullptr) {
         throw ScriptException("Map not loaded");

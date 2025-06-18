@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-template<typename TCell, typename TPos, typename TSize>
+template<typename TCell, pos_type TPos, size_type TSize>
 class TwoDimensionalGrid
 {
 public:
@@ -67,7 +67,7 @@ protected:
     TSize _size {};
 };
 
-template<typename TCell, typename TPos, typename TSize>
+template<typename TCell, pos_type TPos, size_type TSize>
 class DynamicTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TSize>
 {
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
@@ -83,7 +83,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.isValidPos(pos), _emptyCell);
 
         const auto it = _cells.find(pos);
 
@@ -99,7 +99,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.isValidPos(pos));
 
         const auto it = _cells.find(pos);
 
@@ -141,7 +141,7 @@ private:
     const TCell _emptyCell {};
 };
 
-template<typename TCell, typename TPos, typename TSize>
+template<typename TCell, pos_type TPos, size_type TSize>
 class StaticTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TSize>
 {
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
@@ -160,7 +160,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY(base::_size.IsValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.isValidPos(pos), _emptyCell);
 
         const auto index = static_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
@@ -176,7 +176,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.IsValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.isValidPos(pos));
 
         const auto index = numeric_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];

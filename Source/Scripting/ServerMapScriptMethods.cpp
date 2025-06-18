@@ -67,7 +67,7 @@ FO_SCRIPT_API Location* Server_Map_GetLocation(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -87,7 +87,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count, const map<ItemProperty, int32>& props)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -127,7 +127,7 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, ident_t itemId)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -201,7 +201,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -211,7 +211,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -221,7 +221,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius, hstring pid)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -272,7 +272,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemComponent component)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -295,7 +295,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -316,7 +316,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius, ItemComponent component)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -339,7 +339,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -366,7 +366,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, ident_t id)
 ///@ ExportMethod
 FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring pid)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -376,7 +376,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -386,7 +386,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, hstring pid)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -449,7 +449,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, ident_t crid)
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -494,7 +494,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterProperty property
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, int32 radius, CritterFindType findType)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -757,10 +757,10 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& to
 ///@ ExportMethod
 FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex, int32 cut)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid from hexes args");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid to hexes args");
     }
 
@@ -786,7 +786,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
         throw ScriptException("Critter arg is null");
     }
 
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid to hexes args");
     }
 
@@ -810,7 +810,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -820,7 +820,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int32>& props)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -837,7 +837,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -854,7 +854,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexMovable(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -864,7 +864,7 @@ FO_SCRIPT_API bool Server_Map_IsHexMovable(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexesMovable(Map* self, mpos hex, int32 radius)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -874,7 +874,7 @@ FO_SCRIPT_API bool Server_Map_IsHexesMovable(Map* self, mpos hex, int32 radius)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -892,7 +892,7 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -903,7 +903,7 @@ FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_UnblockHex(Map* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -955,7 +955,7 @@ FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir, int
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, uint8 dir)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
     if (dir >= GameSettings::MAP_DIR_COUNT) {

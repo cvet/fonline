@@ -212,7 +212,7 @@ public:
     void ShowMap(MapView* map);
     void SaveMap(MapView* map, string_view custom_name);
     void UnloadMap(MapView* map);
-    void ResizeMap(MapView* map, uint16 width, uint16 height);
+    void ResizeMap(MapView* map, int32 width, int32 height);
 
     void AddMess(string_view message_text);
     void MessBoxDraw();

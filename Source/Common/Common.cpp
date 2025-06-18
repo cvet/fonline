@@ -180,16 +180,6 @@ auto GenericUtils::IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x
     return a + b + c < 0;
 }
 
-auto GenericUtils::DistSqrt(ipos32 pos1, ipos32 pos2) -> int32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto dx = pos1.x - pos2.x;
-    const auto dy = pos1.y - pos2.y;
-
-    return iround<int32>(std::sqrt(numeric_cast<float64>(dx * dx + dy * dy)));
-}
-
 auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -200,7 +190,12 @@ auto GenericUtils::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fp
     auto sx = 1.0f;
     auto sy = 1.0f;
 
-    dx < dy ? sx = dx / dy : sy = dy / dx;
+    if (dx < dy) {
+        sx = dx / dy;
+    }
+    else {
+        sy = dy / dx;
+    }
 
     if (to_pos.x < from_pos.x) {
         sx = -sx;

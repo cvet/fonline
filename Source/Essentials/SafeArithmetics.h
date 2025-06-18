@@ -128,6 +128,7 @@ template<typename T, typename U>
     static_assert(!std::same_as<T, bool> && !std::same_as<U, bool>, "Bool type is not convertible");
 
     if constexpr (std::floating_point<T> || std::floating_point<U>) {
+        static_assert(std::floating_point<T>, "Use iround for float to int conversion");
     }
     else if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U> && sizeof(T) >= sizeof(U)) {
         // Always fit
@@ -240,28 +241,28 @@ template<typename T, typename U>
 // Safe arithmetics
 template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto explicit_add(const U& value1, const U& value2) -> U
+[[nodiscard]] constexpr auto checked_add(const U& value1, const U& value2) -> U
 {
     return numeric_cast<T>(value1 + value2);
 }
 
 template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto explicit_sub(const U& value1, const U& value2) -> U
+[[nodiscard]] constexpr auto checked_sub(const U& value1, const U& value2) -> U
 {
     return numeric_cast<T>(value1 - value2);
 }
 
 template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto explicit_mul(const U& value1, const U& value2) -> U
+[[nodiscard]] constexpr auto checked_mul(const U& value1, const U& value2) -> U
 {
     return numeric_cast<T>(value1 * value2);
 }
 
 template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto explicit_div(const U& value1, const U& value2) -> U
+[[nodiscard]] constexpr auto checked_div(const U& value1, const U& value2) -> U
 {
     if constexpr (std::floating_point<T>) {
         if (std::fabs(value2) < std::numeric_limits<T>::epsilon()) {

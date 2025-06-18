@@ -2128,7 +2128,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         globalLines.append('    event_data.Callback = [self, as_func = refcount_ptr(func)](const initializer_list<void*>& args) {')
-                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.get_no_const(), args);')
+                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.getNoConst(), args);')
                         globalLines.append('    };')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')

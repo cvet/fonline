@@ -86,7 +86,7 @@ FO_SCRIPT_API void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 di
     auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
     FO_RUNTIME_ASSERT(map);
 
-    if (!map->GetSize().IsValidPos(hex)) {
+    if (!map->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
@@ -232,7 +232,7 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!map->GetSize().IsValidPos(hex)) {
+    if (!map->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 

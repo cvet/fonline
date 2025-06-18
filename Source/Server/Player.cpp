@@ -105,7 +105,7 @@ void Player::Send_LoginSuccess()
     out_buf->Write(GetId());
     out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
     out_buf->WritePropsData(player_data, player_data_sizes);
-    SendInnerEntities(*out_buf, _engine, false);
+    SendInnerEntities(*out_buf, _engine.get(), false);
 }
 
 void Player::Send_AddCritter(const Critter* cr)
@@ -630,7 +630,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
     FO_NON_CONST_METHOD_HINT();
 
     out_buf.Write(iround<int32>(std::ceil(cr->Moving.WholeTime)));
-    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<int32>());
+    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<int32>());
     out_buf.Write(cr->Moving.Speed);
     out_buf.Write(cr->Moving.StartHex);
     out_buf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));

@@ -101,12 +101,13 @@ public:
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
+    [[nodiscard]] virtual auto GetTime() const -> float32 { return 0.0f; }
 
     virtual auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
     virtual void SetDir(uint8 dir) { ignore_unused(dir); }
-    virtual void SetDirAngle(short dir_angle) { ignore_unused(dir_angle); }
+    virtual void SetDirAngle(int16 dir_angle) { ignore_unused(dir_angle); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
@@ -180,7 +181,7 @@ public:
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom) const -> bool;
-    [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
+    [[nodiscard]] auto IsEggTransp(ipos32 pos, ipos32 offset) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
@@ -212,7 +213,7 @@ public:
     void DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
+    void DrawSprites(MapSpriteList& mspr_list, ipos32 offset, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos32* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr);

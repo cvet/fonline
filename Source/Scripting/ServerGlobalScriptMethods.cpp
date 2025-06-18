@@ -322,7 +322,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Map* toMa
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().IsValidPos(toHex)) {
+    if (!toMap->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -338,7 +338,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, int32 cou
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().IsValidPos(toHex)) {
+    if (!toMap->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -431,7 +431,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& 
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().IsValidPos(toHex)) {
+    if (!toMap->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 

@@ -136,7 +136,7 @@ void MapManager::LoadFromResources()
                         static_map->CritterBillets.emplace_back(cr_id, cr);
 
                         // Checks
-                        if (const auto hex = cr->GetHex(); !map_size.IsValidPos(hex)) {
+                        if (const auto hex = cr->GetHex(); !map_size.isValidPos(hex)) {
                             throw MapManagerException("Invalid critter position on map", map_proto->GetName(), cr->GetName(), hex);
                         }
                     }
@@ -173,7 +173,7 @@ void MapManager::LoadFromResources()
 
                         // Checks
                         if (item->GetOwnership() == ItemOwnership::MapHex) {
-                            if (const auto hex = item->GetHex(); !map_size.IsValidPos(hex)) {
+                            if (const auto hex = item->GetHex(); !map_size.isValidPos(hex)) {
                                 throw MapManagerException("Invalid item position on map", map_proto->GetName(), item->GetName(), hex);
                             }
                         }
@@ -228,7 +228,7 @@ void MapManager::LoadFromResources()
             reader.VerifyEnd();
 
             // Fill hex flags from static items on map
-            for (auto&& [item_id, item] : static_map->ItemBillets) {
+            for (auto& item : static_map->ItemBillets | std::views::values) {
                 if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetStatic() || item->GetIsTile()) {
                     continue;
                 }
@@ -322,25 +322,18 @@ void MapManager::GenerateMapContent(Map* map)
     // Generate critters
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
         const auto* cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
-
         id_map.emplace(base_cr_id, cr->GetId());
     }
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
-
         id_map.emplace(base_item_id, item->GetId());
-
-        if (item->GetCanOpen() && item->GetOpened()) {
-            item->SetLightThru(true);
-        }
-
         map->AddItem(item, base_item->GetHex(), nullptr);
     }
 
     // Add children items
-    for (auto&& [base_item_id, base_item] : map->GetStaticMap()->ChildItemBillets) {
+    for (const auto& base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
         // Map id to owner
         ident_t owner_id;
 
@@ -412,7 +405,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     result += "Location             Id\n";
     result += "          Map                 Id          Time Script\n";
 
-    for (auto&& [id, loc] : locations) {
+    for (const auto& loc : locations | std::views::values) {
         result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
 
         int32 map_index = 0;
@@ -541,7 +534,7 @@ auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto&& [id, map] : _engine->EntityMngr.GetMaps()) {
+    for (const auto& map : _engine->EntityMngr.GetMaps() | std::views::values) {
         if (map->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
                 return map;
@@ -560,7 +553,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept ->
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto&& [id, loc] : _engine->EntityMngr.GetLocations()) {
+    for (const auto& loc : _engine->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProtoId() == loc_pid) {
             if (skip_count <= 0) {
                 return loc;
@@ -745,7 +738,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
     const auto map_size = map->GetSize();
 
-    if (!map_size.IsValidPos(input.FromHex) || !map_size.IsValidPos(input.ToHex)) {
+    if (!map_size.isValidPos(input.FromHex) || !map_size.isValidPos(input.ToHex)) {
         output.Result = FindPathOutput::ResultType::InvalidHexes;
         return output;
     }
@@ -766,8 +759,8 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             auto ring_raw_hex = ipos32 {input.ToHex.x, input.ToHex.y};
             GeometryHelper::MoveHexAroundAway(ring_raw_hex, i);
 
-            if (map_size.IsValidPos(ring_raw_hex)) {
-                const auto ring_hex = map_size.FromRawPos(ring_raw_hex);
+            if (map_size.isValidPos(ring_raw_hex)) {
+                const auto ring_hex = map_size.fromRawPos(ring_raw_hex);
 
                 if (map->IsItemGag(ring_hex)) {
                     break;
@@ -828,11 +821,11 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
                 GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
 
-                if (!map_size.IsValidPos(raw_next_hex)) {
+                if (!map_size.isValidPos(raw_next_hex)) {
                     continue;
                 }
 
-                const auto next_hex = map_size.FromRawPos(raw_next_hex);
+                const auto next_hex = map_size.fromRawPos(raw_next_hex);
                 auto& grid_cell = GridAt(next_hex);
 
                 if (grid_cell != 0) {
@@ -912,11 +905,11 @@ label_FindOk:
             float32 best_step_angle_diff = 0.0f;
 
             const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos32 step_raw_hex) {
-                if (!map_size.IsValidPos(step_raw_hex)) {
+                if (!map_size.isValidPos(step_raw_hex)) {
                     return;
                 }
 
-                const auto step_hex = map_size.FromRawPos(step_raw_hex);
+                const auto step_hex = map_size.fromRawPos(step_raw_hex);
 
                 if (GridAt(step_hex) != numindex) {
                     return;
@@ -1226,7 +1219,7 @@ void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, option
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
-    FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(map->GetSize().isValidPos(hex));
 
     Transit(cr, map, hex, dir, safe_radius, {});
 }
@@ -1272,7 +1265,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<in
     if (map == prev_map) {
         // Between one map
         if (map != nullptr) {
-            FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+            FO_RUNTIME_ASSERT(map->GetSize().isValidPos(hex));
 
             const auto multihex = cr->GetMultihex();
 
@@ -1392,7 +1385,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
-        FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+        FO_RUNTIME_ASSERT(map->GetSize().isValidPos(hex));
 
         cr->SetMapId(map->GetId());
         cr->SetHex(hex);

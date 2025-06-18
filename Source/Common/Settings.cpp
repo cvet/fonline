@@ -375,7 +375,6 @@ GlobalSettings::GlobalSettings(string_view config_path, string_view sub_config)
     _appliedSettings.emplace("MapperResourceEntries");
     _appliedSettings.emplace("ServerResourceEntries");
     _appliedSettings.emplace("MousePos");
-    _appliedSettings.emplace("ScreenOffset");
     _appliedSettings.emplace("DummyIntVec");
     _appliedSettings.emplace("Ping");
     _appliedSettings.emplace("ScrollMouseUp");

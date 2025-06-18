@@ -277,7 +277,7 @@ void ParticleSystem::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = (time - _lastDrawTime).to_ms<float32>() * 0.001f;
+    const auto dt = (time - _lastDrawTime).toMs<float32>() * 0.001f;
 
     _lastDrawTime = time;
     _forceDraw = false;

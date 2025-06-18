@@ -662,7 +662,7 @@ public:
             FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
             PropertyRawData prop_data;
-            prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
+            prop_data.SetAs<hstring::hash_t>(new_value.asHash());
 
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
@@ -670,7 +670,7 @@ public:
         }
         else {
             FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-            const auto new_value_hash = new_value.as_hash();
+            const auto new_value_hash = new_value.asHash();
 
             if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
@@ -784,7 +784,7 @@ public:
                 auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
 
                 for (const auto& hstr : new_value) {
-                    const auto hash = hstr.as_hash();
+                    const auto hash = hstr.asHash();
                     MemCopy(buf, &hash, sizeof(hstring::hash_t));
                     buf += sizeof(hstring::hash_t);
                 }

@@ -1111,7 +1111,7 @@ template<typename TRet, typename... Args>
         func_desc.ArgsType = {script_backend->Engine->ScriptSys.ResolveEngineType(typeid(Args))...};
         func_desc.Delegate = func->GetDelegateObject() != nullptr;
         func_desc.Call = [script_backend, &func_desc, as_func = refcount_ptr(func)](initializer_list<void*> args, void* ret) noexcept { //
-            return AngelScriptFuncCall(script_backend, &func_desc, as_func.get_no_const(), args, ret);
+            return AngelScriptFuncCall(script_backend, &func_desc, as_func.getNoConst(), args, ret);
         };
 
         return ScriptFunc<TRet, Args...>(&func_desc);
@@ -1535,7 +1535,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
-            const auto hash = static_cast<const hstring*>(as_obj)->as_hash();
+            const auto hash = static_cast<const hstring*>(as_obj)->asHash();
             FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
         }
@@ -1591,7 +1591,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     auto* buf = prop_data.Alloc(data_size);
 
                     for (uint32 i = 0; i < arr_size; i++) {
-                        const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                        const auto hash = static_cast<const hstring*>(arr->At(i))->asHash();
                         MemCopy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
                     }
@@ -1677,7 +1677,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += key_len;
                     }
                     else if (prop->IsDictKeyHash()) {
-                        const auto hkey = static_cast<const hstring*>(key)->as_hash();
+                        const auto hkey = static_cast<const hstring*>(key)->asHash();
                         MemCopy(buf, &hkey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1712,7 +1712,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         }
                         else if (prop->IsBaseTypeHash()) {
                             for (uint32 i = 0; i < arr_size; i++) {
-                                const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                                const auto hash = static_cast<const hstring*>(arr->At(i))->asHash();
                                 MemCopy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
@@ -1785,7 +1785,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         buf += key_len;
                     }
                     else if (prop->IsDictKeyHash()) {
-                        const auto hkey = static_cast<const hstring*>(key)->as_hash();
+                        const auto hkey = static_cast<const hstring*>(key)->asHash();
                         MemCopy(buf, &hkey, prop->GetDictKeySize());
                         buf += prop->GetDictKeySize();
                     }
@@ -1839,7 +1839,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     buf += key_len;
 
                     if (prop->IsBaseTypeHash()) {
-                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        const auto hash = static_cast<const hstring*>(value)->asHash();
                         MemCopy(buf, &hash, value_element_size);
                     }
                     else {
@@ -1864,7 +1864,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyHash()) {
-                        const auto hkey = static_cast<const hstring*>(key)->as_hash();
+                        const auto hkey = static_cast<const hstring*>(key)->asHash();
                         MemCopy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
@@ -1878,7 +1878,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     buf += key_element_size;
 
                     if (prop->IsBaseTypeHash()) {
-                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        const auto hash = static_cast<const hstring*>(value)->asHash();
                         MemCopy(buf, &hash, value_element_size);
                     }
                     else {
@@ -2951,7 +2951,7 @@ static auto HashedString_EqualsString(const hstring& self, const string& other) 
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.as_str() == other;
+    return self.asStr() == other;
 
 #else
     ignore_unused(self);
@@ -2965,7 +2965,7 @@ static auto HashedString_StringCast(const hstring& self) -> const string&
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.as_str();
+    return self.asStr();
 
 #else
     ignore_unused(self);
@@ -2978,7 +2978,7 @@ static auto HashedString_StringConv(const hstring& self) -> string
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.as_str();
+    return self.asStr();
 
 #else
     ignore_unused(self);
@@ -2991,7 +2991,7 @@ static auto HashedString_GetString(const hstring& self) -> string
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return string(self.as_str());
+    return string(self.asStr());
 
 #else
     ignore_unused(self);
@@ -3004,7 +3004,7 @@ static auto HashedString_GetHash(const hstring& self) -> int32
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.as_int();
+    return self.asInt();
 
 #else
     ignore_unused(self);
@@ -3017,7 +3017,7 @@ static auto HashedString_GetUHash(const hstring& self) -> uint32
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.as_uint();
+    return self.asUInt();
 
 #else
     ignore_unused(self);
@@ -3240,7 +3240,7 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    return self.underlying_value();
+    return self.underlyingValue();
 
 #else
     ignore_unused(self);
@@ -3505,14 +3505,14 @@ static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
         throw ScriptException("Invalid mpos values", x, y);
     }
 
-    new (self) mpos {numeric_cast<uint16>(x), numeric_cast<uint16>(y)};
+    new (self) mpos {numeric_cast<int16>(x), numeric_cast<int16>(y)};
 }
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
+    return size.isValidPos(self);
 }
 
 template<typename T>
@@ -4040,7 +4040,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD_PR(nanotime, microseconds, () const, int64), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(nanotime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD_PR(nanotime, seconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, durationValue, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register synctime
     REGISTER_VALUE_TYPE("synctime", synctime);
@@ -4053,7 +4053,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const synctime&) const, timespan), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(synctime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD_PR(synctime, seconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, durationValue, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
     REGISTER_VALUE_TYPE("ipos", ipos32);
@@ -4106,13 +4106,13 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register mpos
     REGISTER_VALUE_TYPE("mpos", mpos);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("mpos", asBEHAVE_CONSTRUCT, "void f(int x, int y)", SCRIPT_FUNC_THIS(Mpos_ConstructXandY), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 x", offsetof(mpos, x)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "uint16 y", offsetof(mpos, y)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "int16 x", offsetof(mpos, x)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "int16 y", offsetof(mpos, y)));
 
     // Register msize
     REGISTER_VALUE_TYPE("msize", msize);
-    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 width", offsetof(msize, width)));
-    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "uint16 height", offsetof(msize, height)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 width", offsetof(msize, width)));
+    AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 height", offsetof(msize, height)));
     AS_VERIFY(as_engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", SCRIPT_FUNC_THIS(Mpos_FitToSize), SCRIPT_FUNC_THIS_CONV));
 
     // Entity registrators
@@ -4291,7 +4291,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
     if (auto* func = as_engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
-        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = refcount_ptr(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.get_no_const()); }); \
+        script_sys.BindRemoteCallReceiver(name##_hash, [as_func = refcount_ptr(func)]([[maybe_unused]] Entity* entity) { func_entry(REMOTE_CALL_RECEIVER_ENTITY, as_func.getNoConst()); }); \
     } \
     else { \
         throw ScriptInitException("Remote call function not found", as_func_decl); \
@@ -4303,7 +4303,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register properties
     for (auto&& [type_name, entity_info] : engine->GetEntityTypesInfo()) {
         const auto* registrator = entity_info.PropRegistrator;
-        const auto& type_name_str = type_name.as_str();
+        const auto& type_name_str = type_name.asStr();
         const auto is_global = entity_is_global.count(type_name_str) != 0;
         const auto is_has_abstract = entity_has_abstract.count(type_name_str) != 0;
         const auto is_has_protos = entity_info.HasProtos;

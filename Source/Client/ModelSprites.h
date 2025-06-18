@@ -64,9 +64,8 @@ public:
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
     void Prewarm() override;
-    void SetTime(float32 normalized_time) override;
     void SetDir(uint8 dir) override;
-    void SetDirAngle(short dir_angle) override;
+    void SetDirAngle(int16 dir_angle) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;

@@ -127,8 +127,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_MOVECRIT: {
         ident_t cr_id;
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
+        int16 hex_x = 0;
+        int16 hex_y = 0;
         if (!(args_str >> cr_id >> hex_x >> hex_y)) {
             logcb("Invalid arguments. Example: move cr_id hx hy");
             break;
@@ -137,7 +137,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.Write(cr_id);
-        buf.Write(mpos {hex_x, hex_y});
+        buf.Write(mpos(hex_x, hex_y));
         buf.EndMsg();
     } break;
     case CMD_DISCONCRIT: {
@@ -174,8 +174,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_ADDITEM: {
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
+        int16 hex_x = 0;
+        int16 hex_y = 0;
         string proto_name;
         int32 count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
@@ -186,7 +186,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(mpos {hex_x, hex_y});
+        buf.Write(mpos(hex_x, hex_y));
         buf.Write(pid);
         buf.Write(count);
         buf.EndMsg();
@@ -208,8 +208,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_ADDNPC: {
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
+        int16 hex_x = 0;
+        int16 hex_y = 0;
         uint8 dir = 0;
         string proto_name;
         if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
@@ -221,7 +221,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(mpos {hex_x, hex_y});
+        buf.Write(mpos(hex_x, hex_y));
         buf.Write(dir);
         buf.Write(pid);
         buf.EndMsg();

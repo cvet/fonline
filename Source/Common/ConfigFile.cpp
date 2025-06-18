@@ -158,10 +158,10 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
                     offset = last + 1;
 
                     if (i == 0 && num == 0) {
-                        num = strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).as_int();
+                        num = strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).asInt();
                     }
                     else if (i == 1 && num != 0) {
-                        num += !str2.empty() ? (strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).as_int()) : 0;
+                        num += !str2.empty() ? (strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).asInt()) : 0;
                     }
                     else if (i == 2 && num != 0) {
                         (*cur_section)[strex("{}", num)] = str2;

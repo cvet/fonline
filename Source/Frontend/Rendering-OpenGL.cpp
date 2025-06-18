@@ -631,8 +631,8 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
         BaseFrameBufObjBinded = true;
 
-        const auto back_buf_aspect = explicit_div<float32>(numeric_cast<float32>(BaseFrameBufSize.width), numeric_cast<float32>(BaseFrameBufSize.height));
-        const auto screen_aspect = explicit_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
+        const auto back_buf_aspect = checked_div<float32>(numeric_cast<float32>(BaseFrameBufSize.width), numeric_cast<float32>(BaseFrameBufSize.height));
+        const auto screen_aspect = checked_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
         const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32>(BaseFrameBufSize.height) * back_buf_aspect);
         const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32>(BaseFrameBufSize.width) / screen_aspect);
 
@@ -747,7 +747,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.IsValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.isValidPos(pos));
 
     ucolor result;
 

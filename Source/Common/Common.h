@@ -32,7 +32,6 @@
 //
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-// ReSharper disable CppInconsistentNaming
 
 #pragma once
 
@@ -111,11 +110,11 @@ FO_DECLARE_EXCEPTION(NotEnabled3DException);
 
 // Atomic formatter
 template<typename T>
-auto constexpr is_atomic_v = is_specialization<T, std::atomic>::value;
+concept is_atomic = is_specialization<T, std::atomic>::value;
 
 FO_END_NAMESPACE();
 template<typename T>
-    requires(FO_NAMESPACE is_atomic_v<T>)
+    requires(FO_NAMESPACE is_atomic<T>)
 struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
@@ -281,9 +280,9 @@ static constexpr float32 MIN_ZOOM = 0.1f;
 static constexpr float32 MAX_ZOOM = 20.0f;
 
 // Coordinates
-static constexpr uint16 MAXHEX_DEFAULT = 200;
-static constexpr uint16 MAXHEX_MIN = 10;
-static constexpr uint16 MAXHEX_MAX = 4000;
+static constexpr int32 MAXHEX_DEFAULT = 200;
+static constexpr int32 MAXHEX_MIN = 10;
+static constexpr int32 MAXHEX_MAX = 4000;
 
 // Look checks
 static constexpr uint32 LOOK_CHECK_DIR = 0x01;
@@ -528,7 +527,6 @@ public:
     [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
     [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
-    [[nodiscard]] static auto DistSqrt(ipos32 pos1, ipos32 pos2) -> int32;
     [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
     [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
 

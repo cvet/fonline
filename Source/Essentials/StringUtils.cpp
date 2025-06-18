@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #include "StringUtils.h"
 #include "GlobalData.h"
 #include "StackTrace.h"
@@ -63,6 +61,7 @@ auto strex::str() noexcept -> string&&
     return std::move(_s);
 }
 
+// ReSharper disable once CppInconsistentNaming
 auto strex::c_str() noexcept -> const char*
 {
     FO_NO_STACK_TRACE_ENTRY();

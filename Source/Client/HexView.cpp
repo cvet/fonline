@@ -59,7 +59,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     FO_RUNTIME_ASSERT(_mapSpr == &mspr);
     FO_RUNTIME_ASSERT(_mapSprValid);
 
-    return _mapSpr;
+    return _mapSpr.get();
 }
 
 auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*
@@ -76,7 +76,7 @@ auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos h
     FO_RUNTIME_ASSERT(_mapSpr == &mspr);
     FO_RUNTIME_ASSERT(_mapSprValid);
 
-    return _mapSpr;
+    return _mapSpr.get();
 }
 
 void HexView::SetupSprite(MapSprite* mspr)
@@ -137,7 +137,7 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GetFrameTime();
-        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).to_ms<int32>() : 0);
+        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).toMs<int32>() : 0);
 
         if (fading_proc == 100) {
             _fading = false;
@@ -185,7 +185,7 @@ void HexView::RefreshSprite()
     FO_STACK_TRACE_ENTRY();
 
     if (_mapSprValid) {
-        SetupSprite(_mapSpr);
+        SetupSprite(_mapSpr.get());
     }
 }
 
@@ -195,7 +195,7 @@ auto HexView::GetSprite() const -> const MapSprite*
 
     FO_RUNTIME_ASSERT(_mapSprValid);
 
-    return _mapSpr;
+    return _mapSpr.get();
 }
 
 auto HexView::GetSprite() -> MapSprite*
@@ -204,7 +204,7 @@ auto HexView::GetSprite() -> MapSprite*
 
     FO_RUNTIME_ASSERT(_mapSprValid);
 
-    return _mapSpr;
+    return _mapSpr.get();
 }
 
 void HexView::InvalidateSprite()
@@ -215,7 +215,7 @@ void HexView::InvalidateSprite()
     FO_RUNTIME_ASSERT(_mapSprValid);
 
     _mapSpr->Invalidate();
-    _mapSpr = nullptr;
+    _mapSpr.reset();
 
     FO_RUNTIME_ASSERT(!_mapSprValid);
 }
@@ -232,8 +232,8 @@ void HexView::SetSpriteVisiblity(bool enabled)
 
     _mapSprHidden = hidden;
 
-    if (_mapSpr != nullptr) {
-        SetupSprite(_mapSpr);
+    if (_mapSpr) {
+        SetupSprite(_mapSpr.get());
     }
 }
 

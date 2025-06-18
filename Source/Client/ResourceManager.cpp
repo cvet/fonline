@@ -98,7 +98,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
+    const uint32 dw[4] = {model_name.asUInt(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -106,7 +106,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 actio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
+    const uint32 dw[4] = {model_name.asUInt(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 

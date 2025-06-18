@@ -53,8 +53,8 @@ public:
     auto operator=(HexView&&) noexcept = delete;
     virtual ~HexView() = default;
 
-    [[nodiscard]] auto GetMap() noexcept -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const noexcept -> const MapView* { return _map; }
+    [[nodiscard]] auto GetMap() noexcept -> MapView* { return _map.get(); }
+    [[nodiscard]] auto GetMap() const noexcept -> const MapView* { return _map.get(); }
     [[nodiscard]] auto IsSpriteValid() const noexcept -> bool { return _mapSprValid; }
     [[nodiscard]] auto IsSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto GetSprite() const -> const MapSprite*;
@@ -85,7 +85,7 @@ public:
     RenderEffect* DrawEffect {};
 
 protected:
-    MapView* _map;
+    raw_ptr<MapView> _map;
 
     virtual void SetupSprite(MapSprite* mspr);
     void ProcessFading();
@@ -94,7 +94,7 @@ private:
     void SetFade(bool fade_up);
     void EvaluateCurAlpha();
 
-    MapSprite* _mapSpr {};
+    raw_ptr<MapSprite> _mapSpr {};
     bool _mapSprValid {};
     bool _mapSprHidden {};
 

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #pragma once
 
 #include "BasicCore.h"
@@ -40,6 +38,30 @@
 #include "StrongType.h"
 
 FO_BEGIN_NAMESPACE();
+
+template<typename T>
+concept pos_type = requires(T t) {
+    requires std::is_arithmetic_v<decltype(t.x)>;
+    requires std::is_arithmetic_v<decltype(t.y)>;
+    requires std::is_same_v<decltype(t.x), decltype(t.y)>;
+};
+
+template<typename T>
+concept size_type = requires(T t) {
+    requires std::is_arithmetic_v<decltype(t.width)>;
+    requires std::is_arithmetic_v<decltype(t.height)>;
+    requires std::is_same_v<decltype(t.width), decltype(t.height)>;
+};
+
+template<typename T>
+concept rect_type = requires(T t) {
+    requires std::is_arithmetic_v<decltype(t.x)>;
+    requires std::is_arithmetic_v<decltype(t.y)>;
+    requires std::is_arithmetic_v<decltype(t.width)>;
+    requires std::is_arithmetic_v<decltype(t.height)>;
+    requires std::is_same_v<decltype(t.x), decltype(t.y)>;
+    requires std::is_same_v<decltype(t.width), decltype(t.height)>;
+};
 
 // Color type
 ///@ ExportValueType ucolor ucolor Layout = uint32-value
@@ -72,8 +94,8 @@ struct ucolor
     [[nodiscard]] constexpr auto operator==(const ucolor& other) const noexcept { return rgba == other.rgba; }
     [[nodiscard]] constexpr auto operator!=(const ucolor& other) const noexcept { return rgba != other.rgba; }
     [[nodiscard]] constexpr auto operator<(const ucolor& other) const noexcept { return rgba < other.rgba; }
-    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return rgba; }
-    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlyingValue() noexcept -> underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlyingValue() const noexcept -> const underlying_type& { return rgba; }
 
     struct components
     {
@@ -92,7 +114,7 @@ struct ucolor
     static const ucolor clear;
 };
 static_assert(is_strong_type<ucolor>);
-FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
+FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlyingValue());
 
 FO_END_NAMESPACE();
 template<>
@@ -109,312 +131,299 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
 FO_BEGIN_NAMESPACE();
 
 // Position types
-///@ ExportValueType isize isize32 Layout = int32-width+int32-height
-struct isize32
+template<std::integral T>
+struct ipos
 {
-    constexpr isize32() noexcept = default;
-    constexpr isize32(int32 width_, int32 height_) noexcept :
+    constexpr ipos() noexcept = default;
+    constexpr ipos(T x_, T y_) noexcept :
+        x {x_},
+        y {y_}
+    {
+    }
+    explicit constexpr ipos(pos_type auto other) noexcept :
+        x {safe_numeric_cast<T>(other.x)},
+        y {safe_numeric_cast<T>(other.y)}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
+    [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
+    // [[nodiscard]] constexpr auto operator+(const ipos& other) const -> ipos { return {checked_add(x, other.x), checked_add(y, other.y)}; }
+    // [[nodiscard]] constexpr auto operator-(const ipos& other) const -> ipos { return {checked_sub(x, other.x), checked_sub(y, other.y)}; }
+    // [[nodiscard]] constexpr auto operator*(const ipos& other) const -> ipos { return {checked_mul(x, other.x), checked_mul(y, other.y)}; }
+    // [[nodiscard]] constexpr auto operator/(const ipos& other) const -> ipos { return {checked_div(x, other.x), checked_div(y, other.y)}; }
+
+    [[nodiscard]] auto idist() const -> T { return iround<T>(std::sqrt(numeric_cast<float64>(x * x + y * y))); }
+
+    T x {};
+    T y {};
+};
+
+template<std::integral T>
+struct isize
+{
+    constexpr isize() noexcept = default;
+    constexpr isize(T width_, T height_) noexcept :
         width {width_},
         height {height_}
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const isize32& other) const noexcept -> bool { return width == other.width && height == other.height; }
-    [[nodiscard]] constexpr auto operator!=(const isize32& other) const noexcept -> bool { return width != other.width || height != other.height; }
-    [[nodiscard]] constexpr auto GetSquare() const noexcept -> int32 { return width * height; }
-    template<typename T>
-    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
-    {
-        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
+    [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+
+    [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
+    [[nodiscard]] constexpr auto isValidPos(std::integral auto x, std::integral auto y) const noexcept -> bool
+    { //
+        return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
     }
+    [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool { return isValidPos(pos.x, pos.y); }
 
-    int32 width {};
-    int32 height {};
+    T width {};
+    T height {};
 };
-static_assert(std::is_standard_layout_v<isize32>);
-static_assert(sizeof(isize32) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
-///@ ExportValueType ipos ipos32 Layout = int32-x+int32-y
-struct ipos32
+template<std::integral T>
+struct irect
 {
-    constexpr ipos32() noexcept = default;
-    constexpr ipos32(int32 x_, int32 y_) noexcept :
-        x {x_},
-        y {y_}
-    {
-    }
-
-    [[nodiscard]] constexpr auto operator==(const ipos32& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const ipos32& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos32& other) const noexcept -> ipos32 { return {x + other.x, y + other.y}; }
-    [[nodiscard]] constexpr auto operator-(const ipos32& other) const noexcept -> ipos32 { return {x - other.x, y - other.y}; }
-    [[nodiscard]] constexpr auto operator*(const ipos32& other) const noexcept -> ipos32 { return {x * other.x, y * other.y}; }
-    [[nodiscard]] constexpr auto operator/(const ipos32& other) const noexcept -> ipos32 { return {x / other.x, y / other.y}; }
-
-    int32 x {};
-    int32 y {};
-};
-static_assert(std::is_standard_layout_v<ipos32>);
-static_assert(sizeof(ipos32) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
-
-///@ ExportValueType irect irect32 Layout = int32-x+int32-y+int32-width+int32-height
-struct irect32
-{
-    constexpr irect32() noexcept = default;
-    constexpr irect32(ipos32 pos, isize32 size) noexcept :
+    constexpr irect() noexcept = default;
+    constexpr irect(ipos<T> pos, isize<T> size) noexcept :
         x {pos.x},
         y {pos.y},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect32(int32 x_, int32 y_, isize32 size) noexcept :
+    constexpr irect(T x_, T y_, isize<T> size) noexcept :
         x {x_},
         y {y_},
         width {size.width},
         height {size.height}
     {
     }
-    constexpr irect32(ipos32 pos, int32 width_, int32 height_) noexcept :
+    constexpr irect(ipos<T> pos, T width_, T height_) noexcept :
         x {pos.x},
         y {pos.y},
         width {width_},
         height {height_}
     {
     }
-    constexpr irect32(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
+    constexpr irect(T x_, T y_, T width_, T height_) noexcept :
         x {x_},
         y {y_},
         width {width_},
         height {height_}
     {
     }
-    [[nodiscard]] constexpr auto operator==(const irect32& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
-    [[nodiscard]] constexpr auto operator!=(const irect32& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
 
-    int32 x {};
-    int32 y {};
-    int32 width {};
-    int32 height {};
+    T x {};
+    T y {};
+    T width {};
+    T height {};
 };
-static_assert(std::is_standard_layout_v<irect32>);
-static_assert(sizeof(irect32) == 16);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
-///@ ExportValueType ipos16 ipos16 Layout = int16-x+int16-y
-struct ipos16
+// Floating types
+template<std::floating_point T>
+struct fpos
 {
-    constexpr ipos16() noexcept = default;
-    constexpr ipos16(int16 x_, int16 y_) noexcept :
+    constexpr fpos() noexcept = default;
+    constexpr fpos(T x_, T y_) noexcept :
         x {x_},
         y {y_}
     {
     }
-
-    [[nodiscard]] constexpr auto operator==(const ipos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const ipos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x + other.x), numeric_cast<int16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x - other.x), numeric_cast<int16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x * other.x), numeric_cast<int16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const ipos16& other) const -> ipos16 { return {numeric_cast<int16>(x / other.x), numeric_cast<int16>(y / other.y)}; }
-
-    int16 x {};
-    int16 y {};
-};
-static_assert(std::is_standard_layout_v<ipos16>);
-static_assert(sizeof(ipos16) == 4);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
-
-///@ ExportValueType upos16 upos16 Layout = uint16-x+uint16-y
-struct upos16
-{
-    constexpr upos16() noexcept = default;
-    constexpr upos16(uint16 x_, uint16 y_) noexcept :
-        x {x_},
-        y {y_}
+    constexpr fpos(int32 x_, int32 y_) noexcept :
+        x {safe_numeric_cast<T>(x_)},
+        y {safe_numeric_cast<T>(y_)}
+    {
+    }
+    constexpr explicit fpos(pos_type auto pos) noexcept :
+        x {safe_numeric_cast<T>(pos.x)},
+        y {safe_numeric_cast<T>(pos.y)}
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const upos16& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const upos16& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x + other.x), numeric_cast<uint16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x - other.x), numeric_cast<uint16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const upos16& other) const -> upos16 { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
+    constexpr auto operator+=(const fpos& other) noexcept -> fpos&
+    {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+    constexpr auto operator-=(const fpos& other) noexcept -> fpos&
+    {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+    constexpr auto operator*=(const fpos& other) noexcept -> fpos&
+    {
+        x *= other.x;
+        y *= other.y;
+        return *this;
+    }
 
-    uint16 x {};
-    uint16 y {};
+    [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator+(const fpos& other) const -> fpos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const fpos& other) const -> fpos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const fpos& other) const -> fpos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const fpos& other) const -> fpos { return {x / other.x, y / other.y}; }
+    [[nodiscard]] constexpr auto operator*(T value) const -> fpos { return {x * value, y * value}; }
+
+    [[nodiscard]] auto dist() const noexcept -> T { return std::sqrt(x * x + y * y); }
+
+    template<std::integral U>
+    [[nodiscard]] auto round() const -> ipos<U>
+    {
+        return ipos<U>(iround<U>(x), iround<U>(y));
+    }
+
+    T x {};
+    T y {};
 };
-static_assert(std::is_standard_layout_v<upos16>);
-static_assert(sizeof(upos16) == 4);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE upos16, "{} {}", value.x, value.y);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE upos16, value.x >> value.y);
-FO_DECLARE_TYPE_HASHER(FO_NAMESPACE upos16);
+
+template<std::floating_point T>
+struct fsize
+{
+    constexpr fsize() noexcept = default;
+    constexpr fsize(T width_, T height_) noexcept :
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr fsize(std::integral auto width_, std::integral auto height_) noexcept :
+        width {safe_numeric_cast<T>(width_)},
+        height {safe_numeric_cast<T>(height_)}
+    {
+    }
+    constexpr explicit fsize(size_type auto size) noexcept :
+        width {safe_numeric_cast<T>(size.width)},
+        height {safe_numeric_cast<T>(size.height)}
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+
+    [[nodiscard]] constexpr auto square() const noexcept -> T { return width * height; }
+    [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool
+    { //
+        return std::cmp_greater_equal(pos.x, 0) && std::cmp_greater_equal(pos.y, 0) && std::cmp_less(pos.x, width) && std::cmp_less(pos.y, height);
+    }
+
+    T width {};
+    T height {};
+};
+
+template<typename T>
+struct frect
+{
+    constexpr frect() noexcept = default;
+    constexpr frect(fpos<T> pos, fsize<T> size) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(T x_, T y_, fsize<T> size) noexcept :
+        x {x_},
+        y {y_},
+        width {size.width},
+        height {size.height}
+    {
+    }
+    constexpr frect(fpos<T> pos, T width_, T height_) noexcept :
+        x {pos.x},
+        y {pos.y},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr frect(T x_, T y_, T width_, T height_) noexcept :
+        x {x_},
+        y {y_},
+        width {width_},
+        height {height_}
+    {
+    }
+    constexpr frect(std::integral auto x_, std::integral auto y_, std::integral auto width_, std::integral auto height_) noexcept :
+        x {safe_numeric_cast<T>(x_)},
+        y {safe_numeric_cast<T>(y_)},
+        width {safe_numeric_cast<T>(width_)},
+        height {safe_numeric_cast<T>(height_)}
+    {
+    }
+    constexpr explicit frect(rect_type auto size) noexcept :
+        x {safe_numeric_cast<T>(size.x)},
+        y {safe_numeric_cast<T>(size.y)},
+        width {safe_numeric_cast<T>(size.width)},
+        height {safe_numeric_cast<T>(size.height)}
+    {
+    }
+    [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator!=(const frect& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+
+    T x {};
+    T y {};
+    T width {};
+    T height {};
+};
 
 ///@ ExportValueType ipos8 ipos8 Layout = int8-x+int8-y
-struct ipos8
-{
-    constexpr ipos8() noexcept = default;
-    constexpr ipos8(int8 x_, int8 y_) noexcept :
-        x {x_},
-        y {y_}
-    {
-    }
-
-    [[nodiscard]] constexpr auto operator==(const ipos8& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const ipos8& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x + other.x), numeric_cast<int8>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x - other.x), numeric_cast<int8>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x * other.x), numeric_cast<int8>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const ipos8& other) const -> ipos8 { return {numeric_cast<int8>(x / other.x), numeric_cast<int8>(y / other.y)}; }
-
-    int8 x {};
-    int8 y {};
-};
-static_assert(std::is_standard_layout_v<ipos8>);
-static_assert(sizeof(ipos8) == 2);
+using ipos8 = ipos<int8>;
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-///@ ExportValueType fsize fsize32 Layout = float32-width+float32-height
-struct fsize32
-{
-    constexpr fsize32() noexcept = default;
-    constexpr fsize32(float32 width_, float32 height_) noexcept :
-        width {width_},
-        height {height_}
-    {
-    }
-    constexpr fsize32(int32 width_, int32 height_) noexcept :
-        width {safe_numeric_cast<float32>(width_)},
-        height {safe_numeric_cast<float32>(height_)}
-    {
-    }
-    constexpr explicit fsize32(isize32 size) noexcept :
-        width {safe_numeric_cast<float32>(size.width)},
-        height {safe_numeric_cast<float32>(size.height)}
-    {
-    }
+///@ ExportValueType ipos16 ipos16 Layout = int16-x+int16-y
+using ipos16 = ipos<int16>;
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
-    [[nodiscard]] constexpr auto operator==(const fsize32& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto operator!=(const fsize32& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto GetSquare() const noexcept -> float32 { return width * height; }
-    template<typename T>
-    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
-    {
-        return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < width && pos.y < height;
-    }
+///@ ExportValueType ipos ipos32 Layout = int32-x+int32-y
+using ipos32 = ipos<int32>;
+static_assert(sizeof(ipos32) == 8 && std ::is_standard_layout_v<ipos32>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
-    float32 width {};
-    float32 height {};
-};
-static_assert(std::is_standard_layout_v<fsize32>);
-static_assert(sizeof(fsize32) == 8);
-FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
-FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
+///@ ExportValueType isize isize32 Layout = int32-width+int32-height
+using isize32 = isize<int32>;
+static_assert(sizeof(isize32) == 8 && std ::is_standard_layout_v<isize32>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
+
+///@ ExportValueType irect irect32 Layout = int32-x+int32-y+int32-width+int32-height
+using irect32 = irect<int32>;
+static_assert(sizeof(irect32) == 16 && std ::is_standard_layout_v<irect32>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
 ///@ ExportValueType fpos fpos32 Layout = float32-x+float32-y
-struct fpos32
-{
-    constexpr fpos32() noexcept = default;
-    constexpr fpos32(float32 x_, float32 y_) noexcept :
-        x {x_},
-        y {y_}
-    {
-    }
-    constexpr fpos32(int32 x_, int32 y_) noexcept :
-        x {safe_numeric_cast<float32>(x_)},
-        y {safe_numeric_cast<float32>(y_)}
-    {
-    }
-    constexpr explicit fpos32(ipos32 pos) noexcept :
-        x {safe_numeric_cast<float32>(pos.x)},
-        y {safe_numeric_cast<float32>(pos.y)}
-    {
-    }
-
-    [[nodiscard]] constexpr auto operator==(const fpos32& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
-    [[nodiscard]] constexpr auto operator!=(const fpos32& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
-    [[nodiscard]] constexpr auto operator+(const fpos32& other) const -> fpos32 { return {x + other.x, y + other.y}; }
-    [[nodiscard]] constexpr auto operator-(const fpos32& other) const -> fpos32 { return {x - other.x, y - other.y}; }
-    [[nodiscard]] constexpr auto operator*(const fpos32& other) const -> fpos32 { return {x * other.x, y * other.y}; }
-    [[nodiscard]] constexpr auto operator/(const fpos32& other) const -> fpos32 { return {x / other.x, y / other.y}; }
-
-    float32 x {};
-    float32 y {};
-};
-static_assert(std::is_standard_layout_v<fpos32>);
-static_assert(sizeof(fpos32) == 8);
+using fpos32 = fpos<float32>;
+static_assert(sizeof(fpos32) == 8 && std::is_standard_layout_v<fpos32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
-///@ ExportValueType frect frect32 Layout = float32-x+float32-y+float32-width+float32-height
-struct frect32
-{
-    constexpr frect32() noexcept = default;
-    constexpr frect32(fpos32 pos, fsize32 size) noexcept :
-        x {pos.x},
-        y {pos.y},
-        width {size.width},
-        height {size.height}
-    {
-    }
-    constexpr frect32(float32 x_, float32 y_, fsize32 size) noexcept :
-        x {x_},
-        y {y_},
-        width {size.width},
-        height {size.height}
-    {
-    }
-    constexpr frect32(fpos32 pos, float32 width_, float32 height_) noexcept :
-        x {pos.x},
-        y {pos.y},
-        width {width_},
-        height {height_}
-    {
-    }
-    constexpr frect32(float32 x_, float32 y_, float32 width_, float32 height_) noexcept :
-        x {x_},
-        y {y_},
-        width {width_},
-        height {height_}
-    {
-    }
-    constexpr frect32(int32 x_, int32 y_, int32 width_, int32 height_) noexcept :
-        x {safe_numeric_cast<float32>(x_)},
-        y {safe_numeric_cast<float32>(y_)},
-        width {safe_numeric_cast<float32>(width_)},
-        height {safe_numeric_cast<float32>(height_)}
-    {
-    }
-    constexpr explicit frect32(irect32 size) noexcept :
-        x {safe_numeric_cast<float32>(size.x)},
-        y {safe_numeric_cast<float32>(size.y)},
-        width {safe_numeric_cast<float32>(size.width)},
-        height {safe_numeric_cast<float32>(size.height)}
-    {
-    }
-    [[nodiscard]] constexpr auto operator==(const frect32& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
-    [[nodiscard]] constexpr auto operator!=(const frect32& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y) || !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+///@ ExportValueType fsize fsize32 Layout = float32-width+float32-height
+using fsize32 = fsize<float32>;
+static_assert(sizeof(fsize32) == 8 && std::is_standard_layout_v<fsize32>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
-    float32 x {};
-    float32 y {};
-    float32 width {};
-    float32 height {};
-};
-static_assert(std::is_standard_layout_v<frect32>);
-static_assert(sizeof(frect32) == 16);
+///@ ExportValueType frect frect32 Layout = float32-x+float32-y+float32-width+float32-height
+using frect32 = frect<float32>;
+static_assert(sizeof(frect32) == 16 && std::is_standard_layout_v<frect32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect32, value.x >> value.y >> value.width >> value.height);
 

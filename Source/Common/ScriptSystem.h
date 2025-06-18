@@ -353,7 +353,7 @@ public:
         _engineToScriptType.emplace(typeid(vector<T>).name(), arr_type);
     }
 
-    template<typename T>
+    template<typename T, typename T2 = void>
     void MapEngineEntityType(string_view type_name)
     {
         static_assert(!std::is_pointer_v<T>);
@@ -362,6 +362,12 @@ public:
         _engineToScriptType.emplace(typeid(T).name(), ent_type); // Access to entity by typeid(*entity)
         auto arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T*>>());
         _engineToScriptType.emplace(typeid(vector<T*>).name(), arr_type);
+
+        if constexpr (!std::same_as<T2, void>) {
+            _engineToScriptType.emplace(typeid(T2*).name(), ent_type);
+            _engineToScriptType.emplace(typeid(T2).name(), ent_type);
+            _engineToScriptType.emplace(typeid(vector<T2*>).name(), arr_type);
+        }
     }
 
     void AddLoopCallback(function<void()> callback) { _loopCallbacks.emplace_back(std::move(callback)); }

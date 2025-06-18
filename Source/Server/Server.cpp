@@ -1193,7 +1193,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             break;
         }
 
-        if (!map->GetSize().IsValidPos(cr_hex)) {
+        if (!map->GetSize().isValidPos(cr_hex)) {
             logcb("Invalid hex position");
             break;
         }
@@ -1265,7 +1265,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
 
-        if (map == nullptr || !map->GetSize().IsValidPos(hex)) {
+        if (map == nullptr || !map->GetSize().isValidPos(hex)) {
             logcb("Wrong hexes or critter on global map");
             return;
         }
@@ -2369,10 +2369,8 @@ void FOServer::Process_StopMove(Player* player)
     const auto cr_id = in_buf->Read<ident_t>();
 
     // Todo: validate stop position and place critter in it
-    [[maybe_unused]] const auto start_hx = in_buf->Read<uint16>();
-    [[maybe_unused]] const auto start_hy = in_buf->Read<uint16>();
-    [[maybe_unused]] const auto hex_ox = in_buf->Read<int16>();
-    [[maybe_unused]] const auto hex_oy = in_buf->Read<int16>();
+    [[maybe_unused]] const auto start_hex = in_buf->Read<mpos>();
+    [[maybe_unused]] const auto hex_offset = in_buf->Read<ipos16>();
     [[maybe_unused]] const auto dir_angle = in_buf->Read<int16>();
 
     in_buf.Unlock();
@@ -2652,7 +2650,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
     DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
 
     if (prop->IsHistorical()) {
-        const auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
+        const auto history_id_num = GetHistoryRecordsId().underlyingValue() + 1;
         const auto history_id = ident_t {history_id_num};
 
         SetHistoryRecordsId(history_id);
@@ -2662,7 +2660,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         AnyData::Document doc;
         doc.Emplace("Time", numeric_cast<int64>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
-        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlyingValue()));
         doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
@@ -3109,7 +3107,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>() / cr->Moving.WholeTime;
+    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>() / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3359,7 +3357,7 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
 
     const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
     const auto cur_time = GameTime.GetFrameTime();
-    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
+    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);

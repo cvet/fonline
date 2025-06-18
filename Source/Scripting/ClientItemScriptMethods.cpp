@@ -102,10 +102,20 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ItemView* self)
+{
+    if (const auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        return hex_item->GetAnim()->IsPlaying();
+    }
+
+    return false;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->GetAnim()->Play(animName, looped, reversed);
+        hex_item->PlayAnim(animName, looped, reversed);
     }
 }
 
@@ -113,7 +123,7 @@ FO_SCRIPT_API void Client_Item_PlayAnim(ItemView* self, hstring animName, bool l
 FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->GetAnim()->Stop();
+        hex_item->StopAnim();
     }
 }
 
@@ -121,7 +131,33 @@ FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32 normalizedTime)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->GetAnim()->SetTime(normalizedTime);
+        hex_item->SetAnimTime(normalizedTime);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Item_SetAnimDir(ItemView* self, uint8 dir)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->SetAnimDir(dir);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Item_IsMoving(ItemView* self)
+{
+    if (const auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        return hex_item->IsMoving();
+    }
+
+    return false;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Item_MoveToHex(ItemView* self, mpos hex, float32 speed)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->MoveToHex(hex, speed);
     }
 }
 
@@ -152,6 +188,16 @@ FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetTargetAlpha(alpha);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Item_Finish(ItemView* self)
+{
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        if (!hex_item->IsFinishing()) {
+            hex_item->Finish();
+        }
     }
 }
 

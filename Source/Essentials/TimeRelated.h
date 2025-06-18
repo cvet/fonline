@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #pragma once
 
 #include "BasicCore.h"
@@ -98,12 +96,12 @@ public:
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point::duration { return resolution(_value); }
 
     template<typename T>
-    [[nodiscard]] constexpr auto to_ms() const noexcept -> T
+    [[nodiscard]] constexpr auto toMs() const noexcept -> T
     {
         return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
     }
     template<typename T>
-    [[nodiscard]] constexpr auto to_sec() const noexcept -> T
+    [[nodiscard]] constexpr auto toSec() const noexcept -> T
     {
         return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
     }
@@ -197,7 +195,7 @@ public:
     [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
-    [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
+    [[nodiscard]] constexpr auto durationValue() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
     static auto now() -> nanotime { return nanotime(steady_time_point::clock::now()); }
@@ -262,7 +260,7 @@ public:
     [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
-    [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
+    [[nodiscard]] constexpr auto durationValue() const noexcept -> timespan { return resolution(_value); }
 
     static const synctime zero;
 
@@ -362,7 +360,7 @@ struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
     template<typename FormatContext>
     auto format(const FO_NAMESPACE synctime& value, FormatContext& ctx) const
     {
-        return formatter<FO_NAMESPACE timespan>::format(value.duration_value(), ctx);
+        return formatter<FO_NAMESPACE timespan>::format(value.durationValue(), ctx);
     }
 };
 FO_BEGIN_NAMESPACE();

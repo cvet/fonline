@@ -71,7 +71,7 @@ void ParticleSprite::SetDir(uint8 dir)
     ignore_unused(dir);
 }
 
-void ParticleSprite::SetDirAngle(short dir_angle)
+void ParticleSprite::SetDirAngle(int16 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -108,8 +108,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     Settings.MousePos = App->Input.GetMousePosition();
 
     ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<ItemView>(ItemView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<CritterView>(CritterView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
@@ -219,7 +219,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
     }
 
@@ -353,7 +352,7 @@ void FOClient::MainLoop()
         _curMap->Process();
     }
 
-    App->MainWindow.GrabInput(_curMap != nullptr && _curMap->IsScrollEnabled());
+    App->MainWindow.GrabInput(_curMap != nullptr && _curMap->IsManualScrolling());
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
@@ -419,7 +418,7 @@ void FOClient::ProcessScreenEffectFading()
         }
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32>()) + 1;
+            const auto proc = GenericUtils::Percent(screen_effect.Duration.toMs<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).toMs<int32>()) + 1;
             int32 res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -446,15 +445,11 @@ void FOClient::ScreenQuake(int32 noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
-    Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
-
     _quakeScreenOffsX = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.toMs<float32>() / 30.0f);
 
-    Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
-    Settings.ScreenOffset.y += iround<int32>(_quakeScreenOffsY);
+    _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
 
     _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 }
@@ -464,9 +459,6 @@ void FOClient::ProcessScreenEffectQuake()
     FO_STACK_TRACE_ENTRY();
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
-        Settings.ScreenOffset.x -= iround<int32>(_quakeScreenOffsX);
-        Settings.ScreenOffset.y -= iround<int32>(_quakeScreenOffsY);
-
         if (_quakeScreenOffsX < 0.0f) {
             _quakeScreenOffsX += _quakeScreenOffsStep;
         }
@@ -484,8 +476,7 @@ void FOClient::ProcessScreenEffectQuake()
         _quakeScreenOffsX = -_quakeScreenOffsX;
         _quakeScreenOffsY = -_quakeScreenOffsY;
 
-        Settings.ScreenOffset.x += iround<int32>(_quakeScreenOffsX);
-        Settings.ScreenOffset.y += iround<int32>(_quakeScreenOffsY);
+        _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
 
         _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
@@ -981,8 +972,8 @@ void FOClient::Net_OnAddCritter()
             _curMap->RebuildFog();
         }
 
-        if (!hex_cr->IsAnim()) {
-            hex_cr->AnimateStay();
+        if (!hex_cr->IsAnimPlaying()) {
+            hex_cr->RefreshView();
         }
     }
 }
@@ -1073,7 +1064,7 @@ void FOClient::Net_OnCritterMove()
     ReceiveCritterMoving(cr);
 
     if (cr != nullptr) {
-        cr->AnimateStay();
+        cr->RefreshView();
     }
 }
 
@@ -1104,7 +1095,7 @@ void FOClient::Net_OnCritterMoveSpeed()
     }
 
     const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
-    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
+    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.StartTime = GameTime.GetFrameTime();
@@ -1112,7 +1103,7 @@ void FOClient::Net_OnCritterMoveSpeed()
     cr->Moving.Speed = speed;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
 
-    cr->AnimateStay();
+    cr->RefreshView();
 }
 
 void FOClient::Net_OnCritterAction()
@@ -1283,10 +1274,10 @@ void FOClient::Net_OnCritterAnimate()
     }
 
     if (clear_sequence) {
-        cr->ClearAnim();
+        cr->StopAnim();
     }
-    if (delay_play || !cr->IsAnim()) {
-        cr->Animate(state_anim, action_anim, context_item.get());
+    if (delay_play || !cr->IsAnimPlaying()) {
+        cr->AppendAnim(state_anim, action_anim, context_item.get());
     }
 
     if (context_item) {
@@ -1330,8 +1321,8 @@ void FOClient::Net_OnCritterSetAnims()
         }
     }
 
-    if (hex_cr != nullptr && !hex_cr->IsAnim()) {
-        hex_cr->AnimateStay();
+    if (hex_cr != nullptr && !hex_cr->IsAnimPlaying()) {
+        hex_cr->RefreshView();
     }
 }
 
@@ -1350,6 +1341,7 @@ void FOClient::Net_OnCritterTeleport()
     }
 
     auto* cr = _curMap->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
@@ -1357,11 +1349,7 @@ void FOClient::Net_OnCritterTeleport()
     _curMap->MoveCritter(cr, to_hex, false);
 
     if (cr->GetIsChosen()) {
-        if (_curMap->AutoScroll.HardLockedCritter == cr->GetId() || _curMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
-            _curMap->AutoScroll.CritterLastHex = cr->GetHex();
-        }
-
-        _curMap->ScrollToHex(cr->GetHex(), 0.1f, false);
+        _curMap->ScrollToHex(cr->GetHex(), cr->GetHexOffset(), 100, false);
     }
 }
 
@@ -1381,7 +1369,7 @@ void FOClient::Net_OnCritterPos()
         return;
     }
 
-    FO_RUNTIME_ASSERT(_curMap->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(_curMap->GetSize().isValidPos(hex));
 
     auto* cr = _curMap->GetCritter(cr_id);
 
@@ -1608,7 +1596,7 @@ void FOClient::Net_OnPlaceToGameComplete()
         _curMap->FindSetCenter(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
-            hex_chosen->AnimateStay();
+            hex_chosen->RefreshView();
             _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
@@ -2129,11 +2117,11 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
     FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
-        auto& iface_anim = it->second;
+        auto& cached_anim = it->second;
 
-        iface_anim->Anim->PlayDefault();
+        cached_anim->Anim->PlayDefault();
 
-        _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(iface_anim));
+        _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(cached_anim));
         _ifaceAnimationsCache.erase(it);
 
         return _ifaceAnimCounter;
@@ -2453,26 +2441,6 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    ignore_unused(prop);
-
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        if (item->GetCanOpen()) {
-            if (item->GetOpened()) {
-                item->GetAnim()->Play({}, false, false);
-            }
-            else {
-                item->GetAnim()->Play({}, false, true);
-            }
-        }
-    }
-}
-
 void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2558,9 +2526,11 @@ void FOClient::LmapPrepareMap()
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
-            if (i1 < 0 || i2 < 0 || i1 >= numeric_cast<int32>(_curMap->GetSize().width) || i2 >= numeric_cast<int32>(_curMap->GetSize().height)) {
+            if (!_curMap->GetSize().isValidPos(i1, i2)) {
                 continue;
             }
+
+            const auto hex2 = _curMap->GetSize().fromRawPos(i1, i2);
 
             bool is_far = false;
             const auto dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
@@ -2569,10 +2539,10 @@ void FOClient::LmapPrepareMap()
                 is_far = true;
             }
 
-            const auto& field = _curMap->GetField({numeric_cast<uint16>(i1), numeric_cast<uint16>(i2)});
+            const auto& field = _curMap->GetField(hex2);
             ucolor cur_color;
 
-            if (const auto* cr = _curMap->GetNonDeadCritter({numeric_cast<uint16>(i1), numeric_cast<uint16>(i2)}); cr != nullptr) {
+            if (const auto* cr = _curMap->GetNonDeadCritter(hex2); cr != nullptr) {
                 cur_color = cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0};
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, cur_color});
@@ -2729,9 +2699,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (_curMap != nullptr) {
-            const auto hx = strex(args[1]).toUInt();
-            const auto hy = strex(args[2]).toUInt();
-            _curMap->SetSkipRoof({numeric_cast<uint16>(hx), numeric_cast<uint16>(hy)});
+            const auto hx = strex(args[1]).toInt();
+            const auto hy = strex(args[2]).toInt();
+            _curMap->SetSkipRoof(_curMap->GetSize().fromRawPos(hx, hy));
         }
     }
     else {
@@ -2880,13 +2850,13 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
         FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
         FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
-        cr->AnimateStay();
+        cr->RefreshView();
         Net_SendMove(cr);
     }
 
     if (prev_moving && !cr->IsMoving()) {
         cr->ClearMove();
-        cr->AnimateStay();
+        cr->RefreshView();
         Net_SendStopMove(cr);
     }
 }

@@ -55,7 +55,8 @@ public:
     ~ServerEntity() override = default;
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { FO_NON_CONST_METHOD_HINT_ONELINE() return _engine; }
+    [[nodiscard]] auto GetEngine() const noexcept -> const FOServer* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { return _engine.get(); }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
@@ -63,7 +64,7 @@ public:
 protected:
     ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
 
-    FOServer* _engine;
+    raw_ptr<FOServer> _engine;
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #pragma once
 
 #include "BasicCore.h"
