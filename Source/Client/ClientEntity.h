@@ -53,7 +53,8 @@ public:
     ~ClientEntity() override = default;
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { FO_NON_CONST_METHOD_HINT_ONELINE() return _engine.get(); }
+    [[nodiscard]] auto GetEngine() const noexcept -> const FOClient* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { return _engine.get(); }
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
 
     void SetId(ident_t id, bool register_entity);

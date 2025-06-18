@@ -869,7 +869,7 @@ void SpriteManager::SetEgg(mpos hex, const MapSprite* mspr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, ipos32 offset, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -883,8 +883,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         use_egg = false;
     }
 
-    const int32 ex = _eggOffset.x + _settings.ScreenOffset.x;
-    const int32 ey = _eggOffset.y + _settings.ScreenOffset.y;
+    const int32 ex = _eggOffset.x + offset.x;
+    const int32 ey = _eggOffset.y + offset.y;
 
     for (const auto* mspr = mspr_list.RootSprite(); mspr != nullptr; mspr = mspr->ChainChild) {
         FO_RUNTIME_ASSERT(mspr->Valid);
@@ -905,8 +905,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         }
 
         // Coords
-        int32 x = mspr->HexOffset.x - spr->Size.width / 2 + spr->Offset.x + mspr->PHexOffset->x + _settings.ScreenOffset.x;
-        int32 y = mspr->HexOffset.y - spr->Size.height + spr->Offset.y + mspr->PHexOffset->y + _settings.ScreenOffset.y;
+        int32 x = mspr->HexOffset.x - spr->Size.width / 2 + spr->Offset.x + mspr->PHexOffset->x + offset.x;
+        int32 y = mspr->HexOffset.y - spr->Size.height + spr->Offset.y + mspr->PHexOffset->y + offset.y;
 
         if (mspr->SprOffset != nullptr) {
             x += mspr->SprOffset->x;
@@ -956,10 +956,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         // Choose effect
         auto* effect = mspr->DrawEffect != nullptr ? *mspr->DrawEffect : nullptr;
+
         if (effect == nullptr) {
             effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Generic;
         }
-        FO_RUNTIME_ASSERT(effect);
 
         // Fill buffer
         const auto xf = numeric_cast<float32>(x) / zoom;
@@ -1048,8 +1048,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         // Draw order
         if (_settings.ShowDrawOrder) {
-            const auto x1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.x + _settings.ScreenOffset.x) / zoom);
-            auto y1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.y + _settings.ScreenOffset.y) / zoom);
+            const auto x1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.x + offset.x) / zoom);
+            auto y1 = iround<int32>(numeric_cast<float32>(mspr->HexOffset.y + offset.y) / zoom);
 
             if (mspr->DrawOrder < DrawOrderType::NormalBegin || mspr->DrawOrder > DrawOrderType::NormalEnd) {
                 y1 -= iround<int32>(40.0f / zoom);
@@ -1084,8 +1084,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         if (_settings.ShowSpriteBorders && mspr->DrawOrder > DrawOrderType::Tile4) {
             auto rect = mspr->GetViewRect();
 
-            rect.x += _settings.ScreenOffset.x;
-            rect.y += _settings.ScreenOffset.y;
+            rect.x += offset.x;
+            rect.y += offset.y;
 
             PrepareSquare(borders, rect, ucolor {0, 0, 255, 50});
         }
@@ -1117,7 +1117,7 @@ auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom)
     }
 }
 
-auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
+auto SpriteManager::IsEggTransp(ipos32 pos, ipos32 offset) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1125,8 +1125,8 @@ auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
         return false;
     }
 
-    const auto ex = _eggHex.x + _settings.ScreenOffset.x;
-    const auto ey = _eggHex.y + _settings.ScreenOffset.y;
+    const auto ex = _eggHex.x + offset.x;
+    const auto ey = _eggHex.y + offset.y;
     auto ox = pos.x - iround<int32>(numeric_cast<float32>(ex) / _spritesZoom);
     auto oy = pos.y - iround<int32>(numeric_cast<float32>(ey) / _spritesZoom);
 

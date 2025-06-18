@@ -188,7 +188,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnScreenScroll, ipos32 /*offsetPos*/);
+    FO_ENTITY_EVENT(OnScreenScroll);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
@@ -355,7 +355,6 @@ protected:
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);
     void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
-    void OnSetItemOpened(Entity* entity, const Property* prop);
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
     ClientConnection _conn;

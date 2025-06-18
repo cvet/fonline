@@ -133,7 +133,6 @@ VARIABLE_SETTING(int32, ScreenHeight, 768);
 FIXED_SETTING(int32, MonitorWidth); // Auto
 FIXED_SETTING(int32, MonitorHeight); // Auto
 VARIABLE_SETTING(int32, ScreenHudHeight, 0);
-VARIABLE_SETTING(ipos32, ScreenOffset); // Auto
 VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
@@ -235,8 +234,8 @@ SETTING_GROUP_END();
 SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
 FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM);
 FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM);
-FIXED_SETTING(int32, ScrollDelay, 10);
-FIXED_SETTING(int32, ScrollStep, 12);
+FIXED_SETTING(int32, ScrollFixedDt, 10);
+FIXED_SETTING(int32, ScrollSpeed, 1200); // Pixels per second
 FIXED_SETTING(int32, RainTick, 60);
 FIXED_SETTING(int16, RainSpeedX, 0);
 FIXED_SETTING(int16, RainSpeedY, 15);

@@ -55,31 +55,41 @@ public:
 
     [[nodiscard]] auto IsDrawContour() const noexcept -> bool { return !GetIsWall() && !GetIsScenery() && !GetNoHighlight() && !GetBadItem(); }
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return (_isEffect && !IsFinishing()) || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
-    [[nodiscard]] auto GetAnim() -> Sprite* { FO_NON_CONST_METHOD_HINT_ONELINE() return _anim.get(); }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
+    [[nodiscard]] auto GetAnim() const -> const Sprite* { return _anim.get(); }
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return _isMoving; }
 
     void Init();
     void Process();
     void RefreshAlpha();
+    void PlayAnim(hstring anim_name, bool looped, bool reversed);
+    void StopAnim();
+    void SetAnimTime(float32 normalized_time);
+    void SetAnimDir(uint8 dir);
     void RefreshAnim();
-    void SetEffect(mpos to_hex, float32 speed);
+    void MoveToHex(mpos hex, float32 speed);
     void RefreshOffs();
 
 private:
     void SetupSprite(MapSprite* mspr) override;
 
     shared_ptr<Sprite> _anim {};
+    hstring _animName {};
+    bool _animLooped {};
+    bool _animReversed {};
+    bool _animStopped {};
+    float32 _animTime {};
+    uint8 _animDir {};
 
-    bool _isEffect {};
-    bool _isDynamicEffect {};
-    float32 _effSpeed {};
-    fpos32 _effStepOffset {};
-    ipos32 _effStartOffset {};
-    fpos32 _effCurOffset {};
-    int32 _effDist {};
-    nanotime _effUpdateLastTime {};
-    uint8 _effDir {};
-    vector<mpos> _effSteps {};
+    bool _isMoving {};
+    float32 _moveSpeed {};
+    fpos32 _moveStepOffset {};
+    fpos32 _moveStartOffset {};
+    fpos32 _moveCurOffset {};
+    float32 _moveWholeDist {};
+    nanotime _moveUpdateLastTime {};
+    uint8 _moveDir {};
+    vector<mpos> _moveSteps {};
 };
 
 FO_END_NAMESPACE();

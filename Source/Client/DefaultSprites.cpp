@@ -52,7 +52,7 @@ AtlasSprite::~AtlasSprite()
             const auto rnd_color = ucolor {numeric_cast<uint8>(GenericUtils::Random(0, 255)), numeric_cast<uint8>(GenericUtils::Random(0, 255)), numeric_cast<uint8>(GenericUtils::Random(0, 255))};
 
             vector<ucolor> color_data;
-            color_data.resize(AtlasNode->Size.GetSquare());
+            color_data.resize(AtlasNode->Size.square());
 
             for (size_t i = 0; i < color_data.size(); i++) {
                 color_data[i] = rnd_color;
@@ -74,7 +74,7 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!Size.IsValidPos(pos)) {
+    if (!Size.isValidPos(pos)) {
         return false;
     }
 
@@ -235,9 +235,19 @@ void SpriteSheet::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curIndex = GenericUtils::Random(0u, CntFrm - 1);
+    _curIndex = GenericUtils::Random(0, CntFrm - 1);
 
     RefreshParams();
+}
+
+auto SpriteSheet::GetTime() const -> float32
+{
+    if (CntFrm > 1) {
+        return numeric_cast<float32>(_curIndex) / numeric_cast<float32>(CntFrm - 1);
+    }
+    else {
+        return 0.0f;
+    }
 }
 
 void SpriteSheet::SetTime(float32 normalized_time)
@@ -256,7 +266,7 @@ void SpriteSheet::SetDir(uint8 dir)
     _curDir = dir;
 }
 
-void SpriteSheet::SetDirAngle(short dir_angle)
+void SpriteSheet::SetDirAngle(int16 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -294,7 +304,7 @@ auto SpriteSheet::Update() -> bool
 
     if (_playing) {
         const auto cur_tick = _sprMngr.GetTimer().GetFrameTime();
-        const auto dt = (cur_tick - _startTick).to_ms<int32>();
+        const auto dt = (cur_tick - _startTick).toMs<int32>();
         const auto frm_count = numeric_cast<int32>(CntFrm);
         const auto ticks_per_frame = numeric_cast<int32>(WholeTicks) / frm_count;
         const auto frames_passed = dt / ticks_per_frame;
@@ -401,7 +411,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
 
-        for (uint16 dir = 0; dir < dirs; dir++) {
+        for (uint8 dir = 0; dir < dirs; dir++) {
             auto* dir_anim = anim->GetDir(dir);
             const auto ox = reader.GetLEInt16();
             const auto oy = reader.GetLEInt16();

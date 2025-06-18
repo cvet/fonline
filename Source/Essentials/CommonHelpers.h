@@ -74,7 +74,7 @@ inline auto dynamic_ptr_cast(unique_ptr<U>&& p) noexcept -> unique_ptr<T>
 template<typename T, typename U>
 inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
 {
-    return std::dynamic_pointer_cast<T>(p.get_underlying());
+    return std::dynamic_pointer_cast<T>(p.getUnderlying());
 }
 
 template<typename T>

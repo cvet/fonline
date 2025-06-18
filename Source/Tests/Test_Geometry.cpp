@@ -87,12 +87,12 @@ TEST_CASE("GeometryHelper")
     msize map_size {10, 10};
     bool moved = GeometryHelper::MoveHexByDir(hex, 2, map_size);
     CHECK(moved);
-    CHECK(map_size.IsValidPos(hex));
+    CHECK(map_size.isValidPos(hex));
 
     // MoveHexByDirUnsafe
     ipos32 ihex {5, 5};
     GeometryHelper::MoveHexByDirUnsafe(ihex, 2);
-    CHECK(map_size.IsValidPos(ihex));
+    CHECK(map_size.isValidPos(ihex));
 
     // MoveHexAroundAway
     constexpr ipos32 ihex3 {5, 5};
@@ -114,7 +114,7 @@ TEST_CASE("GeometryHelper")
     mpos start {5, 5};
     int32 count = 0;
     GeometryHelper::ForEachBlockLines(lines, start, map_size, [&](mpos pos) {
-        CHECK(map_size.IsValidPos(pos));
+        CHECK(map_size.isValidPos(pos));
         count++;
     });
     CHECK(count == 3);

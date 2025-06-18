@@ -90,34 +90,33 @@ void ProtoBaker::BakeFiles(FileCollection files)
 
     vector<std::future<void>> file_bakings;
 
-    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-server", max_write_time)) {
-        if (_bakeChecker) {
-            for (const auto& lang_name : _settings->BakeLanguages) {
-                (void)_bakeChecker(strex("Protos.{}.fotxtb", lang_name), max_write_time);
-            }
+    if (_bakeChecker) {
+        for (const auto& lang_name : _settings->BakeLanguages) {
+            (void)_bakeChecker(strex("Protos.{}.fotxtb", lang_name), max_write_time);
+            (void)_bakeChecker(strex("Items.{}.fotxtb", lang_name), max_write_time);
+            (void)_bakeChecker(strex("Maps.{}.fotxtb", lang_name), max_write_time);
+            (void)_bakeChecker(strex("Locations.{}.fotxtb", lang_name), max_write_time);
         }
+    }
 
+    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-server", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerEngine(PropertiesRelationType::ServerRelative);
             const auto script_sys = BakerScriptSystem(engine, *_bakedFiles);
             auto data = BakeProtoFiles(&engine, &script_sys, filtered_files, true);
             _writeData(_packName + ".foprob-server", data);
         }));
+    }
 
-        if (_bakeChecker) {
-            (void)_bakeChecker(_packName + ".foprob-client", max_write_time);
-        }
-
+    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             const auto engine = BakerEngine(PropertiesRelationType::ClientRelative);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files, false);
             _writeData(_packName + ".foprob-client", data);
         }));
+    }
 
-        if (_bakeChecker) {
-            (void)_bakeChecker(_packName + ".foprob-mapper", max_write_time);
-        }
-
+    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             const auto engine = BakerEngine(PropertiesRelationType::BothRelative);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files, false);
@@ -224,7 +223,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         const auto& file_proto_pids = file_protos.second;
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
-            const auto base_name = pid.as_str();
+            const auto base_name = pid.asStr();
             FO_RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
 
             // Fill content from parents
@@ -308,7 +307,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                         const auto key_tok = strex(key).split(' ');
                         const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
-                        TextPackKey text_key = pid.as_uint();
+                        TextPackKey text_key = pid.asUInt();
 
                         for (size_t i = 2; i < key_tok.size(); i++) {
                             const string& num = key_tok[i];
@@ -318,7 +317,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                                     text_key += strex(num).toUInt();
                                 }
                                 else {
-                                    text_key += engine->Hashes.ToHashedString(num).as_uint();
+                                    text_key += engine->Hashes.ToHashedString(num).asUInt();
                                 }
                             }
                         }
@@ -334,15 +333,15 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     size_t errors = 0;
 
     for (auto&& [type_name, protos] : all_protos) {
-        for (auto&& [pid, proto] : protos) {
+        for (auto& proto : protos | std::views::values) {
             errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys);
         }
     }
 
     // Texts
-    if (write_texts) {
-        vector<pair<string, map<string, TextPack>>> lang_packs;
+    vector<pair<string, map<string, TextPack>>> lang_packs;
 
+    if (write_texts) {
         for (const auto& lang : _settings->BakeLanguages) {
             lang_packs.emplace_back(lang, map<string, TextPack>());
         }
@@ -401,10 +400,10 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         for (auto&& [type_name, protos] : all_protos) {
             writer.Write<uint32>(numeric_cast<uint32>(protos.size()));
 
-            writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
-            writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+            writer.Write<uint16>(numeric_cast<uint16>(type_name.asStr().length()));
+            writer.WritePtr(type_name.asStr().data(), type_name.asStr().length());
 
-            for (auto&& [pid, proto] : protos) {
+            for (auto& proto : protos | std::views::values) {
                 const auto proto_name = proto->GetName();
                 writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
                 writer.WritePtr(proto_name.data(), proto_name.length());
@@ -412,7 +411,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                 writer.Write<uint16>(numeric_cast<uint16>(proto->GetComponents().size()));
 
                 for (const auto& component : proto->GetComponents()) {
-                    const auto& component_str = component.as_str();
+                    const auto& component_str = component.asStr();
                     writer.Write<uint16>(numeric_cast<uint16>(component_str.length()));
                     writer.WritePtr(component_str.data(), component_str.length());
                 }
@@ -432,12 +431,21 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
         for (const auto& hstr : str_hashes) {
-            const auto& str = hstr.as_str();
+            const auto& str = hstr.asStr();
             final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
             final_writer.WritePtr(str.c_str(), str.length());
         }
 
         final_writer.WritePtr(protos_data.data(), protos_data.size());
+    }
+
+    // Save parsed packs
+    if (write_texts) {
+        for (auto&& [lang_name, lang_pack] : lang_packs) {
+            for (auto&& [pack_name, text_pack] : lang_pack) {
+                _writeData(strex("{}.{}.fotxtb", pack_name, lang_name), text_pack.GetBinaryData());
+            }
+        }
     }
 
     return final_data;

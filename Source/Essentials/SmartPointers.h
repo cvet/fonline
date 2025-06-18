@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #pragma once
 
 #include "BasicCore.h"
@@ -159,7 +157,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto getNoConst() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
@@ -276,7 +274,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto getNoConst() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
 
@@ -324,7 +322,7 @@ public:
     }
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr&
     {
-        safe_release();
+        safeRelease();
         _ptr = nullptr;
         return *this;
     }
@@ -333,7 +331,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(T* p) noexcept
     {
         _ptr = p;
-        safe_addref();
+        safeAddRef();
     }
 
     FO_FORCE_INLINE explicit refcount_ptr(adopt_tag /*tag*/, T* p) noexcept { _ptr = p; }
@@ -341,7 +339,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
     {
         _ptr = other._ptr;
-        safe_addref();
+        safeAddRef();
     }
     FO_FORCE_INLINE refcount_ptr(refcount_ptr&& other) noexcept
     {
@@ -354,7 +352,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        safe_addref();
+        safeAddRef();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -387,7 +385,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_ptr&& other) noexcept -> refcount_ptr&
     {
         if (this != &other) {
-            safe_release();
+            safeRelease();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -397,13 +395,13 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr&
     {
-        safe_release();
+        safeRelease();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_ptr() { safe_release(); }
+    FO_FORCE_INLINE ~refcount_ptr() { safeRelease(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
@@ -418,25 +416,25 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto getNoConst() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
-        safe_release();
+        safeRelease();
         _ptr = p;
-        safe_addref();
+        safeAddRef();
     }
 
 private:
-    FO_FORCE_INLINE void safe_addref() noexcept
+    FO_FORCE_INLINE void safeAddRef() noexcept
     {
         if (_ptr != nullptr) {
             _ptr->AddRef();
         }
     }
-    FO_FORCE_INLINE void safe_release() noexcept
+    FO_FORCE_INLINE void safeRelease() noexcept
     {
         if (_ptr != nullptr) {
             _ptr->Release();
@@ -585,9 +583,10 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const element_type& { return _smartPtr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> element_type* { return _smartPtr.release(); }
     [[nodiscard]] FO_FORCE_INLINE auto lock() noexcept { return propagate_const<std::shared_ptr<element_type>>(_smartPtr.lock()); }
+    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] FO_FORCE_INLINE auto use_count() const noexcept -> size_t { return _smartPtr.use_count(); }
-    [[nodiscard]] FO_FORCE_INLINE auto get_underlying() noexcept -> T& { return _smartPtr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get_underlying() const noexcept -> const T& { return _smartPtr; }
+    [[nodiscard]] FO_FORCE_INLINE auto getUnderlying() noexcept -> T& { return _smartPtr; }
+    [[nodiscard]] FO_FORCE_INLINE auto getUnderlying() const noexcept -> const T& { return _smartPtr; }
     FO_FORCE_INLINE void reset(element_type* p = nullptr) noexcept { _smartPtr.reset(p); }
 
 private:

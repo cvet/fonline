@@ -132,7 +132,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
-    FO_RUNTIME_ASSERT(map->GetSize().IsValidPos(hex));
+    FO_RUNTIME_ASSERT(map->GetSize().isValidPos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
 
@@ -159,14 +159,14 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
             auto raw_check_hex = ipos32 {hex.x, hex.y};
             GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
-            if (!map_size.IsValidPos(raw_check_hex)) {
+            if (!map_size.isValidPos(raw_check_hex)) {
                 continue;
             }
-            if (!map->IsHexesMovable(map_size.FromRawPos(raw_check_hex), multihex)) {
+            if (!map->IsHexesMovable(map_size.fromRawPos(raw_check_hex), multihex)) {
                 continue;
             }
 
-            final_hex = map_size.FromRawPos(raw_check_hex);
+            final_hex = map_size.fromRawPos(raw_check_hex);
             break;
         }
     }

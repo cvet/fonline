@@ -38,8 +38,6 @@
 
 FO_BEGIN_NAMESPACE();
 
-// ReSharper disable CppInconsistentNaming
-
 class strex final
 {
 public:
@@ -121,6 +119,7 @@ public:
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
     constexpr auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
 
+    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;
     [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }

@@ -244,7 +244,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     }
 
     // Calculate next frame
-    const float64 cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<float64>() / 1000.0;
+    const float64 cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).toMs<float64>() / 1000.0;
     const int32 new_frame = iround<int32>(cur_second * numeric_cast<float64>(_impl->VideoInfo.fps_numerator) / numeric_cast<float64>(_impl->VideoInfo.fps_denominator));
     const int32 next_frame_diff = new_frame - _impl->CurFrame;
 
@@ -343,7 +343,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     const auto frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds(0)) {
-        _impl->AverageRenderTime = std::chrono::milliseconds(iround<uint64>((_impl->AverageRenderTime + frame_render_duration).to_ms<float64>() / 2.0));
+        _impl->AverageRenderTime = std::chrono::milliseconds(iround<uint64>((_impl->AverageRenderTime + frame_render_duration).toMs<float64>() / 2.0));
     }
     else {
         _impl->AverageRenderTime = frame_render_duration;

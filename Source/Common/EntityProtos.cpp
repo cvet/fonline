@@ -48,7 +48,7 @@ auto ProtoEntity::GetName() const noexcept -> string_view
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _protoId.as_str();
+    return _protoId.asStr();
 }
 
 auto ProtoEntity::GetProtoId() const noexcept -> hstring
@@ -63,7 +63,7 @@ void ProtoEntity::EnableComponent(hstring component)
     FO_STACK_TRACE_ENTRY();
 
     _components.emplace(component);
-    _componentHashes.emplace(component.as_hash());
+    _componentHashes.emplace(component.asHash());
 }
 
 auto ProtoEntity::HasComponent(hstring name) const noexcept -> bool

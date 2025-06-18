@@ -140,18 +140,6 @@ public:
         unordered_map<LightSource*, ucolor> LightSources {};
     };
 
-    struct AutoScrollInfo
-    {
-        bool Active {};
-        bool CanStop {};
-        fpos32 Offset {};
-        fpos32 OffsetStep {};
-        float32 Speed {};
-        ident_t HardLockedCritter {};
-        ident_t SoftLockedCritter {};
-        mpos CritterLastHex {};
-    };
-
     struct FindPathResult
     {
         vector<uint8> DirSteps {};
@@ -169,10 +157,10 @@ public:
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
     [[nodiscard]] auto GetField(mpos pos) noexcept -> const Field& { FO_NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(pos); }
     [[nodiscard]] auto IsHexToDraw(mpos pos) const noexcept -> bool { return _hexField->GetCellForReading(pos).IsView; }
-    [[nodiscard]] auto GetHexTrack(mpos pos) noexcept -> char& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
+    [[nodiscard]] auto GetHexTrack(mpos pos) noexcept -> int8& { return _hexTrack[static_cast<size_t>(pos.y) * _mapSize.width + pos.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto GetDrawList() noexcept -> MapSpriteList&;
-    [[nodiscard]] auto IsScrollEnabled() const noexcept -> bool;
+    [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
 
     void EnableMapperMode();
@@ -206,9 +194,10 @@ public:
     void RecacheHexFlags(mpos hex);
     void Resize(msize size);
 
-    auto Scroll() -> bool;
-    void ScrollToHex(mpos hex, float32 speed, bool can_stop);
-    void ScrollOffset(ipos32 offset, float32 speed, bool can_stop);
+    void ScrollToHex(mpos hex, ipos16 hex_offset, int32 speed, bool can_stop);
+    void ApplyScrollOffset(ipos32 offset, int32 speed, bool can_stop);
+    void LockScreenScroll(CritterView* cr, int32 speed, bool soft_lock, bool unlock_if_same);
+    void SetExtraScrollOffset(fpos32 offset);
 
     void SwitchShowHex();
 
@@ -230,6 +219,7 @@ public:
     auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8>>& data) -> ItemHexView*;
     auto AddMapperItem(hstring pid, mpos hex, const Properties* props) -> ItemHexView*;
     auto AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) -> ItemHexView*;
+    auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;
     auto GetItem(mpos hex, hstring pid) -> ItemHexView*;
     auto GetItem(mpos hex, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
@@ -253,7 +243,6 @@ public:
     void SetSkipRoof(mpos hex);
     void MarkRoofNum(ipos32 raw_hex, int16 num);
 
-    auto RunEffectItem(hstring eff_pid, mpos from_hex, mpos to_hex, float32 speed) -> ItemHexView*;
     auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
 
     void SetCursorPos(CritterHexView* cr, ipos32 pos, bool show_steps, bool refresh);
@@ -276,8 +265,6 @@ public:
     auto ValidateForSave() const -> vector<string>;
     auto SaveToText() const -> string;
 
-    AutoScrollInfo AutoScroll {};
-
 private:
     [[nodiscard]] auto IsVisible(const Sprite* spr, ipos32 offset) const -> bool;
     [[nodiscard]] auto GetViewSize() const -> isize32;
@@ -285,6 +272,8 @@ private:
     [[nodiscard]] auto ScrollCheck(int32 xmod, int32 ymod) const -> bool;
 
     void OnDestroySelf() override;
+
+    void ProcessScroll(float32 dt);
 
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
@@ -343,7 +332,19 @@ private:
 
     MapSpriteList _mapSprites;
 
-    nanotime _scrollLastTime {};
+    fpos32 _curScrollOffset {};
+    fpos32 _extraScrollOffset {};
+    timespan _scrollDtAccum {};
+
+    bool _autoScrollActive {};
+    bool _autoScrollCanStop {};
+    fpos32 _autoScrollOffset {};
+    int32 _autoScrollSpeed {};
+    ident_t _autoScrollHardLockedCritter {};
+    ident_t _autoScrollSoftLockedCritter {};
+    mpos _autoScrollCritterLastHex {};
+    ipos16 _autoScrollCritterLastHexOffset {};
+    int32 _autoScrollLockSpeed {};
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
@@ -416,7 +417,7 @@ private:
 
     unordered_set<hstring> _fastPids {};
     unordered_set<hstring> _ignorePids {};
-    vector<char> _hexTrack {};
+    vector<int8> _hexTrack {};
 
     vector<refcount_ptr<SpritePattern>> _spritePatterns {};
 };

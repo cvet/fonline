@@ -56,7 +56,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
         throw ScriptException("Map sprite arg is null");
     }
 
-    if (!self->GetSize().IsValidPos(mapSpr->Hex)) {
+    if (!self->GetSize().isValidPos(mapSpr->Hex)) {
         return;
     }
     if (!self->IsHexToDraw(mapSpr->Hex)) {
@@ -92,7 +92,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
     }
 
     const auto& field = self->GetField(mapSpr->Hex);
-    auto& mspr = self->GetDrawList().InsertSprite(draw_order, {mapSpr->Hex.x, numeric_cast<uint16>(mapSpr->Hex.y + draw_order_hy_offset)}, //
+    auto& mspr = self->GetDrawList().InsertSprite(draw_order, self->GetSize().clampPos(mapSpr->Hex.x, mapSpr->Hex.y + draw_order_hy_offset), //
         {(self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->Offset.x, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->Offset.y}, &field.Offset, anim, nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
@@ -275,7 +275,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, int32 radius, CritterFindType findType)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
@@ -299,10 +299,10 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -316,10 +316,10 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -333,10 +333,10 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -350,10 +350,10 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
 ///@ ExportMethod
 FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, int32 cut)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -386,7 +386,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
 ///@ ExportMethod
 FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, int32 cut)
 {
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -424,10 +424,10 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
 ///@ ExportMethod
 FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, int32 cut)
 {
-    if (!self->GetSize().IsValidPos(fromHex)) {
+    if (!self->GetSize().isValidPos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
     }
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -458,7 +458,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos t
 ///@ ExportMethod
 FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, int32 cut)
 {
-    if (!self->GetSize().IsValidPos(toHex)) {
+    if (!self->GetSize().isValidPos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
@@ -493,48 +493,33 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, int32 speed, bool canStop)
+FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, ipos16 hex_offset, int32 speed, bool canStop)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
+    }
+    if (speed < 0) {
+        throw ScriptException("Negative speed");
     }
 
     if (speed == 0) {
         self->FindSetCenter(hex);
     }
     else {
-        self->ScrollToHex(hex, numeric_cast<float32>(speed) / 1000.0f, canStop);
+        self->ScrollToHex(hex, hex_offset, speed, canStop);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenOffset(MapView* self, ipos32 offset, int32 speed, bool canStop)
+FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, int32 speed, bool canStop)
 {
-    self->ScrollOffset(offset, numeric_cast<float32>(speed) / 1000.0f, canStop);
+    self->ApplyScrollOffset(offset, speed, canStop);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, int32 speed, bool softLock, bool unlockIfSame)
 {
-    const auto id = cr != nullptr ? cr->GetId() : ident_t {};
-    if (softLock) {
-        if (unlockIfSame && id == self->AutoScroll.SoftLockedCritter) {
-            self->AutoScroll.SoftLockedCritter = ident_t {};
-        }
-        else {
-            self->AutoScroll.SoftLockedCritter = id;
-        }
-
-        self->AutoScroll.CritterLastHex = cr != nullptr ? cr->GetHex() : mpos {};
-    }
-    else {
-        if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
-            self->AutoScroll.HardLockedCritter = ident_t {};
-        }
-        else {
-            self->AutoScroll.HardLockedCritter = id;
-        }
-    }
+    self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
 }
 
 ///@ ExportMethod
@@ -576,7 +561,7 @@ FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir,
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
@@ -586,7 +571,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof)
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof, uint8 layer)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
@@ -596,7 +581,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof, u
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, bool roof)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
@@ -652,13 +637,13 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos32& screenPos)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex provided");
     }
 
     screenPos = self->GetHexPosition(hex);
-    screenPos.x += self->GetEngine()->Settings.ScreenOffset.x + (self->GetEngine()->Settings.MapHexWidth / 2);
-    screenPos.y += self->GetEngine()->Settings.ScreenOffset.y + (self->GetEngine()->Settings.MapHexHeight / 2);
+    screenPos.x += self->GetScrollOffset().x + (self->GetEngine()->Settings.MapHexWidth / 2);
+    screenPos.y += self->GetScrollOffset().y + (self->GetEngine()->Settings.MapHexHeight / 2);
     screenPos.x = iround<int32>(numeric_cast<float32>(screenPos.x) / self->GetSpritesZoom());
     screenPos.y = iround<int32>(numeric_cast<float32>(screenPos.y) / self->GetSpritesZoom());
 }
@@ -709,7 +694,7 @@ FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos3
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -719,7 +704,7 @@ FO_SCRIPT_API bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
@@ -772,26 +757,16 @@ FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_RunEffect(MapView* self, hstring eff_pid, mpos hex)
+FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, mpos hex)
 {
-    if (!self->GetSize().IsValidPos(hex)) {
+    if (self->GetEngine()->ProtoMngr.GetProtoItemSafe(pid) == nullptr) {
+        throw ScriptException("Invalid item pid arg");
+    }
+    if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    return self->RunEffectItem(eff_pid, hex, hex, 0.0f);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_RunEffect(MapView* self, hstring eff_pid, mpos fromHex, mpos toHex, float32 speed)
-{
-    if (!self->GetSize().IsValidPos(fromHex)) {
-        throw ScriptException("Invalid from hex arg");
-    }
-    if (!self->GetSize().IsValidPos(toHex)) {
-        throw ScriptException("Invalid to hex arg");
-    }
-
-    return self->RunEffectItem(eff_pid, fromHex, toHex, speed);
+    return self->AddLocalItem(pid, hex);
 }
 
 FO_END_NAMESPACE();

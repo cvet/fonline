@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-
 #pragma once
 
 // Operating system (passed outside)
@@ -225,6 +223,7 @@ public:
     {
     }
 
+    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
@@ -312,6 +311,11 @@ struct is_specialization : std::false_type
 template<template<typename...> typename Ref, typename... Args>
 struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
+};
+
+template<typename From, typename To>
+concept is_convertible_without_narrowing = requires(From&& x) {
+    { std::type_identity_t<To[]> {std::forward<From>(x)} } -> std::same_as<To[1]>;
 };
 
 // End of scope callback

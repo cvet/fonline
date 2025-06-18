@@ -125,8 +125,8 @@ void MapBaker::BakeFiles(FileCollection files)
                 errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
 
                 map_cr_count++;
-                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
+                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().asHash());
                 props.StoreAllData(props_data, str_hashes);
                 map_cr_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -138,8 +138,8 @@ void MapBaker::BakeFiles(FileCollection files)
                 errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
 
                 map_item_count++;
-                map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+                map_item_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
+                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().asHash());
                 props.StoreAllData(props_data, str_hashes);
                 map_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_item_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -153,8 +153,8 @@ void MapBaker::BakeFiles(FileCollection files)
                     client_props.ApplyFromText(kv);
 
                     map_client_item_count++;
-                    map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                    map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                    map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
+                    map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().asHash());
                     client_props.StoreAllData(props_data, client_str_hashes);
                     map_client_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                     map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -173,7 +173,7 @@ void MapBaker::BakeFiles(FileCollection files)
             final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
-                const auto& str = hstr.as_str();
+                const auto& str = hstr.asStr();
                 final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
@@ -194,7 +194,7 @@ void MapBaker::BakeFiles(FileCollection files)
             final_writer.Write<uint32>(numeric_cast<uint32>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
-                const auto& str = hstr.as_str();
+                const auto& str = hstr.asStr();
                 final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }

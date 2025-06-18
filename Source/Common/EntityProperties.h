@@ -226,11 +226,6 @@ public:
     FO_ENTITY_PROPERTY(Public, bool, IsTrap);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Protected, int16, TrapValue);
-    ///@ MigrationRule Property Item IsCanOpen CanOpen
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, CanOpen);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, Opened);
 };
 
 class CritterProperties : public EntityProperties
@@ -360,6 +355,8 @@ public:
     FO_ENTITY_PROPERTY(PrivateCommon, msize, Size);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
+    ///@ ExportProperty ReadOnly
+    FO_ENTITY_PROPERTY(PrivateClient, ipos32, ScrollOffset);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, ident_t, WorkEntityId);
 

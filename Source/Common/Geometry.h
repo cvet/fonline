@@ -39,60 +39,57 @@
 
 FO_BEGIN_NAMESPACE();
 
-///@ ExportValueType mpos mpos Layout = uint16-x+uint16-y
-struct mpos
+// Todo: make hex position customizable, to allow to add third Z coordinate
+///@ ExportValueType mpos mpos Layout = int16-x+int16-y
+struct mpos : ipos<int16>
 {
     constexpr mpos() noexcept = default;
-    constexpr mpos(uint16 x_, uint16 y_) noexcept :
-        x {x_},
-        y {y_}
+    constexpr mpos(int16 x_, int16 y_) noexcept :
+        ipos(x_, y_)
     {
     }
-
-    [[nodiscard]] constexpr auto operator==(const mpos& other) const noexcept -> bool { return x == other.x && y == other.y; }
-    [[nodiscard]] constexpr auto operator!=(const mpos& other) const noexcept -> bool { return x != other.x || y != other.y; }
-    [[nodiscard]] constexpr auto operator+(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x + other.x), numeric_cast<uint16>(y + other.y)}; }
-    [[nodiscard]] constexpr auto operator-(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x - other.x), numeric_cast<uint16>(y - other.y)}; }
-    [[nodiscard]] constexpr auto operator*(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x * other.x), numeric_cast<uint16>(y * other.y)}; }
-    [[nodiscard]] constexpr auto operator/(const mpos& other) const -> mpos { return {numeric_cast<uint16>(x / other.x), numeric_cast<uint16>(y / other.y)}; }
-
-    // Todo: make hex position customizable, to allow to add third Z coordinate
-    uint16 x {};
-    uint16 y {};
 };
-static_assert(std::is_standard_layout_v<mpos>);
-static_assert(sizeof(mpos) == 4);
+static_assert(sizeof(mpos) == 4 && std::is_standard_layout_v<mpos>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
-///@ ExportValueType msize msize Layout = uint16-x+uint16-y
-struct msize
+///@ ExportValueType msize msize Layout = int16-width+int16-height
+struct msize : isize<int16>
 {
     constexpr msize() noexcept = default;
-    constexpr msize(uint16 width_, uint16 height_) noexcept :
-        width {width_},
-        height {height_}
+    constexpr msize(int16 width_, int16 height_) noexcept :
+        isize(width_, height_)
     {
     }
 
-    [[nodiscard]] constexpr auto operator==(const msize& other) const noexcept -> bool { return width == other.width && height == other.height; }
-    [[nodiscard]] constexpr auto operator!=(const msize& other) const noexcept -> bool { return width != other.width || height != other.height; }
-    [[nodiscard]] constexpr auto GetSquare() const -> int32 { return numeric_cast<int32>(width * height); }
-    template<typename T>
-    [[nodiscard]] constexpr auto IsValidPos(T pos) const noexcept -> bool
-    {
-        return pos.x >= 0 && pos.y >= 0 && pos.x < width && pos.y < height;
-    }
-    template<typename T>
-    [[nodiscard]] constexpr auto ClampPos(T pos) const -> mpos
+    [[nodiscard]] constexpr auto clampPos(std::integral auto x, std::integral auto y) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
-        return {numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.x), 0, width - 1)), numeric_cast<uint16>(std::clamp(numeric_cast<int32>(pos.y), 0, height - 1))};
+        const auto clamped_x = numeric_cast<int16>(std::clamp(numeric_cast<int32>(x), 0, width - 1));
+        const auto clamped_y = numeric_cast<int16>(std::clamp(numeric_cast<int32>(y), 0, height - 1));
+        return {clamped_x, clamped_y};
     }
-    template<typename T>
-    [[nodiscard]] constexpr auto FromRawPos(T pos) const -> mpos
+    [[nodiscard]] constexpr auto clampPos(pos_type auto pos) const -> mpos
+    {
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
+        const auto clamped_x = numeric_cast<int16>(std::clamp(numeric_cast<int32>(pos.x), 0, width - 1));
+        const auto clamped_y = numeric_cast<int16>(std::clamp(numeric_cast<int32>(pos.y), 0, height - 1));
+        return {clamped_x, clamped_y};
+    }
+    [[nodiscard]] constexpr auto fromRawPos(std::integral auto x, std::integral auto y) const -> mpos
+    {
+        FO_RUNTIME_ASSERT(width > 0);
+        FO_RUNTIME_ASSERT(height > 0);
+        FO_RUNTIME_ASSERT(x >= 0);
+        FO_RUNTIME_ASSERT(y >= 0);
+        FO_RUNTIME_ASSERT(x < width);
+        FO_RUNTIME_ASSERT(y < height);
+        return {numeric_cast<int16>(x), numeric_cast<int16>(y)};
+    }
+    [[nodiscard]] constexpr auto fromRawPos(pos_type auto pos) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
@@ -100,14 +97,10 @@ struct msize
         FO_RUNTIME_ASSERT(pos.y >= 0);
         FO_RUNTIME_ASSERT(pos.x < width);
         FO_RUNTIME_ASSERT(pos.y < height);
-        return {numeric_cast<uint16>(pos.x), numeric_cast<uint16>(pos.y)};
+        return {numeric_cast<int16>(pos.x), numeric_cast<int16>(pos.y)};
     }
-
-    uint16 width {};
-    uint16 height {};
 };
-static_assert(std::is_standard_layout_v<msize>);
-static_assert(sizeof(msize) == 4);
+static_assert(sizeof(msize) == 4 && std ::is_standard_layout_v<msize>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);

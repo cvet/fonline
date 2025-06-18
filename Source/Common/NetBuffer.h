@@ -112,7 +112,7 @@ public:
         requires(std::same_as<T, hstring>)
     void Write(T value)
     {
-        const auto hash = value.as_hash();
+        const auto hash = value.asHash();
         Push(&hash, sizeof(hash));
     }
 

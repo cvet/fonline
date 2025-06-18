@@ -84,12 +84,13 @@ public:
     [[nodiscard]] auto GetDir(int32 dir) const -> const SpriteSheet*;
     [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
+    [[nodiscard]] auto GetTime() const -> float32 override;
 
     auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float32 normalized_time) override;
     void SetDir(uint8 dir) override;
-    void SetDirAngle(short dir_angle) override;
+    void SetDirAngle(int16 dir_angle) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;

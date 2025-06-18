@@ -151,8 +151,7 @@ void LineTracer::GetNextSquare(mpos& pos)
     _x1 += _dx;
     _y1 += _dy;
 
-    pos = {iround<uint16>(std::floor(_x1)), iround<uint16>(std::floor(_y1))};
-    pos = _mapSize.ClampPos(pos);
+    pos = _mapSize.clampPos(iround<int32>(std::floor(_x1)), iround<int32>(std::floor(_y1)));
 }
 
 void LineTracer::NormalizeDir()

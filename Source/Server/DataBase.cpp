@@ -1110,7 +1110,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&filter, "_id", 3, id.underlying_value())) {
+        if (!bson_append_int64(&filter, "_id", 3, id.underlyingValue())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1162,7 +1162,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&insert, "_id", 3, id.underlying_value())) {
+        if (!bson_append_int64(&insert, "_id", 3, id.underlyingValue())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1194,7 +1194,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1238,7 +1238,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1268,7 +1268,7 @@ private:
         const auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
-            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.as_str().c_str());
+            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.asStr().c_str());
 
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't get collection", collection_name);

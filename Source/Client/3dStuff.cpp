@@ -1954,7 +1954,7 @@ void ModelInstance::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32>();
+    const auto dt = 0.001f * (time - _lastDrawTime).toMs<float32>();
 
     _lastDrawTime = time;
     _forceDraw = false;

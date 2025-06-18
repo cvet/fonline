@@ -300,8 +300,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
             if (cr != nullptr) {
                 FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
-                if (const auto hex = cr->GetHex(); !map->GetSize().IsValidPos(hex)) {
-                    cr->SetHex(map->GetSize().ClampPos(hex));
+                if (const auto hex = cr->GetHex(); !map->GetSize().isValidPos(hex)) {
+                    cr->SetHex(map->GetSize().clampPos(hex));
                 }
 
                 map->AddCritter(cr);
@@ -327,8 +327,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
                 FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
                 FO_RUNTIME_ASSERT(item->GetMapId() == map->GetId());
 
-                if (const auto hex = item->GetHex(); !map->GetSize().IsValidPos(hex)) {
-                    item->SetHex(map->GetSize().ClampPos(hex));
+                if (const auto hex = item->GetHex(); !map->GetSize().isValidPos(hex)) {
+                    item->SetHex(map->GetSize().clampPos(hex));
                 }
 
                 map->SetItem(item);
@@ -591,7 +591,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_RUNTIME_ASSERT(id.underlyingValue() != 0);
 
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
@@ -889,7 +889,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     FO_STACK_TRACE_ENTRY();
 
     if (!entity->GetId()) {
-        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
+        const auto id_num = std::max(_engine->GetLastEntityId().underlyingValue() + 1, _engine->Settings.EntityStartId);
         const auto id = ident_t {id_num};
         const auto collection_name = entity->GetTypeNamePlural();
 
@@ -1073,7 +1073,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_RUNTIME_ASSERT(id.underlyingValue() != 0);
 
         if (!_engine->IsValidEntityType(type_name)) {
             WriteLog("Custom entity {} type {} not valid", id, type_name);

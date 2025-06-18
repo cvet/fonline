@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
-    [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
@@ -77,12 +77,12 @@ public:
     void ChangeDirAngle(int32 dir_angle);
     void ChangeLookDirAngle(int32 dir_angle);
     void ChangeMoveDirAngle(int32 dir_angle);
-    void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
-    void AnimateStay();
+    void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
+    void StopAnim();
+    void RefreshView();
     void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
     void Process();
     void ResetOk();
-    void ClearAnim();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;

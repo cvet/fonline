@@ -54,7 +54,7 @@ class Tween
 
     int get_Dist()
     {
-        return int(math::sqrt(Math::Pow2((end ? x2 : x1) - x3) + Math::Pow2((end ? y2 : y1) - y3)));
+        return Math::RoundToInt(math::sqrt(Math::Pow2((end ? x2 : x1) - x3) + Math::Pow2((end ? y2 : y1) - y3)));
     }
 
     int get_Percent()

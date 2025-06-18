@@ -710,7 +710,7 @@ class Object
     Object FindHit(ipos pos)
     {
         // Check children
-        for (int i = int(_Children.length()) - 1; i >= 0; i--) {
+        for (int i = _Children.length() - 1; i >= 0; i--) {
             Object obj = _Children[i].FindHit(pos);
             if (obj != null) {
                 return obj;
@@ -1647,7 +1647,7 @@ class TextInput : Text
             if (_CarriagePos < 0) {
                 _CarriagePos = 0;
             }
-            if (_CarriagePos > int(text.length())) {
+            if (_CarriagePos > text.length()) {
                 _CarriagePos = text.length();
             }
             text = text.substr(0, _CarriagePos) + (Game.FrameTime.milliseconds % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
@@ -1709,7 +1709,7 @@ class TextInput : Text
             if (_CarriagePos < 0) {
                 _CarriagePos = 0;
             }
-            else if (_CarriagePos > int(_Text.length())) {
+            else if (_CarriagePos > _Text.length()) {
                 _CarriagePos = _Text.length();
             }
 
@@ -1720,12 +1720,12 @@ class TextInput : Text
                 }
             }
             else if (key == KeyCode::Delete) {
-                if (_CarriagePos < int(_Text.length())) {
+                if (_CarriagePos < _Text.length()) {
                     _Text[_CarriagePos] = "";
                 }
             }
             else if (key == KeyCode::Right) {
-                if (_CarriagePos < int(_Text.length())) {
+                if (_CarriagePos < _Text.length()) {
                     _CarriagePos++;
                 }
             }
@@ -1771,7 +1771,7 @@ class TextInput : Text
 
     void SetCarriage(bool enable)
     {
-        _CarriagePos = (enable ? int(_Text.length()) : -1);
+        _CarriagePos = (enable ? _Text.length() : -1);
     }
 };
 
@@ -2116,7 +2116,7 @@ class Screen : Panel
                 int curCursorIndex = _AvailableCursors.find(curCursor);
                 if (curCursorIndex != -1) {
                     curCursorIndex++;
-                    if (curCursorIndex >= int(_AvailableCursors.length())) {
+                    if (curCursorIndex >= _AvailableCursors.length()) {
                         curCursorIndex = 0;
                     }
                     Settings.Cursor = _AvailableCursors[curCursorIndex];
@@ -2294,7 +2294,7 @@ class Grid : Panel
         for (int i = 0; i < _Children.length();) {
             if (_Cells.findByRef(_Children[i]) != -1) {
                 _Children[i].SetActive(false);
-                _SetCellIndex(_Children[i], null, int(-1));
+                _SetCellIndex(_Children[i], null, -1);
                 _Children.removeAt(i);
             }
             else {
@@ -2949,7 +2949,7 @@ class Console : TextInput
         if (_CarriagePos < 0) {
             _CarriagePos = 0;
         }
-        if (_CarriagePos > int(text.length())) {
+        if (_CarriagePos > text.length()) {
             _CarriagePos = text.length();
         }
 
@@ -3076,7 +3076,7 @@ class ItemView : Grid
             newItems.resize(_ItemsGridSize);
             for (int i = 0; i < items.length(); i++) {
                 int itemIndex = OnCheckItem(items[i]);
-                if (itemIndex >= 0 && itemIndex < int(newItems.length())) {
+                if (itemIndex >= 0 && itemIndex < newItems.length()) {
                     newItems[itemIndex] = items[i];
                 }
             }
@@ -3189,7 +3189,7 @@ void ShowScreen(GuiScreen screenNum, dict<string, any> params)
     Settings.ScrollKeybLeft = false;
 
     // Manage multiinstance
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         // Find instance
         Screen screen = Screens[i];
         if (screen.Num != screenNum) {
@@ -3219,7 +3219,7 @@ void HideScreen()
 
 void HideScreen(GuiScreen screenNum)
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         // Find instance
         Screen screen = Screens[i];
 
@@ -3259,7 +3259,7 @@ Screen GetScreen(GuiScreen screenNum)
 {
     Screen firstMultiinstanceScreen = null;
 
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
 
         if (screen.Num == screenNum) {
@@ -3277,7 +3277,7 @@ Screen GetScreen(GuiScreen screenNum)
 
 Screen GetActiveScreen()
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
 
         if (screen.Active) {
@@ -3290,7 +3290,7 @@ Screen GetActiveScreen()
 
 Screen GetActiveScreen(GuiScreen screenNum)
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
 
         if (screen.Num == screenNum && screen.Active) {
@@ -3437,7 +3437,7 @@ TextInput FindNextTextInput(Object obj)
 MessageBox[] CollectMessageBoxes()
 {
     MessageBox[] messageBoxes = {};
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         CollectMessageBoxes(Screens[i], messageBoxes);
     }
     return messageBoxes;
@@ -3457,7 +3457,7 @@ void CollectMessageBoxes(Object obj, MessageBox[] messageBoxes)
 
 bool IsConsoleActive()
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         if (IsConsoleActive(Screens[i])) {
             return true;
         }
@@ -3507,7 +3507,7 @@ bool CheckHit(ipos pos)
 
 bool IsModalScreenActive()
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         if (Screens[i].Active && Screens[i].IsModal) {
             return true;
         }
@@ -3718,7 +3718,7 @@ void EngineCallback_MouseMove(ipos offset)
 void EngineCallback_KeyDown(KeyCode key, string text)
 {
     // Global input handler
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         if (Screens[i].Active) {
             Screens[i]._GlobalInput(key, text);
         }
@@ -3809,7 +3809,7 @@ void EngineCallback_ItemChanged(bool onMap)
 
 void CollectItemView(ItemView[] itemViews)
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         CollectItemView(Screens[i], itemViews);
     }
 }
@@ -3875,7 +3875,7 @@ Screen CreateScreen(GuiScreen screenNum)
 
 void UnregisterScreen(GuiScreen screenNum)
 {
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
 
         if (screen.Num == screenNum) {
@@ -3984,7 +3984,7 @@ int GetScreenCount(GuiScreen screenNum)
 {
     int count = 0;
 
-    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+    for (int i = Screens.length() - 1; i >= 0; i--) {
         if (Screens[i].Num == screenNum) {
             count++;
         }

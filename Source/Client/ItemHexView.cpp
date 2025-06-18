@@ -91,36 +91,31 @@ void ItemHexView::Process()
         ProcessFading();
     }
 
-    if (_isEffect && !_isDynamicEffect && !IsFinishing() && !_anim->IsPlaying()) {
-        Finish();
-    }
+    if (_isMoving) {
+        const auto time = _engine->GameTime.GetFrameTime();
+        const auto dt = (time - _moveUpdateLastTime).toMs<float32>();
+        _moveUpdateLastTime = time;
 
-    if (_isDynamicEffect && !IsFinishing()) {
-        const auto dt = (_engine->GameTime.GetFrameTime() - _effUpdateLastTime).to_ms<float32>();
+        _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
+        RefreshOffs();
 
-        if (dt > 0.0f) {
-            _effCurOffset.x += _effStepOffset.x * dt * _effSpeed;
-            _effCurOffset.y += _effStepOffset.y * dt * _effSpeed;
+        const auto dist = (_moveCurOffset - _moveStartOffset).dist();
 
-            RefreshOffs();
-
-            _effUpdateLastTime = _engine->GameTime.GetFrameTime();
-
-            if (GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset) >= _effDist) {
-                Finish();
-            }
+        if (dist >= _moveWholeDist) {
+            _moveCurOffset = (_moveStartOffset + _moveStepOffset) * _moveWholeDist;
+            _isMoving = false;
         }
 
-        const auto dist = GenericUtils::DistSqrt({iround<int32>(_effCurOffset.x), iround<int32>(_effCurOffset.y)}, _effStartOffset);
-        const auto proc = GenericUtils::Percent(_effDist, dist);
-        const auto step_hex = _effSteps[_effSteps.size() * std::min(proc, 99) / 100];
+        const auto proc = iround<int32>(dist / _moveWholeDist * 100.0f);
+        const auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {
             const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
 
-            _effCurOffset.x -= numeric_cast<float32>(x);
-            _effCurOffset.y -= numeric_cast<float32>(y);
-
+            _moveStartOffset.x -= numeric_cast<float32>(x);
+            _moveStartOffset.y -= numeric_cast<float32>(y);
+            _moveCurOffset.x -= numeric_cast<float32>(x);
+            _moveCurOffset.y -= numeric_cast<float32>(y);
             RefreshOffs();
 
             _map->MoveItem(this, step_hex);
@@ -128,33 +123,34 @@ void ItemHexView::Process()
     }
 }
 
-void ItemHexView::SetEffect(mpos to_hex, float32 speed)
+void ItemHexView::MoveToHex(mpos hex, float32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _isEffect = true;
-    _isDynamicEffect = false;
-
     const auto cur_hex = GetHex();
 
-    if (cur_hex != to_hex) {
-        _isDynamicEffect = true;
-        _effSpeed = speed;
-
-        _effSteps.emplace_back(cur_hex);
-        _map->TraceBullet(cur_hex, to_hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_effSteps, false);
-
-        auto pos_offset = _engine->Geometry.GetHexInterval(cur_hex, to_hex);
-        pos_offset.y += GenericUtils::Random(5, 25); // Center of body
-
-        _effStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
-        _effDist = GenericUtils::DistSqrt({}, pos_offset);
+    if (cur_hex == hex) {
+        _isMoving = false;
+        return;
     }
 
-    _effStartOffset = SprOffset;
-    _effCurOffset = {numeric_cast<float32>(SprOffset.x), numeric_cast<float32>(SprOffset.y)};
-    _effDir = GeometryHelper::GetDir(cur_hex, to_hex);
-    _effUpdateLastTime = _engine->GameTime.GetFrameTime();
+    _isMoving = true;
+    _moveSpeed = speed;
+
+    _moveSteps.clear();
+    _moveSteps.emplace_back(cur_hex);
+    _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
+
+    auto pos_offset = _engine->Geometry.GetHexInterval(cur_hex, hex);
+    pos_offset.y += GenericUtils::Random(5, 25); // Center of body
+
+    _moveStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
+    _moveWholeDist = fpos32(pos_offset).dist();
+
+    _moveStartOffset = fpos32(SprOffset);
+    _moveCurOffset = _moveStartOffset;
+    _moveDir = GeometryHelper::GetDir(cur_hex, hex);
+    _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
 void ItemHexView::RefreshAlpha()
@@ -164,10 +160,59 @@ void ItemHexView::RefreshAlpha()
     SetDefaultAlpha(GetColorize() ? GetColorizeColor().comp.a : 0xFF);
 }
 
+void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animName = anim_name;
+    _animLooped = looped;
+    _animReversed = reversed;
+    _animStopped = false;
+    _animTime = reversed ? 0.0f : 1.0f;
+
+    if (_anim) {
+        _anim->Play(_animName, _animLooped, _animReversed);
+    }
+}
+
+void ItemHexView::StopAnim()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animStopped = true;
+
+    if (_anim) {
+        _anim->Stop();
+    }
+}
+
+void ItemHexView::SetAnimTime(float32 normalized_time)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animTime = normalized_time;
+
+    if (_anim) {
+        _anim->SetTime(_animTime);
+    }
+}
+
+void ItemHexView::SetAnimDir(uint8 dir)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animDir = dir;
+
+    if (_anim) {
+        _anim->SetDir(_animDir);
+    }
+}
+
 void ItemHexView::RefreshAnim()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const bool is_anim_init = !_anim;
     const auto pic_name = GetPicMap();
 
     if (pic_name) {
@@ -177,33 +222,24 @@ void ItemHexView::RefreshAnim()
         _anim = nullptr;
     }
 
-    if (_anim == nullptr) {
+    if (_anim) {
+        if (is_anim_init) {
+            _anim->PlayDefault();
+        }
+        else {
+            _anim->SetTime(_animTime);
+            _anim->SetDir(_animDir);
+
+            if (!_animStopped && _animLooped) {
+                _anim->Play(_animName, _animLooped, _animReversed);
+            }
+        }
+    }
+    else {
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    if (_isEffect) {
-        _anim->SetDir(_effDir);
-    }
-
-    if (GetCanOpen()) {
-        _anim->Stop();
-
-        if (GetOpened()) {
-            _anim->SetTime(1.0f);
-        }
-        else {
-            _anim->SetTime(0.0f);
-        }
-    }
-    else if (_isEffect && !_isDynamicEffect) {
-        _anim->Play({}, false, false);
-    }
-    else {
-        _anim->PlayDefault();
-    }
-
     Spr = _anim.get();
-
     RefreshOffs();
 }
 
@@ -250,9 +286,9 @@ void ItemHexView::RefreshOffs()
         }
     }
 
-    if (_isDynamicEffect) {
-        SprOffset.x += iround<int32>(_effCurOffset.x);
-        SprOffset.y += iround<int32>(_effCurOffset.y);
+    if (_isMoving) {
+        SprOffset.x += iround<int32>(_moveCurOffset.x);
+        SprOffset.y += iround<int32>(_moveCurOffset.y);
     }
 }
 

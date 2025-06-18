@@ -159,7 +159,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
     else if (base_type_info.IsHash) {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
         pdata += sizeof(hstring::hash_t);
-        return hash_resolver.ResolveHash(hash).as_str();
+        return hash_resolver.ResolveHash(hash).asStr();
     }
     else if (base_type_info.IsEnum) {
         int32 enum_value = 0;
@@ -283,7 +283,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                 }
                 else if (dict_key_type_info.IsHash) {
                     const auto hash = *reinterpret_cast<const hstring::hash_t*>(p);
-                    return hash_resolver.ResolveHash(hash).as_str();
+                    return hash_resolver.ResolveHash(hash).asStr();
                 }
                 else if (dict_key_type_info.IsEnum) {
                     int32 enum_value = 0;
@@ -482,7 +482,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
-            hash = hash_resolver.ToHashedString(value.AsString()).as_hash();
+            hash = hash_resolver.ToHashedString(value.AsString()).asHash();
         }
         else {
             throw PropertySerializationException("Wrong hash value type");
@@ -728,7 +728,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += dict_key.length();
             }
             else if (dickt_key_type_info.IsHash) {
-                *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
+                *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).asHash();
             }
             else if (dickt_key_type_info.IsEnum) {
                 const int32 enum_value = name_resolver.ResolveEnumValue(dickt_key_type_info.TypeName, dict_key);

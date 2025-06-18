@@ -78,13 +78,6 @@ void ModelSprite::Prewarm()
     _model->PrewarmParticles();
 }
 
-void ModelSprite::SetTime(float32 normalized_time)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(normalized_time);
-}
-
 void ModelSprite::SetDir(uint8 dir)
 {
     FO_STACK_TRACE_ENTRY();
@@ -92,7 +85,7 @@ void ModelSprite::SetDir(uint8 dir)
     SetDirAngle(GeometryHelper::DirToAngle(dir));
 }
 
-void ModelSprite::SetDirAngle(short dir_angle)
+void ModelSprite::SetDirAngle(int16 dir_angle)
 {
     FO_STACK_TRACE_ENTRY();
 

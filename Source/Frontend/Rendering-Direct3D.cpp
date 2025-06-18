@@ -810,8 +810,8 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
         CurRenderTarget = MainRenderTarget;
         CurDepthStencil = nullptr;
 
-        const auto back_buf_aspect = explicit_div<float32>(numeric_cast<float32>(BackBufSize.width), numeric_cast<float32>(BackBufSize.height));
-        const auto screen_aspect = explicit_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
+        const auto back_buf_aspect = checked_div<float32>(numeric_cast<float32>(BackBufSize.width), numeric_cast<float32>(BackBufSize.height));
+        const auto screen_aspect = checked_div<float32>(numeric_cast<float32>(Settings->ScreenWidth), numeric_cast<float32>(Settings->ScreenHeight));
         const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BackBufSize.height) * screen_aspect : numeric_cast<float32>(BackBufSize.height) * back_buf_aspect);
         const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(BackBufSize.width) / back_buf_aspect : numeric_cast<float32>(BackBufSize.width) / screen_aspect);
 
@@ -961,7 +961,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.IsValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.isValidPos(pos));
 
     D3D11_BOX src_box;
     src_box.left = pos.x;

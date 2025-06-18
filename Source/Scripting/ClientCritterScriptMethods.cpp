@@ -123,7 +123,7 @@ FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(CritterView* self)
         throw ScriptException("Critter is not on map");
     }
 
-    return hex_cr->IsAnim();
+    return hex_cr->IsAnimPlaying();
 }
 
 ///@ ExportMethod
@@ -141,7 +141,8 @@ FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim st
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->Animate(stateAnim, actionAnim, nullptr);
+    hex_cr->StopAnim();
+    hex_cr->AppendAnim(stateAnim, actionAnim, nullptr);
 }
 
 ///@ ExportMethod
@@ -153,7 +154,24 @@ FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim st
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->Animate(stateAnim, actionAnim, contextItem);
+    hex_cr->StopAnim();
+    hex_cr->AppendAnim(stateAnim, actionAnim, contextItem);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem, bool append)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    if (!append) {
+        hex_cr->StopAnim();
+    }
+
+    hex_cr->AppendAnim(stateAnim, actionAnim, contextItem);
 }
 
 ///@ ExportMethod
@@ -165,7 +183,19 @@ FO_SCRIPT_API void Client_Critter_StopAnim(CritterView* self)
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->ClearAnim();
+    hex_cr->StopAnim();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Critter_RefreshView(CritterView* self)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->RefreshView();
 }
 
 ///@ ExportMethod

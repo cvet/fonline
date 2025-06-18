@@ -274,10 +274,10 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
             offset = last + 1;
 
             if (i == 0 && num == 0) {
-                num = strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
+                num = strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).asInt();
             }
             else if (i == 1 && num != 0) {
-                num += !substr.empty() ? (strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
+                num += !substr.empty() ? (strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).asInt()) : 0;
             }
             else if (i == 2 && num != 0) {
                 AddStr(num, std::move(substr));

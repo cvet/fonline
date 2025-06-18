@@ -356,9 +356,8 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     auto raw_pos = ipos32 {hex.x, hex.y};
     MoveHexByDirUnsafe(raw_pos, dir);
 
-    if (map_size.IsValidPos(raw_pos)) {
-        hex.x = numeric_cast<uint16>(raw_pos.x);
-        hex.y = numeric_cast<uint16>(raw_pos.y);
+    if (map_size.isValidPos(raw_pos)) {
+        hex = map_size.fromRawPos(raw_pos);
         return true;
     }
 
@@ -570,8 +569,8 @@ void GeometryHelper::ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msi
         for (uint8 j = 0; j < steps; j++) {
             MoveHexByDirUnsafe(raw_pos, dir);
 
-            if (map_size.IsValidPos(raw_pos)) {
-                callback({numeric_cast<uint16>(raw_pos.x), numeric_cast<uint16>(raw_pos.y)});
+            if (map_size.isValidPos(raw_pos)) {
+                callback(map_size.fromRawPos(raw_pos));
             }
         }
     }

@@ -170,8 +170,8 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32>();
-    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<float64>() / 100.0, 50.0)) + 1;
+    const auto elapsed_time = (nanotime::now() - _startTime).toMs<int32>();
+    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).toMs<float64>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : iterate_range(dots)) {
         update_text += ".";
