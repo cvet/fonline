@@ -438,6 +438,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 
                 timeEvents->erase(timeEvents->begin() + numeric_cast<ptrdiff_t>(actual_index));
                 te->Id = 0;
+                i--;
             }
         }
     }
@@ -511,6 +512,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 
                 persistentTimeEvents->erase(persistentTimeEvents->begin() + numeric_cast<ptrdiff_t>(actual_index));
                 te->Id = 0;
+                i--;
             }
         }
     }
