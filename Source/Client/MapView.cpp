@@ -458,8 +458,11 @@ auto MapView::GetViewSize() const -> isize32
     FO_STACK_TRACE_ENTRY();
 
     const auto& settings = _engine->Settings;
-    const auto width = iround<int32>(numeric_cast<float32>(settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) != 0 ? 1 : 0)) * GetSpritesZoom());
-    const auto height = iround<int32>(numeric_cast<float32>((settings.ScreenHeight - settings.ScreenHudHeight) / settings.MapHexLineHeight + (((settings.ScreenHeight - settings.ScreenHudHeight) % settings.MapHexLineHeight) != 0 ? 1 : 0)) * GetSpritesZoom());
+    const auto zoom = GetSpritesZoom();
+    const auto hexes_width = settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) != 0 ? 1 : 0);
+    const auto hexes_height = (settings.ScreenHeight - settings.ScreenHudHeight) / settings.MapHexLineHeight + (((settings.ScreenHeight - settings.ScreenHudHeight) % settings.MapHexLineHeight) != 0 ? 1 : 0);
+    const auto width = is_float_equal(zoom, 1.0f) ? hexes_width : iround<int32>(std::ceil(numeric_cast<float32>(hexes_width) * zoom));
+    const auto height = is_float_equal(zoom, 1.0f) ? hexes_height : iround<int32>(std::ceil(numeric_cast<float32>(hexes_height) * zoom));
 
     return {width, height};
 }
@@ -2290,16 +2293,16 @@ auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 
     FO_RUNTIME_ASSERT(spr);
 
-    const auto top = std::max(spr->Offset.y + offset.y - _hTop * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2, 0);
-    const auto bottom = std::max(spr->Size.height - spr->Offset.y - offset.y - _hBottom * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2, 0);
-    const auto left = std::max(spr->Size.width / 2 + spr->Offset.x + offset.x - _wLeft * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth, 0);
-    const auto right = std::max(spr->Size.width / 2 - spr->Offset.x - offset.x - _wRight * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth, 0);
+    const auto left = std::max(spr->Size.width / 2 + spr->Offset.x + offset.x + _engine->Settings.MapHexWidth - _wLeft * _engine->Settings.MapHexWidth, 0);
+    const auto right = std::max(spr->Size.width / 2 - spr->Offset.x - offset.x + _engine->Settings.MapHexWidth - _wRight * _engine->Settings.MapHexWidth, 0);
+    const auto top = std::max(0 + spr->Offset.y + offset.y + _engine->Settings.MapHexLineHeight * 2 - _hTop * _engine->Settings.MapHexLineHeight, 0);
+    const auto bottom = std::max(spr->Size.height - spr->Offset.y - offset.y + _engine->Settings.MapHexLineHeight * 2 - _hBottom * _engine->Settings.MapHexLineHeight, 0);
 
-    if (top > 0 || bottom > 0 || left > 0 || right > 0) {
-        _hTop += top / _engine->Settings.MapHexLineHeight + ((top % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0);
-        _hBottom += bottom / _engine->Settings.MapHexLineHeight + ((bottom % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0);
-        _wLeft += left / _engine->Settings.MapHexWidth + ((left % _engine->Settings.MapHexWidth) != 0 ? 1 : 0);
-        _wRight += right / _engine->Settings.MapHexWidth + ((right % _engine->Settings.MapHexWidth) != 0 ? 1 : 0);
+    if (left != 0 || right != 0 || top != 0 || bottom != 0) {
+        _wLeft += left / _engine->Settings.MapHexWidth + (left % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
+        _wRight += right / _engine->Settings.MapHexWidth + (right % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
+        _hTop += top / _engine->Settings.MapHexLineHeight + (top % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
+        _hBottom += bottom / _engine->Settings.MapHexLineHeight + (bottom % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
 
         if (!_mapLoading) {
             ResizeView();
@@ -3193,16 +3196,16 @@ auto MapView::ScrollCheck(int32 xmod, int32 ymod) const -> bool
     const auto view_size = GetViewSize();
 
     int32 positions_left[4] = {
-        _hTop * _wVisible + _wLeft, // Left top
-        (_hTop + view_size.height - 1) * _wVisible + _wLeft, // Left bottom
-        (_hTop + 1) * _wVisible + _wLeft, // Left top 2
-        (_hTop + view_size.height - 1 - 1) * _wVisible + _wLeft, // Left bottom 2
+        (_hTop + 1) * _wVisible + _wLeft - 1, // Left top
+        (_hTop + 2) * _wVisible + _wLeft - 1, // Left top 2
+        (_hTop + view_size.height - 3) * _wVisible + _wLeft - 1, // Left bottom
+        (_hTop + view_size.height - 2) * _wVisible + _wLeft - 1, // Left bottom 2
     };
     int32 positions_right[4] = {
-        (_hTop + view_size.height - 1) * _wVisible + _wLeft + view_size.width, // Right bottom
-        _hTop * _wVisible + _wLeft + view_size.width, // Right top
-        (_hTop + view_size.height - 1 - 1) * _wVisible + _wLeft + view_size.width, // Right bottom 2
-        (_hTop + 1) * _wVisible + _wLeft + view_size.width, // Right top 2
+        (_hTop + 1) * _wVisible + _wLeft + view_size.width - 2, // Right top
+        (_hTop + 2) * _wVisible + _wLeft + view_size.width - 2, // Right top 2
+        (_hTop + view_size.height - 3) * _wVisible + _wLeft + view_size.width - 2, // Right bottom
+        (_hTop + view_size.height - 2) * _wVisible + _wLeft + view_size.width - 2, // Right bottom 2
     };
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
