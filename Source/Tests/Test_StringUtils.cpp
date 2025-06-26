@@ -111,7 +111,7 @@ TEST_CASE("StringUtils")
         CHECK(strex(" ПриВет   ").upperUtf8() == " ПРИВЕТ   ");
     }
 
-    SECTION("StatsWith")
+    SECTION("StartsWith")
     {
         CHECK(strex(" Hello   ").startsWith(" Hell"));
         CHECK(strex("xHello   ").startsWith('x'));
@@ -226,6 +226,8 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two    \tThree   ").split('\t') == vector<string>({"One Two", "Three"}));
         CHECK(strex(" One Two    \tThree   ").split('X') == vector<string>({"One Two    \tThree"}));
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
+        CHECK(strex(",One,Two").split(',') == vector<string>({"One", "Two"}));
+        CHECK(strex("One,Two,").split(',') == vector<string>({"One", "Two"}));
         CHECK(strex(" 111 222  33Three g66 7").splitToInt(' ') == vector<int32>({111, 222, 0, 0, 7}));
         CHECK(strex("").splitToInt(' ') == vector<int32>({}));
         CHECK(strex("             ").splitToInt(' ') == vector<int32>({}));

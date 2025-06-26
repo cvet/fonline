@@ -404,7 +404,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), str.data(), &size);
 
     if (r != UNQLITE_OK) {
-        WriteLog(LogType::Warning, "Can't fetch cache entry '{}", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
         return {};
     }
 
