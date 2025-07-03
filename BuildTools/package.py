@@ -55,6 +55,7 @@ outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 baseServerResName = fomain.mainSection().getStr('BaseServerResourcesName')
 baseClientResName = fomain.mainSection().getStr('BaseClientResourcesName')
+embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
 
 curPath = os.path.dirname(sys.argv[0])
 
@@ -194,7 +195,7 @@ def build():
 						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
 	def patchEmbedded(filePath):
-		patchData(filePath, bytearray([(i + 42) % 200 for i in range(1200000)]), embeddedData, 1200000)
+		patchData(filePath, bytearray([(i + 42) % 200 for i in range(embeddedBufSize)]), embeddedData, embeddedBufSize)
 	log('Embedded data length', len(embeddedData))
 	
 	# Evaluate config
