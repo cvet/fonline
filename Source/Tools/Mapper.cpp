@@ -51,10 +51,8 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
     }
 
-    for (const auto& res_pack : settings.GetResourcePacks()) {
-        for (const auto& dir : res_pack.InputDir) {
-            ContentFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
-        }
+    for (const auto& dir : settings.MapsDir) {
+        MapsFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -3055,7 +3053,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_files = ContentFileSys.FilterFiles("fomap");
+    const auto map_files = MapsFileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
 
     if (!map_file) {
@@ -3134,7 +3132,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
     string fomap_path;
     {
-        auto fomap_files = ContentFileSys.FilterFiles("fomap");
+        auto fomap_files = MapsFileSys.FilterFiles("fomap");
 
         if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
             fomap_path = fomap_file.GetFullPath();
