@@ -768,6 +768,7 @@ ZipFile::ZipFile(string_view fname)
     _zipHandle = nullptr;
 
     zlib_filefunc_def ffunc;
+
     if (fname[0] != '@') {
         auto p_file = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(fname, false));
 
@@ -852,10 +853,11 @@ ZipFile::ZipFile(string_view fname)
             return nullptr;
         };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-            const auto* mem_stream = static_cast<MemStream*>(stream);
+            auto* mem_stream = static_cast<MemStream*>(stream);
             for (size_t i = 0; i < size; i++) {
                 static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
             }
+            mem_stream->Pos += static_cast<uint32>(size);
             return size;
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
