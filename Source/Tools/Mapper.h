@@ -230,7 +230,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int32>& /*properties*/);
 
-    FileSystem ContentFileSys {};
+    FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
