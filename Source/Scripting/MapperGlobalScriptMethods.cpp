@@ -233,7 +233,8 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, strin
 {
     vector<string> names;
 
-    auto map_files = mapper->ContentFileSys.FilterFiles("fomap", dir, false);
+    auto map_files = mapper->MapsFileSys.FilterFiles("fomap", dir, false);
+
     while (map_files.MoveNext()) {
         auto file_header = map_files.GetCurFileHeader();
         names.emplace_back(file_header.GetName());

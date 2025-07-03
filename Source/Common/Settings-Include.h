@@ -64,6 +64,8 @@ FIXED_SETTING(vector<string>, ServerResourceEntries); // Auto
 FIXED_SETTING(vector<string>, ClientResourceEntries); // Auto
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Auto
 FIXED_SETTING(string, EmbeddedResources, "@Disabled");
+FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
+FIXED_SETTING(vector<string>, MapsDir, "Maps"); // .fomap directories, used by Mapper
 FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 
