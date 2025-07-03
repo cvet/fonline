@@ -49,8 +49,8 @@ struct DummySettings
     struct name : __VA_ARGS__ \
     {
 #define SETTING_GROUP_END() }
-#define FIXED_SETTING(type, name, ...) const type name = {__VA_ARGS__}
-#define VARIABLE_SETTING(type, name, ...) type name = {__VA_ARGS__}
+#define FIXED_SETTING(type, name, ...) const type name = {}
+#define VARIABLE_SETTING(type, name, ...) type name = {}
 #include "Settings-Include.h"
 
 struct ResourcePackInfo
