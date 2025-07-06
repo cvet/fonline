@@ -67,7 +67,7 @@ private:
     void AddEntityTimeEventPolling(Entity* entity);
     void RemoveEntityTimeEventPolling(Entity* entity);
     void ProcessEntityTimeEvents(Entity* entity);
-    void FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te);
+    auto FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> bool;
 
     raw_ptr<GameTimer> _gameTime;
     raw_ptr<ScriptSystem> _scriptSys;

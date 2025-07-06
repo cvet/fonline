@@ -408,7 +408,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 continue;
             }
 
-            FireTimeEvent(entity, te);
+            const bool result = FireTimeEvent(entity, te);
 
             if (entity->IsDestroyed()) {
                 return;
@@ -424,7 +424,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 continue;
             }
 
-            if (te->RepeatDuration) {
+            if (te->RepeatDuration && result) {
                 // Prolong event
                 const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
 
@@ -454,7 +454,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 continue;
             }
 
-            FireTimeEvent(entity, te);
+            const bool result = FireTimeEvent(entity, te);
 
             if (entity->IsDestroyed()) {
                 return;
@@ -474,7 +474,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
             FO_RUNTIME_ASSERT(it != persistentTimeEvents->end());
             const auto actual_index = numeric_cast<size_t>(std::distance(persistentTimeEvents->begin(), it));
 
-            if (te->RepeatDuration) {
+            if (te->RepeatDuration && result) {
                 // Prolong event
                 const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
 
@@ -518,9 +518,12 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
     }
 }
 
-void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) // NOLINT(performance-unnecessary-value-param)
+auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> bool // NOLINT(performance-unnecessary-value-param)
 {
     FO_STACK_TRACE_ENTRY();
+
+    bool call_result = false;
+    bool not_found = false;
 
     _curTimeEventEntity = entity;
     auto revert_cur_entity = ScopeCallback([this]() noexcept { _curTimeEventEntity = nullptr; });
@@ -529,34 +532,44 @@ void TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
 
     if (entity->IsGlobal()) {
         if (auto func = _scriptSys->FindFunc<void>(te->FuncName)) {
-            func();
+            call_result = func();
         }
         else if (auto func2 = _scriptSys->FindFunc<void, any_t>(te->FuncName)) {
-            func2(te->Data.empty() ? _emptyAnyValue : te->Data.front());
+            call_result = func2(te->Data.empty() ? _emptyAnyValue : te->Data.front());
         }
         else if (auto func3 = _scriptSys->FindFunc<void, vector<any_t>>(te->FuncName)) {
-            func3(te->Data);
+            call_result = func3(te->Data);
         }
         else {
-            throw TimeEventException("Time event func not found", te->FuncName);
+            WriteLog("Time event func '{}' not found", te->FuncName);
+            not_found = true;
         }
     }
     else {
         const auto cast_to_void = [](auto* ptr) -> void* { return const_cast<void*>(static_cast<const void*>(ptr)); };
 
         if (const auto* func = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity))})) {
-            func->Call(initializer_list<void*> {cast_to_void(&entity)}, nullptr);
+            call_result = func->Call(initializer_list<void*> {cast_to_void(&entity)}, nullptr);
         }
         else if (const auto* func2 = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(any_t))})) {
-            func2->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(!te->Data.empty() ? &te->Data.front() : &_emptyAnyValue)}, nullptr);
+            call_result = func2->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(!te->Data.empty() ? &te->Data.front() : &_emptyAnyValue)}, nullptr);
         }
         else if (const auto* func3 = _scriptSys->FindFunc(te->FuncName, initializer_list<std::type_index> {std::type_index(typeid(*entity)), std::type_index(typeid(vector<any_t>))})) {
-            func3->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(&te->Data)}, nullptr);
+            call_result = func3->Call(initializer_list<void*> {cast_to_void(&entity), cast_to_void(&te->Data)}, nullptr);
         }
         else {
-            throw TimeEventException("Time event func not found", te->FuncName);
+            not_found = true;
         }
     }
+
+    if (not_found) {
+        WriteLog("Time event {} not found for {}", te->FuncName, entity->GetTypeName());
+    }
+    else if (!call_result && te->RepeatDuration) {
+        WriteLog("Time event {} stopped due to exception", te->FuncName);
+    }
+
+    return !not_found && call_result;
 }
 
 FO_END_NAMESPACE();
