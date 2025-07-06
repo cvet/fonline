@@ -4579,10 +4579,11 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             // Check for special module init function
             if (func_desc->ArgsType.empty() && func_desc->RetType && func_desc->RetType->Name == "void") {
                 FO_RUNTIME_ASSERT(func_desc->CallSupported);
-                const auto func_name_ex = strex(func->GetName());
+                auto func_name_ex = strex(func->GetName());
 
-                if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
-                    script_sys.AddInitFunc(func_desc);
+                if (func_name_ex.startsWith("ModuleInit") || func_name_ex.startsWith("module_init")) {
+                    const auto priority = func_name_ex.substringAfter('_').toInt();
+                    script_sys.AddInitFunc(func_desc, priority);
                 }
             }
         }

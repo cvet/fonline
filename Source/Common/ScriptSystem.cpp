@@ -98,6 +98,14 @@ auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<Scr
     return it->second;
 }
 
+void ScriptSystem::AddInitFunc(ScriptFuncDesc* func, int priority)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _initFunc.emplace_back(func, priority);
+    std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
+}
+
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -139,7 +147,7 @@ void ScriptSystem::InitModules()
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (const auto* func : _initFunc) {
+    for (const auto& func : _initFunc | std::views::keys) {
         if (!func->Call({}, nullptr)) {
             throw ScriptSystemException("Module initialization failed");
         }
