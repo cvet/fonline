@@ -739,7 +739,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
         if (base_type_info.Size == 1) {
-            return numeric_cast<int32>(GetValue<char>(prop));
+            return numeric_cast<int32>(GetValue<int8>(prop));
         }
         if (base_type_info.Size == 2) {
             return numeric_cast<int32>(GetValue<int16>(prop));

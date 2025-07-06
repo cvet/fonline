@@ -1961,7 +1961,7 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
     refcount_ptr<CustomEntityView> entity;
 
     if (proto != nullptr) {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, nullptr, proto);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
     }
     else {
         entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr);

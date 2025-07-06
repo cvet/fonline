@@ -2298,12 +2298,12 @@ static void Global_Yield(int32 time)
 }
 
 template<typename T>
-static void ASPropertyGetter(asIScriptGeneric* gen)
+static void Game_SetPropertyGetter(asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<BaseEngine*>(gen->GetObject());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
@@ -2382,12 +2382,12 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
 }
 
 template<typename T, typename Deferred>
-static void ASPropertySetter(asIScriptGeneric* gen)
+static void Game_AddPropertySetter(asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
+    auto* engine = static_cast<BaseEngine*>(gen->GetObject());
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
@@ -2508,6 +2508,30 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 
 #else
     ignore_unused(gen);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, bool& is_enum, bool& is_int, bool& is_float, bool& is_bool, int32& base_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    is_virtual = prop->IsVirtual();
+    is_dict = prop->IsDict();
+    is_array = prop->IsArray();
+    is_string_like = prop->IsBaseTypeString() || prop->IsBaseTypeHash();
+    is_enum = prop->IsBaseTypeEnum();
+    is_int = prop->IsBaseTypeInt();
+    is_float = prop->IsBaseTypeFloat();
+    is_bool = prop->IsBaseTypeBool();
+    base_size = numeric_cast<int32>(prop->GetBaseSize());
+
+#else
+    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, is_enum, is_int, is_float, is_bool, base_size);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3121,6 +3145,9 @@ static auto Any_Conv(const any_t& self) -> T
         return T {numeric_cast<typename T::underlying_type>(strex(self).toInt64())};
     }
     else if constexpr (std::integral<T>) {
+        if (strex(self).isExplicitBool()) {
+            return strex(self).toBool() ? 1 : 0;
+        }
         return numeric_cast<T>(strex(self).toInt64());
     }
     else if constexpr (std::floating_point<T>) {
@@ -3564,6 +3591,28 @@ static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
 #endif
 }
 
+template<typename T, typename T2>
+static T* Game_GetEntity(BaseEngine* engine, ident_t id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
+    const auto entity_type = engine->Hashes.ToHashedString(T2::ENTITY_TYPE_NAME);
+    auto* entity = static_cast<FOServer*>(engine)->EntityMngr.GetCustomEntity(entity_type, id);
+    return dynamic_cast<T*>(entity);
+
+#else
+    ignore_unused(engine, id);
+    return nullptr;
+#endif
+
+#else
+    ignore_unused(engine, id);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
 template<typename T>
 static void Game_DestroyOne(BaseEngine* engine, T* entity)
 {
@@ -3661,42 +3710,6 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
     }
     else {
         CScriptArray* result_arr = CreateASArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str());
-        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
-    }
-
-#else
-    ignore_unused(gen);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename H, typename T, typename T2>
-static void CustomEntity_GetAllIds(asIScriptGeneric* gen)
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
-    H* holder = static_cast<H*>(gen->GetObject());
-    auto* entities = holder->GetInnerEntities(entry);
-
-    if (entities != nullptr && !entities->empty()) {
-        vector<ident_t> ids;
-        ids.reserve(entities->size());
-
-        for (auto& entity : *entities) {
-            ENTITY_VERIFY(entity);
-            FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
-            auto* casted_entity = dynamic_cast<T*>(entity.get());
-            FO_RUNTIME_ASSERT(casted_entity);
-            ids.emplace_back(casted_entity->GetId());
-        }
-
-        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), "ident[]", ids);
-        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
-    }
-    else {
-        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), "ident[]");
         new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
     }
 
@@ -4140,9 +4153,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "void SetAsAny(" prop_class_name "Property prop, any value)", SCRIPT_FUNC_THIS((Property_SetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_PROPS(class_name, real_class) \
-    AS_VERIFY(as_engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, engine)); \
-    AS_VERIFY(as_engine->RegisterGlobalFunction("void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV, engine)); \
-    AS_VERIFY(as_engine->RegisterGlobalFunction("void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV, engine))
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_SetPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV)); \
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, bool&out isEnum, bool&out isInt, bool&out isFloat, bool&out isBool, int& baseSize) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
@@ -4169,8 +4183,11 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
     AS_VERIFY(as_engine->RegisterObjectMethod(class_name, "ident get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    if constexpr (SERVER_SCRIPTING) { \
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(ident id)", SCRIPT_FUNC_THIS((Game_GetEntity<real_class, entity_info>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "(" class_name "@+ entity)", SCRIPT_FUNC_THIS((Game_DestroyOne<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void Destroy" class_name "s(" class_name "@[]@+ entities)", SCRIPT_FUNC_THIS((Game_DestroyAll<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    } \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>))); \
