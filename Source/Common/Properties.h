@@ -177,6 +177,7 @@ public:
     [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHash; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
+    [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }
     [[nodiscard]] auto IsPlainData() const noexcept -> bool { return _isPlainData; }
     [[nodiscard]] auto IsString() const noexcept -> bool { return _isString; }
     [[nodiscard]] auto IsArray() const noexcept -> bool { return _isArray; }

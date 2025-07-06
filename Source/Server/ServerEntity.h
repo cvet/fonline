@@ -89,7 +89,7 @@ class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
     CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
-        CustomEntity(engine, id, registrator, proto != nullptr ? &proto->GetProperties() : nullptr),
+        CustomEntity(engine, id, registrator, &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }

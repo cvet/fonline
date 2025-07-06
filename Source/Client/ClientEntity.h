@@ -88,8 +88,8 @@ public:
 class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProto
 {
 public:
-    CustomEntityWithProtoView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const ProtoEntity* proto) :
-        CustomEntityView(engine, id, registrator, props),
+    CustomEntityWithProtoView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) :
+        CustomEntityView(engine, id, registrator, &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }
