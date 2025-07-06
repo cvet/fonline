@@ -100,8 +100,8 @@ public:
     [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> int32;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
     [[nodiscard]] auto CountInvItems() const noexcept -> int32;
-    [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
-    [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*;
+    [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 

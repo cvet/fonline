@@ -323,29 +323,63 @@ void Critter::ClearVisible()
     VisItem.clear();
 }
 
-auto Critter::GetCrSelf(ident_t cr_id) -> Critter*
+auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto it = VisCrSelfMap.find(cr_id);
+    if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
+        const auto it = VisCrMap.find(cr_id);
 
-    return it != VisCrSelfMap.end() ? it->second : nullptr;
+        if (it != VisCrMap.end()) {
+            return it->second;
+        }
+    }
+
+    if (see_type == CritterSeeType::WhoISee || see_type == CritterSeeType::Any) {
+        const auto it = VisCrSelfMap.find(cr_id);
+
+        if (it != VisCrSelfMap.end()) {
+            return it->second;
+        }
+    }
+
+    return nullptr;
 }
 
-auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>
+auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<Critter*>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    const auto& vis_cr = vis_cr_self ? VisCrSelf : VisCr;
-
     vector<Critter*> critters;
-    critters.reserve(vis_cr.size());
 
-    for (auto* cr : vis_cr) {
-        if (cr->CheckFind(find_type)) {
-            critters.emplace_back(cr);
+    if (see_type == CritterSeeType::Any) {
+        critters.reserve(VisCr.size() + VisCrSelf.size());
+    }
+    else if (see_type == CritterSeeType::WhoSeeMe) {
+        critters.reserve(VisCr.size());
+    }
+    else if (see_type == CritterSeeType::WhoISee) {
+        critters.reserve(VisCrSelf.size());
+    }
+
+    if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
+        for (auto* cr : VisCr) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
+            }
+        }
+    }
+    if (see_type == CritterSeeType::WhoISee || see_type == CritterSeeType::Any) {
+        for (auto* cr : VisCrSelf) {
+            if (cr->CheckFind(find_type)) {
+                if (see_type == CritterSeeType::Any && std::find(critters.begin(), critters.end(), cr) != critters.end()) {
+                    continue;
+                }
+
+                critters.emplace_back(cr);
+            }
         }
     }
 
