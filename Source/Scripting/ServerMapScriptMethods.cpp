@@ -678,40 +678,6 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, Critter* cr, bool lookOnThem, CritterFindType findType)
-{
-    ignore_unused(self);
-
-    vector<Critter*> result_critters;
-
-    for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
-        if (std::ranges::find(result_critters, cr_) == result_critters.end()) {
-            result_critters.push_back(cr_);
-        }
-    }
-
-    return result_critters;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, CritterFindType findType)
-{
-    ignore_unused(self);
-
-    vector<Critter*> result_critters;
-
-    for (auto* cr : critters) {
-        for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
-            if (std::ranges::find(result_critters, cr_) == result_critters.end()) {
-                result_critters.push_back(cr_);
-            }
-        }
-    }
-
-    return result_critters;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
     mpos pre_block;

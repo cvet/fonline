@@ -293,15 +293,15 @@ FO_SCRIPT_API void Server_Critter_SetDirAngle(Critter* self, int16 dir_angle)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lookOnMe, CritterFindType findType)
+FO_SCRIPT_API Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
 {
-    vector<Critter*> critters;
+    return self->GetCritter(id, seeType);
+}
 
-    for (auto* cr : lookOnMe ? self->VisCr : self->VisCrSelf) {
-        if (cr->CheckFind(findType)) {
-            critters.push_back(cr);
-        }
-    }
+///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, CritterSeeType seeType, CritterFindType findType)
+{
+    vector<Critter*> critters = self->GetCritters(seeType, findType);
 
     std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();

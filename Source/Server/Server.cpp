@@ -2946,7 +2946,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
         bool need_find_path = !cr->IsMoving();
 
         if (!need_find_path && cr->TargetMoving.TargId) {
-            const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
+            const auto* targ = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
 
             if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHex(), cr->TargetMoving.TargHex, 0)) {
                 need_find_path = true;
@@ -2960,7 +2960,8 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             Critter* trace_cr;
 
             if (cr->TargetMoving.TargId) {
-                Critter* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
+                Critter* targ = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
+
                 if (targ == nullptr) {
                     cr->TargetMoving.State = MovingState::TargetNotFound;
                     return;

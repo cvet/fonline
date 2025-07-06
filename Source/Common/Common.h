@@ -604,6 +604,14 @@ enum class CritterActionAnim : uint16
 };
 
 ///@ ExportEnum
+enum class CritterSeeType : uint8
+{
+    Any = 0,
+    WhoSeeMe = 1,
+    WhoISee = 2,
+};
+
+///@ ExportEnum
 enum class CritterFindType : uint8
 {
     Any = 0,
