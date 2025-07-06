@@ -136,8 +136,8 @@ codeGenTags = {
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
         'Entity': [], # (target, name, [flags], [comment])
-        'EntityHolder': [], #(holder, access, entity, entry, [flags], [comment])
-        'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
+        'EntityHolder': [], # (holder, access, entity, entry, [flags], [comment])
+        'Enum': [], # (group name, underlying type, [[key, value, [comment]]], [flags], [comment])
         'PropertyComponent': [], # (entity, name, [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -553,52 +553,18 @@ def parseTags():
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
                 flags = tok[2 if len(tok) < 3 or tok[2] != '=' else 4:]
                 
-                def calcUnderlyingMetaType(kv):
-                    if kv:
-                        minValue = 0xFFFFFFFF
-                        maxValue = -0xFFFFFFFF
-                        for i in kv:
-                            v = int(i[1], 0)
-                            minValue = v if v < minValue else minValue
-                            maxValue = v if v > maxValue else maxValue
-                        if minValue < 0:
-                            return 'int32'
-                        else:
-                            assert maxValue <= 0xFFFFFFFF
-                            if maxValue <= 0xFF:
-                                return 'uint8'
-                            if maxValue <= 0xFFFF:
-                                return 'uint16'
-                            if maxValue <= 0x7FFFFFFF:
-                                return 'int32'
-                            if maxValue <= 0xFFFFFFFF:
-                                return 'uint32'
-                        assert False, 'Can\'t deduce enum underlying type (' + minValue + ', ' + maxValue + ')'
-                    else:
-                        return 'uint8'
-                
-                def findNextValue(kv):
-                    result = 0
-                    for _, value, _ in kv:
-                        ivalue = int(value, 0)
-                        if ivalue >= result:
-                            result = ivalue + 1
-                    return str(result)
-                
                 for g in codeGenTags['ExportEnum']:
                     if g[0] == grname:
-                        g[2].append((key, value if value is not None else findNextValue(g[2]), []))
-                        # Todo: Verify value in range of underlying type size
+                        g[2].append([key, value, []])
                         break
                 else:
                     for g in codeGenTags['Enum']:
                         if g[0] == grname:
-                            g[2].append((key, value if value is not None else findNextValue(g[2]), []))
-                            g[1] = calcUnderlyingMetaType(g[2])
+                            g[2].append([key, value, []])
                             break
                     else:
-                        keyValues = [(key, value if value is not None else '0', [])]
-                        codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
+                        keyValues = [[key, value, []]]
+                        codeGenTags['Enum'].append([grname, None, keyValues, flags, comment])
                         
                         assert grname not in validTypes, 'Enum already in valid types'
                         validTypes.add(grname)
@@ -1165,27 +1131,71 @@ def parseTags():
                 showError('Invalid tag CodeGen', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
     
     def postprocessTags():
+        # Generate missed enum values
+        def findNextValue(kv):
+            result = 0
+            for _, value, _ in kv:
+                if value is not None:
+                    ivalue = int(value, 0)
+                    if ivalue >= result:
+                        result = ivalue + 1
+            return str(result)
+        
+        for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+            gname, _, keyValues, _, _ = e
+            for kv in keyValues:
+                if kv[1] is None:
+                    kv[1] = findNextValue(keyValues)
+        
+        # Generate underlying types
+        def calcUnderlyingMetaType(kv):
+            if kv:
+                minValue = 0xFFFFFFFF
+                maxValue = -0xFFFFFFFF
+                for i in kv:
+                    v = int(i[1], 0)
+                    minValue = v if v < minValue else minValue
+                    maxValue = v if v > maxValue else maxValue
+                if minValue < 0:
+                    return 'int32'
+                else:
+                    assert maxValue <= 0xFFFFFFFF
+                    if maxValue <= 0xFF:
+                        return 'uint8'
+                    if maxValue <= 0xFFFF:
+                        return 'uint16'
+                    if maxValue <= 0x7FFFFFFF:
+                        return 'int32'
+                    if maxValue <= 0xFFFFFFFF:
+                        return 'uint32'
+                assert False, 'Can\'t deduce enum underlying type (' + minValue + ', ' + maxValue + ')'
+            else:
+                return 'uint8'
+        
+        for e in codeGenTags['Enum']:
+            e[1] = calcUnderlyingMetaType(e[2])
+        
         # Generate entity property components enums
         for entity in gameEntities:
-            keyValues = [('Invalid', '0', [])]
+            keyValues = [['Invalid', '0', []]]
             for propCompTag in codeGenTags['PropertyComponent']:
                 ent, name, flags, _ = propCompTag
                 if ent == entity:
-                    keyValues.append((name, getHash(name), []))
+                    keyValues.append([name, getHash(name), []])
             codeGenTags['Enum'].append([entity + 'Component', 'int32', keyValues, [], []])
         
         # Generate entity properties enums
         for entity in gameEntities:
-            keyValues = [('Invalid', '0xFFFF', [])]
+            keyValues = [['Invalid', '0xFFFF', []]]
             index = 0
             for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
                 ent, _, _, name, _, _ = propTag
                 if ent == entity:
                     name = name.replace('.', '_')
-                    keyValues.append((name, str(index), []))
+                    keyValues.append([name, str(index), []])
                     index += 1
             if len(keyValues) == 1:
-                keyValues.append(('InvalidZero', '0', []))
+                keyValues.append(['InvalidZero', '0', []])
             codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])
         
         # Check for zero key entry in enums
