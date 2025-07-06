@@ -39,289 +39,288 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
-FIXED_SETTING(vector<string>, ApplyConfig);
-FIXED_SETTING(vector<string>, AppliedConfigs); // Auto
-FIXED_SETTING(string, CommandLine); // Auto
-FIXED_SETTING(vector<string>, CommandLineArgs); // Auto
-FIXED_SETTING(string, GameName, "FOnline");
-FIXED_SETTING(string, GameVersion, "0.0.0");
-FIXED_SETTING(string, ApplySubConfig);
-FIXED_SETTING(string, DebuggingSubConfig);
-FIXED_SETTING(vector<int32>, DummyIntVec); // Auto
-FIXED_SETTING(string, ImGuiColorStyle); // Light, Classic, Dark
-FIXED_SETTING(int32, ScriptOverrunReportTime, 100);
-FIXED_SETTING(bool, DebugBuild, false); // Auto
+FIXED_SETTING(vector<string>, ApplyConfig); // Path to config file to apply on start, can be used multiple times
+FIXED_SETTING(vector<string>, AppliedConfigs); // Applied configs (read only)
+FIXED_SETTING(string, CommandLine); // Command line used to start the game (read only)
+FIXED_SETTING(vector<string>, CommandLineArgs); // Command line arguments used to start the game (read only)
+FIXED_SETTING(string, GameName, "FOnline"); // Game name, used in logs and window title
+FIXED_SETTING(string, GameVersion, "0.0.0"); // Game version, used in logs and window title
+FIXED_SETTING(string, ApplySubConfig); // [SubConfig] section in main config to apply on start
+FIXED_SETTING(string, DebuggingSubConfig); // Config applied when run under debugger
+FIXED_SETTING(string, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
+FIXED_SETTING(int32, ScriptOverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
+FIXED_SETTING(bool, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(DataSettings, virtual DummySettings);
-FIXED_SETTING(string, BaseServerResourcesName, "ServerResources");
-FIXED_SETTING(string, BaseClientResourcesName, "Resources");
-FIXED_SETTING(string, ServerResources, "Baking");
-FIXED_SETTING(string, ClientResources, "Baking");
-FIXED_SETTING(string, CacheResources, "Cache");
-FIXED_SETTING(vector<string>, ServerResourceEntries); // Auto
-FIXED_SETTING(vector<string>, ClientResourceEntries); // Auto
-FIXED_SETTING(vector<string>, MapperResourceEntries); // Auto
-FIXED_SETTING(string, EmbeddedResources, "@Disabled");
+FIXED_SETTING(string, BaseServerResourcesName, "ServerResources"); // Directory for server resources, applied to ServerResources on packaging
+FIXED_SETTING(string, BaseClientResourcesName, "Resources"); // Directory for client resources, applied to ClientResources on packaging
+FIXED_SETTING(string, ServerResources, "Baking"); // Server resources directory
+FIXED_SETTING(string, ClientResources, "Baking"); // Client resources directory
+FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
+FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
+FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
+FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
+FIXED_SETTING(string, EmbeddedResources, "@Disabled"); // Embedded resources directory, @Disabled to disable, @Embedded to read from executable
 FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
 FIXED_SETTING(vector<string>, MapsDir, "Maps"); // .fomap directories, used by Mapper
-FIXED_SETTING(bool, DataSynchronization, true);
+FIXED_SETTING(bool, DataSynchronization, true); // If true, data synchronization between server and client is enabled, otherwise disabled
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
-FIXED_SETTING(int32, MinNameLength, 4);
-FIXED_SETTING(int32, MaxNameLength, 12);
-FIXED_SETTING(uint32, LookChecks, 0);
-FIXED_SETTING(vector<int32>, LookDir, 0, 20, 40, 60, 60);
-FIXED_SETTING(vector<int32>, LookSneakDir, 90, 60, 30, 0, 0);
-FIXED_SETTING(int32, LookMinimum, 6);
-FIXED_SETTING(bool, CritterBlockHex, false);
-FIXED_SETTING(int32, MaxAddUnstackableItems, 10);
-FIXED_SETTING(int32, MaxPathFindLength, 400);
+FIXED_SETTING(int32, MinNameLength, 4); // Minimum length for player name
+FIXED_SETTING(int32, MaxNameLength, 12); // Maximum length for player name
+FIXED_SETTING(uint32, LookChecks, 0); // Look checks
+FIXED_SETTING(vector<int32>, LookDir, 0, 20, 40, 60, 60); // Look direction values
+FIXED_SETTING(vector<int32>, LookSneakDir, 90, 60, 30, 0, 0); // Sneak look direction values
+FIXED_SETTING(int32, LookMinimum, 6); // Minimum look value
+FIXED_SETTING(bool, CritterBlockHex, false); // If true, critters block hexes
+FIXED_SETTING(int32, MaxAddUnstackableItems, 10); // Maximum number of unstackable items to add
+FIXED_SETTING(int32, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
-FIXED_SETTING(int32, RegistrationTimeout, 5);
-FIXED_SETTING(int32, SneakDivider, 6);
+FIXED_SETTING(int32, RegistrationTimeout, 5); // Registration timeout in seconds
+FIXED_SETTING(int32, SneakDivider, 6); // Sneak divider value
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
-FIXED_SETTING(int32, ServerPort, 4000);
-FIXED_SETTING(int32, NetBufferSize, 4096);
-FIXED_SETTING(int32, UpdateFileSendSize, 1000000);
-FIXED_SETTING(bool, SecuredWebSockets, false);
-FIXED_SETTING(bool, DisableTcpNagle, true);
-FIXED_SETTING(bool, DisableZlibCompression, false);
-FIXED_SETTING(int32, ArtificalLags, 0);
+FIXED_SETTING(int32, ServerPort, 4000); // Server port number
+FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
+FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size
+FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets are enabled
+FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
+FIXED_SETTING(bool, DisableZlibCompression, false); // If true, Zlib compression is disabled
+FIXED_SETTING(int32, ArtificalLags, 0); // Artificial lags in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
-FIXED_SETTING(int32, ClientPingTime, 10000);
-FIXED_SETTING(int32, InactivityDisconnectTime, 0);
-FIXED_SETTING(string, WssPrivateKey, "");
-FIXED_SETTING(string, WssCertificate, "");
+FIXED_SETTING(int32, ClientPingTime, 10000); // Client ping time in milliseconds
+FIXED_SETTING(int32, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
+FIXED_SETTING(string, WssPrivateKey, ""); // WebSocket Secure private key
+FIXED_SETTING(string, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
-FIXED_SETTING(string, ServerHost, "localhost");
-FIXED_SETTING(int32, PingPeriod, 2000);
-VARIABLE_SETTING(int32, ProxyType, 0);
-VARIABLE_SETTING(string, ProxyHost, "");
-VARIABLE_SETTING(int32, ProxyPort, 8080);
-VARIABLE_SETTING(string, ProxyUser, "");
-VARIABLE_SETTING(string, ProxyPass, "");
-VARIABLE_SETTING(int32, Ping); // Auto
-VARIABLE_SETTING(bool, DebugNet, false);
-FIXED_SETTING(bool, BypassCompatibilityCheck, false);
+FIXED_SETTING(string, ServerHost, "localhost"); // Server host address
+FIXED_SETTING(int32, PingPeriod, 2000); // Ping period in milliseconds
+VARIABLE_SETTING(int32, ProxyType, 0); // Proxy type
+VARIABLE_SETTING(string, ProxyHost, ""); // Proxy host address
+VARIABLE_SETTING(int32, ProxyPort, 8080); // Proxy port number
+VARIABLE_SETTING(string, ProxyUser, ""); // Proxy username
+VARIABLE_SETTING(string, ProxyPass, ""); // Proxy password
+VARIABLE_SETTING(int32, Ping); // Network ping (read only)
+VARIABLE_SETTING(bool, DebugNet, false); // If true, network debugging is enabled
+FIXED_SETTING(bool, BypassCompatibilityCheck, false); // If true, compatibility check is bypassed
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(AudioSettings, virtual DummySettings);
-VARIABLE_SETTING(bool, DisableAudio, false);
-VARIABLE_SETTING(int32, SoundVolume, 100);
-VARIABLE_SETTING(int32, MusicVolume, 100);
+VARIABLE_SETTING(bool, DisableAudio, false); // If true, audio is disabled
+VARIABLE_SETTING(int32, SoundVolume, 100); // Sound volume percentage
+VARIABLE_SETTING(int32, MusicVolume, 100); // Music volume percentage
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ViewSettings, virtual DummySettings);
-VARIABLE_SETTING(int32, ScreenWidth, 1024);
-VARIABLE_SETTING(int32, ScreenHeight, 768);
-FIXED_SETTING(int32, MonitorWidth); // Auto
-FIXED_SETTING(int32, MonitorHeight); // Auto
-VARIABLE_SETTING(int32, ScreenHudHeight, 0);
-VARIABLE_SETTING(bool, ShowCorners, false);
-VARIABLE_SETTING(bool, ShowDrawOrder, false);
-VARIABLE_SETTING(bool, ShowSpriteBorders, false);
-FIXED_SETTING(bool, HideNativeCursor, false);
-FIXED_SETTING(int32, FadingDuration, 1000);
+VARIABLE_SETTING(int32, ScreenWidth, 1024); // Screen width in pixels
+VARIABLE_SETTING(int32, ScreenHeight, 768); // Screen height in pixels
+FIXED_SETTING(int32, MonitorWidth); // Monitor width (read only)
+FIXED_SETTING(int32, MonitorHeight); // Monitor height (read only)
+VARIABLE_SETTING(int32, ScreenHudHeight, 0); // Screen HUD height in pixels
+VARIABLE_SETTING(bool, ShowCorners, false); // If true, corners are shown
+VARIABLE_SETTING(bool, ShowDrawOrder, false); // If true, draw order is shown
+VARIABLE_SETTING(bool, ShowSpriteBorders, false); // If true, sprite borders are shown
+FIXED_SETTING(bool, HideNativeCursor, false); // If true, native cursor is hidden
+FIXED_SETTING(int32, FadingDuration, 1000); // Fading duration in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
-FIXED_SETTING(bool, MapHexagonal); // Auto
-FIXED_SETTING(bool, MapSquare); // Auto
-FIXED_SETTING(int32, MapDirCount); // Auto
+FIXED_SETTING(bool, MapHexagonal); // Hexagonal map grid (read only)
+FIXED_SETTING(bool, MapSquare); // Square map grid (read only)
+FIXED_SETTING(int32, MapDirCount); // Directions count (read only)
 FIXED_SETTING(int32, MapHexWidth, 32); // Hex/square width
 FIXED_SETTING(int32, MapHexHeight, 16); // Hex/square height
 FIXED_SETTING(int32, MapHexLineHeight, 12); // Hex/square line height
-FIXED_SETTING(int32, MapTileStep, 2);
-FIXED_SETTING(int32, MapTileOffsX, -8); // Tile default offsets
-FIXED_SETTING(int32, MapTileOffsY, 32); // Tile default offsets
-FIXED_SETTING(int32, MapRoofOffsX, -8); // Roof default offsets
-FIXED_SETTING(int32, MapRoofOffsY, -66); // Roof default offsets
+FIXED_SETTING(int32, MapTileStep, 2); // Tile step value
+FIXED_SETTING(int32, MapTileOffsX, -8); // Tile default X offset
+FIXED_SETTING(int32, MapTileOffsY, 32); // Tile default Y offset
+FIXED_SETTING(int32, MapRoofOffsX, -8); // Roof default X offset
+FIXED_SETTING(int32, MapRoofOffsY, -66); // Roof default Y offset
 FIXED_SETTING(float32, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
-FIXED_SETTING(bool, MapFreeMovement, false);
+FIXED_SETTING(bool, MapFreeMovement, false); // If true, free movement on the map is enabled
 FIXED_SETTING(bool, MapSmoothPath, true); // Enable pathfinding path smoothing
 FIXED_SETTING(string, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
-FIXED_SETTING(int32, Animation3dSmoothTime, 150);
-FIXED_SETTING(int32, Animation3dFPS, 30);
-FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
-FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
-VARIABLE_SETTING(bool, WindowCentered, true);
-VARIABLE_SETTING(bool, WindowResizable, false);
-VARIABLE_SETTING(bool, NullRenderer, false);
-VARIABLE_SETTING(bool, ForceOpenGL, false);
-VARIABLE_SETTING(bool, ForceDirect3D, false);
-VARIABLE_SETTING(bool, ForceMetal, false);
-VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
-VARIABLE_SETTING(bool, RenderDebug, false);
-VARIABLE_SETTING(bool, VSync, false);
-VARIABLE_SETTING(bool, AlwaysOnTop, false);
-VARIABLE_SETTING(vector<float32>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-VARIABLE_SETTING(bool, Fullscreen, false);
-VARIABLE_SETTING(int32, Brightness, 0);
-VARIABLE_SETTING(int32, Sleep, -1); // -1 to disable, Sleep has priority over FixedFPS if both enabled
-VARIABLE_SETTING(int32, FixedFPS, 100); // 0 to disable, Sleep has priority over FixedFPS if both enabled
-FIXED_SETTING(int32, FogExtraLength, 0);
-FIXED_SETTING(float32, CritterTurnAngle, 100.0f);
-FIXED_SETTING(float32, CritterBodyTurnFactor, 0.6f);
-FIXED_SETTING(float32, CritterHeadTurnFactor, 0.4f);
-FIXED_SETTING(int32, DefaultModelViewWidth, 0);
-FIXED_SETTING(int32, DefaultModelViewHeight, 0);
-FIXED_SETTING(int32, DefaultModelDrawWidth, 128);
-FIXED_SETTING(int32, DefaultModelDrawHeight, 128);
-FIXED_SETTING(int32, WalkAnimBaseSpeed, 60);
-FIXED_SETTING(int32, RunAnimStartSpeed, 80);
-FIXED_SETTING(int32, RunAnimBaseSpeed, 120);
-FIXED_SETTING(float32, ModelProjFactor, 40.0f);
-FIXED_SETTING(bool, AtlasLinearFiltration, false);
-FIXED_SETTING(int32, DefaultParticleDrawWidth, 128);
-FIXED_SETTING(int32, DefaultParticleDrawHeight, 128);
-FIXED_SETTING(bool, RecreateClientOnError, false);
+FIXED_SETTING(int32, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
+FIXED_SETTING(int32, Animation3dFPS, 30); // 3D animation frames per second
+FIXED_SETTING(string, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
+FIXED_SETTING(vector<string>, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
+VARIABLE_SETTING(bool, WindowCentered, true); // If true, window is centered
+VARIABLE_SETTING(bool, WindowResizable, false); // If true, window is resizable
+VARIABLE_SETTING(bool, NullRenderer, false); // If true, null renderer is used
+VARIABLE_SETTING(bool, ForceOpenGL, false); // If true, OpenGL is forced
+VARIABLE_SETTING(bool, ForceDirect3D, false); // If true, Direct3D is forced
+VARIABLE_SETTING(bool, ForceMetal, false); // If true, Metal is forced
+VARIABLE_SETTING(bool, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
+VARIABLE_SETTING(bool, RenderDebug, false); // If true, render debugging is enabled
+VARIABLE_SETTING(bool, VSync, false); // If true, vertical synchronization is enabled
+VARIABLE_SETTING(bool, AlwaysOnTop, false); // If true, window is always on top
+VARIABLE_SETTING(vector<float32>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); // Effect values
+VARIABLE_SETTING(bool, Fullscreen, false); // If true, fullscreen mode is enabled
+VARIABLE_SETTING(int32, Brightness, 0); // Brightness value
+VARIABLE_SETTING(int32, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)
+VARIABLE_SETTING(int32, FixedFPS, 100); // Fixed frames per second (0 to disable)
+FIXED_SETTING(int32, FogExtraLength, 0); // Extra fog length
+FIXED_SETTING(float32, CritterTurnAngle, 100.0f); // Critter turn angle
+FIXED_SETTING(float32, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
+FIXED_SETTING(float32, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
+FIXED_SETTING(int32, DefaultModelViewWidth, 0); // Default model view width
+FIXED_SETTING(int32, DefaultModelViewHeight, 0); // Default model view height
+FIXED_SETTING(int32, DefaultModelDrawWidth, 128); // Default model draw width
+FIXED_SETTING(int32, DefaultModelDrawHeight, 128); // Default model draw height
+FIXED_SETTING(int32, WalkAnimBaseSpeed, 60); // Walk animation base speed
+FIXED_SETTING(int32, RunAnimStartSpeed, 80); // Run animation start speed
+FIXED_SETTING(int32, RunAnimBaseSpeed, 120); // Run animation base speed
+FIXED_SETTING(float32, ModelProjFactor, 40.0f); // Model projection factor
+FIXED_SETTING(bool, AtlasLinearFiltration, false); // If true, atlas linear filtration is enabled
+FIXED_SETTING(int32, DefaultParticleDrawWidth, 128); // Default particle draw width
+FIXED_SETTING(int32, DefaultParticleDrawHeight, 128); // Default particle draw height
+FIXED_SETTING(bool, RecreateClientOnError, false); // If true, client is recreated on error
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual DummySettings);
-FIXED_SETTING(int32, DebuggingDeltaTimeCap, 100);
+FIXED_SETTING(int32, DebuggingDeltaTimeCap, 100); // Debugging delta time cap in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-FIXED_SETTING(bool, ForceBaking, false);
-FIXED_SETTING(bool, SingleThreadBaking, false);
-FIXED_SETTING(int32, MaxBakeOrder, 10);
-FIXED_SETTING(vector<string>, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini");
-FIXED_SETTING(vector<string>, ProtoFileExtensions, "fopro", "fomap");
-FIXED_SETTING(vector<string>, BakeLanguages, "engl");
-FIXED_SETTING(string, BakeOutput);
+FIXED_SETTING(bool, ForceBaking, false); // If true, baking is forced
+FIXED_SETTING(bool, SingleThreadBaking, false); // If true, single-threaded baking is enabled
+FIXED_SETTING(int32, MaxBakeOrder, 10); // Maximum bake order
+FIXED_SETTING(vector<string>, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
+FIXED_SETTING(vector<string>, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
+FIXED_SETTING(vector<string>, BakeLanguages, "engl"); // Bake languages
+FIXED_SETTING(string, BakeOutput); // Bake output directory
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
-FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true);
-FIXED_SETTING(vector<bool>, CritterSlotSendData, false, true);
-FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false);
+FIXED_SETTING(vector<bool>, CritterSlotEnabled, true, true); // Critter slot enabled flags
+FIXED_SETTING(vector<bool>, CritterSlotSendData, false, true); // Critter slot send data flags
+FIXED_SETTING(vector<bool>, CritterSlotMultiItem, true, false); // Critter slot multi-item flags
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
-FIXED_SETTING(int32, CritterFidgetTime, 50000);
-FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
-FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
-FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
-FIXED_SETTING(int32, NameOffset, 0);
+FIXED_SETTING(int32, CritterFidgetTime, 50000); // Critter fidget time in milliseconds
+FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None); // Combat animation begin
+FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None); // Combat animation idle
+FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None); // Combat animation end
+FIXED_SETTING(int32, NameOffset, 0); // Name offset value
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
-FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM);
-FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM);
-FIXED_SETTING(int32, ScrollFixedDt, 10);
-FIXED_SETTING(int32, ScrollSpeed, 1200); // Pixels per second
-FIXED_SETTING(int32, RainTick, 60);
-FIXED_SETTING(int16, RainSpeedX, 0);
-FIXED_SETTING(int16, RainSpeedY, 15);
-FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear);
-FIXED_SETTING(uint8, ChosenLightDistance, 4);
-FIXED_SETTING(int32, ChosenLightIntensity, 2500);
-FIXED_SETTING(uint8, ChosenLightFlags, 0);
-VARIABLE_SETTING(bool, FullscreenMouseScroll, true);
-VARIABLE_SETTING(bool, WindowedMouseScroll, false);
-VARIABLE_SETTING(bool, ScrollCheck, true);
-VARIABLE_SETTING(bool, ScrollKeybLeft, false); // Auto
-VARIABLE_SETTING(bool, ScrollKeybRight, false); // Auto
-VARIABLE_SETTING(bool, ScrollKeybUp, false); // Auto
-VARIABLE_SETTING(bool, ScrollKeybDown, false); // Auto
-VARIABLE_SETTING(bool, ScrollMouseLeft, false); // Auto
-VARIABLE_SETTING(bool, ScrollMouseRight, false); // Auto
-VARIABLE_SETTING(bool, ScrollMouseUp, false); // Auto
-VARIABLE_SETTING(bool, ScrollMouseDown, false); // Auto
-VARIABLE_SETTING(uint8, RoofAlpha, 200);
-VARIABLE_SETTING(bool, ShowTile, true);
-VARIABLE_SETTING(bool, ShowRoof, true);
-VARIABLE_SETTING(bool, ShowItem, true);
-VARIABLE_SETTING(bool, ShowScen, true);
-VARIABLE_SETTING(bool, ShowWall, true);
-VARIABLE_SETTING(bool, ShowCrit, true);
-VARIABLE_SETTING(bool, ShowFast, true);
-VARIABLE_SETTING(bool, HideCursor, false);
-VARIABLE_SETTING(bool, ShowMoveCursor, false);
+FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM); // Maximum sprites zoom
+FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM); // Minimum sprites zoom
+FIXED_SETTING(int32, ScrollFixedDt, 10); // Scroll fixed delta time in milliseconds
+FIXED_SETTING(int32, ScrollSpeed, 1200); // Scroll speed in pixels per second
+FIXED_SETTING(int32, RainTick, 60); // Rain tick duration in milliseconds
+FIXED_SETTING(int16, RainSpeedX, 0); // Rain speed X value
+FIXED_SETTING(int16, RainSpeedY, 15); // Rain speed Y value
+FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear); // Chosen light color
+FIXED_SETTING(uint8, ChosenLightDistance, 4); // Chosen light distance
+FIXED_SETTING(int32, ChosenLightIntensity, 2500); // Chosen light intensity
+FIXED_SETTING(uint8, ChosenLightFlags, 0); // Chosen light flags
+VARIABLE_SETTING(bool, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
+VARIABLE_SETTING(bool, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
+VARIABLE_SETTING(bool, ScrollCheck, true); // If true, scroll check is enabled
+VARIABLE_SETTING(bool, ScrollKeybLeft, false); // Keyboard map scroll left (read only)
+VARIABLE_SETTING(bool, ScrollKeybRight, false); // Keyboard map scroll right (read only)
+VARIABLE_SETTING(bool, ScrollKeybUp, false); // Keyboard map scroll up (read only)
+VARIABLE_SETTING(bool, ScrollKeybDown, false); // Keyboard map scroll down (read only)
+VARIABLE_SETTING(bool, ScrollMouseLeft, false); // Mouse map scroll left (read only)
+VARIABLE_SETTING(bool, ScrollMouseRight, false); // Mouse map scroll right (read only)
+VARIABLE_SETTING(bool, ScrollMouseUp, false); // Mouse map scroll up (read only)
+VARIABLE_SETTING(bool, ScrollMouseDown, false); // Mouse map scroll down (read only)
+VARIABLE_SETTING(uint8, RoofAlpha, 200); // Roof alpha value
+VARIABLE_SETTING(bool, ShowTile, true); // If true, tiles are shown
+VARIABLE_SETTING(bool, ShowRoof, true); // If true, roofs are shown
+VARIABLE_SETTING(bool, ShowItem, true); // If true, items are shown
+VARIABLE_SETTING(bool, ShowScen, true); // If true, scenery is shown
+VARIABLE_SETTING(bool, ShowWall, true); // If true, walls are shown
+VARIABLE_SETTING(bool, ShowCrit, true); // If true, critters are shown
+VARIABLE_SETTING(bool, ShowFast, true); // If true, fast mode is enabled
+VARIABLE_SETTING(bool, HideCursor, false); // If true, cursor is hidden
+VARIABLE_SETTING(bool, ShowMoveCursor, false); // If true, move cursor is shown
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(PlatformSettings, virtual DummySettings);
-FIXED_SETTING(bool, WebBuild); // Auto
-FIXED_SETTING(bool, WindowsBuild); // Auto
-FIXED_SETTING(bool, LinuxBuild); // Auto
-FIXED_SETTING(bool, MacOsBuild); // Auto
-FIXED_SETTING(bool, AndroidBuild); // Auto
-FIXED_SETTING(bool, IOsBuild); // Auto
-FIXED_SETTING(bool, DesktopBuild); // Auto
-FIXED_SETTING(bool, TabletBuild); // Auto
+FIXED_SETTING(bool, WebBuild); // Web build (read only)
+FIXED_SETTING(bool, WindowsBuild); // Windows build (read only)
+FIXED_SETTING(bool, LinuxBuild); // Linux build (read only)
+FIXED_SETTING(bool, MacOsBuild); // macOS build (read only)
+FIXED_SETTING(bool, AndroidBuild); // Android build (read only)
+FIXED_SETTING(bool, IOsBuild); // iOS build (read only)
+FIXED_SETTING(bool, DesktopBuild); // Desktop build (read only)
+FIXED_SETTING(bool, TabletBuild); // Tablet build (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(InputSettings, virtual DummySettings);
-VARIABLE_SETTING(int32, DoubleClickTime, 500);
-VARIABLE_SETTING(int32, ConsoleHistorySize, 100);
-VARIABLE_SETTING(ipos32, MousePos); // Auto
+VARIABLE_SETTING(int32, DoubleClickTime, 500); // Double-click time in milliseconds
+VARIABLE_SETTING(int32, ConsoleHistorySize, 100); // Console history size
+VARIABLE_SETTING(ipos32, MousePos); // Mouse position (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(MapperSettings, virtual DataSettings);
-FIXED_SETTING(string, StartMap, "");
-VARIABLE_SETTING(int32, StartHexX, -1);
-VARIABLE_SETTING(int32, StartHexY, -1);
-VARIABLE_SETTING(bool, SplitTilesCollection, true);
+FIXED_SETTING(string, StartMap, ""); // Start map name
+VARIABLE_SETTING(int32, StartHexX, -1); // Start hex X coordinate
+VARIABLE_SETTING(int32, StartHexY, -1); // Start hex Y coordinate
+VARIABLE_SETTING(bool, SplitTilesCollection, true); // If true, tiles collection is split
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual DataSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
-FIXED_SETTING(int32, UpdaterInfoDelay, 1000);
-FIXED_SETTING(int32, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
-FIXED_SETTING(string, DefaultSplash);
-FIXED_SETTING(string, DefaultSplashPack);
-VARIABLE_SETTING(string, Language, "engl");
-VARIABLE_SETTING(bool, WinNotify, true);
-VARIABLE_SETTING(bool, SoundNotify, false);
-VARIABLE_SETTING(bool, HelpInfo, false);
+FIXED_SETTING(int32, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
+FIXED_SETTING(int32, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
+FIXED_SETTING(string, DefaultSplash); // Default splash screen
+FIXED_SETTING(string, DefaultSplashPack); // Default splash pack
+VARIABLE_SETTING(string, Language, "engl"); // Language setting
+VARIABLE_SETTING(bool, WinNotify, true); // If true, Windows notifications are enabled
+VARIABLE_SETTING(bool, SoundNotify, false); // If true, sound notifications are enabled
+VARIABLE_SETTING(bool, HelpInfo, false); // If true, help information is shown
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual DataSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
-FIXED_SETTING(string, DbStorage, "Memory");
-FIXED_SETTING(bool, NoStart, false);
-FIXED_SETTING(bool, CollapseLogOnStart, false);
-FIXED_SETTING(int32, ServerSleep, -1);
-FIXED_SETTING(int32, LoopsPerSecondCap, 1000);
-FIXED_SETTING(int32, LockMaxWaitTime, 100);
-FIXED_SETTING(int32, DataBaseCommitPeriod, 10);
-FIXED_SETTING(int32, DataBaseMaxCommitJobs, 100);
-FIXED_SETTING(int32, LoopAverageTimeInterval, 1000);
-FIXED_SETTING(bool, WriteHealthFile, false);
-FIXED_SETTING(bool, ProtoMapStaticGrid, false);
-FIXED_SETTING(bool, MapInstanceStaticGrid, false);
-FIXED_SETTING(int64, EntityStartId, 10000000001);
+FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
+FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
+FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start
+FIXED_SETTING(int32, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
+FIXED_SETTING(int32, LoopsPerSecondCap, 1000); // Loops per second cap
+FIXED_SETTING(int32, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds
+FIXED_SETTING(int32, DataBaseCommitPeriod, 10); // Database commit period in seconds
+FIXED_SETTING(int32, DataBaseMaxCommitJobs, 100); // Maximum database commit jobs
+FIXED_SETTING(int32, LoopAverageTimeInterval, 1000); // Loop average time interval in milliseconds
+FIXED_SETTING(bool, WriteHealthFile, false); // If true, health file is written
+FIXED_SETTING(bool, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled
+FIXED_SETTING(bool, MapInstanceStaticGrid, false); // If true, map instance static grid is enabled
+FIXED_SETTING(int64, EntityStartId, 10000000001); // Entity start ID
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING
