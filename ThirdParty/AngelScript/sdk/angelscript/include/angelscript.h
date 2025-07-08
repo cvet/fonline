@@ -59,7 +59,7 @@ BEGIN_AS_NAMESPACE
 // AngelScript version
 
 #define ANGELSCRIPT_VERSION        23102
-#define ANGELSCRIPT_VERSION_STRING "2.31.2 WIP"
+#define ANGELSCRIPT_VERSION_STRING "2.31.2"
 
 // Data types
 
@@ -1265,7 +1265,7 @@ template <int N>
 struct asSMethodPtr
 {
 	template<class M>
-	static asSFuncPtr Convert(M)
+	static asSFuncPtr Convert(M Mthd)
 	{
 		// This version of the function should never be executed, nor compiled,
 		// as it would mean that the size of the method pointer cannot be determined.

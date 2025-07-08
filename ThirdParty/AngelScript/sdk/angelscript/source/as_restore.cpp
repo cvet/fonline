@@ -223,7 +223,7 @@ int asCReader::ReadInner()
 			for( asUINT n = 0; n < engine->sharedScriptTypes.GetLength(); n++ )
 			{
 				asCTypeInfo *ti = engine->sharedScriptTypes[n];
-				asCObjectType *t = ti ? CastToObjectType(ti) : 0;
+				asCObjectType *t = CastToObjectType(ti);
 				if( t &&
 					t->IsShared() &&
 					t->name == ot->name &&
@@ -1916,7 +1916,7 @@ asCTypeInfo* asCReader::ReadTypeInfo()
 		asSNameSpace *nameSpace = engine->AddNameSpace(ns.AddressOf());
 
 		asCTypeInfo *tmp = engine->GetRegisteredType(typeName.AddressOf(), nameSpace);
-		asCObjectType *tmpl = tmp ? CastToObjectType(tmp) : 0;
+		asCObjectType *tmpl = CastToObjectType(tmp);
 		if( tmpl == 0 )
 		{
 			asCString str;

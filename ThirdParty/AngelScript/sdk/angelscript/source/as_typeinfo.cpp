@@ -265,7 +265,7 @@ int asCTypeInfo::GetProperty(asUINT index, const char **out_name, int *out_typeI
 }
 
 // internal
-asCObjectType* CastToObjectType(asCTypeInfo* ti)
+asCObjectType *CastToObjectType(asCTypeInfo *ti)
 {
 	// Allow call on null pointer
 	if (ti == 0) return 0;
@@ -278,7 +278,7 @@ asCObjectType* CastToObjectType(asCTypeInfo* ti)
 }
 
 // internal
-asCEnumType* CastToEnumType(asCTypeInfo* ti)
+asCEnumType *CastToEnumType(asCTypeInfo *ti)
 {
 	// Allow call on null pointer
 	if (ti == 0) return 0;
@@ -290,7 +290,7 @@ asCEnumType* CastToEnumType(asCTypeInfo* ti)
 }
 
 // internal
-asCTypedefType* CastToTypedefType(asCTypeInfo* ti)
+asCTypedefType *CastToTypedefType(asCTypeInfo *ti)
 {
 	// Allow call on null pointer
 	if (ti == 0) return 0;
@@ -302,7 +302,7 @@ asCTypedefType* CastToTypedefType(asCTypeInfo* ti)
 }
 
 // internal
-asCFuncdefType* CastToFuncdefType(asCTypeInfo* ti)
+asCFuncdefType *CastToFuncdefType(asCTypeInfo *ti)
 {
 	// Allow call on null pointer
 	if (ti == 0) return 0;

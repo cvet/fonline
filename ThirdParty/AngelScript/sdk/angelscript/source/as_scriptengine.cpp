@@ -1442,7 +1442,7 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 	prop->isProtected = false;
 	prop->accessMask  = defaultAccessMask;
 
-CastToObjectType(	dt.GetTypeInfo())->properties.PushLast(prop);
+	CastToObjectType(dt.GetTypeInfo())->properties.PushLast(prop);
 
 	// Add references to types so they are not released too early
 	if( type.GetTypeInfo() )

@@ -1,14 +1,15 @@
-project('angelscript', 'cpp', 'c')
+project('angelscript', 'cpp',
+        version : run_command(find_program('python3'), 'detect_ver.py').stdout().strip(),
+        meson_version : '>=0.28.0',
+        license : 'zlib')
 
-arch = run_command('uname', '-p').stdout().strip()
-version = run_command(find_program('python3'), 'detect_ver.py').stdout().strip()
+threads = dependency('threads')
 
-srcs = [
+angel_srcs = [
   '../../source/as_atomic.cpp',
   '../../source/as_builder.cpp',
   '../../source/as_bytecode.cpp',
   '../../source/as_callfunc.cpp',
-  '../../source/as_callfunc_arm.cpp',
   '../../source/as_callfunc_mips.cpp',
   '../../source/as_callfunc_ppc.cpp',
   '../../source/as_callfunc_ppc_64.cpp',
@@ -41,19 +42,27 @@ srcs = [
   '../../source/as_typeinfo.cpp',
   '../../source/as_variablescope.cpp',
 ]
-if arch == 'armv7l'
-  srcs = srcs + [
+if host_machine.cpu_family() == 'arm'
+  add_languages('c')
+  angel_srcs += [
     '../../source/as_callfunc_arm.cpp',
-    '../../source/as_callfunc_arm_gcc.S'
+    '../../source/as_callfunc_arm_gcc.S',
   ]
 endif
 
-shared_library(
+angelscript_version_num = run_command(find_program('python3'), 'detect_ver.py', '--num').stdout().strip()
+angelscript_lib = library(
   'angelscript',
-  sources : srcs,
+  sources : angel_srcs,
+  dependencies : threads,
+  version : angelscript_version_num,
   install : true,
-  soversion : '0',
-  version : version,
+)
+angelscript_inc = include_directories('../../include')
+angelscript_dep  = declare_dependency(
+  link_with : angelscript_lib,
+  include_directories : angelscript_inc,
+  version : meson.project_version(),
 )
 
 install_headers('../../include/angelscript.h')
