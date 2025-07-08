@@ -100,11 +100,12 @@ struct asCExprValue
 	bool  isVariable : 1;
 	bool  isExplicitHandle : 1;
 	bool  isRefToLocal : 1; // The reference may be to a local variable
-	short dummy : 10;
+	bool  isHandleSafe : 1; // the life-time of the handle is guaranteed for the duration of the access
+	short dummy : 9;
 	short stackOffset;
 
 private:
-	// These values must not be accessed directly, in order to avoid problems with endianess. 
+	// These values must not be accessed directly in order to avoid problems with endianess. 
 	// Use the appropriate accessor methods instead
 	union
 	{
@@ -247,14 +248,14 @@ protected:
 	int  CompileFunctionCall(asCScriptNode *node, asCExprContext *out, asCObjectType *objectType, bool objIsConst, const asCString &scope = "");
 	int  CompileConstructCall(asCScriptNode *node, asCExprContext *out);
 	int  CompileConversion(asCScriptNode *node, asCExprContext *out);
-	int  CompileOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
+	int  CompileOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken, bool leftToRight = true);
 	void CompileOperatorOnHandles(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
 	void CompileMathOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
 	void CompileBitwiseOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
 	void CompileComparisonOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
 	void CompileBooleanOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, eTokenType opToken = ttUnrecognizedToken);
-	bool CompileOverloadedDualOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, asCExprContext *out, bool isHandle = false, eTokenType opToken = ttUnrecognizedToken);
-	int  CompileOverloadedDualOperator2(asCScriptNode *node, const char *methodName, asCExprContext *l, asCExprContext *r, asCExprContext *out, bool specificReturn = false, const asCDataType &returnType = asCDataType::CreatePrimitive(ttVoid, false));
+	bool CompileOverloadedDualOperator(asCScriptNode *node, asCExprContext *l, asCExprContext *r, bool leftToRight, asCExprContext *out, bool isHandle = false, eTokenType opToken = ttUnrecognizedToken);
+	int  CompileOverloadedDualOperator2(asCScriptNode *node, const char *methodName, asCExprContext *l, asCExprContext *r, bool leftToRight, asCExprContext *out, bool specificReturn = false, const asCDataType &returnType = asCDataType::CreatePrimitive(ttVoid, false));
 
 	void CompileInitList(asCExprValue *var, asCScriptNode *node, asCByteCode *bc, int isVarGlobOrMem);
 	int  CompileInitListElement(asSListPatternNode *&patternNode, asCScriptNode *&valueNode, int bufferTypeId, short bufferVar, asUINT &bufferSize, asCByteCode &byteCode, int &elementsInSubList);

@@ -4547,7 +4547,7 @@ void asCContext::CleanReturnObject()
 	if( m_initialFunction && m_initialFunction->DoesReturnOnStack() && m_status == asEXECUTION_FINISHED )
 	{
 		// If function returns on stack we need to call the destructor on the returned object
-		if( CastToObjectType(m_initialFunction->returnType.GetTypeInfo())->beh.destruct )
+		if(CastToObjectType(m_initialFunction->returnType.GetTypeInfo())->beh.destruct )
 			m_engine->CallObjectMethod(GetReturnObject(), CastToObjectType(m_initialFunction->returnType.GetTypeInfo())->beh.destruct);
 
 		return;
@@ -5197,7 +5197,7 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
-		SetException("Unknown exception");
+		SetException(TXT_EXCEPTION_CAUGHT);
 	}
 #endif
 	m_callingSystemFunction = 0;

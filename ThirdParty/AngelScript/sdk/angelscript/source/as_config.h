@@ -861,43 +861,47 @@
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
-		#elif (defined(__ARMEL__) || defined(__arm__)) && !(defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__))
-			// arm 32bit
-			#define AS_ARM
+		#elif defined(__ARMEL__) || defined(__arm__) || defined(__aarch64__) || defined(__AARCH64EL__)
+			// arm 
 
-			// TODO: The stack unwind on exceptions currently fails due to the assembler code in as_callfunc_arm_gcc.S
-			#define AS_NO_EXCEPTIONS
+			// The assembler code currently doesn't support arm v4, nor 64bit (v8)
+			#if !defined(__ARM_ARCH_4__) && !defined(__ARM_ARCH_4T__) && !defined(__LP64__)
+				#define AS_ARM
 
-			#undef STDCALL
-			#define STDCALL
+				// TODO: The stack unwind on exceptions currently fails due to the assembler code in as_callfunc_arm_gcc.S
+				#define AS_NO_EXCEPTIONS
 
-			#define CDECL_RETURN_SIMPLE_IN_MEMORY
-			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
-			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+				#undef STDCALL
+				#define STDCALL
 
-			#undef THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
-			#undef CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
-			#undef STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+				#define CDECL_RETURN_SIMPLE_IN_MEMORY
+				#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+				#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 
-			#define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
-			#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
-			#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+				#undef THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+				#undef CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+				#undef STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
 
-			#ifndef AS_MAX_PORTABILITY
-			// Make a few checks against incompatible ABI combinations
-			#if defined(__FAST_MATH__) && __FAST_MATH__ == 1
-				#error -ffast-math is not supported with native calling conventions
+				#define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+				#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+				#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+
+				#ifndef AS_MAX_PORTABILITY
+				// Make a few checks against incompatible ABI combinations
+				#if defined(__FAST_MATH__) && __FAST_MATH__ == 1
+					#error -ffast-math is not supported with native calling conventions
+				#endif
+				#endif
+
+				// Verify if soft-float or hard-float ABI is used
+				#if defined(__SOFTFP__) && __SOFTFP__ == 1
+					// -ffloat-abi=softfp or -ffloat-abi=soft
+					#define AS_SOFTFP
+				#endif
+
+				// Tested with both hard float and soft float abi
+				#undef AS_NO_THISCALL_FUNCTOR_METHOD
 			#endif
-			#endif
-
-			// Verify if soft-float or hard-float ABI is used
-			#if defined(__SOFTFP__) && __SOFTFP__ == 1
-				// -ffloat-abi=softfp or -ffloat-abi=soft
-				#define AS_SOFTFP
-			#endif
-
-			// Tested with both hard float and soft float abi
-			#undef AS_NO_THISCALL_FUNCTOR_METHOD
 
 		#elif defined(__mips__)
 			// mips
@@ -922,15 +926,12 @@
 				#define AS_MAX_PORTABILITY
 			#endif
 		#elif defined(__PPC64__)
-			// Support native calling conventions on Linux with PPC64
-			// TODO: This has not yet been confirmed to work
-			#define AS_PPC_64
-			#define SPLIT_OBJS_BY_MEMBER_TYPES
-			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
-			#define CDECL_RETURN_SIMPLE_IN_MEMORY
-			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
-			#undef STDCALL
-			#define STDCALL
+			// PPC 64bit
+
+			// The code in as_callfunc_ppc_64.cpp was built for PS3 and XBox 360, that 
+			// although use 64bit PPC only uses 32bit pointers.
+			// TODO: Add support for native calling conventions on Linux with PPC 64bit
+			#define AS_MAX_PORTABILITY
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif

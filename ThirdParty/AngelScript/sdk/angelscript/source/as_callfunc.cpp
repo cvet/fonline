@@ -488,7 +488,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 #endif
 		if( needFree &&
 			dt.IsObject() &&
-			!dt.IsObjectHandle() && 
+			!dt.IsObjectHandle() &&
 			!dt.IsReference() )
 		{
 			asSSystemFunctionInterface::SClean clean;
@@ -735,7 +735,7 @@ int CallSystemFunction(int id, asCContext *context)
 
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
-		context->SetException("Unknown exception");
+		context->SetException(TXT_EXCEPTION_CAUGHT);
 	}
 #endif
 	context->m_callingSystemFunction = 0;
@@ -796,7 +796,7 @@ int CallSystemFunction(int id, asCContext *context)
 				// initialized the object. However, as it is a soft exception there is 
 				// no way for the application to not return a value, so instead we simply
 				// destroy it here, to pretend it was never created.
-				if( CastToObjectType(descr->returnType.GetTypeInfo())->beh.destruct )
+				if(CastToObjectType(descr->returnType.GetTypeInfo())->beh.destruct )
 					engine->CallObjectMethod(retPointer, CastToObjectType(descr->returnType.GetTypeInfo())->beh.destruct);
 			}
 		}
@@ -871,7 +871,7 @@ int CallSystemFunction(int id, asCContext *context)
 
 		// Skip the object pointer on the stack
 		// TODO: runtime optimize: This check and increment should have been done in PrepareSystemFunction
-		if( callConv >= ICC_THISCALL && sysFunc->auxiliary == 0 ) // (FOnline Patch) && sysFunc->auxiliary == 0 )
+		if( callConv >= ICC_THISCALL && sysFunc->auxiliary == 0 )
 			args += AS_PTR_SIZE;
 
 		asSSystemFunctionInterface::SClean *clean = sysFunc->cleanArgs.AddressOf();
