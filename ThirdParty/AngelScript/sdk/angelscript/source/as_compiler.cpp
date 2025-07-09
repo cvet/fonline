@@ -1876,9 +1876,9 @@ void asCCompiler::PrepareFunctionCall(int funcId, asCByteCode *bc, asCArray<asCE
 	for( int n = (int)args.GetLength()-1; n >= 0; n-- )
 	{
 		// Make sure PrepareArgument doesn't use any variable that is already
-		// being used by any of the following argument expressions
+		// being used by the argument or any of the following argument expressions
 		int l = int(reservedVariables.GetLength());
-		for( int m = n-1; m >= 0; m-- )
+		for( int m = n; m >= 0; m-- )
 			args[m]->bc.GetVarsUsed(reservedVariables);
 
 		PrepareArgument2(&e, args[n], &descr->parameterTypes[n], true, descr->inOutFlags[n], makingCopy);
@@ -11242,6 +11242,8 @@ int asCCompiler::FindPropertyAccessor(const asCString &name, asCExprContext *ctx
 		ctx->property_get = getId;
 		ctx->property_set = setId;
 
+		bool isHandleSafe = ctx->type.isHandleSafe;
+
 		if( ctx->type.dataType.IsObject() )
 		{
 			// If the object is read-only then we need to remember that
@@ -11272,6 +11274,10 @@ int asCCompiler::FindPropertyAccessor(const asCString &name, asCExprContext *ctx
 		ctx->type.stackOffset = (short)offset;
 		ctx->type.isTemporary = isTemp;
 		ctx->exprNode = node;
+
+		// Remember if the object is safe, so the invocation of the property
+		// accessor doesn't needlessly make a safe copy of the handle
+		ctx->type.isHandleSafe = isHandleSafe;
 
 		// Store the argument for later use
 		if( arg )
@@ -12579,8 +12585,15 @@ int asCCompiler::CompileOverloadedDualOperator2(asCScriptNode *node, const char 
 		// Did we find an operator?
 		if( ops.GetLength() == 1 )
 		{
+			// Reserve the variables used in the right expression so the new temporary
+			// variable allocated for the left operand isn't accidentally overwritten.
+			int l = int(reservedVariables.GetLength());
+			rctx->bc.GetVarsUsed(reservedVariables);
+
 			// Process the lctx expression as get accessor
 			ProcessPropertyGetAccessor(lctx, node);
+
+			reservedVariables.SetLength(l);
 
 			asCExprContext tmpCtx(engine);
 			if (leftToRight)
@@ -12591,7 +12604,7 @@ int asCCompiler::CompileOverloadedDualOperator2(asCScriptNode *node, const char 
 				{
 					// Reserve the variables used in the right expression so the new temporary
 					// variable allocated for the left operand isn't accidentally overwritten.
-					int l = int(reservedVariables.GetLength());
+					l = int(reservedVariables.GetLength());
 					rctx->bc.GetVarsUsed(reservedVariables);
 
 					if (lctx->type.dataType.SupportHandles())
@@ -13861,9 +13874,19 @@ void asCCompiler::CompileComparisonOperator(asCScriptNode *node, asCExprContext 
 					if( !(opCtx->type.GetConstantQW() & (asQWORD(1)<<63)) )
 						signMismatch = false;
 				}
-				else
+				else if(opCtx->type.dataType.GetTokenType() == ttUInt || opCtx->type.dataType.GetTokenType() == ttInt || opCtx->type.dataType.IsEnumType() )
 				{
 					if( !(opCtx->type.GetConstantDW() & (1<<31)) )
+						signMismatch = false;
+				}
+				else if (opCtx->type.dataType.GetTokenType() == ttUInt16 || opCtx->type.dataType.GetTokenType() == ttInt16)
+				{
+					if (!(opCtx->type.GetConstantW() & (1 << 15)))
+						signMismatch = false;
+				}
+				else if (opCtx->type.dataType.GetTokenType() == ttUInt8 || opCtx->type.dataType.GetTokenType() == ttInt8)
+				{
+					if (!(opCtx->type.GetConstantB() & (1 << 7)))
 						signMismatch = false;
 				}
 
