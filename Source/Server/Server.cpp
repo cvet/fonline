@@ -191,10 +191,10 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Setup engine data");
 
         // Properties that saving to database
-        for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
+        for (const auto& entity_info : GetEntityTypesInfo() | std::views::values) {
             const auto* registrator = entity_info.PropRegistrator;
 
-            for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+            for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                 if (prop->IsDisabled()) {
@@ -230,7 +230,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Properties that sending to clients
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-                for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+                for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                     const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                     if (prop->IsDisabled()) {
@@ -263,7 +263,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
             set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
 
-            for (auto&& [type_name, entity_info] : GetEntityTypesInfo()) {
+            for (const auto& entity_info : GetEntityTypesInfo() | std::views::values) {
                 if (entity_info.Exported) {
                     continue;
                 }

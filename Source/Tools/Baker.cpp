@@ -447,7 +447,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     const auto* registrator = props.GetRegistrator();
 
-    for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+    for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
         const auto* prop = registrator->GetPropertyByIndexUnsafe(i);
 
         if (prop->IsBaseTypeResource()) {

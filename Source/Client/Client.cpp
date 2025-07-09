@@ -169,7 +169,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     // Properties that sending to clients
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-            for (size_t i = 0; i < registrator->GetPropertiesCount(); i++) {
+            for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
                 switch (prop->GetAccess()) {
