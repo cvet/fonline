@@ -2525,7 +2525,7 @@ static void Game_AddPropertySetter(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, bool& is_enum, bool& is_int, bool& is_float, bool& is_bool, int32& base_size)
+static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, string& enum_name, bool& is_int, bool& is_float, bool& is_bool, int32& base_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2542,14 +2542,14 @@ static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum
     is_dict = prop->IsDict();
     is_array = prop->IsArray();
     is_string_like = prop->IsBaseTypeString() || prop->IsBaseTypeHash();
-    is_enum = prop->IsBaseTypeEnum();
+    enum_name = prop->IsBaseTypeEnum() ? prop->GetBaseTypeName() : "";
     is_int = prop->IsBaseTypeInt();
     is_float = prop->IsBaseTypeFloat();
     is_bool = prop->IsBaseTypeBool();
     base_size = numeric_cast<int32>(prop->GetBaseSize());
 
 #else
-    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, is_enum, is_int, is_float, is_bool, base_size);
+    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, enum_name, is_int, is_float, is_bool, base_size);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3737,7 +3737,7 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
 #endif
 }
 
-static void Enum_Parse(asIScriptGeneric* gen)
+static void Game_ParseEnum(asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3765,7 +3765,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
 #endif
 }
 
-static void Enum_ToString(asIScriptGeneric* gen)
+static void Game_EnumToString(asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3791,6 +3791,11 @@ static void Enum_ToString(asIScriptGeneric* gen)
     ignore_unused(gen);
     throw ScriptCompilerException("Stub");
 #endif
+}
+
+static auto Game_ParseGenericEnum(BaseEngine* engine, string enum_name, string value_name) -> int32
+{
+    return engine->ResolveEnumValue(enum_name, value_name);
 }
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
@@ -3917,23 +3922,10 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register enums
     for (auto&& [enum_name, enum_pairs] : engine->GetAllEnums()) {
         AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str()));
+
         for (auto&& [key, value] : enum_pairs) {
             AS_VERIFY(as_engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
         }
-
-#if !COMPILER_MODE
-        auto* enum_info = &EnumInfos[enum_name];
-        enum_info->EnumName = enum_name;
-        enum_info->Engine = engine;
-#else
-        void* enum_info = &dummy;
-#endif
-
-        AS_VERIFY(as_engine->SetDefaultNamespace("Enum"));
-        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(as_engine->RegisterGlobalFunction(strex("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(as_engine->SetDefaultNamespace(""));
     }
 
     // Register hstring
@@ -4174,7 +4166,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_SetPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV)); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, bool&out isEnum, bool&out isInt, bool&out isFloat, bool&out isBool, int& baseSize) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int& baseSize) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
@@ -4334,6 +4326,23 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
     ///@ CodeGen Register
+
+    // Enum helpers
+    for (auto&& [enum_name, enum_pairs] : engine->GetAllEnums()) {
+#if !COMPILER_MODE
+        auto* enum_info = &EnumInfos[enum_name];
+        enum_info->EnumName = enum_name;
+        enum_info->Engine = engine;
+#else
+        void* enum_info = &dummy;
+#endif
+
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Game_ParseEnum), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Game_ParseEnum), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Game_EnumToString), SCRIPT_GENERIC_CONV, enum_info));
+    }
+
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "int ParseGenericEnum(string enumName, string valueName)", SCRIPT_FUNC_THIS(Game_ParseGenericEnum), SCRIPT_FUNC_THIS_CONV));
 
     // Register properties
     for (auto&& [type_name, entity_info] : engine->GetEntityTypesInfo()) {

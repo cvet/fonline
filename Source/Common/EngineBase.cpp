@@ -455,7 +455,7 @@ auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int
     if (str[0] == '@') {
         return Hashes.ToHashedString(str.substr(1)).asInt();
     }
-    else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
+    else if (str.starts_with("Content::")) {
         return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).asInt();
     }
     else if (strex(str).isNumber()) {
