@@ -128,7 +128,7 @@ Properties::Properties(const PropertyRegistrator* registrator) noexcept :
 
     FO_STRONG_ASSERT(_registrator);
 
-    if (!_registrator->_registeredProperties.empty()) {
+    if (_registrator->_registeredProperties.size() > 1) {
         AllocData();
     }
 }
@@ -138,7 +138,7 @@ void Properties::AllocData() noexcept
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(!_podData);
-    FO_STRONG_ASSERT(!_registrator->_registeredProperties.empty());
+    FO_STRONG_ASSERT(_registrator->_registeredProperties.size() > 1);
 
     _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
     MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
@@ -241,7 +241,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     };
 
     for (const auto& prop : _registrator->_registeredProperties) {
-        if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
+        if (prop && !prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), _registrator->_hashResolver, _registrator->_nameResolver);
 
             if (value.Type() == AnyData::ValueType::String) {
@@ -392,6 +392,7 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
         MemCopy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
+            FO_RUNTIME_ASSERT(complex_indicies[i] > 0);
             FO_RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
             const auto& prop = _registrator->_registeredProperties[complex_indicies[i]];
             FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
@@ -481,6 +482,9 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     map<string, string> key_values;
 
     for (const auto& prop : _registrator->_registeredProperties) {
+        if (!prop) {
+            continue;
+        }
         if (prop->IsDisabled()) {
             continue;
         }
@@ -1176,6 +1180,9 @@ PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelati
         {"VirtualPublic", Property::AccessType::VirtualPublic},
         {"VirtualProtected", Property::AccessType::VirtualProtected},
     };
+
+    // Add None entry
+    _registeredProperties.emplace_back();
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -1197,7 +1204,8 @@ auto PropertyRegistrator::GetPropertyByIndex(int32 property_index) const noexcep
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (property_index >= 0 && static_cast<size_t>(property_index) < _registeredProperties.size()) {
+    // Skip None entry
+    if (property_index >= 1 && static_cast<size_t>(property_index) < _registeredProperties.size()) {
         return _registeredProperties[property_index].get();
     }
 
@@ -1245,6 +1253,26 @@ auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const no
     }
 
     return _registeredComponents.find(migrated_component_name) != _registeredComponents.end();
+}
+
+auto PropertyRegistrator::GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    map<string, vector<const Property*>> result;
+
+    for (const auto& [group_name, properties] : _propertyGroups) {
+        vector<const Property*> group_properties;
+        group_properties.reserve(properties.size());
+
+        for (const auto* prop : properties | std::views::keys) {
+            group_properties.emplace_back(prop);
+        }
+
+        result.emplace(group_name, std::move(group_properties));
+    }
+
+    return result;
 }
 
 void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
@@ -1349,12 +1377,23 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         if (flags[i] == "Group") {
             check_next_param();
 
-            const auto& group = flags[i + 2];
+            const auto group = flags[i + 2];
+            int32 priority = 0;
+
+            if (i + 4 < flags.size() && flags[i + 3] == "^") {
+                priority = strex(flags[i + 4]).toInt();
+                i += 2;
+            }
+
             if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
-                it->second.push_back(prop.get());
+                it->second.emplace_back(pair {prop.get(), priority});
+
+                std::ranges::stable_sort(it->second, [](const pair<const Property*, int32>& a, const pair<const Property*, int32>& b) -> bool {
+                    return a.second < b.second; // Sort by priority
+                });
             }
             else {
-                _propertyGroups.emplace(group, vector<const Property*> {prop.get()});
+                _propertyGroups.emplace(group, vector<pair<const Property*, int32>> {pair {prop.get(), priority}});
             }
 
             i += 2;
@@ -1528,7 +1567,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     }
 
     for (auto& other_prop : _registeredProperties) {
-        if (!other_prop->_podDataOffset.has_value() || other_prop == prop) {
+        if (!other_prop || !other_prop->_podDataOffset.has_value() || other_prop == prop) {
             continue;
         }
 

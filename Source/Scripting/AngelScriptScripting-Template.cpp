@@ -2304,11 +2304,17 @@ static void Game_SetPropertyGetter(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* engine = static_cast<BaseEngine*>(gen->GetObject());
-    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
-    const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
+    const auto prop_enum = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
+
+    if (static_cast<int32>(prop_enum) == 0) {
+        throw ScriptException("'None' is not valid property entry in this context");
+    }
+
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    FO_RUNTIME_ASSERT(prop);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -2388,11 +2394,17 @@ static void Game_AddPropertySetter(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     auto* engine = static_cast<BaseEngine*>(gen->GetObject());
-    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
-    const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_index));
     auto* as_engine = gen->GetEngine();
     auto* script_backend = GET_SCRIPT_BACKEND_FROM_ENGINE(engine);
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
+    const auto prop_enum = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
+
+    if (static_cast<int32>(prop_enum) == 0) {
+        throw ScriptException("'None' is not valid property entry in this context");
+    }
+
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    FO_RUNTIME_ASSERT(prop);
 
     if (auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -2518,8 +2530,14 @@ static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum
     FO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
+    if (static_cast<int32>(prop_enum) == 0) {
+        throw ScriptException("'None' is not valid property entry in this context");
+    }
+
     const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_TYPE_NAME);
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    FO_RUNTIME_ASSERT(prop);
+
     is_virtual = prop->IsVirtual();
     is_dict = prop->IsDict();
     is_array = prop->IsArray();
@@ -4362,7 +4380,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
         }
 
-        for (const auto i : iterate_range(registrator->GetPropertiesCount())) {
+        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = prop->IsArray() || prop->IsDict();

@@ -1177,7 +1177,7 @@ def parseTags():
         
         # Generate entity property components enums
         for entity in gameEntities:
-            keyValues = [['Invalid', '0', []]]
+            keyValues = [['None', '0', []]]
             for propCompTag in codeGenTags['PropertyComponent']:
                 ent, name, flags, _ = propCompTag
                 if ent == entity:
@@ -1186,16 +1186,14 @@ def parseTags():
         
         # Generate entity properties enums
         for entity in gameEntities:
-            keyValues = [['Invalid', '0xFFFF', []]]
-            index = 0
+            keyValues = [['None', '0', []]]
+            index = 1
             for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
                 ent, _, _, name, _, _ = propTag
                 if ent == entity:
                     name = name.replace('.', '_')
                     keyValues.append([name, str(index), []])
                     index += 1
-            if len(keyValues) == 1:
-                keyValues.append(['InvalidZero', '0', []])
             codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])
         
         # Check for zero key entry in enums
@@ -1443,7 +1441,7 @@ def genGenericCode():
     globalLines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(props) { }')
     commonParsed = set()
     for entity in gameEntities:
-        index = 0
+        index = 1
         for propTag in codeGenTags['ExportProperty']:
             ent, _, _, name, flags, _ = propTag
             if ent == entity:

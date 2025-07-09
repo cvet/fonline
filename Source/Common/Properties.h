@@ -870,7 +870,7 @@ public:
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetProperties() const noexcept -> const vector<const Property*>& { return _constRegisteredProperties; }
-    [[nodiscard]] auto GetPropertyGroups() const noexcept -> const map<string, vector<const Property*>>& { return _propertyGroups; }
+    [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>;
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _registeredComponents; }
     [[nodiscard]] auto GetHashResolver() const noexcept -> const HashResolver& { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const noexcept -> const NameResolver& { return _nameResolver; }
@@ -891,7 +891,7 @@ private:
     vector<const Property*> _constRegisteredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
-    map<string, vector<const Property*>> _propertyGroups {};
+    map<string, vector<pair<const Property*, int32>>> _propertyGroups {};
     unordered_map<string_view, Property::AccessType> _accessMap {};
 
     // PlainData info
