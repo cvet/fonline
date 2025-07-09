@@ -839,4 +839,10 @@ FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, const
     }
 }
 
+///@ ExportMethod
+FO_SCRIPT_API int32 Common_Game_ResolveGenericValue(BaseEngine* engine, string_view str)
+{
+    return engine->ResolveGenericValue(str);
+}
+
 FO_END_NAMESPACE();
