@@ -71,6 +71,7 @@ BEGIN_AS_NAMESPACE
 
 // TODO: Allow user to register its own aligned memory routines
 // Wrappers for aligned allocations
+#ifdef AS_DEBUG // (FOnline Patch)
 void *debugAlignedMalloc(size_t size, size_t align, const char *file, int line)
 {
 	void *mem = ((asALLOCFUNCDEBUG_t)userAlloc)(size + (align-1) + sizeof(void*), file, line);
@@ -82,6 +83,7 @@ void *debugAlignedMalloc(size_t size, size_t align, const char *file, int line)
 	((void**)amem)[-1] = mem;
 	return amem;
 }
+#endif
 
 void *alignedMalloc(size_t size, size_t align)
 {
