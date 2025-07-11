@@ -30,6 +30,7 @@ inline float atanf (float arg) { return std::atan (arg); }
 inline float coshf (float arg) { return std::cosh (arg); }
 inline float sinhf (float arg) { return std::sinh (arg); }
 inline float tanhf (float arg) { return std::tanh (arg); }
+inline float log2f (float arg) { return std::log2 (arg); }
 inline float log10f (float arg) { return std::log10 (arg); }
 inline float ceilf (float arg) { return std::ceil (arg); }
 inline float fabsf (float arg) { return std::fabs (arg); }
@@ -162,6 +163,7 @@ void RegisterScriptMath_Native(asIScriptEngine *engine)
 
 	// Exponential and logarithmic functions
 	r = engine->RegisterGlobalFunction("float log(float)", asFUNCTIONPR(logf, (float), float), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction("float log2(float)", asFUNCTIONPR(log2f, (float), float), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("float log10(float)", asFUNCTIONPR(log10f, (float), float), asCALL_CDECL); assert( r >= 0 );
 
 	// Power functions
@@ -217,6 +219,7 @@ GENERICff(coshf)
 GENERICff(sinhf)
 GENERICff(tanhf)
 GENERICff(logf)
+GENERICff(log2f)
 GENERICff(log10f)
 GENERICff(sqrtf)
 GENERICff(ceilf)
@@ -298,6 +301,7 @@ void RegisterScriptMath_Generic(asIScriptEngine *engine)
 
 	// Exponential and logarithmic functions
 	r = engine->RegisterGlobalFunction("float log(float)", asFUNCTION(logf_generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction("float log2(float)", asFUNCTION(log2f_generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("float log10(float)", asFUNCTION(log10f_generic), asCALL_GENERIC); assert( r >= 0 );
 
 	// Power functions
