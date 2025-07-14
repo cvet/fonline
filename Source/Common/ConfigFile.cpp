@@ -170,7 +170,11 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* 
             }
             else {
                 // Cut comments
-                const auto comment_pos = line.find('#');
+                auto comment_pos = line.find('#');
+
+                while (comment_pos != string::npos && comment_pos != 0 && line[comment_pos - 1] == '\\') {
+                    comment_pos = line.find('#', comment_pos + 1);
+                }
 
                 if (comment_pos != string::npos) {
                     line.erase(comment_pos);
