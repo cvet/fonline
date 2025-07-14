@@ -2917,7 +2917,7 @@ static void HashedString_IsValidHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
+    const auto hash = *static_cast<const hstring::hash_t*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     bool failed = false;
     auto hstr = engine->Hashes.ResolveHash(hash, &failed);
@@ -2935,7 +2935,7 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint32*>(gen->GetAddressOfArg(0));
+    const auto hash = *static_cast<const hstring::hash_t*>(gen->GetAddressOfArg(0));
     auto* engine = static_cast<BaseEngine*>(gen->GetAuxiliary());
     auto hstr = engine->Hashes.ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
@@ -3687,13 +3687,30 @@ static void CustomEntity_Add(asIScriptGeneric* gen)
 #if SERVER_SCRIPTING
     hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
     H* holder = static_cast<H*>(gen->GetObject());
-    const hstring pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
+    const auto pid = gen->GetArgCount() == 1 ? *static_cast<hstring*>(gen->GetAddressOfArg(0)) : hstring();
     CustomEntity* entity = static_cast<FOServer*>(holder->GetEngine())->EntityMngr.CreateCustomInnerEntity(holder, entry, pid);
     FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
     new (gen->GetAddressOfReturnLocation()) CustomEntity*(entity);
 #else
     ignore_unused(gen);
 #endif
+
+#else
+    ignore_unused(gen);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename H, typename T, typename T2>
+static void CustomEntity_HasAny(asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
+    const H* holder = static_cast<H*>(gen->GetObject());
+    const auto* entities = holder->GetInnerEntities(entry);
+    new (gen->GetAddressOfReturnLocation()) bool(entities != nullptr);
 
 #else
     ignore_unused(gen);
@@ -3745,19 +3762,31 @@ static void Game_ParseEnum(asIScriptGeneric* gen)
     auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
     const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
+    int32 enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name);
+    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
+
+#else
+    ignore_unused(gen);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+static void Game_TryParseEnum(asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    auto* enum_info = static_cast<SCRIPT_BACKEND_CLASS::EnumInfo*>(gen->GetAuxiliary());
+    const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
+
     bool failed = false;
     int32 enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
 
-    if (failed) {
-        if (gen->GetArgCount() == 2) {
-            enum_value = *static_cast<int32*>(gen->GetAddressOfArg(1));
-        }
-        else {
-            throw ScriptException("Can't parse enum", enum_info->EnumName, enum_value_name);
-        }
+    if (!failed) {
+        *static_cast<int32*>(gen->GetAddressOfArg(1)) = enum_value;
     }
 
-    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
 
 #else
     ignore_unused(gen);
@@ -4259,6 +4288,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
         } \
+        AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, "bool Has" entry_name "s()", SCRIPT_GENERIC((CustomEntity_HasAny<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
         AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
     }
 
@@ -4338,7 +4368,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
         AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Game_ParseEnum), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Game_ParseEnum), SCRIPT_GENERIC_CONV, enum_info));
+        AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Game_TryParseEnum), SCRIPT_GENERIC_CONV, enum_info));
         AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Game_EnumToString), SCRIPT_GENERIC_CONV, enum_info));
     }
 

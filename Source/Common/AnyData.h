@@ -180,9 +180,16 @@ public:
 
 private:
     [[nodiscard]] static auto ValueToCodedString(const Value& value) -> string;
+    [[nodiscard]] static auto ReadToken(const char* str, string& result) -> const char*;
+};
+
+class StringEscaping final
+{
+public:
+    StringEscaping() = delete;
+
     [[nodiscard]] static auto CodeString(string_view str) -> string;
     [[nodiscard]] static auto DecodeString(string_view str) -> string;
-    [[nodiscard]] static auto ReadToken(const char* str, string& result) -> const char*;
 };
 
 FO_END_NAMESPACE();
