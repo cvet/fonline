@@ -32,6 +32,7 @@
 //
 
 #include "ProtoBaker.h"
+#include "AnyData.h"
 #include "Application.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"
@@ -322,7 +323,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                             }
                         }
 
-                        all_proto_texts[type_name][pid][lang].AddStr(text_key, value);
+                        all_proto_texts[type_name][pid][lang].AddStr(text_key, StringEscaping::DecodeString(value));
                     }
                 }
             }

@@ -368,7 +368,6 @@ auto EngineData::ResolveEnumValue(string_view enum_value_name, bool* failed) con
 
     if (it == _enumsFull.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum full value {}", enum_value_name);
             *failed = true;
             return 0;
         }
@@ -387,7 +386,6 @@ auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name,
 
     if (enum_it == _enums.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum {}", enum_name);
             *failed = true;
             return 0;
         }
@@ -399,7 +397,6 @@ auto EngineData::ResolveEnumValue(string_view enum_name, string_view value_name,
 
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
-            WriteLog("Can't resolve {} for enum {}", value_name, enum_name);
             *failed = true;
             return 0;
         }
@@ -418,7 +415,6 @@ auto EngineData::ResolveEnumValueName(string_view enum_name, int32 value, bool* 
 
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum {} for resolve value", enum_name);
             *failed = true;
             return _emptyStr;
         }
@@ -430,7 +426,6 @@ auto EngineData::ResolveEnumValueName(string_view enum_name, int32 value, bool* 
 
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
-            WriteLog("Can't resolve value {} for enum {}", value, enum_name);
             *failed = true;
             return _emptyStr;
         }

@@ -136,7 +136,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     case ValueType::Bool:
         return value.AsBool() ? "True" : "False";
     case ValueType::String:
-        return CodeString(value.AsString());
+        return StringEscaping::CodeString(value.AsString());
     case ValueType::Array: {
         string arr_str;
         arr_str.reserve(default_buf_size);
@@ -154,7 +154,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
             arr_str.append(ValueToCodedString(arr_entry));
         }
 
-        return CodeString(arr_str);
+        return StringEscaping::CodeString(arr_str);
     }
     case ValueType::Dict: {
         string dict_str;
@@ -170,12 +170,12 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
                 next_iteration = true;
             }
 
-            dict_str.append(CodeString(dict_key));
+            dict_str.append(StringEscaping::CodeString(dict_key));
             dict_str.append(" ");
             dict_str.append(ValueToCodedString(dict_value));
         }
 
-        return CodeString(dict_str);
+        return StringEscaping::CodeString(dict_str);
     }
     }
 
@@ -190,7 +190,7 @@ auto AnyData::ValueToString(const Value& value) -> string
 
     if (str.length() >= 2 && str.front() == '\"' && str.back() == '\"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
-            str = DecodeString(str);
+            str = StringEscaping::DecodeString(str);
         }
     }
 
@@ -214,7 +214,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
             if (as_array) {
                 Array dict_arr;
 
-                const auto decoded_dict_value_entry = DecodeString(dict_value_entry);
+                const auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
                 const char* s2 = decoded_dict_value_entry.c_str();
                 string arr_entry;
 
@@ -230,7 +230,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                         dict_arr.EmplaceBack(strex("{}", arr_entry).toBool());
                         break;
                     case ValueType::String:
-                        dict_arr.EmplaceBack(DecodeString(arr_entry));
+                        dict_arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
                         break;
                     default:
                         FO_UNREACHABLE_PLACE();
@@ -251,7 +251,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                     dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toBool());
                     break;
                 case ValueType::String:
-                    dict.Emplace(dict_key_entry, DecodeString(dict_value_entry));
+                    dict.Emplace(dict_key_entry, StringEscaping::DecodeString(dict_value_entry));
                     break;
                 default:
                     FO_UNREACHABLE_PLACE();
@@ -279,7 +279,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 arr.EmplaceBack(strex("{}", arr_entry).toBool());
                 break;
             case ValueType::String:
-                arr.EmplaceBack(DecodeString(arr_entry));
+                arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
                 break;
             default:
                 FO_UNREACHABLE_PLACE();
@@ -297,122 +297,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         case ValueType::Bool:
             return strex("{}", str).toBool();
         case ValueType::String:
-            return DecodeString(str);
+            return StringEscaping::DecodeString(str);
         default:
             break;
         }
     }
 
     FO_UNREACHABLE_PLACE();
-}
-
-auto AnyData::CodeString(string_view str) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string result;
-    result.reserve(str.length() * 2);
-
-    const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
-
-    if (protect) {
-        result.append(1, '\"');
-    }
-
-    for (size_t i = 0; i < str.length();) {
-        const auto* s = str.data() + i;
-        size_t length = str.length() - i;
-        utf8::Decode(s, length);
-
-        if (length == 1) {
-            switch (*s) {
-            case '\r':
-                break;
-            case '\n':
-                result.append("\\n");
-                break;
-            case '\"':
-                result.append("\\\"");
-                break;
-            case '\\':
-                result.append("\\\\");
-                break;
-            default:
-                result.append(s, 1);
-                break;
-            }
-        }
-        else {
-            result.append(s, length);
-        }
-
-        i += length;
-    }
-
-    if (protect) {
-        result.append(1, '\"');
-    }
-
-    return result;
-}
-
-auto AnyData::DecodeString(string_view str) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (str.empty()) {
-        return {};
-    }
-
-    string result;
-    result.reserve(str.length());
-
-    const auto* s = str.data();
-    size_t length = str.length();
-    utf8::Decode(s, length);
-
-    const auto is_protected = length == 1 && *s == '\"';
-
-    for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = str.data() + i;
-        length = str.length() - i;
-        utf8::Decode(s, length);
-
-        if (length == 1 && *s == '\\') {
-            i++;
-
-            s = str.data() + i;
-            length = str.length() - i;
-            utf8::Decode(s, length);
-
-            switch (*s) {
-            case 'n':
-                result.append("\n");
-                break;
-            case '\"':
-                result.append("\"");
-                break;
-            case '\\':
-                result.append("\\");
-                break;
-            default:
-                result.append(1, '\\');
-                result.append(s, length);
-                break;
-            }
-        }
-        else {
-            result.append(s, length);
-        }
-
-        i += length;
-    }
-
-    if (is_protected && length == 1 && result.back() == '\"') {
-        result.pop_back();
-    }
-
-    return result;
 }
 
 auto AnyData::ReadToken(const char* str, string& result) -> const char*
@@ -492,6 +383,117 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
 
     result.assign(&str[begin], pos - begin);
     return str[pos] != 0 ? &str[pos + 1] : &str[pos];
+}
+
+auto StringEscaping::CodeString(string_view str) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string result;
+    result.reserve(str.length() * 2);
+
+    const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
+
+    if (protect) {
+        result.append(1, '\"');
+    }
+
+    for (size_t i = 0; i < str.length();) {
+        const auto* s = str.data() + i;
+        size_t length = str.length() - i;
+        utf8::Decode(s, length);
+
+        if (length == 1) {
+            switch (*s) {
+            case '\r':
+                break;
+            case '\n':
+                result.append("\\n");
+                break;
+            case '\"':
+                result.append("\\\"");
+                break;
+            case '\\':
+                result.append("\\\\");
+                break;
+            default:
+                result.append(s, 1);
+                break;
+            }
+        }
+        else {
+            result.append(s, length);
+        }
+
+        i += length;
+    }
+
+    if (protect) {
+        result.append(1, '\"');
+    }
+
+    return result;
+}
+
+auto StringEscaping::DecodeString(string_view str) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (str.empty()) {
+        return {};
+    }
+
+    string result;
+    result.reserve(str.length());
+
+    const auto* s = str.data();
+    size_t length = str.length();
+    utf8::Decode(s, length);
+
+    const auto is_protected = length == 1 && *s == '\"';
+
+    for (size_t i = is_protected ? 1 : 0; i < str.length();) {
+        s = str.data() + i;
+        length = str.length() - i;
+        utf8::Decode(s, length);
+
+        if (length == 1 && *s == '\\') {
+            i++;
+
+            s = str.data() + i;
+            length = str.length() - i;
+            utf8::Decode(s, length);
+
+            switch (*s) {
+            case 'r':
+                break;
+            case 'n':
+                result.append("\n");
+                break;
+            case '\"':
+                result.append("\"");
+                break;
+            case '\\':
+                result.append("\\");
+                break;
+            default:
+                result.append(1, '\\');
+                result.append(s, length);
+                break;
+            }
+        }
+        else {
+            result.append(s, length);
+        }
+
+        i += length;
+    }
+
+    if (is_protected && length == 1 && result.back() == '\"') {
+        result.pop_back();
+    }
+
+    return result;
 }
 
 FO_END_NAMESPACE();
