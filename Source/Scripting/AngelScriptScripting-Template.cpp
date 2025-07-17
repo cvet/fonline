@@ -3719,6 +3719,42 @@ static void CustomEntity_HasAny(asIScriptGeneric* gen)
 }
 
 template<typename H, typename T, typename T2>
+static void CustomEntity_GetOne(asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    hstring entry = *static_cast<hstring*>(gen->GetAuxiliary());
+    H* holder = static_cast<H*>(gen->GetObject());
+    const auto id = *static_cast<ident_t*>(gen->GetAddressOfArg(0));
+    auto* entities = holder->GetInnerEntities(entry);
+
+    if (entities != nullptr && !entities->empty()) {
+        const auto it = std::find_if(entities->begin(), entities->end(), [id](auto&& entity) {
+            FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
+            auto* casted_entity = dynamic_cast<T*>(entity.get());
+            FO_RUNTIME_ASSERT(casted_entity);
+            return casted_entity->GetId() == id;
+        });
+
+        if (it != entities->end()) {
+            new (gen->GetAddressOfReturnLocation()) T*(static_cast<T*>(it->get()));
+        }
+        else {
+            new (gen->GetAddressOfReturnLocation()) T*(nullptr);
+        }
+    }
+    else {
+        new (gen->GetAddressOfReturnLocation()) T*(nullptr);
+    }
+
+#else
+    ignore_unused(gen);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename H, typename T, typename T2>
 static void CustomEntity_GetAll(asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4288,8 +4324,11 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Add" entry_name "()", SCRIPT_GENERIC((CustomEntity_Add<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
             } \
         } \
-        AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, "bool Has" entry_name "s()", SCRIPT_GENERIC((CustomEntity_HasAny<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, "bool Has" entry_name "s() const", SCRIPT_GENERIC((CustomEntity_HasAny<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
         AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@[]@ Get" entry_name "s()", SCRIPT_GENERIC((CustomEntity_GetAll<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+        if (string_view(holder_class_name) != "GameSingleton") { \
+            AS_VERIFY(as_engine->RegisterObjectMethod(holder_class_name, class_name "@+ Get" entry_name "(ident id)", SCRIPT_GENERIC((CustomEntity_GetOne<holder_real_class, real_class, entity_info>)), SCRIPT_GENERIC_CONV, PASS_AS_PVOID(&entry_name_hash))); \
+        } \
     }
 
     REGISTER_BASE_ENTITY("Entity", Entity);
