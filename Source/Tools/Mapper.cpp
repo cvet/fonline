@@ -1097,7 +1097,7 @@ void FOMapper::ObjDraw()
     }
 
     DrawLine("Id", "", strex("{}", entity->GetId()), true, r);
-    DrawLine("ProtoName", "", entity->GetName(), true, r);
+    DrawLine("ProtoId", "", dynamic_cast<EntityWithProto*>(entity)->GetProtoId(), true, r);
 
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
@@ -3045,6 +3045,24 @@ void FOMapper::ParseCommand(string_view command)
             }
 
             ResizeMap(_curMap.get(), maxhx, maxhy);
+        }
+        else if (command_ext == "resave") {
+            AddMess("Resave maps");
+
+            auto map_files = MapsFileSys.FilterFiles("fomap");
+
+            while (map_files.MoveNext()) {
+                const auto& map_file = map_files.GetCurFile();
+                const auto map_name = map_file.GetName();
+
+                if (auto* map = LoadMap(map_name); map != nullptr) {
+                    SaveMap(map, map_name);
+                    AddMess(strex("Resave map: {}", map_name));
+                }
+                else {
+                    AddMess(strex("Failed to load map: {}", map_name));
+                }
+            }
         }
     }
     else {
