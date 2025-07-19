@@ -224,10 +224,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
-FIXED_SETTING(int32, CritterFidgetTime, 50000); // Critter fidget time in milliseconds
-FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None); // Combat animation begin
-FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None); // Combat animation idle
-FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None); // Combat animation end
 FIXED_SETTING(int32, NameOffset, 0); // Name offset value
 SETTING_GROUP_END();
 

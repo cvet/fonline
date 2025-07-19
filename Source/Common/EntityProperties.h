@@ -308,8 +308,6 @@ public:
     // Todo: exclude critter properties from engine:
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateClient, bool, SexTagFemale);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, bool, ModelInCombatMode);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
