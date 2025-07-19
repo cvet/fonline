@@ -631,7 +631,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             index = _modelInfo->_renderAnim;
         }
         else {
-            index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
+            index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
         }
     }
 
@@ -1007,20 +1007,6 @@ void ModelInstance::SetMoving(bool enabled, int32 speed)
     RefreshMoveAnimation();
 }
 
-auto ModelInstance::IsCombatMode() const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return _isCombatMode;
-}
-
-void ModelInstance::SetCombatMode(bool enabled)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _isCombatMode = enabled;
-}
-
 void ModelInstance::RefreshMoveAnimation()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1072,7 +1058,7 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     float32 speed = 1.0f;
-    const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
+    const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
     if (index == _curMovingAnimIndex) {
         return;
@@ -1133,7 +1119,7 @@ auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterAction
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr, _isCombatMode) != -1;
+    return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr) != -1;
 }
 
 auto ModelInstance::GetMovingAnim() const noexcept -> CritterActionAnim
@@ -2300,7 +2286,6 @@ auto ModelInformation::Load(string_view name) -> bool
         {
             CritterStateAnim StateAnim;
             CritterActionAnim ActionAnim;
-            bool IsCombat;
             string FileName;
             string Name;
         };
@@ -2718,25 +2703,20 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 link->EffectInfo.emplace_back(buf, mesh);
             }
-            else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt") {
+            else if (token == "Anim" || token == "AnimSpeed") {
                 // Index animation
                 *istr >> buf;
                 const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 *istr >> buf;
                 const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                if (token == "Anim" || token == "AnimExt") {
+                if (token == "Anim") {
                     // Todo: add reverse playing of 3d animation
 
                     string a1;
                     string a2;
                     *istr >> a1 >> a2;
-                    anims.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .IsCombat = false, .FileName = a1, .Name = a2});
-
-                    if (token == "AnimExt") {
-                        *istr >> a1 >> a2;
-                        anims.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .IsCombat = true, .FileName = a1, .Name = a2});
-                    }
+                    anims.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .FileName = a1, .Name = a2});
                 }
                 else {
                     *istr >> valuef;
@@ -2784,7 +2764,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
-                anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .IsCombat = false, .FileName = render_fname, .Name = render_anim});
+                anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
 
                 *istr >> _renderAnimProcFrom;
 
@@ -2857,7 +2837,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .IsCombat = false, .FileName = render_fname, .Name = render_anim});
+            anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
         }
 
         // Create animation controller
@@ -2887,12 +2867,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         _renderAnim = set_index;
                     }
                     else {
-                        if (anim.IsCombat) {
-                            _animCombatIndexes.emplace(std::make_pair(anim.StateAnim, anim.ActionAnim), set_index);
-                        }
-                        else {
-                            _animIndexes.emplace(std::make_pair(anim.StateAnim, anim.ActionAnim), set_index);
-                        }
+                        _animIndexes.emplace(std::make_pair(anim.StateAnim, anim.ActionAnim), set_index);
                     }
                 }
             }
@@ -2950,22 +2925,13 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed, bool combat_first) const -> int32
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
     // Find index
-    int32 index = -1;
+    auto index = GetAnimationIndexEx(state_anim, action_anim, speed);
 
-    if (combat_first) {
-        index = GetAnimationIndexEx(state_anim, action_anim, true, speed);
-    }
-    if (index == -1) {
-        index = GetAnimationIndexEx(state_anim, action_anim, false, speed);
-    }
-    if (!combat_first && index == -1) {
-        index = GetAnimationIndexEx(state_anim, action_anim, true, speed);
-    }
     if (index != -1) {
         return index;
     }
@@ -2981,15 +2947,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
         const auto action_anim_ = action_anim;
 
         if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
-            if (combat_first) {
-                index = GetAnimationIndexEx(state_anim, action_anim, true, speed);
-            }
-            if (index == -1) {
-                index = GetAnimationIndexEx(state_anim, action_anim, false, speed);
-            }
-            if (!combat_first && index == -1) {
-                index = GetAnimationIndexEx(state_anim, action_anim, true, speed);
-            }
+            index = GetAnimationIndexEx(state_anim, action_anim, speed);
         }
         else {
             break;
@@ -2999,7 +2957,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     return index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, bool combat, float32* speed) const -> int32
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3023,15 +2981,8 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
         }
     }
 
-    if (combat) {
-        if (const auto it = _animCombatIndexes.find(index); it != _animCombatIndexes.end()) {
-            return it->second;
-        }
-    }
-    else {
-        if (const auto it = _animIndexes.find(index); it != _animIndexes.end()) {
-            return it->second;
-        }
+    if (const auto it = _animIndexes.find(index); it != _animIndexes.end()) {
+        return it->second;
     }
 
     return -1;

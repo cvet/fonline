@@ -138,8 +138,6 @@ private:
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    nanotime _fidgetTime {};
-
     ipos32 _offsAnim {};
     fpos32 _offsExt {};
     fpos32 _offsExtSpeed {};

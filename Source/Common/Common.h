@@ -569,7 +569,6 @@ enum class CritterAction : uint16
     DropItem = 5,
     Knockout = 16,
     StandUp = 17,
-    Fidget = 18,
     Dead = 19,
     Connect = 20,
     Disconnect = 21,

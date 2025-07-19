@@ -59,8 +59,6 @@ void CritterHexView::Init()
     RefreshView();
     RefreshOffs();
 
-    _fidgetTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};
-
     DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
 
@@ -278,7 +276,7 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
 #if FO_ENABLE_3D
     if (_model) {
         if (_model->ResolveAnimation(state_anim, action_anim)) {
-            _animSequence.push_back(CritterAnim {nullptr, timespan::zero, 0, 0, state_anim, action_anim, resolved_context_item.get()});
+            _animSequence.emplace_back(CritterAnim {.AnimFrames = nullptr, .AnimDuration = timespan::zero, .BeginFrm = 0, .EndFrm = 0, .StateAnim = state_anim, .ActionAnim = action_anim, .ContextItem = resolved_context_item.get()});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);
@@ -297,7 +295,7 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
 
         if (frames != nullptr) {
             const auto duration = std::chrono::milliseconds {frames->WholeTicks != 0 ? frames->WholeTicks : 100};
-            _animSequence.push_back(CritterAnim {frames, duration, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, resolved_context_item.get()});
+            _animSequence.emplace_back(CritterAnim {.AnimFrames = frames, .AnimDuration = duration, .BeginFrm = 0, .EndFrm = frames->CntFrm - 1, .StateAnim = frames->StateAnim, .ActionAnim = frames->ActionAnim, .ContextItem = resolved_context_item.get()});
 
             if (_animSequence.size() == 1) {
                 NextAnim(false);
@@ -413,26 +411,12 @@ auto CritterHexView::GetActionAnim() const noexcept -> CritterActionAnim
 
     switch (GetCondition()) {
     case CritterCondition::Alive:
-#if FO_ENABLE_3D
-        if (const auto fixed_anim = GetAliveActionAnim(); fixed_anim == CritterActionAnim::None) {
-            if (_model && _model->IsCombatMode() && _engine->Settings.CombatAnimIdle != CritterActionAnim::None) {
-                return _engine->Settings.CombatAnimIdle;
-            }
-            else {
-                return CritterActionAnim::Idle;
-            }
-        }
-        else {
-            return fixed_anim;
-        }
-#else
         if (const auto fixed_anim = GetAliveActionAnim(); fixed_anim == CritterActionAnim::None) {
             return CritterActionAnim::Idle;
         }
         else {
             return fixed_anim;
         }
-#endif
     case CritterCondition::Knockout:
         if (const auto fixed_anim = GetKnockoutActionAnim(); fixed_anim == CritterActionAnim::None) {
             return CritterActionAnim::IdleProneFront;
@@ -649,40 +633,6 @@ void CritterHexView::Process()
             RefreshView();
         }
     }
-
-    // Fidget animation
-    // Todo: fidget animation to scripts
-    if (_engine->GameTime.GetFrameTime() >= _fidgetTime) {
-#if FO_ENABLE_3D
-        const auto is_combat_mode = _model && _model->IsCombatMode();
-#else
-        constexpr auto is_combat_mode = false;
-#endif
-
-        if (_animSequence.empty() && GetCondition() == CritterCondition::Alive && !IsMoving() && !is_combat_mode) {
-            Action(CritterAction::Fidget, 0, nullptr, false);
-        }
-
-        _fidgetTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};
-    }
-
-    // Combat mode
-#if FO_ENABLE_3D
-    if (_model) {
-        if (const auto is_combat = GetModelInCombatMode(); is_combat != _model->IsCombatMode()) {
-            if (_engine->Settings.CombatAnimIdle != CritterActionAnim::None && _animSequence.empty() && GetCondition() == CritterCondition::Alive && GetAliveActionAnim() == CritterActionAnim::None && !IsMoving()) {
-                if (_engine->Settings.CombatAnimBegin != CritterActionAnim::None && is_combat && _model->GetActionAnim() != _engine->Settings.CombatAnimIdle) {
-                    AppendAnim(CritterStateAnim::None, _engine->Settings.CombatAnimBegin, nullptr);
-                }
-                else if (_engine->Settings.CombatAnimEnd != CritterActionAnim::None && !is_combat && _model->GetActionAnim() == _engine->Settings.CombatAnimIdle) {
-                    AppendAnim(CritterStateAnim::None, _engine->Settings.CombatAnimEnd, nullptr);
-                }
-            }
-
-            _model->SetCombatMode(is_combat);
-        }
-    }
-#endif
 }
 
 void CritterHexView::ProcessMoving()
