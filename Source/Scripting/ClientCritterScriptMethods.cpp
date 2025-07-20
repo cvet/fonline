@@ -127,12 +127,6 @@ FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterStateAnim Client_Critter_GetStateAnim(CritterView* self)
-{
-    return self->GetStateAnim();
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);

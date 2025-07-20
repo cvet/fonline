@@ -621,31 +621,6 @@ FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Animate(Critter* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem, bool clearSequence, bool delayPlay)
-{
-    self->SendAndBroadcast_Animate(stateAnim, actionAnim, dynamic_cast<Item*>(contextItem), clearSequence, delayPlay);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetConditionAnims(Critter* self, CritterCondition cond, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
-{
-    if (cond == CritterCondition::Alive) {
-        self->SetAliveStateAnim(stateAnim);
-        self->SetAliveActionAnim(actionAnim);
-    }
-    else if (cond == CritterCondition::Knockout) {
-        self->SetKnockoutStateAnim(stateAnim);
-        self->SetKnockoutActionAnim(actionAnim);
-    }
-    else if (cond == CritterCondition::Dead) {
-        self->SetDeadStateAnim(stateAnim);
-        self->SetDeadActionAnim(actionAnim);
-    }
-
-    self->SendAndBroadcast_SetAnims(cond, stateAnim, actionAnim);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, const vector<Item*>& items)
 {
     self->Send_SomeItems(items, false, false, {});

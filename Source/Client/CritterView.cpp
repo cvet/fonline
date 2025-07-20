@@ -186,20 +186,4 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     return true;
 }
 
-auto CritterView::GetStateAnim() const noexcept -> CritterStateAnim
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    switch (GetCondition()) {
-    case CritterCondition::Alive:
-        return GetAliveStateAnim() != CritterStateAnim::None ? GetAliveStateAnim() : CritterStateAnim::Unarmed;
-    case CritterCondition::Knockout:
-        return GetKnockoutStateAnim() != CritterStateAnim::None ? GetKnockoutStateAnim() : CritterStateAnim::Unarmed;
-    case CritterCondition::Dead:
-        return GetDeadStateAnim() != CritterStateAnim::None ? GetDeadStateAnim() : CritterStateAnim::Unarmed;
-    }
-
-    return CritterStateAnim::Unarmed;
-}
-
 FO_END_NAMESPACE();

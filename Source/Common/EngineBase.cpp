@@ -463,7 +463,19 @@ auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int
         return 0;
     }
 
-    return ResolveEnumValue(str, failed);
+    bool enum_failed = false;
+    const auto enum_value = ResolveEnumValue(str, &enum_failed);
+
+    if (enum_failed) {
+        WriteLog("Failed to resolve generic value: '{}'", str);
+
+        if (failed != nullptr) {
+            *failed = true;
+            return 0;
+        }
+    }
+
+    return enum_value;
 }
 
 auto EngineData::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>

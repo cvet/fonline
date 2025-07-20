@@ -136,12 +136,6 @@ void Player::Send_AddCritter(const Critter* cr)
     out_buf->Write(cr->GetHexOffset());
     out_buf->Write(cr->GetDirAngle());
     out_buf->Write(cr->GetCondition());
-    out_buf->Write(cr->GetAliveStateAnim());
-    out_buf->Write(cr->GetKnockoutStateAnim());
-    out_buf->Write(cr->GetDeadStateAnim());
-    out_buf->Write(cr->GetAliveActionAnim());
-    out_buf->Write(cr->GetKnockoutActionAnim());
-    out_buf->Write(cr->GetDeadActionAnim());
     out_buf->Write(cr->GetControlledByPlayer());
     out_buf->Write(cr->GetControlledByPlayer() && cr->GetPlayer() == nullptr);
     out_buf->Write(is_chosen);
@@ -363,38 +357,6 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
     for (const auto* item : send_items) {
         SendItem(*out_buf, item, false, true, true);
     }
-}
-
-void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto is_chosen = from_cr == GetControlledCritter();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterAnimate);
-
-    out_buf->Write(from_cr->GetId());
-    out_buf->Write(state_anim);
-    out_buf->Write(action_anim);
-    out_buf->Write(clear_sequence);
-    out_buf->Write(delay_play);
-    out_buf->Write(context_item != nullptr);
-
-    if (context_item != nullptr) {
-        SendItem(*out_buf, context_item, is_chosen, false, false);
-    }
-}
-
-void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterSetAnims);
-
-    out_buf->Write(from_cr->GetId());
-    out_buf->Write(cond);
-    out_buf->Write(state_anim);
-    out_buf->Write(action_anim);
 }
 
 void Player::Send_AddItemOnMap(const Item* item)

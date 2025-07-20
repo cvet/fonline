@@ -63,7 +63,6 @@ public:
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> ItemView*;
     [[nodiscard]] auto GetInvItems() const noexcept -> const vector<refcount_ptr<ItemView>>& { return _invItems; }
     [[nodiscard]] auto GetInvItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _invItems; }
-    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim;
 
     auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
     auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;

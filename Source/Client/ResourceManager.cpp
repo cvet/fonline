@@ -153,7 +153,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                 int32 oy = 0;
                 string anim_name;
 
-                if (_animNameResolver.ResolveCritterAnimation(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
+                if (_animNameResolver.ResolveCritterAnimationFrames(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
                     if (!anim_name.empty()) {
                         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(anim_name, AtlasType::MapSprites, true));
 
@@ -574,7 +574,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
         auto& model_spr = it->second;
 
         model_spr->GetModel()->SetDir(dir, false);
-        model_spr->GetModel()->SetAnimation(state_anim, action_anim, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+        model_spr->GetModel()->PlayAnim(state_anim, action_anim, layers3d, 0.0f, CombineEnum(ModelAnimFlags::Freeze, ModelAnimFlags::NoSmooth));
 
         model_spr->DrawToAtlas();
 
@@ -589,7 +589,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
 
     auto* model = model_spr->GetModel();
 
-    model->SetAnimation(state_anim, action_anim, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+    model->PlayAnim(state_anim, action_anim, layers3d, 0.0f, CombineEnum(ModelAnimFlags::Freeze, ModelAnimFlags::NoSmooth));
     model->SetDir(dir, false);
     model->PrewarmParticles();
     model->StartMeshGeneration();

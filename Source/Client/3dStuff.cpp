@@ -219,12 +219,12 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
-    const auto anim_sets_count = reader.Read<uint32>();
+    const auto anim_count = reader.Read<uint32>();
 
-    for (uint32 i = 0; i < anim_sets_count; i++) {
-        auto anim_set = SafeAlloc::MakeUnique<ModelAnimation>();
-        anim_set->Load(reader, _hashResolver);
-        _loadedAnimSets.push_back(std::move(anim_set));
+    for (uint32 i = 0; i < anim_count; i++) {
+        auto anim = SafeAlloc::MakeUnique<ModelAnimation>();
+        anim->Load(reader, _hashResolver);
+        _loadedAnims.push_back(std::move(anim));
     }
 
     reader.VerifyEnd();
@@ -243,9 +243,9 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     const auto take_first = anim_name == "Base";
     const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
 
-    for (auto& anim_set : _loadedAnimSets) {
-        if (strex(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || strex(anim_set->GetName()).compareIgnoreCase(anim_name))) {
-            return anim_set.get();
+    for (auto& anim : _loadedAnims) {
+        if (strex(anim->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || strex(anim->GetName()).compareIgnoreCase(anim_name))) {
+            return anim.get();
         }
     }
 
@@ -297,11 +297,13 @@ auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
     FO_STACK_TRACE_ENTRY();
 
     auto* model_info = GetInformation(name);
+
     if (model_info == nullptr) {
         return nullptr;
     }
 
     auto* model = model_info->CreateInstance();
+
     if (model == nullptr) {
         return nullptr;
     }
@@ -320,8 +322,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
         mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
     }
 
-    // Set default data
-    model->SetAnimation(CritterStateAnim::None, CritterActionAnim::None, nullptr, ANIMATION_INIT);
+    model->PlayAnim(CritterStateAnim::None, CritterActionAnim::None, nullptr, 0.0f, ModelAnimFlags::Init);
 
     return unique_ptr<ModelInstance>(model);
 }
@@ -597,7 +598,7 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, uint32 flags) -> bool
+auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, float32 ntime, ModelAnimFlags flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -608,7 +609,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     _curActionAnim = action_anim;
 
     // Restore rotation
-    if (const auto no_rotate = IsBitSet(flags, ANIMATION_NO_ROTATE); no_rotate != _noRotate) {
+    if (const auto no_rotate = IsEnumSet(flags, ModelAnimFlags::NoRotate); no_rotate != _noRotate) {
         _noRotate = no_rotate;
 
         if (_noRotate) {
@@ -623,32 +624,25 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     // Get animation index
     const auto anim_pair = std::make_pair(state_anim, action_anim);
     float32 speed = 1.0f;
-    int32 index = 0;
-    float32 period_proc = 0.0f;
+    int32 anim_index = 0;
 
-    if (!IsBitSet(flags, ANIMATION_INIT)) {
+    if (!IsEnumSet(flags, ModelAnimFlags::Init)) {
         if (state_anim == CritterStateAnim::None) {
-            index = _modelInfo->_renderAnim;
+            anim_index = _modelInfo->_renderAnimIndex;
         }
         else {
-            index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+            anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
         }
     }
-
-    if (IsBitSet(flags, ANIMATION_PERIOD(0))) {
-        period_proc = numeric_cast<float32>(flags >> 16);
-    }
-
-    period_proc = std::clamp(period_proc, 0.0f, 99.9f);
 
     // Check animation changes
     int32 new_layers[MODEL_LAYERS_COUNT];
 
     if (layers != nullptr) {
-        MemCopy(new_layers, layers, sizeof(_currentLayers));
+        MemCopy(new_layers, layers, sizeof(_curLayers));
     }
     else {
-        MemCopy(new_layers, _currentLayers, sizeof(_currentLayers));
+        MemCopy(new_layers, _curLayers, sizeof(_curLayers));
     }
 
     // Animation layers
@@ -659,11 +653,11 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     // Check for change
-    bool layer_changed = IsBitSet(flags, ANIMATION_INIT);
+    bool layer_changed = IsEnumSet(flags, ModelAnimFlags::Init);
 
     if (!layer_changed) {
         for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
-            if (new_layers[i] != _currentLayers[i]) {
+            if (new_layers[i] != _curLayers[i]) {
                 layer_changed = true;
                 break;
             }
@@ -671,11 +665,13 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
     }
 
     // Is not one time play and same anim
-    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layer_changed) {
+    const bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
+
+    if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layer_changed) {
         return false;
     }
 
-    MemCopy(_currentLayers, new_layers, sizeof(_currentLayers));
+    MemCopy(_curLayers, new_layers, sizeof(_curLayers));
 
     bool mesh_changed = false;
     vector<hstring> fast_transition_bones;
@@ -857,14 +853,13 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             }
         }
 
-        // Compare changed effect
+        // Compare changed data
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = _allMeshes[i]->LastEffect != _allMeshes[i]->CurEffect;
             }
         }
 
-        // Compare changed textures
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 for (size_t k = 0; k < MODEL_MAX_TEXTURES && !mesh_changed; k++) {
@@ -873,7 +868,6 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
             }
         }
 
-        // Compare disabled meshes
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = _allMeshesDisabled[i] != _allMeshes[i]->Disabled;
@@ -888,69 +882,54 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     RefreshMoveAnimation();
 
-    if (_bodyAnimController && index >= 0) {
-        // Get the animation set from the controller
-        const auto* set = _bodyAnimController->GetAnimationSet(numeric_cast<size_t>(index));
+    if (_bodyAnimController && anim_index >= 0) {
+        const auto new_track = _curTrack == 0 ? 1 : 0;
+        _animDuration = _bodyAnimController->GetAnimationDuration(anim_index);
+        auto duration = IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0002f : _animDuration;
 
-        // Alternate tracks
-        const uint32 new_track = (_currentTrack == 0 ? 1 : 0);
-        auto period = set->GetDuration();
-        _animPosPeriod = period;
-
-        if (IsBitSet(flags, ANIMATION_INIT)) {
-            period = 0.0002f;
-        }
-
-        // Assign to our track
-        _bodyAnimController->SetTrackAnimationSet(new_track, set, nullptr);
+        _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
 
         // Turn off fast transition bones on other tracks
         if (!fast_transition_bones.empty()) {
             _bodyAnimController->ResetBonesTransition(new_track, fast_transition_bones);
         }
 
-        // Prepare to new tracking
         _bodyAnimController->Reset();
 
-        // Smooth time
-        const auto smooth_time = IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime;
-        const auto start_time = period * period_proc / 100.0f;
+        const auto no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
+        const auto smooth_time = no_smooth ? 0.0001f : _modelMngr._moveTransitionTime;
+        const auto start_time = duration * ntime;
 
-        if (IsBitSet(flags, ANIMATION_STAY)) {
-            period = start_time + 0.0002f;
+        if (IsEnumSet(flags, ModelAnimFlags::Freeze)) {
+            duration = start_time + 0.0002f;
         }
 
         // Disable current track
-        _bodyAnimController->AddEventEnable(_currentTrack, false, smooth_time);
-        _bodyAnimController->AddEventSpeed(_currentTrack, 0.0f, 0.0f, smooth_time);
-        _bodyAnimController->AddEventWeight(_currentTrack, 0.0f, 0.0f, smooth_time);
+        _bodyAnimController->AddEventEnable(_curTrack, false, smooth_time);
+        _bodyAnimController->AddEventSpeed(_curTrack, 0.0f, 0.0f, smooth_time);
+        _bodyAnimController->AddEventWeight(_curTrack, 0.0f, 0.0f, smooth_time);
 
         // Enable the new track
+        _curTrack = new_track;
+        _speedAdjustCur = speed;
+
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackPosition(new_track, 0.0f);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
 
-        if (IsBitSet(flags, ANIMATION_ONE_TIME | ANIMATION_STAY | ANIMATION_INIT)) {
-            _bodyAnimController->AddEventSpeed(new_track, 0.0f, period - 0.0001f, 0.0f);
+        if (IsEnumSet(flags, ModelAnimFlags::PlayOnce) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init)) {
+            _bodyAnimController->AddEventSpeed(new_track, 0.0f, duration - 0.0001f, 0.0f);
         }
 
         _bodyAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
-
         _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
 
-        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
+        if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
             _moveAnimController->AdvanceTime(0.0001f);
         }
 
-        // Remember current track
-        _currentTrack = new_track;
-
-        // Speed
-        _speedAdjustCur = speed;
-
-        // End time
-        if (IsBitSet(flags, ANIMATION_ONE_TIME)) {
-            _endTime = GetTime() + std::chrono::milliseconds(iround<int32>(period / GetSpeed() * 1000.0f));
+        if (IsEnumSet(flags, ModelAnimFlags::PlayOnce)) {
+            _endTime = GetTime() + std::chrono::milliseconds(iround<int32>(duration / GetSpeed() * 1000.0f));
         }
         else {
             _endTime = nanotime::zero;
@@ -962,7 +941,7 @@ auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
     // Set animation for children
     for (auto& child : _children) {
-        if (child->SetAnimation(state_anim, action_anim, layers, flags)) {
+        if (child->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
             mesh_changed = true;
         }
     }
@@ -1030,7 +1009,7 @@ void ModelInstance::RefreshMoveAnimation()
             action_anim = _isRunning ? CritterActionAnim::RunBack : CritterActionAnim::WalkBack;
         }
 
-        _playTurnAnimation = false;
+        _turnAnimPlaying = false;
     }
     else {
         if (_isMovingBack) {
@@ -1045,26 +1024,30 @@ void ModelInstance::RefreshMoveAnimation()
         if (std::abs(angle_diff) > _modelMngr._settings.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
-            if (_playTurnAnimation) {
+            if (_turnAnimPlaying) {
                 return;
             }
 
             action_anim = angle_diff < 0.0f ? CritterActionAnim::TurnRight : CritterActionAnim::TurnLeft;
-            _playTurnAnimation = true;
+            _turnAnimPlaying = true;
         }
-        else if (_playTurnAnimation) {
+        else if (_turnAnimPlaying) {
             return;
         }
     }
 
-    float32 speed = 1.0f;
-    const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+    if (_animInitCallback) {
+        _animInitCallback(state_anim, action_anim);
+    }
 
-    if (index == _curMovingAnimIndex) {
+    float32 speed = 1.0f;
+    const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+
+    if (anim_index == _curMovingAnimIndex) {
         return;
     }
 
-    _curMovingAnimIndex = index;
+    _curMovingAnimIndex = anim_index;
     _curMovingAnim = action_anim;
 
     if (_isMoving) {
@@ -1073,16 +1056,15 @@ void ModelInstance::RefreshMoveAnimation()
 
     constexpr float32 smooth_time = 0.0001f;
 
-    if (index != -1) {
-        const auto* anim_set = _moveAnimController->GetAnimationSet(numeric_cast<size_t>(index));
-        const uint32 new_track = _currentMoveTrack == 0 ? 1 : 0;
+    if (anim_index != -1) {
+        const auto new_track = _curMoveTrack == 0 ? 1 : 0;
 
-        _moveAnimController->SetTrackAnimationSet(new_track, anim_set, &_modelMngr._legBones);
+        _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr._legBones);
         _moveAnimController->Reset();
 
-        _moveAnimController->AddEventEnable(_currentMoveTrack, false, smooth_time);
-        _moveAnimController->AddEventSpeed(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
-        _moveAnimController->AddEventWeight(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
+        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, 0.0f, smooth_time);
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackPosition(new_track, 0.0f);
@@ -1090,19 +1072,27 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->AddEventSpeed(new_track, speed, 0.0f, smooth_time);
         _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
 
-        if (_playTurnAnimation) {
-            _moveAnimController->AddEventEnable(new_track, false, anim_set->GetDuration() / speed);
+        if (_turnAnimPlaying) {
+            const auto anim_duration = _moveAnimController->GetAnimationDuration(anim_index);
+            _moveAnimController->AddEventEnable(new_track, false, anim_duration / speed);
         }
 
-        _currentMoveTrack = new_track;
+        _curMoveTrack = new_track;
     }
     else {
         _moveAnimController->Reset();
 
-        _moveAnimController->AddEventEnable(_currentMoveTrack, false, smooth_time);
-        _moveAnimController->AddEventSpeed(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
-        _moveAnimController->AddEventWeight(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
+        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, 0.0f, smooth_time);
     }
+}
+
+void ModelInstance::SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animInitCallback = std::move(anim_init);
 }
 
 auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool
@@ -1145,21 +1135,17 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto period = 0.0f;
+    auto duration = 0.0f;
 
     if (_bodyAnimController) {
-        const auto* anim_set = _bodyAnimController->GetAnimationSet(numeric_cast<size_t>(_modelInfo->_renderAnim));
-
-        if (anim_set != nullptr) {
-            period = anim_set->GetDuration();
-        }
+        duration = _bodyAnimController->GetAnimationDuration(_modelInfo->_renderAnimIndex);
     }
 
     const auto proc_from = _modelInfo->_renderAnimProcFrom;
     const auto proc_to = _modelInfo->_renderAnimProcTo;
     const auto dir = _modelInfo->_renderAnimDir;
 
-    return tuple {period, proc_from, proc_to, dir};
+    return tuple {duration, proc_from, proc_to, dir};
 }
 
 auto ModelInstance::GetDrawSize() const -> isize32
@@ -1990,23 +1976,23 @@ void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
     float32 new_track_pos = 0.0f;
 
     if (_bodyAnimController && elapsed >= 0.0f) {
-        prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
+        prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
         _bodyAnimController->AdvanceTime(elapsed * GetSpeed());
 
-        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
+        if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
             _moveAnimController->AdvanceTime(elapsed * GetSpeed());
 
-            if (_playTurnAnimation && !_moveAnimController->GetTrackEnable(_currentMoveTrack)) {
-                _playTurnAnimation = false;
+            if (_turnAnimPlaying && !_moveAnimController->GetTrackEnable(_curMoveTrack)) {
+                _turnAnimPlaying = false;
                 RefreshMoveAnimation();
             }
         }
 
-        new_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
+        new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
-        if (_animPosPeriod > 0.0f) {
-            _animPosProc = new_track_pos / _animPosPeriod;
+        if (_animDuration > 0.0f) {
+            _animPosProc = new_track_pos / _animDuration;
 
             if (_animPosProc >= 1.0f) {
                 _animPosProc = std::fmod(_animPosProc, 1.0f);
@@ -2014,8 +2000,8 @@ void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
 
             _animPosTime = new_track_pos;
 
-            if (_animPosTime >= _animPosPeriod) {
-                _animPosTime = std::fmod(_animPosTime, _animPosPeriod);
+            if (_animPosTime >= _animDuration) {
+                _animPosTime = std::fmod(_animPosTime, _animDuration);
             }
         }
     }
@@ -2063,11 +2049,12 @@ void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
     }
 
     // Animation callbacks
-    if (_bodyAnimController && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
+    if (_bodyAnimController && elapsed >= 0.0f && _animDuration > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
-                const auto fire_track_pos2 = floorf(new_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
+                const auto fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+                const auto fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+
                 if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
                     callback.Callback();
                 }
@@ -2216,7 +2203,7 @@ auto ModelInstance::GetAnimDuration() const -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::chrono::milliseconds(iround<int32>(_animPosPeriod * 1000.0f));
+    return std::chrono::milliseconds(iround<int32>(_animDuration * 1000.0f));
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -2279,8 +2266,6 @@ auto ModelInformation::Load(string_view name) -> bool
         auto closed = false;
         string token;
         string buf;
-        auto valuei = 0;
-        auto valuef = 0.0f;
 
         struct AnimEntry
         {
@@ -2290,12 +2275,13 @@ auto ModelInformation::Load(string_view name) -> bool
             string Name;
         };
 
-        vector<AnimEntry> anims;
+        vector<AnimEntry> anim_entries;
 
         while (!istr->eof()) {
             *istr >> token;
 
             if (istr->fail()) {
+                WriteLog("Failed to read token in file '{}'", name);
                 break;
             }
 
@@ -2564,6 +2550,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> link->ScaleZ;
             }
             else if (token == "Scale") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = link->ScaleY = link->ScaleZ = valuef;
             }
@@ -2571,94 +2558,116 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> link->SpeedAjust;
             }
             else if (token == "RotX+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX + valuef);
             }
             else if (token == "RotY+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY + valuef);
             }
             else if (token == "RotZ+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ + valuef);
             }
             else if (token == "MoveX+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX + valuef);
             }
             else if (token == "MoveY+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY + valuef);
             }
             else if (token == "MoveZ+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ + valuef);
             }
             else if (token == "ScaleX+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
             }
             else if (token == "ScaleY+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
             }
             else if (token == "ScaleZ+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Scale+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Speed+") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
             else if (token == "RotX*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX * valuef);
             }
             else if (token == "RotY*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY * valuef);
             }
             else if (token == "RotZ*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ * valuef);
             }
             else if (token == "MoveX*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX * valuef);
             }
             else if (token == "MoveY*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY * valuef);
             }
             else if (token == "MoveZ*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ * valuef);
             }
             else if (token == "ScaleX*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
             }
             else if (token == "ScaleY*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
             }
             else if (token == "ScaleZ*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Scale*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Speed*") {
+                float32 valuef = 0.0f;
                 *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
@@ -2703,25 +2712,26 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 link->EffectInfo.emplace_back(buf, mesh);
             }
-            else if (token == "Anim" || token == "AnimSpeed") {
-                // Index animation
+            else if (token == "Anim") {
                 *istr >> buf;
                 const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 *istr >> buf;
                 const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                if (token == "Anim") {
-                    // Todo: add reverse playing of 3d animation
+                string a1;
+                string a2;
+                *istr >> a1 >> a2;
+                anim_entries.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .FileName = a1, .Name = a2});
+            }
+            else if (token == "AnimSpeed") {
+                *istr >> buf;
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                    string a1;
-                    string a2;
-                    *istr >> a1 >> a2;
-                    anims.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .FileName = a1, .Name = a2});
-                }
-                else {
-                    *istr >> valuef;
-                    _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2)), valuef);
-                }
+                float32 valuef = 0.0f;
+                *istr >> valuef;
+                _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2)), valuef);
             }
             else if (token == "AnimLayerValue") {
                 *istr >> buf;
@@ -2746,9 +2756,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
                 _fastTransitionBones.insert(_modelMngr.GetBoneHashedString(buf));
             }
-            else if (token == "AnimEqual") {
-                *istr >> valuei;
-
+            else if (token == "StateAnimEqual") {
                 auto ind1 = 0;
                 auto ind2 = 0;
                 *istr >> buf;
@@ -2756,15 +2764,20 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
                 ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
-                if (valuei == 1) {
-                    _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
-                }
-                else if (valuei == 2) {
-                    _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
-                }
+                _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
+            }
+            else if (token == "ActionAnimEqual") {
+                auto ind1 = 0;
+                auto ind2 = 0;
+                *istr >> buf;
+                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                *istr >> buf;
+                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+
+                _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
-                anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
+                anim_entries.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
 
                 *istr >> _renderAnimProcFrom;
 
@@ -2837,49 +2850,49 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
+            anim_entries.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
         }
 
         // Create animation controller
-        if (!anims.empty()) {
+        if (!anim_entries.empty()) {
             _animController = SafeAlloc::MakeUnique<ModelAnimationController>(2);
         }
 
         // Parse animations
         if (_animController) {
-            for (const auto& anim : anims) {
+            for (const auto& anim_entry : anim_entries) {
                 string anim_path;
 
-                if (anim.FileName == "ModelFile") {
+                if (anim_entry.FileName == "ModelFile") {
                     anim_path = model;
                 }
                 else {
-                    anim_path = strex(name).extractDir().combinePath(anim.FileName);
+                    anim_path = strex(name).extractDir().combinePath(anim_entry.FileName);
                 }
 
-                auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);
+                const auto reversed = anim_entry.Name.starts_with('~');
+                const auto anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
+                auto* anim = _modelMngr.LoadAnimation(anim_path, anim_name);
 
-                if (set != nullptr) {
-                    _animController->RegisterAnimationSet(set);
-                    const auto set_index = numeric_cast<int32>(_animController->GetAnimationSetCount() - 1);
+                if (anim != nullptr) {
+                    const auto anim_index = _animController->RegisterAnimation(anim, reversed);
 
-                    if (anim.StateAnim == CritterStateAnim::None) {
-                        _renderAnim = set_index;
+                    if (anim_entry.StateAnim == CritterStateAnim::None) {
+                        _renderAnimIndex = anim_index;
                     }
                     else {
-                        _animIndexes.emplace(std::make_pair(anim.StateAnim, anim.ActionAnim), set_index);
+                        _animIndexes.emplace(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim), anim_index);
                     }
                 }
             }
 
-            _numAnimationSets = _animController->GetAnimationSetCount();
+            const auto anim_count = _animController->GetAnimationsCount();
 
-            if (_numAnimationSets != 0) {
+            if (anim_count != 0) {
                 // Add animation bones, not included to base hierarchy
                 // All bones linked with animation in SetupAnimationOutput
-                for (size_t i = 0; i < _numAnimationSets; i++) {
-                    const auto* set = _animController->GetAnimationSet(i);
-                    const auto& bones_hierarchy = set->GetBonesHierarchy();
+                for (int32 i = 0; i < anim_count; i++) {
+                    const auto& bones_hierarchy = _animController->GetAnimationBones(i);
 
                     for (const auto& bone_hierarchy : bones_hierarchy) {
                         auto* bone = _hierarchy->_rootBone;
@@ -2929,11 +2942,10 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Find index
-    auto index = GetAnimationIndexEx(state_anim, action_anim, speed);
+    auto anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
 
-    if (index != -1) {
-        return index;
+    if (anim_index != -1) {
+        return anim_index;
     }
 
     // Find substitute animation
@@ -2941,20 +2953,20 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     const auto base_state_anim = state_anim;
     const auto base_action_anim = action_anim;
 
-    while (index == -1) {
+    while (anim_index == -1) {
         auto model_name = base_model_name;
         const auto state_anim_ = state_anim;
         const auto action_anim_ = action_anim;
 
         if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
-            index = GetAnimationIndexEx(state_anim, action_anim, speed);
+            anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
         }
         else {
             break;
         }
     }
 
-    return index;
+    return anim_index;
 }
 
 auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32

@@ -61,9 +61,8 @@ public:
 
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
-    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim;
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
-    [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
@@ -110,33 +109,31 @@ public:
 private:
     struct CritterAnim
     {
-        const SpriteSheet* AnimFrames {};
-        timespan AnimDuration {};
-        int32 BeginFrm {};
-        int32 EndFrm {};
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         refcount_ptr<Entity> ContextItem {};
+        raw_ptr<const SpriteSheet> Frames {};
+        int32 FrameIndex {};
+        timespan FramesDuration {};
     };
 
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetModelLayersData() const -> const int32*;
 #endif
-    [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
     void OnDestroySelf() override;
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
-    void NextAnim(bool erase_front);
+    void NextAnim();
     void SetAnimSpr(const SpriteSheet* anim, int32 frm_index);
 
     bool _needReset {};
     nanotime _resetTime {};
 
-    int32 _curFrmIndex {};
     nanotime _animStartTime {};
-    CritterAnim _stayAnim {};
+    CritterAnim _idle2dAnim {};
     vector<CritterAnim> _animSequence {};
+    std::optional<CritterAnim> _curAnim {};
 
     ipos32 _offsAnim {};
     fpos32 _offsExt {};

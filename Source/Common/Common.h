@@ -416,8 +416,6 @@ enum class NetMessage : uint8
     SomeItems = 83,
     CritterAction = 91,
     CritterMoveItem = 93,
-    CritterAnimate = 95,
-    CritterSetAnims = 96,
     TimeSync = 107,
     LoadMap = 109,
     RemoteCall = 111,
@@ -648,7 +646,7 @@ class AnimationResolver
 {
 public:
     virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool = 0;
 };

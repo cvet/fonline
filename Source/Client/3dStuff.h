@@ -49,15 +49,15 @@ FO_BEGIN_NAMESPACE();
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
-constexpr uint32 ANIMATION_STAY = 0x01;
-constexpr uint32 ANIMATION_ONE_TIME = 0x02;
-constexpr auto ANIMATION_PERIOD(uint32 proc) -> uint32
+enum class ModelAnimFlags : uint8
 {
-    return 0x04 | proc << 16;
-}
-constexpr uint32 ANIMATION_NO_SMOOTH = 0x08;
-constexpr uint32 ANIMATION_INIT = 0x10;
-constexpr uint32 ANIMATION_NO_ROTATE = 0x20;
+    None = 0x00,
+    Init = 0x01,
+    Freeze = 0x02,
+    PlayOnce = 0x04,
+    NoSmooth = 0x08,
+    NoRotate = 0x10,
+};
 
 struct ModelBone;
 class ModelInstance;
@@ -217,7 +217,7 @@ private:
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone>> _loadedModels {};
-    vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
+    vector<unique_ptr<ModelAnimation>> _loadedAnims {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float32 _moveTransitionTime {0.25f};
@@ -267,7 +267,7 @@ public:
     void SetupFrame(isize32 draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, uint32 flags) -> bool;
+    auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, float32 ntime, ModelAnimFlags flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int32 dir_angle);
     void SetMoveDirAngle(int32 dir_angle, bool smooth_rotation);
@@ -278,6 +278,7 @@ public:
     void Draw();
     void MoveModel(ipos32 offset);
     void SetMoving(bool enabled, int32 speed = 0);
+    void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
     // Todo: incapsulate model animation callbacks
@@ -330,8 +331,8 @@ private:
     ModelInformation* _modelInfo {};
     unique_ptr<ModelAnimationController> _bodyAnimController {};
     unique_ptr<ModelAnimationController> _moveAnimController {};
-    int32 _currentLayers[MODEL_LAYERS_COUNT] {};
-    uint32 _currentTrack {};
+    int32 _curLayers[MODEL_LAYERS_COUNT] {};
+    int32 _curTrack {};
     nanotime _lastDrawTime {};
     nanotime _endTime {};
     mat44 _matRot {};
@@ -349,15 +350,16 @@ private:
     vec3 _groundPos {};
     float32 _animPosProc {};
     float32 _animPosTime {};
-    float32 _animPosPeriod {};
+    float32 _animDuration {};
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
+    function<void(CritterStateAnim&, CritterActionAnim&)> _animInitCallback {};
     bool _isMoving {};
     bool _isMovingBack {};
     int32 _curMovingAnimIndex {-1};
     CritterActionAnim _curMovingAnim {};
-    bool _playTurnAnimation {};
-    uint32 _currentMoveTrack {};
+    bool _turnAnimPlaying {};
+    int32 _curMoveTrack {};
     float32 _movingSpeedFactor {};
     bool _isRunning {};
     bool _noRotate {};
@@ -407,7 +409,6 @@ private:
     string _pathName {};
     ModelHierarchy* _hierarchy {};
     unique_ptr<ModelAnimationController> _animController {};
-    size_t _numAnimationSets {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32> _animIndexes {};
@@ -416,7 +417,7 @@ private:
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    int32 _renderAnim {};
+    int32 _renderAnimIndex {};
     int32 _renderAnimProcFrom {};
     int32 _renderAnimProcTo {100};
     int32 _renderAnimDir {};

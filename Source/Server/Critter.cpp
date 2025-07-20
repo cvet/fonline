@@ -728,28 +728,6 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, 
     }
 }
 
-void Critter::SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    Send_Animate(this, state_anim, action_anim, context_item, clear_sequence, delay_play);
-
-    for (auto* cr : VisCr) {
-        cr->Send_Animate(this, state_anim, action_anim, context_item, clear_sequence, delay_play);
-    }
-}
-
-void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    Send_SetAnims(this, cond, state_anim, action_anim);
-
-    for (auto* cr : VisCr) {
-        cr->Send_SetAnims(this, cond, state_anim, action_anim);
-    }
-}
-
 void Critter::SendAndBroadcast_Attachments()
 {
     FO_STACK_TRACE_ENTRY();
@@ -902,24 +880,6 @@ void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAct
 
     if (_player) {
         _player->Send_MoveItem(from_cr, item, action, prev_slot);
-    }
-}
-
-void Critter::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_Animate(from_cr, state_anim, action_anim, context_item, clear_sequence, delay_play);
-    }
-}
-
-void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_SetAnims(from_cr, cond, state_anim, action_anim);
     }
 }
 

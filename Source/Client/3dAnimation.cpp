@@ -94,12 +94,14 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     }
 }
 
-ModelAnimationController::ModelAnimationController(uint32 track_count)
+ModelAnimationController::ModelAnimationController(int32 track_count)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(track_count >= 0);
+
     if (track_count != 0) {
-        _sets = SafeAlloc::MakeShared<vector<ModelAnimation*>>();
+        _anims = SafeAlloc::MakeShared<vector<pair<ModelAnimation*, bool>>>();
         _outputs = SafeAlloc::MakeShared<vector<Output>>();
         _tracks.resize(track_count);
     }
@@ -111,7 +113,7 @@ auto ModelAnimationController::Clone() const -> unique_ptr<ModelAnimationControl
 
     auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
     clone->_cloned = true;
-    clone->_sets = _sets;
+    clone->_anims = _anims;
     clone->_outputs = _outputs;
     clone->_tracks = _tracks;
     clone->_curTime = 0.0f;
@@ -133,63 +135,75 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
     o.Translation.resize(_tracks.size());
 }
 
-void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
+auto ModelAnimationController::RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    _sets->emplace_back(animation);
+    _anims->emplace_back(animation, reversed);
+    return numeric_cast<int32>(_anims->size() - 1);
 }
 
-auto ModelAnimationController::GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*
+auto ModelAnimationController::GetAnimationBones(int32 index) const -> const vector<vector<hstring>>&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (index >= _sets->size()) {
-        return nullptr;
-    }
+    FO_RUNTIME_ASSERT(index >= 0);
+    FO_RUNTIME_ASSERT(index < numeric_cast<int32>(_anims->size()));
 
-    return (*_sets)[index];
+    return (*_anims)[index].first->GetBonesHierarchy();
 }
 
-auto ModelAnimationController::GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*
+auto ModelAnimationController::GetAnimationDuration(int32 index) const -> float32
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* set : *_sets) {
-        if (set->GetName() == name) {
-            return set;
-        }
-    }
+    FO_RUNTIME_ASSERT(index >= 0);
+    FO_RUNTIME_ASSERT(index < numeric_cast<int32>(_anims->size()));
 
-    return nullptr;
+    return (*_anims)[index].first->GetDuration();
 }
 
-auto ModelAnimationController::GetTrackEnable(uint32 track) const noexcept -> bool
+auto ModelAnimationController::GetTrackEnable(int32 track) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
 
     return _tracks[track].Enabled;
 }
 
-auto ModelAnimationController::GetTrackPosition(uint32 track) const noexcept -> float32
+auto ModelAnimationController::GetTrackPosition(int32 track) const -> float32
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
 
     return _tracks[track].Position;
 }
 
-auto ModelAnimationController::GetAnimationSetCount() const noexcept -> size_t
+auto ModelAnimationController::GetAnimationsCount() const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _sets->size();
+    return numeric_cast<int32>(_anims->size());
 }
 
-void ModelAnimationController::SetTrackAnimationSet(uint32 track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
+void ModelAnimationController::SetTrackAnimation(int32 track, int32 anim_index, const unordered_set<hstring>* allowed_bones)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(anim_index >= 0);
+    FO_RUNTIME_ASSERT(anim_index < numeric_cast<int32>(_anims->size()));
+
+    const auto* anim = (*_anims)[anim_index].first;
+    const auto reversed = (*_anims)[anim_index].second;
+
     _tracks[track].Anim = anim;
+    _tracks[track].Reversed = reversed;
     const auto& outputs = anim->GetBoneOutputs();
     _tracks[track].AnimOutput.resize(outputs.size());
 
@@ -210,9 +224,12 @@ void ModelAnimationController::SetTrackAnimationSet(uint32 track, const ModelAni
     }
 }
 
-void ModelAnimationController::ResetBonesTransition(uint32 skip_track, const vector<hstring>& bone_names)
+void ModelAnimationController::ResetBonesTransition(int32 skip_track, const vector<hstring>& bone_names)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(skip_track >= 0);
+    FO_RUNTIME_ASSERT(skip_track < numeric_cast<int32>(_tracks.size()));
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
@@ -242,37 +259,52 @@ void ModelAnimationController::Reset()
     }
 }
 
-void ModelAnimationController::AddEventEnable(uint32 track, bool enable, float32 start_time)
+void ModelAnimationController::AddEventEnable(int32 track, bool enable, float32 start_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+
+    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
 }
 
-void ModelAnimationController::AddEventSpeed(uint32 track, float32 speed, float32 start_time, float32 smooth_time)
+void ModelAnimationController::AddEventSpeed(int32 track, float32 speed, float32 start_time, float32 smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Speed, speed, start_time, smooth_time});
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+
+    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(uint32 track, float32 weight, float32 start_time, float32 smooth_time)
+void ModelAnimationController::AddEventWeight(int32 track, float32 weight, float32 start_time, float32 smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _tracks[track].Events.emplace_back(Track::Event {Track::EventType::Weight, weight, start_time, smooth_time});
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+
+    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::SetTrackEnable(uint32 track, bool enable)
+void ModelAnimationController::SetTrackEnable(int32 track, bool enable)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
 
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(uint32 track, float32 position)
+void ModelAnimationController::SetTrackPosition(int32 track, float32 position)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
 
     _tracks[track].Position = position;
 }
@@ -288,45 +320,44 @@ void ModelAnimationController::AdvanceTime(float32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Animation time
     _curTime += time;
 
-    // Track events
     for (auto& track : _tracks) {
-        // Events
         for (auto it = track.Events.begin(); it != track.Events.end();) {
-            auto& e = *it;
-            if (_curTime >= e.StartTime) {
-                if (e.SmoothTime > 0.0f && is_float_equal(e.ValueFrom, -1.0f)) {
-                    if (e.Type == Track::EventType::Speed) {
-                        e.ValueFrom = track.Speed;
+            auto& event = *it;
+
+            if (_curTime >= event.StartTime) {
+                if (event.SmoothTime > 0.0f && is_float_equal(event.ValueFrom, -1.0f)) {
+                    if (event.Type == Track::EventType::Speed) {
+                        event.ValueFrom = track.Speed;
                     }
-                    else if (e.Type == Track::EventType::Weight) {
-                        e.ValueFrom = track.Weight;
+                    else if (event.Type == Track::EventType::Weight) {
+                        event.ValueFrom = track.Weight;
                     }
                 }
 
                 auto erase = false;
-                auto value = e.ValueTo;
-                if (_curTime < e.StartTime + e.SmoothTime) {
-                    if (e.ValueTo > e.ValueFrom) {
-                        value = e.ValueFrom + (e.ValueTo - e.ValueFrom) / e.SmoothTime * (_curTime - e.StartTime);
+                auto value = event.ValueTo;
+
+                if (_curTime < event.StartTime + event.SmoothTime) {
+                    if (event.ValueTo > event.ValueFrom) {
+                        value = event.ValueFrom + (event.ValueTo - event.ValueFrom) / event.SmoothTime * (_curTime - event.StartTime);
                     }
                     else {
-                        value = e.ValueFrom - (e.ValueFrom - e.ValueTo) / e.SmoothTime * (_curTime - e.StartTime);
+                        value = event.ValueFrom - (event.ValueFrom - event.ValueTo) / event.SmoothTime * (_curTime - event.StartTime);
                     }
                 }
                 else {
                     erase = true;
                 }
 
-                if (e.Type == Track::EventType::Enable) {
+                if (event.Type == Track::EventType::Enable) {
                     track.Enabled = value > 0.0f;
                 }
-                else if (e.Type == Track::EventType::Speed) {
+                else if (event.Type == Track::EventType::Speed) {
                     track.Speed = value;
                 }
-                else if (e.Type == Track::EventType::Weight) {
+                else if (event.Type == Track::EventType::Weight) {
                     track.Weight = value;
                 }
 
@@ -366,10 +397,11 @@ void ModelAnimationController::AdvanceTime(float32 time)
 
             const auto& anim_output = anim_outputs[j];
             const auto t = std::fmod(track.Position, track.Anim->GetDuration());
+            const auto duration = track.Anim->GetDuration();
 
-            FindSrtValue<vec3>(t, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
-            FindSrtValue<quaternion>(t, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
-            FindSrtValue<vec3>(t, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
+            FindSrtValue<vec3>(t, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
+            FindSrtValue<quaternion>(t, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
+            FindSrtValue<vec3>(t, duration, track.Reversed, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
 
             track.AnimOutput[j]->Valid[i] = true;
             track.AnimOutput[j]->Factor[i] = track.Weight;
