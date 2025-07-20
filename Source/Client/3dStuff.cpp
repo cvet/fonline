@@ -652,19 +652,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
     }
 
-    // Check for change
-    bool layer_changed = IsEnumSet(flags, ModelAnimFlags::Init);
+    const bool layer_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
 
-    if (!layer_changed) {
-        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
-            if (new_layers[i] != _curLayers[i]) {
-                layer_changed = true;
-                break;
-            }
-        }
-    }
-
-    // Is not one time play and same anim
+    // Try skip redundant calls
     const bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
 
     if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layer_changed) {
@@ -677,18 +667,16 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     vector<hstring> fast_transition_bones;
 
     if (layer_changed) {
-        // Store previous cuts
+        // Store data to compare later
         const auto old_cuts = _allCuts;
 
-        // Store disabled meshes
         for (size_t i = 0; i < _allMeshes.size(); i++) {
             _allMeshesDisabled[i] = _allMeshes[i]->Disabled;
         }
 
-        // Set base data
+        // Set anim data
         SetAnimData(_modelInfo->_animDataDefault, true);
 
-        // Append linked data
         if (_parentBone) {
             SetAnimData(_animLink, false);
         }
@@ -831,7 +819,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
             }
         }
 
-        // Erase unused animations
+        // Erase unused stuff
         for (auto it = _children.begin(); it != _children.end();) {
             const auto& child = *it;
 
@@ -853,13 +841,12 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
             }
         }
 
-        // Compare changed data
+        // Check for mesh changes
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = _allMeshes[i]->LastEffect != _allMeshes[i]->CurEffect;
             }
         }
-
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 for (size_t k = 0; k < MODEL_MAX_TEXTURES && !mesh_changed; k++) {
@@ -867,7 +854,6 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                 }
             }
         }
-
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = _allMeshesDisabled[i] != _allMeshes[i]->Disabled;
@@ -898,7 +884,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         const auto no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
         const auto smooth_time = no_smooth ? 0.0001f : _modelMngr._moveTransitionTime;
-        const auto start_time = duration * ntime;
+        const auto start_time = std::min(duration * ntime, duration - 0.0002f);
 
         if (IsEnumSet(flags, ModelAnimFlags::Freeze)) {
             duration = start_time + 0.0002f;
