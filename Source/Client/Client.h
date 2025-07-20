@@ -127,7 +127,7 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool override;
 
@@ -236,9 +236,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int32 /*actionData*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAnimationInit, CritterView* /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32& /*pass*/, uint32& /*flags*/, int32& /*ox*/, int32& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimationProcess, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/, bool /*refreshAnim*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterAnimationFrames, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32& /*pass*/, uint32& /*flags*/, int32& /*ox*/, int32& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
@@ -321,8 +323,6 @@ protected:
     void Net_OnCritterMoveSpeed();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();
-    void Net_OnCritterAnimate();
-    void Net_OnCritterSetAnims();
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
     void Net_OnCritterAttachments();

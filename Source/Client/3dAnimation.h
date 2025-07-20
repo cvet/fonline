@@ -79,7 +79,7 @@ private:
 class ModelAnimationController final
 {
 public:
-    explicit ModelAnimationController(uint32 track_count);
+    explicit ModelAnimationController(int32 track_count);
     ModelAnimationController(const ModelAnimationController&) = delete;
     ModelAnimationController(ModelAnimationController&&) noexcept = default;
     auto operator=(const ModelAnimationController&) = delete;
@@ -87,23 +87,23 @@ public:
     ~ModelAnimationController() = default;
 
     [[nodiscard]] auto Clone() const -> unique_ptr<ModelAnimationController>;
-    [[nodiscard]] auto GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*;
-    [[nodiscard]] auto GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*;
-    [[nodiscard]] auto GetTrackEnable(uint32 track) const noexcept -> bool;
-    [[nodiscard]] auto GetTrackPosition(uint32 track) const noexcept -> float32;
-    [[nodiscard]] auto GetAnimationSetCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetAnimationBones(int32 index) const -> const vector<vector<hstring>>&;
+    [[nodiscard]] auto GetAnimationDuration(int32 index) const -> float32;
+    [[nodiscard]] auto GetTrackEnable(int32 track) const -> bool;
+    [[nodiscard]] auto GetTrackPosition(int32 track) const -> float32;
+    [[nodiscard]] auto GetAnimationsCount() const -> int32;
     [[nodiscard]] auto GetTime() const noexcept -> float32 { return _curTime; }
 
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
-    void RegisterAnimationSet(ModelAnimation* animation);
-    void SetTrackAnimationSet(uint32 track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
-    void ResetBonesTransition(uint32 skip_track, const vector<hstring>& bone_names);
-    void AddEventEnable(uint32 track, bool enable, float32 start_time);
-    void AddEventSpeed(uint32 track, float32 speed, float32 start_time, float32 smooth_time);
-    void AddEventWeight(uint32 track, float32 weight, float32 start_time, float32 smooth_time);
-    void SetTrackEnable(uint32 track, bool enable);
-    void SetTrackPosition(uint32 track, float32 position);
+    auto RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32;
+    void SetTrackAnimation(int32 track, int32 anim_index, const unordered_set<hstring>* allowed_bones);
+    void ResetBonesTransition(int32 skip_track, const vector<hstring>& bone_names);
+    void AddEventEnable(int32 track, bool enable, float32 start_time);
+    void AddEventSpeed(int32 track, float32 speed, float32 start_time, float32 smooth_time);
+    void AddEventWeight(int32 track, float32 weight, float32 start_time, float32 smooth_time);
+    void SetTrackEnable(int32 track, bool enable);
+    void SetTrackPosition(int32 track, float32 position);
     void SetInterpolation(bool enabled);
     void AdvanceTime(float32 time);
 
@@ -142,6 +142,7 @@ private:
         float32 Weight {};
         float32 Position {};
         const ModelAnimation* Anim {};
+        bool Reversed {};
         vector<Output*> AnimOutput {};
         vector<Event> Events {};
     };
@@ -149,32 +150,60 @@ private:
     void Interpolate(quaternion& q1, const quaternion& q2, float32 factor) const;
     void Interpolate(vec3& v1, const vec3& v2, float32 factor) const;
 
-    template<class T>
-    void FindSrtValue(float32 time, const vector<float32>& times, const vector<T>& values, T& result)
-    {
-        for (size_t n = 0; n < times.size(); n++) {
-            if (n + 1 < times.size()) {
-                if (time >= times[n] && time < times[n + 1]) {
-                    result = values[n];
-                    const T& value = values[n + 1];
-                    const auto factor = (time - times[n]) / (times[n + 1] - times[n]);
-                    Interpolate(result, value, factor);
-                    return;
-                }
-            }
-            else {
-                result = values[n];
-            }
-        }
-    }
+    template<typename T>
+    void FindSrtValue(float32 time, float32 duration, bool reserved, const vector<float32>& times, const vector<T>& values, T& result);
 
     bool _cloned {};
-    shared_ptr<vector<ModelAnimation*>> _sets {};
+    shared_ptr<vector<pair<ModelAnimation*, bool>>> _anims {};
     shared_ptr<vector<Output>> _outputs {};
     vector<Track> _tracks {};
     float32 _curTime {};
     bool _interpolationDisabled {};
 };
+
+template<typename T>
+void ModelAnimationController::FindSrtValue(float32 time, float32 duration, bool reserved, const vector<float32>& times, const vector<T>& values, T& result)
+{
+    FO_RUNTIME_ASSERT(times.size() == values.size());
+    FO_RUNTIME_ASSERT(!times.empty());
+
+    if (reserved) {
+        for (auto i = numeric_cast<int32>(times.size() - 1); i >= 0; i--) {
+            if (i >= 1) {
+                const auto rtime = duration - time;
+
+                if (rtime <= times[i] && rtime > times[i - 1]) {
+                    result = values[i];
+                    const T& value = values[i - 1];
+                    const auto factor = (rtime - times[i]) / (times[i] - times[i - 1]);
+                    Interpolate(result, value, factor);
+                    break;
+                }
+            }
+            else {
+                result = values[i];
+                break;
+            }
+        }
+    }
+    else {
+        for (size_t i = 0; i < times.size(); i++) {
+            if (i + 1 < times.size()) {
+                if (time >= times[i] && time < times[i + 1]) {
+                    result = values[i];
+                    const T& value = values[i + 1];
+                    const auto factor = (time - times[i]) / (times[i + 1] - times[i]);
+                    Interpolate(result, value, factor);
+                    break;
+                }
+            }
+            else {
+                result = values[i];
+                break;
+            }
+        }
+    }
+}
 
 FO_END_NAMESPACE();
 

@@ -259,26 +259,6 @@ public:
     FO_ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(Protected, int32, Multihex);
-    ///@ MigrationRule Property Critter Anim1Life AliveStateAnim
-    ///@ MigrationRule Property Critter Anim1Alive AliveStateAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, AliveStateAnim);
-    ///@ MigrationRule Property Critter Anim1Knockout KnockoutStateAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, KnockoutStateAnim);
-    ///@ MigrationRule Property Critter Anim1Dead DeadStateAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, DeadStateAnim);
-    ///@ MigrationRule Property Critter Anim2Life AliveActionAnim
-    ///@ MigrationRule Property Critter Anim2Alive AliveActionAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, AliveActionAnim);
-    ///@ MigrationRule Property Critter Anim2Knockout KnockoutActionAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, KnockoutActionAnim);
-    ///@ MigrationRule Property Critter Anim2Dead DeadActionAnim
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, int32, ScaleFactor);
     ///@ ExportProperty

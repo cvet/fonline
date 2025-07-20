@@ -143,8 +143,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn.AddMessageHandler(NetMessage::RemoveCritter, [this] { Net_OnRemoveCritter(); });
     _conn.AddMessageHandler(NetMessage::CritterAction, [this] { Net_OnCritterAction(); });
     _conn.AddMessageHandler(NetMessage::CritterMoveItem, [this] { Net_OnCritterMoveItem(); });
-    _conn.AddMessageHandler(NetMessage::CritterAnimate, [this] { Net_OnCritterAnimate(); });
-    _conn.AddMessageHandler(NetMessage::CritterSetAnims, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NetMessage::CritterTeleport, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NetMessage::CritterMove, [this] { Net_OnCritterMove(); });
     _conn.AddMessageHandler(NetMessage::CritterMoveSpeed, [this] { Net_OnCritterMoveSpeed(); });
@@ -265,11 +263,11 @@ FOClient::~FOClient()
     safe_call([this] { DestroyInnerEntities(); });
 }
 
-auto FOClient::ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
+auto FOClient::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimation.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
+    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
 }
 
 auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
@@ -840,12 +838,6 @@ void FOClient::Net_OnAddCritter()
     const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
     const auto cond = _conn.InBuf.Read<CritterCondition>();
-    const auto alive_state_anim = _conn.InBuf.Read<CritterStateAnim>();
-    const auto knockout_state_anim = _conn.InBuf.Read<CritterStateAnim>();
-    const auto dead_state_anim = _conn.InBuf.Read<CritterStateAnim>();
-    const auto alive_action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto knockout_action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto dead_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
@@ -885,12 +877,6 @@ void FOClient::Net_OnAddCritter()
 
     cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
-    cr->SetAliveStateAnim(alive_state_anim);
-    cr->SetKnockoutStateAnim(knockout_state_anim);
-    cr->SetDeadStateAnim(dead_state_anim);
-    cr->SetAliveActionAnim(alive_action_anim);
-    cr->SetKnockoutActionAnim(knockout_action_anim);
-    cr->SetDeadActionAnim(dead_action_anim);
     cr->SetControlledByPlayer(is_controlled_by_player);
     cr->SetIsChosen(is_chosen);
     cr->SetIsPlayerOffline(is_player_offline);
@@ -972,9 +958,7 @@ void FOClient::Net_OnAddCritter()
             _curMap->RebuildFog();
         }
 
-        if (!hex_cr->IsAnimPlaying()) {
-            hex_cr->RefreshView();
-        }
+        hex_cr->RefreshView();
     }
 }
 
@@ -1234,95 +1218,6 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (const auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
         _curMap->UpdateCritterLightSource(hex_cr);
-    }
-}
-
-void FOClient::Net_OnCritterAnimate()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
-    const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
-    const auto clear_sequence = _conn.InBuf.Read<bool>();
-    const auto delay_play = _conn.InBuf.Read<bool>();
-    const auto is_context_item = _conn.InBuf.Read<bool>();
-
-    refcount_ptr<ItemView> context_item;
-
-    if (is_context_item) {
-        const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
-
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
-        context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
-        context_item->RestoreData(_tempPropertiesData);
-
-        ReceiveCustomEntities(context_item.get());
-    }
-
-    if (_curMap == nullptr) {
-        BreakIntoDebugger();
-        return;
-    }
-
-    auto* cr = _curMap->GetCritter(cr_id);
-
-    if (cr == nullptr) {
-        return;
-    }
-
-    if (clear_sequence) {
-        cr->StopAnim();
-    }
-    if (delay_play || !cr->IsAnimPlaying()) {
-        cr->AppendAnim(state_anim, action_anim, context_item.get());
-    }
-
-    if (context_item) {
-        context_item->MarkAsDestroyed();
-    }
-}
-
-void FOClient::Net_OnCritterSetAnims()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto cond = _conn.InBuf.Read<CritterCondition>();
-    const auto state_anim = _conn.InBuf.Read<CritterStateAnim>();
-    const auto action_anim = _conn.InBuf.Read<CritterActionAnim>();
-
-    CritterView* cr;
-    CritterHexView* hex_cr;
-
-    if (_curMap != nullptr) {
-        hex_cr = _curMap->GetCritter(cr_id);
-        cr = hex_cr;
-    }
-    else {
-        cr = GetGlobalMapCritter(cr_id);
-        hex_cr = nullptr;
-    }
-
-    if (cr != nullptr) {
-        if (cond == CritterCondition::Alive) {
-            cr->SetAliveStateAnim(state_anim);
-            cr->SetAliveActionAnim(action_anim);
-        }
-        if (cond == CritterCondition::Knockout) {
-            cr->SetKnockoutStateAnim(state_anim);
-            cr->SetKnockoutActionAnim(action_anim);
-        }
-        if (cond == CritterCondition::Dead) {
-            cr->SetDeadStateAnim(state_anim);
-            cr->SetDeadActionAnim(action_anim);
-        }
-    }
-
-    if (hex_cr != nullptr && !hex_cr->IsAnimPlaying()) {
-        hex_cr->RefreshView();
     }
 }
 

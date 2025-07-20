@@ -1169,7 +1169,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
     const auto sy = count > 6 ? position[6] : 1.0f;
     const auto sz = count > 7 ? position[7] : 1.0f;
     const auto speed = count > 8 ? position[8] : 1.0f;
-    const auto period = count > 9 ? position[9] : 0.0f;
+    const auto ntime = count > 9 ? position[9] : 0.0f;
     const auto stl = count > 10 ? position[10] : 0.0f;
     const auto stt = count > 11 ? position[11] : 0.0f;
     const auto str = count > 12 ? position[12] : 0.0f;
@@ -1192,7 +1192,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
     model->SetRotation(rx * DEG_TO_RAD_FLOAT, ry * DEG_TO_RAD_FLOAT, rz * DEG_TO_RAD_FLOAT);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
-    model->SetAnimation(stateAnim, actionAnim, client->DrawCritterModelLayers, ANIMATION_PERIOD(iround<int32>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    model->PlayAnim(stateAnim, actionAnim, client->DrawCritterModelLayers, ntime, ModelAnimFlags::NoSmooth);
 
     if (count > 13) {
         const auto max_height = iround<int32>(stb - stt) * 4 / 3;
