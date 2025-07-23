@@ -306,534 +306,51 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-        FO_RUNTIME_ASSERT(prop->IsPlainData());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-
-            if (prop->_getter) {
-                PropertyRawData prop_data = prop->_getter(_entity, prop);
-                T result = prop_data.GetAs<T>();
-                return result;
-            }
-            else {
-                return {};
-            }
-        }
-
-        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-        auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
-        return result;
-    }
-
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        FO_RUNTIME_ASSERT(prop->IsPlainData());
-        FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-
-            if (prop->_getter) {
-                PropertyRawData prop_data = prop->_getter(_entity, prop);
-                const auto hash = prop_data.GetAs<hstring::hash_t>();
-                auto result = ResolveHash(hash);
-                return result;
-            }
-            else {
-                return {};
-            }
-        }
-
-        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
-        auto result = ResolveHash(hash);
-        return result;
-    }
-
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
         requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->IsString());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-
-            if (prop->_getter) {
-                PropertyRawData prop_data = prop->_getter(_entity, prop);
-                auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
-                return result;
-            }
-            else {
-                return {};
-            }
-        }
-
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-        const auto& complex_data = _complexData[*prop->_complexDataIndex];
-        auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
-        return result;
-    }
-
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
         requires(is_vector_collection<T>)
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->IsArray());
-
-        PropertyRawData prop_data;
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-
-            if (prop->_getter) {
-                prop_data = prop->_getter(_entity, prop);
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-            const auto& complex_data = _complexData[*prop->_complexDataIndex];
-            prop_data.Pass({complex_data.first.get(), complex_data.second});
-        }
-
-        const auto* data = prop_data.GetPtrAs<uint8>();
-        const auto data_size = prop_data.GetSize();
-
-        T result;
-
-        if (data_size != 0) {
-            if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
-                FO_RUNTIME_ASSERT(prop->IsArrayOfString());
-
-                uint32 arr_size;
-                MemCopy(&arr_size, data, sizeof(arr_size));
-                data += sizeof(arr_size);
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-
-                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                    uint32 str_size;
-                    MemCopy(&str_size, data, sizeof(str_size));
-                    data += sizeof(str_size);
-
-                    if constexpr (std::same_as<T, vector<string>>) {
-                        result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
-                    }
-                    else {
-                        result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
-                    }
-
-                    data += str_size;
-                }
-            }
-            else if constexpr (std::same_as<T, vector<hstring>>) {
-                FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-                FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-                const auto arr_size = data_size / sizeof(hstring::hash_t);
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-
-                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
-                    result.emplace_back(hvalue);
-                    data += sizeof(hstring::hash_t);
-                }
-            }
-            else {
-                FO_RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
-                const auto arr_size = data_size / prop->GetBaseSize();
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-                result.resize(arr_size);
-                MemCopy(result.data(), data, data_size);
-            }
-        }
-
-        return result;
-    }
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
-    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_STRONG_ASSERT(!prop->IsDisabled());
-        FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
-        FO_STRONG_ASSERT(prop->IsPlainData());
-        FO_STRONG_ASSERT(!prop->IsVirtual());
-
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-        auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
-        return result;
-    }
-
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_STRONG_ASSERT(!prop->IsDisabled());
-        FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        FO_STRONG_ASSERT(prop->IsPlainData());
-        FO_STRONG_ASSERT(prop->IsBaseTypeHash());
-        FO_STRONG_ASSERT(!prop->IsVirtual());
-
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
-        auto result = ResolveHash(hash, nullptr);
-        return result;
-    }
-
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_STRONG_ASSERT(!prop->IsDisabled());
-        FO_STRONG_ASSERT(prop->IsString());
-        FO_STRONG_ASSERT(!prop->IsVirtual());
-
-        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-        const auto& complex_data = _complexData[*prop->_complexDataIndex];
-        const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
-        return result;
-    }
-
-    template<typename T>
-        requires(is_vector_collection<T>)
-    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_STRONG_ASSERT(!prop->IsDisabled());
-        FO_STRONG_ASSERT(prop->IsArray());
-        FO_STRONG_ASSERT(!prop->IsVirtual());
-
-        PropertyRawData prop_data;
-
-        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-        const auto& complex_data = _complexData[*prop->_complexDataIndex];
-        prop_data.Pass({complex_data.first.get(), complex_data.second});
-
-        const auto* data = prop_data.GetPtrAs<uint8>();
-        const auto data_size = prop_data.GetSize();
-
-        T result;
-
-        if (data_size != 0) {
-            if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
-                FO_STRONG_ASSERT(prop->IsArrayOfString());
-
-                uint32 arr_size;
-                MemCopy(&arr_size, data, sizeof(arr_size));
-                data += sizeof(arr_size);
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-
-                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                    uint32 str_size;
-                    MemCopy(&str_size, data, sizeof(str_size));
-                    data += sizeof(str_size);
-
-                    if constexpr (std::same_as<T, vector<string>>) {
-                        result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
-                    }
-                    else {
-                        result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
-                    }
-
-                    data += str_size;
-                }
-            }
-            else if constexpr (std::same_as<T, vector<hstring>>) {
-                FO_STRONG_ASSERT(prop->IsBaseTypeHash());
-                FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-                const auto arr_size = data_size / sizeof(hstring::hash_t);
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-
-                for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
-                    result.emplace_back(hvalue);
-                    data += sizeof(hstring::hash_t);
-                }
-            }
-            else {
-                FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
-                const auto arr_size = data_size / prop->GetBaseSize();
-                result.reserve(arr_size != 0 ? arr_size + 8 : 0);
-                result.resize(arr_size);
-                MemCopy(result.data(), data, data_size);
-            }
-        }
-
-        return result;
-    }
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
-    void SetValue(const Property* prop, T new_value)
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-        FO_RUNTIME_ASSERT(prop->IsPlainData());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-            FO_RUNTIME_ASSERT(!prop->_setters.empty());
-
-            PropertyRawData prop_data;
-            prop_data.SetAs<T>(new_value);
-
-            for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-
-            auto& cur_value = *reinterpret_cast<T*>(&_podData[*prop->_podDataOffset]);
-            bool equal;
-
-            if constexpr (std::floating_point<T>) {
-                equal = is_float_equal(new_value, cur_value);
-            }
-            else {
-                equal = new_value == cur_value;
-            }
-
-            if (!equal) {
-                if (!prop->_setters.empty() && _entity != nullptr) {
-                    PropertyRawData prop_data;
-                    prop_data.SetAs<T>(new_value);
-
-                    for (const auto& setter : prop->_setters) {
-                        setter(_entity, prop, prop_data);
-                    }
-
-                    cur_value = prop_data.GetAs<T>();
-                }
-                else {
-                    cur_value = new_value;
-                }
-
-                if (_entity != nullptr) {
-                    for (const auto& setter : prop->_postSetters) {
-                        setter(_entity, prop);
-                    }
-                }
-            }
-        }
-    }
-
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    void SetValue(const Property* prop, T new_value)
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-        FO_RUNTIME_ASSERT(prop->IsPlainData());
-        FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-            FO_RUNTIME_ASSERT(!prop->_setters.empty());
-
-            PropertyRawData prop_data;
-            prop_data.SetAs<hstring::hash_t>(new_value.asHash());
-
-            for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-            const auto new_value_hash = new_value.asHash();
-
-            if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
-                if (!prop->_setters.empty() && _entity != nullptr) {
-                    PropertyRawData prop_data;
-                    prop_data.SetAs<hstring::hash_t>(new_value_hash);
-
-                    for (const auto& setter : prop->_setters) {
-                        setter(_entity, prop, prop_data);
-                    }
-
-                    *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
-                }
-                else {
-                    *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = new_value_hash;
-                }
-
-                if (_entity != nullptr) {
-                    for (const auto& setter : prop->_postSetters) {
-                        setter(_entity, prop);
-                    }
-                }
-            }
-        }
-    }
-
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    void SetValue(const Property* prop, const T& new_value)
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->IsString());
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-            FO_RUNTIME_ASSERT(!prop->_setters.empty());
-
-            PropertyRawData prop_data;
-            prop_data.Pass(new_value.c_str(), new_value.length());
-
-            for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-
-            if (!prop->_setters.empty() && _entity != nullptr) {
-                PropertyRawData prop_data;
-                prop_data.Pass(new_value.c_str(), new_value.length());
-
-                for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, prop_data);
-                }
-
-                SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
-            }
-            else {
-                SetRawData(prop, {reinterpret_cast<const uint8*>(new_value.c_str()), new_value.length()});
-            }
-
-            if (_entity != nullptr) {
-                for (const auto& setter : prop->_postSetters) {
-                    setter(_entity, prop);
-                }
-            }
-        }
-    }
-
-    template<typename T>
-    void SetValue(const Property* prop, const vector<T>& new_value)
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_RUNTIME_ASSERT(!prop->IsDisabled());
-        FO_RUNTIME_ASSERT(prop->IsArray());
-
-        PropertyRawData prop_data;
-
-        if constexpr (std::same_as<T, string> || std::same_as<T, any_t>) {
-            if (!new_value.empty()) {
-                size_t data_size = sizeof(uint32);
-
-                for (const auto& str : new_value) {
-                    data_size += sizeof(uint32) + static_cast<uint32>(str.length());
-                }
-
-                auto* buf = prop_data.Alloc(data_size);
-
-                const auto arr_size = static_cast<uint32>(new_value.size());
-                MemCopy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint32);
-
-                for (const auto& str : new_value) {
-                    const auto str_size = static_cast<uint32>(str.length());
-                    MemCopy(buf, &str_size, sizeof(str_size));
-                    buf += sizeof(str_size);
-
-                    if (str_size != 0) {
-                        MemCopy(buf, str.c_str(), str_size);
-                        buf += str_size;
-                    }
-                }
-            }
-        }
-        else if constexpr (std::same_as<T, hstring>) {
-            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-            if (!new_value.empty()) {
-                auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
-
-                for (const auto& hstr : new_value) {
-                    const auto hash = hstr.asHash();
-                    MemCopy(buf, &hash, sizeof(hstring::hash_t));
-                    buf += sizeof(hstring::hash_t);
-                }
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-
-            if (!new_value.empty()) {
-                prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
-            }
-        }
-
-        if (prop->IsVirtual()) {
-            FO_RUNTIME_ASSERT(_entity);
-            FO_RUNTIME_ASSERT(!prop->_setters.empty());
-
-            for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
-            }
-        }
-        else {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-
-            if (!prop->_setters.empty() && _entity != nullptr) {
-                for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, prop_data);
-                }
-            }
-
-            SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
-
-            if (_entity != nullptr) {
-                for (const auto& setter : prop->_postSetters) {
-                    setter(_entity, prop);
-                }
-            }
-        }
-    }
-
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
         requires(is_map_collection<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
+
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view;
+    template<typename T>
+        requires(is_vector_collection<T>)
+    [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T;
     template<typename T>
         requires(is_map_collection<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const -> T = delete;
+
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+    void SetValue(const Property* prop, T new_value);
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    void SetValue(const Property* prop, T new_value);
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    void SetValue(const Property* prop, const T& new_value);
+    template<typename T>
+    void SetValue(const Property* prop, const vector<T>& new_value);
     template<typename T, typename U>
     void SetValue(const Property* prop, const map<T, U>& new_value) = delete;
+
+    void SetValue(const Property* prop, PropertyRawData& prop_data);
 
 private:
     const PropertyRegistrator* _registrator;
@@ -906,5 +423,527 @@ private:
     vector<uint16> _protectedComplexDataProps {};
     vector<uint16> _publicProtectedComplexDataProps {};
 };
+
+template<typename T>
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+auto Properties::GetValue(const Property* prop) const -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+    FO_RUNTIME_ASSERT(prop->IsPlainData());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+
+        if (prop->_getter) {
+            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            T result = prop_data.GetAs<T>();
+            return result;
+        }
+        else {
+            return {};
+        }
+    }
+
+    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+    auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
+    return result;
+}
+
+template<typename T>
+    requires(std::same_as<T, hstring>)
+auto Properties::GetValue(const Property* prop) const -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+
+        if (prop->_getter) {
+            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            const auto hash = prop_data.GetAs<hstring::hash_t>();
+            auto result = ResolveHash(hash);
+            return result;
+        }
+        else {
+            return {};
+        }
+    }
+
+    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+    const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
+    auto result = ResolveHash(hash);
+    return result;
+}
+
+template<typename T>
+    requires(std::same_as<T, string> || std::same_as<T, any_t>)
+auto Properties::GetValue(const Property* prop) const -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->IsString());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+
+        if (prop->_getter) {
+            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
+            return result;
+        }
+        else {
+            return {};
+        }
+    }
+
+    FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+    const auto& complex_data = _complexData[*prop->_complexDataIndex];
+    auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
+    return result;
+}
+
+template<typename T>
+    requires(is_vector_collection<T>)
+auto Properties::GetValue(const Property* prop) const -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->IsArray());
+
+    PropertyRawData prop_data;
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+
+        if (prop->_getter) {
+            prop_data = prop->_getter(_entity, prop);
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+        const auto& complex_data = _complexData[*prop->_complexDataIndex];
+        prop_data.Pass({complex_data.first.get(), complex_data.second});
+    }
+
+    const auto* data = prop_data.GetPtrAs<uint8>();
+    const auto data_size = prop_data.GetSize();
+
+    T result;
+
+    if (data_size != 0) {
+        if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
+            FO_RUNTIME_ASSERT(prop->IsArrayOfString());
+
+            uint32 arr_size;
+            MemCopy(&arr_size, data, sizeof(arr_size));
+            data += sizeof(arr_size);
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+
+            for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                uint32 str_size;
+                MemCopy(&str_size, data, sizeof(str_size));
+                data += sizeof(str_size);
+
+                if constexpr (std::same_as<T, vector<string>>) {
+                    result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
+                }
+                else {
+                    result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
+                }
+
+                data += str_size;
+            }
+        }
+        else if constexpr (std::same_as<T, vector<hstring>>) {
+            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+            const auto arr_size = data_size / sizeof(hstring::hash_t);
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+
+            for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
+                result.emplace_back(hvalue);
+                data += sizeof(hstring::hash_t);
+            }
+        }
+        else {
+            FO_RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+            const auto arr_size = data_size / prop->GetBaseSize();
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+            result.resize(arr_size);
+            MemCopy(result.data(), data, data_size);
+        }
+    }
+
+    return result;
+}
+
+template<typename T>
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+auto Properties::GetValueFast(const Property* prop) const noexcept -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!prop->IsDisabled());
+    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
+    FO_STRONG_ASSERT(prop->IsPlainData());
+    FO_STRONG_ASSERT(!prop->IsVirtual());
+
+    FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+    auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
+    return result;
+}
+
+template<typename T>
+    requires(std::same_as<T, hstring>)
+auto Properties::GetValueFast(const Property* prop) const noexcept -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!prop->IsDisabled());
+    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+    FO_STRONG_ASSERT(prop->IsPlainData());
+    FO_STRONG_ASSERT(prop->IsBaseTypeHash());
+    FO_STRONG_ASSERT(!prop->IsVirtual());
+
+    FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+    const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
+    auto result = ResolveHash(hash, nullptr);
+    return result;
+}
+
+template<typename T>
+    requires(std::same_as<T, string> || std::same_as<T, any_t>)
+auto Properties::GetValueFast(const Property* prop) const noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!prop->IsDisabled());
+    FO_STRONG_ASSERT(prop->IsString());
+    FO_STRONG_ASSERT(!prop->IsVirtual());
+
+    FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+    const auto& complex_data = _complexData[*prop->_complexDataIndex];
+    const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
+    return result;
+}
+
+template<typename T>
+    requires(is_vector_collection<T>)
+auto Properties::GetValueFast(const Property* prop) const noexcept -> T
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!prop->IsDisabled());
+    FO_STRONG_ASSERT(prop->IsArray());
+    FO_STRONG_ASSERT(!prop->IsVirtual());
+
+    PropertyRawData prop_data;
+
+    FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+    const auto& complex_data = _complexData[*prop->_complexDataIndex];
+    prop_data.Pass({complex_data.first.get(), complex_data.second});
+
+    const auto* data = prop_data.GetPtrAs<uint8>();
+    const auto data_size = prop_data.GetSize();
+
+    T result;
+
+    if (data_size != 0) {
+        if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
+            FO_STRONG_ASSERT(prop->IsArrayOfString());
+
+            uint32 arr_size;
+            MemCopy(&arr_size, data, sizeof(arr_size));
+            data += sizeof(arr_size);
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+
+            for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                uint32 str_size;
+                MemCopy(&str_size, data, sizeof(str_size));
+                data += sizeof(str_size);
+
+                if constexpr (std::same_as<T, vector<string>>) {
+                    result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
+                }
+                else {
+                    result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
+                }
+
+                data += str_size;
+            }
+        }
+        else if constexpr (std::same_as<T, vector<hstring>>) {
+            FO_STRONG_ASSERT(prop->IsBaseTypeHash());
+            FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+            const auto arr_size = data_size / sizeof(hstring::hash_t);
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+
+            for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
+                result.emplace_back(hvalue);
+                data += sizeof(hstring::hash_t);
+            }
+        }
+        else {
+            FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
+            const auto arr_size = data_size / prop->GetBaseSize();
+            result.reserve(arr_size != 0 ? arr_size + 8 : 0);
+            result.resize(arr_size);
+            MemCopy(result.data(), data, data_size);
+        }
+    }
+
+    return result;
+}
+
+template<typename T>
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+void Properties::SetValue(const Property* prop, T new_value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+    FO_RUNTIME_ASSERT(prop->IsPlainData());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+
+        PropertyRawData prop_data;
+        prop_data.SetAs<T>(new_value);
+
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+
+        auto& cur_value = *reinterpret_cast<T*>(&_podData[*prop->_podDataOffset]);
+        bool equal;
+
+        if constexpr (std::floating_point<T>) {
+            equal = is_float_equal(new_value, cur_value);
+        }
+        else {
+            equal = new_value == cur_value;
+        }
+
+        if (!equal) {
+            if (!prop->_setters.empty() && _entity != nullptr) {
+                PropertyRawData prop_data;
+                prop_data.SetAs<T>(new_value);
+
+                for (const auto& setter : prop->_setters) {
+                    setter(_entity, prop, prop_data);
+                }
+
+                cur_value = prop_data.GetAs<T>();
+            }
+            else {
+                cur_value = new_value;
+            }
+
+            if (_entity != nullptr) {
+                for (const auto& setter : prop->_postSetters) {
+                    setter(_entity, prop);
+                }
+            }
+        }
+    }
+}
+
+template<typename T>
+    requires(std::same_as<T, hstring>)
+void Properties::SetValue(const Property* prop, T new_value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+
+        PropertyRawData prop_data;
+        prop_data.SetAs<hstring::hash_t>(new_value.asHash());
+
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
+        const auto new_value_hash = new_value.asHash();
+
+        if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
+            if (!prop->_setters.empty() && _entity != nullptr) {
+                PropertyRawData prop_data;
+                prop_data.SetAs<hstring::hash_t>(new_value_hash);
+
+                for (const auto& setter : prop->_setters) {
+                    setter(_entity, prop, prop_data);
+                }
+
+                *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
+            }
+            else {
+                *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = new_value_hash;
+            }
+
+            if (_entity != nullptr) {
+                for (const auto& setter : prop->_postSetters) {
+                    setter(_entity, prop);
+                }
+            }
+        }
+    }
+}
+
+template<typename T>
+    requires(std::same_as<T, string> || std::same_as<T, any_t>)
+void Properties::SetValue(const Property* prop, const T& new_value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->IsString());
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+
+        PropertyRawData prop_data;
+        prop_data.Pass(new_value.c_str(), new_value.length());
+
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+
+        if (!prop->_setters.empty() && _entity != nullptr) {
+            PropertyRawData prop_data;
+            prop_data.Pass(new_value.c_str(), new_value.length());
+
+            for (const auto& setter : prop->_setters) {
+                setter(_entity, prop, prop_data);
+            }
+
+            SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
+        }
+        else {
+            SetRawData(prop, {reinterpret_cast<const uint8*>(new_value.c_str()), new_value.length()});
+        }
+
+        if (_entity != nullptr) {
+            for (const auto& setter : prop->_postSetters) {
+                setter(_entity, prop);
+            }
+        }
+    }
+}
+
+template<typename T>
+void Properties::SetValue(const Property* prop, const vector<T>& new_value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(prop->IsArray());
+
+    PropertyRawData prop_data;
+
+    if constexpr (std::same_as<T, string> || std::same_as<T, any_t>) {
+        if (!new_value.empty()) {
+            size_t data_size = sizeof(uint32);
+
+            for (const auto& str : new_value) {
+                data_size += sizeof(uint32) + static_cast<uint32>(str.length());
+            }
+
+            auto* buf = prop_data.Alloc(data_size);
+
+            const auto arr_size = static_cast<uint32>(new_value.size());
+            MemCopy(buf, &arr_size, sizeof(arr_size));
+            buf += sizeof(uint32);
+
+            for (const auto& str : new_value) {
+                const auto str_size = static_cast<uint32>(str.length());
+                MemCopy(buf, &str_size, sizeof(str_size));
+                buf += sizeof(str_size);
+
+                if (str_size != 0) {
+                    MemCopy(buf, str.c_str(), str_size);
+                    buf += str_size;
+                }
+            }
+        }
+    }
+    else if constexpr (std::same_as<T, hstring>) {
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+        if (!new_value.empty()) {
+            auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
+
+            for (const auto& hstr : new_value) {
+                const auto hash = hstr.asHash();
+                MemCopy(buf, &hash, sizeof(hstring::hash_t));
+                buf += sizeof(hstring::hash_t);
+            }
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+
+        if (!new_value.empty()) {
+            prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
+        }
+    }
+
+    if (prop->IsVirtual()) {
+        FO_RUNTIME_ASSERT(_entity);
+        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
+    }
+    else {
+        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+
+        if (!prop->_setters.empty() && _entity != nullptr) {
+            for (const auto& setter : prop->_setters) {
+                setter(_entity, prop, prop_data);
+            }
+        }
+
+        SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
+
+        if (_entity != nullptr) {
+            for (const auto& setter : prop->_postSetters) {
+                setter(_entity, prop);
+            }
+        }
+    }
+}
 
 FO_END_NAMESPACE();
