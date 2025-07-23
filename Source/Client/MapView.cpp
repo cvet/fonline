@@ -1262,6 +1262,9 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
                 hide_hex(_viewField[y * _wVisible + x]);
             }
         }
+
+        const auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (ox > 0 ? 1 : 4) : (ox > 0 ? 1 : 5));
+        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir);
     }
 
     if (oy != 0) {
@@ -1273,13 +1276,12 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
                 hide_hex(_viewField[y * _wVisible + x]);
             }
         }
+
+        const auto dir1 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (oy > 0 ? 2 : 0) : (oy > 0 ? 2 : 0));
+        const auto dir2 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (oy > 0 ? 3 : 5) : (oy > 0 ? 4 : 6));
+        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir1);
+        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir2);
     }
-
-    const auto vpos1 = 5 * _wVisible + 4;
-    const auto vpos2 = (5 + oy) * _wVisible + 4 + ox;
-
-    _screenRawHex.x += _viewField[vpos2].RawHex.x - _viewField[vpos1].RawHex.x;
-    _screenRawHex.y += _viewField[vpos2].RawHex.y - _viewField[vpos1].RawHex.y;
 
     for (auto& vf : _viewField) {
         if (ox < 0) {
@@ -2527,34 +2529,23 @@ void MapView::InitView(ipos32 screen_raw_hex)
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        // Get center offset
         const auto view_size = GetViewSize();
-        const auto hw = view_size.width / 2 + _wRight;
-        const auto hv = view_size.height / 2 + _hTop;
-        auto vw = hv / 2 + std::abs(hv % 2) + 1;
-        auto vh = hv - vw / 2 - 1;
-
-        for (auto i = 0; i < hw; i++) {
-            if ((vw % 2) != 0) {
-                vh--;
-            }
-            vw++;
-        }
-
-        screen_raw_hex.x -= std::abs(vw);
-        screen_raw_hex.y -= std::abs(vh);
-
-        const auto xa = -(_wRight * _engine->Settings.MapHexWidth);
-        const auto xb = -(_engine->Settings.MapHexWidth / 2) - (_wRight * _engine->Settings.MapHexWidth);
-        auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
+        const auto halfw = view_size.width / 2 + _wRight;
+        const auto halfh = view_size.height / 2 + _hTop;
+        const auto basehx = screen_raw_hex.x - (halfh / 2 + halfh % 2 + halfw);
+        const auto basehy = screen_raw_hex.y - (halfh - (halfh / 2 + halfh % 2) / 2 - halfw / 2);
+        const auto xa = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth / 2;
+        const auto xb = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth;
         const auto wx = iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
-        for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = screen_raw_hex.x + yv / 2 + std::abs(yv % 2);
-            auto hy = screen_raw_hex.y + (yv - (hx - screen_raw_hex.x - std::abs(screen_raw_hex.x % 2)) / 2);
-            auto ox = (yv % 2) != 0 ? xa : xb;
+        auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
 
-            if (yv == 0 && (screen_raw_hex.x % 2) != 0) {
+        for (auto yv = 0; yv < _hVisible; yv++) {
+            auto hx = basehx + yv / 2 + yv % 2;
+            auto hy = basehy + (yv - ((yv / 2 + yv % 2) - std::abs(basehx % 2)) / 2);
+            auto ox = wx + ((yv % 2) != 0 ? xb : xa);
+
+            if (yv == 0 && (basehx % 2) != 0) {
                 hy++;
             }
 
@@ -2562,7 +2553,7 @@ void MapView::InitView(ipos32 screen_raw_hex)
                 const auto vpos = yv * _wVisible + xv;
                 auto& vf = _viewField[vpos];
 
-                vf.Offset = {wx - ox, oy};
+                vf.Offset = {ox, oy};
                 vf.Offsetf = fpos32(vf.Offset);
                 vf.RawHex = {hx, hy};
 
@@ -2571,14 +2562,13 @@ void MapView::InitView(ipos32 screen_raw_hex)
                 }
                 hx++;
 
-                ox += _engine->Settings.MapHexWidth;
+                ox -= _engine->Settings.MapHexWidth;
             }
 
             oy += _engine->Settings.MapHexLineHeight;
         }
     }
     else {
-        // Calculate data
         const auto view_size = GetViewSize();
         const auto halfw = view_size.width / 2 + _wRight;
         const auto halfh = view_size.height / 2 + _hTop;
@@ -2589,7 +2579,6 @@ void MapView::InitView(ipos32 screen_raw_hex)
         auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
         const auto wx = iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
-        // Initialize field
         for (auto yv = 0; yv < _hVisible; yv++) {
             auto hx = basehx;
             auto hy = basehy;
