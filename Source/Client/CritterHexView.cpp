@@ -495,6 +495,10 @@ void CritterHexView::ChangeLookDirAngle(int32 dir_angle)
 
 #if FO_ENABLE_3D
     if (_model) {
+        if (!_model->HasBodyRotation()) {
+            _model->SetMoveDirAngle(normalized_dir_angle, true);
+        }
+
         _model->SetLookDirAngle(normalized_dir_angle);
     }
 #endif
