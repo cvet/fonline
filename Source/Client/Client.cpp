@@ -2205,7 +2205,6 @@ void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
-        cr->GetMap()->RefreshMap();
         cr->GetMap()->RebuildFog();
     }
 }
