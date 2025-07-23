@@ -1154,6 +1154,39 @@ auto Properties::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> 
     return _registrator->_hashResolver.ResolveHash(h, failed);
 }
 
+void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsVirtual() && prop->_setters.empty()) {
+        throw PropertiesException("Setter not set");
+    }
+
+    if (!prop->IsVirtual()) {
+        const auto cur_prop_data = GetRawData(prop);
+
+        if (prop_data.GetSize() == cur_prop_data.size() && MemCompare(prop_data.GetPtr(), cur_prop_data.data(), prop_data.GetSize())) {
+            return;
+        }
+    }
+
+    if (!prop->_setters.empty()) {
+        for (auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
+    }
+
+    if (!prop->IsVirtual()) {
+        SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
+
+        if (!prop->_postSetters.empty()) {
+            for (auto& setter : prop->_postSetters) {
+                setter(_entity, prop);
+            }
+        }
+    }
+}
+
 PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver) :
     _typeName {hash_resolver.ToHashedString(type_name)},
     _typeNamePlural {hash_resolver.ToHashedString(strex("{}s", type_name))},

@@ -2814,34 +2814,13 @@ static void Property_SetValue(asIScriptGeneric* gen)
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
-    auto& setters = prop->GetSetters();
-    auto& post_setters = prop->GetPostSetters();
     auto& props = entity->GetPropertiesForEdit();
     void* as_obj = gen->GetAddressOfArg(0);
     ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
-    if (prop->IsVirtual() && setters.empty()) {
-        throw ScriptException("Setter not set");
-    }
-
     auto prop_data = ASToProps(prop, as_obj);
-
-    if (!setters.empty()) {
-        for (auto& setter : setters) {
-            setter(entity, prop, prop_data);
-        }
-    }
-
-    if (!prop->IsVirtual()) {
-        props.SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
-
-        if (!post_setters.empty()) {
-            for (auto& setter : post_setters) {
-                setter(entity, prop);
-            }
-        }
-    }
+    props.SetValue(prop, prop_data);
 
 #else
     ignore_unused(gen);
@@ -2850,41 +2829,41 @@ static void Property_SetValue(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static auto EntityDownCast(T* a) -> Entity*
+static auto EntityDownCast(T* entity) -> Entity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
 
-    if (a == nullptr) {
+    if (entity == nullptr) {
         return nullptr;
     }
 
-    return static_cast<Entity*>(a);
+    return static_cast<Entity*>(entity);
 
 #else
-    ignore_unused(a);
+    ignore_unused(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
 
 template<typename T>
-static auto EntityUpCast(Entity* a) -> T*
+static auto EntityUpCast(Entity* entity) -> T*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     static_assert(std::is_base_of_v<Entity, T>);
 
-    if (a == nullptr) {
+    if (entity == nullptr) {
         return nullptr;
     }
 
-    return dynamic_cast<T*>(a);
+    return dynamic_cast<T*>(entity);
 
 #else
-    ignore_unused(a);
+    ignore_unused(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
