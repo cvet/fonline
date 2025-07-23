@@ -207,7 +207,6 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     const auto file = _resources.ReadFile(fname);
 
     if (!file) {
-        WriteLog("3d file '{}' not found", fname);
         return nullptr;
     }
 
@@ -652,12 +651,12 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
     }
 
-    const bool layer_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
+    const bool layers_changed = !MemCompare(new_layers, _curLayers, sizeof(new_layers));
 
     // Try skip redundant calls
     const bool may_skip_redundant = !IsEnumSet(flags, ModelAnimFlags::Init) && !IsEnumSet(flags, ModelAnimFlags::PlayOnce);
 
-    if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layer_changed) {
+    if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layers_changed) {
         return false;
     }
 
@@ -666,7 +665,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     bool mesh_changed = false;
     vector<hstring> fast_transition_bones;
 
-    if (layer_changed) {
+    if (layers_changed || IsEnumSet(flags, ModelAnimFlags::Init)) {
         // Store data to compare later
         const auto old_cuts = _allCuts;
 
@@ -1336,9 +1335,9 @@ void ModelInstance::SetLookDirAngle(int32 dir_angle)
             _lookDirAngle = new_angle;
             RefreshMoveAnimation();
         }
-        else {
-            _deferredLookDirAngle = new_angle;
-        }
+    }
+    else {
+        _deferredLookDirAngle = new_angle;
     }
 }
 
@@ -2238,18 +2237,17 @@ auto ModelInformation::Load(string_view name) -> bool
         string model;
         string render_fname;
         string render_anim;
-        auto disable_animation_interpolation = false;
-        auto convert_value_fail = false;
+        bool disable_animation_interpolation = false;
+        bool convert_value_fail = false;
 
         hstring mesh;
-        auto layer = -1;
-        auto layer_val = 0;
+        int32 layer = -1;
+        int32 layer_val = 0;
 
         ModelAnimationData dummy_link {};
         auto* link = &_animDataDefault;
 
         auto istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
-        auto closed = false;
         string token;
         string buf;
 
@@ -2263,13 +2261,15 @@ auto ModelInformation::Load(string_view name) -> bool
 
         vector<AnimEntry> anim_entries;
 
+        // Todo: move fo3d parsing to baking
         while (!istr->eof()) {
             *istr >> token;
 
-            if (istr->fail()) {
-                WriteLog("Failed to read token in file '{}'", name);
+            if (istr->eof()) {
                 break;
             }
+
+            FO_RUNTIME_ASSERT(!istr->fail());
 
             auto comment = token.find(';');
 
@@ -2282,22 +2282,11 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 string line;
                 std::getline(*istr, line, '\n');
-
-                if (token.empty()) {
-                    continue;
-                }
+                FO_RUNTIME_ASSERT(!istr->fail());
             }
 
-            if (closed) {
-                if (token == "ContinueParsing") {
-                    closed = false;
-                }
-
-                continue;
-            }
-
-            if (token == "StopParsing") {
-                closed = true;
+            if (token.empty()) {
+                // None
             }
             else if (token == "Model") {
                 *istr >> buf;
@@ -2308,11 +2297,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 vector<string> templates;
                 string line;
                 std::getline(*istr, line, '\n');
-                templates = strex(line).trim().split(' ');
+                FO_RUNTIME_ASSERT(!istr->fail());
 
-                if (templates.empty()) {
-                    continue;
-                }
+                templates = strex(line).trim().split(' ');
+                FO_RUNTIME_ASSERT(!templates.empty());
 
                 for (size_t i = 1; i < templates.size() - 1; i += 2) {
                     templates[i] = strex("%{}%", templates[i]);
@@ -2322,26 +2310,21 @@ auto ModelInformation::Load(string_view name) -> bool
                 const string fname = strex(name).extractDir().combinePath(templates[0]);
                 const auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
 
-                if (!fo3d_ex) {
-                    WriteLog("Include file '{}' not found", fname);
-                    continue;
-                }
+                if (fo3d_ex) {
+                    string new_content = fo3d_ex.GetStr();
 
-                // Words swapping
-                string new_content = fo3d_ex.GetStr();
-
-                if (templates.size() > 2) {
                     for (size_t i = 1; i < templates.size() - 1; i += 2) {
                         new_content = strex(new_content).replace(templates[i], templates[i + 1]);
                     }
+
+                    const auto offs = numeric_cast<size_t>(static_cast<std::streamoff>(istr->tellg()));
+                    const auto rest_content = !istr->eof() ? file_buf.substr(offs) : "";
+                    file_buf = strex("{}\n{}", new_content, rest_content);
+                    istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
                 }
-
-                // Insert new buffer
-                const auto offs = numeric_cast<size_t>(static_cast<std::streamoff>(istr->tellg()));
-                file_buf = strex("{}\n{}", new_content, !istr->eof() ? file_buf.substr(offs) : "");
-
-                // Reinitialize stream
-                istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
+                else {
+                    WriteLog("Include file '{}' not found", fname);
+                }
             }
             else if (token == "Mesh") {
                 *istr >> buf;
@@ -2350,7 +2333,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     mesh = _modelMngr.GetBoneHashedString(buf);
                 }
                 else {
-                    mesh = hstring();
+                    mesh = {};
                 }
             }
             else if (token == "Subset") {
@@ -2368,7 +2351,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 link = &dummy_link;
-                mesh = hstring();
+                mesh = {};
             }
             else if (token == "Root") {
                 if (layer == -1) {
@@ -2385,42 +2368,38 @@ auto ModelInformation::Load(string_view name) -> bool
                     link->LayerValue = layer_val;
                 }
 
-                mesh = hstring();
+                mesh = {};
             }
             else if (token == "Attach") {
                 *istr >> buf;
 
-                if (layer < 0 || layer_val == 0) {
-                    continue;
+                if (layer >= 0 && layer_val != 0) {
+                    link = &_animData.emplace_back();
+                    link->Id = ++_modelMngr._linkId;
+                    link->Layer = layer;
+                    link->LayerValue = layer_val;
+
+                    string fname = strex(name).extractDir().combinePath(buf);
+                    link->ChildName = fname;
+                    link->IsParticles = false;
                 }
 
-                link = &_animData.emplace_back();
-                link->Id = ++_modelMngr._linkId;
-                link->Layer = layer;
-                link->LayerValue = layer_val;
-
-                string fname = strex(name).extractDir().combinePath(buf);
-                link->ChildName = fname;
-                link->IsParticles = false;
-
-                mesh = hstring();
+                mesh = {};
             }
             else if (token == "AttachParticles") {
                 *istr >> buf;
 
-                if (layer < 0 || layer_val == 0) {
-                    continue;
+                if (layer >= 0 && layer_val != 0) {
+                    link = &_animData.emplace_back();
+                    link->Id = ++_modelMngr._linkId;
+                    link->Layer = layer;
+                    link->LayerValue = layer_val;
+
+                    link->ChildName = buf;
+                    link->IsParticles = true;
                 }
 
-                link = &_animData.emplace_back();
-                link->Id = ++_modelMngr._linkId;
-                link->Layer = layer;
-                link->LayerValue = layer_val;
-
-                link->ChildName = buf;
-                link->IsParticles = true;
-
-                mesh = hstring();
+                mesh = {};
             }
             else if (token == "Link") {
                 *istr >> buf;
@@ -2808,6 +2787,12 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else {
                 WriteLog("Unknown token '{}' in file '{}'", token, name);
+            }
+
+            if (istr->fail()) {
+                WriteLog("Failed to process token {} in file '{}'", token, name);
+                BreakIntoDebugger();
+                break;
             }
         }
 
