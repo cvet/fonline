@@ -4117,7 +4117,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
             auto trace_target_hex = target_hex;
 
             for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(trace_hex, trace_target_hex, _mapSize, 0.0f);
+                LineTracer tracer(trace_hex, trace_target_hex, 0.0f, _mapSize);
                 auto next_hex = trace_hex;
                 vector<uint8> direct_steps;
                 bool failed = false;
@@ -4265,14 +4265,14 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 a
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
 
-    LineTracer line_tracer(start_hex, target_hex, _mapSize, angle);
+    LineTracer tracer(start_hex, target_hex, angle, _mapSize);
 
     for (int32 i = 0; i < check_dist; i++) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            line_tracer.GetNextHex(next_hex);
+            tracer.GetNextHex(next_hex);
         }
         else {
-            line_tracer.GetNextSquare(next_hex);
+            tracer.GetNextSquare(next_hex);
         }
 
         if (_isShowTrack) {

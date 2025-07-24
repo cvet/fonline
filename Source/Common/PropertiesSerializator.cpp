@@ -209,7 +209,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
         AnyData::Array struct_value;
         struct_value.Reserve(struct_layout.size());
 
-        for (const auto& [field_name, field_type_info] : struct_layout) {
+        for (const auto& field_type_info : struct_layout | std::views::values) {
             auto field_value = RawDataToValue(field_type_info, hash_resolver, name_resolver, pdata);
             struct_value.EmplaceBack(std::move(field_value));
         }

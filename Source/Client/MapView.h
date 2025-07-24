@@ -57,7 +57,7 @@ class CritterHexView;
 // Light flags
 static constexpr uint8 LIGHT_GLOBAL = 0x40;
 static constexpr uint8 LIGHT_INVERSE = 0x80;
-static constexpr uint32 LIGHT_DISABLE_DIR_MASK = 0x0F;
+static constexpr uint32 LIGHT_DISABLE_DIR_MASK = 0x3F;
 
 ///@ ExportRefType Client
 struct SpritePattern

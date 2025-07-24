@@ -657,7 +657,7 @@ void MapManager::TraceBullet(TraceData& trace)
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
 
-    LineTracer line_tracer(start_hex, target_hex, map_size, trace.Angle);
+    LineTracer tracer(start_hex, target_hex, trace.Angle, map_size);
 
     trace.IsFullTrace = false;
     trace.IsCritterFound = false;
@@ -671,10 +671,10 @@ void MapManager::TraceBullet(TraceData& trace)
         }
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            line_tracer.GetNextHex(next_hex);
+            tracer.GetNextHex(next_hex);
         }
         else {
-            line_tracer.GetNextSquare(next_hex);
+            tracer.GetNextSquare(next_hex);
         }
 
         if (trace.LastMovable != nullptr && !last_passed_ok) {
@@ -1146,7 +1146,7 @@ label_FindOk:
             mpos trace_hex2 = to_hex;
 
             for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(trace_hex, trace_hex2, map_size, 0.0f);
+                LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
                 mpos next_hex = trace_hex;
                 vector<uint8> direct_steps;
                 bool failed = false;

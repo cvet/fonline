@@ -2,7 +2,6 @@ namespace LineTracer
 {
 
 // Author: Atom
-
 // utilities for tracing
 // pathfinding/critter-gathering functions etc.
 
@@ -13,21 +12,73 @@ interface ITraceContext
     bool Exec(Map map, mpos hex); // Return true to stop tracing
 };
 
-// math
-const float SQRT3T2_FLOAT = 3.4641016151f;
-const float SQRT3_FLOAT = 1.732050807568877f;
-const float BIAS_FLOAT = 0.02f;
-const float RAD2DEG = 57.29577951f;
-
-float GetDirectionF(mpos fromHex, mpos toHex)
+class SimpleTracer : ITraceContext
 {
-    float nx = 3 * (float(toHex.x) - float(fromHex.x));
-    float ny = SQRT3T2_FLOAT * (float(toHex.y) - float(fromHex.y)) - (float(toHex.x % 2) - float(fromHex.x % 2)) * SQRT3_FLOAT;
+    mpos ResultHex;
 
-    return 180.0f + RAD2DEG * math::atan2(ny, nx); // In degrees, because cvet loves the degrees
+    SimpleTracer()
+    {
+    }
+
+    void StartExec(Map map, mpos fromHex, mpos toHex, int maxDist) override
+    {
+        ResultHex = fromHex;
+    }
+
+    void FinishExec(Map map, int resultDist) override
+    {
+    }
+
+    bool Exec(Map map, mpos hex) override
+    {
+        ResultHex = hex;
+        return false;
+    }
+};
+
+const float SQRT3T2_FLOAT = 3.4641016151;
+const float SQRT3_FLOAT = 1.732050807568877;
+const float BIAS_FLOAT = 0.02;
+const float RAD2DEG = 57.29577951;
+const float DEG2RAD = 0.01745329;
+
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, toHex, 0, 0.0, context);
 }
 
-int LineTracerHex(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext context)
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, toHex, dist, 0.0, context);
+}
+
+int LineTracerHex(Map map, mpos fromHex, float dirAngle, int dist, ITraceContext context)
+{
+    float angle = 360.0 - dirAngle + 60.0;
+    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
+
+    float dx = -math::cos(angle * DEG2RAD);
+    float dy = -math::sin(angle * DEG2RAD);
+
+    if (Math::AbsF(dx) > Math::AbsF(dy)) {
+        dy /= Math::AbsF(dx);
+        dx = dx > 0 ? 1.0 : -1.0;
+    }
+    else {
+        dx /= Math::AbsF(dy);
+        dy = dy > 0 ? 1.0 : -1.0;
+    }
+
+    float sx = float(fromHex.x) + 0.5f;
+    float sy = float(fromHex.y) + 0.5f;
+    int tx = int(sx + dx * float(dist));
+    int ty = int(sy + dy * float(dist));
+    mpos toHex = mpos(tx, ty);
+
+    return LineTracerHex(map, fromHex, toHex, dist, 0.0, context);
+}
+
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOffset, ITraceContext context)
 {
     if (dist == 0) {
         dist = Game.GetDistance(fromHex, toHex);
@@ -35,80 +86,105 @@ int LineTracerHex(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext con
 
     context.StartExec(map, fromHex, toHex, dist);
 
-    float dir = GetDirectionF(fromHex, toHex);
-    uint8 dir1, dir2;
+    float sx = float(fromHex.x);
+    float sy = float(fromHex.y);
+    float tx = float(toHex.x);
+    float ty = float(toHex.y);
+    float txOdd = Math::Abs(toHex.x % 2);
+    float sxOdd = Math::Abs(fromHex.x % 2);
 
-    if ((30.0f <= dir) && (dir < 90.0f)) {
-        dir1 = 5;
-        dir2 = 0;
+    float xStart = 3.0 * sx + BIAS_FLOAT;
+    float yStart = SQRT3T2_FLOAT * sy - sxOdd * SQRT3_FLOAT + BIAS_FLOAT;
+
+    float xEnd = 3.0 * tx + BIAS_FLOAT;
+    float yEnd = ty * SQRT3T2_FLOAT - txOdd * SQRT3_FLOAT + BIAS_FLOAT;
+
+    if (dirAngleOffset != 0.0) {
+        xEnd -= xStart;
+        yEnd -= yStart;
+
+        float angleOffsetRad = -dirAngleOffset * DEG2RAD;
+        float ox = math::cos(angleOffsetRad) * xEnd - math::sin(angleOffsetRad) * yEnd;
+        float oy = math::sin(angleOffsetRad) * xEnd + math::cos(angleOffsetRad) * yEnd;
+
+        xEnd = xStart + ox;
+        yEnd = yStart + oy;
     }
-    else if ((90.0f <= dir) && (dir < 150.0f)) {
-        dir1 = 4;
-        dir2 = 5;
+
+    float dx = xEnd - xStart;
+    float dy = yEnd - yStart;
+
+    float nx = 3.0 * (tx - sx);
+    float ny = (ty - sy) * SQRT3T2_FLOAT - (txOdd - sxOdd) * SQRT3_FLOAT;
+    float angle = 180.0 + math::atan2(ny, nx) * RAD2DEG - dirAngleOffset;
+    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
+
+    float dirAngle = -60.0 + angle;
+    dirAngle = dirAngle < 0.0 ? 360.0 - (-dirAngle % 360.0) : dirAngle % 360.0;
+    dirAngle = 360.0 - dirAngle;
+
+    uint8 dirLeft;
+    uint8 dirRight;
+
+    if (dirAngle >= 30.0 && dirAngle < 90.0) {
+        dirLeft = 0;
+        dirRight = 1;
     }
-    else if ((150.0f <= dir) && (dir < 210.0f)) {
-        dir1 = 3;
-        dir2 = 4;
+    else if (dirAngle >= 90.0 && dirAngle < 150.0) {
+        dirLeft = 1;
+        dirRight = 2;
     }
-    else if ((210.0f <= dir) && (dir < 270.0f)) {
-        dir1 = 2;
-        dir2 = 3;
+    else if (dirAngle >= 150.0 && dirAngle < 210.0) {
+        dirLeft = 2;
+        dirRight = 3;
     }
-    else if ((270.0f <= dir) && (dir < 330.0f)) {
-        dir1 = 1;
-        dir2 = 2;
+    else if (dirAngle >= 210.0 && dirAngle < 270.0) {
+        dirLeft = 3;
+        dirRight = 4;
+    }
+    else if (dirAngle >= 270.0 && dirAngle < 330.0) {
+        dirLeft = 4;
+        dirRight = 5;
     }
     else {
-        dir1 = 0;
-        dir2 = 1;
+        dirLeft = 5;
+        dirRight = 1;
     }
 
-    mpos chex = fromHex;
-    mpos phex = fromHex;
+    mpos curHex = fromHex;
+    mpos prevHex = fromHex;
 
-    float x1 = 3 * float(fromHex.x) + BIAS_FLOAT;
-    float y1 = SQRT3T2_FLOAT * float(fromHex.y) - (float(fromHex.x % 2)) * SQRT3_FLOAT + BIAS_FLOAT;
-
-    float x2 = 3 * float(toHex.x) + BIAS_FLOAT;
-    float y2 = SQRT3T2_FLOAT * float(toHex.y) - (float(toHex.x % 2)) * SQRT3_FLOAT + BIAS_FLOAT;
-
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-
-    float c1x, c1y, c2x, c2y; // test hex
-    float dist1, dist2;
+    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
 
     for (int i = 1; i <= dist; i++) {
-        mpos t1 = chex;
-        mpos t2 = chex;
-        map.MoveHexByDir(t1, dir1, 1);
-        map.MoveHexByDir(t2, dir2, 1);
+        mpos tLeft = curHex;
+        mpos tRight = curHex;
+        map.MoveHexByDir(tLeft, dirLeft, 1);
+        map.MoveHexByDir(tRight, dirRight, 1);
 
-        c1x = 3 * float(t1.x);
-        c1y = SQRT3T2_FLOAT * float(t1.y) - (float(t1.x % 2)) * SQRT3_FLOAT;
-        c2x = 3 * float(t2.x);
-        c2y = SQRT3T2_FLOAT * float(t2.y) - (float(t2.x % 2)) * SQRT3_FLOAT;
-        dist1 = dx * (y1 - c1y) - dy * (x1 - c1x);
-        dist2 = dx * (y1 - c2y) - dy * (x1 - c2x);
-        dist1 = dist1 > 0 ? dist1 : -dist1;
-        dist2 = dist2 > 0 ? dist2 : -dist2;
+        float c1x = 3.0 * float(tLeft.x);
+        float c1y = SQRT3T2_FLOAT * float(tLeft.y) - (float(tLeft.x % 2)) * SQRT3_FLOAT;
+        float c2x = 3.0 * float(tRight.x);
+        float c2y = SQRT3T2_FLOAT * float(tRight.y) - (float(tRight.x % 2)) * SQRT3_FLOAT;
+        float distLeft = Math::AbsF(dx * (yStart - c1y) - dy * (xStart - c1x));
+        float distRight = Math::AbsF(dx * (yStart - c2y) - dy * (xStart - c2x));
 
-        if (dist1 <= dist2) {
-            chex = t1;
+        if (distLeft <= distRight) {
+            curHex = tLeft;
         } // left hand biased
         else {
-            chex = t2;
+            curHex = tRight;
         }
 
         // if MoveHexByDir tried to leave the map and failed:
-        if (chex == phex) {
+        if (curHex == prevHex) {
             dist = i - 1;
             break;
         }
 
-        phex = chex;
+        prevHex = curHex;
 
-        if (context.Exec(map, chex)) {
+        if (context.Exec(map, curHex)) {
             dist = i;
             break;
         }
@@ -118,28 +194,29 @@ int LineTracerHex(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext con
     return dist;
 }
 
-int LineTracerSquare(mpos fromHex, mpos toHex, Map map, int dist, ITraceContext context)
+int LineTracerSquare(Map map, mpos fromHex, mpos toHex, int dist, ITraceContext context)
 {
     context.StartExec(map, fromHex, toHex, dist);
 
-    float dir = math::atan2(float(toHex.y - fromHex.y), float(toHex.x - fromHex.x));
-    float dx = math::cos(dir);
-    float dy = math::sin(dir);
+    float angle = math::atan2(float(toHex.y - fromHex.y), float(toHex.x - fromHex.x));
+    float dx = math::cos(angle);
+    float dy = math::sin(angle);
 
     if (math::abs(dx) > math::abs(dy)) {
         dy /= math::abs(dx);
-        dx = (dx > 0 ? 1.0f : -1.0f);
+        dx = dx > 0 ? 1.0f : -1.0;
     }
     else {
         dx /= math::abs(dy);
-        dy = (dy > 0 ? 1.0f : -1.0f);
+        dy = dy > 0 ? 1.0f : -1.0;
     }
 
-    float x1 = float(fromHex.x) + 0.5f;
-    float y1 = float(fromHex.y) + 0.5f;
+    float x1 = float(fromHex.x) + 0.5;
+    float y1 = float(fromHex.y) + 0.5;
     int maxx = map.Size.width;
     int maxy = map.Size.height;
-    int cx = 0, cy = 0;
+    int cx = 0;
+    int cy = 0;
 
     for (int i = 1; i <= dist; i++) {
         x1 += dx;

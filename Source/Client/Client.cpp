@@ -2303,8 +2303,17 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
     ignore_unused(entity);
     ignore_unused(prop);
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        item->GetMap()->UpdateItemLightSource(item);
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
+        hex_item->GetMap()->UpdateItemLightSource(hex_item);
+    }
+    else if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
+        if (_curMap) {
+            auto* cr = _curMap->GetCritter(item->GetCritterId());
+
+            if (cr != nullptr) {
+                cr->GetMap()->UpdateCritterLightSource(cr);
+            }
+        }
     }
 }
 

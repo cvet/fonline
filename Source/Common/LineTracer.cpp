@@ -37,110 +37,165 @@ FO_BEGIN_NAMESPACE();
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(mpos start_hex, mpos target_hex, msize map_size, float32 angle)
+LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset, msize map_size)
 {
     FO_STACK_TRACE_ENTRY();
 
     _mapSize = map_size;
 
-    if constexpr (GameSettings::SQUARE_GEOMETRY) {
-        _dir = std::atan2(numeric_cast<float32>(target_hex.y - start_hex.y), numeric_cast<float32>(target_hex.x - start_hex.x)) + angle;
-        _dx = std::cos(_dir);
-        _dy = std::sin(_dir);
-
-        if (std::fabs(_dx) > std::fabs(_dy)) {
-            _dy /= std::fabs(_dx);
-            _dx = _dx > 0 ? 1.0f : -1.0f;
-        }
-        else {
-            _dx /= std::fabs(_dy);
-            _dy = _dy > 0 ? 1.0f : -1.0f;
-        }
-
-        _x1 = numeric_cast<float32>(start_hex.x) + 0.5f;
-        _y1 = numeric_cast<float32>(start_hex.y) + 0.5f;
-    }
-    else {
-        const auto nx = 3.0f * (numeric_cast<float32>(target_hex.x) - numeric_cast<float32>(start_hex.x));
-        const auto ny = (numeric_cast<float32>(target_hex.y) - numeric_cast<float32>(start_hex.y)) * SQRT3_X2_FLOAT - (numeric_cast<float32>(std::abs(target_hex.x % 2)) - numeric_cast<float32>(std::abs(start_hex.x % 2))) * SQRT3_FLOAT;
-
-        _dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
-
-        if (angle != 0.0f) {
-            _dir += angle;
-            NormalizeDir();
-        }
-
-        if (_dir >= 30.0f && _dir < 90.0f) {
-            _dir1 = 5;
-            _dir2 = 0;
-        }
-        else if (_dir >= 90.0f && _dir < 150.0f) {
-            _dir1 = 4;
-            _dir2 = 5;
-        }
-        else if (_dir >= 150.0f && _dir < 210.0f) {
-            _dir1 = 3;
-            _dir2 = 4;
-        }
-        else if (_dir >= 210.0f && _dir < 270.0f) {
-            _dir1 = 2;
-            _dir2 = 3;
-        }
-        else if (_dir >= 270.0f && _dir < 330.0f) {
-            _dir1 = 1;
-            _dir2 = 2;
-        }
-        else {
-            _dir1 = 0;
-            _dir2 = 1;
-        }
-
-        _x1 = 3.0f * numeric_cast<float32>(start_hex.x) + BIAS_FLOAT;
-        _y1 = SQRT3_X2_FLOAT * numeric_cast<float32>(start_hex.y) - SQRT3_FLOAT * numeric_cast<float32>(std::abs(start_hex.x % 2)) + BIAS_FLOAT;
-        _x2 = 3.0f * numeric_cast<float32>(target_hex.x) + BIAS_FLOAT + BIAS_FLOAT;
-        _y2 = SQRT3_X2_FLOAT * numeric_cast<float32>(target_hex.y) - SQRT3_FLOAT * numeric_cast<float32>(std::abs(target_hex.x % 2)) + BIAS_FLOAT;
-
-        if (angle != 0.0f) {
-            _x2 -= _x1;
-            _y2 -= _y1;
-
-            const auto xp = std::cos(angle / RAD_TO_DEG_FLOAT) * _x2 - std::sin(angle / RAD_TO_DEG_FLOAT) * _y2;
-            const auto yp = std::sin(angle / RAD_TO_DEG_FLOAT) * _x2 + std::cos(angle / RAD_TO_DEG_FLOAT) * _y2;
-
-            _x2 = _x1 + xp;
-            _y2 = _y1 + yp;
-        }
-
-        _dx = _x2 - _x1;
-        _dy = _y2 - _y1;
-    }
+    TraceInit(start_hex, target_hex, dir_angle_offset);
 }
 
-auto LineTracer::GetNextHex(mpos& pos) const -> uint8
+LineTracer::LineTracer(mpos start_hex, float32 dir_angle, int32 dist, msize map_size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto t1_pos = pos;
-    auto t2_pos = pos;
+    _mapSize = map_size;
 
-    GeometryHelper::MoveHexByDir(t1_pos, _dir1, _mapSize);
-    GeometryHelper::MoveHexByDir(t2_pos, _dir2, _mapSize);
+    auto angle = 360.0f - dir_angle + 60.0f;
+    angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 
-    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * numeric_cast<float32>(t1_pos.y) - numeric_cast<float32>(std::abs(t1_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * numeric_cast<float32>(t1_pos.x));
-    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * numeric_cast<float32>(t2_pos.y) - numeric_cast<float32>(std::abs(t2_pos.x % 2)) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * numeric_cast<float32>(t2_pos.x));
+    auto dx = -std::cos(angle * DEG_TO_RAD_FLOAT);
+    auto dy = -std::sin(angle * DEG_TO_RAD_FLOAT);
 
-    dist1 = dist1 > 0 ? dist1 : -dist1;
-    dist2 = dist2 > 0 ? dist2 : -dist2;
-
-    // Left hand biased
-    if (dist1 <= dist2) {
-        pos = t1_pos;
-        return _dir1;
+    if (std::abs(dx) > std::abs(dy)) {
+        dy /= std::abs(dx);
+        dx = dx > 0.0f ? 1.0f : -1.0f;
     }
     else {
-        pos = t2_pos;
-        return _dir2;
+        dx /= std::abs(dy);
+        dy = dy > 0.0f ? 1.0f : -1.0f;
+    }
+
+    const auto sx = numeric_cast<float32>(start_hex.x) + 0.5f;
+    const auto sy = numeric_cast<float32>(start_hex.y) + 0.5f;
+    const auto tx = iround<int32>(std::floor(sx + dx * numeric_cast<float32>(dist)));
+    const auto ty = iround<int32>(std::floor(sy + dy * numeric_cast<float32>(dist)));
+    const auto target_hex = _mapSize.fromRawPos(tx, ty);
+
+    TraceInit(start_hex, target_hex, 0.0f);
+}
+
+void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_offset)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto sx = numeric_cast<float32>(start_hex.x);
+    const auto sy = numeric_cast<float32>(start_hex.y);
+    const auto tx = numeric_cast<float32>(target_hex.x);
+    const auto ty = numeric_cast<float32>(target_hex.y);
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        const auto sx_odd = numeric_cast<float32>(std::abs(start_hex.x % 2));
+        const auto tx_odd = numeric_cast<float32>(std::abs(target_hex.x % 2));
+
+        _xStart = 3.0f * sx + BIAS_FLOAT;
+        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + BIAS_FLOAT;
+
+        auto x_end = 3.0f * tx + BIAS_FLOAT;
+        auto y_end = ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + BIAS_FLOAT;
+
+        if (!is_float_equal(dir_angle_offset, 0.0f)) {
+            x_end -= _xStart;
+            y_end -= _yStart;
+
+            const auto angle_offset_rad = -dir_angle_offset * DEG_TO_RAD_FLOAT;
+            const auto ox = std::cos(angle_offset_rad) * x_end - std::sin(angle_offset_rad) * y_end;
+            const auto oy = std::sin(angle_offset_rad) * x_end + std::cos(angle_offset_rad) * y_end;
+
+            x_end = _xStart + ox;
+            y_end = _yStart + oy;
+        }
+
+        _dx = x_end - _xStart;
+        _dy = y_end - _yStart;
+
+        const auto nx = 3.0f * (tx - sx);
+        const auto ny = (ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT;
+        auto angle = 180.0f + std::atan2(ny, nx) * RAD_TO_DEG_FLOAT - dir_angle_offset;
+        angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
+
+        _dirAngle = -60.0f + angle;
+        _dirAngle = _dirAngle < 0.0f ? 360.0f - std::fmod(-_dirAngle, 360.0f) : std::fmod(_dirAngle, 360.0f);
+        _dirAngle = 360.0f - _dirAngle;
+
+        if (_dirAngle >= 30.0f && _dirAngle < 90.0f) {
+            _dirLeft = 0;
+            _dirRight = 1;
+        }
+        else if (_dirAngle >= 90.0f && _dirAngle < 150.0f) {
+            _dirLeft = 1;
+            _dirRight = 2;
+        }
+        else if (_dirAngle >= 150.0f && _dirAngle < 210.0f) {
+            _dirLeft = 2;
+            _dirRight = 3;
+        }
+        else if (_dirAngle >= 210.0f && _dirAngle < 270.0f) {
+            _dirLeft = 3;
+            _dirRight = 4;
+        }
+        else if (_dirAngle >= 270.0f && _dirAngle < 330.0f) {
+            _dirLeft = 4;
+            _dirRight = 5;
+        }
+        else {
+            _dirLeft = 5;
+            _dirRight = 0;
+        }
+    }
+    else {
+        const auto nx = tx - sx;
+        const auto ny = ty - sy;
+        auto angle = std::atan2(ny, nx) * RAD_TO_DEG_FLOAT;
+        angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
+
+        _xStart = sx + 0.5f;
+        _yStart = sy + 0.5f;
+
+        _dx = std::cos(angle * DEG_TO_RAD_FLOAT);
+        _dy = std::sin(angle * DEG_TO_RAD_FLOAT);
+
+        if (std::abs(_dx) > std::abs(_dy)) {
+            _dy /= std::abs(_dx);
+            _dx = _dx > 0 ? 1.0f : -1.0f;
+        }
+        else {
+            _dx /= std::abs(_dy);
+            _dy = _dy > 0 ? 1.0f : -1.0f;
+        }
+
+        _dirAngle = -60.0f + angle;
+        _dirAngle = _dirAngle < 0.0f ? 360.0f - std::fmod(-_dirAngle, 360.0f) : std::fmod(_dirAngle, 360.0f);
+        _dirAngle = 360.0f - _dirAngle;
+    }
+
+    _x = _xStart;
+    _y = _yStart;
+}
+
+auto LineTracer::GetNextHex(mpos& hex) const -> uint8
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto left_hex = hex;
+    auto right_hex = hex;
+    GeometryHelper::MoveHexByDir(left_hex, _dirLeft, _mapSize);
+    GeometryHelper::MoveHexByDir(right_hex, _dirRight, _mapSize);
+
+    const auto left_hex_f = fpos32(left_hex);
+    const auto right_hex_f = fpos32(right_hex);
+    const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
+    const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+
+    // Left hand biased
+    if (dist_left <= dist_right) {
+        hex = left_hex;
+        return _dirLeft;
+    }
+    else {
+        hex = right_hex;
+        return _dirRight;
     }
 }
 
@@ -148,22 +203,10 @@ void LineTracer::GetNextSquare(mpos& pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _x1 += _dx;
-    _y1 += _dy;
+    _x += _dx;
+    _y += _dy;
 
-    pos = _mapSize.clampPos(iround<int32>(std::floor(_x1)), iround<int32>(std::floor(_y1)));
-}
-
-void LineTracer::NormalizeDir()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_dir <= 0.0f) {
-        _dir = 360.0f - std::fmod(-_dir, 360.0f);
-    }
-    else if (_dir >= 0.0f) {
-        _dir = std::fmod(_dir, 360.0f);
-    }
+    pos = _mapSize.clampPos(iround<int32>(std::floor(_x)), iround<int32>(std::floor(_y)));
 }
 
 FO_END_NAMESPACE();
