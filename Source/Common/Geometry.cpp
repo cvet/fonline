@@ -256,6 +256,7 @@ auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> floa
     FO_RUNTIME_ASSERT(r <= 360.0f);
 
     r = -r + 60.0f;
+
     if (r < 0.0f) {
         r += 360.0f;
     }
@@ -328,11 +329,7 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    while (dir_angle < 0) {
-        dir_angle += 360;
-    }
-
-    return numeric_cast<int16>(dir_angle % 360);
+    return numeric_cast<int16>(dir_angle < 0 ? 360 - (-dir_angle % 360) : dir_angle % 360);
 }
 
 auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool

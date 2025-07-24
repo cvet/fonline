@@ -3011,13 +3011,8 @@ void FOMapper::ParseCommand(string_view command)
             ShowMap(LoadedMaps.back().get());
             AddMess("Create map success");
         }
-        else if (command_ext == "unload") {
+        else if (command_ext == "unload" && _curMap) {
             AddMess("Unload map");
-
-            if (!_curMap) {
-                AddMess("Map not loaded");
-                return;
-            }
 
             UnloadMap(_curMap.get());
 
@@ -3025,13 +3020,8 @@ void FOMapper::ParseCommand(string_view command)
                 ShowMap(LoadedMaps.front().get());
             }
         }
-        else if (command_ext == "size" && (_curMap)) {
+        else if (command_ext == "size" && _curMap) {
             AddMess("Resize map");
-
-            if (!_curMap) {
-                AddMess("Map not loaded");
-                return;
-            }
 
             int32 maxhx = 0;
             int32 maxhy = 0;
@@ -3060,6 +3050,15 @@ void FOMapper::ParseCommand(string_view command)
                     AddMess(strex("Failed to load map: {}", map_name));
                 }
             }
+        }
+        else if (command_ext == "reverse-light" && _curMap) {
+            for (auto& item : _curMap->GetItems()) {
+                auto rgba = item->GetLightColor().rgba;
+                rgba = (rgba & 0xFF000000) | ((rgba & 0xFF) << 16) | (rgba & 0xFF00) | ((rgba & 0xFF0000) >> 16);
+                item->SetLightColor(ucolor(rgba));
+            }
+
+            _curMap->RefreshMap();
         }
     }
     else {
