@@ -35,8 +35,6 @@
 
 FO_BEGIN_NAMESPACE();
 
-constexpr auto BIAS_FLOAT = 0.02f;
-
 LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset, msize map_size)
 {
     FO_STACK_TRACE_ENTRY();
@@ -86,14 +84,16 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_of
     const auto ty = numeric_cast<float32>(target_hex.y);
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        constexpr auto bias = 0.02f;
+
         const auto sx_odd = numeric_cast<float32>(std::abs(start_hex.x % 2));
         const auto tx_odd = numeric_cast<float32>(std::abs(target_hex.x % 2));
 
-        _xStart = 3.0f * sx + BIAS_FLOAT;
-        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + BIAS_FLOAT;
+        _xStart = sx * 3.0f + bias;
+        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + bias;
 
-        auto x_end = 3.0f * tx + BIAS_FLOAT;
-        auto y_end = ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + BIAS_FLOAT;
+        auto x_end = tx * 3.0f + bias;
+        auto y_end = ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + bias;
 
         if (!is_float_equal(dir_angle_offset, 0.0f)) {
             x_end -= _xStart;
@@ -110,8 +110,8 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_of
         _dx = x_end - _xStart;
         _dy = y_end - _yStart;
 
-        const auto nx = 3.0f * (tx - sx);
-        const auto ny = (ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT;
+        const auto nx = (tx - sx) * 3.0f + bias;
+        const auto ny = (ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT + bias;
         auto angle = 180.0f + std::atan2(ny, nx) * RAD_TO_DEG_FLOAT - dir_angle_offset;
         angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 

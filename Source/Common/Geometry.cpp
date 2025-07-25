@@ -361,7 +361,7 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     return false;
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir)
+void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -398,7 +398,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir)
             hex.y--;
             break;
         default:
-            throw GenericException("Invalid dir", dir);
+            break;
         }
     }
     else {
@@ -432,7 +432,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir)
             hex.y--;
             break;
         default:
-            throw GenericException("Invalid dir", dir);
+            break;
         }
     }
 }
