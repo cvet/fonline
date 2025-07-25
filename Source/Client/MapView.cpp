@@ -125,6 +125,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _lightSoftPoints.resize(1);
 
     _curScrollOffset = fpos32(GetScrollOffset());
+    _screenRawHex = ipos32(GetWorkHex());
 
     ResizeView();
 
@@ -2532,22 +2533,24 @@ void MapView::InitView(ipos32 screen_raw_hex)
         const auto view_size = GetViewSize();
         const auto halfw = view_size.width / 2 + _wRight;
         const auto halfh = view_size.height / 2 + _hTop;
-        const auto basehx = screen_raw_hex.x - (halfh / 2 + halfh % 2 + halfw);
-        const auto basehy = screen_raw_hex.y - (halfh - (halfh / 2 + halfh % 2) / 2 - halfw / 2);
         const auto xa = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth / 2;
         const auto xb = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth;
-        const auto wx = iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
+        const auto wx = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
+
+        auto line_hex = screen_raw_hex;
+
+        for (int32 i = 0; i < halfw; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(line_hex, 1);
+        }
+        for (int32 i = 0; i < halfh; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(line_hex, i % 2 == 0 ? 0 : 5);
+        }
 
         auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
 
         for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = basehx + yv / 2 + yv % 2;
-            auto hy = basehy + (yv - ((yv / 2 + yv % 2) - std::abs(basehx % 2)) / 2);
-            auto ox = wx + ((yv % 2) != 0 ? xb : xa);
-
-            if (yv == 0 && (basehx % 2) != 0) {
-                hy++;
-            }
+            auto hex = line_hex;
+            auto ox = wx + (yv % 2 != 0 ? xb : xa);
 
             for (auto xv = _wVisible - 1; xv >= 0; xv--) {
                 const auto vpos = yv * _wVisible + xv;
@@ -2555,17 +2558,14 @@ void MapView::InitView(ipos32 screen_raw_hex)
 
                 vf.Offset = {ox, oy};
                 vf.Offsetf = fpos32(vf.Offset);
-                vf.RawHex = {hx, hy};
-
-                if ((hx % 2) != 0) {
-                    hy--;
-                }
-                hx++;
+                vf.RawHex = hex;
 
                 ox -= _engine->Settings.MapHexWidth;
+                GeometryHelper::MoveHexByDirUnsafe(hex, 4);
             }
 
             oy += _engine->Settings.MapHexLineHeight;
+            GeometryHelper::MoveHexByDirUnsafe(line_hex, yv % 2 == 0 ? 3 : 2);
         }
     }
     else {
@@ -2582,7 +2582,7 @@ void MapView::InitView(ipos32 screen_raw_hex)
         for (auto yv = 0; yv < _hVisible; yv++) {
             auto hx = basehx;
             auto hy = basehy;
-            auto ox = (yv % 2) != 0 ? xa : xb;
+            auto ox = yv % 2 != 0 ? xa : xb;
 
             for (auto xv = _wVisible - 1; xv >= 0; xv--) {
                 const auto vpos = yv * _wVisible + xv;
@@ -2597,7 +2597,7 @@ void MapView::InitView(ipos32 screen_raw_hex)
                 ox += _engine->Settings.MapHexWidth;
             }
 
-            if ((yv % 2) != 0) {
+            if (yv % 2 != 0) {
                 basehy++;
             }
             else {
