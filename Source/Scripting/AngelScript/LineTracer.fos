@@ -60,12 +60,12 @@ int LineTracerHex(Map map, mpos fromHex, float dirAngle, int dist, ITraceContext
     float dx = -math::cos(angle * DEG2RAD);
     float dy = -math::sin(angle * DEG2RAD);
 
-    if (Math::AbsF(dx) > Math::AbsF(dy)) {
-        dy /= Math::AbsF(dx);
+    if (math::abs(dx) > math::abs(dy)) {
+        dy /= math::abs(dx);
         dx = dx > 0 ? 1.0 : -1.0;
     }
     else {
-        dx /= Math::AbsF(dy);
+        dx /= math::abs(dy);
         dy = dy > 0 ? 1.0 : -1.0;
     }
 
@@ -90,13 +90,13 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
     float sy = float(fromHex.y);
     float tx = float(toHex.x);
     float ty = float(toHex.y);
-    float txOdd = Math::Abs(toHex.x % 2);
-    float sxOdd = Math::Abs(fromHex.x % 2);
+    float txOdd = float(toHex.x % 2);
+    float sxOdd = float(fromHex.x % 2);
 
-    float xStart = 3.0 * sx + BIAS_FLOAT;
-    float yStart = SQRT3T2_FLOAT * sy - sxOdd * SQRT3_FLOAT + BIAS_FLOAT;
+    float xStart = sx * 3.0 + BIAS_FLOAT;
+    float yStart = sy * SQRT3T2_FLOAT - sxOdd * SQRT3_FLOAT + BIAS_FLOAT;
 
-    float xEnd = 3.0 * tx + BIAS_FLOAT;
+    float xEnd = tx * 3.0 + BIAS_FLOAT;
     float yEnd = ty * SQRT3T2_FLOAT - txOdd * SQRT3_FLOAT + BIAS_FLOAT;
 
     if (dirAngleOffset != 0.0) {
@@ -114,8 +114,8 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
     float dx = xEnd - xStart;
     float dy = yEnd - yStart;
 
-    float nx = 3.0 * (tx - sx);
-    float ny = (ty - sy) * SQRT3T2_FLOAT - (txOdd - sxOdd) * SQRT3_FLOAT;
+    float nx = (tx - sx) * 3.0 + BIAS_FLOAT;
+    float ny = (ty - sy) * SQRT3T2_FLOAT - (txOdd - sxOdd) * SQRT3_FLOAT + BIAS_FLOAT;
     float angle = 180.0 + math::atan2(ny, nx) * RAD2DEG - dirAngleOffset;
     angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
 
@@ -162,10 +162,10 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
         map.MoveHexByDir(tLeft, dirLeft, 1);
         map.MoveHexByDir(tRight, dirRight, 1);
 
-        float c1x = 3.0 * float(tLeft.x);
-        float c1y = SQRT3T2_FLOAT * float(tLeft.y) - (float(tLeft.x % 2)) * SQRT3_FLOAT;
-        float c2x = 3.0 * float(tRight.x);
-        float c2y = SQRT3T2_FLOAT * float(tRight.y) - (float(tRight.x % 2)) * SQRT3_FLOAT;
+        float c1x = float(tLeft.x) * 3.0;
+        float c1y = float(tLeft.y) * SQRT3T2_FLOAT - (float(tLeft.x % 2)) * SQRT3_FLOAT;
+        float c2x = float(tRight.x) * 3.0;
+        float c2y = float(tRight.y) * SQRT3T2_FLOAT - (float(tRight.x % 2)) * SQRT3_FLOAT;
         float distLeft = Math::AbsF(dx * (yStart - c1y) - dy * (xStart - c1x));
         float distRight = Math::AbsF(dx * (yStart - c2y) - dy * (xStart - c2x));
 
