@@ -712,6 +712,16 @@ FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsScrollBlock(MapView* self, mpos hex)
+{
+    if (!self->GetSize().isValidPos(hex)) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    return self->GetField(hex).Flags.ScrollBlock;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetShootBorders(MapView* self, bool enabled, int32 dist)
 {
     self->SetShootBorders(enabled, dist);

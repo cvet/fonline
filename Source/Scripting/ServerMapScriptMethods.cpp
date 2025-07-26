@@ -848,6 +848,16 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Server_Map_IsScrollBlock(Map* self, mpos hex)
+{
+    if (!self->GetSize().isValidPos(hex)) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    return self->IsScrollBlock(hex);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid)
 {
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(pid);

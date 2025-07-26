@@ -248,12 +248,15 @@ void MapManager::LoadFromResources()
 
                 // Block around scroll blocks
                 if (item->GetScrollBlock()) {
+                    auto& static_field = static_map->HexField->GetCellForWriting(hex);
+                    static_field.ScrollBlock = true;
+
                     for (uint8 k = 0; k < GameSettings::MAP_DIR_COUNT; k++) {
                         auto scroll_hex = hex;
 
                         if (GeometryHelper::MoveHexByDir(scroll_hex, k, map_size)) {
-                            auto& static_field = static_map->HexField->GetCellForWriting(scroll_hex);
-                            static_field.MoveBlocked = true;
+                            auto& static_field2 = static_map->HexField->GetCellForWriting(scroll_hex);
+                            static_field2.MoveBlocked = true;
                         }
                     }
                 }
