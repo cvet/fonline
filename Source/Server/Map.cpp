@@ -952,4 +952,13 @@ auto Map::GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&
     return static_field.TriggerItems;
 }
 
+auto Map::IsScrollBlock(mpos hex) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+
+    return static_field.ScrollBlock;
+}
+
 FO_END_NAMESPACE();

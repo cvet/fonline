@@ -3525,10 +3525,6 @@ static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (x < 0 || x > 0xFFFF || y < 0 || y > 0xFFFF) {
-        throw ScriptException("Invalid mpos values", x, y);
-    }
-
     new (self) mpos {numeric_cast<int16>(x), numeric_cast<int16>(y)};
 }
 

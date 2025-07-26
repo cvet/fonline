@@ -36,6 +36,32 @@ class SimpleTracer : ITraceContext
     }
 };
 
+class MapBorderTracer : LineTracer::ITraceContext
+{
+    mpos ResultHex;
+    int ResultDist;
+
+    void StartExec(Map map, mpos fromHex, mpos toHex, int maxDist) override
+    {
+        ResultHex = fromHex;
+    }
+
+    void FinishExec(Map map, int resultDist) override
+    {
+        ResultDist = resultDist;
+    }
+
+    bool Exec(Map map, mpos hex) override
+    {
+        if (map.IsScrollBlock(hex)) {
+            return true;
+        }
+
+        ResultHex = hex;
+        return false;
+    }
+};
+
 const float SQRT3T2_FLOAT = 3.4641016151;
 const float SQRT3_FLOAT = 1.732050807568877;
 const float BIAS_FLOAT = 0.02;
@@ -90,8 +116,8 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
     float sy = float(fromHex.y);
     float tx = float(toHex.x);
     float ty = float(toHex.y);
-    float txOdd = float(toHex.x % 2);
-    float sxOdd = float(fromHex.x % 2);
+    float txOdd = float(Math::Abs(toHex.x % 2));
+    float sxOdd = float(Math::Abs(fromHex.x % 2));
 
     float xStart = sx * 3.0 + BIAS_FLOAT;
     float yStart = sy * SQRT3T2_FLOAT - sxOdd * SQRT3_FLOAT + BIAS_FLOAT;
