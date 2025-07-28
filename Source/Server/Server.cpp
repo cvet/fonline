@@ -1129,6 +1129,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     switch (cmd) {
     case CMD_EXIT: {
         player->GetConnection()->GracefulDisconnect();
+        logcb("Done");
     } break;
     case CMD_MYINFO: {
         string istr = strex("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}", player_cr->GetName(), player_cr->GetId());
@@ -1231,6 +1232,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     } break;
     case CMD_TOGLOBAL: {
         MapMngr.TransitToGlobal(player_cr, {});
+        logcb("Done");
     } break;
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();

@@ -82,7 +82,6 @@ void ReleaseMouse()
     }
 }
 
-// //////////////////////////////////////////////////////////////////////////////////////////////////
 // Mouse behaviours. Button states look in ClientCore.fos, Mouse buttons.
 // Return true to disable engine events.
 void OnMouseDown(MouseButton button) // Engine callback
@@ -110,7 +109,6 @@ void OnMouseMove(ipos offset) // Engine callback
     Gui::EngineCallback_MouseMove(offset);
 }
 
-// //////////////////////////////////////////////////////////////////////////////////////////////////
 // Keyboard behaviours. Key codes look in ClientCore.fos, DirectInput keyboard scan codes.
 // Return true to disable engine events.
 void OnKeyDown(KeyCode key, string text) // Engine callback
@@ -148,7 +146,6 @@ void OnKeyUp(KeyCode key) // Engine callback
     Gui::EngineCallback_KeyUp(key);
 }
 
-// //////////////////////////////////////////////////////////////////////////////////////////////////
 // Called on mouse/keyboard input lost (alt-tab, minimize, lost focus).
 void OnInputLost() // Engine callback
 {
