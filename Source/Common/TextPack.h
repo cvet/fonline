@@ -45,8 +45,8 @@ FO_DECLARE_EXCEPTION(LanguagePackException);
 enum class TextPackName : uint8
 {
     None = 0,
-    Game = 1,
-    Items = 3,
+    Items = 2,
+    Critters = 3,
     Maps = 4,
     Locations = 5,
     Protos = 6,

@@ -371,6 +371,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         };
 
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Item")], TextPackName::Items);
+        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Critter")], TextPackName::Critters);
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Map")], TextPackName::Maps);
         fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Location")], TextPackName::Locations);
 
