@@ -492,6 +492,24 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterProperty property
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, CritterFindType findType)
+{
+    if (!self->GetSize().isValidPos(hex)) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    vector<Critter*> critters = self->GetCritters(hex, findType);
+
+    std::ranges::stable_sort(critters, [hex](const Critter* cr1, const Critter* cr2) {
+        const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        return dist1 < dist2;
+    });
+
+    return critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, int32 radius, CritterFindType findType)
 {
     if (!self->GetSize().isValidPos(hex)) {
