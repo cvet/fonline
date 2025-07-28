@@ -380,8 +380,9 @@ LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resol
     FO_STACK_TRACE_ENTRY();
 
     _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
-    _textPacks[static_cast<size_t>(TextPackName::Game)] = SafeAlloc::MakeUnique<TextPack>();
     _textPacks[static_cast<size_t>(TextPackName::Items)] = SafeAlloc::MakeUnique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Critters)] = SafeAlloc::MakeUnique<TextPack>();
+    _textPacks[static_cast<size_t>(TextPackName::Maps)] = SafeAlloc::MakeUnique<TextPack>();
     _textPacks[static_cast<size_t>(TextPackName::Locations)] = SafeAlloc::MakeUnique<TextPack>();
 }
 
@@ -459,10 +460,6 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
                 throw LanguagePackException("Invalid binary text file", text_file.GetPath());
             }
         }
-    }
-
-    if (GetTextPack(TextPackName::Game).GetSize() == 0) {
-        throw LanguagePackException("Unable to load game texts from file", _langName);
     }
 }
 
