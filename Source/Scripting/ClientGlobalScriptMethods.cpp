@@ -1510,19 +1510,19 @@ FO_SCRIPT_API void Client_Game_Disconnect(FOClient* client)
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_BuiltInCommand(FOClient* client, string_view command)
 {
-    string result;
+    string error;
 
     if (!PackNetCommand(
             command, &client->GetConnection().OutBuf,
-            [&result](string_view s) {
-                result += s;
-                result += "\n";
+            [&error](string_view s) {
+                error += s;
+                error += "\n";
             },
             client->Hashes)) {
         return "Unknown command";
     }
 
-    return result;
+    return strex(error).trim();
 }
 
 ///@ ExportMethod
