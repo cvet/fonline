@@ -383,7 +383,7 @@ void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, boo
     FO_STACK_TRACE_ENTRY();
 
     if (!push_back || _screenFadingEffects.empty()) {
-        _screenFadingEffects.push_back({GameTime.GetFrameTime(), time, from_color, to_color});
+        _screenFadingEffects.push_back({.BeginTime = GameTime.GetFrameTime(), .Duration = time, .StartColor = from_color, .EndColor = to_color});
     }
     else {
         nanotime last_tick;
@@ -394,7 +394,7 @@ void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, boo
             }
         }
 
-        _screenFadingEffects.push_back({last_tick, time, from_color, to_color});
+        _screenFadingEffects.push_back({.BeginTime = last_tick, .Duration = time, .StartColor = from_color, .EndColor = to_color});
     }
 }
 
@@ -1114,7 +1114,7 @@ void FOClient::Net_OnCritterAction()
     }
 
     if (_curMap == nullptr) {
-        BreakIntoDebugger();
+        // Todo: actions on global map
         return;
     }
 
@@ -1305,12 +1305,14 @@ void FOClient::Net_OnCritterAttachments()
     const auto attached_critters_count = _conn.InBuf.Read<uint16>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
+
     for (uint16 i = 0; i < attached_critters_count; i++) {
         attached_critters[i] = _conn.InBuf.Read<ident_t>();
     }
 
     if (_curMap != nullptr) {
         auto* cr = _curMap->GetCritter(cr_id);
+
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -1339,6 +1341,7 @@ void FOClient::Net_OnCritterAttachments()
     }
     else {
         auto* cr = GetGlobalMapCritter(cr_id);
+
         if (cr == nullptr) {
             BreakIntoDebugger();
             return;
@@ -2135,7 +2138,8 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-            const auto* cr = _curMap->GetCritter(item->GetCritterId());
+            const auto* cr = _curMap ? _curMap->GetCritter(item->GetCritterId()) : GetGlobalMapCritter(item->GetCritterId());
+
             if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
@@ -2447,8 +2451,8 @@ void FOClient::LmapPrepareMap()
 
             if (const auto* cr = _curMap->GetNonDeadCritter(hex2); cr != nullptr) {
                 cur_color = cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0};
-                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, cur_color});
-                _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, .PointColor = cur_color});
+                _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, .PointColor = cur_color});
             }
             else if (field.Flags.HasWall || field.Flags.HasScenery) {
                 if (field.Flags.ScrollBlock) {
@@ -2467,8 +2471,8 @@ void FOClient::LmapPrepareMap()
                 cur_color.comp.a = 0x22;
             }
 
-            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x, _lmapWMap.y + pix_y}, cur_color});
-            _lmapPrepPix.emplace_back(PrimitivePoint {{_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x, _lmapWMap.y + pix_y}, .PointColor = cur_color});
+            _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, .PointColor = cur_color});
         }
 
         pix_x -= _lmapZoom;
@@ -2491,7 +2495,7 @@ void FOClient::DestroyInnerEntities()
     FO_STACK_TRACE_ENTRY();
 
     if (HasInnerEntities()) {
-        for (auto&& [entry, entities] : GetInnerEntities()) {
+        for (auto& entities : GetInnerEntities() | std::views::values) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
                 FO_RUNTIME_ASSERT(custom_entity);
