@@ -298,6 +298,8 @@ public:
 
     ~SCRIPT_BACKEND_CLASS() override
     {
+        Engine = nullptr;
+
         if (ASEngine != nullptr) {
             ASEngine->ShutDownAndRelease();
         }
