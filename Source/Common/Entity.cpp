@@ -52,12 +52,16 @@ void Entity::AddRef() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_STRONG_ASSERT(_refCounter > 0);
+
     ++_refCounter;
 }
 
 void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_refCounter > 0);
 
     if (--_refCounter == 0) {
         delete this;

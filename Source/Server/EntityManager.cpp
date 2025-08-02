@@ -1218,7 +1218,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             view_callback(cr->GetPlayer(), true);
 
             if (derived_access == EntityHolderEntryAccess::Public) {
-                for (auto* another_cr : cr->VisCr) {
+                for (auto* another_cr : cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any)) {
                     view_callback(another_cr->GetPlayer(), false);
                 }
             }
@@ -1227,7 +1227,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             view_callback(player, true);
         }
         else if (const auto* game = dynamic_cast<FOServer*>(holder); game != nullptr) {
-            for (auto&& [id, game_player] : GetPlayers()) {
+            for (auto* game_player : GetPlayers() | std::views::values) {
                 view_callback(game_player, false);
             }
         }
@@ -1252,7 +1252,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
                 if (derived_access == EntityHolderEntryAccess::Public) {
                     if (auto* item_map = GetMap(item->GetMapId()); item_map != nullptr) {
                         for (auto* map_cr : item_map->GetPlayerCritters()) {
-                            if (map_cr->VisItem.count(item->GetId()) != 0) {
+                            if (map_cr->IsSeeItem(item->GetId())) {
                                 view_callback(map_cr->GetPlayer(), false);
                             }
                         }

@@ -1692,14 +1692,14 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         // Remove entities diff
         cr->Send_RemoveCritter(prev_cr);
 
-        for (const auto* visible_cr : prev_cr->VisCrSelf) {
-            if (cr->VisCrSelfMap.count(visible_cr->GetId()) == 0) {
+        for (const auto* visible_cr : prev_cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
+            if (!cr->IsSeeCritter(visible_cr->GetId())) {
                 cr->Send_RemoveCritter(visible_cr);
             }
         }
 
-        for (const auto item_id : prev_cr->VisItem) {
-            if (cr->VisItem.count(item_id) == 0) {
+        for (const auto item_id : prev_cr->GetVisibleItems()) {
+            if (!cr->IsSeeItem(item_id)) {
                 if (const auto* item = EntityMngr.GetItem(item_id); item != nullptr) {
                     cr->Send_RemoveItemFromMap(item);
                 }
@@ -1715,9 +1715,7 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_AddCritter(cr);
 
     if (map == nullptr) {
-        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
-
-        for (const auto* group_cr : *cr->GlobalMapGroup) {
+        for (const auto* group_cr : cr->GetGlobalMapGroup()) {
             if (group_cr != cr) {
                 cr->Send_AddCritter(group_cr);
             }
@@ -1725,8 +1723,8 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     }
     else {
         // Send current critters
-        for (const auto* visible_cr : cr->VisCrSelf) {
-            if (same_map && prev_cr->VisCrSelfMap.count(visible_cr->GetId()) != 0) {
+        for (const auto* visible_cr : cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
+            if (same_map && prev_cr->IsSeeCritter(visible_cr->GetId())) {
                 continue;
             }
 
@@ -1734,8 +1732,8 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         }
 
         // Send current items on map
-        for (const auto item_id : cr->VisItem) {
-            if (same_map && prev_cr->VisItem.count(item_id) != 0) {
+        for (const auto item_id : cr->GetVisibleItems()) {
+            if (same_map && prev_cr->IsSeeItem(item_id)) {
                 continue;
             }
 
@@ -2948,9 +2946,9 @@ void FOServer::ProcessCritterMoving(Critter* cr)
         bool need_find_path = !cr->IsMoving();
 
         if (!need_find_path && cr->TargetMoving.TargId) {
-            const auto* targ = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
+            const auto* target = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
 
-            if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHex(), cr->TargetMoving.TargHex, 0)) {
+            if (target != nullptr && !GeometryHelper::CheckDist(target->GetHex(), cr->TargetMoving.TargHex, 0)) {
                 need_find_path = true;
             }
         }
@@ -2962,17 +2960,17 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             Critter* trace_cr;
 
             if (cr->TargetMoving.TargId) {
-                Critter* targ = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
+                Critter* target = cr->GetCritter(cr->TargetMoving.TargId, CritterSeeType::WhoISee);
 
-                if (targ == nullptr) {
+                if (target == nullptr) {
                     cr->TargetMoving.State = MovingState::TargetNotFound;
                     return;
                 }
 
-                hex = targ->GetHex();
+                hex = target->GetHex();
                 cut = cr->TargetMoving.Cut;
                 trace_dist = cr->TargetMoving.TraceDist;
-                trace_cr = targ;
+                trace_cr = target;
 
                 cr->TargetMoving.TargHex = hex;
             }

@@ -1290,7 +1290,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<in
             map->AddCritterToField(cr);
             cr->Send_Teleport(cr, start_hex);
             cr->Broadcast_Teleport(start_hex);
-            cr->ClearVisible();
+            cr->ClearVisibleEnitites();
             cr->Send_Moving(cr);
 
             ProcessVisibleCritters(cr);
@@ -1330,7 +1330,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<in
         cr->Send_AddCritter(cr);
 
         if (map == nullptr) {
-            for (const auto* group_cr : *cr->GlobalMapGroup) {
+            for (const auto* group_cr : cr->GetGlobalMapGroup()) {
                 if (group_cr != cr) {
                     cr->Send_AddCritter(group_cr);
                 }
@@ -1405,9 +1405,10 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
         _engine->OnMapCritterIn.Fire(map, cr);
     }
     else {
-        FO_RUNTIME_ASSERT(!cr->GlobalMapGroup);
+        auto& cr_group = cr->GetRawGlobalMapGroup();
+        FO_RUNTIME_ASSERT(!cr_group);
 
-        const auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : nullptr;
+        auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : nullptr;
 
         cr->SetMapId({});
 
@@ -1416,21 +1417,22 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
             _engine->SetLastGlobalMapTripId(trip_id);
             cr->SetGlobalMapTripId(trip_id);
 
-            cr->GlobalMapGroup = SafeAlloc::MakeShared<vector<Critter*>>();
+            cr_group = SafeAlloc::MakeShared<vector<Critter*>>();
         }
         else {
-            FO_RUNTIME_ASSERT(global_cr->GlobalMapGroup);
+            const auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
+            FO_RUNTIME_ASSERT(global_cr_group);
 
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
-            for (auto* group_cr : *global_cr->GlobalMapGroup) {
+            for (auto* group_cr : *global_cr_group) {
                 group_cr->Send_AddCritter(cr);
             }
 
-            cr->GlobalMapGroup = global_cr->GlobalMapGroup;
+            cr_group = global_cr_group;
         }
 
-        vec_add_unique_value(*cr->GlobalMapGroup, cr);
+        vec_add_unique_value(*cr_group, cr);
 
         _engine->OnGlobalMapCritterIn.Fire(cr);
     }
@@ -1450,11 +1452,11 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
         _engine->OnMapCritterOut.Fire(map, cr);
 
-        for (auto* other : copy_hold_ref(cr->VisCr)) {
+        for (auto* other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
             other->OnCritterDisappeared.Fire(cr);
         }
 
-        cr->ClearVisible();
+        cr->ClearVisibleEnitites();
         map->RemoveCritter(cr);
         cr->SetMapId({});
 
@@ -1466,21 +1468,21 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     }
     else {
         FO_RUNTIME_ASSERT(!cr->GetMapId());
-        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
+        auto& cr_group = cr->GetRawGlobalMapGroup();
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
 
         cr->SetGlobalMapTripId({});
 
-        vec_remove_unique_value(*cr->GlobalMapGroup, cr);
+        vec_remove_unique_value(*cr_group, cr);
 
-        if (!cr->GlobalMapGroup->empty()) {
-            for (auto* group_cr : *cr->GlobalMapGroup) {
+        if (!cr_group->empty()) {
+            for (auto* group_cr : *cr_group) {
                 group_cr->Send_RemoveCritter(cr);
             }
         }
 
-        cr->GlobalMapGroup.reset();
+        cr_group.reset();
     }
 }
 
@@ -1503,7 +1505,7 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
+        FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
     }
 }
 
@@ -1542,13 +1544,13 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
     }
 
     if (is_see) {
-        if (target->AddCrIntoVisVec(cr)) {
+        if (target->AddVisibleCritter(cr)) {
             cr->Send_AddCritter(target);
             cr->OnCritterAppeared.Fire(target);
         }
     }
     else {
-        if (target->DelCrFromVisVec(cr)) {
+        if (target->RemoveVisibleCritter(cr)) {
             cr->Send_RemoveCritter(target);
             cr->OnCritterDisappeared.Fire(target);
         }
@@ -1561,12 +1563,12 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
 
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {
-            if (cr->AddCrIntoVisSet1(target->GetId())) {
+            if (cr->AddCrIntoVisGroup1(target->GetId())) {
                 cr->OnCritterAppearedDist1.Fire(target);
             }
         }
         else {
-            if (cr->DelCrFromVisSet1(target->GetId())) {
+            if (cr->RemoveCrFromVisGroup1(target->GetId())) {
                 cr->OnCritterDisappearedDist1.Fire(target);
             }
         }
@@ -1574,12 +1576,12 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
 
     if (show_cr_dist2 != 0) {
         if (show_cr_dist2 >= dist && is_see) {
-            if (cr->AddCrIntoVisSet2(target->GetId())) {
+            if (cr->AddCrIntoVisGroup2(target->GetId())) {
                 cr->OnCritterAppearedDist2.Fire(target);
             }
         }
         else {
-            if (cr->DelCrFromVisSet2(target->GetId())) {
+            if (cr->RemoveCrFromVisGroup2(target->GetId())) {
                 cr->OnCritterDisappearedDist2.Fire(target);
             }
         }
@@ -1587,12 +1589,12 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
 
     if (show_cr_dist3 != 0) {
         if (show_cr_dist3 >= dist && is_see) {
-            if (cr->AddCrIntoVisSet3(target->GetId())) {
+            if (cr->AddCrIntoVisGroup3(target->GetId())) {
                 cr->OnCritterAppearedDist3.Fire(target);
             }
         }
         else {
-            if (cr->DelCrFromVisSet3(target->GetId())) {
+            if (cr->RemoveCrFromVisGroup3(target->GetId())) {
                 cr->OnCritterDisappearedDist3.Fire(target);
             }
         }
@@ -1713,7 +1715,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
         }
 
         if (item->GetAlwaysView()) {
-            if (cr->AddIdVisItem(item->GetId())) {
+            if (cr->AddVisibleItem(item->GetId())) {
                 cr->Send_AddItemOnMap(item);
                 cr->OnItemOnMapAppeared.Fire(item, nullptr);
             }
@@ -1735,13 +1737,13 @@ void MapManager::ProcessVisibleItems(Critter* cr)
             }
 
             if (allowed) {
-                if (cr->AddIdVisItem(item->GetId())) {
+                if (cr->AddVisibleItem(item->GetId())) {
                     cr->Send_AddItemOnMap(item);
                     cr->OnItemOnMapAppeared.Fire(item, nullptr);
                 }
             }
             else {
-                if (cr->DelIdVisItem(item->GetId())) {
+                if (cr->RemoveVisibleItem(item->GetId())) {
                     cr->Send_RemoveItemFromMap(item);
                     cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }

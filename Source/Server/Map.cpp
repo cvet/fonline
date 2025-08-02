@@ -267,7 +267,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
                 }
             }
 
-            cr->AddIdVisItem(item->GetId());
+            cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
@@ -346,7 +346,7 @@ void Map::RemoveItem(ident_t item_id)
             continue;
         }
 
-        if (cr->DelIdVisItem(item->GetId())) {
+        if (cr->RemoveVisibleItem(item->GetId())) {
             cr->Send_RemoveItemFromMap(item);
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
@@ -367,7 +367,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
         for (auto* cr : copy_hold_ref(GetCritters())) {
-            if (cr->CountIdVisItem(item->GetId())) {
+            if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
                 cr->OnItemOnMapChanged.Fire(item);
             }
@@ -453,9 +453,9 @@ void Map::ChangeViewItem(Item* item)
             continue;
         }
 
-        if (cr->CountIdVisItem(item->GetId())) {
+        if (cr->CheckVisibleItem(item->GetId())) {
             if (item->GetHidden()) {
-                cr->DelIdVisItem(item->GetId());
+                cr->RemoveVisibleItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
@@ -476,7 +476,7 @@ void Map::ChangeViewItem(Item* item)
                 }
 
                 if (!allowed) {
-                    cr->DelIdVisItem(item->GetId());
+                    cr->RemoveVisibleItem(item->GetId());
                     cr->Send_RemoveItemFromMap(item);
                     cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
@@ -504,7 +504,7 @@ void Map::ChangeViewItem(Item* item)
                 }
             }
 
-            cr->AddIdVisItem(item->GetId());
+            cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
         }
@@ -554,7 +554,7 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     const auto& field = _hexField->GetCellForReading(hex);
 
     for (auto* item : field.Items) {
-        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CountIdVisItem(item->GetId())))) {
+        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
             return item;
         }
     }
