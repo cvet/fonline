@@ -94,28 +94,29 @@ public:
     [[nodiscard]] auto GetInvItems() noexcept -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetConstInvItems() const -> vector<const Item*> { return vec_static_cast<const Item*>(_invItems); }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
-    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) noexcept -> Item*;
-    [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) noexcept -> Item*;
-    [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
-    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const noexcept -> int32;
+    [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*;
+    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
-    [[nodiscard]] auto CountInvItems() const noexcept -> int32;
+    [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>& { return _visibleItems; }
+    [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool { return _visibleItems.contains(item_id); }
+    [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) const -> Critter*;
+    [[nodiscard]] auto GetGlobalMapGroup() -> const vector<Critter*>&;
+    [[nodiscard]] auto GetRawGlobalMapGroup() -> auto& { return _globalMapGroup; }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
-    auto AddCrIntoVisVec(Critter* add_cr) -> bool;
-    auto DelCrFromVisVec(Critter* del_cr) -> bool;
-    auto AddCrIntoVisSet1(ident_t cr_id) -> bool;
-    auto AddCrIntoVisSet2(ident_t cr_id) -> bool;
-    auto AddCrIntoVisSet3(ident_t cr_id) -> bool;
-    auto DelCrFromVisSet1(ident_t cr_id) -> bool;
-    auto DelCrFromVisSet2(ident_t cr_id) -> bool;
-    auto DelCrFromVisSet3(ident_t cr_id) -> bool;
-    auto AddIdVisItem(ident_t item_id) -> bool;
-    auto DelIdVisItem(ident_t item_id) -> bool;
-    auto CountIdVisItem(ident_t item_id) const -> bool;
+    auto AddVisibleCritter(Critter* cr) -> bool;
+    auto RemoveVisibleCritter(Critter* cr) -> bool;
+    auto AddCrIntoVisGroup1(ident_t cr_id) -> bool;
+    auto AddCrIntoVisGroup2(ident_t cr_id) -> bool;
+    auto AddCrIntoVisGroup3(ident_t cr_id) -> bool;
+    auto RemoveCrFromVisGroup1(ident_t cr_id) -> bool;
+    auto RemoveCrFromVisGroup2(ident_t cr_id) -> bool;
+    auto RemoveCrFromVisGroup3(ident_t cr_id) -> bool;
+    auto AddVisibleItem(ident_t item_id) -> bool;
+    auto RemoveVisibleItem(ident_t item_id) -> bool;
+    auto CheckVisibleItem(ident_t item_id) const -> bool;
 
     void MarkIsForPlayer();
     void AttachPlayer(Player* player);
@@ -124,7 +125,7 @@ public:
     void AttachToCritter(Critter* cr);
     void DetachFromCritter();
     void MoveAttachedCritters();
-    void ClearVisible();
+    void ClearVisibleEnitites();
     void SetItem(Item* item);
     void RemoveItem(Item* item);
     void ChangeDir(uint8 dir);
@@ -193,16 +194,6 @@ public:
 
     // Todo: incapsulate Critter data
     int32 LockMapTransfers {};
-    vector<Critter*> VisCr {};
-    vector<Critter*> VisCrSelf {};
-    unordered_map<ident_t, Critter*> VisCrMap {};
-    unordered_map<ident_t, Critter*> VisCrSelfMap {};
-    unordered_set<ident_t> VisCr1 {};
-    unordered_set<ident_t> VisCr2 {};
-    unordered_set<ident_t> VisCr3 {};
-    unordered_set<ident_t> VisItem {};
-
-    shared_ptr<vector<Critter*>> GlobalMapGroup {};
 
     ident_t ViewMapId {};
     hstring ViewMapPid {};
@@ -245,6 +236,16 @@ private:
     refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
     vector<Item*> _invItems {};
+
+    vector<Critter*> _visibleCrWhoSeeMe {};
+    vector<Critter*> _visibleCr {};
+    unordered_map<ident_t, Critter*> _visibleCrWhoSeeMeMap {};
+    unordered_map<ident_t, Critter*> _visibleCrMap {};
+    unordered_set<ident_t> _visibleCrGroup1 {};
+    unordered_set<ident_t> _visibleCrGroup2 {};
+    unordered_set<ident_t> _visibleCrGroup3 {};
+    unordered_set<ident_t> _visibleItems {};
+    shared_ptr<vector<Critter*>> _globalMapGroup {};
 };
 
 FO_END_NAMESPACE();

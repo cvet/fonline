@@ -219,14 +219,14 @@ void CritterManager::DestroyCritter(Critter* cr)
         cr->LockMapTransfers++;
         auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GlobalMapGroup || cr->HasItems() != 0 || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
+        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             if (cr->GetMapId()) {
                 auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
                 FO_RUNTIME_ASSERT(map);
                 _engine->MapMngr.RemoveCritterFromMap(cr, map);
             }
             else {
-                FO_RUNTIME_ASSERT(cr->GlobalMapGroup);
+                FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
                 _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
             }
 

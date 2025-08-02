@@ -301,33 +301,14 @@ FO_SCRIPT_API Critter* Server_Critter_GetCritter(Critter* self, ident_t id, Crit
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, CritterSeeType seeType, CritterFindType findType)
 {
-    vector<Critter*> critters = self->GetCritters(seeType, findType);
+    auto critters = self->GetCritters(seeType, findType);
 
-    std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
-        const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
-        return dist1 < dist2;
-    });
-
-    return critters;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetGlobalMapGroupCritters(Critter* self, CritterFindType findType)
-{
     if (self->GetMapId()) {
-        throw ScriptException("Critter is not on global map");
-    }
-
-    FO_RUNTIME_ASSERT(self->GlobalMapGroup);
-
-    vector<Critter*> critters;
-    critters.reserve(self->GlobalMapGroup->size());
-
-    for (auto* cr : *self->GlobalMapGroup) {
-        if (cr->CheckFind(findType)) {
-            critters.emplace_back(cr);
-        }
+        std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
+            const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+            const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+            return dist1 < dist2;
+        });
     }
 
     return critters;
@@ -344,9 +325,7 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
         return true;
     }
 
-    const auto& critters = self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup;
-
-    return std::ranges::find(critters, cr) != critters.end();
+    return self->IsSeeCritter(cr->GetId());
 }
 
 ///@ ExportMethod
@@ -360,8 +339,7 @@ FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
         return true;
     }
 
-    const auto& critters = self->GetMapId() ? self->VisCr : *self->GlobalMapGroup;
-    return std::ranges::find(critters, cr) != critters.end();
+    return cr->IsSeeCritter(self->GetId());
 }
 
 ///@ ExportMethod
@@ -371,13 +349,13 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
         throw ScriptException("Item arg is null");
     }
 
-    return self->CountIdVisItem(item->GetId());
+    return self->CheckVisibleItem(item->GetId());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, hstring protoId)
 {
-    return self->CountInvItemPid(protoId);
+    return self->CountInvItemByPid(protoId);
 }
 
 ///@ ExportMethod
@@ -387,7 +365,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
         throw ScriptException("Proto id arg is zero");
     }
 
-    const auto count = self->CountInvItemPid(pid);
+    const auto count = self->CountInvItemByPid(pid);
 
     if (count == 0) {
         return;
@@ -556,7 +534,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
     else {
-        auto* item_swap = self->GetInvItemSlot(slot);
+        auto* item_swap = self->GetInvItemBySlot(slot);
         const auto from_slot = item->GetCritterSlot();
 
         item->SetCritterSlot(slot);

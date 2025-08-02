@@ -390,7 +390,7 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, int32 count)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cur_count = cr->CountInvItemPid(pid);
+    const auto cur_count = cr->CountInvItemByPid(pid);
 
     if (cur_count > count) {
         SubItemCritter(cr, pid, cur_count - count);
