@@ -30,7 +30,9 @@ class Sprite
 
     ~Sprite()
     {
-        Unload();
+        if (Game != null) {
+            Unload();
+        }
     }
 
     bool Load(string name, bool separateLoad = false)
