@@ -3796,7 +3796,7 @@ static void Game_TryParseEnum(asIScriptGeneric* gen)
     int32 enum_value = enum_info->Engine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
 
     if (!failed) {
-        *static_cast<int32*>(gen->GetAddressOfArg(1)) = enum_value;
+        *static_cast<int32*>(gen->GetArgAddress(1)) = enum_value;
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
