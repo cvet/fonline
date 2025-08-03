@@ -894,6 +894,7 @@ def parseTags():
                 assert entity in gameEntities, entity
                 
                 name = tok[1]
+                assert name[0] != '_', 'Property component ' + name + ' can\'t start with "_"'
                 assert (entity, name) not in propertyComponents, entity + ' component ' + name + ' already added'
                 propertyComponents.add((entity, name))
                 
@@ -938,6 +939,7 @@ def parseTags():
                         name = tok[3]
                         flags = tok[4:]
                 
+                assert name[0] != '_', 'Property ' + name + ' can\'t start with "_"'
                 if comp:
                     assert (entity, comp) in propertyComponents, 'Entity ' + entity + ' does not has component ' + comp
                 
