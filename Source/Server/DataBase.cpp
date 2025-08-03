@@ -180,34 +180,39 @@ void DataBase::ClearChanges() noexcept
     _impl->ClearChanges();
 }
 
-static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
+static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson, char escape_dot)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto key_buf = strex(key);
+    const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
+    const char* key_data = escaped_key.data();
+    const auto key_len = numeric_cast<int32>(escaped_key.length());
+
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson, key.data(), numeric_cast<int32>(key.length()), value.AsInt64())) {
+        if (!bson_append_int64(bson, key_data, key_len, value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Double) {
-        if (!bson_append_double(bson, key.data(), numeric_cast<int32>(key.length()), value.AsDouble())) {
+        if (!bson_append_double(bson, key_data, key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson, key.data(), numeric_cast<int32>(key.length()), value.AsBool())) {
+        if (!bson_append_bool(bson, key_data, key_len, value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key.data(), numeric_cast<int32>(key.length()), value.AsString().c_str(), numeric_cast<int32>(value.AsString().length()))) {
+        if (!bson_append_utf8(bson, key_data, key_len, value.AsString().c_str(), numeric_cast<int32>(value.AsString().length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_arr)) {
+        if (!bson_append_array_begin(bson, key_data, key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
@@ -216,7 +221,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
 
         for (const auto& arr_entry : arr) {
             string arr_key = strex("{}", arr_index++);
-            ValueToBson(arr_key, arr_entry, &bson_arr);
+            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
         }
 
         if (!bson_append_array_end(bson, &bson_arr)) {
@@ -226,14 +231,14 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson, key.data(), numeric_cast<int32>(key.length()), &bson_doc)) {
+        if (!bson_append_document_begin(bson, key_data, key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
         const auto& dict = value.AsDict();
 
         for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, &bson_doc);
+            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
         }
 
         if (!bson_append_document_end(bson, &bson_doc)) {
@@ -245,16 +250,16 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     }
 }
 
-static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
+static void DocumentToBson(const AnyData::Document& doc, bson_t* bson, char escape_dot = 0)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        ValueToBson(doc_key, doc_value, bson);
+        ValueToBson(doc_key, doc_value, bson, escape_dot);
     }
 }
 
-static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
+static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -285,7 +290,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         AnyData::Array arr;
 
         while (bson_iter_next(&arr_iter)) {
-            auto arr_entry = BsonToValue(&arr_iter);
+            auto arr_entry = BsonToValue(&arr_iter, escape_dot);
             arr.EmplaceBack(std::move(arr_entry));
         }
 
@@ -302,8 +307,9 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
-            auto dict_value = BsonToValue(&doc_iter);
-            dict.Emplace(string(key), std::move(dict_value));
+            auto unescaped_key = escape_dot != 0 ? strex(key).replace(escape_dot, '.') : string(key);
+            auto dict_value = BsonToValue(&doc_iter, escape_dot);
+            dict.Emplace(std::move(unescaped_key), std::move(dict_value));
         }
 
         return std::move(dict);
@@ -313,7 +319,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
     }
 }
 
-static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
+static void BsonToDocument(const bson_t* bson, AnyData::Document& doc, char escape_dot = 0)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -330,8 +336,9 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
             continue;
         }
 
-        auto value = BsonToValue(&iter);
-        doc.Emplace(string(key), std::move(value));
+        auto value = BsonToValue(&iter, escape_dot);
+        auto unescaped_key = escape_dot != 0 ? strex(key).replace(escape_dot, '.') : string(key);
+        doc.Emplace(std::move(unescaped_key), std::move(value));
     }
 }
 
@@ -733,7 +740,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto&& [key, value] : _collections) {
+        for (auto* value : _collections | std::views::values) {
             unqlite_close(value);
         }
     }
@@ -932,7 +939,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto&& [key, value] : _collections) {
+        for (auto* value : _collections | std::views::values) {
             const auto commit = unqlite_commit(value);
 
             if (commit != UNQLITE_OK) {
@@ -976,6 +983,8 @@ private:
 class DbMongo final : public DataBaseImpl
 {
 public:
+    static constexpr char ESCAPE_DOT = ':';
+
     DbMongo() = delete;
     DbMongo(const DbMongo&) = delete;
     DbMongo(DbMongo&&) noexcept = delete;
@@ -1028,7 +1037,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto&& [key, value] : _collections) {
+        for (auto* value : _collections | std::views::values) {
             mongoc_collection_destroy(value);
         }
 
@@ -1137,7 +1146,7 @@ protected:
         }
 
         AnyData::Document doc;
-        BsonToDocument(bson, doc);
+        BsonToDocument(bson, doc, ESCAPE_DOT);
 
         mongoc_cursor_destroy(cursor);
         bson_destroy(&filter);
@@ -1166,7 +1175,7 @@ protected:
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
-        DocumentToBson(doc, &insert);
+        DocumentToBson(doc, &insert, ESCAPE_DOT);
 
         bson_error_t error;
 
@@ -1207,7 +1216,7 @@ protected:
             throw DataBaseException("DbMongo bson_append_document_begin", collection_name, id);
         }
 
-        DocumentToBson(doc, &update_set);
+        DocumentToBson(doc, &update_set, ESCAPE_DOT);
 
         if (!bson_append_document_end(&update, &update_set)) {
             throw DataBaseException("DbMongo bson_append_document_end", collection_name, id);
@@ -1215,8 +1224,8 @@ protected:
 
         bson_error_t error;
 
-        if (!mongoc_collection_update(collection, MONGOC_UPDATE_NONE, &selector, &update, nullptr, &error)) {
-            throw DataBaseException("DbMongo mongoc_collection_update", collection_name, id, error.message);
+        if (!mongoc_collection_update_one(collection, &selector, &update, nullptr, nullptr, &error)) {
+            throw DataBaseException("DbMongo mongoc_collection_update_one", collection_name, id, error.message);
         }
 
         bson_destroy(&selector);
@@ -1244,8 +1253,8 @@ protected:
 
         bson_error_t error;
 
-        if (!mongoc_collection_remove(collection, MONGOC_REMOVE_SINGLE_REMOVE, &selector, nullptr, &error)) {
-            throw DataBaseException("DbMongo mongoc_collection_remove", collection_name, id, error.message);
+        if (!mongoc_collection_delete_one(collection, &selector, nullptr, nullptr, &error)) {
+            throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
         }
 
         bson_destroy(&selector);
@@ -1317,7 +1326,7 @@ public:
         vector<ident_t> ids;
         ids.reserve(collection.size());
 
-        for (auto&& [key, value] : collection) {
+        for (const auto key : collection | std::views::keys) {
             ids.emplace_back(key);
         }
 

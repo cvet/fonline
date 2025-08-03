@@ -346,9 +346,14 @@ auto strex::replace(char from, char to) -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ownStorage();
+    const auto pos = _sv.find(from);
 
-    std::ranges::replace(_s, from, to);
+    if (pos != string::npos) {
+        ownStorage();
+
+        auto range = std::ranges::subrange(_s.data() + pos, _s.data() + _s.length());
+        std::ranges::replace(range, from, to);
+    }
 
     return *this;
 }
@@ -369,16 +374,19 @@ auto strex::replace(string_view from, string_view to) -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ownStorage();
+    auto pos = _sv.find(from);
 
-    size_t pos = 0;
+    if (pos != std::string::npos) {
+        ownStorage();
 
-    while ((pos = _s.find(from, pos)) != std::string::npos) {
-        _s.replace(pos, from.length(), to);
-        pos += to.length();
+        while (pos != std::string::npos) {
+            _s.replace(pos, from.length(), to);
+            pos += to.length();
+            pos = _s.find(from, pos);
+        }
+
+        _sv = _s;
     }
-
-    _sv = _s;
 
     return *this;
 }
