@@ -124,7 +124,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             Logging->LogFunctionsInProcess = true;
             auto reset_in_process = ScopeCallback([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
-            for (auto&& [func_name, func] : Logging->LogFunctions) {
+            for (const auto& func : Logging->LogFunctions | std::views::values) {
                 func(result);
             }
         }
