@@ -924,17 +924,19 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity->GetId());
-
-    const auto it = _allEntities.find(entity->GetId());
-    FO_RUNTIME_ASSERT(it != _allEntities.end());
-    _allEntities.erase(it);
-
-    if (delete_from_db) {
-        _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
-    }
+    const auto entity_id = entity->GetId();
+    const auto type_name_plural = entity->GetTypeNamePlural();
+    FO_RUNTIME_ASSERT(entity_id);
 
     entity->SetId({});
+
+    const auto it = _allEntities.find(entity_id);
+    FO_RUNTIME_ASSERT(it != _allEntities.end());
+    _allEntities.erase(it); // Maybe last pointer to this entity
+
+    if (delete_from_db) {
+        _engine->DbStorage.Delete(type_name_plural, entity_id);
+    }
 }
 
 void EntityManager::DestroyEntity(Entity* entity)
