@@ -1573,7 +1573,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
     function<void(Entity*)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](Entity* holder) {
-        for (auto&& [entry, entities] : holder->GetInnerEntities()) {
+        for (auto& entities : holder->GetInnerEntities() | std::views::values) {
             for (auto& entity : entities) {
                 if (entity->HasInnerEntities()) {
                     unload_inner_entities(entity.get());
@@ -1582,8 +1582,8 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
                 auto* custom_entity = dynamic_cast<CustomEntity*>(entity.get());
                 FO_RUNTIME_ASSERT(custom_entity);
 
-                EntityMngr.UnregisterCustomEntity(custom_entity, false);
                 custom_entity->MarkAsDestroyed();
+                EntityMngr.UnregisterCustomEntity(custom_entity, false);
             }
         }
 
@@ -1611,8 +1611,8 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
             unload_inner_entities(item);
         }
 
-        EntityMngr.UnregisterItem(item, false);
         item->MarkAsDestroyed();
+        EntityMngr.UnregisterItem(item, false);
     };
 
     auto& inv_items = cr->GetRawInvItems();

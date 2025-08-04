@@ -95,32 +95,45 @@ inline void destroy_if_empty(unique_ptr<T>& ptr) noexcept
 
 // Ref holders
 template<typename T>
-class ref_hold_vector : public vector<T>
+class ref_hold_vector
 {
 public:
-    static_assert(!std::is_polymorphic_v<vector<T>>);
-    ref_hold_vector() noexcept = default;
+    explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
+
     ref_hold_vector(const ref_hold_vector&) = delete;
     ref_hold_vector(ref_hold_vector&&) noexcept = default;
     auto operator=(const ref_hold_vector&) -> ref_hold_vector& = delete;
     auto operator=(ref_hold_vector&&) noexcept -> ref_hold_vector& = delete;
+
+    [[nodiscard]] constexpr auto begin() noexcept { return _vec.begin(); }
+    [[nodiscard]] constexpr auto end() noexcept { return _vec.end(); }
+    [[nodiscard]] constexpr auto cbegin() const noexcept { return _vec.cbegin(); }
+    [[nodiscard]] constexpr auto cend() const noexcept { return _vec.cend(); }
+
     ~ref_hold_vector()
     {
-        for (auto&& ref : *this) {
+        for (auto&& ref : _vec) {
             ref->Release();
         }
     }
+
+    void add(const T& ref)
+    {
+        FO_RUNTIME_ASSERT(ref);
+        ref->AddRef();
+        _vec.emplace_back(ref);
+    }
+
+private:
+    vector<T> _vec {};
 };
 
 template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
 {
-    ref_hold_vector<T> ref_vec;
-    ref_vec.reserve(value.size());
+    auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
-        FO_RUNTIME_ASSERT(ref);
-        ref->AddRef();
-        ref_vec.emplace_back(ref);
+        ref_vec.add(ref);
     }
     return ref_vec;
 }
@@ -128,12 +141,9 @@ template<typename T>
 template<typename T, typename U>
 [[nodiscard]] constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vector<U>
 {
-    ref_hold_vector<U> ref_vec;
-    ref_vec.reserve(value.size());
-    for (auto&& [id, ref] : value) {
-        FO_RUNTIME_ASSERT(ref);
-        ref->AddRef();
-        ref_vec.emplace_back(ref);
+    auto ref_vec = ref_hold_vector<U>(value.size());
+    for (auto&& ref : value | std::views::values) {
+        ref_vec.add(ref);
     }
     return ref_vec;
 }
@@ -141,12 +151,9 @@ template<typename T, typename U>
 template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T>
 {
-    ref_hold_vector<T> ref_vec;
-    ref_vec.reserve(value.size());
+    auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
-        FO_RUNTIME_ASSERT(ref);
-        ref->AddRef();
-        ref_vec.emplace_back(ref);
+        ref_vec.add(ref);
     }
     return ref_vec;
 }
@@ -155,12 +162,9 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
 {
     static_assert(!std::is_const_v<T>);
-    ref_hold_vector<T*> ref_vec;
-    ref_vec.reserve(value.size());
+    auto ref_vec = ref_hold_vector<T*>(value.size());
     for (auto&& ref : value) {
-        FO_RUNTIME_ASSERT(ref);
-        ref->AddRef();
-        ref_vec.emplace_back(ref.get_no_const());
+        ref_vec.add(ref.get_no_const());
     }
     return ref_vec;
 }

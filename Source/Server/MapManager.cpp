@@ -385,11 +385,11 @@ void MapManager::DestroyMapContent(Map* map)
     for (InfinityLoopDetector detector; !map->_critters.empty() || !map->_items.empty(); detector.AddLoop()) {
         KickPlayersToGlobalMap(map);
 
-        for (auto* del_npc : copy(map->_nonPlayerCritters)) {
-            _engine->CrMngr.DestroyCritter(del_npc);
+        for (auto* cr : copy(map->_nonPlayerCritters)) {
+            _engine->CrMngr.DestroyCritter(cr);
         }
-        for (auto* del_item : copy(map->_items)) {
-            _engine->ItemMngr.DestroyItem(del_item);
+        for (auto* item : copy(map->_items)) {
+            _engine->ItemMngr.DestroyItem(item);
         }
     }
 
