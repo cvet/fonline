@@ -46,8 +46,6 @@
 
 FO_BEGIN_NAMESPACE();
 
-raw_ptr<Application> App;
-
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 
 // Todo: move all these statics to App class fields
@@ -95,106 +93,6 @@ static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
     const auto win_y = vp.y + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(App->Settings.ScreenHeight) * numeric_cast<float32>(vp.height));
 
     return {win_x, win_y};
-}
-
-// Web wrappers
-#if FO_WEB
-FO_END_NAMESPACE();
-extern "C"
-{
-    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
-    {
-        return FO_NAMESPACE App->Input.GetClipboardText().c_str();
-    }
-    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
-    {
-        FO_NAMESPACE App->Input.SetClipboardText(text);
-    }
-}
-FO_BEGIN_NAMESPACE();
-#endif
-
-void InitApp(int32 argc, char** argv, AppInitFlags flags)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Ensure that we call init only once
-    static std::once_flag once;
-    auto first_call = false;
-    std::call_once(once, [&first_call] { first_call = true; });
-
-    if (!first_call) {
-        throw AppInitException("InitApp must be called only once");
-    }
-
-    const auto need_fork = [&] {
-        for (int32 i = 0; i < argc; i++) {
-            if (string_view(argv[i]) == "--fork") {
-                return true;
-            }
-        }
-        return false;
-    };
-    if (need_fork()) {
-        Platform::ForkProcess();
-    }
-
-    CreateGlobalData();
-
-    SetExceptionCallback([flags](string_view message, string_view traceback, bool fatal_error) {
-        WriteLog(LogType::Error, "{}\n{}", message, traceback);
-
-        if (fatal_error) {
-            WriteLog(LogType::Error, "Shutdown!");
-        }
-
-        if (IsEnumSet(flags, AppInitFlags::ShowMessageOnException)) {
-            MessageBox::ShowErrorMessage(message, traceback, fatal_error);
-        }
-    });
-
-#if FO_TRACY
-    TracySetProgramName(FO_NICE_NAME);
-#endif
-
-#if !FO_WEB
-    if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
-    }
-    else {
-        LogToFile(strex("{}.log", FO_DEV_NAME));
-    }
-#endif
-
-    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
-        LogDisableTags();
-    }
-
-    WriteLog("Starting {}", FO_NICE_NAME);
-
-    App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
-
-    SetBadAllocCallback([] { App->RequestQuit(); });
-
-#if FO_WEB
-    // clang-format off
-    MAIN_THREAD_EM_ASM({
-        var canvas = document.querySelector(UTF8ToString($0));
-        if (canvas) {
-            canvas.addEventListener("copy", (event) => {
-                const text = _Emscripten_ClipboardGet();
-                event.clipboardData.setData("text/plain", UTF8ToString(text));
-                event.preventDefault();
-            });
-            canvas.addEventListener("paste", (event) => {
-                const text = event.clipboardData.getData('text/plain');
-                _Emscripten_ClipboardSet(text);
-                event.preventDefault();
-            });
-        }
-    }, WebCanvasId.c_str());
-    // clang-format on
-#endif
 }
 
 static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};

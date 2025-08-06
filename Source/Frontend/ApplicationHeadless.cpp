@@ -32,11 +32,8 @@
 //
 
 #include "Application.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE();
-
-raw_ptr<Application> App;
 
 static constexpr int32 MAX_ATLAS_WIDTH_ = 1024;
 static constexpr int32 MAX_ATLAS_HEIGHT_ = 1024;
@@ -46,79 +43,6 @@ const int32& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
 const int32& AppRender::MAX_BONES {MAX_BONES_};
 const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
-
-#if FO_LINUX || FO_MAC
-static void SignalHandler(int32 sig)
-{
-    std::signal(sig, SignalHandler);
-
-    App->RequestQuit();
-}
-#endif
-
-void InitApp(int32 argc, char** argv, AppInitFlags flags)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Ensure that we call init only once
-    static std::once_flag once;
-    auto first_call = false;
-    std::call_once(once, [&first_call] { first_call = true; });
-
-    if (!first_call) {
-        throw AppInitException("InitApp must be called only once");
-    }
-
-    const auto need_fork = [&] {
-        for (int32 i = 0; i < argc; i++) {
-            if (string_view(argv[i]) == "--fork") {
-                return true;
-            }
-        }
-        return false;
-    };
-    if (need_fork()) {
-        Platform::ForkProcess();
-    }
-
-    CreateGlobalData();
-
-    SetExceptionCallback([](string_view message, string_view traceback, bool fatal_error) {
-        WriteLog(LogType::Error, "{}\n{}", message, traceback);
-
-        if (fatal_error) {
-            WriteLog(LogType::Error, "Shutdown!");
-        }
-    });
-
-#if FO_TRACY
-    TracySetProgramName(FO_NICE_NAME);
-#endif
-
-#if !FO_WEB
-    if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
-    }
-    else {
-        LogToFile(strex("{}.log", FO_DEV_NAME));
-    }
-#endif
-
-    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
-        LogDisableTags();
-    }
-
-    WriteLog("Starting {}", FO_NICE_NAME);
-
-    App = SafeAlloc::MakeRaw<Application>(argc, argv, flags);
-
-    SetBadAllocCallback([] { App->RequestQuit(); });
-
-#if FO_LINUX || FO_MAC
-    std::signal(SIGINT, SignalHandler);
-    std::signal(SIGTERM, SignalHandler);
-#endif
-}
 
 Application::Application(int32 argc, char** argv, AppInitFlags flags) :
     Settings(argc, argv)
