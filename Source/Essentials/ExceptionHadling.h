@@ -163,18 +163,14 @@ private:
         FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
         return __VA_ARGS__; \
     }
-#else
-#define FO_RUNTIME_ASSERT(expr)
-#define FO_RUNTIME_ASSERT_STR(expr, str)
-#define FO_RUNTIME_VERIFY(expr, ...)
-#endif
-
-#if FO_DEBUG
 #define FO_STRONG_ASSERT(expr) \
     if (!(expr)) { \
         FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
     }
 #else
+#define FO_RUNTIME_ASSERT(expr)
+#define FO_RUNTIME_ASSERT_STR(expr, str)
+#define FO_RUNTIME_VERIFY(expr, ...)
 #define FO_STRONG_ASSERT(expr)
 #endif
 
