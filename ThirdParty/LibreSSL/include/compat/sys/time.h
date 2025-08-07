@@ -17,7 +17,8 @@ struct timeval {
 	long		tv_usec;
 };
 
-int gettimeofday(struct timeval *tp, void *tzp);
+struct timezone;
+int gettimeofday(struct timeval *tp, struct timezone *tzp); // (FOnline Patch)
 #else
 #include_next <sys/time.h>
 #endif
