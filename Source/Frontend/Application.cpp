@@ -73,8 +73,6 @@ const int32& AppRender::MAX_BONES {MaxBones};
 const int32 AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int32 AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
-[[maybe_unused]] static string_view_nt WebCanvasId = "#canvas";
-
 static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 {
     const auto vp = ActiveRenderer->GetViewPort();
@@ -123,7 +121,7 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
 
     if constexpr (FO_WEB) {
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
-        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebCanvasId.c_str());
+        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WEB_CANVAS_ID.c_str());
     }
 
     // Initialize input events

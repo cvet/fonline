@@ -247,6 +247,8 @@ struct InputEvent
     }
 };
 
+constexpr string_view_nt WEB_CANVAS_ID = "#canvas";
+
 class AppWindow final
 {
     friend class Application;
