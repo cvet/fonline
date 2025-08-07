@@ -553,20 +553,20 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
     FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
 
     const auto is_dict = prop->IsDict();
-    const auto is_array = prop->IsArray() || prop->IsDictOfArray() || prop->IsBaseTypeStruct();
+    const auto is_array = prop->IsArray() || prop->IsDictOfArray() || prop->IsBaseTypeComplexStruct();
 
     AnyData::ValueType value_type;
 
-    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeStruct()) {
+    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
         value_type = AnyData::ValueType::String;
     }
-    else if (prop->IsBaseTypeInt()) {
+    else if (prop->IsBaseTypeInt() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsInt)) {
         value_type = AnyData::ValueType::Int64;
     }
-    else if (prop->IsBaseTypeBool()) {
+    else if (prop->IsBaseTypeBool() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsBool)) {
         value_type = AnyData::ValueType::Bool;
     }
-    else if (prop->IsBaseTypeFloat()) {
+    else if (prop->IsBaseTypeFloat() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsFloat)) {
         value_type = AnyData::ValueType::Double;
     }
     else {

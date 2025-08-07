@@ -90,7 +90,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([this, health_info = GetHealthInfo(), write_health_file] {
+                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file] {
                             FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
                             string buf;
@@ -1115,7 +1115,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     FO_STACK_TRACE_ENTRY();
 
     SetLogCallback("Process_Command", logcb);
-    auto remove_log_callback = ScopeCallback([this]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
+    auto remove_log_callback = ScopeCallback([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
 
     const auto cmd = buf.Read<uint8>();
     auto* player_cr = player->GetControlledCritter();

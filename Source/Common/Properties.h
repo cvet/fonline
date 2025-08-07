@@ -157,8 +157,11 @@ public:
     [[nodiscard]] auto GetBaseTypeInfo() const noexcept -> const BaseTypeInfo& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> const string& { return _baseType.TypeName; }
     [[nodiscard]] auto GetBaseSize() const noexcept -> size_t { return _baseType.Size; }
-    [[nodiscard]] auto IsBaseTypeStruct() const noexcept -> bool { return _baseType.IsStruct; }
+    [[nodiscard]] auto IsBaseTypeSimpleStruct() const noexcept -> bool { return _baseType.IsSimpleStruct; }
+    [[nodiscard]] auto IsBaseTypeComplexStruct() const noexcept -> bool { return _baseType.IsComplexStruct; }
+    [[nodiscard]] auto IsBaseTypeStruct() const noexcept -> bool { return _baseType.IsSimpleStruct || _baseType.IsComplexStruct; }
     [[nodiscard]] auto GetBaseTypeLayout() const noexcept { return _baseType.StructLayout; }
+    [[nodiscard]] auto GetStructFirstType() const noexcept -> const BaseTypeInfo& { return _baseType.StructLayout->front().second; }
     [[nodiscard]] auto IsBaseTypePrimitive() const noexcept -> bool { return _baseType.IsPrimitive; }
     [[nodiscard]] auto IsBaseTypeInt() const noexcept -> bool { return _baseType.IsInt; }
     [[nodiscard]] auto IsBaseTypeSignedInt() const noexcept -> bool { return _baseType.IsSignedInt; }
