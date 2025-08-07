@@ -145,7 +145,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
                 event.preventDefault();
             });
         }
-    }, WebCanvasId.c_str());
+    }, WEB_CANVAS_ID.c_str());
     // clang-format on
 #endif
 }
