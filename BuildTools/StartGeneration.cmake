@@ -148,11 +148,12 @@ AddConfiguration(Debug_Profiling_Total Debug)
 AddConfiguration(Debug_Profiling_OnDemand Debug)
 AddConfiguration(Release_Ext Release)
 
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	AddConfiguration(Release_Debugging RelWithDebInfo)
+	AddConfiguration(San_Address RelWithDebInfo)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
 	AddConfiguration(San_Address RelWithDebInfo)
 	AddConfiguration(San_Memory RelWithDebInfo)
 	AddConfiguration(San_MemoryWithOrigins RelWithDebInfo)
@@ -200,12 +201,13 @@ set(expr_TracyEnabled $<OR:$<CONFIG:Profiling_Total>,$<CONFIG:Profiling_OnDemand
 set(expr_TracyOnDemand $<OR:$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_OnDemand>>)
 set(expr_StandaloneRpmallocEnabled $<NOT:${expr_TracyEnabled}>)
 
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	add_compile_options_C_CXX($<$<CONFIG:San_Address>:/fsanitize=address>)
 	add_compile_options_C_CXX($<$<CONFIG:Release_Debugging>:/dynamicdeopt>)
 	add_link_options($<$<CONFIG:Release_Debugging>:/DYNAMICDEOPT>)
 endif()
 
-# Engine settins
+# Engine settings
 add_compile_definitions(FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>)
 add_compile_definitions(FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>)
 add_compile_definitions(FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>)

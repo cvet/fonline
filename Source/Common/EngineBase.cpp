@@ -307,12 +307,11 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
         info.Size = underlying_type->Size;
     }
     else if (GetValueTypeInfo(info.TypeName, info.Size, &info.StructLayout)) {
-        if (info.StructLayout->size() > 1) {
-            info.IsStruct = true;
+        if (info.StructLayout->size() == 1) {
+            info.IsSimpleStruct = true;
         }
         else {
-            info = info.StructLayout->front().second;
-            info.TypeName = type_str;
+            info.IsComplexStruct = true;
         }
     }
     else {

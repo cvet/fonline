@@ -73,7 +73,7 @@ const int32& AppRender::MAX_BONES {MaxBones};
 const int32 AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int32 AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
-static string_view_nt WebCanvasId = "#canvas";
+[[maybe_unused]] static string_view_nt WebCanvasId = "#canvas";
 
 static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 {

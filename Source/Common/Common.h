@@ -451,7 +451,8 @@ struct BaseTypeInfo
     bool IsSingleFloat {};
     bool IsDoubleFloat {};
     bool IsBool {};
-    bool IsStruct {};
+    bool IsSimpleStruct {}; // Layout size is one primitive type
+    bool IsComplexStruct {}; // Layout more than one primitives
     const StructLayoutInfo* StructLayout {};
     size_t Size {};
 };
