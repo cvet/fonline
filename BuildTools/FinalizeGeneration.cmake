@@ -27,7 +27,7 @@ if(NOT FO_DISABLE_RPMALLOC AND(FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_
         "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
     include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
     add_library(rpmalloc STATIC EXCLUDE_FROM_ALL ${FO_RPMALLOC_SOURCE})
-    add_compile_definitions(FO_HAVE_RPMALLOC=1)
+    add_compile_definitions(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
     add_compile_definitions(ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
     target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     list(APPEND FO_COMMON_LIBS rpmalloc)
@@ -1018,7 +1018,7 @@ foreach(entry ${FO_CODEGEN_META_SOURCE})
     list(APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry})
 endforeach()
 
-foreach (entry ${FO_ADDED_COMMON_HEADERS})
+foreach(entry ${FO_ADDED_COMMON_HEADERS})
     list(APPEND FO_CODEGEN_COMMAND_ARGS -commonheader ${entry})
 endforeach()
 
