@@ -69,7 +69,11 @@ endforeach()
 
 # Evaluate build hash
 set(FO_GIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${FO_GIT_ROOT} RESULT_VARIABLE FO_GIT_HASH_RESULT OUTPUT_VARIABLE FO_GIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND git rev-parse HEAD
+	WORKING_DIRECTORY ${FO_GIT_ROOT}
+	RESULT_VARIABLE FO_GIT_HASH_RESULT
+	OUTPUT_VARIABLE FO_GIT_HASH
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(FO_GIT_HASH_RESULT STREQUAL "0")
 	set(FO_BUILD_HASH ${FO_GIT_HASH})
@@ -151,6 +155,7 @@ AddConfiguration(Release_Ext Release)
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	AddConfiguration(Release_Debugging RelWithDebInfo)
 	AddConfiguration(San_Address RelWithDebInfo)
+	set(expr_SanitizerConfigs $<CONFIG:San_Address>)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
@@ -161,6 +166,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
 	AddConfiguration(San_Thread RelWithDebInfo)
 	AddConfiguration(San_DataFlow RelWithDebInfo)
 	AddConfiguration(San_Address_Undefined RelWithDebInfo)
+	set(expr_SanitizerConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Undefined,San_Thread,San_DataFlow,San_Address_Undefined>)
 endif()
 
 if(FO_MULTICONFIG)
@@ -199,7 +205,8 @@ set(expr_DebugInfo $<NOT:$<CONFIG:MinSizeRel>>)
 set(expr_PrefixConfig $<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>>)
 set(expr_TracyEnabled $<OR:$<CONFIG:Profiling_Total>,$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_Total>,$<CONFIG:Debug_Profiling_OnDemand>>)
 set(expr_TracyOnDemand $<OR:$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profiling_OnDemand>>)
-set(expr_StandaloneRpmallocEnabled $<NOT:${expr_TracyEnabled}>)
+set(expr_RpmallocEnabled $<NOT:${expr_SanitizerConfigs}>)
+set(expr_StandaloneRpmallocEnabled $<AND:${expr_RpmallocEnabled},$<NOT:${expr_TracyEnabled}>>)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	add_compile_options_C_CXX($<$<CONFIG:San_Address>:/fsanitize=address>)
