@@ -712,7 +712,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
 
     FO_RUNTIME_ASSERT(prop->IsPlainData());
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
+    const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
     if (base_type_info.IsEnum) {
         if (base_type_info.Size == 1) {
@@ -776,7 +776,7 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 
     FO_RUNTIME_ASSERT(prop->IsPlainData());
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
+    const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
     if (base_type_info.IsEnum) {
         if (base_type_info.Size == 1) {
@@ -840,7 +840,7 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int32 value)
 
     FO_RUNTIME_ASSERT(prop->IsPlainData());
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
+    const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
     if (base_type_info.IsEnum) {
         if (base_type_info.Size == 1) {
@@ -905,7 +905,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     FO_RUNTIME_ASSERT(prop->IsPlainData());
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
+    const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
     if (base_type_info.IsEnum) {
         if (base_type_info.Size == 1) {
@@ -1059,7 +1059,7 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
-    const auto& base_type_info = prop->GetBaseTypeInfo();
+    const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
     if (base_type_info.IsHash) {
         SetValue<hstring>(prop, ResolveHash(value));
