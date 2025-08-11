@@ -80,7 +80,7 @@ extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData
 #if !FO_NO_MANUAL_STACK_TRACE
     const auto& st = StackTrace;
 
-    if (deep < st.CallsCount) {
+    if (deep < st.CallsCount && st.CallsCount - 1 - deep < STACK_TRACE_MAX_SIZE) {
         return st.CallTree[st.CallsCount - 1 - deep];
     }
     else {
