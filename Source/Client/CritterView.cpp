@@ -112,11 +112,9 @@ auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
     return item;
 }
 
-void CritterView::DeleteInvItem(ItemView* item, bool animate)
+void CritterView::DeleteInvItem(ItemView* item)
 {
     FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(animate);
 
     refcount_ptr item_ref_holder = item;
     vec_remove_unique_value(_invItems, item);
@@ -129,7 +127,7 @@ void CritterView::DeleteAllInvItems()
     FO_STACK_TRACE_ENTRY();
 
     while (!_invItems.empty()) {
-        DeleteInvItem(_invItems.front().get(), false);
+        DeleteInvItem(_invItems.front().get());
     }
 }
 

@@ -409,12 +409,6 @@ void MapView::Process()
         for (auto& cr : _critters) {
             cr->Process();
 
-            if (cr->IsNeedReset()) {
-                RemoveCritterFromField(cr.get());
-                AddCritterToField(cr.get());
-                cr->ResetOk();
-            }
-
             if (cr->IsFinished()) {
                 critter_to_delete.emplace_back(cr.get());
             }
@@ -1142,9 +1136,6 @@ void MapView::RebuildMap(ipos32 screen_raw_hex)
             for (auto* cr : field.Critters) {
                 auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
-                cr->RefreshOffs();
-                cr->ResetOk();
-
                 auto contour = ContourType::None;
                 if (cr->GetId() == _critterContourCrId) {
                     contour = _critterContour;
@@ -1448,9 +1439,6 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
         if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
             for (auto* cr : field.Critters) {
                 auto* mspr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
-
-                cr->RefreshOffs();
-                cr->ResetOk();
 
                 auto contour = ContourType::None;
                 if (cr->GetId() == _critterContourCrId) {
@@ -3349,9 +3337,6 @@ void MapView::AddCritterToField(CritterHexView* cr)
     if (!_mapLoading && IsHexToDraw(hex)) {
         auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
-        cr->RefreshOffs();
-        cr->ResetOk();
-
         auto contour = ContourType::None;
         if (cr->GetId() == _critterContourCrId) {
             contour = _critterContour;
@@ -3602,6 +3587,14 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
     if (cr->GetIsChosen()) {
         RebuildFog();
     }
+}
+
+void MapView::ReapplyCritterView(CritterHexView* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RemoveCritterFromField(cr);
+    AddCritterToField(cr);
 }
 
 void MapView::SetMultihexCritter(CritterHexView* cr, bool set)

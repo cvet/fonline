@@ -210,6 +210,7 @@ public:
     auto GetCritters() -> vector<refcount_ptr<CritterHexView>>& { return _critters; }
     auto GetCritters(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
+    void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(ident_t cr_id, ContourType contour);

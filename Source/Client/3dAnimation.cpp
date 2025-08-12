@@ -107,16 +107,15 @@ ModelAnimationController::ModelAnimationController(int32 track_count)
     }
 }
 
-auto ModelAnimationController::Clone() const -> unique_ptr<ModelAnimationController>
+auto ModelAnimationController::Copy() const -> unique_ptr<ModelAnimationController>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
-    clone->_cloned = true;
     clone->_anims = _anims;
     clone->_outputs = _outputs;
-    clone->_tracks = _tracks;
-    clone->_curTime = 0.0f;
+    clone->_tracks.resize(_tracks.size());
+    clone->_eventsTime = 0.0f;
     clone->_interpolationDisabled = _interpolationDisabled;
     return clone;
 }
@@ -171,6 +170,16 @@ auto ModelAnimationController::GetTrackEnable(int32 track) const -> bool
     FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
 
     return _tracks[track].Enabled;
+}
+
+auto ModelAnimationController::GetTrackSpeed(int32 track) const -> float32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+
+    return _tracks[track].Speed;
 }
 
 auto ModelAnimationController::GetTrackPosition(int32 track) const -> float32
@@ -248,11 +257,11 @@ void ModelAnimationController::ResetBonesTransition(int32 skip_track, const vect
     }
 }
 
-void ModelAnimationController::Reset()
+void ModelAnimationController::ResetEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curTime = 0.0f;
+    _eventsTime = 0.0f;
 
     for (auto& t : _tracks) {
         t.Events.clear();
@@ -320,35 +329,36 @@ void ModelAnimationController::AdvanceTime(float32 time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curTime += time;
+    _eventsTime += time;
 
     for (auto& track : _tracks) {
         for (auto it = track.Events.begin(); it != track.Events.end();) {
             auto& event = *it;
 
-            if (_curTime >= event.StartTime) {
-                if (event.SmoothTime > 0.0f && is_float_equal(event.ValueFrom, -1.0f)) {
-                    if (event.Type == Track::EventType::Speed) {
-                        event.ValueFrom = track.Speed;
-                    }
-                    else if (event.Type == Track::EventType::Weight) {
-                        event.ValueFrom = track.Weight;
-                    }
-                }
+            if (_eventsTime >= event.StartTime) {
+                bool erase = false;
+                float32 value;
 
-                auto erase = false;
-                auto value = event.ValueTo;
+                if (_eventsTime < event.StartTime + event.SmoothTime) {
+                    FO_RUNTIME_ASSERT(event.SmoothTime > 0.0f);
 
-                if (_curTime < event.StartTime + event.SmoothTime) {
-                    if (event.ValueTo > event.ValueFrom) {
-                        value = event.ValueFrom + (event.ValueTo - event.ValueFrom) / event.SmoothTime * (_curTime - event.StartTime);
+                    if (!event.ValueFrom.has_value()) {
+                        if (event.Type == Track::EventType::Speed) {
+                            event.ValueFrom = track.Speed;
+                        }
+                        else if (event.Type == Track::EventType::Weight) {
+                            event.ValueFrom = track.Weight;
+                        }
+                        else {
+                            event.ValueFrom = 0.0f;
+                        }
                     }
-                    else {
-                        value = event.ValueFrom - (event.ValueFrom - event.ValueTo) / event.SmoothTime * (_curTime - event.StartTime);
-                    }
+
+                    value = lerp(event.ValueFrom.value(), event.ValueTo, (_eventsTime - event.StartTime) / event.SmoothTime);
                 }
                 else {
                     erase = true;
+                    value = event.ValueTo;
                 }
 
                 if (event.Type == Track::EventType::Enable) {
@@ -396,12 +406,12 @@ void ModelAnimationController::AdvanceTime(float32 time)
             }
 
             const auto& anim_output = anim_outputs[j];
-            const auto t = std::fmod(track.Position, track.Anim->GetDuration());
             const auto duration = track.Anim->GetDuration();
+            const auto pos = std::fmod(track.Position, duration);
 
-            FindSrtValue<vec3>(t, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
-            FindSrtValue<quaternion>(t, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
-            FindSrtValue<vec3>(t, duration, track.Reversed, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
+            FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
+            FindSrtValue<quaternion>(pos, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
+            FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
 
             track.AnimOutput[j]->Valid[i] = true;
             track.AnimOutput[j]->Factor[i] = track.Weight;

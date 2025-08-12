@@ -870,54 +870,47 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     if (_bodyAnimController && anim_index >= 0) {
         const auto new_track = _curTrack == 0 ? 1 : 0;
         _animDuration = _bodyAnimController->GetAnimationDuration(anim_index);
-        auto duration = IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0002f : _animDuration;
-
-        _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
 
         // Turn off fast transition bones on other tracks
         if (!fast_transition_bones.empty()) {
             _bodyAnimController->ResetBonesTransition(new_track, fast_transition_bones);
         }
 
-        _bodyAnimController->Reset();
+        _bodyAnimController->ResetEvents();
 
         const auto no_smooth = IsEnumSet(flags, ModelAnimFlags::NoSmooth) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init);
-        const auto smooth_time = no_smooth ? 0.0001f : _modelMngr._moveTransitionTime;
-        const auto start_time = std::min(duration * ntime, duration - 0.0002f);
-
-        if (IsEnumSet(flags, ModelAnimFlags::Freeze)) {
-            duration = start_time + 0.0002f;
-        }
+        const auto smooth_time = no_smooth ? 0.0f : _modelMngr._moveTransitionTime;
+        const auto anim_start_time = std::min(_animDuration * ntime, _animDuration - 0.001f);
+        const auto anim_duration = IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
 
         // Disable current track
-        _bodyAnimController->AddEventEnable(_curTrack, false, smooth_time);
-        _bodyAnimController->AddEventSpeed(_curTrack, 0.0f, 0.0f, smooth_time);
-        _bodyAnimController->AddEventWeight(_curTrack, 0.0f, 0.0f, smooth_time);
+        if (no_smooth) {
+            _bodyAnimController->SetTrackEnable(_curTrack, false);
+        }
+        else {
+            _bodyAnimController->AddEventEnable(_curTrack, false, smooth_time);
+            _bodyAnimController->AddEventSpeed(_curTrack, 0.0f, 0.0f, smooth_time);
+            _bodyAnimController->AddEventWeight(_curTrack, 0.0f, 0.0f, smooth_time);
+        }
 
         // Enable the new track
         _curTrack = new_track;
         _speedAdjustCur = speed;
 
         _bodyAnimController->SetTrackEnable(new_track, true);
-        _bodyAnimController->SetTrackPosition(new_track, 0.0f);
-        _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
+        _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
+        _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
+        _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, 0.0f);
 
         if (IsEnumSet(flags, ModelAnimFlags::PlayOnce) || IsEnumSet(flags, ModelAnimFlags::Freeze) || IsEnumSet(flags, ModelAnimFlags::Init)) {
-            _bodyAnimController->AddEventSpeed(new_track, 0.0f, duration - 0.0001f, 0.0f);
+            _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, 0.0f);
         }
 
         _bodyAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
-        _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
+        _bodyAnimController->AdvanceTime(0.0f);
 
         if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
-            _moveAnimController->AdvanceTime(0.0001f);
-        }
-
-        if (IsEnumSet(flags, ModelAnimFlags::PlayOnce)) {
-            _endTime = GetTime() + std::chrono::milliseconds(iround<int32>(duration / GetSpeed() * 1000.0f));
-        }
-        else {
-            _endTime = nanotime::zero;
+            _moveAnimController->AdvanceTime(0.0f);
         }
 
         // Force redraw
@@ -951,21 +944,33 @@ void ModelInstance::MoveModel(ipos32 offset)
     _forceDraw = true;
 }
 
-void ModelInstance::SetMoving(bool enabled, int32 speed)
+void ModelInstance::UpdatePose(bool staying_pose, bool moving, int32 moving_speed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _isMoving = enabled;
+    _isStayingPose = staying_pose;
+    _isMoving = staying_pose && moving;
 
     if (_isMoving) {
-        if (speed < _modelMngr._settings.RunAnimStartSpeed) {
+        if (moving_speed < _modelMngr._settings.RunAnimStartSpeed) {
             _isRunning = false;
-            _movingSpeedFactor = numeric_cast<float32>(speed) / numeric_cast<float32>(_modelMngr._settings.WalkAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32>(moving_speed) / numeric_cast<float32>(_modelMngr._settings.WalkAnimBaseSpeed);
         }
         else {
             _isRunning = true;
-            _movingSpeedFactor = numeric_cast<float32>(speed) / numeric_cast<float32>(_modelMngr._settings.RunAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32>(moving_speed) / numeric_cast<float32>(_modelMngr._settings.RunAnimBaseSpeed);
         }
+    }
+
+    if (!_isStayingPose) {
+        if (_curMovingAnimIndex != -1) {
+            _moveAnimController->ResetEvents();
+            _moveAnimController->SetTrackEnable(_curMoveTrack, false);
+            _curMovingAnim = CritterActionAnim::None;
+            _curMovingAnimIndex = -1;
+        }
+
+        _turnAnimPlaying = false;
     }
 
     RefreshMoveAnimation();
@@ -978,8 +983,11 @@ void ModelInstance::RefreshMoveAnimation()
     if (!_moveAnimController) {
         return;
     }
+    if (!_isStayingPose) {
+        return;
+    }
 
-    auto state_anim = CritterStateAnim::Unarmed;
+    auto state_anim = CritterStateAnim::None;
     auto action_anim = CritterActionAnim::Idle;
 
     if (_isMoving) {
@@ -1025,6 +1033,8 @@ void ModelInstance::RefreshMoveAnimation()
         _animInitCallback(state_anim, action_anim);
     }
 
+    _curMovingAnim = action_anim;
+
     float32 speed = 1.0f;
     const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
@@ -1033,25 +1043,24 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     _curMovingAnimIndex = anim_index;
-    _curMovingAnim = action_anim;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
     }
 
-    constexpr float32 smooth_time = 0.0001f;
+    constexpr float32 smooth_time = 0.001f;
 
     if (anim_index != -1) {
         const auto new_track = _curMoveTrack == 0 ? 1 : 0;
 
-        _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr._legBones);
-        _moveAnimController->Reset();
+        _moveAnimController->ResetEvents();
 
         _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
         _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
         _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, 0.0f, smooth_time);
 
         _moveAnimController->SetTrackEnable(new_track, true);
+        _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr._legBones);
         _moveAnimController->SetTrackPosition(new_track, 0.0f);
 
         _moveAnimController->AddEventSpeed(new_track, speed, 0.0f, smooth_time);
@@ -1065,7 +1074,7 @@ void ModelInstance::RefreshMoveAnimation()
         _curMoveTrack = new_track;
     }
     else {
-        _moveAnimController->Reset();
+        _moveAnimController->ResetEvents();
 
         _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
         _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
@@ -1113,7 +1122,14 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetTime() < _endTime;
+    if (_bodyAnimController) {
+        const auto track0_playing = _bodyAnimController->GetTrackEnable(0) && _bodyAnimController->GetTrackSpeed(0) > 0.0f;
+        const auto track1_playing = _bodyAnimController->GetTrackEnable(1) && _bodyAnimController->GetTrackSpeed(1) > 0.0f;
+        return track0_playing || track1_playing;
+    }
+    else {
+        return false;
+    }
 }
 
 auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, int32>
@@ -1352,6 +1368,7 @@ void ModelInstance::SetMoveDirAngle(int32 dir_angle, bool smooth_rotation)
 
         if (!smooth_rotation) {
             _moveDirAngle = _targetMoveDirAngle;
+            _turnAnimPlaying = false;
         }
 
         RefreshMoveAnimation();
@@ -2978,10 +2995,10 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
     auto* model = SafeAlloc::MakeRaw<ModelInstance>(_modelMngr, this);
 
     if (_animController) {
-        model->_bodyAnimController = _animController->Clone();
+        model->_bodyAnimController = _animController->Copy();
 
         if (_rotationBone) {
-            model->_moveAnimController = _animController->Clone();
+            model->_moveAnimController = _animController->Copy();
         }
     }
 

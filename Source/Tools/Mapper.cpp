@@ -1477,7 +1477,7 @@ void FOMapper::IntLMouseDown()
                     if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
                         auto* owner = _curMap->GetCritter(InContItem->GetCritterId());
                         FO_RUNTIME_ASSERT(owner);
-                        owner->DeleteInvItem(InContItem.get(), true);
+                        owner->DeleteInvItem(InContItem.get());
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = _curMap->GetItem(InContItem->GetContainerId());
