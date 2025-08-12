@@ -86,19 +86,19 @@ public:
     auto operator=(ModelAnimationController&&) noexcept = delete;
     ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Clone() const -> unique_ptr<ModelAnimationController>;
+    [[nodiscard]] auto Copy() const -> unique_ptr<ModelAnimationController>;
     [[nodiscard]] auto GetAnimationBones(int32 index) const -> const vector<vector<hstring>>&;
     [[nodiscard]] auto GetAnimationDuration(int32 index) const -> float32;
     [[nodiscard]] auto GetTrackEnable(int32 track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(int32 track) const -> float32;
+    [[nodiscard]] auto GetTrackSpeed(int32 track) const -> float32;
     [[nodiscard]] auto GetAnimationsCount() const -> int32;
-    [[nodiscard]] auto GetTime() const noexcept -> float32 { return _curTime; }
 
-    void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     auto RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32;
     void SetTrackAnimation(int32 track, int32 anim_index, const unordered_set<hstring>* allowed_bones);
     void ResetBonesTransition(int32 skip_track, const vector<hstring>& bone_names);
+    void ResetEvents();
     void AddEventEnable(int32 track, bool enable, float32 start_time);
     void AddEventSpeed(int32 track, float32 speed, float32 start_time, float32 smooth_time);
     void AddEventWeight(int32 track, float32 weight, float32 start_time, float32 smooth_time);
@@ -134,7 +134,7 @@ private:
             float32 ValueTo {};
             float32 StartTime {};
             float32 SmoothTime {};
-            float32 ValueFrom {-1.0f};
+            optional<float32> ValueFrom {};
         };
 
         bool Enabled {};
@@ -153,11 +153,10 @@ private:
     template<typename T>
     void FindSrtValue(float32 time, float32 duration, bool reserved, const vector<float32>& times, const vector<T>& values, T& result);
 
-    bool _cloned {};
     shared_ptr<vector<pair<ModelAnimation*, bool>>> _anims {};
     shared_ptr<vector<Output>> _outputs {};
     vector<Track> _tracks {};
-    float32 _curTime {};
+    float32 _eventsTime {};
     bool _interpolationDisabled {};
 };
 

@@ -278,7 +278,7 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(ipos32 offset);
-    void SetMoving(bool enabled, int32 speed = 0);
+    void UpdatePose(bool staying_pose, bool moving, int32 moving_speed);
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
@@ -335,7 +335,6 @@ private:
     int32 _curLayers[MODEL_LAYERS_COUNT] {};
     int32 _curTrack {};
     nanotime _lastDrawTime {};
-    nanotime _endTime {};
     mat44 _matRot {};
     mat44 _matScale {};
     mat44 _matScaleBase {};
@@ -355,6 +354,7 @@ private:
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
     function<void(CritterStateAnim&, CritterActionAnim&)> _animInitCallback {};
+    bool _isStayingPose {};
     bool _isMoving {};
     bool _isMovingBack {};
     int32 _curMovingAnimIndex {-1};

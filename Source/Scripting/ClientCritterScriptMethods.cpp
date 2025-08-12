@@ -539,7 +539,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
             item->SetCount(item->GetCount() - itemCount);
         }
         else {
-            self->DeleteInvItem(item, true);
+            self->DeleteInvItem(item);
             item = nullptr;
         }
     }

@@ -60,7 +60,6 @@ public:
     ~CritterHexView() override = default;
 
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
-    [[nodiscard]] auto IsNeedReset() const noexcept -> bool;
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
@@ -70,18 +69,15 @@ public:
 #endif
 
     void Init();
-    auto AddRawInvItem(ItemView* item) -> ItemView* override;
-    void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int32 dir_angle);
     void ChangeLookDirAngle(int32 dir_angle);
     void ChangeMoveDirAngle(int32 dir_angle);
     void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
     void StopAnim();
-    void RefreshView();
+    void RefreshView(bool no_smooth = false);
     void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
     void Process();
-    void ResetOk();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;

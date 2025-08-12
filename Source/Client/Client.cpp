@@ -940,8 +940,6 @@ void FOClient::Net_OnAddCritter()
         _chosen = cr;
     }
 
-    OnCritterIn.Fire(cr.get());
-
     if (hex_cr != nullptr) {
 #if FO_ENABLE_3D
         if (hex_cr->IsModel()) {
@@ -958,8 +956,10 @@ void FOClient::Net_OnAddCritter()
             _curMap->RebuildFog();
         }
 
-        hex_cr->RefreshView();
+        hex_cr->RefreshView(true);
     }
+
+    OnCritterIn.Fire(cr.get());
 }
 
 void FOClient::Net_OnRemoveCritter()
@@ -1032,7 +1032,12 @@ void FOClient::Net_OnCritterDir()
     auto* cr = _curMap->GetCritter(cr_id);
 
     if (cr != nullptr) {
-        cr->ChangeLookDirAngle(dir_angle);
+        if (cr->GetControlledByPlayer()) {
+            cr->ChangeLookDirAngle(dir_angle);
+        }
+        else {
+            cr->ChangeDirAngle(dir_angle);
+        }
     }
 }
 
@@ -1204,6 +1209,7 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
+        hex_cr->RefreshView();
         hex_cr->Action(action, static_cast<int32>(prev_slot), moved_item.get(), false);
     }
 
@@ -1375,7 +1381,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     if (auto* prev_item = chosen->GetInvItem(item_id); prev_item != nullptr) {
-        chosen->DeleteInvItem(prev_item, false);
+        chosen->DeleteInvItem(prev_item);
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(item_pid);
@@ -1386,7 +1392,8 @@ void FOClient::Net_OnChosenAddItem()
     if (_curMap != nullptr) {
         _curMap->RebuildFog();
 
-        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            hex_chosen->RefreshView();
             _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
@@ -1417,12 +1424,13 @@ void FOClient::Net_OnChosenRemoveItem()
 
     auto item_clone = item->CreateRefClone();
 
-    chosen->DeleteInvItem(item, true);
+    chosen->DeleteInvItem(item);
 
     OnItemInvOut.Fire(item_clone.get());
 
     if (_curMap != nullptr) {
-        if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+            hex_chosen->RefreshView();
             _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }

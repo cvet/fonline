@@ -66,8 +66,8 @@ public:
 
     auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
     auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
-    virtual auto AddRawInvItem(ItemView* item) -> ItemView*;
-    virtual void DeleteInvItem(ItemView* item, bool animate);
+    auto AddRawInvItem(ItemView* item) -> ItemView*;
+    void DeleteInvItem(ItemView* item);
     void DeleteAllInvItems();
     void SetName(string_view name);
 
