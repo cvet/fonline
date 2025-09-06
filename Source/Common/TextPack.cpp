@@ -274,10 +274,10 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
             offset = last + 1;
 
             if (i == 0 && num == 0) {
-                num = strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).asInt();
+                num = strex(substr).is_number() ? strex(substr).to_int32() : hash_resolver.ToHashedString(substr).as_int32();
             }
             else if (i == 1 && num != 0) {
-                num += !substr.empty() ? (strex(substr).isNumber() ? strex(substr).toInt() : hash_resolver.ToHashedString(substr).asInt()) : 0;
+                num += !substr.empty() ? (strex(substr).is_number() ? strex(substr).to_int32() : hash_resolver.ToHashedString(substr).as_int32()) : 0;
             }
             else if (i == 2 && num != 0) {
                 AddStr(num, std::move(substr));
@@ -296,7 +296,7 @@ void TextPack::LoadFromMap(const map<string, string>& kv)
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
-        const TextPackKey num = strex(key).toUInt();
+        const TextPackKey num = strex(key).to_uint32();
 
         if (num != 0) {
             AddStr(num, value);

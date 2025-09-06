@@ -194,7 +194,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
-    else if (value.Type() == AnyData::ValueType::Double) {
+    else if (value.Type() == AnyData::ValueType::Float64) {
         if (!bson_append_double(bson, key_data, key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
@@ -525,18 +525,18 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(strex(_storageDir).combine_path(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
             ignore_unused(size);
             ignore_unused(write_time);
 
-            if (strex(path).getFileExtension() != "json") {
+            if (strex(path).get_file_extension() != "json") {
                 return;
             }
 
             static_assert(sizeof(ident_t) == sizeof(int64));
 
-            const string id_str = strex(path).extractFileName().eraseFileExtension();
-            const auto id = strex(id_str).toInt64();
+            const string id_str = strex(path).extract_file_name().erase_file_extension();
+            const auto id = strex(id_str).to_int64();
 
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
@@ -1119,7 +1119,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&filter, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&filter, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1171,7 +1171,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&insert, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&insert, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1203,7 +1203,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1247,7 +1247,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1277,7 +1277,7 @@ private:
         const auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
-            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.asStr().c_str());
+            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.as_str().c_str());
 
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't get collection", collection_name);

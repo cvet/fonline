@@ -74,7 +74,7 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!Size.isValidPos(pos)) {
+    if (!Size.is_valid_pos(pos)) {
         return false;
     }
 
@@ -304,7 +304,7 @@ auto SpriteSheet::Update() -> bool
 
     if (_playing) {
         const auto cur_tick = _sprMngr.GetTimer().GetFrameTime();
-        const auto dt = (cur_tick - _startTick).toMs<int32>();
+        const auto dt = (cur_tick - _startTick).to_ms<int32>();
         const auto frm_count = numeric_cast<int32>(CntFrm);
         const auto ticks_per_frame = numeric_cast<int32>(WholeTicks) / frm_count;
         const auto frames_passed = dt / ticks_per_frame;

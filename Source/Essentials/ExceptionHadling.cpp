@@ -287,7 +287,7 @@ extern auto GetRealStackTrace() -> string
             obj_func.append("...");
         }
 
-        string file_name = strex(trace.source.filename).extractFileName();
+        string file_name = strex(trace.source.filename).extract_file_name();
 
         if (!file_name.empty()) {
             file_name.append(" ");
@@ -323,7 +323,7 @@ extern auto FormatStackTrace(const StackTraceData& st) -> string
     for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE) - 1;; i--) {
         const auto& entry = st.CallTree[i];
 
-        ss << "- " << entry->function << " (" << strex(entry->file).extractFileName().strv() << " line " << entry->line << ")\n";
+        ss << "- " << entry->function << " (" << strex(entry->file).extract_file_name().strv() << " line " << entry->line << ")\n";
 
         if (i == 0) {
             break;

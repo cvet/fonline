@@ -205,7 +205,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
     FO_STACK_TRACE_ENTRY();
 
     auto fixed_fname = string(fname);
-    string ext = strex(fname).getFileExtension();
+    string ext = strex(fname).get_file_extension();
 
     // Default ext
     if (ext.empty()) {
@@ -571,7 +571,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Make 'NAME'
-    const string sound_name = strex(name).eraseFileExtension().lower();
+    const string sound_name = strex(name).erase_file_extension().lower();
 
     // Find base
     const auto it = sound_names.find(sound_name);

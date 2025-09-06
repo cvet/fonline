@@ -62,7 +62,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _resources.AddDataSource(_settings.ClientResources, DataSourceType::DirRoot);
 
     if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddDataSource(strex(_settings.ClientResources).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+        _resources.AddDataSource(strex(_settings.ClientResources).combine_path(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
     }
 
     _effectMngr.LoadMinimalEffects();
@@ -162,7 +162,7 @@ auto Updater::Process() -> bool
 
             const auto cur = numeric_cast<float32>(cur_bytes) / (1024.0f * 1024.0f);
             const auto max = std::max(numeric_cast<float32>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-            const string name = strex(update_file.Name).formatPath();
+            const string name = strex(update_file.Name).format_path();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
@@ -170,8 +170,8 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).toMs<int32>();
-    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).toMs<float64>() / 100.0, 50.0)) + 1;
+    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32>();
+    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<float64>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : iterate_range(dots)) {
         update_text += ".";
@@ -208,7 +208,7 @@ auto Updater::MakeWritePath(string_view fname) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(_settings.ClientResources).combinePath(fname);
+    return strex(_settings.ClientResources).combine_path(fname);
 }
 
 void Updater::AddText(string_view text)
@@ -277,7 +277,7 @@ void Updater::Net_OnInitData()
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }
 
-                if (strex(file_hash).toUInt() == hash) {
+                if (strex(file_hash).to_uint32() == hash) {
                     continue;
                 }*/
 

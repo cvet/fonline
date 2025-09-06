@@ -1380,7 +1380,7 @@ FO_SCRIPT_API void Client_Game_SaveText(FOClient* client, string_view filePath, 
 {
     ignore_unused(client);
 
-    auto file = DiskFileSystem::OpenFile(strex(filePath).formatPath(), true);
+    auto file = DiskFileSystem::OpenFile(strex(filePath).format_path(), true);
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
@@ -1533,7 +1533,7 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
     // Todo: improve SetScreenKeyboard
     /*if (SDL_HasScreenKeyboardSupport()) {
         bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
-        bool next = strex(args[1]).toBool();
+        bool next = strex(args[1]).to_bool();
         if (cur != next) {
             if (next)
                 SDL_StartTextInput();

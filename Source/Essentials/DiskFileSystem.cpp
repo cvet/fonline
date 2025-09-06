@@ -74,7 +74,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
         _file = std::fstream(path, flags);
 
         if (!_file) {
-            DiskFileSystem::MakeDirTree(strex(fname).extractDir());
+            DiskFileSystem::MakeDirTree(strex(fname).extract_dir());
             _file = std::fstream(path, flags);
         }
     }
@@ -300,10 +300,10 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
 
     if (!ec) {
         const auto u8_str = resolved.u8string();
-        return strex(string(u8_str.begin(), u8_str.end())).normalizePathSlashes();
+        return strex(string(u8_str.begin(), u8_str.end())).normalize_path_slashes();
     }
     else {
-        return strex(path).normalizePathSlashes();
+        return strex(path).normalize_path_slashes();
     }
 }
 
@@ -330,7 +330,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto full_dir = MakeFilesystemPath(strex(base_dir).combinePath(cur_dir));
+    const auto full_dir = MakeFilesystemPath(strex(base_dir).combine_path(cur_dir));
     const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
@@ -340,12 +340,12 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
         if (!path.empty() && path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
                 if (path.front() != '_' && recursive) {
-                    RecursiveDirLook(base_dir, strex(cur_dir).combinePath(path), recursive, visitor);
+                    RecursiveDirLook(base_dir, strex(cur_dir).combine_path(path), recursive, visitor);
                 }
             }
             else {
                 FO_RUNTIME_ASSERT(std::cmp_less_equal(dir_entry.file_size(), std::numeric_limits<size_t>::max()));
-                visitor(strex(cur_dir).combinePath(path), static_cast<size_t>(dir_entry.file_size()), dir_entry.last_write_time().time_since_epoch().count());
+                visitor(strex(cur_dir).combine_path(path), static_cast<size_t>(dir_entry.file_size()), dir_entry.last_write_time().time_since_epoch().count());
             }
         }
     }

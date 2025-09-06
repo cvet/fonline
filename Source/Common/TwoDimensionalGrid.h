@@ -83,7 +83,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY(base::_size.isValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.is_valid_pos(pos), _emptyCell);
 
         const auto it = _cells.find(pos);
 
@@ -99,7 +99,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.isValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
 
         const auto it = _cells.find(pos);
 
@@ -160,7 +160,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY(base::_size.isValidPos(pos), _emptyCell);
+        FO_RUNTIME_VERIFY(base::_size.is_valid_pos(pos), _emptyCell);
 
         const auto index = static_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
@@ -176,7 +176,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.isValidPos(pos));
+        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
 
         const auto index = numeric_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];

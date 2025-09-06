@@ -162,8 +162,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
         _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
     }
-    for (auto tex_files = _editor.InputResources.FilterFiles("tga", strex(asset_path).extractDir()); tex_files.MoveNext();) {
-        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(strex(asset_path).extractDir().length() + 1));
+    for (auto tex_files = _editor.InputResources.FilterFiles("tga", strex(asset_path).extract_dir()); tex_files.MoveNext();) {
+        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(strex(asset_path).extract_dir().length() + 1));
     }
 }
 

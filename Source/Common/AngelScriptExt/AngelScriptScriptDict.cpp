@@ -860,7 +860,7 @@ static bool Less(SDictCache* cache, int32 typeId, const void* a, const void* b)
     if (typeId == cache->IdentTypeId) {
         const ident_t& aStrong = *static_cast<const ident_t*>(a);
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
-        return aStrong.underlyingValue() < bStrong.underlyingValue();
+        return aStrong.underlying_value() < bStrong.underlying_value();
     }
     if (typeId == cache->TimespanTypeId) {
         const timespan& aStrong = *static_cast<const timespan*>(a);
@@ -932,7 +932,7 @@ static bool Equals(SDictCache* cache, int32 typeId, const void* a, const void* b
     if (typeId == cache->IdentTypeId) {
         const ident_t& aStrong = *static_cast<const ident_t*>(a);
         const ident_t& bStrong = *static_cast<const ident_t*>(b);
-        return aStrong.underlyingValue() == bStrong.underlyingValue();
+        return aStrong.underlying_value() == bStrong.underlying_value();
     }
     if (typeId == cache->TimespanTypeId) {
         const timespan& aStrong = *static_cast<const timespan*>(a);

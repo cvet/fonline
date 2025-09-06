@@ -366,7 +366,7 @@ namespace SPK::FO
         _textureName = tex_name;
 
         if (!_textureName.empty() && _particleMngr != nullptr) {
-            const string tex_path = strex(_path).extractDir().combinePath(_textureName);
+            const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
             auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffset = tex_data;

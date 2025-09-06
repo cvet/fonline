@@ -42,7 +42,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view path, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    string path_fixed = strex(path).normalizePathSlashes();
+    string path_fixed = strex(path).normalize_path_slashes();
 
     if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
@@ -55,7 +55,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view path, 
         bool add = false;
 
         if (fname.compare(0, len, path_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
-            if (ext.empty() || strex(fname).getFileExtension() == ext) {
+            if (ext.empty() || strex(fname).get_file_extension() == ext) {
                 add = true;
             }
         }
@@ -273,7 +273,7 @@ auto DataSource::Mount(string_view path, DataSourceType type) -> unique_ptr<Data
     };
 
     if (is_file_present(path)) {
-        const string ext = strex(path).getFileExtension();
+        const string ext = strex(path).get_file_extension();
 
         if (ext == "dat") {
             return SafeAlloc::MakeUnique<FalloutDat>(path);
@@ -362,7 +362,7 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string full_path = strex(_basePath).combinePath(path);
+    const string full_path = strex(_basePath).combine_path(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -378,7 +378,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string full_path = strex(_basePath).combinePath(path);
+    const string full_path = strex(_basePath).combine_path(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -401,7 +401,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool recursive, string_view ex
     FO_STACK_TRACE_ENTRY();
 
     vector<string> fnames;
-    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_basePath).combine_path(path), recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
         ignore_unused(size);
         ignore_unused(write_time);
 
@@ -557,7 +557,7 @@ auto FalloutDat::ReadTree() -> bool
             MemCopy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
-                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
+                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalize_path_slashes();
 
                 if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
@@ -638,7 +638,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         if (name_len != 0) {
-            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
+            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalize_path_slashes();
 
             _filesTree.emplace(name, ptr + 4 + name_len);
             _filesTreeNames.emplace_back(std::move(name));
@@ -942,7 +942,7 @@ auto ZipFile::ReadTree() -> bool
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(buf).normalizePathSlashes();
+            string name = strex(buf).normalize_path_slashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
@@ -1029,7 +1029,7 @@ AndroidAssets::AndroidAssets()
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    auto names = strex(str).normalizeLineEndings().split('\n');
+    auto names = strex(str).normalize_line_endings().split('\n');
 
     for (auto& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);

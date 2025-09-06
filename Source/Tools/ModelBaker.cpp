@@ -233,7 +233,7 @@ void ModelBaker::BakeFiles(FileCollection files)
 
     while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).getFileExtension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (!IsExtSupported(ext)) {
             continue;
@@ -488,7 +488,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
 
             for (const ufbx_material_texture& fbx_material_texture : fbx_material->textures) {
                 if (string_view(fbx_material_texture.material_prop.data) == "DiffuseColor" && fbx_material_texture.texture != nullptr && fbx_material_texture.texture->type == UFBX_TEXTURE_FILE) {
-                    mesh->DiffuseTexture = strex(fbx_material_texture.texture->filename.data).extractFileName();
+                    mesh->DiffuseTexture = strex(fbx_material_texture.texture->filename.data).extract_file_name();
                 }
             }
         }

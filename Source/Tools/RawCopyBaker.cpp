@@ -66,7 +66,7 @@ void RawCopyBaker::BakeFiles(FileCollection files)
 
     while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).getFileExtension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (!IsExtSupported(ext)) {
             continue;

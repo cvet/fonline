@@ -112,7 +112,7 @@ auto MasterBaker::MakeOutputPath(string_view path) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(_settings.BakeOutput).combinePath(path);
+    return strex(_settings.BakeOutput).combine_path(path);
 }
 
 void MasterBaker::BakeAll()
@@ -177,7 +177,7 @@ void MasterBaker::BakeAll()
                 const auto is_server_setting = server_settings.count(key) != 0;
                 const auto is_client_setting = client_settings.count(key) != 0;
                 const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                const auto shortened_value = strex(value).isExplicitBool() ? (strex(value).toBool() ? "1" : "0") : value;
+                const auto shortened_value = strex(value).is_explicit_bool() ? (strex(value).to_bool() ? "1" : "0") : value;
 
                 if (!skip_write) {
                     server_config_content += strex("{}={}\n", key, shortened_value);
@@ -320,7 +320,7 @@ void MasterBaker::BakeAll()
             const auto bake_checker = [&](const string& path, uint64 write_time) -> bool {
                 if (!force_baking_) {
                     actual_resource_names.emplace(exclude_all_ext(path));
-                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combinePath(path));
+                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combine_path(path));
                 }
                 else {
                     return true;
@@ -328,7 +328,7 @@ void MasterBaker::BakeAll()
             };
 
             const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
-                auto res_file = DiskFileSystem::OpenFile(strex(output_dir).combinePath(path), true);
+                auto res_file = DiskFileSystem::OpenFile(strex(output_dir).combine_path(path), true);
                 FO_RUNTIME_ASSERT(res_file);
                 const auto res_file_write_ok = res_file.Write(baked_data);
                 FO_RUNTIME_ASSERT(res_file_write_ok);
@@ -349,7 +349,7 @@ void MasterBaker::BakeAll()
                     ignore_unused(write_time);
 
                     if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-                        DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
+                        DiskFileSystem::DeleteFile(strex(output_dir).combine_path(path));
                         WriteLog("Delete outdated file {}", path);
                     }
                 });
@@ -534,7 +534,7 @@ auto BakerDataSource::FindFile(string_view path) const -> File*
     bool file_baked = false;
 
     if (auto file = _inputResources.ReadFile(path)) {
-        const string ext = strex(path).getFileExtension();
+        const string ext = strex(path).get_file_extension();
 
         for (auto& baker : _bakers) {
             if (baker->IsExtSupported(ext)) {

@@ -445,7 +445,7 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-        _mouseCanUseGlobalState = std::ranges::any_of(global_mouse_whitelist, [&sdl_backend](auto& entry) { return strex(sdl_backend).startsWith(entry); });
+        _mouseCanUseGlobalState = std::ranges::any_of(global_mouse_whitelist, [&sdl_backend](auto& entry) { return strex(sdl_backend).starts_with(entry); });
 
         if (Settings.ImGuiColorStyle == "Dark") {
             ImGui::StyleColorsDark();
@@ -561,7 +561,7 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     }
 
     // Initialize window
-    SDL_PropertiesID props = SDL_CreateProperties();
+    const SDL_PropertiesID props = SDL_CreateProperties();
 
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, 1);
 

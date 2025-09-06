@@ -126,31 +126,31 @@ public:
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
-    [[nodiscard]] auto compareIgnoreCase(string_view other) const noexcept -> bool;
-    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view other) const -> bool;
-    [[nodiscard]] auto startsWith(char r) const noexcept -> bool;
-    [[nodiscard]] auto startsWith(string_view r) const noexcept -> bool;
-    [[nodiscard]] auto endsWith(char r) const noexcept -> bool;
-    [[nodiscard]] auto endsWith(string_view r) const noexcept -> bool;
-    [[nodiscard]] auto isValidUtf8() const noexcept -> bool;
-    [[nodiscard]] auto lengthUtf8() const noexcept -> size_t;
+    [[nodiscard]] auto compare_ignore_case(string_view other) const noexcept -> bool;
+    [[nodiscard]] auto compare_ignore_case_utf8(string_view other) const -> bool;
+    [[nodiscard]] auto starts_with(char r) const noexcept -> bool;
+    [[nodiscard]] auto starts_with(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto ends_with(char r) const noexcept -> bool;
+    [[nodiscard]] auto ends_with(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto is_valid_utf8() const noexcept -> bool;
+    [[nodiscard]] auto length_utf8() const noexcept -> size_t;
 
-    [[nodiscard]] auto isNumber() const noexcept -> bool;
-    [[nodiscard]] auto isExplicitBool() const noexcept -> bool;
-    [[nodiscard]] auto toInt() const noexcept -> int32;
-    [[nodiscard]] auto toUInt() const noexcept -> uint32;
-    [[nodiscard]] auto toInt64() const noexcept -> int64;
-    [[nodiscard]] auto toFloat() const noexcept -> float32;
-    [[nodiscard]] auto toDouble() const noexcept -> float64;
-    [[nodiscard]] auto toBool() const noexcept -> bool;
+    [[nodiscard]] auto is_number() const noexcept -> bool;
+    [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
+    [[nodiscard]] auto to_int32() const noexcept -> int32;
+    [[nodiscard]] auto to_uint32() const noexcept -> uint32;
+    [[nodiscard]] auto to_int64() const noexcept -> int64;
+    [[nodiscard]] auto to_float32() const noexcept -> float32;
+    [[nodiscard]] auto to_float64() const noexcept -> float64;
+    [[nodiscard]] auto to_bool() const noexcept -> bool;
 
     [[nodiscard]] auto split(char delimiter) const -> vector<string>;
-    [[nodiscard]] auto splitToInt(char delimiter) const -> vector<int32>;
+    [[nodiscard]] auto split_to_int(char delimiter) const -> vector<int32>;
 
-    auto substringUntil(char separator) noexcept -> strex&;
-    auto substringUntil(string_view separator) noexcept -> strex&;
-    auto substringAfter(char separator) noexcept -> strex&;
-    auto substringAfter(string_view separator) noexcept -> strex&;
+    auto substring_until(char separator) noexcept -> strex&;
+    auto substring_until(string_view separator) noexcept -> strex&;
+    auto substring_after(char separator) noexcept -> strex&;
+    auto substring_after(string_view separator) noexcept -> strex&;
     auto trim() noexcept -> strex&;
     auto trim(string_view chars) noexcept -> strex&;
     auto ltrim(string_view chars) noexcept -> strex&;
@@ -162,27 +162,27 @@ public:
     auto replace(char from1, char from2, char to) -> strex&;
     auto replace(string_view from, string_view to) -> strex&;
     auto lower() -> strex&;
-    auto lowerUtf8() -> strex&;
+    auto lower_utf8() -> strex&;
     auto upper() -> strex&;
-    auto upperUtf8() -> strex&;
+    auto upper_utf8() -> strex&;
 
-    auto formatPath() -> strex&;
-    auto extractDir() -> strex&;
-    auto extractFileName() noexcept -> strex&;
-    auto getFileExtension() -> strex&; // Extension without dot and lowered
-    auto eraseFileExtension() noexcept -> strex&; // Erase extension with dot
-    auto changeFileName(string_view new_name) -> strex&;
-    auto combinePath(string_view path) -> strex&;
-    auto normalizePathSlashes() -> strex&;
-    auto normalizeLineEndings() -> strex&;
+    auto format_path() -> strex&;
+    auto extract_dir() -> strex&;
+    auto extract_file_name() noexcept -> strex&;
+    auto get_file_extension() -> strex&; // Extension without dot and lowered
+    auto erase_file_extension() noexcept -> strex&; // Erase extension with dot
+    auto change_file_name(string_view new_name) -> strex&;
+    auto combine_path(string_view path) -> strex&;
+    auto normalize_path_slashes() -> strex&;
+    auto normalize_line_endings() -> strex&;
 
 #if FO_WINDOWS
-    auto parseWideChar(const wchar_t* str) noexcept -> strex&;
-    [[nodiscard]] auto toWideChar() const noexcept -> wstring;
+    auto parse_wide_char(const wchar_t* str) noexcept -> strex&;
+    [[nodiscard]] auto to_wide_char() const noexcept -> wstring;
 #endif
 
 private:
-    void ownStorage() noexcept;
+    void own_storage() noexcept;
 
     string _s {};
     string_view _sv {};

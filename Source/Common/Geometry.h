@@ -63,7 +63,7 @@ struct msize : isize<int16>
     {
     }
 
-    [[nodiscard]] constexpr auto clampPos(std::integral auto x, std::integral auto y) const -> mpos
+    [[nodiscard]] constexpr auto clamp_pos(std::integral auto x, std::integral auto y) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
@@ -71,7 +71,7 @@ struct msize : isize<int16>
         const auto clamped_y = numeric_cast<int16>(std::clamp(numeric_cast<int32>(y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
-    [[nodiscard]] constexpr auto clampPos(pos_type auto pos) const -> mpos
+    [[nodiscard]] constexpr auto clamp_pos(pos_type auto pos) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
@@ -79,7 +79,7 @@ struct msize : isize<int16>
         const auto clamped_y = numeric_cast<int16>(std::clamp(numeric_cast<int32>(pos.y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
-    [[nodiscard]] constexpr auto fromRawPos(std::integral auto x, std::integral auto y) const -> mpos
+    [[nodiscard]] constexpr auto from_raw_pos(std::integral auto x, std::integral auto y) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);
@@ -89,7 +89,7 @@ struct msize : isize<int16>
         FO_RUNTIME_ASSERT(y < height);
         return {numeric_cast<int16>(x), numeric_cast<int16>(y)};
     }
-    [[nodiscard]] constexpr auto fromRawPos(pos_type auto pos) const -> mpos
+    [[nodiscard]] constexpr auto from_raw_pos(pos_type auto pos) const -> mpos
     {
         FO_RUNTIME_ASSERT(width > 0);
         FO_RUNTIME_ASSERT(height > 0);

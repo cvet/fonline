@@ -48,7 +48,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& entry : Settings.MapperResourceEntries) {
-        Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
+        Resources.AddDataSource(strex(Settings.ClientResources).combine_path(entry));
     }
 
     for (const auto& dir : settings.MapsDir) {
@@ -138,7 +138,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
         if (map != nullptr) {
             if (Settings.StartHexX > 0 && Settings.StartHexY > 0) {
-                _curMap->FindSetCenter(_curMap->GetSize().fromRawPos(Settings.StartHexX, Settings.StartHexY));
+                _curMap->FindSetCenter(_curMap->GetSize().from_raw_pos(Settings.StartHexX, Settings.StartHexY));
             }
 
             ShowMap(map);
@@ -160,7 +160,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         prev = pos + 1;
     }
 
-    ConsoleHistory = strex(history_str).normalizeLineEndings().split('\n');
+    ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
     while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
@@ -1728,7 +1728,7 @@ void FOMapper::IntLMouseUp()
 
                     for (int32 i = fx; i <= tx; i++) {
                         for (int32 j = fy; j <= ty; j++) {
-                            hexes.emplace_back(map_size.fromRawPos(i, j));
+                            hexes.emplace_back(map_size.from_raw_pos(i, j));
                         }
                     }
                 }
@@ -1834,7 +1834,7 @@ void FOMapper::IntMouseMove()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            _curMap->GetHexTrack(map_size.fromRawPos(i, j)) = 1;
+                            _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
                         }
                     }
                 }
@@ -1854,7 +1854,7 @@ void FOMapper::IntMouseMove()
             auto offs_y = Settings.MousePos.y - SelectPos.y;
 
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
-                SelectHex1 = _curMap->GetSize().fromRawPos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
+                SelectHex1 = _curMap->GetSize().from_raw_pos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
                 SelectPos.x += offs_x;
                 SelectPos.y += offs_y;
                 _curMap->RefreshMap();
@@ -2011,7 +2011,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (!_curMap->GetSize().isValidPos(hex)) {
+    if (!_curMap->GetSize().is_valid_pos(hex)) {
         return;
     }
 
@@ -2249,7 +2249,7 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
                 raw_hex.y += offs_hy;
             }
 
-            if (!_curMap->GetSize().isValidPos(raw_hex)) {
+            if (!_curMap->GetSize().is_valid_pos(raw_hex)) {
                 return false; // Disable moving
             }
         }
@@ -2297,7 +2297,7 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
                 raw_hex.y += offs_hy;
             }
 
-            const mpos hex = _curMap->GetSize().clampPos(raw_hex);
+            const mpos hex = _curMap->GetSize().clamp_pos(raw_hex);
 
             if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                 _curMap->MoveItem(item, hex);
@@ -2343,7 +2343,7 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     FO_RUNTIME_ASSERT(_curMap);
 
-    if (!_curMap->GetSize().isValidPos(hex)) {
+    if (!_curMap->GetSize().is_valid_pos(hex)) {
         return nullptr;
     }
 
@@ -2375,10 +2375,10 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     mpos corrected_hex = hex;
 
     if (proto->GetIsTile()) {
-        corrected_hex = _curMap->GetSize().fromRawPos(corrected_hex.x - corrected_hex.x % Settings.MapTileStep, corrected_hex.y - corrected_hex.y % Settings.MapTileStep);
+        corrected_hex = _curMap->GetSize().from_raw_pos(corrected_hex.x - corrected_hex.x % Settings.MapTileStep, corrected_hex.y - corrected_hex.y % Settings.MapTileStep);
     }
 
-    if (owner == nullptr && (!_curMap->GetSize().isValidPos(corrected_hex))) {
+    if (owner == nullptr && (!_curMap->GetSize().is_valid_pos(corrected_hex))) {
         return nullptr;
     }
 
@@ -2538,11 +2538,11 @@ void FOMapper::BufferPaste()
         const auto raw_hx = numeric_cast<int32>(entity_buf.Hex.x) + hx_offset;
         const auto raw_hy = numeric_cast<int32>(entity_buf.Hex.y) + hy_offset;
 
-        if (!_curMap->GetSize().isValidPos(raw_hx, raw_hy)) {
+        if (!_curMap->GetSize().is_valid_pos(raw_hx, raw_hy)) {
             continue;
         }
 
-        const mpos hex = _curMap->GetSize().fromRawPos(raw_hx, raw_hy);
+        const mpos hex = _curMap->GetSize().from_raw_pos(raw_hx, raw_hy);
 
         function<void(const EntityBuf*, ItemView*)> add_item_inner_items;
 
@@ -2605,7 +2605,7 @@ void FOMapper::CurDraw()
             }
 
             if (proto_item->GetIsTile()) {
-                hex = _curMap->GetSize().fromRawPos(hex.x - hex.x % Settings.MapTileStep, hex.y - hex.y % Settings.MapTileStep);
+                hex = _curMap->GetSize().from_raw_pos(hex.x - hex.x % Settings.MapTileStep, hex.y - hex.y % Settings.MapTileStep);
             }
 
             const auto* spr = GetIfaceSpr(proto_item->GetPicMap());
@@ -2768,7 +2768,7 @@ void FOMapper::ConsoleDraw()
         SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
 
         auto str = ConsoleStr;
-        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().durationValue()).toMs<int32>() % 800 < 400 ? "!" : ".");
+        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<int32>() % 800 < 400 ? "!" : ".");
         DrawStr(irect32(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -2875,7 +2875,7 @@ void FOMapper::ConsoleProcess()
         return;
     }
 
-    if ((GameTime.GetFrameTime() - ConsoleKeyTime).toMs<int32>() >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
+    if ((GameTime.GetFrameTime() - ConsoleKeyTime).to_ms<int32>() >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
         ConsoleKeyTime = GameTime.GetFrameTime();
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
         Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
@@ -2943,7 +2943,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        string str = strex(command).substringAfter(' ').trim();
+        string str = strex(command).substring_after(' ').trim();
 
         if (!func(str)) {
             AddMess("Script execution fail");
@@ -2961,7 +2961,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        vector<int32> anims = strex(command.substr(1)).splitToInt(' ');
+        vector<int32> anims = strex(command.substr(1)).split_to_int(' ');
 
         if (anims.empty()) {
             return;
@@ -3155,13 +3155,13 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
             fomap_path = fomap_file.GetFullPath();
         }
         else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-            fomap_path = strex(fomap_file2.GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_file2.GetFullPath()).change_file_name(fomap_name);
         }
         else if (fomap_files.MoveNext()) {
-            fomap_path = strex(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
+            fomap_path = strex(fomap_files.GetCurFile().GetFullPath()).change_file_name(fomap_name);
         }
         else {
-            fomap_path = strex("{}.fomap", fomap_path).formatPath();
+            fomap_path = strex("{}.fomap", fomap_path).format_path();
         }
     }
 

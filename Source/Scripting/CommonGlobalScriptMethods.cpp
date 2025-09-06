@@ -58,7 +58,7 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const string module_name = strex(st_entry->file).extractFileName().eraseFileExtension();
+        const string module_name = strex(st_entry->file).extract_file_name().erase_file_extension();
 
         WriteLog("{}: {}", module_name, text);
     }
@@ -152,7 +152,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi = {};
-    auto* cmd_line = _wcsdup(strex(command).toWideChar().c_str());
+    auto* cmd_line = _wcsdup(strex(command).to_wide_char().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 

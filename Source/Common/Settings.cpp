@@ -63,7 +63,7 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry |= any_value.AsBool();
     }
     else if constexpr (std::floating_point<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
         entry += numeric_cast<float32>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -111,7 +111,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::floating_point<T>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Double);
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -166,8 +166,8 @@ GlobalSettings::GlobalSettings(int32 argc, char** argv)
     if (IsRunInDebugger()) {
         WriteLog("Apply debugging config {}", FO_DEBUGGING_MAIN_CONFIG);
 
-        const string config_name = strex(FO_DEBUGGING_MAIN_CONFIG).extractFileName();
-        const string config_dir = strex(FO_DEBUGGING_MAIN_CONFIG).extractDir();
+        const string config_name = strex(FO_DEBUGGING_MAIN_CONFIG).extract_file_name();
+        const string config_dir = strex(FO_DEBUGGING_MAIN_CONFIG).extract_dir();
         ApplyConfigPath(config_name, config_dir);
     }
 
@@ -237,7 +237,7 @@ GlobalSettings::GlobalSettings(int32 argc, char** argv)
 
         const auto config_str = volatile_char_to_string(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG));
 
-        if (!strex(config_str).startsWith("###InternalConfig###")) {
+        if (!strex(config_str).starts_with("###InternalConfig###")) {
             auto config = ConfigFile("InternalConfig.fomain", config_str);
             ApplyConfigFile(config, "");
         }
@@ -266,8 +266,8 @@ GlobalSettings::GlobalSettings(int32 argc, char** argv)
                 if (key == "ApplyConfig") {
                     WriteLog("Apply config {}", value);
 
-                    const string config_name = strex(value).extractFileName();
-                    const string config_dir = strex(value).extractDir();
+                    const string config_name = strex(value).extract_file_name();
+                    const string config_dir = strex(value).extract_dir();
                     SetValue(key, config_name, config_dir);
                     ApplySettingsConfig(config_dir);
                 }
@@ -338,8 +338,8 @@ GlobalSettings::GlobalSettings(string_view config_path, string_view sub_config)
 
     _bakingMode = true;
 
-    const string config_name = strex(config_path).extractFileName();
-    const string config_dir = strex(config_path).extractDir();
+    const string config_name = strex(config_path).extract_file_name();
+    const string config_dir = strex(config_path).extract_dir();
     ApplyConfigPath(config_name, config_dir);
 
     const_cast<string&>(ApplySubConfig) = "";
@@ -395,7 +395,7 @@ void GlobalSettings::ApplyConfigPath(string_view config_name, string_view config
         return;
     }
 
-    const string config_path = strex(config_dir).combinePath(config_name);
+    const string config_path = strex(config_dir).combine_path(config_name);
 
     if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
         const_cast<vector<string>&>(AppliedConfigs).emplace_back(config_path);
@@ -442,8 +442,8 @@ void GlobalSettings::ApplySettingsConfig(string_view config_dir)
     const_cast<vector<string>&>(ApplyConfig).clear();
 
     for (const auto& config_to_apply : configs_to_apply) {
-        const string config_name = strex(config_to_apply).extractFileName();
-        const string config_dir2 = strex(config_dir).combinePath(strex(config_to_apply).extractDir());
+        const string config_name = strex(config_to_apply).extract_file_name();
+        const string config_dir2 = strex(config_dir).combine_path(strex(config_to_apply).extract_dir());
         ApplyConfigPath(config_name, config_dir2);
     }
 }
@@ -468,13 +468,13 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         }
 
         if (auto server_only = get_map_value("ServerOnly"); !server_only.empty()) {
-            pack_info.ServerOnly = strex(server_only).toBool();
+            pack_info.ServerOnly = strex(server_only).to_bool();
         }
         if (auto client_only = get_map_value("ClientOnly"); !client_only.empty()) {
-            pack_info.ClientOnly = strex(client_only).toBool();
+            pack_info.ClientOnly = strex(client_only).to_bool();
         }
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
-            pack_info.MapperOnly = strex(mapper_only).toBool();
+            pack_info.MapperOnly = strex(mapper_only).to_bool();
         }
         if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
@@ -482,15 +482,15 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
 
         if (auto inpurt_dir = get_map_value("InputDir"); !inpurt_dir.empty()) {
             for (auto& dir : strex(inpurt_dir).split(' ')) {
-                dir = strex(config_dir).combinePath(dir);
+                dir = strex(config_dir).combine_path(dir);
                 pack_info.InputDir.emplace_back(std::move(dir));
             }
         }
         if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strex(recursive_input).toBool();
+            pack_info.RecursiveInput = strex(recursive_input).to_bool();
         }
         if (auto bake_order = get_map_value("BakeOrder"); !bake_order.empty()) {
-            pack_info.BakeOrder = strex(bake_order).toInt();
+            pack_info.BakeOrder = strex(bake_order).to_int32();
         }
 
         if (pack_info.Name != "Embedded") {
@@ -697,7 +697,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                         }
                     }
                     else {
-                        const string file_path = strex(config_dir).combinePath(name);
+                        const string file_path = strex(config_dir).combine_path(name);
                         auto file = DiskFileSystem::OpenFile(file_path, false);
 
                         if (file) {

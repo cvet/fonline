@@ -475,7 +475,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    const string ext = strex(path).getFileExtension();
+    const string ext = strex(path).get_file_extension();
 
     if (ext.empty()) {
         BreakIntoDebugger();

@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 
             const auto write_file = [&](const_span<uint8> data, string_view ext) {
                 const string path = strex("{}/{}.{}", res_pack.Name, res_pack.Name, ext);
-                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combinePath(path), true);
+                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(path), true);
                 FO_RUNTIME_ASSERT(file);
                 const auto write_ok = file.Write(data);
                 FO_RUNTIME_ASSERT(write_ok);

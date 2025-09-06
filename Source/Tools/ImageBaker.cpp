@@ -162,7 +162,7 @@ void ImageBaker::BakeFiles(FileCollection files)
 
             while (_files.MoveNext()) {
                 auto file_header = _files.GetCurFileHeader();
-                string file_ext = strex(file_header.GetPath()).getFileExtension();
+                string file_ext = strex(file_header.GetPath()).get_file_extension();
 
                 if (file_ext != ext) {
                     continue;
@@ -261,11 +261,11 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(fname_with_opt).getFileExtension();
-    const string dir = strex(fname_with_opt).extractDir();
-    const string name = strex(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
+    const string ext = strex(fname_with_opt).get_file_extension();
+    const string dir = strex(fname_with_opt).extract_dir();
+    const string name = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
     const string fname = strex("{}/{}.{}", dir, name, ext);
-    const string opt = strex(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
+    const string opt = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
 
     File temp_storage;
 
@@ -356,7 +356,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
             oy = fofrm.GetAsInt(dir_str, "OffsetY", oy);
         }
 
-        string frm_dir = strex(fname).extractDir();
+        string frm_dir = strex(fname).extract_dir();
 
         int32 frames = 0;
         bool no_info = false;
@@ -458,7 +458,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).startsWith("art/critters/")) {
+    if (strex(fname).starts_with("art/critters/")) {
         collection.NewName = strex(fname).lower();
     }
 
@@ -515,7 +515,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) 
 
         {
             auto locker = std::unique_lock {_filesLocker};
-            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
         }
 
         if (palette_file) {
@@ -724,11 +724,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).startsWith("art/critters/")) {
-        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension().lower(), "fofrm");
+    if (strex(fname).starts_with("art/critters/")) {
+        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension().lower(), "fofrm");
     }
     else {
-        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension(), "frm");
+        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension(), "frm");
     }
 
     // Animate pixels
@@ -796,7 +796,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
 
         {
             auto locker = std::unique_lock {_filesLocker};
-            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
         }
 
         if (palette_file) {
@@ -1424,7 +1424,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
             reader.GoForward(name_len);
             auto index = reader.GetLEUInt16();
 
-            if (seq_name.empty() || strex(seq_name).compareIgnoreCase(name)) {
+            if (seq_name.empty() || strex(seq_name).compare_ignore_case(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1992,7 +1992,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).startsWith("MOS")) {
+    if (!strex(head).starts_with("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -2015,7 +2015,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).startsWith("MOS")) {
+        if (!strex(head).starts_with("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -2121,7 +2121,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).startsWith("BAM")) {
+    if (!strex(head).starts_with("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -2144,7 +2144,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).startsWith("BAM")) {
+        if (!strex(head).starts_with("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }

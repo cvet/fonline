@@ -62,7 +62,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, int32* p
     }
 
     const auto ctrl_shift = CtrlDwn || ShiftDwn;
-    const auto dik_text_len_utf8 = strex(dik_text).lengthUtf8();
+    const auto dik_text_len_utf8 = strex(dik_text).length_utf8();
     const auto str_len = numeric_cast<int32>(str.length());
 
     int32 position_dummy = str_len;

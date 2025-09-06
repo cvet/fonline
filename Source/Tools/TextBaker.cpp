@@ -60,7 +60,7 @@ void TextBaker::BakeFiles(FileCollection files)
 
     while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
-        const string ext = strex(file_header.GetPath()).getFileExtension();
+        const string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (!IsExtSupported(ext)) {
             continue;

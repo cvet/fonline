@@ -129,11 +129,11 @@ void Client_RegisterData(EngineData* engine, const vector<uint8>& restore_info_b
 
         unordered_map<string, int> key_values;
         for (size_t i = 2; i < tokens.size(); i++) {
-            const auto kv = strex(tokens[i]).split('=');
+            auto kv = strex(tokens[i]).split('=');
             FO_RUNTIME_ASSERT(kv.size() == 2);
-            const auto key = kv[0];
-            const auto value = strex(kv[1]).toInt();
-            key_values.emplace(key, value);
+            auto&& key = kv[0];
+            const auto value = strex(kv[1]).to_int32();
+            key_values.emplace(std::move(key), value);
         }
 
         engine->RegisterEnumGroup(enum_name, engine->ResolveBaseType(enum_underlying_type), std::move(key_values));

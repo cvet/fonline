@@ -243,7 +243,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
 
     for (auto& anim : _loadedAnims) {
-        if (strex(anim->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || strex(anim->GetName()).compareIgnoreCase(anim_name))) {
+        if (strex(anim->GetFileName()).compare_ignore_case(anim_fname) && (take_first || strex(anim->GetName()).compare_ignore_case(anim_name))) {
             return anim.get();
         }
     }
@@ -276,7 +276,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     // Create new
-    const string tex_path = strex(model_path).extractDir().combinePath(texture_name);
+    const string tex_path = strex(model_path).extract_dir().combine_path(texture_name);
     auto&& [tex, tex_data] = _textureLoader(tex_path);
 
     if (tex == nullptr) {
@@ -1251,7 +1251,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             MeshTexture* texture = nullptr;
 
             // Evaluate texture
-            if (strex(tex_name).startsWith("Parent")) { // Parent_MeshName
+            if (strex(tex_name).starts_with("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
                     const auto* parent_mesh_name = tex_name.c_str() + 6;
                     if (parent_mesh_name[0] == '_') {
@@ -1292,7 +1292,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             RenderEffect* effect = nullptr;
 
             // Get effect
-            if (strex(std::get<0>(eff_info)).startsWith("Parent")) { // Parent_MeshName
+            if (strex(std::get<0>(eff_info)).starts_with("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
                     const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
                     if (mesh_name[0] == '_') {
@@ -1928,7 +1928,7 @@ void ModelInstance::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * (time - _lastDrawTime).toMs<float32>();
+    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32>();
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -2234,7 +2234,7 @@ auto ModelInformation::Load(string_view name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(name).getFileExtension();
+    const string ext = strex(name).get_file_extension();
 
     if (ext.empty()) {
         return false;
@@ -2307,7 +2307,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Model") {
                 *istr >> buf;
-                model = strex(name).extractDir().combinePath(buf);
+                model = strex(name).extract_dir().combine_path(buf);
             }
             else if (token == "Include") {
                 // Get swapped words
@@ -2324,7 +2324,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Include file path
-                const string fname = strex(name).extractDir().combinePath(templates[0]);
+                const string fname = strex(name).extract_dir().combine_path(templates[0]);
                 const auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
 
                 if (fo3d_ex) {
@@ -2396,7 +2396,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     link->Layer = layer;
                     link->LayerValue = layer_val;
 
-                    string fname = strex(name).extractDir().combinePath(buf);
+                    string fname = strex(name).extract_dir().combine_path(buf);
                     link->ChildName = fname;
                     link->IsParticles = false;
                 }
@@ -2427,7 +2427,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Cut") {
                 *istr >> buf;
-                string fname = strex(name).extractDir().combinePath(buf);
+                string fname = strex(name).extract_dir().combine_path(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
 
                 if (area != nullptr) {
@@ -2855,7 +2855,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     anim_path = model;
                 }
                 else {
-                    anim_path = strex(name).extractDir().combinePath(anim_entry.FileName);
+                    anim_path = strex(name).extract_dir().combine_path(anim_entry.FileName);
                 }
 
                 const auto reversed = anim_entry.Name.starts_with('~');

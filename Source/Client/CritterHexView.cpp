@@ -385,7 +385,7 @@ void CritterHexView::RefreshModel()
     _model.reset();
 
     const hstring model_name = GetModelName();
-    const string ext = strex(model_name).getFileExtension();
+    const string ext = strex(model_name).get_file_extension();
 
     if (ext == "fo3d") {
         _modelSpr = dynamic_ptr_cast<ModelSprite>(_engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites));
@@ -522,7 +522,7 @@ void CritterHexView::Process()
     {
         auto& cur_anim = _curAnim.has_value() ? _curAnim.value() : _idle2dAnim;
 
-        const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).toMs<int32>() * 100 / cur_anim.FramesDuration.toMs<int32>();
+        const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32>() * 100 / cur_anim.FramesDuration.to_ms<int32>();
         const auto frm_proc = _curAnim.has_value() ? std::min(anim_proc, 100) : anim_proc % 100;
         const auto frm_index = lerp(0, cur_anim.Frames->CntFrm - 1, numeric_cast<float>(frm_proc) / 100.0f);
 
@@ -574,7 +574,7 @@ void CritterHexView::ProcessMoving()
         return;
     }
 
-    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).toMs<float32>() / Moving.WholeTime;
+    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).to_ms<float32>() / Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = Moving.WholeDist * normalized_time;

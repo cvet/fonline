@@ -87,7 +87,7 @@ auto FileHeader::GetFullPath() const -> string
     FO_RUNTIME_ASSERT(_isLoaded);
     FO_RUNTIME_ASSERT(!_filePath.empty());
 
-    return strex(_dataSource->GetPackName()).combinePath(_filePath);
+    return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t

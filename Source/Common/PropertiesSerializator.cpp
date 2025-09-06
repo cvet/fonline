@@ -159,7 +159,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
     else if (base_type_info.IsHash) {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
         pdata += sizeof(hstring::hash_t);
-        return hash_resolver.ResolveHash(hash).asStr();
+        return hash_resolver.ResolveHash(hash).as_str();
     }
     else if (base_type_info.IsEnum) {
         int32 enum_value = 0;
@@ -285,7 +285,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_spa
                 }
                 else if (dict_key_type_info.IsHash) {
                     const auto hash = *reinterpret_cast<const hstring::hash_t*>(p);
-                    return hash_resolver.ResolveHash(hash).asStr();
+                    return hash_resolver.ResolveHash(hash).as_str();
                 }
                 else if (dict_key_type_info.IsEnum) {
                     int32 enum_value = 0;
@@ -398,7 +398,7 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> const s
         return value.AsString();
     case AnyData::ValueType::Int64:
         return buf = strex("{}", value.AsInt64());
-    case AnyData::ValueType::Double:
+    case AnyData::ValueType::Float64:
         return buf = strex("{}", value.AsDouble());
     case AnyData::ValueType::Bool:
         return buf = strex("{}", value.AsBool());
@@ -420,7 +420,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
             result_value = numeric_cast<T>(value.AsInt64());
         }
     }
-    else if (value.Type() == AnyData::ValueType::Double) {
+    else if (value.Type() == AnyData::ValueType::Float64) {
         if constexpr (std::same_as<T, bool>) {
             result_value = !is_float_equal(value.AsDouble(), 0.0);
         }
@@ -445,26 +445,26 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     else if (value.Type() == AnyData::ValueType::String) {
         const auto& str = value.AsString();
 
-        if (strex(str).isNumber()) {
+        if (strex(str).is_number()) {
             if constexpr (std::same_as<T, bool>) {
-                result_value = strex(str).toBool();
+                result_value = strex(str).to_bool();
             }
             else if constexpr (std::floating_point<T>) {
-                result_value = numeric_cast<T>(strex(str).toDouble());
+                result_value = numeric_cast<T>(strex(str).to_float64());
             }
             else {
-                result_value = numeric_cast<T>(strex(str).toInt64());
+                result_value = numeric_cast<T>(strex(str).to_int64());
             }
         }
-        else if (strex(str).isExplicitBool()) {
+        else if (strex(str).is_explicit_bool()) {
             if constexpr (std::same_as<T, bool>) {
-                result_value = strex(str).toBool();
+                result_value = strex(str).to_bool();
             }
             else if constexpr (std::floating_point<T>) {
-                result_value = strex(str).toBool() ? 1.0f : 0.0f;
+                result_value = strex(str).to_bool() ? 1.0f : 0.0f;
             }
             else {
-                result_value = strex(str).toBool() ? 1 : 0;
+                result_value = strex(str).to_bool() ? 1 : 0;
             }
         }
         else {
@@ -484,7 +484,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
-            hash = hash_resolver.ToHashedString(value.AsString()).asHash();
+            hash = hash_resolver.ToHashedString(value.AsString()).as_hash();
         }
         else {
             throw PropertySerializationException("Wrong hash value type");
@@ -732,7 +732,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += dict_key.length();
             }
             else if (dict_key_type_info.IsHash) {
-                *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).asHash();
+                *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
             }
             else if (dict_key_type_info.IsEnum) {
                 const int32 enum_value = name_resolver.ResolveEnumValue(dict_key_type_info.TypeName, dict_key);
@@ -748,34 +748,34 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
             else if (dict_key_type_info.IsInt8) {
-                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strex(dict_key).toInt64());
+                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsInt16) {
-                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strex(dict_key).toInt64());
+                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsInt32) {
-                *reinterpret_cast<int32*>(pdata) = numeric_cast<int32>(strex(dict_key).toInt64());
+                *reinterpret_cast<int32*>(pdata) = numeric_cast<int32>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsInt64) {
-                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strex(dict_key).toInt64());
+                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsUInt8) {
-                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strex(dict_key).toInt64());
+                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsUInt16) {
-                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strex(dict_key).toInt64());
+                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsUInt32) {
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strex(dict_key).toInt64());
+                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strex(dict_key).to_int64());
             }
             else if (dict_key_type_info.IsSingleFloat) {
-                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strex(dict_key).toFloat());
+                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strex(dict_key).to_float32());
             }
             else if (dict_key_type_info.IsDoubleFloat) {
-                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strex(dict_key).toDouble());
+                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strex(dict_key).to_float64());
             }
             else if (dict_key_type_info.IsBool) {
-                *reinterpret_cast<bool*>(pdata) = strex(dict_key).toBool();
+                *reinterpret_cast<bool*>(pdata) = strex(dict_key).to_bool();
             }
             else {
                 FO_UNREACHABLE_PLACE();

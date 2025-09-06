@@ -441,10 +441,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl-es";
         }
 
-        const string vert_fname = strex("{}.{}.vert.{}", strex(name).eraseFileExtension(), pass + 1, ext);
+        const string vert_fname = strex("{}.{}.vert.{}", strex(name).erase_file_extension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         FO_RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = strex("{}.{}.frag.{}", strex(name).eraseFileExtension(), pass + 1, ext);
+        const string frag_fname = strex("{}.{}.frag.{}", strex(name).erase_file_extension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         FO_RUNTIME_ASSERT(!frag_content.empty());
 
@@ -747,7 +747,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.isValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.is_valid_pos(pos));
 
     ucolor result;
 

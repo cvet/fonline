@@ -88,7 +88,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toInt64() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoCritterSafe(hashed_proto_name);
@@ -119,7 +119,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).toInt64() : 0);
+        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = proto_mngr.GetProtoItemSafe(hashed_proto_name);

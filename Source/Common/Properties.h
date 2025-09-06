@@ -786,7 +786,7 @@ void Properties::SetValue(const Property* prop, T new_value)
         FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
         PropertyRawData prop_data;
-        prop_data.SetAs<hstring::hash_t>(new_value.asHash());
+        prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
 
         for (const auto& setter : prop->_setters) {
             setter(_entity, prop, prop_data);
@@ -794,7 +794,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     }
     else {
         FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-        const auto new_value_hash = new_value.asHash();
+        const auto new_value_hash = new_value.as_hash();
 
         if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
             if (!prop->_setters.empty() && _entity != nullptr) {
@@ -908,7 +908,7 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
             auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
 
             for (const auto& hstr : new_value) {
-                const auto hash = hstr.asHash();
+                const auto hash = hstr.as_hash();
                 MemCopy(buf, &hash, sizeof(hstring::hash_t));
                 buf += sizeof(hstring::hash_t);
             }

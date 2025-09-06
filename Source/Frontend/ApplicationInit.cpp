@@ -103,7 +103,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     // Write log to file
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension()));
     }
     else {
         LogToFile(strex("{}.log", FO_DEV_NAME));

@@ -70,7 +70,7 @@ void EffectBaker::BakeFiles(FileCollection files)
 
     while (files.MoveNext()) {
         auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).getFileExtension();
+        string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (!IsExtSupported(ext)) {
             continue;
@@ -240,7 +240,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
             throw EffectBakerException("Invalid uniform buffer", fname, uniform_block.name, uniform_block.size);
         }
 
-        const string fname_wo_ext = strex(fname).eraseFileExtension();
+        const string fname_wo_ext = strex(fname).erase_file_extension();
         BakeShaderStage(strex("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
         BakeShaderStage(strex("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 

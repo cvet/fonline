@@ -524,7 +524,7 @@ auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
         nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
     auto free_ws = ScopeCallback([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
-    const string error_str = strex().parseWideChar(ws).trim();
+    const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);
 

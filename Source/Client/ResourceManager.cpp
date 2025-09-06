@@ -57,7 +57,7 @@ void ResourceManager::IndexFiles()
         auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
-            _soundNames.emplace(strex(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
+            _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), file_header.GetPath());
         }
     }
 
@@ -98,7 +98,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.asUInt(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
+    const uint32 dw[4] = {model_name.as_uint32(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -106,7 +106,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 actio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.asUInt(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
+    const uint32 dw[4] = {model_name.as_uint32(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -138,7 +138,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
     while (true) {
         // Load
-        if (!!model_name && strex(model_name).startsWith("art/critters/")) {
+        if (!!model_name && strex(model_name).starts_with("art/critters/")) {
             // Hardcoded
             anim = LoadFalloutAnimFrames(model_name, state_anim, action_anim);
         }
@@ -449,7 +449,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 
     shared_ptr<SpriteSheet> anim;
 
-    string shorten_model_name = strex(model_name).eraseFileExtension();
+    string shorten_model_name = strex(model_name).erase_file_extension();
     shorten_model_name = shorten_model_name.substr(0, shorten_model_name.length() - 2);
 
     // Try load from fofrm
@@ -548,7 +548,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(model_name).getFileExtension();
+    const string ext = strex(model_name).get_file_extension();
 
     if (ext != "fo3d") {
         const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);

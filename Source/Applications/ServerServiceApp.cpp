@@ -209,7 +209,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         args.resize(argc);
 
         for (DWORD i = 0; i < argc; ++i) {
-            args_holder[i] = strex().parseWideChar(argv[i]);
+            args_holder[i] = strex().parse_wide_char(argv[i]);
             args[i] = args_holder.back().data();
         }
 
