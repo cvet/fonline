@@ -95,6 +95,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
         for (const auto& lang_name : _settings->BakeLanguages) {
             (void)_bakeChecker(strex("Protos.{}.fotxtb", lang_name), max_write_time);
             (void)_bakeChecker(strex("Items.{}.fotxtb", lang_name), max_write_time);
+            (void)_bakeChecker(strex("Critters.{}.fotxtb", lang_name), max_write_time);
             (void)_bakeChecker(strex("Maps.{}.fotxtb", lang_name), max_write_time);
             (void)_bakeChecker(strex("Locations.{}.fotxtb", lang_name), max_write_time);
         }
