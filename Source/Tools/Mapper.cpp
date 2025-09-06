@@ -1184,7 +1184,12 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
         SelectEntityProp(ObjCurLine + 1);
     }
     else if (dik == KeyCode::Escape) {
-        ObjCurLineValue = ObjCurLineInitValue;
+        if (ObjCurLineValue != ObjCurLineInitValue) {
+            ObjCurLineValue = ObjCurLineInitValue;
+        }
+        else {
+            SelectClear();
+        }
     }
     else {
         if (!ObjCurLineIsConst) {
