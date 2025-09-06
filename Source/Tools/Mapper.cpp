@@ -90,21 +90,21 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     // Initialize tabs
     const auto& cr_protos = ProtoMngr.GetProtoCritters();
 
-    for (auto&& [pid, proto] : cr_protos) {
+    for (const auto& proto : cr_protos | std::views::values) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.emplace_back(proto);
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
     }
-    for (auto&& [pid, proto] : Tabs[INT_MODE_CRIT]) {
+    for (auto& proto : Tabs[INT_MODE_CRIT] | std::views::values) {
         std::ranges::sort(proto.NpcProtos, [](const ProtoCritter* a, const ProtoCritter* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
 
-    for (auto&& [pid, proto] : item_protos) {
+    for (const auto& proto : item_protos | std::views::values) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.emplace_back(proto);
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.emplace_back(proto);
     }
-    for (auto&& [pid, proto] : Tabs[INT_MODE_ITEM]) {
+    for (auto& proto : Tabs[INT_MODE_ITEM] | std::views::values) {
         std::ranges::sort(proto.ItemProtos, [](const ProtoItem* a, const ProtoItem* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
@@ -2563,7 +2563,7 @@ void FOMapper::BufferPaste()
             auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, 0, entity_buf.Props);
 
             for (const auto* child_buf : entity_buf.Children) {
-                auto* inv_item = cr->AddMapperInvItem(_curMap->GenTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
+                auto* inv_item = cr->AddMapperInvItem(_curMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
 
                 add_item_inner_items(child_buf, inv_item);
             }
@@ -3221,7 +3221,7 @@ void FOMapper::AddMess(string_view message_text)
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
-    MessBox.emplace_back(MessBoxMessage {0, str, mess_time});
+    MessBox.emplace_back(MessBoxMessage {.Type = 0, .Mess = str, .Time = mess_time});
     MessBoxScroll = 0;
     MessBoxCurText = "";
 
