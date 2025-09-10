@@ -331,12 +331,14 @@ void MapView::LoadStaticData()
     reader.VerifyEnd();
 
     // Index roof
-    auto roof_num = 1;
+    int32 roof_num = 1;
 
     for (const auto hx : iterate_range(_mapSize.width)) {
         for (const auto hy : iterate_range(_mapSize.height)) {
-            if (!_hexField->GetCellForReading({hx, hy}).RoofTiles.empty()) {
-                MarkRoofNum(ipos32 {hx, hy}, numeric_cast<int16>(roof_num));
+            const auto& field = _hexField->GetCellForReading(mpos(hx, hy));
+
+            if (field.RoofNum == 0 && !field.RoofTiles.empty()) {
+                MarkRoofNum(ipos32 {hx, hy}, roof_num);
                 roof_num++;
             }
         }
@@ -2231,35 +2233,35 @@ void MapView::SetSkipRoof(mpos hex)
     }
 }
 
-void MapView::MarkRoofNum(ipos32 raw_hex, int16 num)
+void MapView::MarkRoofNum(ipos32 raw_hex, int32 num)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.isValidPos(raw_hex)) {
-        return;
-    }
+    std::stack<ipos32, vector<ipos32>> next_raw_hexes;
+    next_raw_hexes.push(raw_hex);
 
-    const auto hex = _mapSize.fromRawPos(raw_hex);
+    while (!next_raw_hexes.empty()) {
+        const auto next_raw_hex = next_raw_hexes.top();
+        next_raw_hexes.pop();
 
-    if (_hexField->GetCellForReading(hex).RoofTiles.empty()) {
-        return;
-    }
-    if (_hexField->GetCellForReading(hex).RoofNum != 0) {
-        return;
-    }
-
-    for (auto x = 0; x < _engine->Settings.MapTileStep; x++) {
-        for (auto y = 0; y < _engine->Settings.MapTileStep; y++) {
-            if (_mapSize.isValidPos(hex.x + x, hex.y + y)) {
-                _hexField->GetCellForWriting(_mapSize.fromRawPos(hex.x + x, hex.y + y)).RoofNum = num;
-            }
+        if (!_mapSize.isValidPos(next_raw_hex)) {
+            continue;
         }
-    }
 
-    MarkRoofNum({hex.x + _engine->Settings.MapTileStep, hex.y}, num);
-    MarkRoofNum({hex.x - _engine->Settings.MapTileStep, hex.y}, num);
-    MarkRoofNum({hex.x, hex.y + _engine->Settings.MapTileStep}, num);
-    MarkRoofNum({hex.x, hex.y - _engine->Settings.MapTileStep}, num);
+        const auto next_hex = _mapSize.fromRawPos(next_raw_hex);
+        const auto& field = _hexField->GetCellForReading(next_hex);
+
+        if (field.RoofNum != 0 || field.RoofTiles.empty()) {
+            continue;
+        }
+
+        _hexField->GetCellForWriting(next_hex).RoofNum = num;
+
+        next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings.MapTileStep, next_raw_hex.y);
+        next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings.MapTileStep, next_raw_hex.y);
+        next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y + _engine->Settings.MapTileStep);
+        next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y - _engine->Settings.MapTileStep);
+    }
 }
 
 auto MapView::IsVisible(const Sprite* spr, ipos32 offset) const -> bool
@@ -2835,8 +2837,8 @@ void MapView::PrepareFogToDraw()
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
             const ipos32 base_pos = GetHexPosition(base_hex);
-            const auto center_look_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 0}, &chosen->SprOffset};
-            const auto center_shoot_point = PrimitivePoint {{base_pos.x + half_hw, base_pos.y + half_hh}, ucolor {0, 0, 0, 255}, &chosen->SprOffset};
+            const auto center_look_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 0}, .PointOffset = &chosen->SprOffset};
+            const auto center_shoot_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 255}, .PointOffset = &chosen->SprOffset};
 
             auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
 

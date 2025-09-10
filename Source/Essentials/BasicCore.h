@@ -87,6 +87,7 @@
 #include <shared_mutex>
 #include <span>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <thread>
 #include <tuple>

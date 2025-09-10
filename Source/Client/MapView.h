@@ -134,7 +134,7 @@ public:
         vector<ItemHexView*> BlockLineItems {};
         vector<ItemHexView*> GroundTiles {};
         vector<ItemHexView*> RoofTiles {};
-        int16 RoofNum {};
+        int32 RoofNum {};
         CornerType Corner {};
         FieldFlags Flags {};
         unordered_map<LightSource*, ucolor> LightSources {};
@@ -242,7 +242,7 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetSkipRoof(mpos hex);
-    void MarkRoofNum(ipos32 raw_hex, int16 num);
+    void MarkRoofNum(ipos32 raw_hex, int32 num);
 
     auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
 
