@@ -1758,11 +1758,6 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
     return true;
 }
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
-{
-    return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
-}
-
 auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -1785,8 +1780,9 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     auto reader = file.GetReader();
 
     const auto signature = reader.GetLEUInt32();
+    const auto make_signature = [](uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32 { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
 
-    if (signature != MAKEUINT('B', 'M', 'F', 3)) {
+    if (signature != make_signature('B', 'M', 'F', 3)) {
         WriteLog("Invalid signature of font '{}'", font_name);
         return false;
     }
