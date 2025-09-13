@@ -64,6 +64,7 @@ FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
 FIXED_SETTING(string, EmbeddedResources, "@Disabled"); // Embedded resources directory, @Disabled to disable, @Embedded to read from executable
 FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
+FIXED_SETTING(int32, ZipCompressLevel, 1); // Zip deflate level (0-9)
 FIXED_SETTING(vector<string>, MapsDir, "Maps"); // .fomap directories, used by Mapper
 FIXED_SETTING(bool, DataSynchronization, true); // If true, data synchronization between server and client is enabled, otherwise disabled
 SETTING_GROUP_END();
