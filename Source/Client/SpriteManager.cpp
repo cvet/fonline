@@ -2317,7 +2317,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
     cury = r.y;
 
     for (const auto i : iterate_range(fi.LinesAll)) {
-        fi.LineWidth[i] = numeric_cast<int16>(curx);
+        fi.LineWidth[i] = curx;
     }
 
     bool can_count = false;
@@ -2342,7 +2342,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
             break;
         case 0:
         case '\n':
-            fi.LineWidth[curstr] = numeric_cast<int16>(curx);
+            fi.LineWidth[curstr] = curx;
             cury += font->LineHeight + font->YAdvance;
             curx = r.x;
 
