@@ -266,6 +266,7 @@ if(WIN32)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes
 	add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
 	add_compile_options_C_CXX(/Zf)
+	add_compile_options_C_CXX(/FS)
 
 	add_link_options(/INCREMENTAL:NO)
 	add_link_options(/OPT:REF)
