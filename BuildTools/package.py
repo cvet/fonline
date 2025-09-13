@@ -39,7 +39,6 @@ parser.add_argument('-angelscript', dest='angelscript', action='store_true', hel
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 parser.add_argument('-output', dest='output', required=True, help='output dir')
-parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()
 
 fomain = foconfig.ConfigParser()
@@ -56,6 +55,7 @@ buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 baseServerResName = fomain.mainSection().getStr('BaseServerResourcesName')
 baseClientResName = fomain.mainSection().getStr('BaseClientResourcesName')
 embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
+zipCompressLevel = fomain.mainSection().getInt('ZipCompressLevel')
 
 curPath = os.path.dirname(sys.argv[0])
 
@@ -108,7 +108,7 @@ def patchFile(filePath, textFrom, textTo):
 		f.write(content)
 
 def makeZip(name, path):
-	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel))
+	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel)
 	for root, dirs, files in os.walk(path):
 		for file in files:
 			zip.write(os.path.join(root, file), os.path.join(os.path.relpath(root, path), file))
@@ -172,7 +172,7 @@ def build():
 		if packName == 'Embedded':
 			log('Make pack', packName, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 			embeddedData = io.BytesIO()
-			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
 				for file in files:
 					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 			embeddedData = embeddedData.getvalue()
@@ -180,7 +180,7 @@ def build():
 		else:
 			log('Make pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
 			baseResName = baseServerResName if args.target in ['Server'] else baseClientResName
-			with zipfile.ZipFile(os.path.join(targetOutputPath, baseResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+			with zipfile.ZipFile(os.path.join(targetOutputPath, baseResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
 				for file in files:
 					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
@@ -190,7 +190,7 @@ def build():
 			assert len(files), 'No files in pack ' + packName
 			if packName != 'Embedded':
 				log('Make client pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
-				with zipfile.ZipFile(os.path.join(targetOutputPath, baseClientResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+				with zipfile.ZipFile(os.path.join(targetOutputPath, baseClientResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
 					for file in files:
 						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	

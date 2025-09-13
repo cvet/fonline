@@ -1435,7 +1435,6 @@ foreach(package ${FO_PACKAGES})
 
         list(APPEND packageCommands -input ${FO_OUTPUT_PATH})
         list(APPEND packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
-        list(APPEND packageCommands -compresslevel $<IF:$<OR:$<CONFIG:Release>,$<CONFIG:Release_Ext>,$<CONFIG:MinSizeRel>>,9,1>)
 
         StatusMessage("  ${target} for ${platform}-${arch} in ${pack} with ${config} config")
         add_custom_command(TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands})
