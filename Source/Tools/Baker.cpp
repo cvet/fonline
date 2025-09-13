@@ -328,8 +328,9 @@ void MasterBaker::BakeAll()
             };
 
             const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
-                auto res_file = DiskFileSystem::OpenFile(strex(output_dir).combinePath(path), true);
-                FO_RUNTIME_ASSERT(res_file);
+                const auto res_path = strex(output_dir).combinePath(path).str();
+                auto res_file = DiskFileSystem::OpenFile(res_path, true);
+                FO_RUNTIME_ASSERT_STR(res_file, strex("Unable to write file '{}'", res_path));
                 const auto res_file_write_ok = res_file.Write(baked_data);
                 FO_RUNTIME_ASSERT(res_file_write_ok);
 
