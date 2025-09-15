@@ -80,17 +80,13 @@ Reference project:
 
 ### Package dependencies
 
-Following Linux packages will help us build game for target platforms.  
-* Common:  
-`clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
-* Building for Linux:  
-`libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
-* Building for Web:  
-`nodejs` `default-jre`
-* Building for Android:  
-`android-sdk` `openjdk-8-jdk` `ant`
+Following Linux packages need to build game for target platforms:
+* Common: `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
+* Building for Linux: `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
+* Building for Web: `nodejs` `default-jre`
+* Building for Android: `android-sdk` `openjdk-8-jdk` `ant`
 
-Build scripts download and install following packages:
+Build scripts will download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
@@ -105,9 +101,12 @@ List of tools for Mac operating system:
 * [Python](https://python.org) - needed for additional game code generation
 * [Xcode](https://developer.apple.com/xcode)
 
-Other stuff used in build pipeline:
+Other stuff used in the build pipeline:
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
+
+SAST Tools:
+* [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code
 
 ### Statically linked packages
 
