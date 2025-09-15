@@ -105,7 +105,7 @@ Other stuff used in the build pipeline:
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
 
-SAST Tools:
+SAST tools:
 * [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code
 
 ### Statically linked packages
