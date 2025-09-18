@@ -675,7 +675,6 @@ FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self, ident_t& 
 FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 {
     self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::Success;
 
     if (self->IsMoving()) {
         self->ClearMove();

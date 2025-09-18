@@ -48,14 +48,6 @@ MapManager::MapManager(FOServer* engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto MapManager::GridAt(mpos pos) -> int16&
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
-    return _mapGrid[((max_path_find_len + 1) + pos.y - _mapGridOffset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + pos.x - _mapGridOffset.x)];
-}
-
 void MapManager::LoadFromResources()
 {
     FO_STACK_TRACE_ENTRY();
@@ -131,7 +123,7 @@ void MapManager::LoadFromResources()
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         cr_props.RestoreAllData(props_data);
 
-                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, cr_proto, &cr_props);
+                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, cr_proto, &cr_props);
 
                         static_map->CritterBillets.emplace_back(cr_id, cr);
 
@@ -167,7 +159,7 @@ void MapManager::LoadFromResources()
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
 
-                        auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, item_proto, &item_props);
+                        auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, item_proto, &item_props);
 
                         static_map->ItemBillets.emplace_back(item_id, item);
 
@@ -396,38 +388,12 @@ void MapManager::DestroyMapContent(Map* map)
     FO_RUNTIME_ASSERT(map->_itemsMap.empty());
 }
 
-auto MapManager::GetLocationAndMapsStatistics() const -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& locations = _engine->EntityMngr.GetLocations();
-    const auto& maps = _engine->EntityMngr.GetMaps();
-
-    string result = strex("Locations count: {}\n", locations.size());
-    result += strex("Maps count: {}\n", maps.size());
-    result += "Location             Id\n";
-    result += "          Map                 Id          Time Script\n";
-
-    for (const auto& loc : locations | std::views::values) {
-        result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
-
-        int32 map_index = 0;
-
-        for (const auto& map : loc->GetMaps()) {
-            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
-            map_index++;
-        }
-    }
-
-    return result;
-}
-
 auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto, props);
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), ident_t {}, proto, props);
 
     vector<ident_t> map_ids;
 
@@ -480,7 +446,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
     const auto* static_map = GetStaticMap(proto);
 
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, proto, loc, static_map);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, proto, loc, static_map);
 
     loc->AddMap(map.get());
 
@@ -780,156 +746,157 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         }
     }
 
-    // Prepare
-    _mapGridOffset = input.FromHex;
+    // Prepare grid
+    const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
+    _findPathGrid.resize(numeric_cast<size_t>(max_path_find_len * 2 + 2) * (max_path_find_len * 2 + 2));
+    MemFill(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
 
-    int16 numindex = 1;
-    _mapGrid.resize(numeric_cast<size_t>(_engine->Settings.MaxPathFindLength * 2 + 2) * (_engine->Settings.MaxPathFindLength * 2 + 2));
-    MemFill(_mapGrid.data(), 0, _mapGrid.size() * sizeof(int16));
-    GridAt(input.FromHex) = numindex;
+    const auto grid_offset = input.FromHex;
+    const auto grid_at = [&](mpos hex) -> int16& { return _findPathGrid[((max_path_find_len + 1) + hex.y - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + hex.x - grid_offset.x)]; };
 
-    auto to_hex = input.ToHex;
+    int16 hex_index = 1;
+    grid_at(input.FromHex) = hex_index;
 
-    vector<mpos> coords;
-    vector<mpos> cr_coords;
-    vector<mpos> gag_coords;
-    coords.reserve(10000);
-    cr_coords.reserve(100);
-    gag_coords.reserve(100);
-
-    // First point
-    coords.emplace_back(input.FromHex);
+    vector<mpos> next_hexes;
+    vector<mpos> cr_hexes;
+    vector<mpos> gag_hexes;
+    next_hexes.reserve(10000);
+    cr_hexes.reserve(100);
+    gag_hexes.reserve(100);
 
     // Begin search
-    auto p = 0;
-    auto p_togo = 1;
+    int32 p = 0;
+    int32 p_togo = 1;
     mpos cur_hex;
+    auto to_hex = input.ToHex;
+    bool find_ok = false;
 
-    while (true) {
-        for (auto i = 0; i < p_togo; i++, p++) {
-            cur_hex = coords[p];
-            numindex = GridAt(cur_hex);
+    next_hexes.emplace_back(input.FromHex);
+
+    while (!find_ok) {
+        for (int32 i = 0; i < p_togo; i++) {
+            cur_hex = next_hexes[i];
+            hex_index = grid_at(cur_hex);
 
             if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
                 to_hex = cur_hex;
-                goto label_FindOk;
+                find_ok = true;
+                break;
             }
 
-            if (++numindex > _engine->Settings.MaxPathFindLength) {
+            if (++hex_index > _engine->Settings.MaxPathFindLength) {
                 output.Result = FindPathOutput::ResultType::TooFar;
                 return output;
             }
 
             for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
-                GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
+                GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, static_cast<uint8>(j));
 
                 if (!map_size.isValidPos(raw_next_hex)) {
                     continue;
                 }
 
                 const auto next_hex = map_size.fromRawPos(raw_next_hex);
-                auto& grid_cell = GridAt(next_hex);
+                auto& grid_cell = grid_at(next_hex);
 
                 if (grid_cell != 0) {
                     continue;
                 }
 
                 if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter)) {
-                    coords.emplace_back(next_hex);
-                    grid_cell = numindex;
+                    next_hexes.emplace_back(next_hex);
+                    grid_cell = hex_index;
                 }
                 else if (input.CheckGagItems && map->IsItemGag(next_hex)) {
-                    gag_coords.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(numindex | 0x2000);
+                    gag_hexes.emplace_back(next_hex);
+                    grid_cell = numeric_cast<int16>(hex_index | 0x4000);
                 }
                 else if (input.CheckCritter && map->IsCritter(next_hex, CritterFindType::NonDead)) {
-                    cr_coords.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(numindex | 0x4000);
+                    cr_hexes.emplace_back(next_hex);
+                    grid_cell = numeric_cast<int16>(hex_index | 0x4000);
                 }
                 else {
                     grid_cell = -1;
                 }
             }
+
+            p++;
         }
+
+        p_togo = numeric_cast<int32>(next_hexes.size()) - p;
 
         // Add gag hex after some distance
-        if (!gag_coords.empty()) {
-            auto last_index = GridAt(coords.back());
-            auto& gag_hex = gag_coords.front();
-            auto gag_index = numeric_cast<int16>(GridAt(gag_hex) ^ numeric_cast<int16>(0x2000));
+        if (!gag_hexes.empty()) {
+            auto last_index = grid_at(next_hexes.back());
+            auto& gag_hex = gag_hexes.front();
+            auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
 
-            if (gag_index + 10 < last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
-            {
-                GridAt(gag_hex) = gag_index;
-                coords.emplace_back(gag_hex);
-                gag_coords.erase(gag_coords.begin());
+            if (gag_index + 10 < last_index) { // Todo: if path finding not be reworked than migrate magic number to scripts
+                grid_at(gag_hex) = gag_index;
+                next_hexes.emplace_back(gag_hex);
+                gag_hexes.erase(gag_hexes.begin());
             }
         }
 
-        // Add gag and critters hexes
-        p_togo = numeric_cast<int32>(coords.size()) - p;
-
+        // If no way then route through gag/critter
         if (p_togo == 0) {
-            if (!gag_coords.empty()) {
-                auto& gag_hex = gag_coords.front();
-                GridAt(gag_hex) ^= 0x2000;
-                coords.emplace_back(gag_hex);
-                gag_coords.erase(gag_coords.begin());
+            if (!gag_hexes.empty()) {
+                auto& gag_hex = gag_hexes.front();
+                grid_at(gag_hex) ^= 0x4000;
+                next_hexes.emplace_back(gag_hex);
+                gag_hexes.erase(gag_hexes.begin());
                 p_togo++;
             }
-            else if (!cr_coords.empty()) {
-                auto& gag_hex = gag_coords.front();
-                GridAt(gag_hex) ^= numeric_cast<int16>(0x4000);
-                coords.emplace_back(gag_hex);
-                cr_coords.erase(cr_coords.begin());
+            else if (!cr_hexes.empty()) {
+                auto& cr_hex = cr_hexes.front();
+                grid_at(cr_hex) ^= 0x4000;
+                next_hexes.emplace_back(cr_hex);
+                cr_hexes.erase(cr_hexes.begin());
                 p_togo++;
             }
         }
 
         if (p_togo == 0) {
-            output.Result = FindPathOutput::ResultType::Deadlock;
+            output.Result = FindPathOutput::ResultType::NoWay;
             return output;
         }
     }
 
-label_FindOk:
     vector<uint8> raw_steps;
-    raw_steps.resize(numindex - 1);
+    raw_steps.resize(hex_index - 1);
 
     // Smooth data
     float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
 
-    while (numindex > 1) {
-        numindex--;
+    while (hex_index > 1) {
+        hex_index--;
 
-        const auto find_path_grid = [this, &map_size, &input, base_angle, &raw_steps, &numindex](mpos& hex) -> bool {
+        const auto find_path_grid = [&](mpos& hex) -> bool {
             int32 best_step_dir = -1;
             float32 best_step_angle_diff = 0.0f;
 
-            const auto check_hex = [this, &map_size, &best_step_dir, &best_step_angle_diff, &input, numindex, base_angle](int32 dir, ipos32 step_raw_hex) {
+            const auto check_hex = [&](int32 dir, ipos32 step_raw_hex) {
                 if (!map_size.isValidPos(step_raw_hex)) {
                     return;
                 }
 
                 const auto step_hex = map_size.fromRawPos(step_raw_hex);
 
-                if (GridAt(step_hex) != numindex) {
+                if (grid_at(step_hex) != hex_index) {
                     return;
                 }
 
                 const float32 angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
                 const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
-                if (best_step_dir == -1 || numindex == 0) {
+                if (best_step_dir == -1 || hex_index == 0) {
                     best_step_dir = dir;
                     best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                 }
-                else {
-                    if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
-                        best_step_dir = dir;
-                        best_step_angle_diff = angle_diff;
-                    }
+                else if (angle_diff < best_step_angle_diff) {
+                    best_step_dir = dir;
+                    best_step_angle_diff = angle_diff;
                 }
             };
 
@@ -942,33 +909,33 @@ label_FindOk:
                 check_hex(1, ipos32 {hex.x + 1, hex.y - 1});
 
                 if (best_step_dir == 3) {
-                    raw_steps[numindex - 1] = 3;
+                    raw_steps[hex_index - 1] = 3;
                     hex.x--;
                     hex.y--;
                     return true;
                 }
                 if (best_step_dir == 2) {
-                    raw_steps[numindex - 1] = 2;
+                    raw_steps[hex_index - 1] = 2;
                     hex.y--;
                     return true;
                 }
                 if (best_step_dir == 5) {
-                    raw_steps[numindex - 1] = 5;
+                    raw_steps[hex_index - 1] = 5;
                     hex.y++;
                     return true;
                 }
                 if (best_step_dir == 0) {
-                    raw_steps[numindex - 1] = 0;
+                    raw_steps[hex_index - 1] = 0;
                     hex.x++;
                     return true;
                 }
                 if (best_step_dir == 4) {
-                    raw_steps[numindex - 1] = 4;
+                    raw_steps[hex_index - 1] = 4;
                     hex.x--;
                     return true;
                 }
                 if (best_step_dir == 1) {
-                    raw_steps[numindex - 1] = 1;
+                    raw_steps[hex_index - 1] = 1;
                     hex.x++;
                     hex.y--;
                     return true;
@@ -983,34 +950,34 @@ label_FindOk:
                 check_hex(1, ipos32 {hex.x + 1, hex.y});
 
                 if (best_step_dir == 3) {
-                    raw_steps[numindex - 1] = 3;
+                    raw_steps[hex_index - 1] = 3;
                     hex.x--;
                     return true;
                 }
                 if (best_step_dir == 2) {
-                    raw_steps[numindex - 1] = 2;
+                    raw_steps[hex_index - 1] = 2;
                     hex.y--;
                     return true;
                 }
                 if (best_step_dir == 5) {
-                    raw_steps[numindex - 1] = 5;
+                    raw_steps[hex_index - 1] = 5;
                     hex.y++;
                     return true;
                 }
                 if (best_step_dir == 0) {
-                    raw_steps[numindex - 1] = 0;
+                    raw_steps[hex_index - 1] = 0;
                     hex.x++;
                     hex.y++;
                     return true;
                 }
                 if (best_step_dir == 4) {
-                    raw_steps[numindex - 1] = 4;
+                    raw_steps[hex_index - 1] = 4;
                     hex.x--;
                     hex.y++;
                     return true;
                 }
                 if (best_step_dir == 1) {
-                    raw_steps[numindex - 1] = 1;
+                    raw_steps[hex_index - 1] = 1;
                     hex.x++;
                     return true;
                 }
@@ -1114,14 +1081,17 @@ label_FindOk:
                 TraceBullet(trace);
 
                 if (trace.IsCritterFound) {
-                    trace_ok = true;
                     raw_steps.resize(i + 1);
                     const auto move_ok3 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i + 1], map_size);
                     FO_RUNTIME_ASSERT(move_ok3);
                     to_hex = check_hex2;
-
-                    goto label_TraceOk;
+                    trace_ok = true;
+                    break;
                 }
+            }
+
+            if (trace_ok) {
+                break;
             }
         }
 
@@ -1130,7 +1100,6 @@ label_FindOk:
             return output;
         }
 
-    label_TraceOk:
         if (trace_ok) {
             output.GagItem = nullptr;
             output.GagCritter = nullptr;
@@ -1162,7 +1131,7 @@ label_FindOk:
                         break;
                     }
 
-                    if (GridAt(next_hex) <= 0) {
+                    if (grid_at(next_hex) <= 0) {
                         failed = true;
                         break;
                     }

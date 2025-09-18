@@ -209,7 +209,8 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        auto* ptr = new (std::nothrow) T[count]();
+        constexpr auto align = static_cast<std::align_val_t>(alignof(std::max_align_t));
+        auto* ptr = new (align, std::nothrow) T[count]();
 
         if (ptr == nullptr) {
             ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));

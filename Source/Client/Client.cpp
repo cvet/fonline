@@ -698,7 +698,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
+void FOClient::Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -715,23 +715,25 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     switch (type) {
     case NetProperty::CritterItem: {
-        auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
-        _conn.OutBuf.Write(dynamic_cast<ItemView*>(client_entity)->GetCritterId());
+        const auto* item = dynamic_cast<const ItemView*>(client_entity);
+        FO_RUNTIME_ASSERT(item);
+        _conn.OutBuf.Write(item->GetCritterId());
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
@@ -2124,7 +2126,9 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
         return;
     }
 
-    auto* cr = dynamic_cast<CritterView*>(entity);
+    const auto* cr = dynamic_cast<CritterView*>(entity);
+    FO_RUNTIME_ASSERT(cr);
+
     if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
@@ -2144,7 +2148,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
+    if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = _curMap ? _curMap->GetCritter(item->GetCritterId()) : GetGlobalMapCritter(item->GetCritterId());
 

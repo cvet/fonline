@@ -92,7 +92,7 @@ public:
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius) const -> bool;
-    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius, Critter* skip_cr) -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool;
     [[nodiscard]] auto IsBlockItem(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsItemGag(mpos hex) const noexcept -> bool;

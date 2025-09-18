@@ -228,6 +228,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
     asio::error_code error;
     error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
     error = _socket->close(error);
+    ignore_unused(error);
 }
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :

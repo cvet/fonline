@@ -2598,10 +2598,7 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
         return size.height / (font->LineHeight + font->YAdvance);
     }
 
-    const auto width = size.width != 0 ? size.width : _settings.ScreenWidth;
-    const auto height = size.height != 0 ? size.height : _settings.ScreenHeight;
-
-    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = {0, 0, width, height}};
+    auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = {0, 0, size.width, size.height}};
     StrCopy(fi.Str, str);
 
     FormatText(fi, FORMAT_TYPE_LCOUNT);

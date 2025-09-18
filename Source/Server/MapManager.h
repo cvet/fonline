@@ -98,7 +98,7 @@ struct FindPathOutput
         HexBusy = 6,
         HexBusyRing = 7,
         TooFar = 8,
-        Deadlock = 9,
+        NoWay = 9,
         InternalError = 10,
         InvalidHexes = 11,
         TraceFailed = 12,
@@ -128,7 +128,6 @@ public:
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
-    [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, const Properties* props) -> FO_NON_NULL Location*;
@@ -145,7 +144,6 @@ public:
     void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir);
 
 private:
-    [[nodiscard]] FO_FORCE_INLINE auto GridAt(mpos pos) -> int16&;
     [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
     auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
@@ -154,10 +152,9 @@ private:
     void GenerateMapContent(Map* map);
     void DestroyMapContent(Map* map);
 
-    FOServer* _engine;
+    raw_ptr<FOServer> _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
-    vector<int16> _mapGrid {};
-    mpos _mapGridOffset {};
+    vector<int16> _findPathGrid {};
     bool _nonConstHelper {};
 };
 

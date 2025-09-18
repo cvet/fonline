@@ -257,13 +257,13 @@ public:
     {
     }
 
-    auto Fire(const Args&... args) noexcept -> bool
+    auto Fire(Args... args) noexcept -> bool
     {
         if (_callbacks == nullptr) {
             return true;
         }
 
-        const initializer_list<void*> args_list = {const_cast<void*>(static_cast<const void*>(&args))...};
+        const initializer_list<void*> args_list = {static_cast<void*>(&args)...};
         return FireEx(args_list);
     }
 };

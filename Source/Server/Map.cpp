@@ -360,12 +360,15 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     if (type == NetProperty::Map) {
         const auto* map = dynamic_cast<Map*>(entity);
         FO_RUNTIME_ASSERT(map == this);
+
         for (auto* cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
         }
     }
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
+        FO_RUNTIME_ASSERT(item);
+
         for (auto* cr : copy_hold_ref(GetCritters())) {
             if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
@@ -374,7 +377,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         }
     }
     else {
-        FO_RUNTIME_ASSERT(false);
+        FO_UNREACHABLE_PLACE();
     }
 }
 
@@ -427,16 +430,16 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     return true;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* skip_cr) -> bool
+auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_engine->Settings.CritterBlockHex) {
-        if (skip_cr != nullptr && !skip_cr->IsDead()) {
+        if (ignore_cr != nullptr && !ignore_cr->IsDead()) {
             // Todo: make movable checks without critter removing
-            RemoveCritterFromField(skip_cr);
+            RemoveCritterFromField(ignore_cr);
             const auto result = IsHexesMovable(hex, radius);
-            AddCritterToField(skip_cr);
+            AddCritterToField(ignore_cr);
             return result;
         }
     }

@@ -1398,7 +1398,7 @@ auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uin
     spec.channels = numeric_cast<Uint8>(channels);
     spec.freq = rate;
 
-    if (spec.format != AudioSpec.format || spec.channels != AudioSpec.channels || spec.freq != rate) {
+    if (spec.format != AudioSpec.format || spec.channels != AudioSpec.channels || spec.freq != AudioSpec.freq) {
         uint8* dst_data;
         int32 dst_len;
 

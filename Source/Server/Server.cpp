@@ -635,7 +635,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.LoopAvgTime = _stats.LoopWholeAvgTime.value() / _stats.LoopTimeStamps.size();
 
             // Calculate loops per second
-            if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
+            if (cur_time - _stats.LoopCounterBegin >= std::chrono::seconds(1)) {
                 _stats.LoopsPerSecond = _stats.LoopCounter;
                 _stats.LoopCounter = 0;
                 _stats.LoopCounterBegin = cur_time;
@@ -854,7 +854,7 @@ void FOServer::DrawGui(string_view server_name)
 
             // Locations and maps
             if (ImGui::TreeNode("Locations and maps")) {
-                buf = MapMngr.GetLocationAndMapsStatistics();
+                buf = GetLocationAndMapsStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -907,13 +907,39 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     string result = strex("Players: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
 
-    for (auto&& [id, player] : players) {
+    for (const auto& player : players | std::views::values) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
         result += strex("{:<20} {:<10} {:<15} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
+    }
+
+    return result;
+}
+
+auto FOServer::GetLocationAndMapsStatistics() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& locations = EntityMngr.GetLocations();
+    const auto& maps = EntityMngr.GetMaps();
+
+    string result = strex("Locations count: {}\n", locations.size());
+    result += strex("Maps count: {}\n", maps.size());
+    result += "Location             Id\n";
+    result += "          Map                 Id          Time Script\n";
+
+    for (const auto& loc : locations | std::views::values) {
+        result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
+
+        int32 map_index = 0;
+
+        for (const auto& map : loc->GetMaps()) {
+            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
+            map_index++;
+        }
     }
 
     return result;
@@ -1144,7 +1170,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             result = GetIngamePlayersStatistics();
             break;
         case 2:
-            result = MapMngr.GetLocationAndMapsStatistics();
+            result = GetLocationAndMapsStatistics();
             break;
         case 3:
             // result = ScriptSys.GetDeferredCallsStatistics();
@@ -2675,7 +2701,7 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
     ignore_unused(entity);
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
-        for (auto&& [id, player] : EntityMngr.GetPlayers()) {
+        for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }
@@ -2688,6 +2714,7 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* player = dynamic_cast<Player*>(entity);
+    FO_RUNTIME_ASSERT(player);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
@@ -2699,6 +2726,7 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
+    FO_RUNTIME_ASSERT(cr);
 
     const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
     const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
@@ -2715,7 +2743,10 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
+    auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
+
+    if (!item->GetStatic() && item->GetId()) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
@@ -2768,6 +2799,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
+        FO_RUNTIME_ASSERT(map);
 
         map->SendProperty(NetProperty::Map, prop, map);
     }
@@ -2781,6 +2813,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
+        FO_RUNTIME_ASSERT(loc);
 
         for (auto& map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -2808,6 +2841,7 @@ void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
 
     // LookDistance, InSneakMode, SneakCoefficient
     auto* cr = dynamic_cast<Critter*>(entity);
+    FO_RUNTIME_ASSERT(cr);
 
     MapMngr.ProcessVisibleCritters(cr);
 
@@ -2825,12 +2859,12 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint32*>(new_value);
+    FO_RUNTIME_ASSERT(item);
 
-    if (new_count <= 0 || (!item->GetStackable() && new_count != 1)) {
-        if (!item->GetStackable()) {
-            throw GenericException("Trying to change count of not stackable item");
-        }
-
+    if (!item->GetStackable() && new_count != 1) {
+        throw GenericException("Trying to change count of not stackable item");
+    }
+    else if (new_count <= 0) {
         throw GenericException("Item count can't be zero or negative", new_count);
     }
 }
@@ -2841,6 +2875,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 
     // Hidden, AlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -2877,6 +2912,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
     // NoBlock, ShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -2895,6 +2931,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         const auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -3042,7 +3079,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
                 case FindPathOutput::ResultType::HexBusyRing:
                     reason = MovingState::HexBusyRing;
                     break;
-                case FindPathOutput::ResultType::Deadlock:
+                case FindPathOutput::ResultType::NoWay:
                     reason = MovingState::Deadlock;
                     break;
                 case FindPathOutput::ResultType::TraceFailed:

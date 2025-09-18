@@ -145,7 +145,7 @@ int main(int argc, char** argv)
             // Change executable path, if changed
             if (service != nullptr) {
                 // ReSharper disable once CppLocalVariableMayBeConst
-                uint8 service_cfg_buf[8192] = {};
+                alignas(QUERY_SERVICE_CONFIGW) uint8 service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
                 DWORD dw = 0;

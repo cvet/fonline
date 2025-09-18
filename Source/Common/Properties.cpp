@@ -1500,7 +1500,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
         const bool is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
         const bool is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
-        auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
+        auto& space = is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace);
 
         const size_t space_size = space.size();
         size_t space_pos = 0;

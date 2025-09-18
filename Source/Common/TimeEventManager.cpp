@@ -201,8 +201,6 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint32
 
             if (repeat.has_value()) {
                 te->FireTime = fire_time;
-            }
-            if (repeat.has_value()) {
                 te->RepeatDuration = repeat.value();
             }
             if (data.has_value()) {
@@ -234,8 +232,6 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, hstring func_name, uint32
 
             if (repeat.has_value()) {
                 te->FireTime = fire_time;
-            }
-            if (repeat.has_value()) {
                 te->RepeatDuration = repeat.value();
             }
             if (data.has_value()) {
