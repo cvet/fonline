@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE();
 [[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, int32& result_height) -> vector<uint8>;
 
 // clang-format off
-static uint8 FoPalette[] = {
+static alignas(ucolor) uint8 FoPalette[] = {
     // Transparent color
     0x00, 0x00, 0x00, 0x00,
     // Default colors

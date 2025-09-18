@@ -301,7 +301,7 @@ protected:
 
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
-    void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
+    void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);

@@ -239,22 +239,34 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     out_buf->Write(type);
 
     switch (type) {
-    case NetProperty::CritterItem:
-        out_buf->Write(dynamic_cast<const Item*>(entity)->GetCritterId());
-        out_buf->Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
-        break;
-    case NetProperty::Critter:
-        out_buf->Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
-        break;
-    case NetProperty::MapItem:
-        out_buf->Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
-        break;
-    case NetProperty::ChosenItem:
-        out_buf->Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
-        break;
-    case NetProperty::CustomEntity:
-        out_buf->Write(dynamic_cast<const CustomEntity*>(entity)->GetId());
-        break;
+    case NetProperty::CritterItem: {
+        const auto* item = dynamic_cast<const Item*>(entity);
+        const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
+        FO_RUNTIME_ASSERT(item);
+        FO_RUNTIME_ASSERT(server_entity);
+        out_buf->Write(item->GetCritterId());
+        out_buf->Write(server_entity->GetId());
+    } break;
+    case NetProperty::Critter: {
+        const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
+        FO_RUNTIME_ASSERT(server_entity);
+        out_buf->Write(server_entity->GetId());
+    } break;
+    case NetProperty::MapItem: {
+        const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
+        FO_RUNTIME_ASSERT(server_entity);
+        out_buf->Write(server_entity->GetId());
+    } break;
+    case NetProperty::ChosenItem: {
+        const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
+        FO_RUNTIME_ASSERT(server_entity);
+        out_buf->Write(server_entity->GetId());
+    } break;
+    case NetProperty::CustomEntity: {
+        const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity);
+        FO_RUNTIME_ASSERT(custom_entity);
+        out_buf->Write(custom_entity->GetId());
+    } break;
     default:
         break;
     }

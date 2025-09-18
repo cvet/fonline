@@ -3365,7 +3365,7 @@ try:
     embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
     assert embeddedBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('volatile const uint8_t EMBEDDED_RESOURCES[' + str(embeddedBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(embeddedBufSize)]) + '};')
+    writeFile('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(embeddedBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(embeddedBufSize)]) + '};')
     
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

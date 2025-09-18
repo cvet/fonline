@@ -938,6 +938,7 @@ void MapView::SetCursorPos(CritterHexView* cr, ipos32 pos, bool show_steps, bool
             if (refresh || hex != _lastCurPos) {
                 if (cr->IsAlive()) {
                     const auto find_path = FindPath(cr, cr_hex, hex, -1);
+
                     if (!find_path) {
                         _drawCursorX = -1;
                     }
@@ -2923,8 +2924,8 @@ void MapView::PrepareFogToDraw()
                 }
             }
 
-            _fogOffset = chosen != nullptr ? &chosen->SprOffset : nullptr;
-            _fogLastOffset = _fogOffset != nullptr ? *_fogOffset : ipos32 {};
+            _fogOffset = &chosen->SprOffset;
+            _fogLastOffset = *_fogOffset;
             _fogForceRerender = true;
         }
     }
@@ -3846,7 +3847,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     MemFill(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
 
     const auto grid_offset = start_hex;
-    const auto grid_at = [&](mpos hex) -> int16& { return _findPathGrid[((max_path_find_len + 1) + (hex.y) - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + (hex.x) - grid_offset.x)]; };
+    const auto grid_at = [&](mpos hex) -> int16& { return _findPathGrid[((max_path_find_len + 1) + hex.y - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + hex.x - grid_offset.x)]; };
 
     int16 numindex = 1;
     grid_at(start_hex) = numindex;
@@ -3875,7 +3876,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
             for (const auto j : iterate_range(GameSettings::MAP_DIR_COUNT)) {
                 auto raw_next_hex = ipos32 {hex.x, hex.y};
-                GeometryHelper::MoveHexAroundAway(raw_next_hex, j);
+                GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, static_cast<uint8>(j));
 
                 if (!_mapSize.isValidPos(raw_next_hex)) {
                     continue;
@@ -4007,11 +4008,9 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                         best_step_dir = dir;
                         best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                     }
-                    else {
-                        if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
-                            best_step_dir = dir;
-                            best_step_angle_diff = angle_diff;
-                        }
+                    else if (angle_diff < best_step_angle_diff) {
+                        best_step_dir = dir;
+                        best_step_angle_diff = angle_diff;
                     }
                 }
             }

@@ -487,63 +487,63 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     return true;
 }
 
-auto Critter::AddCrIntoVisGroup1(ident_t cr_id) -> bool
+auto Critter::AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup1.emplace(cr_id).second;
 }
 
-auto Critter::AddCrIntoVisGroup2(ident_t cr_id) -> bool
+auto Critter::AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup2.emplace(cr_id).second;
 }
 
-auto Critter::AddCrIntoVisGroup3(ident_t cr_id) -> bool
+auto Critter::AddCrIntoVisGroup3(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup3.emplace(cr_id).second;
 }
 
-auto Critter::RemoveCrFromVisGroup1(ident_t cr_id) -> bool
+auto Critter::RemoveCrFromVisGroup1(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup1.erase(cr_id) != 0;
 }
 
-auto Critter::RemoveCrFromVisGroup2(ident_t cr_id) -> bool
+auto Critter::RemoveCrFromVisGroup2(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup2.erase(cr_id) != 0;
 }
 
-auto Critter::RemoveCrFromVisGroup3(ident_t cr_id) -> bool
+auto Critter::RemoveCrFromVisGroup3(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleCrGroup3.erase(cr_id) != 0;
 }
 
-auto Critter::AddVisibleItem(ident_t item_id) -> bool
+auto Critter::AddVisibleItem(ident_t item_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleItems.emplace(item_id).second;
 }
 
-auto Critter::RemoveVisibleItem(ident_t item_id) -> bool
+auto Critter::RemoveVisibleItem(ident_t item_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleItems.erase(item_id) != 0;
 }
 
-auto Critter::CheckVisibleItem(ident_t item_id) const -> bool
+auto Critter::CheckVisibleItem(ident_t item_id) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 

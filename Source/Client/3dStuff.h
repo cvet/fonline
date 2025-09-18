@@ -257,7 +257,6 @@ public:
     [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
-    [[nodiscard]] auto GetRenderFramesData() const -> tuple<float32, int32, int32, int32>;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetViewSize() const -> isize32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
@@ -418,10 +417,6 @@ private:
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    int32 _renderAnimIndex {};
-    int32 _renderAnimProcFrom {};
-    int32 _renderAnimProcTo {100};
-    int32 _renderAnimDir {};
     bool _shadowDisabled {};
     isize32 _drawSize {};
     isize32 _viewSize {};

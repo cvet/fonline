@@ -76,6 +76,7 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
+    [[nodiscard]] auto GetLocationAndMapsStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
 
