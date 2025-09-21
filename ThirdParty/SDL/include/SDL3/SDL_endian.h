@@ -128,7 +128,7 @@ _m_prefetch(void *__P)
  * \sa SDL_BIG_ENDIAN
  */
 #define SDL_BYTEORDER   SDL_LIL_ENDIAN___or_maybe___SDL_BIG_ENDIAN
-#elif defined(SDL_PLATFORM_LINUX)
+#elif defined(SDL_PLATFORM_LINUX) || defined(__GLIBC__)
 #include <endian.h>
 #define SDL_BYTEORDER  __BYTE_ORDER
 #elif defined(SDL_PLATFORM_SOLARIS)
@@ -486,7 +486,7 @@ SDL_FORCE_INLINE Uint32 SDL_Swap32(Uint32 x) { return x_but_byteswapped; }
  *
  * \since This function is available since SDL 3.2.0.
  */
-SDL_FORCE_INLINE Uint32 SDL_Swap64(Uint64 x) { return x_but_byteswapped; }
+SDL_FORCE_INLINE Uint64 SDL_Swap64(Uint64 x) { return x_but_byteswapped; }
 
 /**
  * Swap a 16-bit value from littleendian to native byte order.
