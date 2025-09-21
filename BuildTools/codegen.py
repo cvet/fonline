@@ -1434,7 +1434,7 @@ def genGenericCode():
         globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
     if not isHookEnabled('SetupBakersHook'):
         globalLines.append('class BaseBaker;')
-        globalLines.append('class BakerData;')
+        globalLines.append('struct BakerData;')
         globalLines.append('void SetupBakersHook(vector<unique_ptr<BaseBaker>>&, BakerData&) { /* Stub */ }')
     globalLines.append('')
     
