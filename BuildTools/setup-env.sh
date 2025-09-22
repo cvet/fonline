@@ -2,19 +2,19 @@
 
 echo "Setup environment"
 
-[[ ! -z $FO_PROJECT_ROOT ]] || export FO_PROJECT_ROOT=$PWD
-[[ ! -z $FO_ENGINE_ROOT ]] || export FO_ENGINE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)
-[[ ! -z $FO_WORKSPACE ]] || export FO_WORKSPACE=$PWD/Workspace
-[[ ! -z $FO_OUTPUT ]] || export FO_OUTPUT=$FO_WORKSPACE/output
+[[ ! -z "$FO_PROJECT_ROOT" ]] || export FO_PROJECT_ROOT="$PWD"
+[[ ! -z "$FO_ENGINE_ROOT" ]] || export FO_ENGINE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../ && pwd)"
+[[ ! -z "$FO_WORKSPACE" ]] || export FO_WORKSPACE="$PWD/Workspace"
+[[ ! -z "$FO_OUTPUT" ]] || export FO_OUTPUT="$FO_WORKSPACE/output"
 
-export FO_PROJECT_ROOT=$(cd $FO_PROJECT_ROOT; pwd)
-export FO_ENGINE_ROOT=$(cd $FO_ENGINE_ROOT; pwd)
-export EMSCRIPTEN_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/emscripten")
-export ANDROID_NDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-ndk")
-export ANDROID_SDK_VERSION=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")
-export ANDROID_NATIVE_API_LEVEL_NUMBER=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-api")
-export FO_DOTNET_RUNTIME=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/dotnet-runtime")
-export FO_IOS_SDK=$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/iOS-sdk")
+export FO_PROJECT_ROOT="$(cd "$FO_PROJECT_ROOT" && pwd)"
+export FO_ENGINE_ROOT="$(cd "$FO_ENGINE_ROOT" && pwd)"
+export EMSCRIPTEN_VERSION="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/emscripten")"
+export ANDROID_NDK_VERSION="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-ndk")"
+export ANDROID_SDK_VERSION="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-sdk")"
+export ANDROID_NATIVE_API_LEVEL_NUMBER="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/android-api")"
+export FO_DOTNET_RUNTIME="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/dotnet-runtime")"
+export FO_IOS_SDK="$(head -n 1 "$FO_ENGINE_ROOT/ThirdParty/iOS-sdk")"
 
 if [[ -d "/usr/lib/android-sdk" ]]; then
     export ANDROID_HOME="/usr/lib/android-sdk"

@@ -1,10 +1,15 @@
 @echo off
 setlocal
 
-call %~dp0\setup-env.cmd
+call "%~dp0\setup-env.cmd"
 
-if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
-pushd %FO_WORKSPACE%
+if not exist "%FO_WORKSPACE%" mkdir "%FO_WORKSPACE%"
+pushd "%FO_WORKSPACE%""
+
+set VALIDATION_PROJECT_ROOT=%FO_WORKSPACE%\validation-project
+if not exist "%VALIDATION_PROJECT_ROOT%" mkdir "%VALIDATION_PROJECT_ROOT%"
+xcopy /s /e /y /D "%FO_ENGINE_ROOT%\BuildTools\validation-project\*" "%VALIDATION_PROJECT_ROOT%\" >nul
+if not exist "%VALIDATION_PROJECT_ROOT%\Engine" mklink /d "%VALIDATION_PROJECT_ROOT%\Engine" "%FO_ENGINE_ROOT%"
 
 if [%1] == [win32-client] (
     set BUILD_TARGET=-DFO_BUILD_CLIENT=1 -DFO_BUILD_SERVER=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=0 -DFO_BUILD_BAKER=0 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0
@@ -60,13 +65,13 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 
 if not [%BUILD_TOOLSET%] == [] (
-    cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% %BUILD_TARGET% "%VALIDATION_PROJECT_ROOT%"
     if errorlevel 1 exit /b 1
 ) else if [%BUILD_CACHE%] == [] (
-    cmake -A %BUILD_ARCH% %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    cmake -A %BUILD_ARCH% %BUILD_TARGET% "%VALIDATION_PROJECT_ROOT%"
     if errorlevel 1 exit /b 1
 ) else (
-    cmake -A %BUILD_ARCH% -C "%FO_ENGINE_ROOT%\BuildTool\%BUILD_CACHE%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    cmake -A %BUILD_ARCH% -C "%FO_ENGINE_ROOT%\BuildTool\%BUILD_CACHE%" %BUILD_TARGET% "%VALIDATION_PROJECT_ROOT%"
     if errorlevel 1 exit /b 1
 )
 

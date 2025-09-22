@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
 
 if [[ $# -ne 3 ]]; then
     echo "Usage: setup-mono.sh <os> <arch> <config>"
@@ -41,10 +41,10 @@ touch "BUILT_$TRIPLET"
 
 # Copy built files
 copy_runtime() {
-    if [[ -d $1 ]]; then
+    if [[ -d "$1" ]]; then
         echo "Copy from $1 to $2"
-        mkdir -p $2
-        cp -rf "$1/*" $2
+        mkdir -p "$2"
+        cp -rf "$1/"* "$2"
     else
         echo "Files not found: $1"
         exit 1

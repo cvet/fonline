@@ -1,10 +1,15 @@
 #!/bin/bash -e
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
 
-mkdir -p $FO_WORKSPACE
-pushd $FO_WORKSPACE
+mkdir -p "$FO_WORKSPACE"
+pushd "$FO_WORKSPACE"
+
+VALIDATION_PROJECT_ROOT="$FO_WORKSPACE/validation-project"
+mkdir -p "$VALIDATION_PROJECT_ROOT"
+cp --update=none "$FO_ENGINE_ROOT/BuildTools/validation-project/"* "$VALIDATION_PROJECT_ROOT"
+[[ ! -L "$VALIDATION_PROJECT_ROOT/Engine" ]] && ln -sfn "$FO_ENGINE_ROOT" "$VALIDATION_PROJECT_ROOT/Engine"
 
 if [[ $1 = "linux-client" ]]; then
     TARGET=linux
@@ -93,13 +98,13 @@ if [[ $TARGET = "linux" ]]; then
 		export CXX=/usr/bin/clang++
 	fi
 
-    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "web" ]]; then
-    source $FO_WORKSPACE/emsdk/emsdk_env.sh
+    source "$FO_WORKSPACE/emsdk/emsdk_env.sh"
 
-    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "android" || $TARGET = "android-arm64" || $TARGET = "android-x86" ]]; then
@@ -111,7 +116,7 @@ elif [[ $TARGET = "android" || $TARGET = "android-arm64" || $TARGET = "android-x
         export ANDROID_ABI=x86
     fi
 
-    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "mac" || $TARGET = "ios" ]]; then
@@ -120,9 +125,9 @@ elif [[ $TARGET = "mac" || $TARGET = "ios" ]]; then
     fi
 
     if [[ $TARGET = "mac" ]]; then
-        $CMAKE -G "Xcode" $BUILD_TARGET "$FO_PROJECT_ROOT"
+        $CMAKE -G "Xcode" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     else
-        $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+        $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     fi
 
     $CMAKE --build . --config Debug --parallel

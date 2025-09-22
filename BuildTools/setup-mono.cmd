@@ -1,9 +1,9 @@
 @echo off
 setlocal
 
-call %~dp0\setup-env.cmd
+call "%~dp0\setup-env.cmd"
 
-if "%~3" == "" (
+if "%~3"=="" (
     echo Usage: setup-mono.cmd os arch config
     exit /b 1
 )
