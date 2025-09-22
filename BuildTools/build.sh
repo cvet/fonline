@@ -5,13 +5,13 @@ if [[ -z $1 || -z $2 ]]; then
     exit 1
 fi
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
-source $CUR_DIR/internal-tools.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
+source "$CUR_DIR/internal-tools.sh"
 
-mkdir -p $FO_WORKSPACE
-mkdir -p $FO_OUTPUT
-pushd $FO_WORKSPACE
+mkdir -p "$FO_WORKSPACE"
+mkdir -p "$FO_OUTPUT"
+pushd "$FO_WORKSPACE"
 
 if [[ $2 = "client" ]]; then
     BUILD_TARGET="-DFO_BUILD_CLIENT=1 -DFO_BUILD_SERVER=0 -DFO_BUILD_EDITOR=0 -DFO_BUILD_MAPPER=0 -DFO_BUILD_ASCOMPILER=0 -DFO_BUILD_BAKER=0 -DFO_UNIT_TESTS=0 -DFO_CODE_COVERAGE=0"
@@ -59,7 +59,7 @@ if [[ $1 = "linux" ]]; then
     cmake --build . --config $CONFIG --parallel
 
 elif [[ $1 = "web" ]]; then
-    source $FO_WORKSPACE/emsdk/emsdk_env.sh
+    source "$FO_WORKSPACE/emsdk/emsdk_env.sh"
 
     cmake -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
