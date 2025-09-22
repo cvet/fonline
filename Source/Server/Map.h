@@ -98,7 +98,7 @@ public:
     [[nodiscard]] auto IsItemGag(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
-    [[nodiscard]] auto GetItemGag(mpos hex) noexcept -> Item*;
+    [[nodiscard]] auto GetItemGag(mpos hex) const noexcept -> const Item*;
     [[nodiscard]] auto GetItems() noexcept -> const vector<Item*>&;
     [[nodiscard]] auto GetItems(mpos hex) noexcept -> const vector<Item*>&;
     [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>;

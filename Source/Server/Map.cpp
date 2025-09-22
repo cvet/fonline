@@ -565,13 +565,13 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     return nullptr;
 }
 
-auto Map::GetItemGag(mpos hex) noexcept -> Item*
+auto Map::GetItemGag(mpos hex) const noexcept -> const Item*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    for (auto* item : field.Items) {
+    for (const auto* item : field.Items) {
         if (item->GetIsGag()) {
             return item;
         }

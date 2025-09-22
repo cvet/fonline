@@ -51,30 +51,9 @@ class EntityManager;
 class ItemManager;
 class CritterManager;
 
-struct TraceData
+struct FindPathInput // Todo: make FindPathInput pointer fields raw_ptr
 {
-    // Input
-    Map* TraceMap {};
-    mpos StartHex {};
-    mpos TargetHex {};
-    int32 MaxDist {};
-    float32 Angle {};
-    Critter* FindCr {};
-    CritterFindType FindType {};
-
-    // Output
-    vector<Critter*>* Critters {};
-    mpos* PreBlock {};
-    mpos* Block {};
-    mpos* LastMovable {};
-    bool IsFullTrace {};
-    bool IsCritterFound {};
-    bool HasLastMovable {};
-};
-
-struct FindPathInput
-{
-    ident_t MapId {};
+    Map* TargetMap {};
     Critter* FromCritter {};
     mpos FromHex {};
     mpos ToHex {};
@@ -109,8 +88,32 @@ struct FindPathOutput
     vector<uint8> Steps {};
     vector<uint16> ControlSteps {};
     mpos NewToHex {};
-    Critter* GagCritter {};
-    Item* GagItem {};
+    ident_t GagCritterId {};
+    ident_t GagItemId {};
+};
+
+struct TracePathInput // Todo: make TracePathInput pointer fields raw_ptr
+{
+    Map* TraceMap {};
+    mpos StartHex {};
+    mpos TargetHex {};
+    int32 MaxDist {};
+    float32 Angle {};
+    const Critter* FindCr {};
+    CritterFindType FindType {};
+    bool CheckLastMovable {};
+    bool CollectCritters {};
+};
+
+struct TracePathOutput
+{
+    bool IsFullTrace {};
+    bool IsCritterFound {};
+    bool HasLastMovable {};
+    mpos PreBlock {};
+    mpos Block {};
+    mpos LastMovable {};
+    vector<Critter*> Critters {};
 };
 
 class MapManager final
@@ -127,13 +130,13 @@ public:
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> FO_NON_NULL const StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*;
-    [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
+    [[nodiscard]] auto FindPath(const FindPathInput& input) const -> FindPathOutput;
+    [[nodiscard]] auto TracePath(const TracePathInput& input) const -> TracePathOutput;
 
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, const Properties* props) -> FO_NON_NULL Location*;
     void DestroyLocation(Location* loc);
     void RegenerateMap(Map* map);
-    void TraceBullet(TraceData& trace);
     void AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
     void RemoveCritterFromMap(Critter* cr, Map* map);
     void TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius);
@@ -154,8 +157,6 @@ private:
 
     raw_ptr<FOServer> _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
-    vector<int16> _findPathGrid {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE();

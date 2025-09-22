@@ -55,21 +55,27 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
+    [[nodiscard]] auto GetEntity(ident_t id) const noexcept -> const ServerEntity*;
     [[nodiscard]] auto GetEntity(ident_t id) noexcept -> ServerEntity*;
     [[nodiscard]] auto GetEntities() noexcept -> const unordered_map<ident_t, refcount_ptr<ServerEntity>>& { return _allEntities; }
     [[nodiscard]] auto GetEntitiesCount() const noexcept -> size_t { return _allEntities.size(); }
+    [[nodiscard]] auto GetPlayer(ident_t id) const noexcept -> const Player*;
     [[nodiscard]] auto GetPlayer(ident_t id) noexcept -> Player*;
     [[nodiscard]] auto GetPlayers() noexcept -> const unordered_map<ident_t, Player*>& { return _allPlayers; }
     [[nodiscard]] auto GetPlayersCount() const noexcept -> size_t { return _allPlayers.size(); }
+    [[nodiscard]] auto GetLocation(ident_t id) const noexcept -> const Location*;
     [[nodiscard]] auto GetLocation(ident_t id) noexcept -> Location*;
     [[nodiscard]] auto GetLocations() noexcept -> const unordered_map<ident_t, Location*>& { return _allLocations; }
     [[nodiscard]] auto GetLocationsCount() const noexcept -> size_t { return _allLocations.size(); }
+    [[nodiscard]] auto GetMap(ident_t id) const noexcept -> const Map*;
     [[nodiscard]] auto GetMap(ident_t id) noexcept -> Map*;
     [[nodiscard]] auto GetMaps() noexcept -> const unordered_map<ident_t, Map*>& { return _allMaps; }
     [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _allMaps.size(); }
+    [[nodiscard]] auto GetCritter(ident_t id) const noexcept -> const Critter*;
     [[nodiscard]] auto GetCritter(ident_t id) noexcept -> Critter*;
     [[nodiscard]] auto GetCritters() noexcept -> const unordered_map<ident_t, Critter*>& { return _allCritters; }
     [[nodiscard]] auto GetCrittersCount() const noexcept -> size_t { return _allCritters.size(); }
+    [[nodiscard]] auto GetItem(ident_t id) const noexcept -> const Item*;
     [[nodiscard]] auto GetItem(ident_t id) noexcept -> Item*;
     [[nodiscard]] auto GetItems() noexcept -> const unordered_map<ident_t, Item*>& { return _allItems; }
     [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allEntities.size(); }
