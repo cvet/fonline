@@ -8,7 +8,8 @@ pushd "$FO_WORKSPACE"
 
 VALIDATION_PROJECT_ROOT="$FO_WORKSPACE/validation-project"
 mkdir -p "$VALIDATION_PROJECT_ROOT"
-cp --update=none "$FO_ENGINE_ROOT/BuildTools/validation-project/"* "$VALIDATION_PROJECT_ROOT"
+[[ "$(uname -s)" == Darwin* ]] && CP_OPT=-n || CP_OPT=--update=none
+cp $CP_OPT "$FO_ENGINE_ROOT/BuildTools/validation-project/"* "$VALIDATION_PROJECT_ROOT"
 [[ ! -L "$VALIDATION_PROJECT_ROOT/Engine" ]] && ln -sfn "$FO_ENGINE_ROOT" "$VALIDATION_PROJECT_ROOT/Engine"
 
 if [[ $1 = "linux-client" ]]; then
