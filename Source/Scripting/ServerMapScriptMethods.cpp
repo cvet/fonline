@@ -606,46 +606,35 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType)
 {
-    vector<Critter*> critters;
-
-    TraceData trace;
+    TracePathInput trace;
     trace.TraceMap = self;
     trace.StartHex = fromHex;
     trace.TargetHex = toHex;
     trace.MaxDist = dist;
     trace.Angle = angle;
-    trace.Critters = &critters;
+    trace.CollectCritters = true;
     trace.FindType = findType;
 
-    self->GetEngine()->MapMngr.TraceBullet(trace);
-
-    return critters;
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    return trace_output.Critters;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
-    vector<Critter*> critters;
-    mpos block;
-    mpos pre_block;
-
-    TraceData trace;
+    TracePathInput trace;
     trace.TraceMap = self;
     trace.StartHex = fromHex;
     trace.TargetHex = toHex;
     trace.MaxDist = dist;
     trace.Angle = angle;
-    trace.Critters = &critters;
+    trace.CollectCritters = true;
     trace.FindType = findType;
-    trace.PreBlock = &pre_block;
-    trace.Block = &block;
 
-    self->GetEngine()->MapMngr.TraceBullet(trace);
-
-    preBlockHex = pre_block;
-    blockHex = block;
-
-    return critters;
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    preBlockHex = trace_output.PreBlock;
+    blockHex = trace_output.Block;
+    return trace_output.Critters;
 }
 
 ///@ ExportMethod
@@ -698,40 +687,32 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
-    mpos pre_block;
-    mpos block;
-
-    TraceData trace;
+    TracePathInput trace;
     trace.TraceMap = self;
     trace.StartHex = fromHex;
     trace.TargetHex = toHex;
     trace.MaxDist = dist;
     trace.Angle = angle;
-    trace.PreBlock = &pre_block;
-    trace.Block = &block;
 
-    self->GetEngine()->MapMngr.TraceBullet(trace);
-
-    toHex = pre_block;
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    toHex = trace_output.PreBlock;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
-    mpos last_movable;
-
-    TraceData trace;
+    TracePathInput trace;
     trace.TraceMap = self;
     trace.StartHex = fromHex;
     trace.TargetHex = toHex;
     trace.MaxDist = dist;
     trace.Angle = angle;
-    trace.LastMovable = &last_movable;
+    trace.CheckLastMovable = true;
 
-    self->GetEngine()->MapMngr.TraceBullet(trace);
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
 
-    if (trace.HasLastMovable) {
-        toHex = last_movable;
+    if (trace_output.HasLastMovable) {
+        toHex = trace_output.LastMovable;
     }
     else {
         toHex = fromHex;
@@ -749,7 +730,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex
     }
 
     FindPathInput input;
-    input.MapId = self->GetId();
+    input.TargetMap = self;
     input.FromHex = fromHex;
     input.ToHex = toHex;
     input.Cut = cut;
@@ -775,7 +756,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
     }
 
     FindPathInput input;
-    input.MapId = self->GetId();
+    input.TargetMap = self;
     input.FromCritter = cr;
     input.FromHex = cr->GetHex();
     input.ToHex = toHex;
