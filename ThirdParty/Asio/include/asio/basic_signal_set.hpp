@@ -2,7 +2,7 @@
 // basic_signal_set.hpp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2024 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -573,7 +573,7 @@ public:
    * Regardless of whether the asynchronous operation completes immediately or
    * not, the completion handler will not be invoked from within this function.
    * On immediate completion, invocation of the handler will be performed in a
-   * manner equivalent to using asio::post().
+   * manner equivalent to using asio::async_immediate().
    *
    * @par Completion Signature
    * @code void(asio::error_code, int) @endcode
@@ -587,6 +587,11 @@ public:
    * @li @c cancellation_type::partial
    *
    * @li @c cancellation_type::total
+   *
+   * @note Unlike the POSIX function @c signal, @c async_wait executes its
+   * completion handler as specified in the @ref async_op_requirements. This
+   * means it places no async-signal safety restrictions on what work can be
+   * performed in a completion handler.
    */
   template <
     ASIO_COMPLETION_TOKEN_FOR(void (asio::error_code, int))
