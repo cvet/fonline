@@ -2344,7 +2344,7 @@ void FOServer::Process_Move(Player* player)
 
     if (cr_hex != start_hex) {
         FindPathInput find_input;
-        find_input.MapId = map_id;
+        find_input.TargetMap = map;
         find_input.FromCritter = cr;
         find_input.FromHex = cr_hex;
         find_input.ToHex = start_hex;
@@ -3019,7 +3019,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             }
 
             FindPathInput find_input;
-            find_input.MapId = cr->GetMapId();
+            find_input.TargetMap = EntityMngr.GetMap(cr->GetMapId());
             find_input.FromCritter = cr;
             find_input.FromHex = cr->GetHex();
             find_input.ToHex = hex;
@@ -3037,15 +3037,15 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
             const auto find_path = MapMngr.FindPath(find_input);
 
-            if (find_path.GagCritter != nullptr) {
+            if (find_path.GagCritterId) {
                 cr->TargetMoving.State = MovingState::GagCritter;
-                cr->TargetMoving.GagEntityId = find_path.GagCritter->GetId();
+                cr->TargetMoving.GagEntityId = find_path.GagCritterId;
                 return;
             }
 
-            if (find_path.GagItem != nullptr) {
+            if (find_path.GagItemId) {
                 cr->TargetMoving.State = MovingState::GagItem;
-                cr->TargetMoving.GagEntityId = find_path.GagItem->GetId();
+                cr->TargetMoving.GagEntityId = find_path.GagItemId;
                 return;
             }
 

@@ -310,8 +310,6 @@ void MapManager::GenerateMapContent(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     unordered_map<ident_t, ident_t> id_map;
 
     // Generate critters
@@ -501,8 +499,6 @@ auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     for (const auto& map : _engine->EntityMngr.GetMaps() | std::views::values) {
         if (map->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
@@ -519,8 +515,6 @@ auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     for (const auto& loc : _engine->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProtoId() == loc_pid) {
@@ -611,31 +605,29 @@ void MapManager::DestroyLocation(Location* loc)
     }
 }
 
-void MapManager::TraceBullet(TraceData& trace)
+auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    TracePathOutput output;
+    output.IsFullTrace = false;
+    output.IsCritterFound = false;
+    output.HasLastMovable = false;
 
-    auto* map = trace.TraceMap;
+    auto* map = input.TraceMap;
     const auto map_size = map->GetSize();
-    const auto start_hex = trace.StartHex;
-    const auto target_hex = trace.TargetHex;
-    const auto dist = trace.MaxDist != 0 ? trace.MaxDist : GeometryHelper::GetDistance(start_hex, target_hex);
+    const auto start_hex = input.StartHex;
+    const auto target_hex = input.TargetHex;
+    const auto dist = input.MaxDist != 0 ? input.MaxDist : GeometryHelper::GetDistance(start_hex, target_hex);
 
+    auto tracer = LineTracer(start_hex, target_hex, input.Angle, map_size);
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
-
-    LineTracer tracer(start_hex, target_hex, trace.Angle, map_size);
-
-    trace.IsFullTrace = false;
-    trace.IsCritterFound = false;
-    trace.HasLastMovable = false;
     bool last_passed_ok = false;
 
     for (int32 i = 0;; i++) {
         if (i >= dist) {
-            trace.IsFullTrace = true;
+            output.IsFullTrace = true;
             break;
         }
 
@@ -646,10 +638,10 @@ void MapManager::TraceBullet(TraceData& trace)
             tracer.GetNextSquare(next_hex);
         }
 
-        if (trace.LastMovable != nullptr && !last_passed_ok) {
+        if (input.CheckLastMovable && !last_passed_ok) {
             if (map->IsHexMovable(next_hex)) {
-                *trace.LastMovable = next_hex;
-                trace.HasLastMovable = true;
+                output.LastMovable = next_hex;
+                output.HasLastMovable = true;
             }
             else {
                 last_passed_ok = true;
@@ -660,33 +652,31 @@ void MapManager::TraceBullet(TraceData& trace)
             break;
         }
 
-        if (trace.Critters != nullptr && map->IsCritter(next_hex, CritterFindType::Any)) {
-            const auto critters = map->GetCritters(next_hex, trace.FindType);
+        if (input.CollectCritters && map->IsCritter(next_hex, CritterFindType::Any)) {
+            const auto critters = map->GetCritters(next_hex, input.FindType);
 
             for (auto* cr : critters) {
-                if (std::ranges::find(*trace.Critters, cr) == trace.Critters->end()) {
-                    trace.Critters->emplace_back(cr);
+                if (std::ranges::find(output.Critters, cr) == output.Critters.end()) {
+                    output.Critters.emplace_back(cr);
                 }
             }
         }
 
-        if (trace.FindCr != nullptr && map->IsCritter(next_hex, trace.FindCr)) {
-            trace.IsCritterFound = true;
+        if (input.FindCr != nullptr && map->IsCritter(next_hex, input.FindCr)) {
+            output.IsCritterFound = true;
             break;
         }
 
         prev_hex = next_hex;
     }
 
-    if (trace.PreBlock != nullptr) {
-        *trace.PreBlock = prev_hex;
-    }
-    if (trace.Block != nullptr) {
-        *trace.Block = next_hex;
-    }
+    output.PreBlock = prev_hex;
+    output.Block = next_hex;
+
+    return output;
 }
 
-auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
+auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -698,7 +688,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         return output;
     }
 
-    auto* map = _engine->EntityMngr.GetMap(input.MapId);
+    auto* map = input.TargetMap;
 
     if (map == nullptr) {
         output.Result = FindPathOutput::ResultType::MapNotFound;
@@ -748,35 +738,29 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Prepare grid
     const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
-    _findPathGrid.resize(numeric_cast<size_t>(max_path_find_len * 2 + 2) * (max_path_find_len * 2 + 2));
-    MemFill(_findPathGrid.data(), 0, _findPathGrid.size() * sizeof(int16));
-
+    auto path_find_grid = vector<int16>(numeric_cast<size_t>(max_path_find_len * 2 + 2) * (max_path_find_len * 2 + 2));
     const auto grid_offset = input.FromHex;
-    const auto grid_at = [&](mpos hex) -> int16& { return _findPathGrid[((max_path_find_len + 1) + hex.y - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + hex.x - grid_offset.x)]; };
-
-    int16 hex_index = 1;
-    grid_at(input.FromHex) = hex_index;
+    const auto grid_at = [&](mpos hex) -> int16& { return path_find_grid[((max_path_find_len + 1) + hex.y - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + hex.x - grid_offset.x)]; };
 
     vector<mpos> next_hexes;
     vector<mpos> cr_hexes;
     vector<mpos> gag_hexes;
-    next_hexes.reserve(10000);
-    cr_hexes.reserve(100);
-    gag_hexes.reserve(100);
+    next_hexes.reserve(1024);
+    cr_hexes.reserve(64);
+    gag_hexes.reserve(64);
 
     // Begin search
-    int32 p = 0;
-    int32 p_togo = 1;
-    mpos cur_hex;
     auto to_hex = input.ToHex;
-    bool find_ok = false;
-
+    grid_at(input.FromHex) = 1;
     next_hexes.emplace_back(input.FromHex);
 
-    while (!find_ok) {
-        for (int32 i = 0; i < p_togo; i++) {
-            cur_hex = next_hexes[i];
-            hex_index = grid_at(cur_hex);
+    while (true) {
+        bool find_ok = false;
+        const auto next_hexes_round = next_hexes.size();
+        FO_RUNTIME_ASSERT(next_hexes_round != 0);
+
+        for (size_t i = 0; i < next_hexes_round; i++) {
+            const auto cur_hex = next_hexes[i];
 
             if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
                 to_hex = cur_hex;
@@ -784,7 +768,9 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 break;
             }
 
-            if (++hex_index > _engine->Settings.MaxPathFindLength) {
+            const auto next_hex_index = numeric_cast<int16>(grid_at(cur_hex) + 1);
+
+            if (next_hex_index > _engine->Settings.MaxPathFindLength) {
                 output.Result = FindPathOutput::ResultType::TooFar;
                 return output;
             }
@@ -806,31 +792,33 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
                 if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter)) {
                     next_hexes.emplace_back(next_hex);
-                    grid_cell = hex_index;
+                    grid_cell = next_hex_index;
                 }
                 else if (input.CheckGagItems && map->IsItemGag(next_hex)) {
                     gag_hexes.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(hex_index | 0x4000);
+                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
                 }
                 else if (input.CheckCritter && map->IsCritter(next_hex, CritterFindType::NonDead)) {
                     cr_hexes.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(hex_index | 0x4000);
+                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
                 }
                 else {
                     grid_cell = -1;
                 }
             }
-
-            p++;
         }
 
-        p_togo = numeric_cast<int32>(next_hexes.size()) - p;
+        if (find_ok) {
+            break;
+        }
+
+        next_hexes.erase(next_hexes.begin(), next_hexes.begin() + static_cast<ptrdiff_t>(next_hexes_round));
 
         // Add gag hex after some distance
         if (!gag_hexes.empty()) {
-            auto last_index = grid_at(next_hexes.back());
-            auto& gag_hex = gag_hexes.front();
-            auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
+            const auto last_index = grid_at(next_hexes.back());
+            const auto& gag_hex = gag_hexes.front();
+            const auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
 
             if (gag_index + 10 < last_index) { // Todo: if path finding not be reworked than migrate magic number to scripts
                 grid_at(gag_hex) = gag_index;
@@ -840,33 +828,31 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         }
 
         // If no way then route through gag/critter
-        if (p_togo == 0) {
+        if (next_hexes.empty()) {
             if (!gag_hexes.empty()) {
                 auto& gag_hex = gag_hexes.front();
                 grid_at(gag_hex) ^= 0x4000;
                 next_hexes.emplace_back(gag_hex);
                 gag_hexes.erase(gag_hexes.begin());
-                p_togo++;
             }
             else if (!cr_hexes.empty()) {
                 auto& cr_hex = cr_hexes.front();
                 grid_at(cr_hex) ^= 0x4000;
                 next_hexes.emplace_back(cr_hex);
                 cr_hexes.erase(cr_hexes.begin());
-                p_togo++;
             }
         }
 
-        if (p_togo == 0) {
+        if (next_hexes.empty()) {
             output.Result = FindPathOutput::ResultType::NoWay;
             return output;
         }
     }
 
     vector<uint8> raw_steps;
+    auto hex_index = grid_at(to_hex);
+    auto cur_hex = to_hex;
     raw_steps.resize(hex_index - 1);
-
-    // Smooth data
     float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
 
     while (hex_index > 1) {
@@ -1003,26 +989,26 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             FO_RUNTIME_ASSERT(move_ok);
 
             if (input.CheckGagItems && map->IsItemGag(check_hex)) {
-                Item* item = map->GetItemGag(check_hex);
+                const Item* item = map->GetItemGag(check_hex);
 
                 if (item == nullptr) {
                     continue;
                 }
 
-                output.GagItem = item;
+                output.GagItemId = item->GetId();
                 to_hex = prev_check_hex;
                 raw_steps.resize(i);
                 break;
             }
 
             if (input.CheckCritter && map->IsCritter(check_hex, CritterFindType::NonDead)) {
-                Critter* cr = map->GetCritter(check_hex, CritterFindType::NonDead);
+                const Critter* cr = map->GetCritter(check_hex, CritterFindType::NonDead);
 
                 if (cr == nullptr || cr == input.FromCritter) {
                     continue;
                 }
 
-                output.GagCritter = cr;
+                output.GagCritterId = cr->GetId();
                 to_hex = prev_check_hex;
                 raw_steps.resize(i);
                 break;
@@ -1053,7 +1039,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             }
         }
 
-        TraceData trace;
+        TracePathInput trace;
         trace.TraceMap = map;
         trace.TargetHex = targ_hex;
         trace.FindCr = input.TraceCr;
@@ -1077,10 +1063,9 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
 
                 trace.StartHex = check_hex2;
+                const auto treace_output = TracePath(trace);
 
-                TraceBullet(trace);
-
-                if (trace.IsCritterFound) {
+                if (treace_output.IsCritterFound) {
                     raw_steps.resize(i + 1);
                     const auto move_ok3 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i + 1], map_size);
                     FO_RUNTIME_ASSERT(move_ok3);
@@ -1095,14 +1080,14 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             }
         }
 
-        if (!trace_ok && output.GagItem == nullptr && output.GagCritter == nullptr) {
+        if (!trace_ok && !output.GagItemId && !output.GagCritterId) {
             output.Result = FindPathOutput::ResultType::TraceFailed;
             return output;
         }
 
         if (trace_ok) {
-            output.GagItem = nullptr;
-            output.GagCritter = nullptr;
+            output.GagItemId = {};
+            output.GagCritterId = {};
         }
     }
 
@@ -1351,8 +1336,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
@@ -1410,8 +1393,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
 void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
     auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
@@ -1607,18 +1588,18 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
         // Trace
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != -1) {
             if (!trace_result.has_value()) {
-                TraceData trace;
+                TracePathInput trace;
                 trace.TraceMap = map;
                 trace.StartHex = cr->GetHex();
                 trace.TargetHex = target->GetHex();
 
-                TraceBullet(trace);
+                const auto trace_output = TracePath(trace);
 
-                if (!trace.IsFullTrace) {
+                if (!trace_output.IsFullTrace) {
                     dist = -1;
                 }
 
-                trace_result = trace.IsFullTrace;
+                trace_result = trace_output.IsFullTrace;
             }
             else {
                 if (!trace_result.value()) {
@@ -1657,8 +1638,6 @@ auto MapManager::IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, opt
 void MapManager::ProcessVisibleItems(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (cr->IsDestroyed()) {
         return;
@@ -1765,14 +1744,14 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8
 
         // Trace
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE) && dist != -1) {
-            TraceData trace;
+            TracePathInput trace;
             trace.TraceMap = map;
             trace.StartHex = hex;
             trace.TargetHex = cr->GetHex();
 
-            TraceBullet(trace);
+            const auto trace_output = TracePath(trace);
 
-            if (!trace.IsFullTrace) {
+            if (!trace_output.IsFullTrace) {
                 continue;
             }
         }

@@ -1,11 +1,11 @@
 @echo off
 setlocal
 
-call %~dp0\setup-env.cmd
+call "%~dp0\setup-env.cmd"
 
-if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
-if not exist %FO_OUTPUT% mkdir %FO_OUTPUT%
-pushd %FO_WORKSPACE%
+if not exist "%FO_WORKSPACE%" mkdir "%FO_WORKSPACE%"
+if not exist "%FO_OUTPUT%" mkdir "%FO_OUTPUT%""
+pushd "%FO_WORKSPACE%"
 
 if [%1] == [win32] (
     set BUILD_ARCH=Win32

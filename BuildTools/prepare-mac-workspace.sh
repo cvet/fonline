@@ -2,9 +2,9 @@
 
 echo "Prepare workspace"
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
-source $CUR_DIR/internal-tools.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
+source "$CUR_DIR/internal-tools.sh"
 
 while true; do
     ready=1

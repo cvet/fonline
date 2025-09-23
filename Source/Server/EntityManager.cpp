@@ -58,6 +58,17 @@ EntityManager::EntityManager(FOServer* engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
+auto EntityManager::GetEntity(ident_t id) const noexcept -> const ServerEntity*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
+        return it->second.get();
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -69,11 +80,33 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
     return nullptr;
 }
 
+auto EntityManager::GetPlayer(ident_t id) const noexcept -> const Player*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetLocation(ident_t id) const noexcept -> const Location*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
     }
 
@@ -91,6 +124,17 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
     return nullptr;
 }
 
+auto EntityManager::GetMap(ident_t id) const noexcept -> const Map*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetMap(ident_t id) noexcept -> Map*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -102,11 +146,33 @@ auto EntityManager::GetMap(ident_t id) noexcept -> Map*
     return nullptr;
 }
 
+auto EntityManager::GetCritter(ident_t id) const noexcept -> const Critter*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetItem(ident_t id) const noexcept -> const Item*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
     }
 
