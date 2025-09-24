@@ -35,7 +35,6 @@
 
 #if FO_HAVE_WEB_SOCKETS
 
-FO_DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
 #define ASIO_NO_DEPRECATED 1
 // ReSharper disable once CppInconsistentNaming
@@ -48,15 +47,11 @@ FO_DISABLE_WARNINGS_PUSH()
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
-#pragma warning(push)
-#pragma warning(disable : 4267)
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
-#pragma warning(pop)
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
-FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE();
 

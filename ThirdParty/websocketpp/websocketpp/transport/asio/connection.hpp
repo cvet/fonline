@@ -505,7 +505,7 @@ protected:
 
         timer_ptr post_timer;
         
-        if (config::timeout_socket_post_init > 0) {
+        if _WEBSOCKETPP_CONSTEXPR_TOKEN_ (config::timeout_socket_post_init > 0) {
             post_timer = set_timer(
                 config::timeout_socket_post_init,
                 lib::bind(
