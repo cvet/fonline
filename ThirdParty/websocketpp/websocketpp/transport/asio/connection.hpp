@@ -1034,7 +1034,7 @@ protected:
         if (config::enable_multithreading) {
             lib::asio::post(*m_io_context, lib::asio::bind_executor(*m_strand, handler));
         } else {
-            m_io_context->post(handler);
+            lib::asio::post(*m_io_context, handler);
         }
         return lib::error_code();
     }

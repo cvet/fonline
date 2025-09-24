@@ -668,9 +668,9 @@ public:
         return m_io_context->poll_one();
     }
 
-    /// wraps the reset method of the internal io_context object
-    void reset() {
-        m_io_context->reset();
+    /// wraps the restart method of the internal io_context object
+    void restart() {
+        m_io_context->restart();
     }
 
     /// wraps the stopped method of the internal io_context object
@@ -691,7 +691,7 @@ public:
      * @since 0.3.0
      */
     void start_perpetual() {
-        m_work.reset(new lib::asio::io_context::work(*m_io_context));
+        m_work.reset(new lib::asio::executor_work_guard<lib::asio::io_context::executor_type>(*m_io_context));
     }
 
     /// Clears the endpoint's perpetual flag, allowing it to exit when empty
