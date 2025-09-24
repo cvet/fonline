@@ -691,7 +691,7 @@ public:
      * @since 0.3.0
      */
     void start_perpetual() {
-        m_work.reset(new lib::asio::executor_work_guard<lib::asio::io_context::executor_type>(*m_io_context));
+        m_work.reset(new lib::asio::executor_work_guard<lib::asio::io_context::executor_type>(m_io_context->get_executor()));
     }
 
     /// Clears the endpoint's perpetual flag, allowing it to exit when empty
