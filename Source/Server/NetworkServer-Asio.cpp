@@ -88,7 +88,7 @@ private:
     void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
     ServerNetworkSettings& _settings;
-    asio::io_context _ioService {};
+    asio::io_context _context {};
     asio::ip::tcp::acceptor _acceptor;
     NewConnectionCallback _connectionCallback;
     std::thread _runThread {};
@@ -229,7 +229,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -242,7 +242,7 @@ void NetworkServer_Asio::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _ioService.stop();
+    _context.stop();
     _runThread.join();
 }
 
@@ -252,7 +252,7 @@ void NetworkServer_Asio::Run()
 
     while (true) {
         try {
-            _ioService.run();
+            _context.run();
             break;
         }
         catch (const std::exception& ex) {
@@ -268,7 +268,7 @@ void NetworkServer_Asio::AcceptNext()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_ioService);
+    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_context);
     _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
 }
 

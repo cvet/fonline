@@ -48,10 +48,6 @@ FO_DISABLE_WARNINGS_PUSH()
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
-namespace asio
-{
-    using io_service = io_context;
-}
 #pragma warning(push)
 #pragma warning(disable : 4267)
 #include "websocketpp/config/asio.hpp"
@@ -163,7 +159,8 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
     FO_STACK_TRACE_ENTRY();
 
     try {
-        _connection->terminate();
+        asio::error_code error;
+        _connection->terminate(error);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -241,7 +238,8 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _connection->terminate();
+    asio::error_code error;
+    _connection->terminate(error);
 }
 
 template<bool Secured>
