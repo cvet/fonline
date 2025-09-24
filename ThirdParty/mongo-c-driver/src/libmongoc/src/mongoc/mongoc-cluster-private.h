@@ -19,26 +19,27 @@
 #ifndef MONGOC_CLUSTER_PRIVATE_H
 #define MONGOC_CLUSTER_PRIVATE_H
 
-#include <bson/bson.h>
-
-#include <mongoc/mcd-rpc.h>
 #include <mongoc/mongoc-array-private.h>
 #include <mongoc/mongoc-buffer-private.h>
-#include <mongoc/mongoc-config.h>
-#include <mongoc/mongoc-client.h>
-#include <mongoc/mongoc-list-private.h>
-#include <mongoc/mongoc-opcode.h>
-#include <mongoc/mongoc-rpc-private.h>
-#include <mongoc/mongoc-server-stream-private.h>
-#include <mongoc/mongoc-set-private.h>
-#include <mongoc/mongoc-stream.h>
-#include <mongoc/mongoc-topology-private.h>
-#include <mongoc/mongoc-topology-description-private.h>
-#include <mongoc/mongoc-write-concern.h>
-#include <mongoc/mongoc-scram-private.h>
 #include <mongoc/mongoc-cmd-private.h>
 #include <mongoc/mongoc-crypto-private.h>
 #include <mongoc/mongoc-deprioritized-servers-private.h>
+#include <mongoc/mongoc-list-private.h>
+#include <mongoc/mongoc-rpc-private.h>
+#include <mongoc/mongoc-scram-private.h>
+#include <mongoc/mongoc-server-stream-private.h>
+#include <mongoc/mongoc-set-private.h>
+#include <mongoc/mongoc-topology-description-private.h>
+#include <mongoc/mongoc-topology-private.h>
+
+#include <mongoc/mcd-rpc.h>
+#include <mongoc/mongoc-client.h>
+#include <mongoc/mongoc-config.h>
+#include <mongoc/mongoc-opcode.h>
+#include <mongoc/mongoc-stream.h>
+#include <mongoc/mongoc-write-concern.h>
+
+#include <bson/bson.h>
 
 BSON_BEGIN_DECLS
 
@@ -235,10 +236,7 @@ _mongoc_cluster_create_server_stream (const mongoc_topology_description_t *td,
                                       mongoc_stream_t *stream);
 
 bool
-_mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
-                                   const mongoc_ssl_opt_t *ssl_opts,
-                                   bson_t *cmd /* OUT */,
-                                   bson_error_t *error /* OUT */);
+_mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri, bson_t *cmd /* OUT */, bson_error_t *error /* OUT */);
 
 /* Returns true if a versioned server API has been selected, otherwise returns
  * false. */
