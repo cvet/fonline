@@ -4,7 +4,7 @@
 * AngelScript - [Rev. 2356](https://github.com/anjo76/angelscript)
 * Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
 * Assimp (math only) - [assimp-5.0.1](https://github.com/assimp/assimp)
-* Catch2 - [Catch2-3.8.0](https://github.com/catchorg/Catch2)
+* Catch2 - [Catch2-3.10.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net)
 * glslang - [glslang-1.4.309.0](https://github.com/KhronosGroup/glslang)
