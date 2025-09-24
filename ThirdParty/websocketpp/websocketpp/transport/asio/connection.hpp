@@ -318,12 +318,17 @@ public:
         );
 
         if (config::enable_multithreading) {
-            new_timer->async_wait(m_strand->wrap(lib::bind(
-                &type::handle_timer, get_shared(),
-                new_timer,
-                callback,
-                lib::placeholders::_1
-            )));
+            new_timer->async_wait(
+                lib::asio::bind_executor(
+                    *m_strand,
+                    lib::bind(
+                        &type::handle_timer, get_shared(),
+                        new_timer,
+                        callback,
+                        lib::placeholders::_1
+                    )
+                )
+            );
         } else {
             new_timer->async_wait(lib::bind(
                 &type::handle_timer, get_shared(),
@@ -573,7 +578,7 @@ protected:
         lib::error_code const & ec)
     {
         if (ec == transport::error::operation_aborted ||
-            (post_timer && lib::asio::is_neg(post_timer->expires_from_now())))
+            (post_timer && lib::asio::is_neg(post_timer->expiry())))
         {
             m_alog->write(log::alevel::devel,"post_init cancelled");
             return;
@@ -629,11 +634,14 @@ protected:
             lib::asio::async_write(
                 socket_con_type::get_next_layer(),
                 m_bufs,
-                m_strand->wrap(lib::bind(
-                    &type::handle_proxy_write, get_shared(),
-                    callback,
-                    lib::placeholders::_1
-                ))
+                lib::asio::bind_executor(
+                    *m_strand,
+                    lib::bind(
+                        &type::handle_proxy_write, get_shared(),
+                        callback,
+                        lib::placeholders::_1
+                    )
+                )
             );
         } else {
             lib::asio::async_write(
@@ -679,7 +687,7 @@ protected:
         // Whatever aborted it will be issuing the callback so we are safe to
         // return
         if (ec == lib::asio::error::operation_aborted ||
-            lib::asio::is_neg(m_proxy_data->timer->expires_from_now()))
+            lib::asio::is_neg(m_proxy_data->timer->expiry()))
         {
             m_elog->write(log::elevel::devel,"write operation aborted");
             return;
@@ -713,11 +721,14 @@ protected:
                 socket_con_type::get_next_layer(),
                 m_proxy_data->read_buf,
                 "\r\n\r\n",
-                m_strand->wrap(lib::bind(
-                    &type::handle_proxy_read, get_shared(),
-                    callback,
-                    lib::placeholders::_1, lib::placeholders::_2
-                ))
+                lib::asio::bind_executor(
+                    *m_strand,
+                    lib::bind(
+                        &type::handle_proxy_read, get_shared(),
+                        callback,
+                        lib::placeholders::_1, lib::placeholders::_2
+                    )
+                )
             );
         } else {
             lib::asio::async_read_until(
@@ -751,7 +762,7 @@ protected:
         // Whatever aborted it will be issuing the callback so we are safe to
         // return
         if (ec == lib::asio::error::operation_aborted ||
-            lib::asio::is_neg(m_proxy_data->timer->expires_from_now()))
+            lib::asio::is_neg(m_proxy_data->timer->expiry()))
         {
             m_elog->write(log::elevel::devel,"read operation aborted");
             return;
@@ -841,14 +852,17 @@ protected:
                 socket_con_type::get_socket(),
                 lib::asio::buffer(buf,len),
                 lib::asio::transfer_at_least(num_bytes),
-                m_strand->wrap(make_custom_alloc_handler(
-                    m_read_handler_allocator,
-                    lib::bind(
-                        &type::handle_async_read, get_shared(),
-                        handler,
-                        lib::placeholders::_1, lib::placeholders::_2
+                lib::asio::bind_executor(
+                    *m_strand,
+                    make_custom_alloc_handler(
+                        m_read_handler_allocator,
+                        lib::bind(
+                            &type::handle_async_read, get_shared(),
+                            handler,
+                            lib::placeholders::_1, lib::placeholders::_2
+                        )
                     )
-                ))
+                )
             );
         } else {
             lib::asio::async_read(
@@ -910,14 +924,17 @@ protected:
             lib::asio::async_write(
                 socket_con_type::get_socket(),
                 m_bufs,
-                m_strand->wrap(make_custom_alloc_handler(
-                    m_write_handler_allocator,
-                    lib::bind(
-                        &type::handle_async_write, get_shared(),
-                        handler,
-                        lib::placeholders::_1, lib::placeholders::_2
+                lib::asio::bind_executor(
+                    *m_strand,
+                    make_custom_alloc_handler(
+                        m_write_handler_allocator,
+                        lib::bind(
+                            &type::handle_async_write, get_shared(),
+                            handler,
+                            lib::placeholders::_1, lib::placeholders::_2
+                        )
                     )
-                ))
+                )
             );
         } else {
             lib::asio::async_write(
@@ -947,14 +964,17 @@ protected:
             lib::asio::async_write(
                 socket_con_type::get_socket(),
                 m_bufs,
-                m_strand->wrap(make_custom_alloc_handler(
-                    m_write_handler_allocator,
-                    lib::bind(
-                        &type::handle_async_write, get_shared(),
-                        handler,
-                        lib::placeholders::_1, lib::placeholders::_2
+                lib::asio::bind_executor(
+                    *m_strand,
+                    make_custom_alloc_handler(
+                        m_write_handler_allocator,
+                        lib::bind(
+                            &type::handle_async_write, get_shared(),
+                            handler,
+                            lib::placeholders::_1, lib::placeholders::_2
+                        )
                     )
-                ))
+                )
             );
         } else {
             lib::asio::async_write(
@@ -1012,7 +1032,7 @@ protected:
      */
     lib::error_code interrupt(interrupt_handler handler) {
         if (config::enable_multithreading) {
-            m_io_service->post(m_strand->wrap(handler));
+            lib::asio::post(*m_io_service, lib::asio::bind_executor(*m_strand, handler));
         } else {
             m_io_service->post(handler);
         }
@@ -1021,9 +1041,9 @@ protected:
 
     lib::error_code dispatch(dispatch_handler handler) {
         if (config::enable_multithreading) {
-            m_io_service->post(m_strand->wrap(handler));
+            lib::asio::post(*m_io_service, lib::asio::bind_executor(*m_strand, handler));
         } else {
-            m_io_service->post(handler);
+            lib::asio::post(*m_io_service, handler);
         }
         return lib::error_code();
     }
@@ -1095,7 +1115,7 @@ protected:
         callback, lib::asio::error_code const & ec)
     {
         if (ec == lib::asio::error::operation_aborted ||
-            lib::asio::is_neg(shutdown_timer->expires_from_now()))
+            lib::asio::is_neg(shutdown_timer->expiry()))
         {
             m_alog->write(log::alevel::devel,"async_shutdown cancelled");
             return;

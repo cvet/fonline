@@ -35,6 +35,8 @@
 
 #if FO_HAVE_ASIO
 
+#define ASIO_STANDALONE 1
+#define ASIO_NO_DEPRECATED 1
 // ReSharper disable once CppInconsistentNaming
 #define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"
@@ -107,14 +109,11 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& address = _socket->remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_uint() : const_numeric_cast<uint32>(0xFFFFFFFF);
-    _host = address.to_string();
+    _host = _socket->remote_endpoint().address().to_string();
     _port = _socket->remote_endpoint().port();
 
     if (settings.DisableTcpNagle) {
-        asio::error_code error;
-        error = _socket->set_option(asio::ip::tcp::no_delay(true), error);
+        _socket->set_option(asio::ip::tcp::no_delay(true));
     }
 
     _inBufData.resize(_settings.NetBufferSize);
@@ -125,9 +124,8 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        asio::error_code error;
-        error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
-        error = _socket->close(error);
+        _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+        _socket->close();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -225,10 +223,8 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    asio::error_code error;
-    error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
-    error = _socket->close(error);
-    ignore_unused(error);
+    _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+    _socket->close();
 }
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
@@ -254,14 +250,17 @@ void NetworkServer_Asio::Run()
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        _ioService.run();
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
+    while (true) {
+        try {
+            _ioService.run();
+            break;
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
     }
 }
 
