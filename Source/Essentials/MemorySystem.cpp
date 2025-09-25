@@ -317,8 +317,15 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    void* p = tracy::rpcalloc(num, size);
-    TracyAlloc(p, num * size);
+    const auto result_size = num * size;
+    if (num != 0 && size != 0 && result_size / num != size) {
+        return nullptr; // Overflow
+    }
+    void* p = tracy::rpmalloc(result_size);
+    if (p != nullptr) {
+        MemFill(p, 0, result_size);
+    }
+    TracyAlloc(p, result_size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpcalloc(num, size);

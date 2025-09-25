@@ -83,7 +83,7 @@ public:
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateServer, ident_t, LastControlledCritterId);
     ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, vector<uint32>, ConnectionIp);
+    FO_ENTITY_PROPERTY(PrivateServer, vector<string>, ConnectionHost);
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateServer, vector<uint16>, ConnectionPort);
     ///@ ExportProperty

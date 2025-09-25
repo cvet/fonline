@@ -117,6 +117,8 @@ def print_msl_compiler_version():
         pass
 
 def path_to_msl_standard(shader):
+    if '.msl32.' in shader:
+        return '-std=metal3.2'
     if '.msl31.' in shader:
         return '-std=metal3.1'
     elif '.msl3.' in shader:
@@ -155,6 +157,8 @@ def path_to_msl_standard(shader):
             return '-std=macos-metal1.2'
 
 def path_to_msl_standard_cli(shader):
+    if '.msl32.' in shader:
+        return '30200'
     if '.msl31.' in shader:
         return '30100'
     elif '.msl3.' in shader:
@@ -211,7 +215,7 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
 
     if spirv_16:
         spirv_env = 'spv1.6'
-        glslang_env = 'spirv1.6'
+        glslang_env = 'vulkan1.3'
     elif spirv_14:
         spirv_env = 'vulkan1.1spv1.4'
         glslang_env = 'spirv1.4'
@@ -396,6 +400,9 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
         msl_args.append('--msl-auto-disable-rasterization')
     if '.disable-rasterization.' in shader:
         msl_args.append('--msl-disable-rasterization')
+    if '.default-point-size.' in shader:
+        msl_args.append('--msl-default-point-size')
+        msl_args.append('1.0')
 
     subprocess.check_call(msl_args)
 
@@ -501,7 +508,7 @@ def cross_compile_hlsl(shader, spirv, opt, force_no_external_validation, iterati
 
     if spirv_16:
         spirv_env = 'spv1.6'
-        glslang_env = 'spirv1.6'
+        glslang_env = 'vulkan1.3'
     elif spirv_14:
         spirv_env = 'vulkan1.1spv1.4'
         glslang_env = 'spirv1.4'
@@ -576,8 +583,9 @@ def cross_compile_reflect(shader, spirv, opt, iterations, paths):
 
 def validate_shader(shader, vulkan, paths):
     if vulkan:
+        spirv_16 = '.spv16.' in shader
         spirv_14 = '.spv14.' in shader
-        glslang_env = 'spirv1.4' if spirv_14 else 'vulkan1.1'
+        glslang_env = 'vulkan1.3' if spirv_16 else ('spirv1.4' if spirv_14 else 'vulkan1.1')
         subprocess.check_call([paths.glslang, '--amb', '--target-env', glslang_env, '-V', shader])
     else:
         subprocess.check_call([paths.glslang, shader])
@@ -590,7 +598,7 @@ def cross_compile(shader, vulkan, spirv, invalid_spirv, eliminate, is_legacy, fo
     spirv_14 = '.spv14.' in shader
     if spirv_16:
         spirv_env = 'spv1.6'
-        glslang_env = 'spirv1.6'
+        glslang_env = 'vulkan1.3'
     elif spirv_14:
         spirv_env = 'vulkan1.1spv1.4'
         glslang_env = 'spirv1.4'

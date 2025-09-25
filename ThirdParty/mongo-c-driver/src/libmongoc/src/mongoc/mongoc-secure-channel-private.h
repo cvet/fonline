@@ -19,28 +19,29 @@
 #ifndef MONGOC_SECURE_CHANNEL_PRIVATE_H
 #define MONGOC_SECURE_CHANNEL_PRIVATE_H
 
-#include <bson/bson.h>
+#include <mongoc/mongoc-stream-tls-secure-channel-private.h>
 
 #include <mongoc/mongoc-ssl.h>
 #include <mongoc/mongoc-stream-tls.h>
-#include <mongoc/mongoc-stream-tls-secure-channel-private.h>
+
+#include <bson/bson.h>
 
 #define SECURITY_WIN32
-#include <security.h>
-#include <schnlsp.h>
 #include <schannel.h>
+#include <schnlsp.h>
+#include <security.h>
 
 BSON_BEGIN_DECLS
 
-
-char *
-_mongoc_secure_channel_extract_subject (const char *filename, const char *passphrase);
+bool
+mongoc_secure_channel_setup_ca (const mongoc_ssl_opt_t *opt);
 
 bool
-mongoc_secure_channel_setup_ca (mongoc_stream_tls_secure_channel_t *secure_channel, mongoc_ssl_opt_t *opt);
+mongoc_secure_channel_setup_crl (const mongoc_ssl_opt_t *opt);
 
-bool
-mongoc_secure_channel_setup_crl (mongoc_stream_tls_secure_channel_t *secure_channel, mongoc_ssl_opt_t *opt);
+// mongoc_secure_channel_load_crl is used in tests.
+PCCRL_CONTEXT
+mongoc_secure_channel_load_crl (const char *crl_file);
 
 ssize_t
 mongoc_secure_channel_read (mongoc_stream_tls_t *tls, void *data, size_t data_length);
@@ -49,7 +50,7 @@ ssize_t
 mongoc_secure_channel_write (mongoc_stream_tls_t *tls, const void *data, size_t data_length);
 
 PCCERT_CONTEXT
-mongoc_secure_channel_setup_certificate (mongoc_stream_tls_secure_channel_t *secure_channel, mongoc_ssl_opt_t *opt);
+mongoc_secure_channel_setup_certificate (const mongoc_ssl_opt_t *opt);
 
 
 /* it may require 16k + some overhead to hold one decryptable block of data - do

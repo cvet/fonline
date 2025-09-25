@@ -264,7 +264,7 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    unordered_map<uint32, nanotime> _regIp {};
+    unordered_map<string, nanotime> _registrationHistory {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};

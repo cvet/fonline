@@ -82,8 +82,8 @@ namespace lib {
         // steady_timer available. By convention we require the chrono library
         // (either boost or std) for use with standalone Asio.
         template <typename T>
-        bool is_neg(T duration) {
-            return duration.count() < 0;
+        bool is_neg(T tp) {
+            return tp < T::clock::now();
         }
         inline lib::chrono::milliseconds milliseconds(long duration) {
             return lib::chrono::milliseconds(duration);
@@ -98,8 +98,8 @@ namespace lib {
         #if (BOOST_VERSION/100000) == 1 && ((BOOST_VERSION/100)%1000) > 48
             // Using boost::asio >=1.49 so we use chrono and steady_timer
             template <typename T>
-            bool is_neg(T duration) {
-                return duration.count() < 0;
+            bool is_neg(T tp) {
+                return tp < T::clock::now();
             }
 
             // If boost believes it has std::chrono available it will use it
@@ -121,8 +121,8 @@ namespace lib {
             typedef boost::asio::deadline_timer steady_timer;
             
             template <typename T>
-            bool is_neg(T duration) {
-                return duration.is_negative();
+            bool is_neg(T tp) {
+                return tp < T::clock::now();
             }
             inline boost::posix_time::time_duration milliseconds(long duration) {
                 return boost::posix_time::milliseconds(duration);

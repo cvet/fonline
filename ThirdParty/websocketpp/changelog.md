@@ -1,5 +1,25 @@
 HEAD
 
+0.9.0 - 2025-09-24
+- Migrated to asio 1.36.0 (standalone) with ASIO_NO_DEPRECATED.
+- Replaced deprecated tcp::resolver::query API → switched to
+  tcp::resolver::results_type with resolver.resolve(host, service).
+- Removed usage of time_point::count() → replaced with
+  time_since_epoch().count() or direct chrono arithmetic.
+- Fixed invalid is_neg checks → now comparing expiry against
+  clock_type::now() instead of using raw epoch values.
+- Removed address_v4::to_ulong() → replaced with to_uint().
+- Replaced strand.wrap(handler) → migrated to
+  asio::bind_executor(strand, handler).
+- Updated timer usage → replaced legacy expires_at/after calls with new
+  overloads that take explicit arguments.
+- Wrapped async handlers with bind_executor → ensuring strand execution
+  instead of using deprecated wrap().
+- Adjusted post/dispatch/defer calls → now using asio::post(io, bind
+  executor(strand, handler)).
+- Introduced custom safe handler wrappers → to catch exceptions inside
+  callbacks.
+
 0.8.2 - 2020-04-19
 - Examples: Update print_client_tls example to remove use of deprecated
   OpenSSL functions.

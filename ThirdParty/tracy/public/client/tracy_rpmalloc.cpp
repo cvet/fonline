@@ -690,7 +690,9 @@ static pthread_key_t _memory_thread_heap;
 #    define _Thread_local __declspec(thread)
 #    define TLS_MODEL
 #  else
-#    ifndef __HAIKU__
+#    if defined(__ANDROID__) && __ANDROID_API__ >= 29 && defined(__NDK_MAJOR__) && __NDK_MAJOR__ >= 26
+#      define TLS_MODEL __attribute__((tls_model("local-dynamic")))
+#    elif !defined(__HAIKU__)
 #      define TLS_MODEL __attribute__((tls_model("initial-exec")))
 #    else
 #      define TLS_MODEL
@@ -3013,7 +3015,7 @@ rpfree(void* ptr) {
 	_rpmalloc_deallocate(ptr);
 }
 
-extern RPMALLOC_ALLOCATOR void*
+extern inline RPMALLOC_ALLOCATOR void*
 rpcalloc(size_t num, size_t size) {
 	size_t total;
 #if ENABLE_VALIDATE_ARGS

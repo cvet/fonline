@@ -2011,10 +2011,10 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0) {
-        auto ip = connection->GetIp();
+        const auto host = connection->GetHost();
         const auto reg_tick = std::chrono::milliseconds {Settings.RegistrationTimeout * 1000};
 
-        if (const auto it = _regIp.find(ip); it != _regIp.end()) {
+        if (const auto it = _registrationHistory.find(host); it != _registrationHistory.end()) {
             auto& last_reg = it->second;
             const auto tick = GameTime.GetFrameTime();
 
@@ -2027,7 +2027,7 @@ void FOServer::Process_Register(Player* unlogined_player)
             last_reg = tick;
         }
         else {
-            _regIp.emplace(ip, GameTime.GetFrameTime());
+            _registrationHistory.emplace(host, GameTime.GetFrameTime());
         }
     }
 
@@ -2039,15 +2039,15 @@ void FOServer::Process_Register(Player* unlogined_player)
     }
 
     // Register
-    auto reg_ip = AnyData::Array();
-    reg_ip.EmplaceBack(numeric_cast<int64>(connection->GetIp()));
+    auto reg_host = AnyData::Array();
+    reg_host.EmplaceBack(string(connection->GetHost()));
     auto reg_port = AnyData::Array();
     reg_port.EmplaceBack(numeric_cast<int64>(connection->GetPort()));
 
     AnyData::Document player_data;
     player_data.Emplace("_Name", string(name));
     player_data.Emplace("Password", string(password));
-    player_data.Emplace("ConnectionIp", std::move(reg_ip));
+    player_data.Emplace("ConnectionHost", std::move(reg_host));
     player_data.Emplace("ConnectionPort", std::move(reg_port));
 
     DbStorage.Insert(PlayersCollectionName, player_id, player_data);
@@ -2166,21 +2166,21 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Connection info
     {
-        const auto ip = connection->GetIp();
+        const auto host = connection->GetHost();
         const auto port = connection->GetPort();
 
-        auto conn_ip = player->GetConnectionIp();
+        auto conn_host = player->GetConnectionHost();
         auto conn_port = player->GetConnectionPort();
-        FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
+        FO_RUNTIME_ASSERT(conn_host.size() == conn_port.size());
 
         bool ip_found = false;
 
-        for (size_t i = 0; i < conn_ip.size(); i++) {
-            if (conn_ip[i] == ip) {
-                if (i < conn_ip.size() - 1) {
-                    conn_ip.erase(conn_ip.begin() + numeric_cast<ptrdiff_t>(i));
-                    conn_ip.push_back(ip);
-                    player->SetConnectionIp(conn_ip);
+        for (size_t i = 0; i < conn_host.size(); i++) {
+            if (conn_host[i] == host) {
+                if (i < conn_host.size() - 1) {
+                    conn_host.erase(conn_host.begin() + numeric_cast<ptrdiff_t>(i));
+                    conn_host.emplace_back(host);
+                    player->SetConnectionHost(conn_host);
                     conn_port.erase(conn_port.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_port.push_back(port);
                     player->SetConnectionPort(conn_port);
@@ -2196,8 +2196,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
 
         if (!ip_found) {
-            conn_ip.push_back(ip);
-            player->SetConnectionIp(conn_ip);
+            conn_host.emplace_back(host);
+            player->SetConnectionHost(conn_host);
             conn_port.push_back(port);
             player->SetConnectionPort(conn_port);
         }

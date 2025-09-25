@@ -11,7 +11,7 @@
 #                                     888
 #                                     888
 
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.15...4.0)
 
 project (libbson
    LANGUAGES C
@@ -28,10 +28,6 @@ set(libbson_VERSION_FULL ${mongo-c-driver_VERSION_FULL})
 # Don't export symbols implicitly
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
-if (APPLE)
-   cmake_policy (SET CMP0042 OLD)
-endif ()
 
 #  .d8888b.           888    888    d8b
 # d88P  Y88b          888    888    Y8P
@@ -73,7 +69,7 @@ mongo_bool_setting(
 
 # Configure-time platform checks. These start as regular CMake booleans, but are
 # converted to 0/1 values (with mongo_bool01) so that they can be inserted into
-# bson-config.h as preprocessor values. We cannot use #cmakedefine01, as we need
+# bson/config.h as preprocessor values. We cannot use #cmakedefine01, as we need
 # to keep compatibility with an external Autotools-generated library configuration
 
 include (CheckFunctionExists)
@@ -120,13 +116,13 @@ else ()
 endif ()
 
 configure_file (
-   "${PROJECT_SOURCE_DIR}/src/bson/bson-config.h.in"
-   "${PROJECT_BINARY_DIR}/src/bson/bson-config.h"
+   "${PROJECT_SOURCE_DIR}/src/bson/config.h.in"
+   "${PROJECT_BINARY_DIR}/src/bson/config.h"
 )
 
 configure_file (
-   "${PROJECT_SOURCE_DIR}/src/bson/bson-version.h.in"
-   "${PROJECT_BINARY_DIR}/src/bson/bson-version.h"
+   "${PROJECT_SOURCE_DIR}/src/bson/version.h.in"
+   "${PROJECT_BINARY_DIR}/src/bson/version.h"
 )
 
 # 8888888b.            .d888 d8b          d8b 888    d8b
@@ -176,6 +172,24 @@ if(ENABLE_STATIC)
    if(ENABLE_PIC)
       # User wants static libs to use PIC code.
       set_property(TARGET bson_static PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+   endif()
+
+   if(MONGO_CAN_VERIFY_HEADERS AND ENABLE_TESTS)
+      mongo_verify_headers(
+         bson
+         USE_LIBRARIES bson::static
+         HEADERS
+            # Grab all headers
+            "src/*.h"
+         EXCLUDE_REGEX
+            # No -private headers
+            "-private\\.h"
+            # Ignore all headers that start with "bson-", as they have not
+            # been sanitized for direct inclusion.
+            "bson/bson-.*\\.h"
+            # Don't check jsonsl.h either
+            "jsonsl\\.h"
+         )
    endif()
 endif()
 
@@ -365,7 +379,7 @@ install(
    DESTINATION "${BSON_INSTALL_CMAKEDIR}"
 )
 
-#! include (CPack) (FOnlinePatch)
+#! include (CPack) (FOnline Patch)
 
 if (MONGO_FUZZ)
    add_subdirectory(fuzz)

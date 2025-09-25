@@ -91,7 +91,6 @@ public:
     auto operator=(ServerConnection&&) noexcept = delete;
     ~ServerConnection();
 
-    [[nodiscard]] auto GetIp() const noexcept -> uint32;
     [[nodiscard]] auto GetHost() const noexcept -> string_view;
     [[nodiscard]] auto GetPort() const noexcept -> uint16;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;

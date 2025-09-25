@@ -62,8 +62,6 @@ static SDL_AudioSpec AudioSpec {};
 static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
 static unique_ptr<vector<uint8>> AudioStreamBuf {};
 
-static unique_ptr<RenderTexture> FontTex {};
-
 static int32 MaxAtlasWidth {};
 static int32 MaxAtlasHeight {};
 static int32 MaxBones {};
@@ -457,6 +455,7 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
             ImGui::StyleColorsLight(); // Default theme
         }
 
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
         platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* { return App->Input.GetClipboardText().c_str(); };
@@ -472,26 +471,20 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
 
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
-        // Font texture
-        unsigned char* pixels;
-        int32 width;
-        int32 height;
-        int32 bytes_per_pixel;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
-        FO_RUNTIME_ASSERT(bytes_per_pixel == 4);
-
-        auto font_tex = ActiveRenderer->CreateTexture({width, height}, true, false);
-        font_tex->UpdateTextureRegion({}, {width, height}, reinterpret_cast<const ucolor*>(pixels));
-        io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_tex.get());
-        FontTex = std::move(font_tex);
+        io.Fonts->Flags = ImFontAtlasFlags_None;
+        io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
+        io.Fonts->TexMinWidth = Settings.ImGuiFontTextureSize;
+        io.Fonts->TexMinHeight = Settings.ImGuiFontTextureSize;
+        io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_SIZE;
+        io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
 
         // Default effect
         if (Settings.EmbeddedResources != "@Disabled") {
             FileSystem base_fs;
             base_fs.AddDataSource(Settings.EmbeddedResources);
 
-            if (base_fs.ReadFileHeader("Effects/ImGui_Default.fofx")) {
-                _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
+            if (base_fs.ReadFileHeader(Settings.ImGuiDefaultEffect)) {
+                _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&base_fs](string_view path) -> string {
                     const auto file = base_fs.ReadFile(path);
                     FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
                     return file.GetStr();
@@ -561,7 +554,7 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     }
 
     // Initialize window
-    SDL_PropertiesID props = SDL_CreateProperties();
+    const SDL_PropertiesID props = SDL_CreateProperties();
 
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, 1);
 
@@ -921,6 +914,37 @@ void Application::EndFrame()
 
     const auto* draw_data = ImGui::GetDrawData();
 
+    if (draw_data->Textures != nullptr) {
+        for (ImTextureData* im_tex : *draw_data->Textures) {
+            if (im_tex->Status != ImTextureStatus_OK) {
+                if (im_tex->Status == ImTextureStatus_WantCreate) {
+                    const auto tex_size = isize(im_tex->Width, im_tex->Height);
+                    FO_RUNTIME_ASSERT(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()));
+                    auto font_tex = ActiveRenderer->CreateTexture(tex_size, true, false);
+                    const auto* tex_data = static_cast<const ucolor*>(im_tex->GetPixels());
+                    font_tex->UpdateTextureRegion({}, tex_size, tex_data);
+                    im_tex->SetTexID(font_tex.get());
+                    im_tex->SetStatus(ImTextureStatus_OK);
+                    _imguiTextures.emplace_back(std::move(font_tex));
+                }
+                else if (im_tex->Status == ImTextureStatus_WantUpdates) {
+                    const auto update_pos = ipos32(im_tex->UpdateRect.x, im_tex->UpdateRect.y);
+                    const auto update_size = isize32(im_tex->UpdateRect.w, im_tex->UpdateRect.h);
+                    const auto* update_data = static_cast<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
+                    im_tex->GetTexID()->UpdateTextureRegion(update_pos, update_size, update_data, true);
+                    im_tex->SetStatus(ImTextureStatus_OK);
+                }
+                else if (im_tex->Status == ImTextureStatus_WantDestroy) {
+                    const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), im_tex->GetTexID());
+                    FO_RUNTIME_ASSERT(it != _imguiTextures.end());
+                    _imguiTextures.erase(it);
+                    im_tex->SetTexID(ImTextureID_Invalid);
+                    im_tex->SetStatus(ImTextureStatus_Destroyed);
+                }
+            }
+        }
+    }
+
     const auto fb_width = iround<int32>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
     const auto fb_height = iround<int32>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
@@ -966,7 +990,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, reinterpret_cast<const RenderTexture*>(pcmd->TextureId));
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, pcmd->TexRef.GetTexID());
                     ActiveRenderer->DisableScissor();
                 }
             }

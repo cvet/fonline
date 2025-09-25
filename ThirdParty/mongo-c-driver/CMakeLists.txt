@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.15...4.0)
 
 list (INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}/build/cmake")
 # Defines BUILD_VERSION, which we use throughout:
@@ -28,6 +28,7 @@ include(FeatureSummary)
 include (MongoSettings)
 include (MongoPlatform)
 include (GeneratePkgConfig)
+include (VerifyHeaders)
 
 # Subcomponents:
 mongo_bool_setting(ENABLE_MONGOC "Enable the build of libmongoc libraries (The MongoDB C database driver)")
@@ -348,11 +349,6 @@ if(WIN32)
    set (CMAKE_IMPORT_LIBRARY_SUFFIX .dll.lib)
 endif()
 
-# https://cmake.org/cmake/help/v3.11/policy/CMP0042.html
-# Enable a CMake 3.0+ policy that sets CMAKE_MACOSX_RPATH by default, and
-# silence a CMake 3.11 warning that the old behavior is deprecated.
-cmake_policy (SET CMP0042 NEW)
-
 # By default, ensure conformance with a minimum C standard.
 # Required extensions to the language (i.e. POSIX) are (re)enabled further below.
 if (NOT DEFINED CMAKE_C_STANDARD)
@@ -410,7 +406,7 @@ if (ENABLE_MONGOC)
 
    set (CPACK_RESOURCE_FILE_LICENSE "${mongo-c-driver_SOURCE_DIR}/COPYING")
 
-   #! include (CPack) (FOnlinePatch)
+   #! include (CPack) (FOnline Patch)
 
    # Ensure the default behavior: don't ignore RPATH settings.
    set (CMAKE_SKIP_BUILD_RPATH OFF)

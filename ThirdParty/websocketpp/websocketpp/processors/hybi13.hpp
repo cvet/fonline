@@ -943,7 +943,7 @@ protected:
         }
 
         // Check for >32bit frames on 32 bit systems
-        if (sizeof(size_t) == 4 && (payload_size >> 32)) {
+        if _WEBSOCKETPP_CONSTEXPR_TOKEN_ (sizeof(size_t) == 4 && (payload_size >> 32)) {
             return make_error_code(error::requires_64bit);
         }
 

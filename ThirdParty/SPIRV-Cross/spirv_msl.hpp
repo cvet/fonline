@@ -324,6 +324,8 @@ public:
 		// of the shader with the additional fixed sample mask.
 		uint32_t additional_fixed_sample_mask = 0xffffffff;
 		bool enable_point_size_builtin = true;
+		bool enable_point_size_default = false;
+		float default_point_size = 1.0f;
 		bool enable_frag_depth_builtin = true;
 		bool enable_frag_stencil_ref_builtin = true;
 		bool disable_rasterization = false;
@@ -539,6 +541,10 @@ public:
 		// If BuiltInPosition is not written, automatically disable rasterization.
 		// The result can be queried with get_is_rasterization_disabled.
 		bool auto_disable_rasterization = false;
+
+		// Use Fast Math pragmas in MSL code, based on SPIR-V float controls and FP ExecutionModes.
+		// Requires MSL 3.2 or above, and has no effect with earlier MSL versions.
+		bool use_fast_math_pragmas = false;
 
 		bool is_ios() const
 		{
@@ -765,6 +771,14 @@ public:
 	// These must only be called after a successful call to CompilerMSL::compile().
 	bool specialization_constant_is_macro(uint32_t constant_id) const;
 
+	// Returns a mask of SPIR-V FP Fast Math Mode flags, that represents the set of flags that can be applied
+	// across all floating-point types. Each FPFastMathDefault execution mode operation identifies the flags
+	// for one floating-point type, and the value returned here is a bitwise-AND combination across all types.
+	// If incl_ops is enabled, the FPFastMathMode of any SPIR-V operations are also included in the bitwise-AND
+	// to determine the minimal fast-math that applies to all default execution modes and all operations.
+	// The returned value is also affected by execution modes SignedZeroInfNanPreserve and ContractionOff.
+	uint32_t get_fp_fast_math_flags(bool incl_ops);
+
 protected:
 	// An enum of SPIR-V functions that are implemented in additional
 	// source code that is added to the shader if necessary.
@@ -772,6 +786,7 @@ protected:
 	{
 		SPVFuncImplNone,
 		SPVFuncImplMod,
+		SPVFuncImplSMod,
 		SPVFuncImplRadians,
 		SPVFuncImplDegrees,
 		SPVFuncImplFindILsb,
@@ -793,12 +808,11 @@ protected:
 		SPVFuncImplInverse4x4,
 		SPVFuncImplInverse3x3,
 		SPVFuncImplInverse2x2,
-		// It is very important that this come before *Swizzle and ChromaReconstruct*, to ensure it's
-		// emitted before them.
-		SPVFuncImplForwardArgs,
-		// Likewise, this must come before *Swizzle.
+		// It is very important that this come before *Swizzle, to ensure it's emitted before them.
 		SPVFuncImplGetSwizzle,
 		SPVFuncImplTextureSwizzle,
+		SPVFuncImplGatherReturn,
+		SPVFuncImplGatherCompareReturn,
 		SPVFuncImplGatherSwizzle,
 		SPVFuncImplGatherCompareSwizzle,
 		SPVFuncImplGatherConstOffsets,
@@ -815,6 +829,30 @@ protected:
 		SPVFuncImplSubgroupShuffleXor,
 		SPVFuncImplSubgroupShuffleUp,
 		SPVFuncImplSubgroupShuffleDown,
+		SPVFuncImplSubgroupRotate,
+		SPVFuncImplSubgroupClusteredAdd,
+		SPVFuncImplSubgroupClusteredFAdd = SPVFuncImplSubgroupClusteredAdd,
+		SPVFuncImplSubgroupClusteredIAdd = SPVFuncImplSubgroupClusteredAdd,
+		SPVFuncImplSubgroupClusteredMul,
+		SPVFuncImplSubgroupClusteredFMul = SPVFuncImplSubgroupClusteredMul,
+		SPVFuncImplSubgroupClusteredIMul = SPVFuncImplSubgroupClusteredMul,
+		SPVFuncImplSubgroupClusteredMin,
+		SPVFuncImplSubgroupClusteredFMin = SPVFuncImplSubgroupClusteredMin,
+		SPVFuncImplSubgroupClusteredSMin = SPVFuncImplSubgroupClusteredMin,
+		SPVFuncImplSubgroupClusteredUMin = SPVFuncImplSubgroupClusteredMin,
+		SPVFuncImplSubgroupClusteredMax,
+		SPVFuncImplSubgroupClusteredFMax = SPVFuncImplSubgroupClusteredMax,
+		SPVFuncImplSubgroupClusteredSMax = SPVFuncImplSubgroupClusteredMax,
+		SPVFuncImplSubgroupClusteredUMax = SPVFuncImplSubgroupClusteredMax,
+		SPVFuncImplSubgroupClusteredAnd,
+		SPVFuncImplSubgroupClusteredBitwiseAnd = SPVFuncImplSubgroupClusteredAnd,
+		SPVFuncImplSubgroupClusteredLogicalAnd = SPVFuncImplSubgroupClusteredAnd,
+		SPVFuncImplSubgroupClusteredOr,
+		SPVFuncImplSubgroupClusteredBitwiseOr = SPVFuncImplSubgroupClusteredOr,
+		SPVFuncImplSubgroupClusteredLogicalOr = SPVFuncImplSubgroupClusteredOr,
+		SPVFuncImplSubgroupClusteredXor,
+		SPVFuncImplSubgroupClusteredBitwiseXor = SPVFuncImplSubgroupClusteredXor,
+		SPVFuncImplSubgroupClusteredLogicalXor = SPVFuncImplSubgroupClusteredXor,
 		SPVFuncImplQuadBroadcast,
 		SPVFuncImplQuadSwap,
 		SPVFuncImplReflectScalar,
@@ -850,6 +888,7 @@ protected:
 		SPVFuncImplTextureCast,
 		SPVFuncImplMulExtended,
 		SPVFuncImplSetMeshOutputsEXT,
+		SPVFuncImplAssume,
 	};
 
 	// If the underlying resource has been used for comparison then duplicate loads of that resource must be too
@@ -867,6 +906,11 @@ protected:
 	void emit_function_prototype(SPIRFunction &func, const Bitset &return_flags) override;
 	void emit_sampled_image_op(uint32_t result_type, uint32_t result_id, uint32_t image_id, uint32_t samp_id) override;
 	void emit_subgroup_op(const Instruction &i) override;
+	void emit_subgroup_cluster_op(uint32_t result_type, uint32_t result_id, uint32_t cluster_size, uint32_t op0,
+	                              const char *op);
+	void emit_subgroup_cluster_op_cast(uint32_t result_type, uint32_t result_id, uint32_t cluster_size, uint32_t op0,
+	                                   const char *op, SPIRType::BaseType input_type,
+	                                   SPIRType::BaseType expected_result_type);
 	std::string to_texture_op(const Instruction &i, bool sparse, bool *forward,
 	                          SmallVector<uint32_t> &inherited_expressions) override;
 	void emit_fixup() override;
@@ -995,6 +1039,7 @@ protected:
 	void add_tess_level_input_to_interface_block(const std::string &ib_var_ref, SPIRType &ib_type, SPIRVariable &var);
 	void add_tess_level_input(const std::string &base_ref, const std::string &mbr_name, SPIRVariable &var);
 
+	void ensure_struct_members_valid_vecsizes(SPIRType &struct_type, uint32_t &location);
 	void fix_up_interface_member_indices(spv::StorageClass storage, uint32_t ib_type_id);
 
 	void mark_location_as_used_by_shader(uint32_t location, const SPIRType &type,
@@ -1079,7 +1124,8 @@ protected:
 	bool validate_member_packing_rules_msl(const SPIRType &type, uint32_t index) const;
 	std::string get_argument_address_space(const SPIRVariable &argument);
 	std::string get_type_address_space(const SPIRType &type, uint32_t id, bool argument = false);
-	static bool decoration_flags_signal_volatile(const Bitset &flags);
+	bool decoration_flags_signal_volatile(const Bitset &flags) const;
+	bool decoration_flags_signal_coherent(const Bitset &flags) const;
 	const char *to_restrict(uint32_t id, bool space);
 	SPIRType &get_stage_in_struct_type();
 	SPIRType &get_stage_out_struct_type();
@@ -1092,7 +1138,7 @@ protected:
 	                         uint32_t mem_order_1, uint32_t mem_order_2, bool has_mem_order_2, uint32_t op0, uint32_t op1 = 0,
 	                         bool op1_is_pointer = false, bool op1_is_literal = false, uint32_t op2 = 0);
 	const char *get_memory_order(uint32_t spv_mem_sem);
-	void add_pragma_line(const std::string &line);
+	void add_pragma_line(const std::string &line, bool recompile_on_unique);
 	void add_typedef_line(const std::string &line);
 	void emit_barrier(uint32_t id_exe_scope, uint32_t id_mem_scope, uint32_t id_mem_sem);
 	bool emit_array_copy(const char *expr, uint32_t lhs_id, uint32_t rhs_id,
@@ -1149,7 +1195,7 @@ protected:
 	bool prepare_access_chain_for_scalar_access(std::string &expr, const SPIRType &type, spv::StorageClass storage,
 	                                            bool &is_packed) override;
 	void fix_up_interpolant_access_chain(const uint32_t *ops, uint32_t length);
-	void check_physical_type_cast(std::string &expr, const SPIRType *type, uint32_t physical_type) override;
+	bool check_physical_type_cast(std::string &expr, const SPIRType *type, uint32_t physical_type) override;
 
 	bool emit_tessellation_access_chain(const uint32_t *ops, uint32_t length);
 	bool emit_tessellation_io_load(uint32_t result_type, uint32_t id, uint32_t ptr);
@@ -1175,8 +1221,8 @@ protected:
 	std::unordered_map<uint32_t, uint32_t> fragment_output_components;
 	std::unordered_map<uint32_t, uint32_t> builtin_to_automatic_input_location;
 	std::unordered_map<uint32_t, uint32_t> builtin_to_automatic_output_location;
-	std::set<std::string> pragma_lines;
-	std::set<std::string> typedef_lines;
+	std::vector<std::string> pragma_lines;
+	std::vector<std::string> typedef_lines;
 	SmallVector<uint32_t> vars_needing_early_declaration;
 	std::unordered_set<uint32_t> constant_macro_ids;
 
@@ -1222,12 +1268,14 @@ protected:
 	bool needs_swizzle_buffer_def = false;
 	bool used_swizzle_buffer = false;
 	bool added_builtin_tess_level = false;
+	bool needs_local_invocation_index = false;
 	bool needs_subgroup_invocation_id = false;
 	bool needs_subgroup_size = false;
 	bool needs_sample_id = false;
 	bool needs_helper_invocation = false;
 	bool needs_workgroup_zero_init = false;
 	bool writes_to_depth = false;
+	bool writes_to_point_size = false;
 	std::string qual_pos_var_name;
 	std::string stage_in_var_name = "in";
 	std::string stage_out_var_name = "out";
@@ -1322,7 +1370,7 @@ protected:
 		}
 
 		bool handle(spv::Op opcode, const uint32_t *args, uint32_t length) override;
-		CompilerMSL::SPVFuncImpl get_spv_func_impl(spv::Op opcode, const uint32_t *args);
+		CompilerMSL::SPVFuncImpl get_spv_func_impl(spv::Op opcode, const uint32_t *args, uint32_t length);
 		void check_resource_write(uint32_t var_id);
 
 		CompilerMSL &compiler;
@@ -1333,6 +1381,7 @@ protected:
 		bool uses_image_write = false;
 		bool uses_buffer_write = false;
 		bool uses_discard = false;
+		bool needs_local_invocation_index = false;
 		bool needs_subgroup_invocation_id = false;
 		bool needs_subgroup_size = false;
 		bool needs_sample_id = false;

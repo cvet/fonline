@@ -40,7 +40,7 @@ namespace websocketpp {
 namespace transport {
 /// Transport policy that uses asio
 /**
- * This policy uses a single asio io_service to provide transport
+ * This policy uses a single asio io_context to provide transport
  * services to a WebSocket++ endpoint.
  */
 namespace asio {
@@ -176,8 +176,8 @@ enum value {
     /// Invalid Proxy URI
     proxy_invalid,
 
-    /// Invalid host or service
-    invalid_host_service
+    /// Invalid host or context
+    invalid_host_context
 };
 
 /// Asio transport error category
@@ -199,8 +199,8 @@ public:
                 return "Proxy connection failed";
             case error::proxy_invalid:
                 return "Invalid proxy URI";
-            case error::invalid_host_service:
-                return "Invalid host or service";
+            case error::invalid_host_context:
+                return "Invalid host or context";
             default:
                 return "Unknown";
         }

@@ -14,39 +14,47 @@
  * limitations under the License.
  */
 
-#include <bson/bson.h>
+#include <mongoc/mongoc-error-private.h>
+#include <mongoc/mongoc-handshake-private.h>
+#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-topology-scanner-private.h>
+#include <mongoc/mongoc-trace-private.h>
 
 #include <mongoc/mongoc-config.h>
-#include <mongoc/mongoc-error-private.h>
-#include <mongoc/mongoc-trace-private.h>
-#include <mongoc/mongoc-topology-scanner-private.h>
-#include <mongoc/mongoc-stream-private.h>
+#include <mongoc/mongoc-handshake.h>
 #include <mongoc/mongoc-stream-socket.h>
 
-#include <mongoc/mongoc-handshake.h>
-#include <mongoc/mongoc-handshake-private.h>
+#include <bson/bson.h>
 
 #ifdef MONGOC_ENABLE_SSL
 #include <mongoc/mongoc-stream-tls.h>
 #endif
 
 #if defined(MONGOC_ENABLE_SSL_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-#include <openssl/ssl.h>
 #include <mongoc/mongoc-stream-tls-private.h>
+
+#include <openssl/ssl.h>
 #endif
 
-#include <mongoc/mongoc-counters-private.h>
-#include <mongoc/utlist.h>
-#include <mongoc/mongoc-topology-private.h>
-#include <mongoc/mongoc-host-list-private.h>
-#include <mongoc/mongoc-uri-private.h>
-#include <mongoc/mongoc-cluster-private.h>
-#include <mongoc/mongoc-client-private.h>
-#include <mongoc/mongoc-util-private.h>
-#include <mongoc/mongoc-structured-log-private.h>
-#include <common-string-private.h>
-#include <mlib/cmp.h>
+#if defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
+#include <mongoc/mongoc-stream-tls-private.h>
+#include <mongoc/mongoc-stream-tls-secure-channel-private.h>
+#endif
+
 #include <common-atomic-private.h>
+#include <common-string-private.h>
+#include <mongoc/mongoc-client-private.h>
+#include <mongoc/mongoc-cluster-private.h>
+#include <mongoc/mongoc-counters-private.h>
+#include <mongoc/mongoc-host-list-private.h>
+#include <mongoc/mongoc-structured-log-private.h>
+#include <mongoc/mongoc-topology-private.h>
+#include <mongoc/mongoc-uri-private.h>
+#include <mongoc/mongoc-util-private.h>
+
+#include <mongoc/utlist.h>
+
+#include <mlib/cmp.h>
 
 #include <inttypes.h>
 
@@ -170,7 +178,6 @@ _mongoc_topology_scanner_get_speculative_auth_mechanism (const mongoc_uri_t *uri
 void
 _mongoc_topology_scanner_add_speculative_authentication (bson_t *cmd,
                                                          const mongoc_uri_t *uri,
-                                                         const mongoc_ssl_opt_t *ssl_opts,
                                                          mongoc_scram_t *scram /* OUT */)
 {
    bson_t auth_cmd;
@@ -186,7 +193,7 @@ _mongoc_topology_scanner_add_speculative_authentication (bson_t *cmd,
       /* Ignore errors while building authentication document: we proceed with
        * the handshake as usual and let the subsequent authenticate command
        * fail. */
-      if (_mongoc_cluster_get_auth_cmd_x509 (uri, ssl_opts, &auth_cmd, &error)) {
+      if (_mongoc_cluster_get_auth_cmd_x509 (uri, &auth_cmd, &error)) {
          has_auth = true;
          BSON_APPEND_UTF8 (&auth_cmd, "db", "$external");
       }
@@ -375,13 +382,7 @@ _begin_hello_cmd (mongoc_topology_scanner_node_t *node,
 
    if (node->ts->speculative_authentication && !node->has_auth && bson_empty (&node->speculative_auth_response) &&
        node->scram.step == 0) {
-      mongoc_ssl_opt_t *ssl_opts = NULL;
-
-#ifdef MONGOC_ENABLE_SSL
-      ssl_opts = ts->ssl_opts;
-#endif
-
-      _mongoc_topology_scanner_add_speculative_authentication (&cmd, ts->uri, ssl_opts, &node->scram);
+      _mongoc_topology_scanner_add_speculative_authentication (&cmd, ts->uri, &node->scram);
    }
 
    if (!bson_empty (&ts->cluster_time)) {
@@ -436,6 +437,9 @@ mongoc_topology_scanner_new (const mongoc_uri_t *uri,
    /* may be overridden for testing. */
    ts->dns_cache_timeout_ms = DNS_CACHE_TIMEOUT_MS;
    bson_mutex_init (&ts->handshake_cmd_mtx);
+#if defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
+   ts->secure_channel_cred_ptr = MONGOC_SHARED_PTR_NULL;
+#endif
 
    _init_hello (ts);
 
@@ -480,6 +484,10 @@ mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts)
 #if defined(MONGOC_ENABLE_SSL_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10100000L
    SSL_CTX_free (ts->openssl_ctx);
    ts->openssl_ctx = NULL;
+#endif
+
+#if defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
+   mongoc_shared_ptr_reset_null (&ts->secure_channel_cred_ptr);
 #endif
 
    /* This field can be set by a mongoc_client */
@@ -807,6 +815,9 @@ _mongoc_topology_scanner_node_setup_stream_for_tls (mongoc_topology_scanner_node
 #if defined(MONGOC_ENABLE_SSL_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10100000L
       tls_stream = mongoc_stream_tls_new_with_hostname_and_openssl_context (
          stream, node->host.host, node->ts->ssl_opts, 1, node->ts->openssl_ctx);
+#elif defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
+      tls_stream =
+         mongoc_stream_tls_new_with_secure_channel_cred (stream, node->ts->ssl_opts, node->ts->secure_channel_cred_ptr);
 #else
       tls_stream = mongoc_stream_tls_new_with_hostname (stream, node->host.host, node->ts->ssl_opts, 1);
 #endif
@@ -922,6 +933,7 @@ mongoc_topology_scanner_node_connect_unix (mongoc_topology_scanner_node_t *node,
 {
 #ifdef _WIN32
    ENTRY;
+   BSON_UNUSED (node);
    _mongoc_set_error (
       error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_CONNECT, "UNIX domain sockets not supported on win32.");
    RETURN (false);
