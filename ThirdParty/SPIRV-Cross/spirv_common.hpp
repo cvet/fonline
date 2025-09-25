@@ -580,7 +580,12 @@ struct SPIRType : IVariant
 		Interpolant,
 		Char,
 		// MSL specific type, that is used by 'object'(analog of 'task' from glsl) shader.
-		MeshGridProperties
+		MeshGridProperties,
+		BFloat16,
+		FloatE4M3,
+		FloatE5M2,
+
+		Tensor
 	};
 
 	// Scalar/vector/matrix support.
@@ -605,6 +610,14 @@ struct SPIRType : IVariant
 	bool pointer = false;
 	bool forward_pointer = false;
 
+	struct
+	{
+		uint32_t use_id = 0;
+		uint32_t rows_id = 0;
+		uint32_t columns_id = 0;
+		uint32_t scope_id = 0;
+	} cooperative;
+
 	spv::StorageClass storage = spv::StorageClassGeneric;
 
 	SmallVector<TypeID> member_types;
@@ -624,6 +637,13 @@ struct SPIRType : IVariant
 		spv::ImageFormat format;
 		spv::AccessQualifier access;
 	} image = {};
+
+	struct TensorType
+	{
+		TypeID type;
+		TypeID rank;
+		TypeID shape;
+	} tensor;
 
 	// Structs can be declared multiple times if they are used as part of interface blocks.
 	// We want to detect this so that we only emit the struct definition once.
@@ -686,6 +706,7 @@ struct SPIREntryPoint
 	FunctionID self = 0;
 	std::string name;
 	std::string orig_name;
+	std::unordered_map<uint32_t, uint32_t> fp_fast_math_defaults;
 	SmallVector<VariableID> interface_variables;
 
 	Bitset flags;
@@ -1026,6 +1047,9 @@ struct SPIRFunction : IVariant
 	// consider arrays value types.
 	SmallVector<ID> constant_arrays_needed_on_stack;
 
+	// Does this function (or any function called by it), emit geometry?
+	bool emits_geometry = false;
+
 	bool active = false;
 	bool flush_undeclared = true;
 	bool do_combined_parameters = true;
@@ -1226,6 +1250,26 @@ struct SPIRConstant : IVariant
 		return u.f32;
 	}
 
+	static inline float fe4m3_to_f32(uint8_t v)
+	{
+		if ((v & 0x7f) == 0x7f)
+		{
+			union
+			{
+				float f32;
+				uint32_t u32;
+			} u;
+
+			u.u32 = (v & 0x80) ? 0xffffffffu : 0x7fffffffu;
+			return u.f32;
+		}
+		else
+		{
+			// Reuse the FP16 to FP32 code. Cute bit-hackery.
+			return f16_to_f32((int16_t(int8_t(v)) << 7) & (0xffff ^ 0x4000)) * 256.0f;
+		}
+	}
+
 	inline uint32_t specialization_constant_id(uint32_t col, uint32_t row) const
 	{
 		return m.c[col].id[row];
@@ -1264,6 +1308,24 @@ struct SPIRConstant : IVariant
 	inline float scalar_f16(uint32_t col = 0, uint32_t row = 0) const
 	{
 		return f16_to_f32(scalar_u16(col, row));
+	}
+
+	inline float scalar_bf16(uint32_t col = 0, uint32_t row = 0) const
+	{
+		uint32_t v = scalar_u16(col, row) << 16;
+		float fp32;
+		memcpy(&fp32, &v, sizeof(float));
+		return fp32;
+	}
+
+	inline float scalar_floate4m3(uint32_t col = 0, uint32_t row = 0) const
+	{
+		return fe4m3_to_f32(scalar_u8(col, row));
+	}
+
+	inline float scalar_bf8(uint32_t col = 0, uint32_t row = 0) const
+	{
+		return f16_to_f32(scalar_u8(col, row) << 8);
 	}
 
 	inline float scalar_f32(uint32_t col = 0, uint32_t row = 0) const
@@ -1336,9 +1398,10 @@ struct SPIRConstant : IVariant
 
 	SPIRConstant() = default;
 
-	SPIRConstant(TypeID constant_type_, const uint32_t *elements, uint32_t num_elements, bool specialized)
+	SPIRConstant(TypeID constant_type_, const uint32_t *elements, uint32_t num_elements, bool specialized, bool replicated_ = false)
 	    : constant_type(constant_type_)
 	    , specialization(specialized)
+	    , replicated(replicated_)
 	{
 		subconstants.reserve(num_elements);
 		for (uint32_t i = 0; i < num_elements; i++)
@@ -1416,6 +1479,9 @@ struct SPIRConstant : IVariant
 
 	// For composites which are constant arrays, etc.
 	SmallVector<ConstantID> subconstants;
+
+	// Whether the subconstants are intended to be replicated (e.g. OpConstantCompositeReplicateEXT)
+	bool replicated = false;
 
 	// Non-Vulkan GLSL, HLSL and sometimes MSL emits defines for each specialization constant,
 	// and uses them to initialize the constant. This allows the user
@@ -1712,6 +1778,7 @@ struct Meta
 		uint32_t spec_id = 0;
 		uint32_t index = 0;
 		spv::FPRoundingMode fp_rounding_mode = spv::FPRoundingModeMax;
+		spv::FPFastMathModeMask fp_fast_math_mode = spv::FPFastMathModeMaskNone;
 		bool builtin = false;
 		bool qualified_alias_explicit_override = false;
 
