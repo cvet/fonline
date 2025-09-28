@@ -150,7 +150,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 
     BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
 
-    auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
+    auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [this](string_view path) -> string {
         const auto file = BakedResources.ReadFile(path);
         FO_RUNTIME_ASSERT_STR(file, "Post load ImGui_Default effect not found");
         return file.GetStr();

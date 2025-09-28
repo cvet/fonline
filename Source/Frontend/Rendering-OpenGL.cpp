@@ -139,7 +139,7 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -787,7 +787,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -796,9 +796,17 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
     FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
+    if (use_dest_pitch) {
+        GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, Size.width));
+    }
+
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
     GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
+
+    if (use_dest_pitch) {
+        GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+    }
 }
 
 static void EnableVertAtribs(EffectUsage usage)

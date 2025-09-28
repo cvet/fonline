@@ -124,7 +124,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
@@ -264,7 +264,7 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    unordered_map<uint32, nanotime> _regIp {};
+    unordered_map<string, nanotime> _registrationHistory {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};

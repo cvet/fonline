@@ -61,15 +61,23 @@ UNIT_TEST_EXES = \
 	tests/unit/buffered_write_stream.exe \
 	tests/unit/buffer.exe \
 	tests/unit/buffers_iterator.exe \
+	tests/unit/cancel_after.exe \
+	tests/unit/cancel_at.exe \
+	tests/unit/cancellation_signal.exe \
+	tests/unit/cancellation_state.exe \
+	tests/unit/cancellation_type.exe \
 	tests/unit/co_spawn.exe \
 	tests/unit/completion_condition.exe \
 	tests/unit/compose.exe \
+	tests/unit/composed.exe \
+	tests/unit/config.exe \
 	tests/unit/connect.exe \
 	tests/unit/coroutine.exe \
 	tests/unit/deadline_timer.exe \
 	tests/unit/defer.exe \
 	tests/unit/detached.exe \
 	tests/unit/dispatch.exe \
+	tests/unit/disposition.exe \
 	tests/unit/error.exe \
 	tests/unit/execution_context.exe \
 	tests/unit/execution/any_executor.exe \
@@ -90,6 +98,7 @@ UNIT_TEST_EXES = \
 	tests/unit/generic/seq_packet_protocol.exe \
 	tests/unit/generic/stream_protocol.exe \
 	tests/unit/high_resolution_timer.exe \
+	tests/unit/immediate.exe \
 	tests/unit/io_context.exe \
 	tests/unit/io_context_strand.exe \
 	tests/unit/ip/address.exe \

@@ -47,10 +47,10 @@ using SourceLocationData = tracy::SourceLocationData;
 #if !FO_NO_MANUAL_STACK_TRACE
 #define FO_STACK_TRACE_ENTRY() \
     ZoneScoped; \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, TracyLine))
 #define FO_STACK_TRACE_ENTRY_NAMED(name) \
     ZoneScopedN(name); \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, TracyLine))
 #else
 #define FO_STACK_TRACE_ENTRY() ZoneScoped
 #define FO_STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)

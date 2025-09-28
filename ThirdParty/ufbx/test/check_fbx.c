@@ -73,6 +73,7 @@ static const ufbxt_enum_name ufbxt_names_ufbx_index_error_handling[] = {
 static const ufbxt_enum_name ufbxt_names_ufbx_pivot_handling[] = {
 	{ "retain", UFBX_PIVOT_HANDLING_RETAIN },
 	{ "adjust-to-pivot", UFBX_PIVOT_HANDLING_ADJUST_TO_PIVOT },
+	{ "adjust-to-rotation-pivot", UFBX_PIVOT_HANDLING_ADJUST_TO_ROTATION_PIVOT },
 };
 
 static int ufbxt_str_to_enum_imp(const ufbxt_enum_name *names, size_t count, const char *type_name, const char *name)
@@ -154,6 +155,7 @@ int check_fbx_main(int argc, char **argv, const char *path)
 	int profile_runs = 0;
 	int frame = INT_MIN;
 	bool allow_bad_unicode = false;
+	bool allow_unknown = false;
 	bool sink = false;
 	bool dedicated_allocs = false;
 	bool bake = false;
@@ -187,6 +189,8 @@ int check_fbx_main(int argc, char **argv, const char *path)
 			if (++i < argc) frame = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--allow-bad-unicode")) {
 			allow_bad_unicode = true;
+		} else if (!strcmp(argv[i], "--allow-unknown")) {
+			allow_unknown = true;
 		} else if (!strcmp(argv[i], "--dedicated-allocs")) {
 			dedicated_allocs = true;
 		} else if (!strcmp(argv[i], "--sink")) {
@@ -385,7 +389,7 @@ int check_fbx_main(int argc, char **argv, const char *path)
 
 	int result = 0;
 
-	if (!strstr(path, "ufbx-unknown") && !is_fuzz) {
+	if (!strstr(path, "ufbx-unknown") && !is_fuzz && !allow_unknown) {
 		bool ignore_unknowns = false;
 		bool has_unknowns = false;
 
@@ -420,7 +424,7 @@ int check_fbx_main(int argc, char **argv, const char *path)
 	if (strstr(scene->metadata.creator.data, "FBX Unity Export")) known_unknown = true;
 	if (strstr(scene->metadata.creator.data, "Open Asset Import Library")) known_unknown = true;
 	if (scene->metadata.version < 5800) known_unknown = true;
-	ufbxt_assert(scene->metadata.exporter != UFBX_EXPORTER_UNKNOWN || known_unknown || is_fuzz);
+	ufbxt_assert(scene->metadata.exporter != UFBX_EXPORTER_UNKNOWN || known_unknown || is_fuzz || allow_unknown);
 
 	ufbxt_check_scene(scene);
 
@@ -436,12 +440,22 @@ int check_fbx_main(int argc, char **argv, const char *path)
 
 		ufbx_vec3 rotation_pivot = ufbx_find_vec3(&node->props, "RotationPivot", ufbx_zero_vec3);
 		ufbx_vec3 scale_pivot = ufbx_find_vec3(&node->props, "ScalingPivot", ufbx_zero_vec3);
+		ufbx_vec3 scale_offset = ufbx_find_vec3(&node->props, "ScalingOffset", ufbx_zero_vec3);
 		if (!ufbxt_eq3(rotation_pivot, ufbx_zero_vec3)) {
 			if (ufbxt_eq3(rotation_pivot, scale_pivot)) {
 				ufbxt_add_feature(&features, "simple-pivot");
 			} else {
 				ufbxt_add_feature(&features, "complex-pivot");
 			}
+		}
+
+		if (fabs(scale_offset.x) >= 0.01f || fabs(scale_offset.y) >= 0.01f || fabs(scale_offset.z) >= 0.01f) {
+			ufbxt_add_feature(&features, "scaling-offset");
+		}
+
+		ufbx_vec3 pivot_diff = ufbxt_sub3(rotation_pivot, ufbxt_add3(scale_pivot, scale_offset));
+		if (fabs(pivot_diff.x) >= 0.1f || fabs(pivot_diff.y) >= 0.1f || fabs(pivot_diff.z) >= 0.1f) {
+			ufbxt_add_feature(&features, "separate-pivot");
 		}
 	}
 

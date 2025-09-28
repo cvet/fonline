@@ -534,7 +534,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayerCritters()) {
-        TransitToGlobal(cl, {});
+        TransferToGlobal(cl, {});
     }
 }
 
@@ -1171,24 +1171,24 @@ auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
     return output;
 }
 
-void MapManager::TransitToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius)
+void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
     FO_RUNTIME_ASSERT(map->GetSize().isValidPos(hex));
 
-    Transit(cr, map, hex, dir, safe_radius, {});
+    Transfer(cr, map, hex, dir, safe_radius, {});
 }
 
-void MapManager::TransitToGlobal(Critter* cr, ident_t global_cr_id)
+void MapManager::TransferToGlobal(Critter* cr, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Transit(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
+    Transfer(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
 }
 
-void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id)
+void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1307,11 +1307,11 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<in
         cr->Send_PlaceToGameComplete();
     }
 
-    // Transit attached critters
+    // Transfer attached critters
     if (!attached_critters.empty()) {
         for (auto* attached_cr : attached_critters) {
             if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->GetMapId() == prev_map_id) {
-                Transit(attached_cr, map, cr->GetHex(), dir, std::nullopt, cr->GetId());
+                Transfer(attached_cr, map, cr->GetHex(), dir, std::nullopt, cr->GetId());
             }
         }
 
@@ -1329,7 +1329,7 @@ void MapManager::Transit(Critter* cr, Map* map, mpos hex, uint8 dir, optional<in
         }
     }
 
-    _engine->OnCritterTransit.Fire(cr, prev_map);
+    _engine->OnCritterTransfer.Fire(cr, prev_map);
 }
 
 void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id)

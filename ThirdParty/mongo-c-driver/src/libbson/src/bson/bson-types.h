@@ -20,14 +20,16 @@
 #ifndef BSON_TYPES_H
 #define BSON_TYPES_H
 
+#include <bson/bson-endian.h>
+#include <bson/bson_t.h>
+#include <bson/compat.h>
+#include <bson/config.h>
+#include <bson/error.h>
+#include <bson/macros.h>
 
-#include <stdlib.h>
 #include <sys/types.h>
 
-#include <bson/bson-macros.h>
-#include <bson/bson-config.h>
-#include <bson/bson-compat.h>
-#include <bson/bson-endian.h>
+#include <stdlib.h>
 
 BSON_BEGIN_DECLS
 
@@ -104,51 +106,6 @@ typedef struct _bson_json_opts_t bson_json_opts_t;
 
 
 /**
- * bson_t:
- *
- * This structure manages a buffer whose contents are a properly formatted
- * BSON document. You may perform various transforms on the BSON documents.
- * Additionally, it can be iterated over using bson_iter_t.
- *
- * See bson_iter_init() for iterating the contents of a bson_t.
- *
- * When building a bson_t structure using the various append functions,
- * memory allocations may occur. That is performed using power of two
- * allocations and realloc().
- *
- * See http://bsonspec.org for the BSON document spec.
- *
- * This structure is meant to fit in two sequential 64-byte cachelines.
- */
-BSON_ALIGNED_BEGIN (BSON_ALIGN_OF_PTR) typedef struct _bson_t {
-   uint32_t flags;       /* Internal flags for the bson_t. */
-   uint32_t len;         /* Length of BSON data. */
-   uint8_t padding[120]; /* Padding for stack allocation. */
-} bson_t BSON_ALIGNED_END (BSON_ALIGN_OF_PTR);
-
-/**
- * BSON_INITIALIZER:
- *
- * This macro can be used to initialize a #bson_t structure on the stack
- * without calling bson_init().
- *
- * |[
- * bson_t b = BSON_INITIALIZER;
- * ]|
- */
-#define BSON_INITIALIZER \
-   {                     \
-      3, 5,              \
-      {                  \
-         5               \
-      }                  \
-   }
-
-
-BSON_STATIC_ASSERT2 (bson_t, sizeof (bson_t) == 128);
-
-
-/**
  * bson_oid_t:
  *
  * This structure contains the binary form of a BSON Object Id as specified
@@ -185,25 +142,54 @@ typedef struct {
 
 
 /**
- * bson_validate_flags_t:
+ * @brief Flags and error codes for BSON validation functions.
  *
- * This enumeration is used for validation of BSON documents. It allows
- * selective control on what you wish to validate.
+ * Pass these flags bits to control the behavior of the `bson_validate` family
+ * of functions.
  *
- * %BSON_VALIDATE_NONE: No additional validation occurs.
- * %BSON_VALIDATE_UTF8: Check that strings are valid UTF-8.
- * %BSON_VALIDATE_DOLLAR_KEYS: Check that keys do not start with $.
- * %BSON_VALIDATE_DOT_KEYS: Check that keys do not contain a period.
- * %BSON_VALIDATE_UTF8_ALLOW_NULL: Allow NUL bytes in UTF-8 text.
- * %BSON_VALIDATE_EMPTY_KEYS: Prohibit zero-length field names
+ * Additionally, if validation fails, then the error code set on a `bson_error_t`
+ * will have the value corresponding to the reason that validation failed.
  */
 typedef enum {
+   /**
+    * @brief No special validation behavior specified.
+    */
    BSON_VALIDATE_NONE = 0,
+   /**
+    * @brief Check that all text components of the BSON data are valid UTF-8.
+    *
+    * Note that this will also cause validation to reject valid text that contains
+    * a null character. This can be changed by also passing
+    * `BSON_VALIDATE_UTF8_ALLOW_NULL`
+    */
    BSON_VALIDATE_UTF8 = (1 << 0),
+   /**
+    * @brief Check that element keys do not begin with an ASCII dollar `$`
+    */
    BSON_VALIDATE_DOLLAR_KEYS = (1 << 1),
+   /**
+    * @brief Check that element keys do not contain an ASCII period `.`
+    */
    BSON_VALIDATE_DOT_KEYS = (1 << 2),
+   /**
+    * @brief If set then it is *not* an error for a UTF-8 string to contain
+    * embedded null characters.
+    *
+    * This has no effect unless `BSON_VALIDATE_UTF8` is also passed.
+    */
    BSON_VALIDATE_UTF8_ALLOW_NULL = (1 << 3),
+   /**
+    * @brief Check that no element key is a zero-length empty string.
+    */
    BSON_VALIDATE_EMPTY_KEYS = (1 << 4),
+   /**
+    * @brief This is not a flag that controls behavior, but is instead used to indicate
+    * that a BSON document is corrupted in some way. This is the value that will
+    * appear as an error code.
+    *
+    * Passing this as a flag has no effect.
+    */
+   BSON_VALIDATE_CORRUPT = (1 << 5),
 } bson_validate_flags_t;
 
 
@@ -445,19 +431,6 @@ typedef struct {
 
    void *padding[7];
 } bson_visitor_t;
-
-#define BSON_ERROR_BUFFER_SIZE 503
-
-BSON_ALIGNED_BEGIN (BSON_ALIGN_OF_PTR) // Aligned for backwards-compatibility.
-typedef struct _bson_error_t {
-   uint32_t domain;
-   uint32_t code;
-   char message[BSON_ERROR_BUFFER_SIZE];
-   uint8_t reserved; // For internal use only!
-} bson_error_t BSON_ALIGNED_END (BSON_ALIGN_OF_PTR);
-
-
-BSON_STATIC_ASSERT2 (error_t, sizeof (bson_error_t) == 512);
 
 
 /**

@@ -18,26 +18,25 @@
 
 #ifdef MONGOC_ENABLE_SSL_SECURE_TRANSPORT
 
-#include <bson/bson.h>
-
-#include <mongoc/mongoc-log.h>
-#include <mongoc/mongoc-trace-private.h>
-#include <mongoc/mongoc-ssl.h>
-#include <mongoc/mongoc-stream-tls.h>
-#include <mongoc/mongoc-stream-tls-private.h>
-#include <mongoc/mongoc-secure-transport-private.h>
-#include <mongoc/mongoc-stream-tls-secure-transport-private.h>
-
-#include <CoreFoundation/CoreFoundation.h>
-#include <Security/Security.h>
-#include <Security/SecKey.h>
-#include <Security/SecureTransport.h>
-#include <CommonCrypto/CommonDigest.h>
-#include <Security/Security.h>
-#include <Security/SecureTransport.h>
-#include <CoreFoundation/CoreFoundation.h>
 #include <common-macros-private.h>
 #include <common-string-private.h>
+#include <mongoc/mongoc-secure-transport-private.h>
+#include <mongoc/mongoc-stream-tls-private.h>
+#include <mongoc/mongoc-stream-tls-secure-transport-private.h>
+#include <mongoc/mongoc-trace-private.h>
+
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-stream-tls.h>
+
+#include <bson/bson.h>
+
+#include <CommonCrypto/CommonDigest.h>
+
+#include <CoreFoundation/CoreFoundation.h>
+#include <Security/SecKey.h>
+#include <Security/SecureTransport.h>
+#include <Security/Security.h>
 
 // CDRIVER-2722: Secure Transport is deprecated on MacOS.
 BEGIN_IGNORE_DEPRECATIONS
@@ -84,23 +83,6 @@ _mongoc_cfstringref_to_cstring (CFStringRef str)
    return NULL;
 }
 
-static void
-_bson_append_cftyperef (mcommon_string_append_t *retval, const char *label, CFTypeRef str)
-{
-   char *cs;
-
-   if (str) {
-      cs = _mongoc_cfstringref_to_cstring (str);
-
-      if (cs) {
-         mcommon_string_append_printf (retval, "%s%s", label, cs);
-         bson_free (cs);
-      } else {
-         mcommon_string_append_printf (retval, "%s(null)", label);
-      }
-   }
-}
-
 CFTypeRef
 _mongoc_secure_transport_dict_get (CFArrayRef values, CFStringRef label)
 {
@@ -124,76 +106,6 @@ _mongoc_secure_transport_dict_get (CFArrayRef values, CFStringRef label)
 
    return NULL;
 }
-
-char *
-_mongoc_secure_transport_RFC2253_from_cert (SecCertificateRef cert)
-{
-   CFTypeRef value;
-   CFTypeRef subject_name;
-   CFDictionaryRef cert_dict;
-
-   cert_dict = SecCertificateCopyValues (cert, NULL, NULL);
-   if (!cert_dict) {
-      return NULL;
-   }
-
-   subject_name = CFDictionaryGetValue (cert_dict, kSecOIDX509V1SubjectName);
-   if (!subject_name) {
-      CFRelease (cert_dict);
-      return NULL;
-   }
-
-   subject_name = CFDictionaryGetValue (subject_name, kSecPropertyKeyValue);
-   if (!subject_name) {
-      CFRelease (cert_dict);
-      return NULL;
-   }
-
-   mcommon_string_append_t retval;
-   mcommon_string_new_as_append (&retval);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDCountryName);
-   _bson_append_cftyperef (&retval, "C=", value);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDStateProvinceName);
-   _bson_append_cftyperef (&retval, ",ST=", value);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDLocalityName);
-   _bson_append_cftyperef (&retval, ",L=", value);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDOrganizationName);
-   _bson_append_cftyperef (&retval, ",O=", value);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDOrganizationalUnitName);
-   if (value) {
-      /* Can be either one unit name, or array of unit names */
-      if (CFGetTypeID (value) == CFStringGetTypeID ()) {
-         _bson_append_cftyperef (&retval, ",OU=", value);
-      } else if (CFGetTypeID (value) == CFArrayGetTypeID ()) {
-         CFIndex len = CFArrayGetCount (value);
-
-         if (len > 0) {
-            _bson_append_cftyperef (&retval, ",OU=", CFArrayGetValueAtIndex (value, 0));
-         }
-         if (len > 1) {
-            _bson_append_cftyperef (&retval, ",", CFArrayGetValueAtIndex (value, 1));
-         }
-         if (len > 2) {
-            _bson_append_cftyperef (&retval, ",", CFArrayGetValueAtIndex (value, 2));
-         }
-      }
-   }
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDCommonName);
-   _bson_append_cftyperef (&retval, ",CN=", value);
-
-   value = _mongoc_secure_transport_dict_get (subject_name, kSecOIDStreetAddress);
-   _bson_append_cftyperef (&retval, ",STREET", value);
-
-   CFRelease (cert_dict);
-   return mcommon_string_from_append_destroy_with_steal (&retval);
-}
-
 
 static void
 safe_release (CFTypeRef ref)
@@ -275,41 +187,6 @@ done:
    safe_release (params.passphrase);
 
    return r;
-}
-
-char *
-_mongoc_secure_transport_extract_subject (const char *filename, const char *passphrase)
-{
-   bool success;
-   char *retval = NULL;
-   CFArrayRef items = NULL;
-   SecExternalItemType type = kSecItemTypeCertificate;
-
-
-   success = _mongoc_secure_transport_import_pem (filename, passphrase, &items, &type);
-
-   if (!success) {
-      return NULL;
-   }
-
-   if (type == kSecItemTypeAggregate) {
-      for (CFIndex i = 0; i < CFArrayGetCount (items); ++i) {
-         CFTypeID item_id = CFGetTypeID (CFArrayGetValueAtIndex (items, i));
-
-         if (item_id == SecCertificateGetTypeID ()) {
-            retval = _mongoc_secure_transport_RFC2253_from_cert ((SecCertificateRef) CFArrayGetValueAtIndex (items, i));
-            break;
-         }
-      }
-   } else if (type == kSecItemTypeCertificate) {
-      retval = _mongoc_secure_transport_RFC2253_from_cert ((SecCertificateRef) items);
-   }
-
-   if (items) {
-      CFRelease (items);
-   }
-
-   return retval;
 }
 
 static const char *

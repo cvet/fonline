@@ -1658,8 +1658,6 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
         }
     }
 
-    surface_colorspace = SDL_GetSurfaceColorspace(surface);
-
     // Try to have the best pixel format for the texture
     // No alpha, but a colorkey => promote to alpha
     if (!SDL_ISPIXELFORMAT_ALPHA(surface->format) && SDL_SurfaceHasColorKey(surface)) {
@@ -1720,6 +1718,9 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
             }
         }
     }
+
+    surface_colorspace = SDL_GetSurfaceColorspace(surface);
+    texture_colorspace = surface_colorspace;
 
     if (surface_colorspace == SDL_COLORSPACE_SRGB_LINEAR ||
         SDL_COLORSPACETRANSFER(surface_colorspace) == SDL_TRANSFER_CHARACTERISTICS_PQ) {
@@ -2572,7 +2573,7 @@ static void UpdateLogicalPresentation(SDL_Renderer *renderer)
     const float logical_h = view->logical_h;
     int iwidth, iheight;
 
-    if (renderer->target) {
+    if (!is_main_view && renderer->target) {
         iwidth = (int)renderer->target->w;
         iheight = (int)renderer->target->h;
     } else {
@@ -2684,6 +2685,8 @@ static void UpdateLogicalPresentation(SDL_Renderer *renderer)
     view->pixel_h = (int) view->logical_dst_rect.h;
     UpdatePixelViewport(renderer, view);
     UpdatePixelClipRect(renderer, view);
+    QueueCmdSetViewport(renderer);
+    QueueCmdSetClipRect(renderer);
 }
 
 bool SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int w, int h, SDL_RendererLogicalPresentation mode)
@@ -3303,10 +3306,6 @@ bool SDL_SetRenderDrawBlendMode(SDL_Renderer *renderer, SDL_BlendMode blendMode)
         return SDL_InvalidParamError("blendMode");
     }
 
-    if (blendMode == SDL_BLENDMODE_INVALID) {
-        return SDL_InvalidParamError("blendMode");
-    }
-
     if (!IsSupportedBlendMode(renderer, blendMode)) {
         return SDL_Unsupported();
     }
@@ -3604,7 +3603,7 @@ bool SDL_RenderLines(SDL_Renderer *renderer, const SDL_FPoint *points, int count
 #endif
 
     SDL_RenderViewState *view = renderer->view;
-    const bool islogical = ((view == &renderer->main_view) && (view->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED));
+    const bool islogical = (view->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED);
 
     if (islogical || (renderer->line_method == SDL_RENDERLINEMETHOD_GEOMETRY)) {
         const float scale_x = view->current_scale.x;
@@ -3623,7 +3622,7 @@ bool SDL_RenderLines(SDL_Renderer *renderer, const SDL_FPoint *points, int count
             int num_indices = 0;
             const int size_indices = 4;
             int cur_index = -4;
-            const int is_looping = (points[0].x == points[count - 1].x && points[0].y == points[count - 1].y);
+            const bool is_looping = (points[0].x == points[count - 1].x && points[0].y == points[count - 1].y);
             SDL_FPoint p; // previous point
             p.x = p.y = 0.0f;
             /*       p            q
@@ -3655,7 +3654,7 @@ bool SDL_RenderLines(SDL_Renderer *renderer, const SDL_FPoint *points, int count
     num_indices += 3;
 
                 // closed polyline, don´t draw twice the point
-                if (i || is_looping == 0) {
+                if (i || !is_looping) {
                     ADD_TRIANGLE(4, 5, 6)
                     ADD_TRIANGLE(4, 6, 7)
                 }
@@ -3930,8 +3929,7 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
     real_srcrect.w = (float)texture->w;
     real_srcrect.h = (float)texture->h;
     if (srcrect) {
-        if (!SDL_GetRectIntersectionFloat(srcrect, &real_srcrect, &real_srcrect) ||
-            real_srcrect.w == 0.0f || real_srcrect.h == 0.0f) {
+        if (!SDL_GetRectIntersectionFloat(srcrect, &real_srcrect, &real_srcrect)) {
             return true;
         }
     }
