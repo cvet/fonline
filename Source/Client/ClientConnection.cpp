@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE();
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
     _settings {settings},
     _netIn(_settings.NetBufferSize),
-    _netOut(_settings.NetBufferSize)
+    _netOut(_settings.NetBufferSize, _settings.NetDebugHashes)
 {
     FO_STACK_TRACE_ENTRY();
 
