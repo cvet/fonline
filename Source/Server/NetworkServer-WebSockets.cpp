@@ -35,8 +35,8 @@
 
 #if FO_HAVE_WEB_SOCKETS
 
-FO_DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
+#define ASIO_NO_DEPRECATED 1
 // ReSharper disable once CppInconsistentNaming
 #define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"
@@ -47,15 +47,11 @@ FO_DISABLE_WARNINGS_PUSH()
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
-#pragma warning(push)
-#pragma warning(disable : 4267)
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
-#pragma warning(pop)
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
-FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE();
 
@@ -63,8 +59,8 @@ template<bool Secured>
 class NetworkServerConnection_WebSockets final : public NetworkServerConnection
 {
     using web_server_t = std::conditional_t<Secured, web_sockets_tls, web_sockets_no_tls>;
-    using connection_ptr = typename web_server_t::connection_ptr;
-    using message_ptr = typename web_server_t::message_ptr;
+    using connection_ptr = web_server_t::connection_ptr;
+    using message_ptr = web_server_t::message_ptr;
 
 public:
     explicit NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection);
@@ -139,14 +135,11 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& address = _connection->get_raw_socket().remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_ulong() : const_numeric_cast<uint32>(0xFFFFFFFF);
-    _host = address.to_string();
+    _host = _connection->get_raw_socket().remote_endpoint().address().to_string();
     _port = _connection->get_raw_socket().remote_endpoint().port();
 
     if (settings.DisableTcpNagle) {
-        asio::error_code error;
-        _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
+        _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true));
     }
 
     _connection->set_message_handler([this](auto&&, auto&& msg) { OnMessage(msg); });
@@ -161,7 +154,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
     FO_STACK_TRACE_ENTRY();
 
     try {
-        std::error_code error;
+        asio::error_code error;
         _connection->terminate(error);
     }
     catch (const std::exception& ex) {
@@ -224,7 +217,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const std::error_code error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+        const auto error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
 
         if (!error) {
             DispatchImpl();
@@ -240,7 +233,7 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::error_code error;
+    asio::error_code error;
     _connection->terminate(error);
 }
 
@@ -289,14 +282,17 @@ void NetworkServer_WebSockets<Secured>::Run()
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        _server.run();
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
+    while (true) {
+        try {
+            _server.run();
+            break;
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
     }
 }
 
@@ -305,12 +301,8 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::error_code error;
-    auto&& connection = _server.get_con_from_hdl(hdl, error);
-
-    if (!error) {
-        _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, &_server, std::move(connection)));
-    }
+    auto&& connection = _server.get_con_from_hdl(hdl);
+    _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, &_server, std::move(connection)));
 }
 
 template<bool Secured>
@@ -318,15 +310,9 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::error_code error;
-    auto&& connection = _server.get_con_from_hdl(hdl, error);
-
-    if (error) {
-        return false;
-    }
-
-    connection->select_subprotocol("binary", error);
-    return !error;
+    auto&& connection = _server.get_con_from_hdl(hdl);
+    connection->select_subprotocol("binary");
+    return true;
 }
 
 template<bool Secured>

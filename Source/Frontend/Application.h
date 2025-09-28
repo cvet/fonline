@@ -422,6 +422,7 @@ private:
     int32 _mouseButtonsDown {};
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
+    vector<unique_ptr<RenderTexture>> _imguiTextures {};
     vector<AppWindow*> _allWindows {};
     std::atomic_bool _quit {};
     std::condition_variable _quitEvent {};

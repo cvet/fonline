@@ -45,6 +45,7 @@ class NetBuffer
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
     static constexpr uint32 NETMSG_SIGNATURE = 0x011E9422;
+    static constexpr hstring::hash_t DEBUG_HASH_VALUE = static_cast<hstring::hash_t>(~0);
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -76,8 +77,9 @@ protected:
 class NetOutBuffer final : public NetBuffer
 {
 public:
-    explicit NetOutBuffer(size_t buf_len) :
-        NetBuffer(buf_len)
+    explicit NetOutBuffer(size_t buf_len, bool debug_hashes) :
+        NetBuffer(buf_len),
+        _debugHashes {debug_hashes}
     {
     }
     NetOutBuffer(const NetOutBuffer&) = delete;
@@ -101,7 +103,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, string_view> || std::same_as<T, string>)
-    void Write(T value)
+    void Write(const T& value)
     {
         const auto len = numeric_cast<uint32>(value.length());
         Push(&len, sizeof(len));
@@ -112,8 +114,7 @@ public:
         requires(std::same_as<T, hstring>)
     void Write(T value)
     {
-        const auto hash = value.asHash();
-        Push(&hash, sizeof(hash));
+        WriteHashedString(value);
     }
 
     void WritePropsData(vector<const uint8*>* props_data, const vector<uint32>* props_data_sizes);
@@ -122,6 +123,9 @@ public:
     void EndMsg();
 
 private:
+    void WriteHashedString(hstring value);
+
+    bool _debugHashes;
     bool _msgStarted {};
     size_t _startedBufPos {};
 };

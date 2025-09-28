@@ -164,6 +164,18 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty propert
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, hstring pid)
+{
+    const auto map_items = self->GetItemsInRadius(hex, radius, pid);
+
+    if (!map_items.empty()) {
+        return map_items.front();
+    }
+
+    return nullptr;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemComponent component)
 {
     const auto map_items = self->GetItemsInRadius(hex, radius, hstring());

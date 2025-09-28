@@ -18,13 +18,15 @@
 
 #ifdef MONGOC_ENABLE_SSL
 
-#include <bson/bson.h>
-#include <mongoc/mongoc-ssl.h>
-#include <mongoc/mongoc-ssl-private.h>
-#include <mongoc/mongoc-log.h>
-#include <mongoc/mongoc-uri.h>
-#include <mongoc/mongoc-util-private.h>
 #include <common-string-private.h>
+#include <mongoc/mongoc-ssl-private.h>
+#include <mongoc/mongoc-util-private.h>
+
+#include <mongoc/mongoc-log.h>
+#include <mongoc/mongoc-ssl.h>
+#include <mongoc/mongoc-uri.h>
+
+#include <bson/bson.h>
 
 #if defined(MONGOC_ENABLE_SSL_OPENSSL)
 #include <mongoc/mongoc-openssl-private.h>
@@ -54,40 +56,6 @@ const mongoc_ssl_opt_t *
 mongoc_ssl_opt_get_default (void)
 {
    return &gMongocSslOptDefault;
-}
-
-char *
-mongoc_ssl_extract_subject (const char *filename, const char *passphrase)
-{
-   char *retval;
-
-   if (!filename) {
-      MONGOC_ERROR ("No filename provided to extract subject from");
-      return NULL;
-   }
-
-#ifdef _WIN32
-   if (_access (filename, 0) != 0) {
-#else
-   if (access (filename, R_OK) != 0) {
-#endif
-      MONGOC_ERROR ("Can't extract subject from unreadable file: '%s'", filename);
-      return NULL;
-   }
-
-#if defined(MONGOC_ENABLE_SSL_OPENSSL)
-   retval = _mongoc_openssl_extract_subject (filename, passphrase);
-#elif defined(MONGOC_ENABLE_SSL_SECURE_TRANSPORT)
-   retval = _mongoc_secure_transport_extract_subject (filename, passphrase);
-#elif defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
-retval = _mongoc_secure_channel_extract_subject (filename, passphrase);
-#endif
-
-   if (!retval) {
-      MONGOC_ERROR ("Can't extract subject from file '%s'", filename);
-   }
-
-   return retval;
 }
 
 void

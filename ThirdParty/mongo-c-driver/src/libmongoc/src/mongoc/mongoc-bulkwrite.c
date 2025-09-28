@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-#include <mlib/intencode.h>
 #include <mongoc/mongoc-bulkwrite.h>
 
-#include <bson/bson.h>
 #include <common-macros-private.h> // MC_ENABLE_CONVERSION_WARNING_BEGIN
-#include <mongoc/mcd-nsinfo.h>
 #include <mongoc/mongoc-array-private.h>
 #include <mongoc/mongoc-buffer-private.h>
 #include <mongoc/mongoc-client-private.h>
@@ -27,8 +24,14 @@
 #include <mongoc/mongoc-error-private.h>
 #include <mongoc/mongoc-server-stream-private.h>
 #include <mongoc/mongoc-util-private.h> // _mongoc_iter_document_as_bson
+
+#include <mongoc/mcd-nsinfo.h>
 #include <mongoc/mongoc-optional.h>
+
+#include <bson/bson.h>
+
 #include <mlib/cmp.h>
+#include <mlib/intencode.h>
 
 MC_ENABLE_CONVERSION_WARNING_BEGIN
 
@@ -60,7 +63,7 @@ set_bson_value_opt (bson_value_t *dst, const bson_value_t *src)
 {
    BSON_ASSERT_PARAM (dst);
    bson_value_destroy (dst);
-   *dst = (bson_value_t){0};
+   *dst = (bson_value_t) {0};
    if (src) {
       bson_value_copy (src, dst);
    }
@@ -236,7 +239,7 @@ bool
 mongoc_bulkwrite_append_insertone (mongoc_bulkwrite_t *self,
                                    const char *ns,
                                    const bson_t *document,
-                                   BSON_MAYBE_UNUSED const mongoc_bulkwrite_insertoneopts_t *opts, // may be NULL
+                                   const mongoc_bulkwrite_insertoneopts_t *opts, // may be NULL
                                    bson_error_t *error)
 {
    BSON_ASSERT_PARAM (self);
@@ -865,6 +868,9 @@ struct _mongoc_bulkwriteresult_t {
    bson_t updateresults;
    bson_t deleteresults;
    bool verboseresults;
+   // `parsed_some_results` becomes true if an ok:1 reply to `bulkWrite` is successfully parsed.
+   // Used to determine whether some writes were successful.
+   bool parsed_some_results;
 };
 
 int64_t
@@ -1334,6 +1340,8 @@ _bulkwritereturn_apply_reply (mongoc_bulkwritereturn_t *self, const bson_t *cmd_
       _bulkwriteexception_append_writeconcernerror (self->exc, code, errmsg, &errInfo);
    }
 
+   self->res->parsed_some_results = true;
+
    return true;
 }
 
@@ -1514,6 +1522,7 @@ mongoc_bulkwrite_execute (mongoc_bulkwrite_t *self, const mongoc_bulkwriteopts_t
    BSON_ASSERT_PARAM (self);
    BSON_OPTIONAL_PARAM (opts);
 
+   // `has_successful_results` is set to true if any `bulkWrite` reply indicates some writes succeeded.
    bool has_successful_results = false;
    mongoc_bulkwritereturn_t ret = {0};
    bson_error_t error = {0};
@@ -1945,16 +1954,18 @@ mongoc_bulkwrite_execute (mongoc_bulkwrite_t *self, const mongoc_bulkwriteopts_t
    }
 
 fail:
-   if (is_ordered) {
-      // Ordered writes stop on first error. If the error reported is for an index > 0, assume some writes suceeded.
-      if (ret.res->errorscount == 0 || (ret.res->first_error_index.isset && ret.res->first_error_index.index > 0)) {
-         has_successful_results = true;
-      }
-   } else {
-      BSON_ASSERT (mlib_in_range (size_t, ret.res->errorscount));
-      size_t errorscount_sz = (size_t) ret.res->errorscount;
-      if (errorscount_sz < self->n_ops) {
-         has_successful_results = true;
+   if (ret.res->parsed_some_results) {
+      if (is_ordered) {
+         // Ordered writes stop on first error. If the error reported is for an index > 0, assume some writes suceeded.
+         if (ret.res->errorscount == 0 || (ret.res->first_error_index.isset && ret.res->first_error_index.index > 0)) {
+            has_successful_results = true;
+         }
+      } else {
+         BSON_ASSERT (mlib_in_range (size_t, ret.res->errorscount));
+         size_t errorscount_sz = (size_t) ret.res->errorscount;
+         if (errorscount_sz < self->n_ops) {
+            has_successful_results = true;
+         }
       }
    }
    if (!is_acknowledged || !has_successful_results) {

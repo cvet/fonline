@@ -47,7 +47,6 @@ FIXED_SETTING(string, GameName, "FOnline"); // Game name, used in logs and windo
 FIXED_SETTING(string, GameVersion, "0.0.0"); // Game version, used in logs and window title
 FIXED_SETTING(string, ApplySubConfig); // [SubConfig] section in main config to apply on start
 FIXED_SETTING(string, DebuggingSubConfig); // Config applied when run under debugger
-FIXED_SETTING(string, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
 FIXED_SETTING(int32, ScriptOverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 SETTING_GROUP_END();
@@ -92,6 +91,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
 FIXED_SETTING(int32, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
+FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size
 FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
@@ -198,6 +198,9 @@ FIXED_SETTING(bool, AtlasLinearFiltration, false); // If true, atlas linear filt
 FIXED_SETTING(int32, DefaultParticleDrawWidth, 128); // Default particle draw width
 FIXED_SETTING(int32, DefaultParticleDrawHeight, 128); // Default particle draw height
 FIXED_SETTING(bool, RecreateClientOnError, false); // If true, client is recreated on error
+FIXED_SETTING(string, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
+FIXED_SETTING(string, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect for ImGui
+FIXED_SETTING(int32, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

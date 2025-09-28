@@ -60,7 +60,7 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -1040,7 +1040,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
+void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1057,7 +1057,9 @@ void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolo
     dest_box.front = 0;
     dest_box.back = 1;
 
-    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, 4 * size.width, 0);
+    const UINT src_pitch = (use_dest_pitch ? Size.width : size.width) * 4;
+
+    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, src_pitch, 0);
 }
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()

@@ -2,7 +2,7 @@
 // detail/socket_types.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2024 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -413,7 +413,11 @@ const int max_iov_len = 16;
 # endif
 # define ASIO_OS_DEF_SA_RESTART SA_RESTART
 # define ASIO_OS_DEF_SA_NOCLDSTOP SA_NOCLDSTOP
-# define ASIO_OS_DEF_SA_NOCLDWAIT SA_NOCLDWAIT
+# if defined(SA_NOCLDWAIT)
+#  define ASIO_OS_DEF_SA_NOCLDWAIT SA_NOCLDWAIT
+# else // defined(SA_NOCLDWAIT)
+#  define ASIO_OS_DEF_SA_NOCLDWAIT 0
+# endif // defined(SA_NOCLDWAIT)
 #endif
 const int custom_socket_option_level = 0xA5100000;
 const int enable_connection_aborted_option = 1;

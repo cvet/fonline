@@ -48,10 +48,10 @@ auto NetBuffer::GenerateEncryptKey() -> uint32
     FO_STACK_TRACE_ENTRY();
 
     return // Random 4 byte
-        (GenericUtils::Random(1, 255) << 24) | //
-        (GenericUtils::Random(1, 255) << 16) | //
-        (GenericUtils::Random(1, 255) << 8) | //
-        (GenericUtils::Random(1, 255) << 0);
+        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 24) | //
+        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 16) | //
+        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 8) | //
+        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 0);
 }
 
 void NetBuffer::SetEncryptKey(uint32 seed)
@@ -242,6 +242,19 @@ void NetOutBuffer::EndMsg()
     EncryptKey(numeric_cast<int32>(msg_len - sizeof(msg_signature)));
 }
 
+void NetOutBuffer::WriteHashedString(hstring value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_debugHashes) {
+        Push(&DEBUG_HASH_VALUE, sizeof(DEBUG_HASH_VALUE));
+        Write(value.asStr());
+    }
+
+    const auto hash = value.asHash();
+    Push(&hash, sizeof(hash));
+}
+
 void NetInBuffer::ResetBuf() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -359,17 +372,34 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto h = Read<hstring::hash_t>();
+    auto hash = Read<hstring::hash_t>();
 
-    bool failed = false;
-    const hstring result = hash_resolver.ResolveHash(h, &failed);
+    if (hash == DEBUG_HASH_VALUE) {
+        const auto real_value = Read<string>();
+        hash = Read<hstring::hash_t>();
 
-    if (failed) {
-        ResetBuf();
-        throw NetBufferException("Can't resolve received hash", h);
+        bool failed = false;
+        const auto result = hash_resolver.ResolveHash(hash, &failed);
+
+        if (failed) {
+            ResetBuf();
+            throw NetBufferException("Can't resolve received hash", hash, real_value);
+        }
+
+        FO_RUNTIME_ASSERT(result.asStr() == real_value);
+        return result;
     }
+    else {
+        bool failed = false;
+        const auto result = hash_resolver.ResolveHash(hash, &failed);
 
-    return result;
+        if (failed) {
+            ResetBuf();
+            throw NetBufferException("Can't resolve received hash", hash);
+        }
+
+        return result;
+    }
 }
 
 auto NetInBuffer::NeedProcess() -> bool
