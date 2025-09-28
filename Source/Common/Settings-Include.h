@@ -91,6 +91,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
 FIXED_SETTING(int32, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
+FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size
 FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled

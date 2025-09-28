@@ -115,7 +115,7 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
     _settings {settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings.NetBufferSize),
-    _outBuf(_settings.NetBufferSize)
+    _outBuf(_settings.NetBufferSize, _settings.NetDebugHashes)
 {
     FO_STACK_TRACE_ENTRY();
 
