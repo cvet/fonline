@@ -101,9 +101,8 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
     char itoa_buf[64] = {};
 
-    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE) - 1;; i--) {
-        const auto& entry = st.CallTree[i];
-
+    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
+        const auto& entry = st.CallTree[i - 1];
         string_view file_name = entry->file;
 
         if (const auto pos = file_name.find_last_of("/\\"); pos != string_view::npos) {
@@ -117,10 +116,6 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
         WriteBaseLog(" line ");
         WriteBaseLog(ItoA(entry->line, itoa_buf, 10));
         WriteBaseLog(")\n");
-
-        if (i == 0) {
-            break;
-        }
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
