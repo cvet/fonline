@@ -124,7 +124,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransit, Critter* /*cr*/, Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent

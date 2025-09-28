@@ -1225,7 +1225,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             break;
         }
 
-        MapMngr.TransitToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
+        MapMngr.TransferToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1257,7 +1257,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         }
     } break;
     case CMD_TOGLOBAL: {
-        MapMngr.TransitToGlobal(player_cr, {});
+        MapMngr.TransferToGlobal(player_cr, {});
         logcb("Done");
     } break;
     case CMD_PROPERTY: {
@@ -1396,7 +1396,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         auto hex = player_cr->GetHex();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.TransitToMap(player_cr, map, hex, dir, 5);
+        MapMngr.TransferToMap(player_cr, map, hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_LOG: {
