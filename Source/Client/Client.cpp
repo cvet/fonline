@@ -2616,13 +2616,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
-    else if (cmd == "SkipRoof" && args.size() == 3) {
-        if (_curMap != nullptr) {
-            const auto hx = strex(args[1]).toInt();
-            const auto hy = strex(args[2]).toInt();
-            _curMap->SetSkipRoof(_curMap->GetSize().fromRawPos(hx, hy));
-        }
-    }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());
     }
