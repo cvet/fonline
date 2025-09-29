@@ -338,7 +338,9 @@ void MapView::LoadStaticData()
             const auto& field = _hexField->GetCellForReading(mpos(hx, hy));
 
             if (field.RoofNum == 0 && !field.RoofTiles.empty()) {
-                MarkRoofNum(ipos32 {hx, hy}, roof_num);
+                const auto corrected_hx = hx - hx % _engine->Settings.MapTileStep;
+                const auto corrected_hy = hy - hy % _engine->Settings.MapTileStep;
+                MarkRoofNum(ipos32 {corrected_hx, corrected_hy}, roof_num);
                 roof_num++;
             }
         }
@@ -1078,7 +1080,7 @@ void MapView::RebuildMap(ipos32 screen_raw_hex)
         }
 
         // Roof
-        if (!field.RoofTiles.empty() && (_roofSkip == 0 || _roofSkip != field.RoofNum) && _engine->Settings.ShowRoof) {
+        if (!field.RoofTiles.empty() && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum) && _engine->Settings.ShowRoof) {
             for (auto* tile : field.RoofTiles) {
                 if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
@@ -1171,7 +1173,7 @@ void MapView::RebuildMap(ipos32 screen_raw_hex)
                     continue;
                 }
 
-                if (pattern->InteractWithRoof && _roofSkip != 0 && _roofSkip == field.RoofNum) {
+                if (pattern->InteractWithRoof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
                     continue;
                 }
 
@@ -1382,7 +1384,7 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
         }
 
         // Roof
-        if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_roofSkip == 0 || _roofSkip != field.RoofNum)) {
+        if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum)) {
             for (auto* tile : field.RoofTiles) {
                 if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                     continue;
@@ -1475,7 +1477,7 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
                     continue;
                 }
 
-                if (pattern->InteractWithRoof && _roofSkip != 0 && _roofSkip == field.RoofNum) {
+                if (pattern->InteractWithRoof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
                     continue;
                 }
 
@@ -2224,12 +2226,16 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     }
 }
 
-void MapView::SetSkipRoof(mpos hex)
+void MapView::SetHiddenRoof(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_roofSkip != _hexField->GetCellForReading(hex).RoofNum) {
-        _roofSkip = _hexField->GetCellForReading(hex).RoofNum;
+    const auto corrected_hx = hex.x - hex.x % _engine->Settings.MapTileStep;
+    const auto corrected_hy = hex.y - hex.y % _engine->Settings.MapTileStep;
+    const auto corrected_hex = _mapSize.fromRawPos(corrected_hx, corrected_hy);
+
+    if (_hiddenRoofNum != _hexField->GetCellForReading(corrected_hex).RoofNum) {
+        _hiddenRoofNum = _hexField->GetCellForReading(corrected_hex).RoofNum;
         RefreshMap();
     }
 }

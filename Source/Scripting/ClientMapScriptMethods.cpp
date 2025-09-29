@@ -803,4 +803,10 @@ FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, m
     return self->AddLocalItem(pid, hex);
 }
 
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetHiddenRoof(MapView* self, mpos hex)
+{
+    self->SetHiddenRoof(hex);
+}
+
 FO_END_NAMESPACE();

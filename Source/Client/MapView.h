@@ -241,8 +241,7 @@ public:
     void UpdateItemLightSource(const ItemHexView* item);
     void UpdateHexLightSources(mpos hex);
 
-    void SetSkipRoof(mpos hex);
-    void MarkRoofNum(ipos32 raw_hex, int32 num);
+    void SetHiddenRoof(mpos hex);
 
     auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
 
@@ -293,6 +292,8 @@ private:
 
     void AddSpriteToChain(Field& field, MapSprite* mspr);
     void InvalidateSpriteChain(Field& field);
+
+    void MarkRoofNum(ipos32 raw_hex, int32 num);
 
     // Lighting
     void ProcessLighting();
@@ -405,7 +406,7 @@ private:
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
 
-    int32 _roofSkip {};
+    int32 _hiddenRoofNum {};
 
     int32 _drawCursorX {};
     shared_ptr<Sprite> _cursorPrePic {};
