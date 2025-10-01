@@ -45,7 +45,7 @@ static auto* StrCantConnectToServer = "Can't connect to the server!";
 static auto* StrConnectionEstablished = "Connection established";
 static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
-static auto* StrClientOutdated = "Client binary outdated";
+static auto* StrClientOutdated = "Client outdated, please update it";
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {settings},
