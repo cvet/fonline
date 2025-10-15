@@ -33,7 +33,6 @@
 
 #include "Application.h"
 #include "ConfigFile.h"
-#include "FileSystem.h"
 #include "ImGuiStuff.h"
 #include "Version-Include.h"
 
@@ -94,8 +93,8 @@ static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
 static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
 static unique_ptr<unordered_map<int32, MouseButton>> MouseButtonsMap {};
 
-Application::Application(int32 argc, char** argv, AppInitFlags flags) :
-    Settings(argc, argv)
+Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
+    Settings {std::move(settings)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -479,18 +478,10 @@ Application::Application(int32 argc, char** argv, AppInitFlags flags) :
         io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
 
         // Default effect
-        if (Settings.EmbeddedResources != "@Disabled") {
-            FileSystem base_fs;
-            base_fs.AddDataSource(Settings.EmbeddedResources);
-
-            if (base_fs.ReadFileHeader(Settings.ImGuiDefaultEffect)) {
-                _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&base_fs](string_view path) -> string {
-                    const auto file = base_fs.ReadFile(path);
-                    FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
-                    return file.GetStr();
-                });
-            }
-        }
+        FileSystem base_fs;
+        base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
+        base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
+        LoadImGuiEffect(base_fs);
 
         _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
     }
@@ -509,11 +500,17 @@ void Application::OpenLink(string_view link)
     SDL_OpenURL(string(link).c_str());
 }
 
-void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
+void Application::LoadImGuiEffect(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _imguiEffect = std::move(effect);
+    if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
+        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
+            const auto file = resources.ReadFile(path);
+            FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+            return file.GetStr();
+        });
+    }
 }
 
 #if FO_IOS
@@ -1471,9 +1468,13 @@ void AppAudio::UnlockDevice()
     SDL_UnlockAudioStream(AudioStream);
 }
 
-void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
+void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (IsRunInDebugger()) {
+        return;
+    }
 
     const char* title = fatal_error ? "Fatal Error" : "Error";
 
@@ -1547,6 +1548,215 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bo
         }
     }
 #endif
+}
+
+void Application::ShowProgressWindow(string_view text, const ProgressWindowCallback& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+    bool run_in_separate_thread = false;
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+        SDL_Window* window = nullptr;
+        SDL_Renderer* renderer = nullptr;
+
+        const auto cleanup = ScopeCallback([&]() noexcept {
+            if (renderer != nullptr) {
+                SDL_DestroyRenderer(renderer);
+            }
+            if (window != nullptr) {
+                SDL_DestroyWindow(window);
+            }
+
+            SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        });
+
+        constexpr SDL_WindowFlags flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_UTILITY | SDL_WINDOW_NOT_FOCUSABLE;
+        const auto window_width = numeric_cast<int32>(text.length() * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE + 50);
+        constexpr auto window_height = numeric_cast<int32>(60);
+        const auto text_x = numeric_cast<float32>(window_width / 2 - numeric_cast<int32>((text.length() * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2));
+        constexpr auto text_y = numeric_cast<float32>(window_height / 2 - SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2);
+
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
+        if (SDL_CreateWindowAndRenderer(string(text).c_str(), window_width, window_height, flags, &window, &renderer)) {
+            SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
+            run_in_separate_thread = true;
+            auto fut = std::async(std::launch::async, [&] { callback(); });
+            const auto start_time = SDL_GetTicks();
+
+            while (true) {
+                for (SDL_Event sdl_event; SDL_PollEvent(&sdl_event);) {
+                    // Skip
+                }
+
+                const auto t = numeric_cast<float>(SDL_GetTicks() - start_time) / 1000.0f;
+                const auto intensity = static_cast<Uint8>(150.0f + (std::sin(t * 2.0f) * 0.5f + 0.5f) * 50.0f);
+
+                SDL_SetRenderDrawColor(renderer, intensity, intensity, intensity, 255);
+                SDL_RenderClear(renderer);
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderDebugText(renderer, text_x, text_y, string(text).c_str());
+                SDL_RenderPresent(renderer);
+
+                if (fut.wait_for(std::chrono::milliseconds(16)) == std::future_status::ready) {
+                    fut.get();
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!run_in_separate_thread) {
+        callback();
+    }
+}
+
+void Application::ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32>& selected)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (options.empty()) {
+        return;
+    }
+
+    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+        SDL_Window* window = nullptr;
+        SDL_Renderer* renderer = nullptr;
+
+        const auto cleanup = ScopeCallback([&]() noexcept {
+            if (renderer != nullptr) {
+                SDL_DestroyRenderer(renderer);
+            }
+            if (window != nullptr) {
+                SDL_DestroyWindow(window);
+            }
+
+            SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        });
+
+        constexpr SDL_WindowFlags flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_UTILITY;
+        constexpr int32 line_height = 20;
+        constexpr int32 char_size = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+        const auto max_options_text = numeric_cast<int32>(std::ranges::max_element(options, [](auto&& a, auto&& b) { return a.size() < b.size(); })->length() * char_size);
+        const auto window_width = numeric_cast<int32>(std::max(max_options_text, numeric_cast<int32>(title.length() * char_size)) + 50);
+        const auto window_height = numeric_cast<int32>((options.size() + 2) * line_height);
+
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
+        if (SDL_CreateWindowAndRenderer(string(title).c_str(), window_width, window_height, flags, &window, &renderer)) {
+            SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
+            for (bool running = true; running;) {
+                const auto toggle_index = [&](int32 index) {
+                    if ((SDL_GetModState() & SDL_KMOD_CTRL) == 0) {
+                        selected.clear();
+                    }
+
+                    if (!selected.contains(index)) {
+                        selected.emplace(index);
+                    }
+                    else {
+                        selected.erase(index);
+                    }
+                };
+
+                for (SDL_Event sdl_event; SDL_PollEvent(&sdl_event);) {
+                    if (sdl_event.type == SDL_EVENT_QUIT) {
+                        ExitApp(true);
+                    }
+                    else if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                        const auto mx = iround<int32>(sdl_event.button.x);
+                        const auto my = iround<int32>(sdl_event.button.y);
+
+                        if (mx >= 0 && mx < window_width) {
+                            const auto line = my / line_height;
+
+                            if (line > 0 && line < numeric_cast<int32>(options.size() + 2)) {
+                                if (line < numeric_cast<int32>(options.size() + 1)) {
+                                    toggle_index(line - 1);
+                                }
+                                else {
+                                    running = false;
+                                }
+                            }
+                        }
+                    }
+                    else if (sdl_event.type == SDL_EVENT_KEY_DOWN) {
+                        if (sdl_event.key.key == SDLK_RETURN) {
+                            running = false;
+                        }
+                        else if (sdl_event.key.key == SDLK_ESCAPE) {
+                            ExitApp(true);
+                        }
+                        else if (sdl_event.key.key >= SDLK_1 && sdl_event.key.key <= SDLK_9) {
+                            toggle_index(numeric_cast<int32>(sdl_event.key.key - SDLK_1));
+                        }
+                    }
+                }
+
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                SDL_RenderClear(renderer);
+
+                for (size_t i = 0; i < options.size() + 2; i++) {
+                    SDL_FRect rect;
+                    rect.x = numeric_cast<float32>(1);
+                    rect.y = numeric_cast<float32>(line_height * i + 1);
+                    rect.w = numeric_cast<float32>(window_width - 2);
+                    rect.h = numeric_cast<float32>(line_height - 2);
+
+                    if (i == 0) {
+                        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
+                    }
+                    else if (i < options.size() + 1) {
+                        if (selected.contains(numeric_cast<int32>(i - 1))) {
+                            SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
+                        }
+                        else {
+                            SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
+                        }
+                    }
+                    else {
+                        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
+                    }
+
+                    SDL_RenderRect(renderer, &rect);
+
+                    string text;
+
+                    if (i == 0) {
+                        text = title;
+                        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    }
+                    else if (i < options.size() + 1) {
+                        text = strex("{}) {}", i, options[i - 1]);
+
+                        if (selected.contains(numeric_cast<int32>(i - 1))) {
+                            SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
+                        }
+                        else {
+                            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                        }
+                    }
+                    else {
+                        text = "--- ENTER ---";
+                        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    }
+
+                    const auto text_x = numeric_cast<float32>(window_width / 2 - numeric_cast<int32>((text.length() * char_size) / 2));
+                    const auto text_y = numeric_cast<float32>(i * line_height + line_height / 2 - char_size / 2);
+                    SDL_RenderDebugText(renderer, text_x, text_y, string(text).c_str());
+                }
+
+                SDL_RenderPresent(renderer);
+                SDL_Delay(16);
+            }
+        }
+    }
 }
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)

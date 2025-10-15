@@ -1878,7 +1878,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + \
                         '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True, selfEntity=selfEntity) + '[]", ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return 'static_cast<int>(' + v + ')'
+                return 'static_cast<int32>(' + v + ')'
             return v
         
         def marshalBackRef(t, v, v2, selfEntity=None):
@@ -1892,7 +1892,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] == 'arr':
                 return 'AssignArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v2 + ', ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return v + ' = static_cast<int>(' + v2 + ')'
+                return v + ' = static_cast<int32>(' + v2 + ')'
             return None
         
         def marshalBackRef2(t, v, v2, selfEntity=None):
@@ -1977,7 +1977,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     for m in methods:
                         #argsStr = ', '.join([metaTypeToASEngineType(p[0]) for p in m[2]])
                         #globalLines.append('    ' + metaTypeToASEngineType(m[1]) + ' ' + m[0] + '(' + argsStr + ') { ' + ('return {' + '};' if m[1] != 'void' else '') + ' }')
-                        globalLines.append('    void ' + m[0] + '() { }')
+                        globalLines.append('    void ' + m[0] + '_Dummy() { }')
                     globalLines.append('};')
                     globalLines.append('')
             
@@ -2395,7 +2395,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     registerLines.append('AS_VERIFY(as_engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
                 for m in methods:
                     argsStr = ', '.join([metaTypeToASType(p[0], forceNoConst=True) + ' ' + p[1] for p in m[2]])
-                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '(' + argsStr + ')", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
+                    methodName = m[0] + ('_Dummy' if isASCompiler else '')
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '(' + argsStr + ')", SCRIPT_METHOD(' + refTypeName + ', ' + methodName + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
@@ -3378,7 +3379,6 @@ writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHashUint(args.buildhash) + 'u;')
-writeFile('static constexpr auto FO_DEBUGGING_MAIN_CONFIG = "' + args.maincfg + '";')
 
 # Actual writing of generated files
 try:

@@ -52,9 +52,7 @@ public:
     auto operator=(RawCopyBaker&&) noexcept = delete;
     ~RawCopyBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };
 
 FO_END_NAMESPACE();

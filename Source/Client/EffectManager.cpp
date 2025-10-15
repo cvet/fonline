@@ -70,7 +70,7 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto&& [name, effect] : _loadedEffects) {
+    for (auto& effect : _loadedEffects | std::views::values) {
         PerFrameEffectUpdate(effect.get(), game_time);
     }
 }

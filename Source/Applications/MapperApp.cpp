@@ -71,12 +71,14 @@ static void MapperEntry([[maybe_unused]] void* data)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
-            catch (...) {
-                FO_UNKNOWN_EXCEPTION();
-            }
         }
 
-        Data->Mapper->MapperMainLoop();
+        try {
+            Data->Mapper->MapperMainLoop();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
 
         App->EndFrame();
     }

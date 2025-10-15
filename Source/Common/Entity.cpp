@@ -52,18 +52,18 @@ void Entity::AddRef() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_refCounter > 0);
-
-    ++_refCounter;
+    const auto old = _refCounter.fetch_add(1, std::memory_order_relaxed);
+    FO_STRONG_ASSERT(old > 0);
 }
 
 void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_refCounter > 0);
+    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    FO_STRONG_ASSERT(old > 0);
 
-    if (--_refCounter == 0) {
+    if (old == 1) {
         delete this;
     }
 }

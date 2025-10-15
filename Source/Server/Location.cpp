@@ -52,7 +52,7 @@ auto Location::GetMapByIndex(int32 index) noexcept -> Map*
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (index < 0 || index >= numeric_cast<int>(_locMaps.size())) {
+    if (index < 0 || index >= numeric_cast<int32>(_locMaps.size())) {
         return nullptr;
     }
 

@@ -53,9 +53,9 @@ public:
     explicit operator bool() const noexcept { return _isLoaded; }
     ~FileHeader() = default;
 
-    [[nodiscard]] auto GetName() const -> string_view;
+    [[nodiscard]] auto GetNameNoExt() const -> string_view;
     [[nodiscard]] auto GetPath() const -> const string&;
-    [[nodiscard]] auto GetFullPath() const -> string;
+    [[nodiscard]] auto GetDiskPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
     [[nodiscard]] auto GetDataSource() const -> const DataSource*;
@@ -115,7 +115,6 @@ class File final : public FileHeader
 public:
     File() noexcept = default;
     explicit File(string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf);
-    explicit File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -126,6 +125,8 @@ public:
     [[nodiscard]] auto GetData() const -> vector<uint8>;
     [[nodiscard]] auto GetBuf() const -> const uint8*;
     [[nodiscard]] auto GetReader() const -> FileReader;
+
+    static auto Load(const FileHeader& fh) -> File;
 
 protected:
     unique_del_ptr<const uint8> _fileBuf {};
@@ -142,21 +143,20 @@ public:
     auto operator=(FileCollection&&) noexcept -> FileCollection& = default;
     ~FileCollection() = default;
 
-    [[nodiscard]] auto GetCurFile() const -> File;
-    [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
-    [[nodiscard]] auto FindFileByName(string_view name) const -> File;
-    [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
     [[nodiscard]] auto GetFilesCount() const -> size_t;
-    [[nodiscard]] auto Copy() const -> FileCollection;
+    [[nodiscard]] auto GetFileByIndex(size_t index) const -> const FileHeader&;
+    [[nodiscard]] auto FindFileByName(string_view name_no_ext) const -> File;
+    [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
 
-    auto MoveNext() -> bool;
-    void ResetCounter();
+    [[nodiscard]] auto begin() { return _files.begin(); }
+    [[nodiscard]] auto end() { return _files.end(); }
+    [[nodiscard]] auto begin() const { return _files.begin(); }
+    [[nodiscard]] auto end() const { return _files.end(); }
 
 private:
-    vector<FileHeader> _allFiles {};
-    int32 _curFileIndex {-1};
-    mutable unordered_map<string, size_t> _nameToIndex {};
-    mutable unordered_map<string, size_t> _pathToIndex {};
+    vector<FileHeader> _files {};
+    unordered_map<string, size_t> _nameToIndex {};
+    unordered_map<string, size_t> _pathToIndex {};
 };
 
 class FileSystem final
@@ -171,16 +171,18 @@ public:
 
     [[nodiscard]] auto GetAllFiles() const -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool recursive = true) const -> FileCollection;
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool;
     [[nodiscard]] auto ReadFile(string_view path) const -> File;
     [[nodiscard]] auto ReadFileText(string_view path) const -> string;
     [[nodiscard]] auto ReadFileHeader(string_view path) const -> FileHeader;
 
-    void AddDataSource(string_view path, DataSourceType type = DataSourceType::Default);
-    void AddDataSource(unique_ptr<DataSource> data_source);
+    void AddDirSource(string_view dir, bool recursive = false, bool non_cached = false, bool maybe_not_available = false);
+    void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
+    void AddPacksSource(string_view dir, const vector<string>& packs);
+    void AddCustomSource(unique_ptr<DataSource> data_source);
     void CleanDataSources();
 
 private:
-    string _rootPath {};
     vector<unique_ptr<DataSource>> _dataSources {};
 };
 

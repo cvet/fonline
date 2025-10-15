@@ -40,13 +40,25 @@
 #endif
 
 #if FO_LINUX || FO_MAC
+#include <dlfcn.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
 
+#if FO_LINUX
+#if __has_include(<X11/Xlib.h>) && __has_include(<X11/keysym.h>)
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+#define FO_HAVE_X11 1
+#else
+#define FO_HAVE_X11 0
+#endif
+#endif
+
 #if FO_MAC
+#include <ApplicationServices/ApplicationServices.h>
 #include <libproc.h>
 #endif
 
@@ -166,6 +178,83 @@ auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing
     ::setsid();
 
     return true;
+
+#else
+    return false;
+#endif
+}
+
+auto Platform::LoadModule(const string& module_name) noexcept -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    void* module_handle = nullptr;
+
+#if FO_WINDOWS
+    module_handle = ::LoadLibraryW(strex(strex::safe_format, "{}.dll", module_name).toWideChar().c_str());
+#elif FO_LINUX
+    module_handle = ::dlopen(strex(strex::safe_format, "{}.so", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+#elif FO_MAC
+    module_handle = ::dlopen(strex(strex::safe_format, "{}.dylib", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+#endif
+
+    return module_handle;
+}
+
+void Platform::UnloadModule(void* module_handle) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (module_handle == nullptr) {
+        return;
+    }
+
+#if FO_WINDOWS
+    ::FreeLibrary(static_cast<HMODULE>(module_handle));
+#elif FO_LINUX || FO_MAC
+    ::dlclose(module_handle);
+#endif
+}
+
+auto Platform::GetFuncAddr(void* module_handle, const string& func_name) noexcept -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    void* func = nullptr;
+
+#if FO_WINDOWS
+    func = reinterpret_cast<void*>(::GetProcAddress(static_cast<HMODULE>(module_handle), func_name.c_str()));
+#elif FO_LINUX || FO_MAC
+    func = ::dlsym(module_handle != nullptr ? module_handle : RTLD_DEFAULT, func_name.c_str());
+#endif
+
+    return func;
+}
+
+auto Platform::IsShiftDown() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return (::GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+
+#elif FO_LINUX
+    bool pressed = false;
+#if FO_HAVE_X11
+    if (auto* display = ::XOpenDisplay(nullptr); display != nullptr) {
+        char keys[32] = {};
+        ::XQueryKeymap(display, keys);
+        KeyCode leftShift = ::XKeysymToKeycode(display, XK_Shift_L);
+        KeyCode rightShift = ::XKeysymToKeycode(display, XK_Shift_R);
+        pressed = (keys[leftShift >> 3] & (1 << (leftShift & 7))) || (keys[rightShift >> 3] & (1 << (rightShift & 7)));
+        ::XCloseDisplay(display);
+    }
+#endif
+    return pressed;
+
+#elif FO_MAC
+    const CGEventFlags flags = ::CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState);
+    return (flags & kCGEventFlagMaskShift) != 0;
 
 #else
     return false;

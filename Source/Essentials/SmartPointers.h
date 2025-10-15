@@ -37,6 +37,7 @@
 
 FO_BEGIN_NAMESPACE();
 
+// Todo: make sure in debug mode ptr is not dangling
 template<typename T>
 class raw_ptr
 {
@@ -166,7 +167,7 @@ private:
     T* _ptr;
 };
 static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<raw_ptr<int>>);
+static_assert(std::is_standard_layout_v<raw_ptr<int32>>);
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
@@ -288,7 +289,7 @@ private:
     T* _ptr;
 };
 static_assert(sizeof(uniq_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<uniq_ptr<int>>);
+static_assert(std::is_standard_layout_v<uniq_ptr<int32>>);
 
 FO_END_NAMESPACE();
 template<typename T>
@@ -443,7 +444,7 @@ private:
 
     T* _ptr {};
 };
-static_assert(std::is_standard_layout_v<refcount_ptr<int>>);
+static_assert(std::is_standard_layout_v<refcount_ptr<int32>>);
 
 FO_END_NAMESPACE();
 template<typename T>

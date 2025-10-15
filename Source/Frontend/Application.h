@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "FileSystem.h"
 #include "Rendering.h"
 #include "Settings.h"
 
@@ -323,8 +324,7 @@ public:
     [[nodiscard]] auto GetMousePosition() const -> ipos32;
     [[nodiscard]] auto GetClipboardText() -> const string&;
 
-    [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
-
+    auto PollEvent(InputEvent& ev) -> bool;
     void ClearEvents();
     void SetMousePosition(ipos32 pos, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
@@ -349,8 +349,7 @@ public:
 
     [[nodiscard]] auto IsEnabled() const -> bool;
 
-    [[nodiscard]] auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool;
-
+    auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool;
     void SetSource(AudioStreamCallback stream_callback);
     void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume);
     void LockDevice();
@@ -364,10 +363,11 @@ private:
 
 enum class AppInitFlags : uint8
 {
-    None = 0,
-    ClientMode = 1 << 0,
-    DisableLogTags = 1 << 1,
-    ShowMessageOnException = 1 << 2,
+    None = 0x00,
+    ClientMode = 0x01,
+    DisableLogTags = 0x02,
+    ShowMessageOnException = 0x04,
+    PrebakeResources = 0x08,
 };
 
 class Application final
@@ -375,9 +375,11 @@ class Application final
     friend void InitApp(int32 argc, char** argv, AppInitFlags flags);
     friend class SafeAlloc;
 
-    Application(int32 argc, char** argv, AppInitFlags flags);
+    Application(GlobalSettings&& settings, AppInitFlags flags);
 
 public:
+    using ProgressWindowCallback = function<void()>;
+
     Application(const Application&) = delete;
     Application(Application&&) noexcept = delete;
     auto operator=(const Application&) = delete;
@@ -385,10 +387,10 @@ public:
     ~Application() = default;
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
-    [[nodiscard]] auto CreateChildWindow(isize32 size) -> AppWindow*;
 
+    auto CreateChildWindow(isize32 size) -> AppWindow*;
     void OpenLink(string_view link);
-    void SetImGuiEffect(unique_ptr<RenderEffect> effect);
+    void LoadImGuiEffect(const FileSystem& resources);
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
 #endif
@@ -396,6 +398,10 @@ public:
     void EndFrame();
     void RequestQuit() noexcept;
     void WaitForRequestedQuit();
+
+    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
+    static void ShowProgressWindow(string_view text, const ProgressWindowCallback& callback);
+    static void ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32>& selected);
 
     GlobalSettings Settings;
 
@@ -412,7 +418,7 @@ public:
     AppAudio Audio;
 
 private:
-    [[nodiscard]] auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
+    auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
 
     uint64 _time {};
     uint64 _timeFrequency {};
@@ -434,14 +440,6 @@ private:
     EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {OnQuit};
     int32 _nonConstHelper {};
-};
-
-class MessageBox final
-{
-public:
-    MessageBox() = delete;
-
-    static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
 };
 
 extern raw_ptr<Application> App;

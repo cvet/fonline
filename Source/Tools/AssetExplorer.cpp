@@ -87,9 +87,9 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(section_name.c_str(), ImGuiTreeNodeFlags_Framed)) {
-        for (auto files = _editor.InputResources.FilterFiles(file_ext); files.MoveNext();) {
-            auto file_header = files.GetCurFileHeader();
+        auto files = _editor.RawResources.FilterFiles(file_ext);
 
+        for (const auto& file_header : files) {
             ImGui::SetNextItemOpen(false);
             if (ImGui::TreeNodeEx(file_header.GetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                 _editor.OpenAsset(file_header.GetPath());

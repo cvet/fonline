@@ -52,24 +52,34 @@ TextBaker::~TextBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-void TextBaker::BakeFiles(FileCollection files)
+void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fotxt")) {
+        return;
+    }
+
+    // Collect files
     vector<File> filtered_files;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
+    for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).getFileExtension();
 
-        if (!IsExtSupported(ext)) {
-            continue;
-        }
-        if (_bakeChecker && !_bakeChecker(file_header.GetPath() + "b", file_header.GetWriteTime())) {
+        if (ext != "fotxt") {
             continue;
         }
 
-        filtered_files.emplace_back(files.GetCurFile());
+        const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        const auto& text_pack_name = name_pair[0];
+        const auto& lang_name = name_pair[1];
+
+        if (_bakeChecker && !_bakeChecker(strex("{}.{}.{}.fotxt-bin", _resPackName, text_pack_name, lang_name), file_header.GetWriteTime())) {
+            continue;
+        }
+
+        filtered_files.emplace_back(File::Load(file_header));
     }
 
     if (filtered_files.empty()) {
@@ -82,13 +92,9 @@ void TextBaker::BakeFiles(FileCollection files)
     set<string> all_languages;
 
     for (const auto& file : filtered_files) {
-        const auto file_name = file.GetName();
-
-        const auto sep = file_name.find('.');
-        FO_RUNTIME_ASSERT(sep != string::npos);
-
-        const auto lang_name = file_name.substr(sep + 1);
-        FO_RUNTIME_ASSERT(!lang_name.empty());
+        const auto name_pair = strex(file.GetNameNoExt()).split('.');
+        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
             if (std::find(_settings->BakeLanguages.begin(), _settings->BakeLanguages.end(), lang_name) == _settings->BakeLanguages.end()) {
@@ -112,15 +118,10 @@ void TextBaker::BakeFiles(FileCollection files)
         map<string, TextPack> lang_pack;
 
         for (const auto& file : filtered_files) {
-            const auto file_name = file.GetName();
-
-            const auto sep = file_name.find('.');
-            FO_RUNTIME_ASSERT(sep != string::npos);
-
-            const auto text_pack_name = file_name.substr(0, sep);
-            const auto lang_name = file_name.substr(sep + 1);
-            FO_RUNTIME_ASSERT(!text_pack_name.empty());
-            FO_RUNTIME_ASSERT(!lang_name.empty());
+            const auto name_pair = strex(file.GetNameNoExt()).split('.');
+            FO_RUNTIME_ASSERT(name_pair.size() == 2);
+            const auto& text_pack_name = name_pair[0];
+            const auto& lang_name = name_pair[1];
 
             if (lang_name == target_lang) {
                 TextPack text_pack;
@@ -147,7 +148,7 @@ void TextBaker::BakeFiles(FileCollection files)
     // Save parsed packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _writeData(strex("{}.{}.fotxtb", pack_name, lang_name), text_pack.GetBinaryData());
+            _writeData(strex("{}.{}.{}.fotxt-bin", _resPackName, pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }

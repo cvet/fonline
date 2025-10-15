@@ -106,83 +106,77 @@ ImageBaker::ImageBaker(BakerData& data) :
     FO_STACK_TRACE_ENTRY();
 
     // Fill default loaders
-    AddLoader(std::bind(&ImageBaker::LoadFofrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"fofrm"});
-    AddLoader(std::bind(&ImageBaker::LoadFrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"frm"});
-    AddLoader(std::bind(&ImageBaker::LoadFrX, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"fr0"});
-    AddLoader(std::bind(&ImageBaker::LoadRix, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"rix"});
-    AddLoader(std::bind(&ImageBaker::LoadArt, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"art"});
-    AddLoader(std::bind(&ImageBaker::LoadSpr, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"spr"});
-    AddLoader(std::bind(&ImageBaker::LoadZar, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"zar"});
-    AddLoader(std::bind(&ImageBaker::LoadTil, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"til"});
-    AddLoader(std::bind(&ImageBaker::LoadMos, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"mos"});
-    AddLoader(std::bind(&ImageBaker::LoadBam, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"bam"});
-    AddLoader(std::bind(&ImageBaker::LoadPng, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"png"});
-    AddLoader(std::bind(&ImageBaker::LoadTga, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), {"tga"});
+    AddLoader(std::bind(&ImageBaker::LoadFofrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"fofrm"});
+    AddLoader(std::bind(&ImageBaker::LoadFrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"frm"});
+    AddLoader(std::bind(&ImageBaker::LoadFrX, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"fr0"});
+    AddLoader(std::bind(&ImageBaker::LoadRix, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"rix"});
+    AddLoader(std::bind(&ImageBaker::LoadArt, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"art"});
+    AddLoader(std::bind(&ImageBaker::LoadSpr, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"spr"});
+    AddLoader(std::bind(&ImageBaker::LoadZar, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"zar"});
+    AddLoader(std::bind(&ImageBaker::LoadTil, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"til"});
+    AddLoader(std::bind(&ImageBaker::LoadMos, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"mos"});
+    AddLoader(std::bind(&ImageBaker::LoadBam, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"bam"});
+    AddLoader(std::bind(&ImageBaker::LoadPng, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"png"});
+    AddLoader(std::bind(&ImageBaker::LoadTga, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"tga"});
 }
 
-auto ImageBaker::IsExtSupported(string_view ext) const -> bool
+void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_extensions)
 {
     FO_STACK_TRACE_ENTRY();
-
-    auto locker = std::unique_lock {_filesLocker};
-
-    if (const auto it = _fileLoaders.find(ext); it != _fileLoaders.end() && it->second) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
-
-void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string_view>& file_extensions)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto locker = std::unique_lock {_filesLocker};
 
     for (const auto& ext : file_extensions) {
         _fileLoaders[ext] = loader;
     }
 }
 
-void ImageBaker::BakeFiles(FileCollection files)
+void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<pair<File, LoadFunc>> files_to_bake;
     files_to_bake.reserve(files.GetFilesCount());
 
-    {
-        auto locker = std::unique_lock {_filesLocker};
-
-        _files = std::move(files);
-
+    if (target_path.empty()) {
         for (auto&& [ext, loader] : _fileLoaders) {
-            _files.ResetCounter();
-
-            while (_files.MoveNext()) {
-                auto file_header = _files.GetCurFileHeader();
-                string file_ext = strex(file_header.GetPath()).getFileExtension();
+            for (const auto& file_header : files) {
+                const string file_ext = strex(file_header.GetPath()).getFileExtension();
 
                 if (file_ext != ext) {
                     continue;
                 }
-
                 if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                     continue;
                 }
 
-                files_to_bake.emplace_back(_files.GetCurFile(), loader);
+                files_to_bake.emplace_back(File::Load(file_header), loader);
             }
         }
+    }
+    else {
+        const string ext = strex(target_path).getFileExtension();
+
+        if (!_fileLoaders.contains(ext)) {
+            return;
+        }
+
+        auto file = files.FindFileByPath(target_path);
+
+        if (!file) {
+            return;
+        }
+        if (_bakeChecker && !_bakeChecker(target_path, file.GetWriteTime())) {
+            return;
+        }
+
+        files_to_bake.emplace_back(std::move(file), _fileLoaders.at(ext));
     }
 
     vector<std::future<void>> file_bakings;
 
     for (auto& file_to_bake : files_to_bake) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &file_to_bake] {
-            const auto path = file_to_bake.first.GetPath();
-            const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader());
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
+            const auto& path = file_to_bake.first.GetPath();
+            const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
             BakeCollection(path, collection);
         }));
     }
@@ -194,7 +188,7 @@ void ImageBaker::BakeFiles(FileCollection files)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("Image baking error: {}", ex.what());
             errors++;
         }
         catch (...) {
@@ -207,11 +201,9 @@ void ImageBaker::BakeFiles(FileCollection files)
     }
 }
 
-void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
+void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     vector<uint8> data;
     auto writer = DataWriter(data);
@@ -257,7 +249,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     }
 }
 
-auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
+auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -267,42 +259,21 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
     const string fname = strex("{}/{}.{}", dir, name, ext);
     const string opt = strex(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
 
-    File temp_storage;
-
-    auto find_file = [this, &fname, &ext, &temp_storage]() -> const File& {
-        auto locker = std::unique_lock {_filesLocker};
-
-        const auto it = _cachedFiles.find(fname);
-        if (it != _cachedFiles.end()) {
-            return it->second;
-        }
-
-        temp_storage = _files.FindFileByPath(fname);
-
-        const auto need_cache = temp_storage && ext == "spr";
-
-        if (need_cache) {
-            return _cachedFiles.emplace(fname, std::move(temp_storage)).first->second;
-        }
-
-        return temp_storage;
-    };
-
-    const auto& file = find_file();
+    const auto file = files.FindFileByPath(fname);
 
     if (!file) {
         throw ImageBakerException("Image file not found", fname, fname_with_opt, dir, name, ext);
     }
 
     if (const auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
-        return it->second(fname, opt, file.GetReader());
+        return it->second(fname, opt, file.GetReader(), files);
     }
     else {
         throw ImageBakerException("Invalid image file extension", fname);
     }
 }
 
-auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -382,7 +353,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
                 break;
             }
 
-            auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name));
+            auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name), files);
             frames += sub_collection.SequenceSize;
 
             int32 next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
@@ -439,11 +410,9 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
     return collection;
 }
 
-auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(opt);
 
@@ -511,12 +480,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file;
-
-        {
-            auto locker = std::unique_lock {_filesLocker};
-            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
-        }
+        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -702,11 +666,9 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(opt);
 
@@ -760,10 +722,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
         if (dir_frm != 0) {
             string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
 
-            {
-                auto locker = std::unique_lock {_filesLocker};
-                dir_file = _files.FindFileByPath(next_fname);
-            }
+            dir_file = files.FindFileByPath(next_fname);
 
             if (dir_file) {
                 reader = dir_file.GetReader();
@@ -792,12 +751,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file;
-
-        {
-            auto locker = std::unique_lock {_filesLocker};
-            palette_file = _files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
-        }
+        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -989,14 +943,13 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(fname);
     ignore_unused(opt);
+    ignore_unused(files);
 
     reader.SetCurPos(0x4);
     uint16 w = 0;
@@ -1029,11 +982,11 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    ignore_unused(files);
 
     auto palette_index = 0; // 0..3
     auto transparent = false;
@@ -1304,11 +1257,11 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    ignore_unused(files);
 
     FrameCollection collection;
 
@@ -1745,13 +1698,12 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(opt);
+    ignore_unused(files);
 
     // Read header
     char head[6];
@@ -1847,13 +1799,12 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(opt);
+    ignore_unused(files);
 
     // Read header
     char head[7];
@@ -1980,13 +1931,12 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(opt);
+    ignore_unused(files);
 
     // Read signature
     char head[8];
@@ -2095,11 +2045,11 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    ignore_unused(files);
 
     // Format: fileName$5-6.spr
     auto opt_str = string(opt);
@@ -2251,14 +2201,13 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(fname);
     ignore_unused(opt);
+    ignore_unused(files);
 
     int32 width = 0;
     int32 height = 0;
@@ -2275,14 +2224,13 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader) 
     return collection;
 }
 
-auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader) -> FrameCollection
+auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(fname);
     ignore_unused(opt);
+    ignore_unused(files);
 
     int32 width = 0;
     int32 height = 0;

@@ -564,7 +564,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            const string vertex_shader_fname = strex("{}.{}.vert.hlsl", strex(name).eraseFileExtension(), pass + 1);
+            const string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).eraseFileExtension(), pass + 1);
             string vertex_shader_content = loader(vertex_shader_fname);
             FO_RUNTIME_ASSERT(!vertex_shader_content.empty());
 
@@ -600,7 +600,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             if (usage == EffectUsage::Model) {
                 static_assert(BONES_PER_VERTEX == 4);
 
-                const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
+                constexpr D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Normal)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, TexCoord)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -621,7 +621,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             else
 #endif
             {
-                const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
+                constexpr D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -638,7 +638,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
         // Create the pixel shader
         {
-            const string pixel_shader_fname = strex("{}.{}.frag.hlsl", strex(name).eraseFileExtension(), pass + 1);
+            const string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).eraseFileExtension(), pass + 1);
             string pixel_shader_content = loader(pixel_shader_fname);
             FO_RUNTIME_ASSERT(!pixel_shader_content.empty());
 

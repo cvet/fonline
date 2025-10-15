@@ -133,8 +133,8 @@ void SpriteManager::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto diff_w = size.width - App->Settings.ScreenWidth;
-    const auto diff_h = size.height - App->Settings.ScreenHeight;
+    const auto diff_w = size.width - _settings.ScreenWidth;
+    const auto diff_h = size.height - _settings.ScreenHeight;
 
     if (!IsFullscreen()) {
         const auto window_pos = _window->GetPosition();
@@ -1912,7 +1912,7 @@ static void StrCopy(char* to, size_t size, string_view from)
     }
 }
 
-template<int Size>
+template<int32 Size>
 static void StrCopy(char (&to)[Size], string_view from)
 {
     FO_STACK_TRACE_ENTRY();

@@ -33,6 +33,7 @@
 
 #pragma once
 
+#include "BaseLogging.h"
 #include "BasicCore.h"
 #include "StringUtils.h"
 
@@ -54,13 +55,13 @@ extern void WriteLogMessage(LogType type, string_view message) noexcept;
 template<typename... Args>
 void WriteLog(std::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(LogType::Info, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
+    WriteLogMessage(LogType::Info, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
 }
 
 template<typename... Args>
 void WriteLog(LogType type, std::format_string<Args...>&& format, Args&&... args) noexcept
 {
-    WriteLogMessage(type, strex(strex::safe_format_tag {}, std::move(format), std::forward<Args>(args)...));
+    WriteLogMessage(type, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
 }
 
 // Control

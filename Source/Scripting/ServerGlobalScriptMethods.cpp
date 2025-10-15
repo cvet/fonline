@@ -39,6 +39,7 @@
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
+#include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -968,6 +969,152 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer
 FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName textPack, uint32 strNum)
 {
     return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
+}
+
+static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
+{
+    const auto print_log = [&log_callback](string& log, bool last_call) {
+        log = strex(log).replace('\r', '\n', '\n').erase('\r');
+
+        while (true) {
+            auto pos = log.find('\n');
+
+            if (pos == string::npos && last_call && !log.empty()) {
+                pos = log.size();
+            }
+
+            if (pos != string::npos) {
+                log_callback(log.substr(0, pos));
+                log.erase(0, pos + 1);
+            }
+            else {
+                break;
+            }
+        }
+    };
+
+#if FO_WINDOWS && !FO_UWP
+    HANDLE out_read = nullptr;
+    HANDLE out_write = nullptr;
+
+    SECURITY_ATTRIBUTES sa = {};
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+
+    if (::CreatePipe(&out_read, &out_write, &sa, 0) == 0) {
+        return -1;
+    }
+
+    if (::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) == 0) {
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
+        return -1;
+    }
+
+    STARTUPINFOW si = {};
+    si.cb = sizeof(STARTUPINFO);
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi = {};
+
+    auto wcommand = strex(command).toWideChar();
+    const auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
+        nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
+
+    if (result == 0) {
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
+        return -1;
+    }
+
+    string log;
+
+    while (true) {
+        while (true) {
+            DWORD bytes = 0;
+
+            if (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) == 0) {
+                break;
+            }
+            if (bytes == 0) {
+                break;
+            }
+
+            char buf[4096] = {};
+
+            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr) != 0) {
+                log.append(buf, bytes);
+                print_log(log, false);
+            }
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            break;
+        }
+    }
+
+    print_log(log, true);
+
+    DWORD retval = 0;
+    ::GetExitCodeProcess(pi.hProcess, &retval);
+
+    ::CloseHandle(out_read);
+    ::CloseHandle(out_write);
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+
+    return std::bit_cast<int32>(retval);
+
+#elif !FO_WINDOWS && !FO_WEB
+    FILE* in = popen(string(command).c_str(), "r");
+
+    if (in == nullptr) {
+        return -1;
+    }
+
+    string log;
+    char buf[4096];
+
+    while (fgets(buf, sizeof(buf), in)) {
+        log += buf;
+        print_log(log, false);
+    }
+
+    print_log(log, true);
+
+    return pclose(in);
+
+#else
+    return 1;
+#endif
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Server_Game_SystemCall(FOServer* server, string_view command)
+{
+    ignore_unused(server);
+
+    auto prefix = command.substr(0, command.find(' '));
+    return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Server_Game_SystemCall(FOServer* server, string_view command, string& output)
+{
+    ignore_unused(server);
+
+    output = "";
+
+    return SystemCall(command, [&output](string_view line) {
+        if (!output.empty()) {
+            output += "\n";
+        }
+        output += line;
+    });
 }
 
 FO_END_NAMESPACE();

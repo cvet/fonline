@@ -66,6 +66,8 @@
 
 FO_BEGIN_NAMESPACE();
 
+extern auto IsPackaged() -> bool;
+
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_NON_NULL // Pointer annotation

@@ -62,33 +62,95 @@ EffectBaker::~EffectBaker()
     glslang::FinalizeProcess();
 }
 
-void EffectBaker::BakeFiles(FileCollection files)
+void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Collect files
+    vector<File> filtered_files;
+
+    const auto check_file = [&](const File& file) -> bool {
+        const auto& path = file.GetPath();
+        const auto fofx = ConfigFile(path, file.GetStr());
+        const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
+        const auto write_time = file.GetWriteTime();
+
+        for (int32 pass = 1; pass <= passes; pass++) {
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-info", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-spv", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-spv", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-glsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-glsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-hlsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-hlsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
+            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
+        }
+
+        if (!_bakeChecker(path, write_time)) {
+            return false;
+        }
+
+        return true;
+    };
+
+    if (target_path.empty()) {
+        for (const auto& file_header : files) {
+            const string ext = strex(file_header.GetPath()).getFileExtension();
+
+            if (ext != "fofx") {
+                continue;
+            }
+
+            if constexpr (!FO_ENABLE_3D) {
+                if (file_header.GetPath().find("3D") != string::npos) {
+                    continue;
+                }
+            }
+
+            auto file = File(File::Load(file_header));
+
+            if (_bakeChecker && !check_file(file)) {
+                continue;
+            }
+
+            filtered_files.emplace_back(std::move(file));
+        }
+    }
+    else {
+        if (!strex(target_path).getFileExtension().startsWith("fofx")) {
+            return;
+        }
+
+        const string base_name = strex(target_path).changeFileExtension("fofx");
+        auto file = files.FindFileByPath(base_name);
+
+        if (!file) {
+            return;
+        }
+        if (_bakeChecker && !check_file(file)) {
+            return;
+        }
+
+        filtered_files.emplace_back(std::move(file));
+    }
+
+    if (filtered_files.empty()) {
+        return;
+    }
+
     vector<std::future<void>> file_bakings;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).getFileExtension();
-
-        if (!IsExtSupported(ext)) {
-            continue;
-        }
-
-#if !FO_ENABLE_3D
-        if (file_header.GetPath().find("3D") != string::npos) {
-            continue;
-        }
-#endif
-
-        if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
-            continue;
-        }
-
-        auto file = files.GetCurFile();
-
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, path = file.GetPath(), content = file.GetStr()] { BakeShaderProgram(path, content); }));
+    for (auto& file_ : filtered_files) {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)] {
+            const auto& path = file.GetPath();
+            const auto content = file.GetStr();
+            BakeShaderProgram(path, content);
+        }));
     }
 
     size_t errors = 0;
@@ -98,7 +160,7 @@ void EffectBaker::BakeFiles(FileCollection files)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("Effect baking error: {}", ex.what());
             errors++;
         }
         catch (...) {
@@ -111,11 +173,12 @@ void EffectBaker::BakeFiles(FileCollection files)
     }
 }
 
-void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
+void EffectBaker::BakeShaderProgram(string_view fname, string_view content) const
 {
     FO_STACK_TRACE_ENTRY();
 
     auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
+
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
     }
@@ -241,29 +304,27 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         }
 
         const string fname_wo_ext = strex(fname).eraseFileExtension();
-        BakeShaderStage(strex("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
-        BakeShaderStage(strex("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
+        BakeShaderStage(strex("{}.fofx-{}-vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
+        BakeShaderStage(strex("{}.fofx-{}-frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 
-        _writeData(strex("{}.{}.info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
+        _writeData(strex("{}.fofx-{}-info", fname_wo_ext, pass), vector<uint8>(program_info.begin(), program_info.end()));
     }
 
     _writeData(fname, vector<uint8>(content.begin(), content.end()));
 }
 
-void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
+void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate) const
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
 
     glslang::SpvOptions spv_options;
-    // spv_options.generateDebugInfo = true;
-    spv_options.disableOptimizer = false;
-    spv_options.optimizeSize = true;
-    spv_options.disassemble = false;
+    spv_options.generateDebugInfo = FO_DEBUG;
+    spv_options.disableOptimizer = FO_DEBUG;
+    spv_options.optimizeSize = !FO_DEBUG;
+    spv_options.disassemble = FO_DEBUG;
     spv_options.validate = true;
 
     spv::SpvBuildLogger logger;
@@ -273,7 +334,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uint8> data(spirv.size() * sizeof(uint32_t));
         MemCopy(data.data(), spirv.data(), data.size());
-        _writeData(strex("{}.spv", fname_wo_ext), data);
+        _writeData(strex("{}-spv", fname_wo_ext), data);
     };
 
     // SPIR-V to GLSL
@@ -285,7 +346,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        _writeData(strex("{}.glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(strex("{}-glsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -297,7 +358,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        _writeData(strex("{}.glsl-es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(strex("{}-glsl_es", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
@@ -307,7 +368,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.shader_model = 40;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
-        _writeData(strex("{}.hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(strex("{}-hlsl", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -317,7 +378,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-        _writeData(strex("{}.msl-mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(strex("{}-msl_mac", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -327,7 +388,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-        _writeData(strex("{}.msl-ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
+        _writeData(strex("{}-msl_ios", fname_wo_ext), vector<uint8>(source.begin(), source.end()));
     };
 
     // Make all asynchronously

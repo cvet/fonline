@@ -52,9 +52,7 @@ public:
     auto operator=(TextBaker&&) noexcept = delete;
     ~TextBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fotxt"; }
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };
 
 FO_END_NAMESPACE();

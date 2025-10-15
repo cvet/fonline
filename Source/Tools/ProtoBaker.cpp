@@ -33,12 +33,10 @@
 
 #include "ProtoBaker.h"
 #include "AnyData.h"
-#include "Application.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "EntityProtos.h"
 #include "ScriptSystem.h"
-#include "TextPack.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -53,36 +51,27 @@ ProtoBaker::~ProtoBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ProtoBaker::IsExtSupported(string_view ext) const -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
-
-    if (it != _settings->ProtoFileExtensions.end()) {
-        return true;
-    }
-
-    return false;
-}
-
-void ProtoBaker::BakeFiles(FileCollection files)
+void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fopro-")) {
+        return;
+    }
 
     vector<File> filtered_files;
     uint64 max_write_time = 0;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
+    for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).getFileExtension();
+        const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
 
-        if (!IsExtSupported(ext)) {
+        if (it == _settings->ProtoFileExtensions.end()) {
             continue;
         }
 
         max_write_time = std::max(max_write_time, file_header.GetWriteTime());
-        filtered_files.emplace_back(files.GetCurFile());
+        filtered_files.emplace_back(File::Load(file_header));
     }
 
     if (filtered_files.empty()) {
@@ -91,38 +80,28 @@ void ProtoBaker::BakeFiles(FileCollection files)
 
     vector<std::future<void>> file_bakings;
 
-    if (_bakeChecker) {
-        for (const auto& lang_name : _settings->BakeLanguages) {
-            (void)_bakeChecker(strex("Protos.{}.fotxtb", lang_name), max_write_time);
-            (void)_bakeChecker(strex("Items.{}.fotxtb", lang_name), max_write_time);
-            (void)_bakeChecker(strex("Critters.{}.fotxtb", lang_name), max_write_time);
-            (void)_bakeChecker(strex("Maps.{}.fotxtb", lang_name), max_write_time);
-            (void)_bakeChecker(strex("Locations.{}.fotxtb", lang_name), max_write_time);
-        }
-    }
-
-    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-server", max_write_time)) {
+    if (!_bakeChecker || _bakeChecker(_resPackName + ".fopro-bin-server", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerEngine(PropertiesRelationType::ServerRelative);
             const auto script_sys = BakerScriptSystem(engine, *_bakedFiles);
-            auto data = BakeProtoFiles(&engine, &script_sys, filtered_files, true);
-            _writeData(_packName + ".foprob-server", data);
+            auto data = BakeProtoFiles(&engine, &script_sys, filtered_files);
+            _writeData(_resPackName + ".fopro-bin-server", data);
         }));
     }
 
-    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-client", max_write_time)) {
+    if (!_bakeChecker || _bakeChecker(_resPackName + ".fopro-bin-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             const auto engine = BakerEngine(PropertiesRelationType::ClientRelative);
-            auto data = BakeProtoFiles(&engine, nullptr, filtered_files, false);
-            _writeData(_packName + ".foprob-client", data);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
+            _writeData(_resPackName + ".fopro-bin-client", data);
         }));
     }
 
-    if (!_bakeChecker || _bakeChecker(_packName + ".foprob-mapper", max_write_time)) {
+    if (!_bakeChecker || _bakeChecker(_resPackName + ".fopro-bin-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             const auto engine = BakerEngine(PropertiesRelationType::BothRelative);
-            auto data = BakeProtoFiles(&engine, nullptr, filtered_files, false);
-            _writeData(_packName + ".foprob-mapper", data);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
+            _writeData(_resPackName + ".fopro-bin-mapper", data);
         }));
     }
 
@@ -133,7 +112,7 @@ void ProtoBaker::BakeFiles(FileCollection files)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("Proto baking error: {}", ex.what());
             errors++;
         }
         catch (...) {
@@ -142,11 +121,11 @@ void ProtoBaker::BakeFiles(FileCollection files)
     }
 
     if (errors != 0) {
-        throw ProtoBakerException("Errors during scripts compilation");
+        throw ProtoBakerException("Errors during protos parsing");
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files, bool write_texts) const -> vector<uint8>
+auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -157,14 +136,8 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : files) {
-        const string ext = strex(file.GetPath()).getFileExtension();
-        const bool is_fomap = string_view(ext) == "fomap";
-        auto fopro_options = ConfigFileOption::None;
-
-        if (is_fomap) {
-            fopro_options = ConfigFileOption::ReadFirstSection;
-        }
-
+        const bool is_fomap = strex(file.GetPath()).getFileExtension() == "fomap";
+        const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &engine->Hashes, fopro_options);
 
         for (auto& section : fopro.GetSections()) {
@@ -185,21 +158,21 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                 type_name = engine->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else {
-                throw ProtoBakerException("Invalid proto section name", section_name, file.GetName());
+                throw ProtoBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
             if (!engine->IsValidEntityType(type_name) || !engine->GetEntityTypeInfo(type_name).HasProtos) {
-                throw ProtoBakerException("Invalid proto type", section_name, file.GetName());
+                throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
             }
 
-            const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetName();
+            const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
             auto pid = engine->Hashes.ToHashedString(name);
             pid = engine->CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
             auto& file_protos = all_file_protos[type_name];
 
             if (file_protos.count(pid) != 0) {
-                throw ProtoBakerException("Proto already loaded", type_name, pid, file.GetName());
+                throw ProtoBakerException("Proto already loaded", type_name, pid, file.GetPath());
             }
 
             file_protos.emplace(pid, section_kv);
@@ -208,13 +181,12 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
 
     // Processing
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
-    unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> all_proto_texts;
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
             FO_RUNTIME_ASSERT(!key.empty());
 
-            if (key.front() != '$' || strex(key).startsWith("$Text")) {
+            if (key.front() != '$') {
                 to_kv[key] = value;
             }
         }
@@ -296,38 +268,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                     proto->EnableComponent(component_name);
                 }
             }
-
-            // Texts
-            if (write_texts) {
-                FO_RUNTIME_ASSERT(!_settings->BakeLanguages.empty());
-                const string& default_lang = _settings->BakeLanguages.front();
-
-                all_proto_texts[type_name][pid] = {};
-
-                for (auto&& [key, value] : proto_kv) {
-                    if (strex(key).startsWith("$Text")) {
-                        const auto key_tok = strex(key).split(' ');
-                        const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
-
-                        TextPackKey text_key = pid.asUInt();
-
-                        for (size_t i = 2; i < key_tok.size(); i++) {
-                            const string& num = key_tok[i];
-
-                            if (!num.empty()) {
-                                if (strex(num).isNumber()) {
-                                    text_key += strex(num).toUInt();
-                                }
-                                else {
-                                    text_key += engine->Hashes.ToHashedString(num).asUInt();
-                                }
-                            }
-                        }
-
-                        all_proto_texts[type_name][pid][lang].AddStr(text_key, StringEscaping::DecodeString(value));
-                    }
-                }
-            }
         }
     }
 
@@ -338,51 +278,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         for (auto& proto : protos | std::views::values) {
             errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys);
         }
-    }
-
-    // Texts
-    vector<pair<string, map<string, TextPack>>> lang_packs;
-
-    if (write_texts) {
-        for (const auto& lang : _settings->BakeLanguages) {
-            lang_packs.emplace_back(lang, map<string, TextPack>());
-        }
-
-        const auto fill_proto_texts = [&](const auto& protos, TextPackName pack_name) {
-            for (auto&& [pid, proto] : protos) {
-                for (const auto& proto_text : all_proto_texts.at(proto->GetTypeName()).at(pid)) {
-                    const auto it = std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == proto_text.first; });
-
-                    if (it != lang_packs.end()) {
-                        const auto& pack_name_str = engine->ResolveEnumValueName("TextPackName", static_cast<int32>(pack_name));
-                        auto& text_pack = it->second[pack_name_str];
-
-                        if (text_pack.CheckIntersections(proto_text.second)) {
-                            WriteLog("Proto text intersection detected for proto {} and pack {}", proto->GetName(), pack_name);
-                            errors++;
-                        }
-
-                        text_pack.Merge(proto_text.second);
-                    }
-                    else {
-                        WriteLog(LogType::Warning, "Unsupported language {} in proto {}", proto_text.first, proto->GetName());
-                    }
-                }
-            }
-        };
-
-        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Item")], TextPackName::Items);
-        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Critter")], TextPackName::Critters);
-        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Map")], TextPackName::Maps);
-        fill_proto_texts(all_protos[engine->Hashes.ToHashedString("Location")], TextPackName::Locations);
-
-        for (auto&& [type_name, entity_info] : engine->GetEntityTypesInfo()) {
-            if (!entity_info.Exported && entity_info.HasProtos) {
-                fill_proto_texts(all_protos[type_name], TextPackName::Protos);
-            }
-        }
-
-        TextPack::FixPacks(_settings->BakeLanguages, lang_packs);
     }
 
     if (errors != 0) {
@@ -440,15 +335,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         }
 
         final_writer.WritePtr(protos_data.data(), protos_data.size());
-    }
-
-    // Save parsed packs
-    if (write_texts) {
-        for (auto&& [lang_name, lang_pack] : lang_packs) {
-            for (auto&& [pack_name, text_pack] : lang_pack) {
-                _writeData(strex("{}.{}.fotxtb", pack_name, lang_name), text_pack.GetBinaryData());
-            }
-        }
     }
 
     return final_data;

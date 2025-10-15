@@ -38,23 +38,23 @@
 
 FO_BEGIN_NAMESPACE();
 
-static auto GetFileNamesGeneric(const vector<string>& fnames, string_view path, bool recursive, string_view ext) -> vector<string>
+static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    string path_fixed = strex(path).normalizePathSlashes();
+    string dir_fixed = strex(dir).normalizePathSlashes();
 
-    if (!path_fixed.empty() && path_fixed.back() != '/') {
-        path_fixed += "/";
+    if (!dir_fixed.empty() && dir_fixed.back() != '/') {
+        dir_fixed += "/";
     }
 
     vector<string> result;
-    const auto len = path_fixed.length();
+    const auto len = dir_fixed.length();
 
     for (const auto& fname : fnames) {
         bool add = false;
 
-        if (fname.compare(0, len, path_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
+        if (fname.compare(0, len, dir_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
             if (ext.empty() || strex(fname).getFileExtension() == ext) {
                 add = true;
             }
@@ -78,17 +78,18 @@ public:
     auto operator=(DummySpace&&) noexcept = delete;
     ~DummySpace() override = default;
 
-    [[nodiscard]] auto IsDiskDir() const -> bool override;
-    [[nodiscard]] auto GetPackName() const -> string_view override;
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return "Dummy"; }
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 };
 
 class NonCachedDir final : public DataSource
 {
 public:
-    explicit NonCachedDir(string_view fname);
+    explicit NonCachedDir(string_view fname, bool recursive);
     NonCachedDir(const NonCachedDir&) = delete;
     NonCachedDir(NonCachedDir&&) noexcept = default;
     auto operator=(const NonCachedDir&) = delete;
@@ -96,13 +97,15 @@ public:
     ~NonCachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _baseDir; }
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
-    string _basePath {};
+    bool _recusive;
+    string _baseDir {};
 };
 
 class CachedDir final : public DataSource
@@ -116,10 +119,11 @@ public:
     ~CachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _baseDir; }
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
     struct FileEntry
@@ -131,7 +135,7 @@ private:
 
     unordered_map<string, FileEntry> _filesTree {};
     vector<string> _filesTreeNames {};
-    string _basePath {};
+    string _baseDir {};
 };
 
 class FalloutDat final : public DataSource
@@ -146,9 +150,10 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, recursive, ext); }
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
 
 private:
     auto ReadTree() -> bool;
@@ -174,9 +179,10 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, recursive, ext); }
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
 
 private:
     struct ZipFileInfo
@@ -194,21 +200,22 @@ private:
     uint64 _writeTime {};
 };
 
-class AndroidAssets final : public DataSource
+class FilesList final : public DataSource
 {
 public:
-    AndroidAssets();
-    AndroidAssets(const AndroidAssets&) = delete;
-    AndroidAssets(AndroidAssets&&) noexcept = default;
-    auto operator=(const AndroidAssets&) = delete;
-    auto operator=(AndroidAssets&&) noexcept = delete;
-    ~AndroidAssets() override = default;
+    FilesList();
+    FilesList(const FilesList&) = delete;
+    FilesList(FilesList&&) noexcept = default;
+    auto operator=(const FilesList&) = delete;
+    auto operator=(FilesList&&) noexcept = delete;
+    ~FilesList() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
-    [[nodiscard]] auto GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
     struct FileEntry
@@ -218,71 +225,49 @@ private:
         uint64 WriteTime {};
     };
 
-    string _packName {"@AndroidAssets"};
+    string _packName {"@FilesList"};
     unordered_map<string, FileEntry> _filesTree {};
     vector<string> _filesTreeNames {};
 };
 
-auto DataSource::Mount(string_view path, DataSourceType type) -> unique_ptr<DataSource>
+auto DataSource::MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-
-    // Special entries
-    if (path.front() == '@') {
-        FO_RUNTIME_ASSERT(type == DataSourceType::Default);
-
-        if (path == "@Disabled") {
-            return SafeAlloc::MakeUnique<DummySpace>();
-        }
-        else if (path == "@Embedded") {
-            return SafeAlloc::MakeUnique<ZipFile>(path);
-        }
-        else if (path == "@AndroidAssets") {
-            return SafeAlloc::MakeUnique<AndroidAssets>();
-        }
-
-        throw DataSourceException("Invalid magic path", path, type);
-    }
-
-    // Dir without subdirs
-    if (type == DataSourceType::DirRoot || type == DataSourceType::NonCachedDirRoot) {
-        if (!DiskFileSystem::IsDir(path)) {
-            WriteLog(LogType::Warning, "Directory '{}' not found", path);
+    if (!DiskFileSystem::IsDir(dir)) {
+        if (maybe_not_available) {
             return SafeAlloc::MakeUnique<DummySpace>();
         }
 
-        if (type == DataSourceType::DirRoot) {
-            return SafeAlloc::MakeUnique<CachedDir>(path, false);
-        }
-        else {
-            return SafeAlloc::MakeUnique<NonCachedDir>(path);
-        }
+        throw DataSourceException("Directory not found", dir);
     }
 
-    // Raw view
-    if (DiskFileSystem::IsDir(path)) {
-        return SafeAlloc::MakeUnique<CachedDir>(path, true);
+    if (non_cached) {
+        return SafeAlloc::MakeUnique<NonCachedDir>(dir, recursive);
     }
+    else {
+        return SafeAlloc::MakeUnique<CachedDir>(dir, recursive);
+    }
+}
 
-    // Packed view
-    const auto is_file_present = [](string_view file_path) -> bool {
-        const auto file = DiskFileSystem::OpenFile(file_path, false);
+auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!name.empty());
+
+    const auto is_file_present = [](string_view path) -> bool {
+        const auto file = DiskFileSystem::OpenFile(path, false);
         return !!file;
     };
 
-    if (is_file_present(path)) {
-        const string ext = strex(path).getFileExtension();
+    const string path = strex(dir).combinePath(name);
 
-        if (ext == "dat") {
-            return SafeAlloc::MakeUnique<FalloutDat>(path);
-        }
-        else if (ext == "zip" || ext == "bos") {
-            return SafeAlloc::MakeUnique<ZipFile>(path);
-        }
-
-        throw DataSourceException("Unknown file extension", ext, path, type);
+    if (name == "Embedded") {
+        return SafeAlloc::MakeUnique<ZipFile>("@Embedded");
+    }
+    else if (name == "FilesList") {
+        return SafeAlloc::MakeUnique<FilesList>();
     }
     else if (is_file_present(strex("{}.zip", path))) {
         return SafeAlloc::MakeUnique<ZipFile>(strex("{}.zip", path));
@@ -294,36 +279,26 @@ auto DataSource::Mount(string_view path, DataSourceType type) -> unique_ptr<Data
         return SafeAlloc::MakeUnique<FalloutDat>(strex("{}.dat", path));
     }
 
-    if (type == DataSourceType::MaybeNotAvailable) {
+    if (maybe_not_available) {
         return SafeAlloc::MakeUnique<DummySpace>();
     }
-    else {
-        throw DataSourceException("Data pack not found", path, type);
-    }
+
+    throw DataSourceException("Data pack not found", path);
 }
 
-auto DummySpace::IsDiskDir() const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return false;
-}
-
-auto DummySpace::GetPackName() const -> string_view
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return "Dummy";
-}
-
-auto DummySpace::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto DummySpace::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(path);
-    ignore_unused(size);
-    ignore_unused(write_time);
+    return false;
+}
 
+auto DummySpace::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(path, size, write_time);
     return false;
 }
 
@@ -331,38 +306,57 @@ auto DummySpace::OpenFile(string_view path, size_t& size, uint64& write_time) co
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
-    ignore_unused(size);
-    ignore_unused(write_time);
-
+    ignore_unused(path, size, write_time);
     return nullptr;
 }
 
-auto DummySpace::GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string>
+auto DummySpace::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
-    ignore_unused(recursive);
-    ignore_unused(ext);
-
+    ignore_unused(dir, recursive, ext);
     return {};
 }
 
-NonCachedDir::NonCachedDir(string_view fname)
+NonCachedDir::NonCachedDir(string_view fname, bool recursive) :
+    _recusive {recursive}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _basePath = fname;
-    _basePath = DiskFileSystem::ResolvePath(_basePath);
-    _basePath += "/";
+    _baseDir = fname;
+    _baseDir = DiskFileSystem::ResolvePath(_baseDir);
+    _baseDir += "/";
 }
 
-auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto NonCachedDir::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string full_path = strex(_basePath).combinePath(path);
+    if (!_recusive && !strex(path).extractDir().empty()) {
+        return false;
+    }
+
+    const string full_path = strex(_baseDir).combinePath(path);
+
+    if (!DiskFileSystem::IsExists(full_path)) {
+        return false;
+    }
+    if (DiskFileSystem::IsDir(full_path)) {
+        return false;
+    }
+
+    return true;
+}
+
+auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_recusive && !strex(path).extractDir().empty()) {
+        return false;
+    }
+
+    const string full_path = strex(_baseDir).combinePath(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -378,7 +372,11 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string full_path = strex(_basePath).combinePath(path);
+    if (!_recusive && !strex(path).extractDir().empty()) {
+        return nullptr;
+    }
+
+    const string full_path = strex(_baseDir).combinePath(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -389,39 +387,42 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (!file.Read(buf.get(), size)) {
-        throw DataSourceException("Can't read file from non cached dir", _basePath, path);
+        throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
     }
 
     write_time = DiskFileSystem::GetWriteTime(full_path);
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
-auto NonCachedDir::GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string>
+auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> fnames;
-    DiskFileSystem::IterateDir(strex(_basePath).combinePath(path), recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
-        ignore_unused(size);
-        ignore_unused(write_time);
+    if (!_recusive && !dir.empty()) {
+        return {};
+    }
 
+    vector<string> fnames;
+
+    DiskFileSystem::IterateDir(strex(_baseDir).combinePath(dir), recursive && _recusive, [&fnames](string_view path2, size_t size, uint64 write_time) {
+        ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
 
-    return GetFileNamesGeneric(fnames, path, recursive, ext);
+    return GetFileNamesGeneric(fnames, dir, recursive, ext);
 }
 
 CachedDir::CachedDir(string_view fname, bool recursive)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _basePath = fname;
-    _basePath = DiskFileSystem::ResolvePath(_basePath);
-    _basePath += "/";
+    _baseDir = fname;
+    _baseDir = DiskFileSystem::ResolvePath(_baseDir);
+    _baseDir += "/";
 
-    DiskFileSystem::IterateDir(_basePath, recursive, [this](string_view path, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(_baseDir, recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
-        fe.FileName = strex("{}{}", _basePath, path);
+        fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
@@ -430,11 +431,22 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     });
 }
 
-auto CachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto CachedDir::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+auto CachedDir::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _filesTree.find(path);
 
@@ -462,7 +474,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     auto file = DiskFileSystem::OpenFile(fe.FileName, false);
 
     if (!file) {
-        throw DataSourceException("Can't read file from cached dir", _basePath, path);
+        throw DataSourceException("Can't read file from cached dir", _baseDir, path);
     }
 
     size = fe.FileSize;
@@ -476,11 +488,11 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
-auto CachedDir::GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string>
+auto CachedDir::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetFileNamesGeneric(_filesTreeNames, path, recursive, ext);
+    return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext);
 }
 
 FalloutDat::FalloutDat(string_view fname) :
@@ -650,11 +662,26 @@ auto FalloutDat::ReadTree() -> bool
     return true;
 }
 
-auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto FalloutDat::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
+    if (!_datFile) {
+        return false;
+    }
+
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
     if (!_datFile) {
         return false;
@@ -958,11 +985,22 @@ auto ZipFile::ReadTree() -> bool
     return true;
 }
 
-auto ZipFile::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto ZipFile::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+auto ZipFile::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _filesTree.find(path);
 
@@ -1008,7 +1046,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
-AndroidAssets::AndroidAssets()
+FilesList::FilesList()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1018,7 +1056,7 @@ AndroidAssets::AndroidAssets()
     auto file_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
 
     if (!file_tree) {
-        throw DataSourceException("Can't open 'FilesTree.txt' in android assets");
+        throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
     }
 
     const auto len = file_tree.GetSize() + 1;
@@ -1026,7 +1064,7 @@ AndroidAssets::AndroidAssets()
     str.resize(len);
 
     if (!file_tree.Read(str.data(), len)) {
-        throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
+        throw DataSourceException("Can't read 'FilesTree.txt' in file list assets");
     }
 
     auto names = strex(str).normalizeLineEndings().split('\n');
@@ -1035,7 +1073,7 @@ AndroidAssets::AndroidAssets()
         auto file = DiskFileSystem::OpenFile(name, false);
 
         if (!file) {
-            throw DataSourceException("Can't open file in android assets", name);
+            throw DataSourceException("Can't open file in file list assets", name);
         }
 
         FileEntry fe;
@@ -1048,11 +1086,22 @@ AndroidAssets::AndroidAssets()
     }
 }
 
-auto AndroidAssets::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+auto FilesList::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(path);
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+auto FilesList::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _filesTree.find(path);
 
@@ -1066,7 +1115,7 @@ auto AndroidAssets::IsFilePresent(string_view path, size_t& size, uint64& write_
     return true;
 }
 
-auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
+auto FilesList::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1080,25 +1129,25 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     auto file = DiskFileSystem::OpenFile(fe.FileName, false);
 
     if (!file) {
-        throw DataSourceException("Can't open file in android assets", path);
+        throw DataSourceException("Can't open file in file list assets", path);
     }
 
     size = fe.FileSize;
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
     if (!file.Read(buf.get(), size)) {
-        throw DataSourceException("Can't read file in android assets", path);
+        throw DataSourceException("Can't read file in file list assets", path);
     }
 
     write_time = fe.WriteTime;
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
 }
 
-auto AndroidAssets::GetFileNames(string_view path, bool recursive, string_view ext) const -> vector<string>
+auto FilesList::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetFileNamesGeneric(_filesTreeNames, path, recursive, ext);
+    return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext);
 }
 
 FO_END_NAMESPACE();

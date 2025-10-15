@@ -118,7 +118,8 @@ class FOClient : public BaseEngine, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator);
+    explicit FOClient(GlobalSettings& settings, AppWindow* window); // For client
+    explicit FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator); // For mapper
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;

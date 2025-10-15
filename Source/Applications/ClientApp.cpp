@@ -72,7 +72,7 @@ static void MainEntry([[maybe_unused]] void* data)
             try {
                 // Synchronize files
                 if (!Data->ResourcesSynced) {
-                    if (!App->Settings.DataSynchronization) {
+                    if (!IsPackaged()) {
                         Data->ResourcesSynced = true;
                         App->EndFrame();
                         return;
@@ -92,13 +92,10 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow, nullptr);
+                Data->Client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
-            }
-            catch (...) {
-                FO_UNKNOWN_EXCEPTION();
             }
         }
 
@@ -121,9 +118,6 @@ static void MainEntry([[maybe_unused]] void* data)
                 Data->Client.reset();
             }
         }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
-        }
 
         App->EndFrame();
     }
@@ -144,7 +138,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException));
+        InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
 
 #if FO_IOS
         MainEntry(nullptr);

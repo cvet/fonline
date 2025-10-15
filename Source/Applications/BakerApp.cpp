@@ -49,13 +49,14 @@ int main(int argc, char** argv)
     try {
         InitApp(numeric_cast<int32>(argc), argv);
 
+        bool baking_result;
+
         {
             auto baker = MasterBaker(App->Settings);
-
-            baker.BakeAll();
+            baking_result = baker.BakeAll();
         }
 
-        ExitApp(true);
+        ExitApp(baking_result);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

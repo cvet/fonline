@@ -6,7 +6,7 @@ if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
 endif()
 
 # Configuration checks
-if(FO_CODE_COVERAGE AND(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
+if(FO_CODE_COVERAGE AND(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
     AbortMessage("Code coverge build can not be mixed with other builds")
 endif()
 
@@ -78,7 +78,7 @@ set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "Forced by FOnline" FORCE)
 add_library(ZLIB::ZLIB ALIAS zlibstatic)
 
 # LibPNG
-if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ LibPNG")
     set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/libpng")
     set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -210,7 +210,7 @@ StatusMessage("+ Assimp (math headers)")
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/AssimpMath")
 
 # ufbx
-if(FO_ENABLE_3D AND(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
     StatusMessage("+ ufbx")
     set(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
     include_directories("${FO_UFBX_DIR}")
@@ -235,7 +235,7 @@ else()
 endif()
 
 # LibreSSL
-if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ LibreSSL")
     set(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
     set(LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
@@ -258,7 +258,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Asio & Websockets
-if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ Asio")
     set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     include_directories("${FO_ASIO_DIR}/include")
@@ -277,7 +277,7 @@ else()
 endif()
 
 # MongoDB & Bson
-if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ Bson")
     set(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
@@ -293,7 +293,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(ENABLE_CLIENT_SIDE_ENCRYPTION OFF CACHE STRING "Forced by FOnline" FORCE)
     set(USE_BUNDLED_UTF8PROC ON CACHE BOOL "Forced by FOnline" FORCE)
 
-    if(NOT FO_DISABLE_MONGO AND(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+    if(NOT FO_DISABLE_MONGO)
         StatusMessage("+ MongoDB")
         set(ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE)
         add_compile_definitions(FO_HAVE_MONGO=1)
@@ -407,7 +407,7 @@ list(APPEND FO_CLIENT_LIBS SPARK_Core PugiXML)
 DisableLibWarnings(SPARK_Core PugiXML)
 
 # glslang & SPIRV-Cross
-if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ glslang")
     set(FO_GLSLANG_DIR "${FO_ENGINE_ROOT}/ThirdParty/glslang")
     set(GLSLANG_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -537,12 +537,6 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_COMMON_LIBS AngelscriptExt)
     target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS")
     DisableLibWarnings(AngelscriptExt)
-
-    if(NOT FO_BUILD_BAKER AND NOT FO_BUILD_ASCOMPILER)
-        target_compile_definitions(Angelscript PRIVATE "AS_NO_COMPILER")
-        target_compile_definitions(AngelscriptExt PRIVATE "AS_NO_COMPILER")
-        add_compile_definitions(AS_NO_COMPILER)
-    endif()
 
     if(FO_WEB OR FO_MAC OR FO_IOS OR FO_ANDROID)
         target_compile_definitions(Angelscript PRIVATE "AS_MAX_PORTABILITY")
@@ -872,6 +866,8 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ProtoTextBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ProtoTextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
@@ -1078,7 +1074,7 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ AppHeadless")
     add_library(AppHeadless STATIC EXCLUDE_FROM_ALL
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
@@ -1111,7 +1107,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 endif()
 
-if(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_CLIENT_LIB)
     StatusMessage("+ ClientLib")
     add_library(ClientLib STATIC EXCLUDE_FROM_ALL ${FO_CLIENT_SOURCE})
     add_dependencies(ClientLib ${FO_GEN_DEPENDENCIES})
@@ -1119,7 +1115,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR F
     list(APPEND FO_CORE_LIBS_GROUP ClientLib)
 endif()
 
-if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ ServerLib")
     add_library(ServerLib STATIC EXCLUDE_FROM_ALL ${FO_SERVER_SOURCE})
     add_dependencies(ServerLib ${FO_GEN_DEPENDENCIES})
@@ -1127,15 +1123,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     list(APPEND FO_CORE_LIBS_GROUP ServerLib)
 endif()
 
-if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
-    StatusMessage("+ MapperLib")
-    add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
-    add_dependencies(MapperLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(MapperLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP MapperLib)
-endif()
-
-if(FO_ANGELSCRIPT_SCRIPTING AND(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE))
+if(FO_BUILD_ASCOMPILER_LIB)
     StatusMessage("+ ASCompilerLib")
     add_library(ASCompilerLib STATIC EXCLUDE_FROM_ALL ${FO_ASCOMPILER_SOURCE})
     add_dependencies(ASCompilerLib ${FO_GEN_DEPENDENCIES})
@@ -1143,19 +1131,28 @@ if(FO_ANGELSCRIPT_SCRIPTING AND(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_BUIL
     list(APPEND FO_CORE_LIBS_GROUP ASCompilerLib)
 endif()
 
-if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_MAPPER_LIB)
+    StatusMessage("+ MapperLib")
+    add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
+    add_dependencies(MapperLib ${FO_GEN_DEPENDENCIES})
+    target_link_libraries(MapperLib ClientLib CommonLib)
+    list(APPEND FO_CORE_LIBS_GROUP MapperLib)
+endif()
+
+if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ BakerLib")
     add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
     add_dependencies(BakerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
+    target_link_libraries(BakerLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:ASCompilerLib>)
     list(APPEND FO_CORE_LIBS_GROUP BakerLib)
 endif()
 
-if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+if(FO_BUILD_EDITOR_LIB)
     StatusMessage("+ EditorLib")
     add_library(EditorLib STATIC EXCLUDE_FROM_ALL ${FO_EDITOR_SOURCE})
     add_dependencies(EditorLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(EditorLib CommonLib)
+    target_link_libraries(EditorLib BakerLib CommonLib)
     list(APPEND FO_CORE_LIBS_GROUP EditorLib)
 endif()
 
@@ -1231,13 +1228,7 @@ if(FO_BUILD_EDITOR)
     set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_EDITOR_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Editor")
     set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Editor "AppFrontend" "EditorLib" "MapperLib" "BakerLib")
-    target_link_libraries(${FO_DEV_NAME}_Editor "ClientLib" "ServerLib")
-
-    if(FO_ANGELSCRIPT_SCRIPTING)
-        target_link_libraries(${FO_DEV_NAME}_Editor "ASCompilerLib")
-    endif()
-
+    target_link_libraries(${FO_DEV_NAME}_Editor "AppFrontend" "EditorLib" "MapperLib" "BakerLib" "ClientLib" "ServerLib")
     WriteBuildHash(${FO_DEV_NAME}_Editor)
 endif()
 
@@ -1248,9 +1239,7 @@ if(FO_BUILD_MAPPER)
     set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_MAPPER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Mapper")
     set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Mapper "AppFrontend" "MapperLib")
-    target_link_libraries(${FO_DEV_NAME}_Mapper "ClientLib")
-
+    target_link_libraries(${FO_DEV_NAME}_Mapper "AppFrontend" "MapperLib" "ClientLib" "BakerLib")
     WriteBuildHash(${FO_DEV_NAME}_Mapper)
 endif()
 
@@ -1274,12 +1263,15 @@ if(FO_BUILD_BAKER)
     set_target_properties(${FO_DEV_NAME}_Baker PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Baker")
     set_target_properties(${FO_DEV_NAME}_Baker PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
     target_link_libraries(${FO_DEV_NAME}_Baker "AppHeadless" "BakerLib")
-
-    if(FO_ANGELSCRIPT_SCRIPTING)
-        target_link_libraries(${FO_DEV_NAME}_Baker "ASCompilerLib")
-    endif()
-
     WriteBuildHash(${FO_DEV_NAME}_Baker)
+
+    StatusMessage("+ ${FO_DEV_NAME}_BakerLib")
+    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_BakerLib")
+    add_library(${FO_DEV_NAME}_BakerLib SHARED EXCLUDE_FROM_ALL "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp")
+    set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT})
+    set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_BakerLib")
+    target_link_libraries(${FO_DEV_NAME}_BakerLib PRIVATE "BakerLib")
+    WriteBuildHash(${FO_DEV_NAME}_BakerLib)
 endif()
 
 if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
@@ -1337,7 +1329,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
     if(FO_ANGELSCRIPT_SCRIPTING)
         set(compileASScripts ${FO_DEV_NAME}_ASCompiler)
 
-        list(APPEND compileASScripts -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
+        list(APPEND compileASScripts -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")
 
         add_custom_target(CompileAngelScript
             COMMAND ${compileASScripts}
@@ -1368,8 +1360,7 @@ endif()
 
 # Baking
 set(bakeResources "${FO_DEV_NAME}_Baker")
-
-list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
+list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")
 
 add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
@@ -1440,34 +1431,6 @@ foreach(package ${FO_PACKAGES})
         add_custom_command(TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands})
     endforeach()
 endforeach()
-
-# External commands
-if(FO_MAKE_EXTERNAL_COMMANDS)
-    if(FO_WINDOWS)
-        set(prolog "@echo off\n\n")
-        set(start "")
-        set(breakLine "^")
-        set(scriptExt "bat")
-        set(pause "pause")
-    else()
-        set(prolog "#!/bin/bash -e\n\n")
-        set(start "")
-        set(breakLine "\\")
-        set(scriptExt "sh")
-        set(pause "read -p \"Press enter to continue\"")
-    endif()
-
-    cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE rootDir)
-
-    set(FO_GEN_FILE_CONTENT "${prolog}${start}python \"${rootDir}/${FO_ENGINE_ROOT}/BuildTools/starter.py\"")
-
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-maincfg \"${rootDir}/${FO_MAIN_CONFIG}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-devname \"${FO_DEV_NAME}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-buildhash \"${FO_BUILD_HASH}\"")
-    set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-bininput \"${rootDir}/Binaries\"")
-
-    configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" "${FO_OUTPUT_PATH}/Starter.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
-endif()
 
 # Copy ReSharper config
 if(MSVC)
