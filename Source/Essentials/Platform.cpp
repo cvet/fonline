@@ -47,18 +47,7 @@
 #include <unistd.h>
 #endif
 
-#if FO_LINUX
-#if __has_include(<X11/Xlib.h>) && __has_include(<X11/keysym.h>)
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
-#define FO_HAVE_X11 1
-#else
-#define FO_HAVE_X11 0
-#endif
-#endif
-
 #if FO_MAC
-#include <ApplicationServices/ApplicationServices.h>
 #include <libproc.h>
 #endif
 
@@ -237,25 +226,6 @@ auto Platform::IsShiftDown() noexcept -> bool
 
 #if FO_WINDOWS
     return (::GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-
-#elif FO_LINUX
-    bool pressed = false;
-#if FO_HAVE_X11
-    if (auto* display = ::XOpenDisplay(nullptr); display != nullptr) {
-        char keys[32] = {};
-        ::XQueryKeymap(display, keys);
-        KeyCode leftShift = ::XKeysymToKeycode(display, XK_Shift_L);
-        KeyCode rightShift = ::XKeysymToKeycode(display, XK_Shift_R);
-        pressed = (keys[leftShift >> 3] & (1 << (leftShift & 7))) || (keys[rightShift >> 3] & (1 << (rightShift & 7)));
-        ::XCloseDisplay(display);
-    }
-#endif
-    return pressed;
-
-#elif FO_MAC
-    const CGEventFlags flags = ::CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState);
-    return (flags & kCGEventFlagMaskShift) != 0;
-
 #else
     return false;
 #endif

@@ -122,7 +122,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     // Initialize input events
-    if (!SDL_InitSubSystem(SDL_INIT_EVENTS)) {
+    if (SDL_WasInit(SDL_INIT_EVENTS) == 0 && !SDL_InitSubSystem(SDL_INIT_EVENTS)) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
@@ -248,7 +248,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     // Initialize audio
     if (!Settings.DisableAudio) {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+        if (SDL_WasInit(SDL_INIT_AUDIO) != 0 || SDL_InitSubSystem(SDL_INIT_AUDIO)) {
             AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
             AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
 
@@ -365,7 +365,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     // Initialize video system
     if (ActiveRendererType != RenderType::Null) {
-        if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+        if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && !SDL_InitSubSystem(SDL_INIT_VIDEO)) {
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
@@ -1476,6 +1476,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
         return;
     }
 
+    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+
     const char* title = fatal_error ? "Fatal Error" : "Error";
 
 #if FO_WEB || FO_ANDROID || FO_IOS
@@ -1557,7 +1559,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
     bool run_in_separate_thread = false;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+    if (SDL_WasInit(SDL_INIT_VIDEO) != 0 || SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
@@ -1568,8 +1570,6 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
             if (window != nullptr) {
                 SDL_DestroyWindow(window);
             }
-
-            SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
         });
 
         constexpr SDL_WindowFlags flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_UTILITY | SDL_WINDOW_NOT_FOCUSABLE;
@@ -1624,7 +1624,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+    if (SDL_WasInit(SDL_INIT_VIDEO) != 0 || SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
@@ -1635,8 +1635,6 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
             if (window != nullptr) {
                 SDL_DestroyWindow(window);
             }
-
-            SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
         });
 
         constexpr SDL_WindowFlags flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_UTILITY;

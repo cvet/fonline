@@ -72,8 +72,6 @@ struct Platform
     }
 
     // Windows: GetAsyncKeyState
-    // Linux (X11): XQueryKeymap
-    // Mac: CGEventSourceFlagsState
     // Other: false
     static auto IsShiftDown() noexcept -> bool;
 };

@@ -229,7 +229,6 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             sub_configs_to_apply.clear();
 
             for (const auto i : selected_sub_configs) {
-                WriteLog("Apply sub config {}", sub_config_names[i]);
                 sub_configs_to_apply.emplace_back(sub_config_names[i]);
             }
         }
