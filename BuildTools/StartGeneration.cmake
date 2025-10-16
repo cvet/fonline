@@ -51,12 +51,6 @@ else()
 	set(CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "Forced by FOnline" FORCE)
 endif()
 
-# Check for continous integration
-if(DEFINED ENV{GITHUB_ACTIONS} OR DEFINED ENV{CI} OR DEFINED ENV{TF_BUILD})
-	StatusMessage("Detected continous integration")
-	set(FO_CONTINOUS_INTEGRATION ON)
-endif()
-
 # Global options
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -254,21 +248,27 @@ endif()
 if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_COMMON_LIB ON)
 endif()
+
 if(FO_BUILD_CLIENT OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_CLIENT_LIB ON)
 endif()
+
 if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_SERVER_LIB ON)
 endif()
+
 if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_MAPPER_LIB ON)
 endif()
+
 if(FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_BAKER_LIB ON)
 endif()
+
 if(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER_LIB)
 	set(FO_BUILD_ASCOMPILER_LIB ON)
 endif()
+
 if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_EDITOR_LIB ON)
 endif()
@@ -293,12 +293,7 @@ if(WIN32)
 	add_compile_options_C_CXX(/bigobj)
 	add_compile_options_C_CXX(/fp:fast)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes
-
-	if(FO_CONTINOUS_INTEGRATION)
-		add_compile_options_C_CXX($<${expr_DebugInfo}:/Z7>)
-	else()
-		add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
-	endif()
+	add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
 
 	add_link_options(/INCREMENTAL:NO)
 	add_link_options(/OPT:REF)
