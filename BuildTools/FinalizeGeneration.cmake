@@ -1267,7 +1267,7 @@ if(FO_BUILD_BAKER)
 
     StatusMessage("+ ${FO_DEV_NAME}_BakerLib")
     list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_BakerLib")
-    add_library(${FO_DEV_NAME}_BakerLib SHARED EXCLUDE_FROM_ALL "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp")
+    add_library(${FO_DEV_NAME}_BakerLib SHARED "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp")
     set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT})
     set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_BakerLib")
     target_link_libraries(${FO_DEV_NAME}_BakerLib PRIVATE "BakerLib")
