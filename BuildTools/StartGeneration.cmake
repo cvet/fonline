@@ -375,8 +375,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)
 	add_link_options($<${expr_FullOptimization}:-flto>)
-	add_link_options(-no-pie)
 	add_link_options(-rdynamic)
+
+	if(NOT FO_BUILD_BAKER)
+		add_link_options(-no-pie)
+	else()
+		add_compile_options_C_CXX(-fPIC)
+	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
