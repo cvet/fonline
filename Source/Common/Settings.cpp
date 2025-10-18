@@ -277,7 +277,7 @@ void GlobalSettings::ApplyInternalConfig()
     ApplyConfigFile(config, "");
 }
 
-void GlobalSettings::ApplyBakingConfig(string_view config_path, string_view sub_config)
+void GlobalSettings::ApplyBakingConfig(string_view config_path)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -286,7 +286,6 @@ void GlobalSettings::ApplyBakingConfig(string_view config_path, string_view sub_
     const string config_name = strex(config_path).extractFileName();
     const string config_dir = strex(config_path).extractDir();
     ApplyConfigAtPath(config_name, config_dir);
-    ApplySubConfigSection(sub_config);
 
     // Auto settings
     _appliedSettings.emplace("ApplyConfig");

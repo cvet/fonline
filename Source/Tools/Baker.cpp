@@ -171,8 +171,14 @@ void MasterBaker::BakeAllInternal()
 
         const auto bake_config = [&](string_view sub_config) {
             FO_RUNTIME_ASSERT(_settings.GetAppliedConfigs().size() == 1);
+
             auto maincfg = GlobalSettings();
-            maincfg.ApplyBakingConfig(_settings.GetAppliedConfigs().front(), sub_config);
+            maincfg.ApplyBakingConfig(_settings.GetAppliedConfigs().front());
+
+            if (!sub_config.empty()) {
+                maincfg.ApplySubConfigSection(sub_config);
+            }
+
             const auto config_settings = maincfg.Save();
 
             auto server_settings = GetServerSettings();
