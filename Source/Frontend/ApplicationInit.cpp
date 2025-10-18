@@ -234,8 +234,10 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         }
 
         for (const auto& sub_config_name : sub_configs_to_apply) {
-            WriteLog("Apply sub config {}", sub_config_name);
-            settings.ApplySubConfigSection(sub_config_name);
+            if (!sub_config_name.empty() && sub_config_name != "NONE") {
+                WriteLog("Apply sub config {}", sub_config_name);
+                settings.ApplySubConfigSection(sub_config_name);
+            }
         }
     }
     else {

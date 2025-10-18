@@ -386,10 +386,6 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (name.empty() || name == "NONE") {
-        return;
-    }
-
     const auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
     const auto it = std::ranges::find_if(_subConfigs, find_predicate);
 
