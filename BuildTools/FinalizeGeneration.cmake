@@ -1435,9 +1435,9 @@ endforeach()
 # Copy ReSharper config
 if(MSVC)
     if(FO_RESHARPER_SETTINGS)
-        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_RESHARPER_SETTINGS}" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings")
+        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_RESHARPER_SETTINGS}" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings" COPY_ON_ERROR)
     else()
-        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/ReSharper.sln.DotSettings" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings")
+        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/ReSharper.sln.DotSettings" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings" COPY_ON_ERROR)
     endif()
 endif()
 
