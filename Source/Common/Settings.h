@@ -67,7 +67,6 @@ public:
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
 
 protected:
-    bool _bakingMode {};
     vector<ResourcePackInfo> _resourcePacks {};
     vector<SubConfigInfo> _subConfigs {};
     vector<string> _appliedConfigs {};
@@ -85,7 +84,7 @@ protected:
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
 public:
-    GlobalSettings() = default;
+    explicit GlobalSettings(bool baking_mode);
     GlobalSettings(const GlobalSettings&) = default;
     GlobalSettings(GlobalSettings&&) noexcept = default;
     auto operator=(const GlobalSettings&) = delete;
@@ -99,7 +98,6 @@ public:
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
     void ApplyCommandLine(int32 argc, char** argv);
     void ApplyInternalConfig();
-    void ApplyBakingConfig(string_view config_path);
     void ApplySubConfigSection(string_view name);
     void ApplyAutoSettings();
     void SetCustomSetting(string_view name, string value);
@@ -110,6 +108,7 @@ private:
     void AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
 
+    bool _bakingMode;
     unordered_map<string, string> _customSettings {};
     string _empty {};
 };

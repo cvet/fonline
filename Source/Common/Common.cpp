@@ -49,6 +49,11 @@ auto IsPackaged() -> bool
     return !HasNotPackagedMark;
 }
 
+void ForcePackaged()
+{
+    HasNotPackagedMark = false;
+}
+
 FrameBalancer::FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
     _sleep {sleep},

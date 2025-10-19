@@ -44,7 +44,7 @@ class DataSource
 public:
     DataSource() = default;
     DataSource(const DataSource&) = delete;
-    DataSource(DataSource&&) noexcept = default;
+    DataSource(DataSource&&) noexcept = delete;
     auto operator=(const DataSource&) = delete;
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
@@ -68,7 +68,7 @@ public:
     {
     }
     DataSourceRef(const DataSourceRef&) = delete;
-    DataSourceRef(DataSourceRef&&) noexcept = default;
+    DataSourceRef(DataSourceRef&&) noexcept = delete;
     auto operator=(const DataSourceRef&) = delete;
     auto operator=(DataSourceRef&&) noexcept = delete;
     ~DataSourceRef() override = default;

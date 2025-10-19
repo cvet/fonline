@@ -73,7 +73,7 @@ class DummySpace final : public DataSource
 public:
     DummySpace() = default;
     DummySpace(const DummySpace&) = delete;
-    DummySpace(DummySpace&&) noexcept = default;
+    DummySpace(DummySpace&&) noexcept = delete;
     auto operator=(const DummySpace&) = delete;
     auto operator=(DummySpace&&) noexcept = delete;
     ~DummySpace() override = default;
@@ -91,7 +91,7 @@ class NonCachedDir final : public DataSource
 public:
     explicit NonCachedDir(string_view fname, bool recursive);
     NonCachedDir(const NonCachedDir&) = delete;
-    NonCachedDir(NonCachedDir&&) noexcept = default;
+    NonCachedDir(NonCachedDir&&) noexcept = delete;
     auto operator=(const NonCachedDir&) = delete;
     auto operator=(NonCachedDir&&) noexcept = delete;
     ~NonCachedDir() override = default;
@@ -104,7 +104,7 @@ public:
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
-    bool _recusive;
+    bool _recursive;
     string _baseDir {};
 };
 
@@ -113,7 +113,7 @@ class CachedDir final : public DataSource
 public:
     CachedDir(string_view fname, bool recursive);
     CachedDir(const CachedDir&) = delete;
-    CachedDir(CachedDir&&) noexcept = default;
+    CachedDir(CachedDir&&) noexcept = delete;
     auto operator=(const CachedDir&) = delete;
     auto operator=(CachedDir&&) noexcept = delete;
     ~CachedDir() override = default;
@@ -143,7 +143,7 @@ class FalloutDat final : public DataSource
 public:
     explicit FalloutDat(string_view fname);
     FalloutDat(const FalloutDat&) = delete;
-    FalloutDat(FalloutDat&&) noexcept = default;
+    FalloutDat(FalloutDat&&) noexcept = delete;
     auto operator=(const FalloutDat&) = delete;
     auto operator=(FalloutDat&&) noexcept = delete;
     ~FalloutDat() override = default;
@@ -158,6 +158,7 @@ public:
 private:
     auto ReadTree() -> bool;
 
+    mutable std::mutex _datFileLocker {};
     mutable DiskFile _datFile;
     unordered_map<string, uint8*> _filesTree {};
     vector<string> _filesTreeNames {};
@@ -172,10 +173,10 @@ class ZipFile final : public DataSource
 public:
     explicit ZipFile(string_view fname);
     ZipFile(const ZipFile&) = delete;
-    ZipFile(ZipFile&&) noexcept = default;
+    ZipFile(ZipFile&&) noexcept = delete;
     auto operator=(const ZipFile&) = delete;
     auto operator=(ZipFile&&) noexcept = delete;
-    ~ZipFile() override;
+    ~ZipFile() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
@@ -191,12 +192,46 @@ private:
         int32 UncompressedSize {};
     };
 
-    auto ReadTree() -> bool;
+    auto GetZipHandle() const -> unzFile { return reinterpret_cast<unzFile>(_zipHandle.get()); }
 
     unordered_map<string, ZipFileInfo> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
-    unzFile _zipHandle {};
+    mutable std::mutex _zipHandleLocker {};
+    mutable unique_del_ptr<uint8> _zipHandle {};
+    uint64 _writeTime {};
+};
+
+class EmbeddedFile final : public DataSource
+{
+public:
+    explicit EmbeddedFile();
+    EmbeddedFile(const EmbeddedFile&) = delete;
+    EmbeddedFile(EmbeddedFile&&) noexcept = delete;
+    auto operator=(const EmbeddedFile&) = delete;
+    auto operator=(EmbeddedFile&&) noexcept = delete;
+    ~EmbeddedFile() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return "Embedded"; }
+    [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
+    [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
+
+private:
+    struct EmbeddedFileInfo
+    {
+        unz_file_pos Pos {};
+        int32 UncompressedSize {};
+    };
+
+    auto GetZipHandle() const -> unzFile { return reinterpret_cast<unzFile>(_zipHandle.get()); }
+
+    unordered_map<string, EmbeddedFileInfo> _filesTree {};
+    vector<string> _filesTreeNames {};
+    mutable std::mutex _zipHandleLocker {};
+    mutable unique_del_ptr<uint8> _zipHandle {};
     uint64 _writeTime {};
 };
 
@@ -205,7 +240,7 @@ class FilesList final : public DataSource
 public:
     FilesList();
     FilesList(const FilesList&) = delete;
-    FilesList(FilesList&&) noexcept = default;
+    FilesList(FilesList&&) noexcept = delete;
     auto operator=(const FilesList&) = delete;
     auto operator=(FilesList&&) noexcept = delete;
     ~FilesList() override = default;
@@ -264,7 +299,7 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
     const string path = strex(dir).combinePath(name);
 
     if (name == "Embedded") {
-        return SafeAlloc::MakeUnique<ZipFile>("@Embedded");
+        return SafeAlloc::MakeUnique<EmbeddedFile>();
     }
     else if (name == "FilesList") {
         return SafeAlloc::MakeUnique<FilesList>();
@@ -319,7 +354,7 @@ auto DummySpace::GetFileNames(string_view dir, bool recursive, string_view ext) 
 }
 
 NonCachedDir::NonCachedDir(string_view fname, bool recursive) :
-    _recusive {recursive}
+    _recursive {recursive}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -332,7 +367,7 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recusive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extractDir().empty()) {
         return false;
     }
 
@@ -352,7 +387,7 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64& write_tim
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recusive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extractDir().empty()) {
         return false;
     }
 
@@ -372,7 +407,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recusive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extractDir().empty()) {
         return nullptr;
     }
 
@@ -398,13 +433,13 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recusive && !dir.empty()) {
+    if (!_recursive && !dir.empty()) {
         return {};
     }
 
     vector<string> fnames;
 
-    DiskFileSystem::IterateDir(strex(_baseDir).combinePath(dir), recursive && _recusive, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_baseDir).combinePath(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -666,10 +701,6 @@ auto FalloutDat::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_datFile) {
-        return false;
-    }
-
     const auto it = _filesTree.find(path);
 
     if (it == _filesTree.end()) {
@@ -682,10 +713,6 @@ auto FalloutDat::IsFileExists(string_view path) const -> bool
 auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    if (!_datFile) {
-        return false;
-    }
 
     const auto it = _filesTree.find(path);
 
@@ -710,6 +737,8 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     if (it == _filesTree.end()) {
         return nullptr;
     }
+
+    auto locker = std::scoped_lock(_datFileLocker);
 
     const auto* ptr = it->second;
     uint8 type = 0;
@@ -792,184 +821,91 @@ ZipFile::ZipFile(string_view fname)
     FO_STACK_TRACE_ENTRY();
 
     _fileName = fname;
-    _zipHandle = nullptr;
 
     zlib_filefunc_def ffunc;
 
-    if (fname[0] != '@') {
-        auto p_file = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(fname, false));
+    auto p_file = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(_fileName, false));
 
-        if (!*p_file) {
-            throw DataSourceException("Can't open zip file", fname);
+    if (!*p_file) {
+        throw DataSourceException("Can't open zip file", _fileName);
+    }
+
+    _writeTime = DiskFileSystem::GetWriteTime(_fileName);
+
+    ffunc.zopen_file = [](voidpf opaque, const char*, int32) -> voidpf { return opaque; };
+    ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
+        auto* file = static_cast<DiskFile*>(stream);
+        return file->Read(buf, size) ? size : 0;
+    };
+    ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
+    ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
+        auto* file = static_cast<DiskFile*>(stream);
+        return numeric_cast<long>(file->GetReadPos());
+    };
+    ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
+        auto* file = static_cast<DiskFile*>(stream);
+        switch (origin) {
+        case ZLIB_FILEFUNC_SEEK_SET:
+            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Set);
+            break;
+        case ZLIB_FILEFUNC_SEEK_CUR:
+            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Cur);
+            break;
+        case ZLIB_FILEFUNC_SEEK_END:
+            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::End);
+            break;
+        default:
+            return -1;
         }
+        return 0;
+    };
+    ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
+        const auto* file = static_cast<DiskFile*>(stream);
+        delete file;
+        return 0;
+    };
+    ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
+        if (stream == nullptr) {
+            return 1;
+        }
+        return 0;
+    };
 
-        _writeTime = DiskFileSystem::GetWriteTime(fname);
+    ffunc.opaque = p_file.release();
 
-        ffunc.zopen_file = [](voidpf opaque, const char*, int32) -> voidpf { return opaque; };
-        ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-            auto* file = static_cast<DiskFile*>(stream);
-            return file->Read(buf, size) ? size : 0;
-        };
-        ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
-        ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-            auto* file = static_cast<DiskFile*>(stream);
-            return numeric_cast<long>(file->GetReadPos());
-        };
-        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
-            auto* file = static_cast<DiskFile*>(stream);
-            switch (origin) {
-            case ZLIB_FILEFUNC_SEEK_SET:
-                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Set);
-                break;
-            case ZLIB_FILEFUNC_SEEK_CUR:
-                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Cur);
-                break;
-            case ZLIB_FILEFUNC_SEEK_END:
-                file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::End);
-                break;
-            default:
-                return -1;
-            }
-            return 0;
-        };
-        ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
-            const auto* file = static_cast<DiskFile*>(stream);
-            delete file;
-            return 0;
-        };
-        ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
-            if (stream == nullptr) {
-                return 1;
-            }
-            return 0;
-        };
+    auto* handle = unzOpen2(string(_fileName).c_str(), &ffunc);
+    _zipHandle = unique_del_ptr<uint8>(static_cast<uint8*>(handle), [](uint8* h) {
+        if (h != nullptr) {
+            unzClose(static_cast<void*>(h));
+        }
+    });
 
-        ffunc.opaque = p_file.release();
+    if (!_zipHandle) {
+        throw DataSourceException("Can't read zip file", _fileName);
     }
-    else {
-        _writeTime = 0;
-
-        struct MemStream
-        {
-            const volatile uint8* Buf;
-            uint32 Length;
-            uint32 Pos;
-        };
-
-        ffunc.zopen_file = [](voidpf, const char* filename, int32) -> voidpf {
-            if (string(filename) == "@Embedded") {
-                static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
-                auto default_array = true;
-
-                for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != numeric_cast<uint8>((i + 42) % 200)) {
-                        default_array = false;
-                    }
-                }
-
-                if (default_array) {
-                    throw DataSourceException("Embedded resources not really embed");
-                }
-
-                auto* mem_stream = SafeAlloc::MakeRaw<MemStream>();
-                mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint32);
-                mem_stream->Length = *reinterpret_cast<volatile const uint32*>(EMBEDDED_RESOURCES);
-                mem_stream->Pos = 0;
-                return mem_stream;
-            }
-            return nullptr;
-        };
-        ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-            auto* mem_stream = static_cast<MemStream*>(stream);
-            for (size_t i = 0; i < size; i++) {
-                static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
-            }
-            mem_stream->Pos += static_cast<uint32>(size);
-            return size;
-        };
-        ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
-        ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-            const auto* mem_stream = static_cast<MemStream*>(stream);
-            return numeric_cast<long>(mem_stream->Pos);
-        };
-        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
-            auto* mem_stream = static_cast<MemStream*>(stream);
-            switch (origin) {
-            case ZLIB_FILEFUNC_SEEK_SET:
-                mem_stream->Pos = numeric_cast<uint32>(offset);
-                break;
-            case ZLIB_FILEFUNC_SEEK_CUR:
-                mem_stream->Pos += numeric_cast<uint32>(offset);
-                break;
-            case ZLIB_FILEFUNC_SEEK_END:
-                mem_stream->Pos = mem_stream->Length + numeric_cast<uint32>(offset);
-                break;
-            default:
-                return -1;
-            }
-            return 0;
-        };
-        ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
-            const auto* mem_stream = static_cast<MemStream*>(stream);
-            delete mem_stream;
-            return 0;
-        };
-        ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
-            if (stream == nullptr) {
-                return 1;
-            }
-            return 0;
-        };
-        ffunc.opaque = nullptr;
-    }
-
-    _zipHandle = unzOpen2(string(fname).c_str(), &ffunc);
-
-    if (_zipHandle == nullptr) {
-        throw DataSourceException("Can't read zip file", fname);
-    }
-
-    if (!ReadTree()) {
-        throw DataSourceException("Read zip file tree failed", fname);
-    }
-}
-
-ZipFile::~ZipFile()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_zipHandle != nullptr) {
-        unzClose(_zipHandle);
-    }
-}
-
-auto ZipFile::ReadTree() -> bool
-{
-    FO_STACK_TRACE_ENTRY();
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(_zipHandle, &gi) != UNZ_OK || gi.number_entry == 0) {
-        return false;
+    if (unzGetGlobalInfo(GetZipHandle(), &gi) != UNZ_OK || gi.number_entry == 0) {
+        throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName);
     }
 
     ZipFileInfo zip_info;
     unz_file_pos pos;
     unz_file_info info;
+    char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(_zipHandle, &pos) != UNZ_OK) {
-            return false;
+        if (unzGetFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+            throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName);
         }
 
-        char buf[4096];
-
-        if (unzGetCurrentFileInfo(_zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
-            return false;
+        if (unzGetCurrentFileInfo(GetZipHandle(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+            throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName);
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(buf).normalizePathSlashes();
+            string name = strex(name_buf).normalizePathSlashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
@@ -977,12 +913,10 @@ auto ZipFile::ReadTree() -> bool
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle) != UNZ_OK) {
-            return false;
+        if (i + 1 < gi.number_entry && unzGoToNextFile(GetZipHandle()) != UNZ_OK) {
+            throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName);
         }
     }
-
-    return true;
 }
 
 auto ZipFile::IsFileExists(string_view path) const -> bool
@@ -1024,21 +958,221 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
         return nullptr;
     }
 
+    auto locker = std::scoped_lock(_zipHandleLocker);
+
     const auto& info = it->second;
     auto pos = info.Pos;
 
-    if (unzGoToFilePos(_zipHandle, &pos) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (1)", path);
+    if (unzGoToFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", path);
     }
-    if (unzOpenCurrentFile(_zipHandle) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (2)", path);
+    if (unzOpenCurrentFile(GetZipHandle()) != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(_zipHandle, buf.get(), info.UncompressedSize);
+    const auto read = unzReadCurrentFile(GetZipHandle(), buf.get(), info.UncompressedSize);
 
-    if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
-        throw DataSourceException("Can't read file from zip (3)", path);
+    if (unzCloseCurrentFile(GetZipHandle()) != UNZ_OK || read != info.UncompressedSize) {
+        throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
+    }
+
+    write_time = _writeTime;
+    size = info.UncompressedSize;
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+}
+
+EmbeddedFile::EmbeddedFile()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    zlib_filefunc_def ffunc;
+
+    static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
+    bool default_array = true;
+
+    for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
+        if (EMBEDDED_RESOURCES[i] != numeric_cast<uint8>((i + 42) % 200)) {
+            default_array = false;
+        }
+    }
+
+    if (default_array) {
+        WriteLog("Embedded resources not really embed");
+        return;
+    }
+
+    struct MemStream
+    {
+        const volatile uint8* Buf;
+        uint32 Length;
+        uint32 Pos;
+    };
+
+    ffunc.zopen_file = [](voidpf, const char*, int32) -> voidpf {
+        auto* mem_stream = SafeAlloc::MakeRaw<MemStream>();
+        mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint32);
+        mem_stream->Length = *reinterpret_cast<volatile const uint32*>(EMBEDDED_RESOURCES);
+        mem_stream->Pos = 0;
+        return mem_stream;
+    };
+    ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
+        auto* mem_stream = static_cast<MemStream*>(stream);
+        for (size_t i = 0; i < size; i++) {
+            static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
+        }
+        mem_stream->Pos += static_cast<uint32>(size);
+        return size;
+    };
+    ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
+    ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
+        const auto* mem_stream = static_cast<MemStream*>(stream);
+        return numeric_cast<long>(mem_stream->Pos);
+    };
+    ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
+        auto* mem_stream = static_cast<MemStream*>(stream);
+        switch (origin) {
+        case ZLIB_FILEFUNC_SEEK_SET:
+            mem_stream->Pos = numeric_cast<uint32>(offset);
+            break;
+        case ZLIB_FILEFUNC_SEEK_CUR:
+            mem_stream->Pos += numeric_cast<uint32>(offset);
+            break;
+        case ZLIB_FILEFUNC_SEEK_END:
+            mem_stream->Pos = mem_stream->Length + numeric_cast<uint32>(offset);
+            break;
+        default:
+            return -1;
+        }
+        return 0;
+    };
+    ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
+        const auto* mem_stream = static_cast<MemStream*>(stream);
+        delete mem_stream;
+        return 0;
+    };
+    ffunc.zerror_file = [](voidpf, voidpf stream) -> int32 {
+        if (stream == nullptr) {
+            return 1;
+        }
+        return 0;
+    };
+    ffunc.opaque = nullptr;
+
+    auto* handle = unzOpen2("", &ffunc);
+    _zipHandle = unique_del_ptr<uint8>(static_cast<uint8*>(handle), [](uint8* h) {
+        if (h != nullptr) {
+            unzClose(static_cast<void*>(h));
+        }
+    });
+
+    if (!_zipHandle) {
+        throw DataSourceException("Can't read embedded file");
+    }
+
+    unz_global_info gi;
+
+    if (unzGetGlobalInfo(GetZipHandle(), &gi) != UNZ_OK || gi.number_entry == 0) {
+        throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)");
+    }
+
+    EmbeddedFileInfo zip_info;
+    unz_file_pos pos;
+    unz_file_info info;
+    char name_buf[4096];
+
+    for (uLong i = 0; i < gi.number_entry; i++) {
+        if (unzGetFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+            throw DataSourceException("Read embedded file tree failed (unzGetFilePos)");
+        }
+
+        if (unzGetCurrentFileInfo(GetZipHandle(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+            throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)");
+        }
+
+        if ((info.external_fa & 0x10) == 0) { // Not folder
+            string name = strex(name_buf).normalizePathSlashes();
+
+            zip_info.Pos = pos;
+            zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
+            _filesTree.emplace(name, zip_info);
+            _filesTreeNames.emplace_back(std::move(name));
+        }
+
+        if (i + 1 < gi.number_entry && unzGoToNextFile(GetZipHandle()) != UNZ_OK) {
+            throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)");
+        }
+    }
+}
+
+auto EmbeddedFile::IsFileExists(string_view path) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_zipHandle) {
+        return false;
+    }
+
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    return true;
+}
+
+auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_zipHandle) {
+        return false;
+    }
+
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return false;
+    }
+
+    const auto& info = it->second;
+    write_time = _writeTime;
+    size = info.UncompressedSize;
+    return true;
+}
+
+auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_zipHandle) {
+        return nullptr;
+    }
+
+    const auto it = _filesTree.find(path);
+
+    if (it == _filesTree.end()) {
+        return nullptr;
+    }
+
+    auto locker = std::scoped_lock(_zipHandleLocker);
+
+    const auto& info = it->second;
+    auto pos = info.Pos;
+
+    if (unzGoToFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+        throw DataSourceException("Can't read embedded file (unzGoToFilePos)", path);
+    }
+    if (unzOpenCurrentFile(GetZipHandle()) != UNZ_OK) {
+        throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", path);
+    }
+
+    auto buf = SafeAlloc::MakeUniqueArr<uint8>(numeric_cast<size_t>(info.UncompressedSize));
+    const auto read = unzReadCurrentFile(GetZipHandle(), buf.get(), info.UncompressedSize);
+
+    if (unzCloseCurrentFile(GetZipHandle()) != UNZ_OK || read != info.UncompressedSize) {
+        throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", path);
     }
 
     write_time = _writeTime;

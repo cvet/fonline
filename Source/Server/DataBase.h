@@ -62,7 +62,7 @@ public:
     ~DataBase();
 
     [[nodiscard]] auto GetCommitJobsCount() const -> size_t;
-    [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<ident_t>;
+    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t>;
     [[nodiscard]] auto Get(hstring collection_name, ident_t id) const -> AnyData::Document;
     [[nodiscard]] auto Valid(hstring collection_name, ident_t id) const -> bool;
 

@@ -349,7 +349,9 @@ FOServer::FOServer(GlobalSettings& settings) :
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
-                add_sync_file(strex("{}.zip", resource_entry));
+                if (resource_entry != "Embedded") {
+                    add_sync_file(strex("{}.zip", resource_entry));
+                }
             }
 
             // Complete files list

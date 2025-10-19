@@ -143,7 +143,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto settings = GlobalSettings();
+    auto settings = GlobalSettings(false);
 
     if (argc == -1) {
         return settings; // Unit testing
@@ -225,11 +225,17 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
                 }
             }
 
-            Application::ChooseOptionsWindow("Choose sub config(s) to apply:", sub_config_names, selected_sub_configs);
+            sub_config_names.emplace_back("RUN AS PACKAGED");
             sub_configs_to_apply.clear();
+            Application::ChooseOptionsWindow("Choose sub config(s) to apply:", sub_config_names, selected_sub_configs);
 
             for (const auto i : selected_sub_configs) {
-                sub_configs_to_apply.emplace_back(sub_config_names[i]);
+                if (i == numeric_cast<int32>(sub_config_names.size()) - 1) {
+                    ForcePackaged();
+                }
+                else {
+                    sub_configs_to_apply.emplace_back(sub_config_names[i]);
+                }
             }
         }
 

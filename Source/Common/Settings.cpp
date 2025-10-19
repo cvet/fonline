@@ -151,6 +151,51 @@ static void DrawEditableEntry(string_view name, T& entry)
     DrawEntry(name, entry);
 }
 
+GlobalSettings::GlobalSettings(bool baking_mode) :
+    _bakingMode {baking_mode}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_bakingMode) {
+        // Auto settings
+        _appliedSettings.emplace("ApplyConfig");
+        _appliedSettings.emplace("ApplySubConfig");
+        _appliedSettings.emplace("UnpackagedSubConfig");
+        _appliedSettings.emplace("CommandLine");
+        _appliedSettings.emplace("CommandLineArgs");
+        _appliedSettings.emplace("WebBuild");
+        _appliedSettings.emplace("WindowsBuild");
+        _appliedSettings.emplace("LinuxBuild");
+        _appliedSettings.emplace("MacOsBuild");
+        _appliedSettings.emplace("AndroidBuild");
+        _appliedSettings.emplace("IOsBuild");
+        _appliedSettings.emplace("DesktopBuild");
+        _appliedSettings.emplace("TabletBuild");
+        _appliedSettings.emplace("MapHexagonal");
+        _appliedSettings.emplace("MapSquare");
+        _appliedSettings.emplace("MapDirCount");
+        _appliedSettings.emplace("Packaged");
+        _appliedSettings.emplace("DebugBuild");
+        _appliedSettings.emplace("RenderDebug");
+        _appliedSettings.emplace("MonitorWidth");
+        _appliedSettings.emplace("MonitorHeight");
+        _appliedSettings.emplace("ClientResourceEntries");
+        _appliedSettings.emplace("MapperResourceEntries");
+        _appliedSettings.emplace("ServerResourceEntries");
+        _appliedSettings.emplace("MousePos");
+        _appliedSettings.emplace("DummyIntVec");
+        _appliedSettings.emplace("Ping");
+        _appliedSettings.emplace("ScrollMouseUp");
+        _appliedSettings.emplace("ScrollMouseDown");
+        _appliedSettings.emplace("ScrollMouseLeft");
+        _appliedSettings.emplace("ScrollMouseRight");
+        _appliedSettings.emplace("ScrollKeybUp");
+        _appliedSettings.emplace("ScrollKeybDown");
+        _appliedSettings.emplace("ScrollKeybLeft");
+        _appliedSettings.emplace("ScrollKeybRight");
+    }
+}
+
 void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
@@ -275,54 +320,6 @@ void GlobalSettings::ApplyInternalConfig()
 
     auto config = ConfigFile("InternalConfig.fomain", config_str);
     ApplyConfigFile(config, "");
-}
-
-void GlobalSettings::ApplyBakingConfig(string_view config_path)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _bakingMode = true;
-
-    const string config_name = strex(config_path).extractFileName();
-    const string config_dir = strex(config_path).extractDir();
-    ApplyConfigAtPath(config_name, config_dir);
-
-    // Auto settings
-    _appliedSettings.emplace("ApplyConfig");
-    _appliedSettings.emplace("ApplySubConfig");
-    _appliedSettings.emplace("UnpackagedSubConfig");
-    _appliedSettings.emplace("CommandLine");
-    _appliedSettings.emplace("CommandLineArgs");
-    _appliedSettings.emplace("WebBuild");
-    _appliedSettings.emplace("WindowsBuild");
-    _appliedSettings.emplace("LinuxBuild");
-    _appliedSettings.emplace("MacOsBuild");
-    _appliedSettings.emplace("AndroidBuild");
-    _appliedSettings.emplace("IOsBuild");
-    _appliedSettings.emplace("DesktopBuild");
-    _appliedSettings.emplace("TabletBuild");
-    _appliedSettings.emplace("MapHexagonal");
-    _appliedSettings.emplace("MapSquare");
-    _appliedSettings.emplace("MapDirCount");
-    _appliedSettings.emplace("Packaged");
-    _appliedSettings.emplace("DebugBuild");
-    _appliedSettings.emplace("RenderDebug");
-    _appliedSettings.emplace("MonitorWidth");
-    _appliedSettings.emplace("MonitorHeight");
-    _appliedSettings.emplace("ClientResourceEntries");
-    _appliedSettings.emplace("MapperResourceEntries");
-    _appliedSettings.emplace("ServerResourceEntries");
-    _appliedSettings.emplace("MousePos");
-    _appliedSettings.emplace("DummyIntVec");
-    _appliedSettings.emplace("Ping");
-    _appliedSettings.emplace("ScrollMouseUp");
-    _appliedSettings.emplace("ScrollMouseDown");
-    _appliedSettings.emplace("ScrollMouseLeft");
-    _appliedSettings.emplace("ScrollMouseRight");
-    _appliedSettings.emplace("ScrollKeybUp");
-    _appliedSettings.emplace("ScrollKeybDown");
-    _appliedSettings.emplace("ScrollKeybLeft");
-    _appliedSettings.emplace("ScrollKeybRight");
 }
 
 void GlobalSettings::ApplyAutoSettings()
@@ -634,7 +631,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 
     for (auto&& [key, value] : _customSettings) {
         if (_appliedSettings.count(key) != 0) {
-            result[key] = value;
+            result.emplace(key, value);
         }
     }
 

@@ -62,7 +62,7 @@ public:
     virtual ~DataBaseImpl() = default;
 
     [[nodiscard]] auto GetCommitJobsCount() const -> size_t;
-    [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> = 0;
+    [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) -> vector<ident_t> = 0;
     [[nodiscard]] auto GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document;
 
     void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
@@ -120,7 +120,7 @@ auto DataBase::GetCommitJobsCount() const -> size_t
     return _impl->GetCommitJobsCount();
 }
 
-auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
+auto DataBase::GetAllIds(hstring collection_name) -> vector<ident_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -519,7 +519,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) -> vector<ident_t> override
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -740,16 +740,16 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            unqlite_close(value);
+        for (auto& value : _collections | std::views::values) {
+            unqlite_close(value.get());
         }
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) -> vector<ident_t> override
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* db = GetCollection(collection_name);
+        auto* db = GetOrCreateCollection(collection_name);
 
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
@@ -810,7 +810,7 @@ protected:
         auto* db = GetCollection(collection_name);
 
         if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
+            return {};
         }
 
         AnyData::Document doc;
@@ -844,7 +844,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        auto* db = GetCollection(collection_name);
+        auto* db = GetOrCreateCollection(collection_name);
 
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
@@ -882,7 +882,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        auto* db = GetCollection(collection_name);
+        auto* db = GetOrCreateCollection(collection_name);
 
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
@@ -922,7 +922,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* db = GetCollection(collection_name);
+        auto* db = GetOrCreateCollection(collection_name);
 
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
@@ -939,8 +939,8 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            const auto commit = unqlite_commit(value);
+        for (auto& value : _collections | std::views::values) {
+            const auto commit = unqlite_commit(value.get());
 
             if (commit != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_commit", commit);
@@ -949,7 +949,20 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(hstring collection_name) const -> unqlite*
+    auto GetCollection(hstring collection_name) const -> unqlite*
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const auto it = _collections.find(collection_name);
+
+        if (it == _collections.end()) {
+            return nullptr;
+        }
+
+        return it->second.getNoConst();
+    }
+
+    auto GetOrCreateCollection(hstring collection_name) -> unqlite*
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -968,14 +981,14 @@ private:
             _collections.emplace(collection_name, db);
         }
         else {
-            db = it->second;
+            db = it->second.get();
         }
 
         return db;
     }
 
     string _storageDir {};
-    mutable unordered_map<hstring, unqlite*> _collections {};
+    unordered_map<hstring, raw_ptr<unqlite>> _collections {};
 };
 #endif
 
@@ -1037,20 +1050,20 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            mongoc_collection_destroy(value);
+        for (auto& value : _collections | std::views::values) {
+            mongoc_collection_destroy(value.get());
         }
 
-        mongoc_database_destroy(_database);
-        mongoc_client_destroy(_client);
+        mongoc_database_destroy(_database.get());
+        mongoc_client_destroy(_client.get());
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) -> vector<ident_t> override
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* collection = GetCollection(collection_name);
+        auto* collection = GetOrCreateCollection(collection_name);
 
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
@@ -1111,7 +1124,7 @@ protected:
         auto* collection = GetCollection(collection_name);
 
         if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
+            return {};
         }
 
         bson_t filter;
@@ -1160,7 +1173,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        auto* collection = GetCollection(collection_name);
+        auto* collection = GetOrCreateCollection(collection_name);
 
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
@@ -1192,7 +1205,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        auto* collection = GetCollection(collection_name);
+        auto* collection = GetOrCreateCollection(collection_name);
 
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
@@ -1236,7 +1249,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* collection = GetCollection(collection_name);
+        auto* collection = GetOrCreateCollection(collection_name);
 
         if (collection == nullptr) {
             throw DataBaseException("DbMongo Can't get collection", collection_name);
@@ -1268,7 +1281,20 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
+    auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const auto it = _collections.find(collection_name);
+
+        if (it == _collections.end()) {
+            return nullptr;
+        }
+
+        return it->second.getNoConst();
+    }
+
+    auto GetOrCreateCollection(hstring collection_name) -> mongoc_collection_t*
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1277,7 +1303,7 @@ private:
         const auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
-            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.asStr().c_str());
+            collection = mongoc_client_get_collection(_client.get(), _databaseName.c_str(), collection_name.asStr().c_str());
 
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't get collection", collection_name);
@@ -1286,16 +1312,16 @@ private:
             _collections.emplace(collection_name, collection);
         }
         else {
-            collection = it->second;
+            collection = it->second.get();
         }
 
         return collection;
     }
 
-    mongoc_client_t* _client {};
-    mongoc_database_t* _database {};
+    raw_ptr<mongoc_client_t> _client {};
+    raw_ptr<mongoc_database_t> _database {};
     string _databaseName {};
-    mutable unordered_map<hstring, mongoc_collection_t*> _collections {};
+    unordered_map<hstring, raw_ptr<mongoc_collection_t>> _collections {};
 };
 #endif
 
@@ -1313,7 +1339,7 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) -> vector<ident_t> override
     {
         FO_STACK_TRACE_ENTRY();
 
