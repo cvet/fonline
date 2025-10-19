@@ -176,7 +176,7 @@ public:
     ZipFile(ZipFile&&) noexcept = delete;
     auto operator=(const ZipFile&) = delete;
     auto operator=(ZipFile&&) noexcept = delete;
-    ~ZipFile() override = default;
+    ~ZipFile() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
@@ -192,13 +192,11 @@ private:
         int32 UncompressedSize {};
     };
 
-    auto GetZipHandle() const -> unzFile { return reinterpret_cast<unzFile>(_zipHandle.get()); }
-
     unordered_map<string, ZipFileInfo> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
     mutable std::mutex _zipHandleLocker {};
-    mutable unique_del_ptr<uint8> _zipHandle {};
+    mutable raw_ptr<void> _zipHandle {};
     uint64 _writeTime {};
 };
 
@@ -210,7 +208,7 @@ public:
     EmbeddedFile(EmbeddedFile&&) noexcept = delete;
     auto operator=(const EmbeddedFile&) = delete;
     auto operator=(EmbeddedFile&&) noexcept = delete;
-    ~EmbeddedFile() override = default;
+    ~EmbeddedFile() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return "Embedded"; }
@@ -226,12 +224,10 @@ private:
         int32 UncompressedSize {};
     };
 
-    auto GetZipHandle() const -> unzFile { return reinterpret_cast<unzFile>(_zipHandle.get()); }
-
     unordered_map<string, EmbeddedFileInfo> _filesTree {};
     vector<string> _filesTreeNames {};
     mutable std::mutex _zipHandleLocker {};
-    mutable unique_del_ptr<uint8> _zipHandle {};
+    mutable raw_ptr<void> _zipHandle {};
     uint64 _writeTime {};
 };
 
@@ -873,12 +869,7 @@ ZipFile::ZipFile(string_view fname)
 
     ffunc.opaque = p_file.release();
 
-    auto* handle = unzOpen2(string(_fileName).c_str(), &ffunc);
-    _zipHandle = unique_del_ptr<uint8>(static_cast<uint8*>(handle), [](uint8* h) {
-        if (h != nullptr) {
-            unzClose(static_cast<void*>(h));
-        }
-    });
+    _zipHandle = unzOpen2(string(_fileName).c_str(), &ffunc);
 
     if (!_zipHandle) {
         throw DataSourceException("Can't read zip file", _fileName);
@@ -886,7 +877,7 @@ ZipFile::ZipFile(string_view fname)
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(GetZipHandle(), &gi) != UNZ_OK || gi.number_entry == 0) {
+    if (unzGetGlobalInfo(_zipHandle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
         throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName);
     }
 
@@ -896,11 +887,11 @@ ZipFile::ZipFile(string_view fname)
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+        if (unzGetFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName);
         }
 
-        if (unzGetCurrentFileInfo(GetZipHandle(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+        if (unzGetCurrentFileInfo(_zipHandle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName);
         }
 
@@ -913,9 +904,18 @@ ZipFile::ZipFile(string_view fname)
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(GetZipHandle()) != UNZ_OK) {
+        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle.get()) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName);
         }
+    }
+}
+
+ZipFile::~ZipFile()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_zipHandle) {
+        unzClose(_zipHandle.get());
     }
 }
 
@@ -963,17 +963,17 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
     const auto& info = it->second;
     auto pos = info.Pos;
 
-    if (unzGoToFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+    if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (unzGoToFilePos)", path);
     }
-    if (unzOpenCurrentFile(GetZipHandle()) != UNZ_OK) {
+    if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(GetZipHandle(), buf.get(), info.UncompressedSize);
+    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
-    if (unzCloseCurrentFile(GetZipHandle()) != UNZ_OK || read != info.UncompressedSize) {
+    if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read file from zip (unzCloseCurrentFile)", path);
     }
 
@@ -1059,12 +1059,7 @@ EmbeddedFile::EmbeddedFile()
     };
     ffunc.opaque = nullptr;
 
-    auto* handle = unzOpen2("", &ffunc);
-    _zipHandle = unique_del_ptr<uint8>(static_cast<uint8*>(handle), [](uint8* h) {
-        if (h != nullptr) {
-            unzClose(static_cast<void*>(h));
-        }
-    });
+    _zipHandle = unzOpen2("", &ffunc);
 
     if (!_zipHandle) {
         throw DataSourceException("Can't read embedded file");
@@ -1072,7 +1067,7 @@ EmbeddedFile::EmbeddedFile()
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(GetZipHandle(), &gi) != UNZ_OK || gi.number_entry == 0) {
+    if (unzGetGlobalInfo(_zipHandle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
         throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)");
     }
 
@@ -1082,11 +1077,11 @@ EmbeddedFile::EmbeddedFile()
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+        if (unzGetFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetFilePos)");
         }
 
-        if (unzGetCurrentFileInfo(GetZipHandle(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+        if (unzGetCurrentFileInfo(_zipHandle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)");
         }
 
@@ -1099,9 +1094,18 @@ EmbeddedFile::EmbeddedFile()
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(GetZipHandle()) != UNZ_OK) {
+        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle.get()) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)");
         }
+    }
+}
+
+EmbeddedFile::~EmbeddedFile()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_zipHandle) {
+        unzClose(_zipHandle.get());
     }
 }
 
@@ -1161,17 +1165,17 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64& write_time) 
     const auto& info = it->second;
     auto pos = info.Pos;
 
-    if (unzGoToFilePos(GetZipHandle(), &pos) != UNZ_OK) {
+    if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
         throw DataSourceException("Can't read embedded file (unzGoToFilePos)", path);
     }
-    if (unzOpenCurrentFile(GetZipHandle()) != UNZ_OK) {
+    if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
         throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", path);
     }
 
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(numeric_cast<size_t>(info.UncompressedSize));
-    const auto read = unzReadCurrentFile(GetZipHandle(), buf.get(), info.UncompressedSize);
+    const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
-    if (unzCloseCurrentFile(GetZipHandle()) != UNZ_OK || read != info.UncompressedSize) {
+    if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
         throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", path);
     }
 
