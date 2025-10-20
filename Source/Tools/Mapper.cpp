@@ -33,6 +33,8 @@
 
 #include "Mapper.h"
 #include "3dStuff.h"
+#include "Baker.h"
+#include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -42,27 +44,65 @@ extern void Mapper_RegisterData(EngineData*);
 extern void Init_AngelScript_MapperScriptSystem(BaseEngine*);
 #endif
 
-FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOClient(settings, window, [this] { Mapper_RegisterData(this); })
+static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& entry : Settings.MapperResourceEntries) {
-        Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
+    if (IsPackaged()) {
+        FileSystem resources;
+        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+        return resources;
+    }
+    else {
+        FileSystem resources;
+        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings));
+        return resources;
+    }
+}
+
+FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
+    FOClient(settings, window, GetMapperResources(settings), [this] { Mapper_RegisterData(this); })
+{
+    FO_STACK_TRACE_ENTRY();
+
+    App->Settings.ScreenHudHeight = 0;
+    App->Settings.ScrollCheck = false;
+    App->LoadImGuiEffect(Resources);
+
+    MapsFileSys.AddDirSource("", false, true, true);
+
+    for (const auto& res_pack : settings.GetResourcePacks()) {
+        for (const auto& dir : res_pack.InputDir) {
+            MapsFileSys.AddDirSource(dir, false, true, true);
+        }
     }
 
-    for (const auto& dir : settings.MapsDir) {
-        MapsFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
-    }
+    EffectMngr.LoadDefaultEffects();
+
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes));
+#if FO_ENABLE_3D
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
+#endif
+
+    SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
+    ResMngr.IndexFiles();
+
+    ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
+    ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
 #if FO_ANGELSCRIPT_SCRIPTING
     Init_AngelScript_MapperScriptSystem(this);
 #endif
 
+    ProtoMngr.LoadFromResources(Resources);
+
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadFromResources(Resources);
-
-    ProtoMngr.LoadFromResources(Resources);
 
     // Fonts
     auto load_fonts_ok = true;
@@ -328,8 +368,6 @@ auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
 void FOMapper::ProcessMapperInput()
 {
     FO_STACK_TRACE_ENTRY();
-
-    Settings.MousePos = App->Input.GetMousePosition();
 
     if (const bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings.FullscreenMouseScroll) || (!is_fullscreen && Settings.WindowedMouseScroll)) {
         Settings.ScrollMouseRight = Settings.MousePos.x >= Settings.ScreenWidth - 1;
@@ -3043,9 +3081,8 @@ void FOMapper::ParseCommand(string_view command)
 
             auto map_files = MapsFileSys.FilterFiles("fomap");
 
-            while (map_files.MoveNext()) {
-                const auto& map_file = map_files.GetCurFile();
-                const auto map_name = map_file.GetName();
+            for (const auto& map_file_header : map_files) {
+                const auto map_name = map_file_header.GetNameNoExt();
 
                 if (auto* map = LoadMap(map_name); map != nullptr) {
                     SaveMap(map, map_name);
@@ -3084,7 +3121,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     }
 
     const auto map_file_str = map_file.GetStr();
-    auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, &Hashes, ConfigFileOption::ReadFirstSection);
+    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, &Hashes, ConfigFileOption::ReadFirstSection);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);
@@ -3153,21 +3190,19 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     FO_RUNTIME_ASSERT(!fomap_name.empty());
 
     string fomap_path;
-    {
-        auto fomap_files = MapsFileSys.FilterFiles("fomap");
+    const auto fomap_files = MapsFileSys.FilterFiles("fomap");
 
-        if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
-            fomap_path = fomap_file.GetFullPath();
-        }
-        else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
-            fomap_path = strex(fomap_file2.GetFullPath()).changeFileName(fomap_name);
-        }
-        else if (fomap_files.MoveNext()) {
-            fomap_path = strex(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
-        }
-        else {
-            fomap_path = strex("{}.fomap", fomap_path).formatPath();
-        }
+    if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
+        fomap_path = fomap_file.GetDiskPath();
+    }
+    else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
+        fomap_path = strex(fomap_file2.GetDiskPath()).changeFileName(fomap_name);
+    }
+    else if (fomap_files.GetFilesCount() != 0) {
+        fomap_path = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).changeFileName(fomap_name);
+    }
+    else {
+        fomap_path = strex("{}.fomap", fomap_path).formatPath();
     }
 
     auto fomap_file = DiskFileSystem::OpenFile(fomap_path, true);

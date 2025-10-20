@@ -69,7 +69,7 @@ extern auto GetThisThreadName() noexcept -> const string&
         static size_t thread_counter = 0;
         thread_local size_t thread_num = ++thread_counter;
 
-        ThreadName = strex(strex::safe_format_tag {}, "{}", thread_num);
+        ThreadName = strex(strex::safe_format, "{}", thread_num);
     }
 
     return ThreadName;

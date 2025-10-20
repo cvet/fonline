@@ -271,7 +271,7 @@ void MapView::LoadStaticData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _engine->Resources.ReadFile(strex("{}.fomapb-client", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", GetProtoId()));
 
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());

@@ -31,37 +31,32 @@
 // SOFTWARE.
 //
 
+#pragma once
+
 #include "Common.h"
 
-#include "Application.h"
-#include "Server.h"
-#include "Settings.h"
+#include "Baker.h"
+#include "FileSystem.h"
 
-FO_USING_NAMESPACE();
+FO_BEGIN_NAMESPACE();
 
-#if !FO_TESTING_APP
-int main(int argc, char** argv)
-#else
-[[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int
-#endif
+FO_DECLARE_EXCEPTION(ProtoTextBakerException);
+
+class EngineData;
+class ScriptSystem;
+class ProtoEntity;
+
+class ProtoTextBaker final : public BaseBaker
 {
-    FO_STACK_TRACE_ENTRY();
+public:
+    explicit ProtoTextBaker(BakerData& data);
+    ProtoTextBaker(const ProtoTextBaker&) = delete;
+    ProtoTextBaker(ProtoTextBaker&&) noexcept = delete;
+    auto operator=(const ProtoTextBaker&) = delete;
+    auto operator=(ProtoTextBaker&&) noexcept = delete;
+    ~ProtoTextBaker() override;
 
-    try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
+};
 
-        {
-            auto server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
-
-            App->WaitForRequestedQuit();
-        }
-
-        ExitApp(true);
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
-    }
-}
+FO_END_NAMESPACE();

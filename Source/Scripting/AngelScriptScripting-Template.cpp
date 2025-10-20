@@ -4502,15 +4502,14 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     as_engine->ShutDownAndRelease();
 #else
 #if SERVER_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-server");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-server");
 #elif CLIENT_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-client");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-client");
 #elif MAPPER_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-mapper");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-mapper");
 #endif
     FO_RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
-    script_bin_files.MoveNext();
-    auto script_bin_file = script_bin_files.GetCurFile();
+    auto script_bin_file = File::Load(*script_bin_files.begin());
     RestoreRootModule(as_engine, {script_bin_file.GetBuf(), script_bin_file.GetSize()});
 #endif
 
@@ -4775,8 +4774,8 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
     vector<tuple<int32, string, string>> final_script_files_order;
 
     for (const auto& script_file : script_files) {
-        string script_name = string(script_file.GetName());
-        string script_path = string(script_file.GetFullPath());
+        string script_name = string(script_file.GetNameNoExt());
+        string script_path = string(script_file.GetPath());
         string script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');
@@ -4789,8 +4788,8 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
             sort = strex(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
         }
 
-        final_script_files_order.push_back(std::make_tuple(sort, script_name, script_path));
-        final_script_files.emplace(script_path, std::move(script_content));
+        final_script_files_order.emplace_back(std::make_tuple(sort, std::move(script_name), script_path));
+        final_script_files.emplace(std::move(script_path), std::move(script_content));
     }
 
     std::ranges::stable_sort(final_script_files_order, [](auto&& a, auto&& b) {

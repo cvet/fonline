@@ -77,7 +77,7 @@ public:
         string NewName {};
     };
 
-    using LoadFunc = function<FrameCollection(string_view, string_view, FileReader)>;
+    using LoadFunc = function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
 
     explicit ImageBaker(BakerData& data);
     ImageBaker(const ImageBaker&) = delete;
@@ -86,33 +86,27 @@ public:
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
-
-    void AddLoader(const LoadFunc& loader, const vector<string_view>& file_extensions);
-    void BakeFiles(FileCollection files) override;
+    void AddLoader(const LoadFunc& loader, const vector<string>& file_extensions);
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    void BakeCollection(string_view fname, const FrameCollection& collection);
+    void BakeCollection(string_view fname, const FrameCollection& collection) const;
 
-    [[nodiscard]] auto LoadAny(string_view fname_with_opt) -> FrameCollection;
-    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
-    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, FileReader reader) -> FrameCollection;
+    [[nodiscard]] auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
+    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
 
     unordered_map<string, LoadFunc> _fileLoaders {};
-    unordered_map<string, File> _cachedFiles {};
-    FileCollection _files {};
-    mutable std::mutex _filesLocker {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE();

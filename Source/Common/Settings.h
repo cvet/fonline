@@ -41,18 +41,6 @@ FO_DECLARE_EXCEPTION(SettingsException);
 
 class ConfigFile;
 
-struct DummySettings
-{
-};
-
-#define SETTING_GROUP(name, ...) \
-    struct name : __VA_ARGS__ \
-    {
-#define SETTING_GROUP_END() }
-#define FIXED_SETTING(type, name, ...) const type name = {}
-#define VARIABLE_SETTING(type, name, ...) type name = {}
-#include "Settings-Include.h"
-
 struct ResourcePackInfo
 {
     string Name {};
@@ -72,41 +60,57 @@ struct SubConfigInfo
     map<string, string> Settings {};
 };
 
-struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakerSettings
+struct BaseSettings
 {
 public:
-    explicit GlobalSettings(int32 argc, char** argv);
-    explicit GlobalSettings(string_view config_path, string_view sub_config);
+    [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
+    [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
+    [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
+
+protected:
+    vector<ResourcePackInfo> _resourcePacks {};
+    vector<SubConfigInfo> _subConfigs {};
+    vector<string> _appliedConfigs {};
+    unordered_set<string> _appliedSettings {};
+};
+
+#define SETTING_GROUP(name, ...) \
+    struct name : __VA_ARGS__ \
+    {
+#define SETTING_GROUP_END() }
+#define FIXED_SETTING(type, name, ...) const type name = {}
+#define VARIABLE_SETTING(type, name, ...) type name = {}
+#include "Settings-Include.h"
+
+struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
+{
+public:
+    explicit GlobalSettings(bool baking_mode);
     GlobalSettings(const GlobalSettings&) = default;
-    GlobalSettings(GlobalSettings&&) = default;
+    GlobalSettings(GlobalSettings&&) noexcept = default;
     auto operator=(const GlobalSettings&) = delete;
     auto operator=(GlobalSettings&&) noexcept = delete;
     ~GlobalSettings() = default;
 
-    [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
-    [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const string&;
     [[nodiscard]] auto Save() const -> map<string, string>;
 
+    void ApplyConfigAtPath(string_view config_name, string_view config_dir);
+    void ApplyConfigFile(ConfigFile& config, string_view config_dir);
+    void ApplyCommandLine(int32 argc, char** argv);
+    void ApplyInternalConfig();
+    void ApplySubConfigSection(string_view name);
+    void ApplyAutoSettings();
     void SetCustomSetting(string_view name, string value);
     void Draw(bool editable);
 
 private:
-    void ApplyConfigPath(string_view config_name, string_view config_dir);
-    void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplySettingsConfig(string_view config_dir);
-    void ApplySubConfigSection(string_view name);
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
-    void ApplyAutoSettings();
 
-    bool _bakingMode {};
-    bool _someConfigApplied {};
-    vector<ResourcePackInfo> _resourcePacks {};
-    vector<SubConfigInfo> _subConfigs {};
+    bool _bakingMode;
     unordered_map<string, string> _customSettings {};
-    unordered_set<string> _appliedSettings {};
     string _empty {};
 };
 

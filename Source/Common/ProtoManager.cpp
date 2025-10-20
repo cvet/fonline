@@ -98,20 +98,20 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     switch (_engine->GetPropertiesRelation()) {
     case PropertiesRelationType::BothRelative:
-        protos_ext = "foprob-mapper";
+        protos_ext = "fopro-bin-mapper";
         break;
     case PropertiesRelationType::ServerRelative:
-        protos_ext = "foprob-server";
+        protos_ext = "fopro-bin-server";
         break;
     case PropertiesRelationType::ClientRelative:
-        protos_ext = "foprob-client";
+        protos_ext = "fopro-bin-client";
         break;
     }
 
     auto proto_files = resources.FilterFiles(protos_ext);
 
-    while (proto_files.MoveNext()) {
-        const auto proto_file = proto_files.GetCurFile();
+    for (const auto& proto_file_header : proto_files) {
+        const auto proto_file = File::Load(proto_file_header);
         auto reader = DataReader({proto_file.GetBuf(), proto_file.GetSize()});
 
         // Hashes
@@ -159,7 +159,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                         proto->EnableComponent(component_name_hashed);
                     }
 
-                    const uint32 data_size = reader.Read<uint32>();
+                    const auto data_size = reader.Read<uint32>();
                     props_data.resize(data_size);
                     reader.ReadPtr<uint8>(props_data.data(), data_size);
                     proto->GetPropertiesForEdit().RestoreAllData(props_data);

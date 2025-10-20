@@ -435,16 +435,16 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         string ext = "glsl";
 
         if constexpr (FO_OPENGL_ES) {
-            ext = "glsl-es";
+            ext = "glsl_es";
         }
         if (ForceGlslEsProfile) {
-            ext = "glsl-es";
+            ext = "glsl_es";
         }
 
-        const string vert_fname = strex("{}.{}.vert.{}", strex(name).eraseFileExtension(), pass + 1, ext);
+        const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         FO_RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = strex("{}.{}.frag.{}", strex(name).eraseFileExtension(), pass + 1, ext);
+        const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).eraseFileExtension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         FO_RUNTIME_ASSERT(!frag_content.empty());
 

@@ -37,10 +37,11 @@
 
 FO_BEGIN_NAMESPACE();
 
+// Todo: make sure in debug mode ptr is not dangling
 template<typename T>
 class raw_ptr
 {
-    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
+    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T> || std::is_void_v<T>);
 
     template<typename U>
     friend class raw_ptr;
@@ -153,20 +154,40 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const T& { return *_ptr; }
+    template<typename U = T>
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> U&
+        requires(!std::is_void_v<U>)
+    {
+        return *_ptr;
+    }
+    template<typename U = T>
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const U&
+        requires(!std::is_void_v<U>)
+    {
+        return *_ptr;
+    }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto getNoConst() const noexcept -> T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+    template<typename U = T>
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> U&
+        requires(!std::is_void_v<U>)
+    {
+        return _ptr[index];
+    }
+    template<typename U = T>
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
+        requires(!std::is_void_v<U>)
+    {
+        return _ptr[index];
+    }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
 
 private:
     T* _ptr;
 };
 static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<raw_ptr<int>>);
+static_assert(std::is_standard_layout_v<raw_ptr<int32>>);
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
@@ -288,7 +309,7 @@ private:
     T* _ptr;
 };
 static_assert(sizeof(uniq_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<uniq_ptr<int>>);
+static_assert(std::is_standard_layout_v<uniq_ptr<int32>>);
 
 FO_END_NAMESPACE();
 template<typename T>
@@ -443,7 +464,7 @@ private:
 
     T* _ptr {};
 };
-static_assert(std::is_standard_layout_v<refcount_ptr<int>>);
+static_assert(std::is_standard_layout_v<refcount_ptr<int32>>);
 
 FO_END_NAMESPACE();
 template<typename T>

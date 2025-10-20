@@ -203,12 +203,14 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     _processedFiles.emplace(name_hashed);
 
-    // Load file data
-    const auto file = _resources.ReadFile(fname);
-
-    if (!file) {
+    // File maybe not exists, it's not an error
+    if (!_resources.IsFileExists(fname)) {
         return nullptr;
     }
+
+    // Load file data
+    const auto file = _resources.ReadFile(fname);
+    FO_RUNTIME_ASSERT(file);
 
     // Load bones
     auto root_bone = SafeAlloc::MakeUnique<ModelBone>();

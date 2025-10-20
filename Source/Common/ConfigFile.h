@@ -47,13 +47,14 @@ enum class ConfigFileOption : uint8
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(string_view fname_hint, const string& str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(string_view name_hint, const string& str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
     auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
     ~ConfigFile() = default;
 
+    [[nodiscard]] auto GetNameHint() const -> const string& { return _fileNameHint; }
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;

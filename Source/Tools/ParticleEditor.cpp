@@ -159,11 +159,16 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
     _impl->RenderTarget = App->Render.CreateTexture({200, 200}, true, true);
 
-    for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
-        _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
+    auto fofx_files = _editor.RawResources.FilterFiles("fofx");
+
+    for (const auto& file_header : fofx_files) {
+        _impl->AllEffects.emplace_back(file_header.GetPath());
     }
-    for (auto tex_files = _editor.InputResources.FilterFiles("tga", strex(asset_path).extractDir()); tex_files.MoveNext();) {
-        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(strex(asset_path).extractDir().length() + 1));
+
+    auto tex_files = _editor.RawResources.FilterFiles("tga", strex(asset_path).extractDir());
+
+    for (const auto& file_header : tex_files) {
+        _impl->AllTextures.emplace_back(file_header.GetPath().substr(strex(asset_path).extractDir().length() + 1));
     }
 }
 
@@ -206,13 +211,13 @@ void ParticleEditor::OnDraw()
 
             ImGui::SameLine();
             if (ImGui::Button("Save")) {
-                const auto file = _editor.InputResources.ReadFileHeader(_assetPath);
+                const auto file = _editor.RawResources.ReadFileHeader(_assetPath);
                 FO_RUNTIME_ASSERT(file);
 
                 const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
                 FO_RUNTIME_ASSERT(saver);
 
-                const auto path = std::string(file.GetFullPath());
+                const auto path = std::string(file.GetDiskPath());
 
                 if (saver->save(path, _impl->Particle->GetBaseSystem(), path)) {
                     _changed = _impl->Changed = false;

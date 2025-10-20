@@ -38,7 +38,6 @@
 #include "Geometry.h"
 #include "ScriptSystem.h"
 #include "Version-Include.h"
-#include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
 
@@ -80,7 +79,7 @@ FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view
 {
     ignore_unused(engine);
 
-    return !!engine->Resources.ReadFileHeader(resourcePath);
+    return engine->Resources.IsFileExists(resourcePath);
 }
 
 ///@ ExportMethod
@@ -89,152 +88,6 @@ FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view re
     ignore_unused(engine);
 
     return engine->Resources.ReadFileText(resourcePath);
-}
-
-static void PrintLog(string& log, bool last_call, const function<void(string_view)>& log_callback)
-{
-    // Normalize new lines to \n
-    while (true) {
-        const auto pos = log.find("\r\n");
-        if (pos != string::npos) {
-            log.replace(pos, 2, "\n");
-        }
-        else {
-            break;
-        }
-    }
-
-    std::erase(log, '\r');
-
-    // Write own log
-    while (true) {
-        auto pos = log.find('\n');
-        if (pos == string::npos && last_call && !log.empty()) {
-            pos = log.size();
-        }
-
-        if (pos != string::npos) {
-            log_callback(log.substr(0, pos));
-            log.erase(0, pos + 1);
-        }
-        else {
-            break;
-        }
-    }
-}
-
-static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
-{
-#if FO_WINDOWS && !FO_UWP
-    HANDLE out_read = nullptr;
-    HANDLE out_write = nullptr;
-
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
-
-    if (::CreatePipe(&out_read, &out_write, &sa, 0) == 0) {
-        return -1;
-    }
-
-    if (::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) == 0) {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
-    STARTUPINFOW si = {};
-    si.cb = sizeof(STARTUPINFO);
-    si.hStdError = out_write;
-    si.hStdOutput = out_write;
-    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-
-    PROCESS_INFORMATION pi = {};
-    auto* cmd_line = _wcsdup(strex(command).toWideChar().c_str());
-    const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
-    ::free(cmd_line);
-
-    if (result == 0) {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
-    string log;
-
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-        DWORD bytes = 0;
-        while (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) != 0 && bytes > 0) {
-            char buf[4096];
-            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr) != 0) {
-                log.append(buf, bytes);
-                PrintLog(log, false, log_callback);
-            }
-        }
-
-        if (::WaitForSingleObject(pi.hProcess, 0) != WAIT_TIMEOUT) {
-            break;
-        }
-    }
-
-    PrintLog(log, true, log_callback);
-
-    DWORD retval = 0;
-    ::GetExitCodeProcess(pi.hProcess, &retval);
-
-    ::CloseHandle(out_read);
-    ::CloseHandle(out_write);
-    ::CloseHandle(pi.hProcess);
-    ::CloseHandle(pi.hThread);
-
-    return std::bit_cast<int32>(retval);
-
-#elif !FO_WINDOWS && !FO_WEB
-    FILE* in = popen(string(command).c_str(), "r");
-    if (!in) {
-        return -1;
-    }
-
-    string log;
-    char buf[4096];
-    while (fgets(buf, sizeof(buf), in)) {
-        log += buf;
-        PrintLog(log, false, log_callback);
-    }
-    PrintLog(log, true, log_callback);
-
-    return pclose(in);
-#else
-    return 1;
-#endif
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32 Common_Game_SystemCall(BaseEngine* engine, string_view command)
-{
-    ignore_unused(engine);
-
-    auto prefix = command.substr(0, command.find(' '));
-    return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32 Common_Game_SystemCall(BaseEngine* engine, string_view command, string& output)
-{
-    ignore_unused(engine);
-
-    output = "";
-
-    return SystemCall(command, [&output](string_view line) {
-        if (!output.empty()) {
-            output += "\n";
-        }
-        output += line;
-    });
 }
 
 ///@ ExportMethod
@@ -409,7 +262,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoItem*>(proto));
     }
 
@@ -424,7 +277,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(const_cast<ProtoItem*>(proto));
         }
@@ -442,7 +295,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
             result.emplace_back(const_cast<ProtoItem*>(proto));
         }
@@ -465,7 +318,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoCritter*>(proto));
     }
 
@@ -480,7 +333,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(const_cast<ProtoCritter*>(proto));
         }
@@ -498,7 +351,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
             result.emplace_back(const_cast<ProtoCritter*>(proto));
         }
@@ -521,7 +374,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoMap*>(proto));
     }
 
@@ -536,7 +389,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(const_cast<ProtoMap*>(proto));
         }
@@ -554,7 +407,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
             result.emplace_back(const_cast<ProtoMap*>(proto));
         }
@@ -577,7 +430,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoLocation*>(proto));
     }
 
@@ -592,7 +445,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(const_cast<ProtoLocation*>(proto));
         }
@@ -610,7 +463,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (auto&& [pid, proto] : protos) {
+    for (const auto* proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
             result.emplace_back(const_cast<ProtoLocation*>(proto));
         }

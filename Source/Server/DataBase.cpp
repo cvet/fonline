@@ -740,8 +740,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            unqlite_close(value);
+        for (auto& value : _collections | std::views::values) {
+            unqlite_close(value.get());
         }
     }
 
@@ -939,8 +939,10 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            const auto commit = unqlite_commit(value);
+        auto locker = std::scoped_lock(_collectionsLocker);
+
+        for (auto& value : _collections | std::views::values) {
+            const auto commit = unqlite_commit(value.get());
 
             if (commit != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_commit", commit);
@@ -949,9 +951,11 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(hstring collection_name) const -> unqlite*
+    auto GetCollection(hstring collection_name) const -> unqlite*
     {
         FO_STACK_TRACE_ENTRY();
+
+        auto locker = std::scoped_lock(_collectionsLocker);
 
         unqlite* db;
 
@@ -968,14 +972,15 @@ private:
             _collections.emplace(collection_name, db);
         }
         else {
-            db = it->second;
+            db = it->second.get();
         }
 
         return db;
     }
 
     string _storageDir {};
-    mutable unordered_map<hstring, unqlite*> _collections {};
+    mutable std::mutex _collectionsLocker {};
+    mutable unordered_map<hstring, raw_ptr<unqlite>> _collections {};
 };
 #endif
 
@@ -1020,6 +1025,31 @@ public:
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
 
+        // Retreive collections
+        mongoc_cursor_t* collections_cursor = mongoc_database_find_collections_with_opts(database, nullptr);
+        const bson_t* collection_doc;
+
+        while (mongoc_cursor_next(collections_cursor, &collection_doc)) {
+            bson_iter_t collection_iter;
+
+            if (bson_iter_init_find(&collection_iter, collection_doc, "name")) {
+                const char* collection_name = bson_iter_utf8(&collection_iter, nullptr);
+                mongoc_collection_t* collection = mongoc_database_get_collection(database, collection_name);
+
+                if (collection == nullptr) {
+                    throw DataBaseException("DbMongo Can't get collection", collection_name);
+                }
+
+                _collections.emplace(collection_name, collection);
+            }
+        }
+
+        if (mongoc_cursor_error(collections_cursor, &error)) {
+            throw DataBaseException("DbMongo Can't retreive collections", error.message);
+        }
+
+        mongoc_cursor_destroy(collections_cursor);
+
         // Ping
         const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
@@ -1030,19 +1060,18 @@ public:
 
         _client = client;
         _database = database;
-        _databaseName = db_name;
     }
 
     ~DbMongo() override
     {
         FO_STACK_TRACE_ENTRY();
 
-        for (auto* value : _collections | std::views::values) {
-            mongoc_collection_destroy(value);
+        for (auto& value : _collections | std::views::values) {
+            mongoc_collection_destroy(value.get());
         }
 
-        mongoc_database_destroy(_database);
-        mongoc_client_destroy(_client);
+        mongoc_database_destroy(_database.get());
+        mongoc_client_destroy(_client.get());
         mongoc_cleanup();
     }
 
@@ -1051,10 +1080,6 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
-        }
 
         bson_t filter;
         bson_init(&filter);
@@ -1110,10 +1135,6 @@ protected:
 
         auto* collection = GetCollection(collection_name);
 
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
-        }
-
         bson_t filter;
         bson_init(&filter);
 
@@ -1162,10 +1183,6 @@ protected:
 
         auto* collection = GetCollection(collection_name);
 
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
-        }
-
         bson_t insert;
         bson_init(&insert);
 
@@ -1193,10 +1210,6 @@ protected:
         FO_RUNTIME_ASSERT(!doc.Empty());
 
         auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
-        }
 
         bson_t selector;
         bson_init(&selector);
@@ -1238,10 +1251,6 @@ protected:
 
         auto* collection = GetCollection(collection_name);
 
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Can't get collection", collection_name);
-        }
-
         bson_t selector;
         bson_init(&selector);
 
@@ -1268,34 +1277,22 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
+    auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
     {
         FO_STACK_TRACE_ENTRY();
 
-        mongoc_collection_t* collection;
-
-        const auto it = _collections.find(collection_name);
+        const auto it = _collections.find(collection_name.asStr());
 
         if (it == _collections.end()) {
-            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.asStr().c_str());
-
-            if (collection == nullptr) {
-                throw DataBaseException("DbMongo Can't get collection", collection_name);
-            }
-
-            _collections.emplace(collection_name, collection);
-        }
-        else {
-            collection = it->second;
+            throw DataBaseException("DbMongo Collection not found", collection_name);
         }
 
-        return collection;
+        return it->second.getNoConst();
     }
 
-    mongoc_client_t* _client {};
-    mongoc_database_t* _database {};
-    string _databaseName {};
-    mutable unordered_map<hstring, mongoc_collection_t*> _collections {};
+    raw_ptr<mongoc_client_t> _client {};
+    raw_ptr<mongoc_database_t> _database {};
+    unordered_map<string, raw_ptr<mongoc_collection_t>> _collections {};
 };
 #endif
 

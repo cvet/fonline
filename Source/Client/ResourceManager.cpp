@@ -54,9 +54,9 @@ void ResourceManager::IndexFiles()
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
-        auto sounds = _resources.FilterFiles(sound_ext);
-        while (sounds.MoveNext()) {
-            auto file_header = sounds.GetCurFileHeader();
+        const auto sound_files = _resources.FilterFiles(sound_ext);
+
+        for (const auto& file_header : sound_files) {
             _soundNames.emplace(strex(file_header.GetPath()).eraseFileExtension().lower(), file_header.GetPath());
         }
     }

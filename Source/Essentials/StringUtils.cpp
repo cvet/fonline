@@ -463,6 +463,21 @@ auto strex::upperUtf8() -> strex&
     return *this;
 }
 
+auto strex::assignVolatile(const volatile char* str, size_t len) -> strex&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _s.resize(len);
+
+    for (size_t i = 0; i < len; i++) {
+        _s[i] = str[i];
+    }
+
+    _sv = _s;
+
+    return *this;
+}
+
 auto strex::split(char delimiter) const -> vector<string>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -906,10 +921,7 @@ auto strex::getFileExtension() -> strex&
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto dot = _sv.find_last_of('.');
-    lower();
-
     _sv = dot != string::npos ? _sv.substr(dot + 1) : "";
-
     lower();
 
     return *this;
@@ -944,6 +956,21 @@ auto strex::changeFileName(string_view new_name) -> strex&
         _s = strex(_s).extractDir().combinePath(new_name);
     }
 
+    _sv = _s;
+
+    return *this;
+}
+
+auto strex::changeFileExtension(string_view new_ext) -> strex&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    eraseFileExtension();
+    ownStorage();
+
+    _s.reserve(_s.size() + new_ext.size() + 1);
+    _s += ".";
+    _s += new_ext;
     _sv = _s;
 
     return *this;

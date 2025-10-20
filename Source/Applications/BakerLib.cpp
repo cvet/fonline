@@ -33,35 +33,25 @@
 
 #include "Common.h"
 
-#include "Application.h"
-#include "Server.h"
-#include "Settings.h"
+#include "Baker.h"
+#include "Logging.h"
+#include "Version-Include.h"
 
 FO_USING_NAMESPACE();
 
-#if !FO_TESTING_APP
-int main(int argc, char** argv)
-#else
-[[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int
-#endif
+FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+    CreateGlobalData();
+    LogToFile(strex("{}_BakerLib.log", FO_DEV_NAME));
 
-        {
-            auto server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
+    auto& settings = *static_cast<BakingSettings*>(baking_settings);
+    auto baker = MasterBaker(settings);
 
-            App->WaitForRequestedQuit();
-        }
+    if (!baker.BakeAll()) {
+        return false;
+    }
 
-        ExitApp(true);
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
-    }
+    return true;
 }
