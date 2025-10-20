@@ -50,27 +50,58 @@ MapBaker::~MapBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-void MapBaker::BakeFiles(FileCollection files)
+void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
     // Collect map files
     vector<File> filtered_files;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
-        const string ext = strex(file_header.GetPath()).getFileExtension();
-
-        if (!IsExtSupported(ext)) {
-            continue;
-        }
-
-        const bool server_side = !_bakeChecker || _bakeChecker(strex(file_header.GetPath()).eraseFileExtension().str() + ".fomapb-server", file_header.GetWriteTime());
-        const bool client_side = !_bakeChecker || _bakeChecker(strex(file_header.GetPath()).eraseFileExtension().str() + ".fomapb-client", file_header.GetWriteTime());
+    const auto check_file = [&](const FileHeader& file_header) -> bool {
+        const bool server_side = _bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-server"), file_header.GetWriteTime());
+        const bool client_side = _bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-client"), file_header.GetWriteTime());
 
         if (server_side || client_side) {
-            filtered_files.emplace_back(files.GetCurFile());
+            if (!server_side) {
+                (void)_bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-server"), file_header.GetWriteTime());
+            }
+            if (!client_side) {
+                (void)_bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-client"), file_header.GetWriteTime());
+            }
         }
+
+        return server_side || client_side;
+    };
+
+    if (target_path.empty()) {
+        for (const auto& file_header : files) {
+            const string ext = strex(file_header.GetPath()).getFileExtension();
+
+            if (ext != "fomap") {
+                continue;
+            }
+            if (_bakeChecker && !check_file(file_header)) {
+                continue;
+            }
+
+            filtered_files.emplace_back(File::Load(file_header));
+        }
+    }
+    else {
+        if (!strex(target_path).getFileExtension().startsWith("fomap-")) {
+            return;
+        }
+
+        auto file = files.FindFileByPath(strex(target_path).changeFileExtension("fomap"));
+
+        if (!file) {
+            return;
+        }
+        if (_bakeChecker && !check_file(file)) {
+            return;
+        }
+
+        filtered_files.emplace_back(std::move(file));
     }
 
     if (filtered_files.empty()) {
@@ -82,7 +113,7 @@ void MapBaker::BakeFiles(FileCollection files)
     auto client_engine = BakerEngine(PropertiesRelationType::ClientRelative);
     auto server_proto_mngr = ProtoManager(server_engine);
     auto client_proto_mngr = ProtoManager(client_engine);
-    auto server_script_sys = BakerScriptSystem(server_engine, *_bakedFiles);
+    const auto server_script_sys = BakerScriptSystem(server_engine, *_bakedFiles);
 
     vector<std::future<void>> proto_loadings;
     proto_loadings.emplace_back(std::async(GetAsyncMode(), [&] { server_proto_mngr.LoadFromResources(*_bakedFiles); }));
@@ -98,7 +129,7 @@ void MapBaker::BakeFiles(FileCollection files)
 
         string map_name = [&]() -> string {
             const auto fomap = ConfigFile(file.GetPath(), file_content, nullptr, ConfigFileOption::ReadFirstSection);
-            return string(fomap.GetAsStr("Header", "$Name", file.GetName()));
+            return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
         }();
 
         vector<uint8> props_data;
@@ -183,7 +214,7 @@ void MapBaker::BakeFiles(FileCollection files)
             final_writer.Write<uint32>(map_item_count);
             final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-            _writeData(strex("{}.fomapb-server", map_name), map_data);
+            _writeData(strex("{}.fomap-bin-server", map_name), map_data);
         }
 
         // Client side
@@ -202,7 +233,7 @@ void MapBaker::BakeFiles(FileCollection files)
             final_writer.Write<uint32>(map_client_item_count);
             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
-            _writeData(strex("{}.fomapb-client", map_name), map_data);
+            _writeData(strex("{}.fomap-bin-client", map_name), map_data);
         }
     };
 
@@ -220,7 +251,7 @@ void MapBaker::BakeFiles(FileCollection files)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("Map baking error: {}", ex.what());
             errors++;
         }
         catch (...) {

@@ -148,6 +148,15 @@
 #define FO_FORCE_INLINE inline
 #endif
 
+// Export symbol
+#if defined(__GNUC__)
+#define FO_EXPORT_FUNC extern "C" __attribute__((visibility("default"), used))
+#elif defined(_MSC_VER)
+#define FO_EXPORT_FUNC extern "C" __declspec(dllexport)
+#else
+#define FO_EXPORT_FUNC extern "C"
+#endif
+
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP
 #include "WinApiUndef-Include.h"
@@ -369,7 +378,7 @@ private:
             delete this; \
         } \
     } \
-    mutable int32 RefCounter \
+    mutable std::atomic_int RefCounter \
     { \
         1 \
     }
@@ -408,11 +417,12 @@ constexpr auto IsEnumSet(T value, T check) noexcept -> bool
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
 
-template<typename T>
-    requires(std::is_enum_v<T>)
-constexpr auto CombineEnum(T v1, T v2) noexcept -> T
+template<typename T, typename... Args>
+    requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
+constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
 {
-    return static_cast<T>(static_cast<size_t>(v1) | static_cast<size_t>(v2));
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>((static_cast<U>(first) | ... | static_cast<U>(rest)));
 }
 
 // Enum formatter

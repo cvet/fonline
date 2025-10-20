@@ -66,8 +66,6 @@ private:
         uint32 Hash {};
     };
 
-    [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
-
     void AddText(string_view text);
     void Abort(string_view text);
     void GetNextFile();

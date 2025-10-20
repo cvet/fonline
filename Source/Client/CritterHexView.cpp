@@ -524,7 +524,7 @@ void CritterHexView::Process()
 
         const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).toMs<int32>() * 100 / cur_anim.FramesDuration.toMs<int32>();
         const auto frm_proc = _curAnim.has_value() ? std::min(anim_proc, 100) : anim_proc % 100;
-        const auto frm_index = lerp(0, cur_anim.Frames->CntFrm - 1, numeric_cast<float>(frm_proc) / 100.0f);
+        const auto frm_index = lerp(0, cur_anim.Frames->CntFrm - 1, numeric_cast<float32>(frm_proc) / 100.0f);
 
         if (frm_index != cur_anim.FrameIndex) {
             cur_anim.FrameIndex = frm_index;

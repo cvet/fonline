@@ -372,7 +372,7 @@ public:
 
     void AddLoopCallback(function<void()> callback) { _loopCallbacks.emplace_back(std::move(callback)); }
     auto AddScriptFunc(hstring name) -> ScriptFuncDesc* { return &_funcMap.emplace(name, ScriptFuncDesc())->second; }
-    void AddInitFunc(ScriptFuncDesc* func, int priority);
+    void AddInitFunc(ScriptFuncDesc* func, int32 priority);
 
     void BindRemoteCallReceiver(uint32 hash, function<void(Entity*)> func)
     {
@@ -385,7 +385,7 @@ private:
     unordered_map<string, shared_ptr<ScriptTypeInfo>> _engineToScriptType {};
     vector<function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
-    vector<pair<ScriptFuncDesc*, int>> _initFunc {};
+    vector<pair<ScriptFuncDesc*, int32>> _initFunc {};
     unordered_map<uint32, function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };

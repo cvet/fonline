@@ -279,7 +279,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).toBool();
 
-        const auto pass_info_content = loader(strex("{}.{}.info", strex(name).eraseFileExtension(), pass + 1));
+        const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).eraseFileExtension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
         FO_RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 

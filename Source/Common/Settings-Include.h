@@ -38,38 +38,19 @@
 #endif
 
 ///@ ExportSettings Common
-SETTING_GROUP(CommonSettings, virtual DummySettings);
-FIXED_SETTING(vector<string>, ApplyConfig); // Path to config file to apply on start, can be used multiple times
-FIXED_SETTING(vector<string>, AppliedConfigs); // Applied configs (read only)
+SETTING_GROUP(CommonSettings, virtual BaseSettings);
 FIXED_SETTING(string, CommandLine); // Command line used to start the game (read only)
 FIXED_SETTING(vector<string>, CommandLineArgs); // Command line arguments used to start the game (read only)
 FIXED_SETTING(string, GameName, "FOnline"); // Game name, used in logs and window title
 FIXED_SETTING(string, GameVersion, "0.0.0"); // Game version, used in logs and window title
-FIXED_SETTING(string, ApplySubConfig); // [SubConfig] section in main config to apply on start
-FIXED_SETTING(string, DebuggingSubConfig); // Config applied when run under debugger
+FIXED_SETTING(string, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(int32, ScriptOverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, DebugBuild); // If true, debug build is used, otherwise release build (read only)
+FIXED_SETTING(bool, Packaged); // If yes, then the packaging was done (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(DataSettings, virtual DummySettings);
-FIXED_SETTING(string, BaseServerResourcesName, "ServerResources"); // Directory for server resources, applied to ServerResources on packaging
-FIXED_SETTING(string, BaseClientResourcesName, "Resources"); // Directory for client resources, applied to ClientResources on packaging
-FIXED_SETTING(string, ServerResources, "Baking"); // Server resources directory
-FIXED_SETTING(string, ClientResources, "Baking"); // Client resources directory
-FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
-FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
-FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
-FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
-FIXED_SETTING(string, EmbeddedResources, "@Disabled"); // Embedded resources directory, @Disabled to disable, @Embedded to read from executable
-FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
-FIXED_SETTING(int32, ZipCompressLevel, 1); // Zip deflate level (0-9)
-FIXED_SETTING(vector<string>, MapsDir, "Maps"); // .fomap directories, used by Mapper
-FIXED_SETTING(bool, DataSynchronization, true); // If true, data synchronization between server and client is enabled, otherwise disabled
-SETTING_GROUP_END();
-
-///@ ExportSettings Common
-SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
+SETTING_GROUP(CommonGameplaySettings, virtual BaseSettings);
 FIXED_SETTING(int32, MinNameLength, 4); // Minimum length for player name
 FIXED_SETTING(int32, MaxNameLength, 12); // Maximum length for player name
 FIXED_SETTING(uint32, LookChecks, 0); // Look checks
@@ -88,7 +69,7 @@ FIXED_SETTING(int32, SneakDivider, 6); // Sneak divider value
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(NetworkSettings, virtual DummySettings);
+SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
@@ -122,14 +103,14 @@ FIXED_SETTING(bool, BypassCompatibilityCheck, false); // If true, compatibility 
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(AudioSettings, virtual DummySettings);
+SETTING_GROUP(AudioSettings, virtual BaseSettings);
 VARIABLE_SETTING(bool, DisableAudio, false); // If true, audio is disabled
 VARIABLE_SETTING(int32, SoundVolume, 100); // Sound volume percentage
 VARIABLE_SETTING(int32, MusicVolume, 100); // Music volume percentage
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ViewSettings, virtual DummySettings);
+SETTING_GROUP(ViewSettings, virtual BaseSettings);
 VARIABLE_SETTING(int32, ScreenWidth, 1024); // Screen width in pixels
 VARIABLE_SETTING(int32, ScreenHeight, 768); // Screen height in pixels
 FIXED_SETTING(int32, MonitorWidth); // Monitor width (read only)
@@ -143,7 +124,7 @@ FIXED_SETTING(int32, FadingDuration, 1000); // Fading duration in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(GeometrySettings, virtual DummySettings);
+SETTING_GROUP(GeometrySettings, virtual BaseSettings);
 FIXED_SETTING(bool, MapHexagonal); // Hexagonal map grid (read only)
 FIXED_SETTING(bool, MapSquare); // Square map grid (read only)
 FIXED_SETTING(int32, MapDirCount); // Directions count (read only)
@@ -204,19 +185,27 @@ FIXED_SETTING(int32, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(TimerSettings, virtual DummySettings);
+SETTING_GROUP(TimerSettings, virtual BaseSettings);
 FIXED_SETTING(int32, DebuggingDeltaTimeCap, 100); // Debugging delta time cap in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakerSettings, virtual DummySettings);
-FIXED_SETTING(bool, ForceBaking, false); // If true, baking is forced
+SETTING_GROUP(BakingSettings, virtual BaseSettings);
+FIXED_SETTING(bool, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(int32, MaxBakeOrder, 10); // Maximum bake order
 FIXED_SETTING(vector<string>, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
 FIXED_SETTING(vector<string>, BakeLanguages, "engl"); // Bake languages
-FIXED_SETTING(string, BakeOutput); // Bake output directory
+FIXED_SETTING(string, BakeOutput, "Baking"); // Bake output directory
+FIXED_SETTING(string, ServerResources, "ServerResources"); // Server resources directory
+FIXED_SETTING(string, ClientResources, "Resources"); // Client resources directory
+FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
+FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
+FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
+FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
+FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
+FIXED_SETTING(int32, ZipCompressLevel, 1); // Zip deflate level (0-9)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -268,7 +257,7 @@ VARIABLE_SETTING(bool, ShowMoveCursor, false); // If true, move cursor is shown
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(PlatformSettings, virtual DummySettings);
+SETTING_GROUP(PlatformSettings, virtual BaseSettings);
 FIXED_SETTING(bool, WebBuild); // Web build (read only)
 FIXED_SETTING(bool, WindowsBuild); // Windows build (read only)
 FIXED_SETTING(bool, LinuxBuild); // Linux build (read only)
@@ -280,14 +269,14 @@ FIXED_SETTING(bool, TabletBuild); // Tablet build (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(InputSettings, virtual DummySettings);
+SETTING_GROUP(InputSettings, virtual BaseSettings);
 VARIABLE_SETTING(int32, DoubleClickTime, 500); // Double-click time in milliseconds
 VARIABLE_SETTING(int32, ConsoleHistorySize, 100); // Console history size
 VARIABLE_SETTING(ipos32, MousePos); // Mouse position (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(MapperSettings, virtual DataSettings);
+SETTING_GROUP(MapperSettings, virtual BakingSettings);
 FIXED_SETTING(string, StartMap, ""); // Start map name
 VARIABLE_SETTING(int32, StartHexX, -1); // Start hex X coordinate
 VARIABLE_SETTING(int32, StartHexY, -1); // Start hex Y coordinate
@@ -295,7 +284,7 @@ VARIABLE_SETTING(bool, SplitTilesCollection, true); // If true, tiles collection
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual DataSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual BakingSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(int32, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, DefaultSplash); // Default splash screen
@@ -307,7 +296,7 @@ VARIABLE_SETTING(bool, HelpInfo, false); // If true, help information is shown
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual DataSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
 FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start

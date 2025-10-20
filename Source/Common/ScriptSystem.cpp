@@ -98,7 +98,7 @@ auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<Scr
     return it->second;
 }
 
-void ScriptSystem::AddInitFunc(ScriptFuncDesc* func, int priority)
+void ScriptSystem::AddInitFunc(ScriptFuncDesc* func, int32 priority)
 {
     FO_STACK_TRACE_ENTRY();
 

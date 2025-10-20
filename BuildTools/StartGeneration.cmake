@@ -22,7 +22,6 @@ DeclareOption(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
 DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
-DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
 DeclareOption(FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
@@ -36,8 +35,8 @@ DeclareOption(FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OF
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Client binaries" OFF)
 DeclareOption(FO_BUILD_SERVER "Build Server binaries" OFF)
-DeclareOption(FO_BUILD_EDITOR "Build Editor binaries" OFF)
 DeclareOption(FO_BUILD_MAPPER "Build Mapper binaries" OFF)
+DeclareOption(FO_BUILD_EDITOR "Build Editor binaries" OFF)
 DeclareOption(FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF)
 DeclareOption(FO_BUILD_BAKER "Build Baker binaries" OFF)
 DeclareOption(FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF)
@@ -50,12 +49,6 @@ if(FO_VERBOSE_BUILD)
 	set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "Forced by FOnline" FORCE)
 else()
 	set(CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "Forced by FOnline" FORCE)
-endif()
-
-# Check for continous integration
-if(DEFINED ENV{GITHUB_ACTIONS} OR DEFINED ENV{CI} OR DEFINED ENV{TF_BUILD})
-	StatusMessage("Detected continous integration")
-	set(FO_CONTINOUS_INTEGRATION ON)
 endif()
 
 # Global options
@@ -221,6 +214,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 endif()
 
 # Engine settings
+add_compile_definitions("FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\"")
 add_compile_definitions(FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>)
 add_compile_definitions(FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>)
 add_compile_definitions(FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>)
@@ -244,10 +238,39 @@ include_directories("${FO_ENGINE_ROOT}/Source/Frontend")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR)
 	set(FO_HEADLESS_ONLY OFF)
 else()
 	set(FO_HEADLESS_ONLY ON)
+endif()
+
+# Core libs to build
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_COMMON_LIB ON)
+endif()
+
+if(FO_BUILD_CLIENT OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_CLIENT_LIB ON)
+endif()
+
+if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_SERVER_LIB ON)
+endif()
+
+if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_MAPPER_LIB ON)
+endif()
+
+if(FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_BAKER_LIB ON)
+endif()
+
+if(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER_LIB)
+	set(FO_BUILD_ASCOMPILER_LIB ON)
+endif()
+
+if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_EDITOR_LIB ON)
 endif()
 
 # Shared Windows settings
@@ -270,12 +293,7 @@ if(WIN32)
 	add_compile_options_C_CXX(/bigobj)
 	add_compile_options_C_CXX(/fp:fast)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:/GL>) # Todo: GL/LTCG leads to crashes
-
-	if(FO_CONTINOUS_INTEGRATION)
-		add_compile_options_C_CXX($<${expr_DebugInfo}:/Z7>)
-	else()
-		add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
-	endif()
+	add_compile_options_C_CXX($<${expr_DebugInfo}:/Zi>)
 
 	add_link_options(/INCREMENTAL:NO)
 	add_link_options(/OPT:REF)
@@ -357,8 +375,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)
 	add_link_options($<${expr_FullOptimization}:-flto>)
-	add_link_options(-no-pie)
 	add_link_options(-rdynamic)
+
+	if(NOT FO_BUILD_BAKER)
+		add_link_options(-no-pie)
+	else()
+		add_compile_options_C_CXX(-fPIC)
+	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer

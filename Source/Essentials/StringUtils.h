@@ -45,10 +45,10 @@ public:
 
     struct safe_format_tag
     {
-    };
+    } static constexpr safe_format {};
     struct dynamic_format_tag
     {
-    };
+    } static constexpr dynamic_format {};
 
     constexpr strex() noexcept = default;
 
@@ -165,6 +165,7 @@ public:
     auto lowerUtf8() -> strex&;
     auto upper() -> strex&;
     auto upperUtf8() -> strex&;
+    auto assignVolatile(const volatile char* str, size_t len) -> strex&;
 
     auto formatPath() -> strex&;
     auto extractDir() -> strex&;
@@ -172,6 +173,7 @@ public:
     auto getFileExtension() -> strex&; // Extension without dot and lowered
     auto eraseFileExtension() noexcept -> strex&; // Erase extension with dot
     auto changeFileName(string_view new_name) -> strex&;
+    auto changeFileExtension(string_view new_ext) -> strex&;
     auto combinePath(string_view path) -> strex&;
     auto normalizePathSlashes() -> strex&;
     auto normalizeLineEndings() -> strex&;

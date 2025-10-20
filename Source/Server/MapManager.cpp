@@ -52,25 +52,24 @@ void MapManager::LoadFromResources()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto map_files = _engine->Resources.FilterFiles("fomapb-server");
-
+    const auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
     std::vector<pair<const ProtoMap*, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
-    while (map_files.MoveNext()) {
-        auto map_file_0 = map_files.GetCurFile();
-        const auto map_pid = _engine->Hashes.ToHashedString(map_file_0.GetName());
+    for (const auto& map_file_header : map_files) {
+        const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
         std::launch async_flags;
 
         if constexpr (FO_DEBUG) {
-            async_flags = std::launch::deferred;
+            async_flags = std::launch::async;
         }
         else {
             async_flags = std::launch::async | std::launch::deferred;
         }
 
-        static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, map_file = std::move(map_file_0)]() {
+        static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() {
+            auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
             auto static_map = SafeAlloc::MakeUnique<StaticMap>();
@@ -272,7 +271,6 @@ void MapManager::LoadFromResources()
             static_map->HexItemBillets.shrink_to_fit();
             static_map->ChildItemBillets.shrink_to_fit();
             static_map->StaticItems.shrink_to_fit();
-
             return static_map;
         }));
     }

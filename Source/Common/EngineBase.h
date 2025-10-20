@@ -116,16 +116,16 @@ public:
     void FrameAdvance();
 
     GlobalSettings& Settings;
+    FileSystem Resources;
     GeometryHelper Geometry;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
     ScriptSystem ScriptSys {};
     TimeEventManager TimeEventMngr;
-    FileSystem Resources {};
     unique_del_ptr<uint8> UserData {};
 
 protected:
-    BaseEngine(GlobalSettings& settings, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
+    explicit BaseEngine(GlobalSettings& settings, FileSystem&& resources, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
     ~BaseEngine() override = default;
 };
 

@@ -52,9 +52,7 @@ public:
     auto operator=(MapBaker&&) noexcept = delete;
     ~MapBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fomap"; }
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };
 
 FO_END_NAMESPACE();

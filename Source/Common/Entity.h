@@ -223,7 +223,7 @@ private:
     unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
-    mutable int32 _refCounter {1};
+    mutable std::atomic_int _refCounter {1};
 };
 
 class EntityEventBase

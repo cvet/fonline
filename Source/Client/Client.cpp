@@ -47,12 +47,21 @@ extern void InitClientEngine(FOClient*);
 extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
 #endif
 
+static auto GetClientResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    return resources;
+}
+
 static void InitClientEngineData(EngineData* engine, const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddDataSource(strex(settings.ClientResources).combinePath("Core"));
+    resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Core");
 
     if (const auto restore_info = resources.ReadFile("EngineData.fobin")) {
         Client_RegisterData(engine, restore_info.GetData());
@@ -62,11 +71,8 @@ static void InitClientEngineData(EngineData* engine, const GlobalSettings& setti
     }
 }
 
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator) :
-    BaseEngine(
-        settings,
-        mapper_registrator ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative, //
-        mapper_registrator ? mapper_registrator : [&] { InitClientEngineData(this, settings); }),
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
+    BaseEngine(settings, GetClientResources(settings), PropertiesRelationType::ClientRelative, [&] { InitClientEngineData(this, settings); }),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
@@ -76,22 +82,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
-
-    Resources.AddDataSource(Settings.EmbeddedResources);
-
-    for (const auto& entry : Settings.ClientResourceEntries) {
-        Resources.AddDataSource(strex(Settings.ClientResources).combinePath(entry));
-    }
-
-#if FO_IOS
-    Resources.AddDataSource("../../Documents");
-#elif FO_ANDROID
-    Resources.AddDataSource("@AndroidAssets");
-    // AddDataSource(SDL_AndroidGetInternalStoragePath());
-    // AddDataSource(SDL_AndroidGetExternalStoragePath());
-#elif FO_WEB
-    Resources.AddDataSource("PersistentData");
-#endif
 
     EffectMngr.LoadDefaultEffects();
 
@@ -105,26 +95,20 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
-    Settings.MousePos = App->Input.GetMousePosition();
-
     ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
-    if (mapper_registrator) {
-        return;
-    }
-
 #if FO_ANGELSCRIPT_SCRIPTING
     Init_AngelScript_ClientScriptSystem(this);
 #endif
 
+    ProtoMngr.LoadFromResources(Resources);
+
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadFromResources(Resources);
-
-    ProtoMngr.LoadFromResources(Resources);
 
     // Modules initialization
     InitClientEngine(this);
@@ -221,6 +205,19 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+}
+
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator) :
+    BaseEngine(settings, std::move(resources), PropertiesRelationType::BothRelative, mapper_registrator),
+    EffectMngr(Settings, Resources),
+    SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
+    ResMngr(Resources, SprMngr, *this),
+    SndMngr(Settings, Resources),
+    Keyb(Settings, SprMngr),
+    Cache(Settings.CacheResources),
+    _conn(Settings)
+{
+    FO_STACK_TRACE_ENTRY();
 }
 
 FOClient::~FOClient()
@@ -765,8 +762,7 @@ void FOClient::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-
-        resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
+        resources.AddDirSource(Settings.ClientResources, false, true, true);
 
         auto reader = DataReader(data);
 

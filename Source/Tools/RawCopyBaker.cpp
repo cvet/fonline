@@ -47,35 +47,54 @@ RawCopyBaker::~RawCopyBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-auto RawCopyBaker::IsExtSupported(string_view ext) const -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto it = std::find(_settings->RawCopyFileExtensions.begin(), _settings->RawCopyFileExtensions.end(), ext);
-
-    if (it != _settings->RawCopyFileExtensions.end()) {
-        return true;
-    }
-
-    return false;
-}
-
-void RawCopyBaker::BakeFiles(FileCollection files)
+void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).getFileExtension();
+    // Collect files
+    vector<File> filtered_files;
 
-        if (!IsExtSupported(ext)) {
-            continue;
+    if (target_path.empty()) {
+        for (const auto& file_header : files) {
+            const string ext = strex(file_header.GetPath()).getFileExtension();
+            const auto it = std::find(_settings->RawCopyFileExtensions.begin(), _settings->RawCopyFileExtensions.end(), ext);
+
+            if (it == _settings->RawCopyFileExtensions.end()) {
+                continue;
+            }
+            if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+                continue;
+            }
+
+            filtered_files.emplace_back(File::Load(file_header));
         }
-        if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
-            continue;
+    }
+    else {
+        const string ext = strex(target_path).getFileExtension();
+        const auto it = std::find(_settings->RawCopyFileExtensions.begin(), _settings->RawCopyFileExtensions.end(), ext);
+
+        if (it == _settings->RawCopyFileExtensions.end()) {
+            return;
         }
 
-        auto file = files.GetCurFile();
+        auto file = files.FindFileByPath(target_path);
+
+        if (!file) {
+            return;
+        }
+        if (_bakeChecker && !_bakeChecker(file.GetPath(), file.GetWriteTime())) {
+            return;
+        }
+
+        filtered_files.emplace_back(std::move(file));
+    }
+
+    if (filtered_files.empty()) {
+        return;
+    }
+
+    // Process files
+    for (const auto& file : filtered_files) {
         _writeData(file.GetPath(), file.GetData());
     }
 }

@@ -48,8 +48,17 @@ extern void InitServerEngine(FOServer*);
 extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
 #endif
 
+static auto GetServerResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(IsPackaged() ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    return resources;
+}
+
 FOServer::FOServer(GlobalSettings& settings) :
-    BaseEngine(settings, PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
+    BaseEngine(settings, GetServerResources(settings), PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -90,12 +99,12 @@ FOServer::FOServer(GlobalSettings& settings) :
                     FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file] {
+                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file, &settings_ = Settings] {
                             FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
                             string buf;
                             buf.reserve(health_info.size() + 128);
-                            buf += strex("{} v{}\n\n", App->Settings.GameName, App->Settings.GameVersion);
+                            buf += strex("{} v{}\n\n", settings_.GameName, settings_.GameVersion);
                             buf += health_info;
                             write_health_file(buf);
 
@@ -109,21 +118,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             else {
                 WriteLog("Can't write health file '{}'", health_file_name);
             }
-        }
-
-        return std::nullopt;
-    });
-
-    // Mount resources
-    _starter.AddJob([this] {
-        FO_STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
-
-        WriteLog("Mount data packs");
-
-        Resources.AddDataSource(Settings.EmbeddedResources);
-
-        for (const auto& entry : Settings.ServerResourceEntries) {
-            Resources.AddDataSource(strex(Settings.ServerResources).combinePath(entry));
         }
 
         return std::nullopt;
@@ -330,11 +324,11 @@ FOServer::FOServer(GlobalSettings& settings) :
     _starter.AddJob([this] {
         FO_STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
-        if (Settings.DataSynchronization) {
+        if (IsPackaged()) {
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
+            client_resources.AddDirSource(Settings.ClientResources, false, true, true);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -355,7 +349,9 @@ FOServer::FOServer(GlobalSettings& settings) :
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
-                add_sync_file(strex("{}.zip", resource_entry));
+                if (resource_entry != "Embedded") {
+                    add_sync_file(strex("{}.zip", resource_entry));
+                }
             }
 
             // Complete files list

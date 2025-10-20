@@ -472,7 +472,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else {
-        throw PropertySerializationException("Wrong value type (not string, int, float32 or bool)", value.Type());
+        throw PropertySerializationException("Wrong value type (not string, int, float or bool)", value.Type());
     }
 }
 
