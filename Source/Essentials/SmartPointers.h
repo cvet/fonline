@@ -155,14 +155,15 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
     template<typename U = T>
-    [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> U&
         requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> U&
+        
     {
         return *_ptr;
     }
     template<typename U = T>
-    [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const U&
         requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const U&
     {
         return *_ptr;
     }
@@ -170,14 +171,14 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto getNoConst() const noexcept -> T* { return _ptr; }
     template<typename U = T>
-    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> U&
         requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> U&
     {
         return _ptr[index];
     }
     template<typename U = T>
-    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
         requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _ptr[index];
     }

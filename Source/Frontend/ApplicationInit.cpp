@@ -291,7 +291,7 @@ static void PrebakeResources(BakingSettings& settings)
         Application::ShowProgressWindow("Baking resources... Please wait", [&] { result = bake_resources(&settings); });
 
         if (!result) {
-            throw AppInitException("Resource baking failed. See {}.log for details", lib_name);
+            throw AppInitException("Resource baking failed. See baker log for details");
         }
     }
     else {
