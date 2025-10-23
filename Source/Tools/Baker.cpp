@@ -256,6 +256,10 @@ void MasterBaker::BakeAllInternal()
             }
         }
 
+        if (baked_configs != 0) {
+            force_baking = true;
+        }
+
         WriteLog("Baking of configs complete, baked {} file{}", baked_configs, baked_configs != 1 ? "s" : "");
     }
 
@@ -286,6 +290,10 @@ void MasterBaker::BakeAllInternal()
 
         baking_output.AddDirSource(make_output_path("EngineData"));
 
+        if (engine_data_baked) {
+            force_baking = true;
+        }
+
         WriteLog("Baking of engine data complete, baked {} file{}", engine_data_baked ? 1 : 0, engine_data_baked ? "" : "s");
     }
 
@@ -296,8 +304,7 @@ void MasterBaker::BakeAllInternal()
         const auto bake_resource_pack = [ // clang-format off
             &settings = std::as_const(_settings),
             &baking_output_ = std::as_const(baking_output),
-            &force_baking_ = force_baking,
-            &res_baked_ = res_baked // clang-format on
+            &force_baking, &res_baked // clang-format on
         ](const ResourcePackInfo& res_pack, const string& output_dir) {
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
@@ -311,7 +318,7 @@ void MasterBaker::BakeAllInternal()
             const auto filtered_files = input_files.GetAllFiles();
 
             // Cleanup previous
-            if (force_baking_) {
+            if (force_baking) {
                 const auto del_res_ok = DiskFileSystem::DeleteDir(output_dir);
                 FO_RUNTIME_ASSERT(del_res_ok);
             }
@@ -329,7 +336,7 @@ void MasterBaker::BakeAllInternal()
             };
 
             const auto bake_checker = [&](string_view path, uint64 write_time) -> bool {
-                if (!force_baking_) {
+                if (!force_baking) {
                     actual_resource_names.emplace(exclude_all_ext(path));
                     return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combinePath(path));
                 }
@@ -355,7 +362,7 @@ void MasterBaker::BakeAllInternal()
             }
 
             // Delete outdated
-            if (!force_baking_) {
+            if (!force_baking) {
                 DiskFileSystem::IterateDir(output_dir, true, [&](string_view path, size_t size, uint64 write_time) {
                     ignore_unused(size);
                     ignore_unused(write_time);
@@ -368,7 +375,7 @@ void MasterBaker::BakeAllInternal()
             }
 
             if (baked_files != 0) {
-                res_baked_ = true;
+                res_baked = true;
             }
 
             WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
