@@ -157,7 +157,6 @@ public:
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> U&
-        
     {
         return *_ptr;
     }

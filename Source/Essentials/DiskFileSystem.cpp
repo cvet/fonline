@@ -46,44 +46,44 @@ static auto MakeFileSystemPath(string_view path) -> std::filesystem::path
     return std::u8string(path.begin(), path.end());
 }
 
-auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
+auto DiskFileSystem::OpenFile(string_view path, bool write) -> DiskFile
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {fname, write, false};
+    return {path, write, false};
 }
 
-auto DiskFileSystem::OpenFile(string_view fname, bool write, bool write_through) -> DiskFile
+auto DiskFileSystem::OpenFile(string_view path, bool write, bool write_through) -> DiskFile
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {fname, write, write_through};
+    return {path, write, write_through};
 }
 
-DiskFile::DiskFile(string_view fname, bool write, bool write_through)
+DiskFile::DiskFile(string_view path, bool write, bool write_through)
 {
     FO_STACK_TRACE_ENTRY();
 
     _openedForWriting = write;
     _writeThrough = write_through;
 
-    const auto path = MakeFileSystemPath(fname);
+    const auto fs_path = MakeFileSystemPath(path);
 
     if (write) {
         constexpr auto flags = std::ios::out | std::ios::binary | std::ios::trunc;
-        _file = std::fstream(path, flags);
+        _file = std::fstream(fs_path, flags);
 
         if (!_file) {
-            DiskFileSystem::MakeDirTree(strex(fname).extractDir());
-            _file = std::fstream(path, flags);
+            DiskFileSystem::MakeDirTree(strex(path).extractDir());
+            _file = std::fstream(fs_path, flags);
         }
     }
     else {
         constexpr auto flags = std::ios::in | std::ios::binary;
-        _file = std::fstream(path, flags);
+        _file = std::fstream(fs_path, flags);
 
         if (!_file) {
-            _file = std::fstream(path, flags);
+            _file = std::fstream(fs_path, flags);
         }
     }
 }
