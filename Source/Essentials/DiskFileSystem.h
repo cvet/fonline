@@ -68,7 +68,7 @@ public:
     auto SetReadPos(int32 offset, DiskFileSeek origin) -> bool;
 
 private:
-    DiskFile(string_view fname, bool write, bool write_through);
+    DiskFile(string_view path, bool write, bool write_through);
 
     std::fstream _file {};
     bool _openedForWriting {};
@@ -82,8 +82,8 @@ public:
 
     DiskFileSystem() = delete;
 
-    [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
-    [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
+    [[nodiscard]] static auto OpenFile(string_view path, bool write) -> DiskFile;
+    [[nodiscard]] static auto OpenFile(string_view path, bool write, bool write_through) -> DiskFile;
 
     static auto GetWriteTime(string_view path) -> uint64;
     static auto IsExists(string_view path) -> bool;
