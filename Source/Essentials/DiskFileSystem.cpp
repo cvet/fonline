@@ -307,12 +307,14 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
     }
 }
 
-void DiskFileSystem::MakeDirTree(string_view path)
+auto DiskFileSystem::MakeDirTree(string_view dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto fs_dir = MakeFileSystemPath(dir);
     std::error_code ec;
-    std::filesystem::create_directories(MakeFileSystemPath(path), ec);
+    std::filesystem::create_directories(fs_dir, ec);
+    return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
@@ -320,7 +322,6 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
     FO_STACK_TRACE_ENTRY();
 
     const auto fs_dir = MakeFileSystemPath(dir);
-
     std::error_code ec;
     std::filesystem::remove_all(fs_dir, ec);
     return !std::filesystem::exists(fs_dir, ec) && !ec;
@@ -381,6 +382,19 @@ auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf)
     }
 
     return MemCompare(file_buf.data(), buf.data(), buf.size());
+}
+
+auto DiskFileSystem::TouchFile(string_view path) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = std::ofstream(MakeFileSystemPath(path), std::ios::app);
+
+    if (!file || !file.write("", 0)) {
+        return false;
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE();

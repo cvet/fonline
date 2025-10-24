@@ -92,10 +92,11 @@ public:
     static auto CopyFile(string_view path, string_view copy_path) -> bool;
     static auto RenameFile(string_view path, string_view new_path) -> bool;
     static auto ResolvePath(string_view path) -> string;
-    static void MakeDirTree(string_view path);
+    static auto MakeDirTree(string_view dir) -> bool;
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view dir, bool recursive, FileVisitor visitor);
     static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
+    static auto TouchFile(string_view path) -> bool;
 };
 
 FO_END_NAMESPACE();
