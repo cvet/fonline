@@ -1081,6 +1081,10 @@ public:
 
         auto* collection = GetCollection(collection_name);
 
+        if (collection == nullptr) {
+            return {};
+        }
+
         bson_t filter;
         bson_init(&filter);
 
@@ -1134,6 +1138,10 @@ protected:
         FO_STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
+
+        if (collection == nullptr) {
+            return {};
+        }
 
         bson_t filter;
         bson_init(&filter);
@@ -1211,6 +1219,10 @@ protected:
 
         auto* collection = GetCollection(collection_name);
 
+        if (collection == nullptr) {
+            throw DataBaseException("DbMongo Collection not found on update", collection_name, id);
+        }
+
         bson_t selector;
         bson_init(&selector);
 
@@ -1251,6 +1263,10 @@ protected:
 
         auto* collection = GetCollection(collection_name);
 
+        if (collection == nullptr) {
+            throw DataBaseException("DbMongo Collection not found on delete", collection_name, id);
+        }
+
         bson_t selector;
         bson_init(&selector);
 
@@ -1284,7 +1300,7 @@ private:
         const auto it = _collections.find(collection_name.asStr());
 
         if (it == _collections.end()) {
-            throw DataBaseException("DbMongo Collection not found", collection_name);
+            return nullptr;
         }
 
         return it->second.getNoConst();
