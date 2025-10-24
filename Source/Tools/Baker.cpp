@@ -148,10 +148,13 @@ void MasterBaker::BakeAllInternal()
 
     if (_settings.ForceBaking) {
         WriteLog("Force rebuild all resources");
-        DiskFileSystem::DeleteDir(_settings.BakeOutput);
-        DiskFileSystem::MakeDirTree(_settings.BakeOutput);
+        const auto delete_output_ok = DiskFileSystem::DeleteDir(_settings.BakeOutput);
+        FO_RUNTIME_ASSERT_STR(delete_output_ok, "Unable to delete baking output dir");
         force_baking = true;
     }
+
+    const auto make_output_ok = DiskFileSystem::MakeDirTree(_settings.BakeOutput);
+    FO_RUNTIME_ASSERT_STR(make_output_ok, "Unable to recreate baking output dir");
 
     FileSystem baking_output;
 
@@ -159,12 +162,8 @@ void MasterBaker::BakeAllInternal()
     {
         WriteLog("Bake configs");
 
-        if (force_baking) {
-            const auto del_configs_ok = DiskFileSystem::DeleteDir(make_output_path("Configs"));
-            FO_RUNTIME_ASSERT(del_configs_ok);
-        }
-
-        DiskFileSystem::MakeDirTree(make_output_path("Configs"));
+        const auto make_configs_ok = DiskFileSystem::MakeDirTree(make_output_path("Configs"));
+        FO_RUNTIME_ASSERT(make_configs_ok);
 
         int32 baked_configs = 0;
         int32 settings_errors = 0;
@@ -267,12 +266,8 @@ void MasterBaker::BakeAllInternal()
     {
         WriteLog("Bake engine data");
 
-        if (force_baking) {
-            const auto del_engine_data_ok = DiskFileSystem::DeleteDir(make_output_path("EngineData"));
-            FO_RUNTIME_ASSERT(del_engine_data_ok);
-        }
-
-        DiskFileSystem::MakeDirTree(make_output_path("EngineData"));
+        const auto make_engine_data_ok = DiskFileSystem::MakeDirTree(make_output_path("EngineData"));
+        FO_RUNTIME_ASSERT(make_engine_data_ok);
 
         bool engine_data_baked = false;
         const auto engine_data_bin = BakerEngine::GetRestoreInfo();
@@ -317,13 +312,8 @@ void MasterBaker::BakeAllInternal()
 
             const auto filtered_files = input_files.GetAllFiles();
 
-            // Cleanup previous
-            if (force_baking) {
-                const auto del_res_ok = DiskFileSystem::DeleteDir(output_dir);
-                FO_RUNTIME_ASSERT(del_res_ok);
-            }
-
-            DiskFileSystem::MakeDirTree(output_dir);
+            const auto make_res_output_ok = DiskFileSystem::MakeDirTree(output_dir);
+            FO_RUNTIME_ASSERT(make_res_output_ok);
 
             // Bake files
             std::atomic_int baked_files = 0;
@@ -336,8 +326,9 @@ void MasterBaker::BakeAllInternal()
             };
 
             const auto bake_checker = [&](string_view path, uint64 write_time) -> bool {
+                actual_resource_names.emplace(exclude_all_ext(path));
+
                 if (!force_baking) {
-                    actual_resource_names.emplace(exclude_all_ext(path));
                     return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combinePath(path));
                 }
                 else {
@@ -347,12 +338,18 @@ void MasterBaker::BakeAllInternal()
 
             const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
                 const auto res_path = strex(output_dir).combinePath(path).str();
-                auto res_file = DiskFileSystem::OpenFile(res_path, true);
-                FO_RUNTIME_ASSERT_STR(res_file, strex("Unable to write file '{}'", res_path));
-                const auto res_file_write_ok = res_file.Write(baked_data);
-                FO_RUNTIME_ASSERT(res_file_write_ok);
 
-                ++baked_files;
+                if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
+                    auto res_file = DiskFileSystem::OpenFile(res_path, true);
+                    FO_RUNTIME_ASSERT_STR(res_file, strex("Unable to write file '{}'", res_path));
+                    const auto res_file_write_ok = res_file.Write(baked_data);
+                    FO_RUNTIME_ASSERT(res_file_write_ok);
+                    ++baked_files;
+                }
+                else {
+                    const auto res_file_touch_ok = DiskFileSystem::TouchFile(res_path);
+                    FO_RUNTIME_ASSERT(res_file_touch_ok);
+                }
             };
 
             auto bakers = BaseBaker::SetupBakers(res_pack.Name, settings, bake_checker, write_data, &baking_output_);
@@ -362,17 +359,14 @@ void MasterBaker::BakeAllInternal()
             }
 
             // Delete outdated
-            if (!force_baking) {
-                DiskFileSystem::IterateDir(output_dir, true, [&](string_view path, size_t size, uint64 write_time) {
-                    ignore_unused(size);
-                    ignore_unused(write_time);
+            DiskFileSystem::IterateDir(output_dir, true, [&](string_view path, size_t size, uint64 write_time) {
+                ignore_unused(size, write_time);
 
-                    if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-                        DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
-                        WriteLog("Delete outdated file {}", path);
-                    }
-                });
-            }
+                if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
+                    DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
+                    WriteLog("Delete outdated file {}", path);
+                }
+            });
 
             if (baked_files != 0) {
                 res_baked = true;
