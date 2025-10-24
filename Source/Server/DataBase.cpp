@@ -1181,7 +1181,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        auto* collection = GetCollection(collection_name);
+        auto* collection = GetOrCreateCollection(collection_name);
 
         bson_t insert;
         bson_init(&insert);
@@ -1288,6 +1288,30 @@ private:
         }
 
         return it->second.getNoConst();
+    }
+
+    auto GetOrCreateCollection(hstring collection_name) -> mongoc_collection_t*
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        mongoc_collection_t* collection;
+
+        const auto it = _collections.find(collection_name.asStr());
+
+        if (it == _collections.end()) {
+            collection = mongoc_database_get_collection(_database.get(), collection_name.asStr().c_str());
+
+            if (collection == nullptr) {
+                throw DataBaseException("DbMongo Can't create collection", collection_name);
+            }
+
+            _collections.emplace(collection_name.asStr(), collection);
+        }
+        else {
+            collection = it->second.get();
+        }
+
+        return collection;
     }
 
     raw_ptr<mongoc_client_t> _client {};
