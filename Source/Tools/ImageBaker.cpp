@@ -446,17 +446,6 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
     uint anim_pix_type = 0;
     const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-    // Animate pixels
-    // 0x00 - None
-    // 0x01 - Slime, 229 - 232, 4 frames
-    // 0x02 - Monitors, 233 - 237, 5 frames
-    // 0x04 - FireSlow, 238 - 242, 5 frames
-    // 0x08 - FireFast, 243 - 247, 5 frames
-    // 0x10 - Shoreline, 248 - 253, 6 frames
-    // 0x20 - BlinkingRed, 254, 15 frames
-    uint anim_pix_type = 0;
-    const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
-
     for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         sequence.Frames.resize(collection.SequenceSize);
