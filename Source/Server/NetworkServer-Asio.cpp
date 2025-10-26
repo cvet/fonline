@@ -124,8 +124,10 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
-        _socket->close();
+        if (_socket->is_open()) {
+            _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+            _socket->close();
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
