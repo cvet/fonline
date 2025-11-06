@@ -619,12 +619,18 @@ FO_SCRIPT_API string Client_Game_FormatTags(FOClient* client, string_view text, 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
+#if FO_ENABLE_3D
     auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
-    RUNTIME_ASSERT(model_spr_factory);
+    FO_RUNTIME_ASSERT(model_spr_factory);
 
     for (const auto& fname : fnames) {
         model_spr_factory->GetModelMngr()->PreloadModel(fname);
     }
+
+#else
+    ignore_unused(client, fnames);
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
 }
 
 ///@ ExportMethod
