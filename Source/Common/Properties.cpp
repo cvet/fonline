@@ -1385,6 +1385,45 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             prop->_scriptFuncType = flags[i + 2];
             i += 2;
         }
+        else if (flags[i] == "Max") {
+            check_next_param();
+
+            if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
+                throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
+            }
+
+            if (prop->IsBaseTypeInt()) {
+                prop->_maxValueI = strex(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_maxValueF = strex(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMaxValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Min") {
+            check_next_param();
+
+            if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
+                throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
+            }
+
+            if (prop->IsBaseTypeInt()) {
+                prop->_minValueI = strex(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_minValueF = strex(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMinValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Quest") {
+            // Todo: restore quest variables
+            check_next_param();
+            i += 2;
+        }
         else if (flags[i] == "NullGetterForProto") {
             prop->_isNullGetterForProto = true;
         }
