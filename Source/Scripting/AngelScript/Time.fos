@@ -36,4 +36,17 @@ bool IsTimeoutActive(synctime timeout)
     return timeout > Game.SynchronizedTime;
 }
 
+timespan GameMinutes(int value)
+{
+    return timespan(value * 60 / Settings.TimeMultiplier, SecondsPlace);
+}
+timespan GameHours(int value)
+{
+    return timespan(value * 3600 / Settings.TimeMultiplier, SecondsPlace);
+}
+timespan GameDays(int value)
+{
+    return timespan(value * 86400 / Settings.TimeMultiplier, SecondsPlace);
+}
+
 }
