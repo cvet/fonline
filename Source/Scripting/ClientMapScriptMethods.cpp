@@ -81,6 +81,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
     }
 
     const auto* anim = self->GetEngine()->AnimGetSpr(mapSpr->SprId);
+
     if (anim == nullptr) {
         return;
     }
@@ -96,7 +97,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
 
     if (mapSpr->ProtoId) {
         const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        color = proto->GetColorize() ? proto->GetLightColor() : ucolor::clear;
+        color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
         is_flat = proto->GetDrawFlatten();
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;

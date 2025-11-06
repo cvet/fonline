@@ -2040,14 +2040,6 @@ static constexpr uint8 SAY_DIALOG = 12;
 static constexpr uint8 SAY_APPEND = 13;
 static constexpr uint8 SAY_FLASH_WINDOW = 41;
 
-// Global map
-static constexpr int GM_MAXZONEX = 100;
-static constexpr int GM_MAXZONEY = 100;
-static constexpr size_t GM_ZONES_FOG_SIZE = ((static_cast<size_t>(GM_MAXZONEX) / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
-static constexpr uint8 GM_FOG_FULL = 0;
-static constexpr uint8 GM_FOG_HALF = 1;
-static constexpr uint8 GM_FOG_NONE = 3;
-
 // Coordinates
 static constexpr uint16 MAXHEX_DEFAULT = 200;
 static constexpr uint16 MAXHEX_MIN = 10;
@@ -2104,10 +2096,6 @@ static constexpr uint16 RADIO_DISABLE_RECV = 0x02;
 static constexpr uint8 RADIO_BROADCAST_WORLD = 0;
 static constexpr uint8 RADIO_BROADCAST_MAP = 20;
 static constexpr uint8 RADIO_BROADCAST_LOCATION = 40;
-static constexpr auto RADIO_BROADCAST_ZONE(int x) -> uint8
-{
-    return static_cast<uint8>(100 + std::clamp(x, 1, 100));
-}
 static constexpr uint8 RADIO_BROADCAST_FORCE_ALL = 250;
 
 // Light

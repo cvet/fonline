@@ -182,6 +182,8 @@ public:
     ENTITY_PROPERTY(Public, uint8, LightFlags);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, ucolor, LightColor);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
 
     // Todo: exclude item properties from engine:
     ///@ ExportProperty ScriptFuncType = ItemTrigger
@@ -202,7 +204,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, bool, IsRoofTile);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
-    ///@ MigrationRule Property Item IsFlat DrawFlatten
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DrawFlatten);
     ///@ ExportProperty ReadOnly
@@ -239,13 +240,10 @@ public:
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastSend);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint8, RadioBroadcastRecv);
-    ///@ MigrationRule Property Item IsCanOpen CanOpen
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, CanOpen);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, Opened);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
 };
 
 class CritterProperties : public EntityProperties
@@ -300,8 +298,6 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, ScaleFactor);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist2);
@@ -335,8 +331,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint8>, GlobalMapFog);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty
@@ -351,7 +345,6 @@ public:
     ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, InSneakMode);
-    ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, DeadDrawNoFlatten);
     ///@ ExportProperty

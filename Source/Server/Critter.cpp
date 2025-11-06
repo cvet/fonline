@@ -1020,39 +1020,6 @@ void Critter::Send_ChosenRemoveItem(const Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_GlobalInfo();
-    }
-}
-
-void Critter::Send_GlobalLocation(const Location* loc, bool add)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_GlobalLocation(loc, add);
-    }
-}
-
-void Critter::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_GlobalMapFog(zx, zy, fog);
-    }
-}
-
 void Critter::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     STACK_TRACE_ENTRY();

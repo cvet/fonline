@@ -80,9 +80,6 @@ public:
     void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);
     void Send_ChosenAddItem(const Item* item);
     void Send_ChosenRemoveItem(const Item* item);
-    void Send_GlobalInfo();
-    void Send_GlobalLocation(const Location* loc, bool add);
-    void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
     void Send_Teleport(const Critter* cr, mpos to_hex);
     void Send_Talk();
     void Send_TimeSync();

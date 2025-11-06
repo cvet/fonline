@@ -55,8 +55,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
     Cache(strex(Settings.ResourcesDir).combinePath("Cache.fobin")),
-    _conn(Settings),
-    _globalMapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+    _conn(Settings)
 {
     STACK_TRACE_ENTRY();
 
@@ -178,9 +177,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
     _conn.AddMessageHandler(NETMSG_LOAD_MAP, [this] { Net_OnLoadMap(); });
-    _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
-    _conn.AddMessageHandler(NETMSG_GLOBAL_LOCATION, [this] { Net_OnGlobalLocation(); });
-    _conn.AddMessageHandler(NETMSG_GLOBAL_FOG, [this] { Net_OnGlobalFog(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
     _conn.AddMessageHandler(NETMSG_REMOTE_CALL, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
@@ -234,6 +230,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
@@ -281,6 +278,14 @@ FOClient::~FOClient()
         safe_call([this] { _curLocation->DestroySelf(); });
         _curLocation = nullptr;
     }
+
+    safe_call([this] {
+        for (auto* cr : _globalMapCritters) {
+            cr->DestroySelf();
+        }
+    });
+
+    _globalMapCritters.clear();
 
     safe_call([this] { DestroyInnerEntities(); });
 }
@@ -705,12 +710,7 @@ void FOClient::Net_OnDisconnect()
 {
     STACK_TRACE_ENTRY();
 
-    if (CurMap != nullptr) {
-        CurMap->DestroySelf();
-        CurMap = nullptr;
-
-        CleanupSpriteCache();
-    }
+    UnloadMap();
 
     if (_curPlayer != nullptr) {
         _curPlayer->DestroySelf();
@@ -2090,6 +2090,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     _mapLoaded = true;
 
     auto* chosen = GetChosen();
+
     if (CurMap != nullptr && chosen != nullptr) {
         CurMap->FindSetCenter(chosen->GetHex());
 
@@ -2108,15 +2109,7 @@ void FOClient::Net_OnProperty(uint data_size)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-
-    if (data_size == 0) {
-        msg_len = _conn.InBuf.Read<uint>();
-    }
-    else {
-        msg_len = 0;
-    }
-
+    const uint msg_len = data_size == 0 ? _conn.InBuf.Read<uint>() : 0;
     const auto type = _conn.InBuf.Read<NetProperty>();
 
     ident_t cr_id;
@@ -2332,20 +2325,7 @@ void FOClient::Net_OnLoadMap()
         _conn.InBuf.ReadPropsData(_tempPropertiesDataExt);
     }
 
-
-    if (CurMap != nullptr) {
-        CurMap->DestroySelf();
-        CurMap = nullptr;
-
-        CleanupSpriteCache();
-    }
-
-    if (_curLocation != nullptr) {
-        _curLocation->DestroySelf();
-        _curLocation = nullptr;
-    }
-
-    SndMngr.StopSounds();
+    UnloadMap();
 
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
@@ -2370,76 +2350,6 @@ void FOClient::Net_OnLoadMap()
     }
 
     OnMapLoad.Fire();
-}
-
-void FOClient::Net_OnGlobalInfo()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-
-    _globalMapLocs.clear();
-
-    const auto count_loc = _conn.InBuf.Read<uint16>();
-
-    for (auto i = 0; i < count_loc; i++) {
-        GmapLocation loc;
-        loc.LocId = _conn.InBuf.Read<ident_t>();
-        loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-        loc.LocPos = _conn.InBuf.Read<upos16>();
-        loc.Radius = _conn.InBuf.Read<uint16>();
-        loc.Color = _conn.InBuf.Read<ucolor>();
-        loc.Entrances = _conn.InBuf.Read<uint8>();
-        _globalMapLocs.push_back(loc);
-    }
-
-    auto* fog_data = _globalMapFog.GetData();
-    _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
-}
-
-void FOClient::Net_OnGlobalLocation()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-
-    const auto add = _conn.InBuf.Read<bool>();
-
-    GmapLocation loc;
-    loc.LocId = _conn.InBuf.Read<ident_t>();
-    loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-    loc.LocPos = _conn.InBuf.Read<upos16>();
-    loc.Radius = _conn.InBuf.Read<uint16>();
-    loc.Color = _conn.InBuf.Read<ucolor>();
-    loc.Entrances = _conn.InBuf.Read<uint8>();
-
-    const auto it = std::find_if(_globalMapLocs.begin(), _globalMapLocs.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
-    if (add) {
-        if (it != _globalMapLocs.end()) {
-            *it = loc;
-        }
-        else {
-            _globalMapLocs.push_back(loc);
-        }
-    }
-    else {
-        if (it != _globalMapLocs.end()) {
-            _globalMapLocs.erase(it);
-        }
-    }
-}
-
-void FOClient::Net_OnGlobalFog()
-{
-    STACK_TRACE_ENTRY();
-
-    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
-
-    const auto zx = _conn.InBuf.Read<uint16>();
-    const auto zy = _conn.InBuf.Read<uint16>();
-    const auto fog = _conn.InBuf.Read<uint8>();
-
-    _globalMapFog.Set2Bit(zx, zy, fog);
 }
 
 void FOClient::Net_OnSomeItems()
@@ -2708,6 +2618,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
     }
 
     auto&& anim = SprMngr.LoadSprite(name, atlas_type);
+
     if (!anim) {
         BreakIntoDebugger();
         return 0;
@@ -2743,9 +2654,14 @@ auto FOClient::AnimGetSpr(uint anim_id) -> Sprite*
 {
     STACK_TRACE_ENTRY();
 
+    if (anim_id == 0) {
+        return nullptr;
+    }
+
     if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
         return it->second->Anim.get();
     }
+
     return nullptr;
 }
 

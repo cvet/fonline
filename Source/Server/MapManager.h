@@ -124,8 +124,6 @@ public:
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> NON_NULL const StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> Location*;
-    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool;
-    [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) noexcept -> Map*;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;

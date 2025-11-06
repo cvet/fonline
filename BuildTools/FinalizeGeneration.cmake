@@ -716,8 +716,6 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
-    "${FO_ENGINE_ROOT}/Source/Common/TwoBitMask.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/TwoBitMask.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
     "${FO_ENGINE_ROOT}/Source/Common/UcsTables-Include.h"
@@ -1464,6 +1462,29 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     if(FO_CODE_COVERAGE)
         SetupTestBuild(CodeCoverage)
     endif()
+endif()
+
+# Workaround for crash in MSVC release builds
+if(MSVC)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp" PROPERTIES COMPILE_OPTIONS $<${expr_FullOptimization}:/GL->)
 endif()
 
 # Scripts compilation

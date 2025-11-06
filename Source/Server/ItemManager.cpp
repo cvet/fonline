@@ -453,7 +453,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
 
     NON_CONST_METHOD_HINT();
 
-    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && (broadcast_type < 101 || broadcast_type > 200) /*RADIO_BROADCAST_ZONE*/) {
+    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION) {
         return;
     }
     if ((broadcast_type == RADIO_BROADCAST_MAP || broadcast_type == RADIO_BROADCAST_LOCATION) && !from_map_id) {
@@ -494,10 +494,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         broadcast_loc_id = map->GetLocation()->GetId();
                     }
                 }
-                else if (broadcast < 101 || broadcast > 200 /*RADIO_BROADCAST_ZONE*/) {
-                    continue;
                 }
-            }
             else {
                 broadcast = RADIO_BROADCAST_FORCE_ALL;
             }
@@ -516,12 +513,6 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                             auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
 
                             if (map == nullptr || broadcast_loc_id != map->GetLocation()->GetId()) {
-                                continue;
-                            }
-                        }
-                        else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
-                        {
-                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, cr->GetWorldPos().x, cr->GetWorldPos().y, 0, broadcast - 101)) {
                                 continue;
                             }
                         }
@@ -556,13 +547,6 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                             const auto* loc = map->GetLocation();
 
                             if (broadcast_loc_id != loc->GetId()) {
-                                continue;
-                            }
-                        }
-                        else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
-                        {
-                            const auto* loc = map->GetLocation();
-                            if (!_engine->MapMngr.IsIntersectZone(from_wpos.x, from_wpos.y, 0, loc->GetWorldPos().x, loc->GetWorldPos().y, loc->GetRadius(), broadcast - 101)) {
                                 continue;
                             }
                         }

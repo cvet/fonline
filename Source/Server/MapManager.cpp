@@ -585,37 +585,6 @@ auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) noexcept -> 
     return nullptr;
 }
 
-auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const noexcept -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    const int zl = static_cast<int>(_engine->Settings.GlobalMapZoneLength);
-    const IRect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
-    const IRect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
-
-    return r1.Left <= r2.Right && r2.Left <= r1.Right && r1.Top <= r2.Bottom && r2.Top <= r1.Bottom;
-}
-
-auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto wx = zx * static_cast<int>(_engine->Settings.GlobalMapZoneLength);
-    const auto wy = zy * static_cast<int>(_engine->Settings.GlobalMapZoneLength);
-
-    vector<Location*> locs;
-
-    for (auto&& [id, loc] : _engine->EntityMngr.GetLocations()) {
-        if (!loc->IsDestroyed() && loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldPos().x, loc->GetWorldPos().y, loc->GetRadius(), zone_radius)) {
-            locs.emplace_back(loc);
-        }
-    }
-
-    return locs;
-}
-
 void MapManager::KickPlayersToGlobalMap(Map* map)
 {
     STACK_TRACE_ENTRY();
@@ -669,13 +638,6 @@ void MapManager::DestroyLocation(Location* loc)
 
         if (!has_entities) {
             break;
-        }
-    }
-
-    // Inform players on global map about this
-    for (auto* cr : _engine->CrMngr.GetPlayerCritters(true)) {
-        if (CheckKnownLoc(cr, loc->GetId())) {
-            cr->Send_GlobalLocation(loc, false);
         }
     }
 
