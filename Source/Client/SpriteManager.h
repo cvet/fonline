@@ -197,7 +197,7 @@ public:
     auto GetSpriteFactory(std::type_index ti) -> SpriteFactory*;
     void CleanupSpriteCache();
 
-    void PushScissor(int l, int t, int r, int b);
+    void PushScissor(irect rect);
     void PopScissor();
 
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color) const;
@@ -252,14 +252,14 @@ private:
     RenderTarget* _rtContoursMid {};
 
     vector<DipData> _dipQueue {};
-    RenderDrawBuffer* _spritesDrawBuf {};
-    RenderDrawBuffer* _primitiveDrawBuf {};
-    RenderDrawBuffer* _flushDrawBuf {};
-    RenderDrawBuffer* _contourDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _primitiveDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _flushDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _contourDrawBuf {};
     size_t _flushVertCount {};
 
-    vector<int> _scissorStack {};
-    IRect _scissorRect {};
+    vector<irect> _scissorStack {};
+    irect _scissorRect {};
 
     bool _contoursAdded {};
     bool _contourClearMid {};

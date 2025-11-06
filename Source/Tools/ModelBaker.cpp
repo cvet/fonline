@@ -107,7 +107,7 @@ struct BakerBone
             return this;
         }
 
-        for (auto&& child : Children) {
+        for (auto& child : Children) {
             if (BakerBone* bone = child->Find(name); bone != nullptr) {
                 return bone;
             }
@@ -135,7 +135,7 @@ struct BakerBone
 
         writer.Write<uint>(static_cast<uint>(Children.size()));
 
-        for (auto&& child : Children) {
+        for (const auto& child : Children) {
             child->Save(writer);
         }
     }
@@ -253,7 +253,7 @@ void ModelBaker::BakeFiles(FileCollection&& files)
 
     int errors = 0;
 
-    for (auto&& file_baking : file_bakings) {
+    for (auto& file_baking : file_bakings) {
         try {
             file_baking.get();
         }
@@ -304,7 +304,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint
     auto fbx_scene_cleanup = ScopeCallback([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });
 
     // Convert data
-    const auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
+    auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
     ConvertFbxMeshes(root_bone.get(), root_bone.get(), fbx_scene->root_node);
     const auto animations = ConvertFbxAnimations(fbx_scene, fname);
 

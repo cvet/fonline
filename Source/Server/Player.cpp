@@ -41,10 +41,10 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) noexcept :
+Player::Player(FOServer* engine, ident_t id, unique_ptr<ClientConnection> connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
-    Connection {connection},
+    Connection {std::move(connection)},
     _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
 {
     STACK_TRACE_ENTRY();
@@ -53,8 +53,6 @@ Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const
 Player::~Player()
 {
     STACK_TRACE_ENTRY();
-
-    delete Connection;
 }
 
 void Player::SetName(string_view name)

@@ -95,7 +95,7 @@ public:
     TimeEventManager TimeEventMngr;
     unique_ptr<ScriptSystem> ScriptSys {};
     FileSystem Resources {};
-    unique_del_ptr<void> UserData {};
+    unique_del_ptr<uint8> UserData {};
 
 protected:
     FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);

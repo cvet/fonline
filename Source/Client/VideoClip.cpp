@@ -187,16 +187,12 @@ void VideoClip::Stop()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _impl->Stopped = true;
 }
 
 void VideoClip::Pause()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->Paused = true;
     _impl->PauseTime = Timer::CurTime();
@@ -205,8 +201,6 @@ void VideoClip::Pause()
 void VideoClip::Resume()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (_impl->Stopped) {
         _impl->StartTime = Timer::CurTime();
@@ -223,16 +217,12 @@ void VideoClip::SetLooped(bool enabled)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _impl->Looped = enabled;
 }
 
 void VideoClip::SetTime(time_duration time)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     _impl->StartTime = Timer::CurTime() - time;
 }
@@ -372,8 +362,6 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 int VideoClip::DecodePacket()
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     int b = 0;
     int rv = 0;

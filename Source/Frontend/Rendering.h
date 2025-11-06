@@ -366,9 +366,9 @@ public:
     auto operator=(Renderer&&) noexcept -> Renderer& = delete;
     virtual ~Renderer() = default;
 
-    [[nodiscard]] virtual auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
+    [[nodiscard]] virtual auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() -> IRect = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
@@ -377,7 +377,7 @@ public:
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
     virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
-    virtual void EnableScissor(ipos pos, isize size) = 0;
+    virtual void EnableScissor(irect rect) = 0;
     virtual void DisableScissor() = 0;
     virtual void OnResizeWindow(isize size) = 0;
 };
@@ -385,9 +385,9 @@ public:
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture* override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
@@ -396,7 +396,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(ipos pos, isize size) override;
+    void EnableScissor(irect rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };
@@ -408,9 +408,9 @@ class OpenGL_Renderer final : public Renderer
 public:
     static constexpr auto RING_BUFFER_LENGTH = 300;
 
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture* override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return true; }
@@ -419,7 +419,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(ipos pos, isize size) override;
+    void EnableScissor(irect rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };
@@ -431,9 +431,9 @@ public:
 class Direct3D_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture* override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
@@ -442,7 +442,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(ipos pos, isize size) override;
+    void EnableScissor(irect rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize size) override;
 };

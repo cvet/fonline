@@ -117,7 +117,7 @@ static bool BaseFrameBufObjBinded {};
 static isize BaseFrameBufSize {};
 static isize TargetSize {};
 static mat44 ProjectionMatrixColMaj {};
-static RenderTexture* DummyTexture {};
+static unique_ptr<RenderTexture> DummyTexture {};
 static IRect ViewPortRect {};
 
 // ReSharper disable CppInconsistentNaming
@@ -375,11 +375,11 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth);
+    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -414,23 +414,23 @@ auto OpenGL_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
 
-    return opengl_tex.release();
+    return std::move(opengl_tex);
 }
 
-auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static);
+    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static);
 
-    return opengl_dbuf.release();
+    return std::move(opengl_dbuf);
 }
 
-auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
+auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader);
+    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -559,7 +559,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         }
     }
 
-    return opengl_effect.release();
+    return std::move(opengl_effect);
 }
 
 auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
@@ -684,7 +684,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
     }
 }
 
-void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
+void OpenGL_Renderer::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
@@ -697,16 +697,16 @@ void OpenGL_Renderer::EnableScissor(ipos pos, isize size)
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        l = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
-        t = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
-        r = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
-        b = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
+        l = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
+        t = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
+        r = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
+        b = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
-        l = ViewPortRect.Left + pos.x;
-        t = ViewPortRect.Top + pos.y;
-        r = ViewPortRect.Left + pos.x + size.width;
-        b = ViewPortRect.Top + pos.y + size.height;
+        l = ViewPortRect.Left + rect.x;
+        t = ViewPortRect.Top + rect.y;
+        r = ViewPortRect.Left + rect.x + rect.width;
+        b = ViewPortRect.Top + rect.y + rect.height;
     }
 
     GL(glEnable(GL_SCISSOR_TEST));
@@ -1028,9 +1028,9 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture.get())));
 #else
-    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture.get()));
 #endif
 
     GLenum draw_mode = GL_TRIANGLES;
@@ -1091,12 +1091,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 
     // Uniforms
     if (NeedProjBuf && !ProjBuf.has_value()) {
-        auto&& proj_buf = ProjBuf = ProjBuffer();
+        auto& proj_buf = ProjBuf = ProjBuffer();
         MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
     if (NeedMainTexBuf && !MainTexBuf.has_value()) {
-        auto&& main_tex_buf = MainTexBuf = MainTexBuffer();
+        auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
@@ -1125,7 +1125,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 #undef UBO_UPLOAD_BUFFER
     }
 
-    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
+    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture.get());
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
@@ -1173,7 +1173,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         if (NeedModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture);
+                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture.get());
                     GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
                     GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
                     GL(glActiveTexture(GL_TEXTURE0));

@@ -668,18 +668,16 @@ FO_SCRIPT_API Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 
     // Find online
     auto* player = server->EntityMngr.GetPlayer(id);
+
     if (player != nullptr) {
         player->AddRef();
         return player;
     }
 
     // Load from db
-    auto* dummy_net_conn = SafeAlloc::MakeRaw<DummyNetConnection>(server->Settings);
-
-    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeRaw<ClientConnection>(dummy_net_conn));
+    auto dummy_net_conn = SafeAlloc::MakeShared<DummyNetConnection>(server->Settings);
+    player = SafeAlloc::MakeRaw<Player>(server, id, SafeAlloc::MakeUnique<ClientConnection>(dummy_net_conn));
     player->SetName(name);
-
-    dummy_net_conn->Release();
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
         player->MarkAsDestroying();
@@ -923,12 +921,6 @@ FO_SCRIPT_API bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring 
     server->BeginDialog(cr, nullptr, dlgPack, hex, ignoreDistance);
 
     return cr->Talk.Type == TalkType::Hex && cr->Talk.TalkHex == hex;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
-{
-    return server->ItemMngr.GetItemStatistics(pid);
 }
 
 ///@ ExportMethod

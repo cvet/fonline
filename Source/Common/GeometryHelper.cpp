@@ -651,7 +651,7 @@ auto GeometryHelper::GetHexOffsets(mpos hex) const -> tuple<const int16*, const 
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (_sxEven == nullptr) {
+    if (!_sxEven) {
         InitializeHexOffsets();
     }
 

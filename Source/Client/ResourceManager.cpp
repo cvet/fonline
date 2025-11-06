@@ -61,22 +61,21 @@ void ResourceManager::IndexFiles()
         }
     }
 
-    auto&& spr = dynamic_pointer_cast<AtlasSprite>(_sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites));
-    RUNTIME_ASSERT(spr);
+    auto any_spr = _sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites);
+    auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+    RUNTIME_ASSERT(atlas_spr);
     _critterDummyAnimFrames = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, 1, 100, 1);
-    _critterDummyAnimFrames->Size = spr->Size;
-    _critterDummyAnimFrames->Spr[0] = std::move(spr);
+    _critterDummyAnimFrames->Size = atlas_spr->Size;
+    _critterDummyAnimFrames->Spr[0] = std::move(atlas_spr);
     RUNTIME_ASSERT(_critterDummyAnimFrames);
 
     _itemHexDummyAnim = _sprMngr.LoadSprite("ItemStub.png", AtlasType::MapSprites);
     RUNTIME_ASSERT(_itemHexDummyAnim);
 }
 
-auto ResourceManager::GetItemDefaultSpr() -> const shared_ptr<Sprite>&
+auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     return _itemHexDummyAnim;
 }
@@ -84,8 +83,6 @@ auto ResourceManager::GetItemDefaultSpr() -> const shared_ptr<Sprite>&
 auto ResourceManager::GetCritterDummyFrames() -> const SpriteSheet*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     return _critterDummyAnimFrames.get();
 }
@@ -157,10 +154,10 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                 if (_animNameResolver.ResolveCritterAnimation(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
                     if (!anim_name.empty()) {
-                        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(anim_name, AtlasType::MapSprites, true));
+                        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(anim_name, AtlasType::MapSprites, true));
 
                         // Fix by dirs
-                        for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
+                        for (uint d = 0; anim && d < anim->DirCount; d++) {
                             auto* dir_anim = anim->GetDir(d);
 
                             // Process flags
@@ -206,7 +203,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                     }
 
                     // If pass changed and animation not loaded than try again
-                    if (anim == nullptr && pass != pass_base) {
+                    if (!anim && pass != pass_base) {
                         pass_base = pass;
                         continue;
                     }
@@ -281,7 +278,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 return nullptr;
             }
 
-            auto&& anim_merge_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
+            auto anim_merge_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
 
             for (uint d = 0; d < anim->DirCount; d++) {
                 auto* anim_merge = anim_merge_base->GetDir(d);
@@ -313,7 +310,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
         // Clone
         if (anim != nullptr) {
-            auto&& anim_clone_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
+            auto anim_clone_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
 
             for (uint d = 0; d < anim->DirCount; d++) {
                 auto* anim_clone = anim_clone_base->GetDir(d);
@@ -454,13 +451,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint state_an
     // Try load from fofrm
     {
         const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
-        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
+        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
         const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
-        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
+        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     auto* anim_ = _critterFrames.emplace(FalloutAnimMapId(model_name, state_anim, action_anim), std::move(anim)).first->second.get();
@@ -548,6 +545,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
     STACK_TRACE_ENTRY();
 
     const string ext = strex(model_name).getFileExtension();
+
     if (ext != "fo3d") {
         const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
         return frames != nullptr ? frames : _critterDummyAnimFrames.get();
@@ -569,7 +567,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
     STACK_TRACE_ENTRY();
 
     if (const auto it = _critterModels.find(model_name); it != _critterModels.end()) {
-        auto&& model_spr = it->second;
+        auto& model_spr = it->second;
 
         model_spr->GetModel()->SetDir(dir, false);
         model_spr->GetModel()->SetAnimation(state_anim, action_anim, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
@@ -579,7 +577,8 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
         return model_spr.get();
     }
 
-    auto&& model_spr = dynamic_pointer_cast<ModelSprite>(_sprMngr.LoadSprite(model_name, AtlasType::MapSprites));
+    auto model_spr = dynamic_ptr_cast<ModelSprite>(_sprMngr.LoadSprite(model_name, AtlasType::MapSprites));
+
     if (!model_spr) {
         return nullptr;
     }

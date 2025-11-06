@@ -92,67 +92,22 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     }
 }
 
-auto ModelAnimation::GetFileName() const noexcept -> string_view
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _animFileName;
-}
-
-auto ModelAnimation::GetName() const noexcept -> string_view
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _animName;
-}
-
-auto ModelAnimation::GetBoneOutputs() const noexcept -> const vector<BoneOutput>&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _boneOutputs;
-}
-
-auto ModelAnimation::GetDuration() const noexcept -> float
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _duration;
-}
-
-auto ModelAnimation::GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _bonesHierarchy;
-}
-
 ModelAnimationController::ModelAnimationController(uint track_count)
 {
     STACK_TRACE_ENTRY();
 
-    if (track_count != 0u) {
-        _sets = SafeAlloc::MakeRaw<vector<ModelAnimation*>>();
-        _outputs = SafeAlloc::MakeRaw<vector<Output>>();
+    if (track_count != 0) {
+        _sets = SafeAlloc::MakeShared<vector<ModelAnimation*>>();
+        _outputs = SafeAlloc::MakeShared<vector<Output>>();
         _tracks.resize(track_count);
     }
 }
 
-ModelAnimationController::~ModelAnimationController()
+auto ModelAnimationController::Clone() const -> unique_ptr<ModelAnimationController>
 {
     STACK_TRACE_ENTRY();
 
-    if (!_cloned) {
-        delete _sets;
-        delete _outputs;
-    }
-}
-
-auto ModelAnimationController::Clone() const -> ModelAnimationController*
-{
-    STACK_TRACE_ENTRY();
-
-    auto* clone = SafeAlloc::MakeRaw<ModelAnimationController>(0);
+    auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
     clone->_cloned = true;
     clone->_sets = _sets;
     clone->_outputs = _outputs;
@@ -165,8 +120,6 @@ auto ModelAnimationController::Clone() const -> ModelAnimationController*
 void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto& o = _outputs->emplace_back();
     o.BoneName = bone_name;
@@ -182,14 +135,12 @@ void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     _sets->emplace_back(animation);
 }
 
-auto ModelAnimationController::GetAnimationSet(uint index) const noexcept -> const ModelAnimation*
+auto ModelAnimationController::GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*
 {
-    NO_STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (index >= _sets->size()) {
         return nullptr;
@@ -200,7 +151,7 @@ auto ModelAnimationController::GetAnimationSet(uint index) const noexcept -> con
 
 auto ModelAnimationController::GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*
 {
-    NO_STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (const auto* set : *_sets) {
         if (set->GetName() == name) {
@@ -213,23 +164,23 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const noe
 
 auto ModelAnimationController::GetTrackEnable(uint track) const noexcept -> bool
 {
-    NO_STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _tracks[track].Enabled;
 }
 
 auto ModelAnimationController::GetTrackPosition(uint track) const noexcept -> float
 {
-    NO_STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _tracks[track].Position;
 }
 
-auto ModelAnimationController::GetNumAnimationSets() const noexcept -> uint
+auto ModelAnimationController::GetAnimationSetCount() const noexcept -> size_t
 {
-    NO_STACK_TRACE_ENTRY();
+    STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_sets->size());
+    return _sets->size();
 }
 
 void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
@@ -287,13 +238,6 @@ void ModelAnimationController::Reset()
     for (auto& t : _tracks) {
         t.Events.clear();
     }
-}
-
-auto ModelAnimationController::GetTime() const noexcept -> float
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return _curTime;
 }
 
 void ModelAnimationController::AddEventEnable(uint track, bool enable, float start_time)

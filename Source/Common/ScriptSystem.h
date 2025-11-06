@@ -315,11 +315,11 @@ protected:
     void MapEnginePlainType(string_view type_name)
     {
         static_assert(!std::is_pointer_v<T>);
-        auto&& raw_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::PlainDataAccessor<T>>());
+        auto raw_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::PlainDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(T).name(), raw_type);
-        auto&& ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
+        auto ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(T*).name(), ref_type);
-        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
+        auto arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(vector<T>).name(), arr_type);
     }
 
@@ -327,11 +327,11 @@ protected:
     void MapEngineObjectType(string_view type_name)
     {
         static_assert(!std::is_pointer_v<T>);
-        auto&& obj_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ObjectDataAccessor<T>>());
+        auto obj_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ObjectDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(T).name(), obj_type);
-        auto&& ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
+        auto ref_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ReferenceDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(T*).name(), ref_type);
-        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
+        auto arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(vector<T>).name(), arr_type);
     }
 
@@ -339,10 +339,10 @@ protected:
     void MapEngineEntityType(string_view type_name)
     {
         static_assert(!std::is_pointer_v<T>);
-        auto&& ent_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::EntityDataAccessor<T>>());
+        auto ent_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::EntityDataAccessor<T>>());
         _engineToScriptType.emplace(typeid(T*).name(), ent_type);
         _engineToScriptType.emplace(typeid(T).name(), ent_type); // Access to entity by typeid(*entity)
-        auto&& arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T*>>());
+        auto arr_type = SafeAlloc::MakeShared<ScriptTypeInfo>(type_name, SafeAlloc::MakeShared<ScriptTypeInfo::ArrayDataAccessor<T*>>());
         _engineToScriptType.emplace(typeid(vector<T*>).name(), arr_type);
     }
 
@@ -371,7 +371,7 @@ public:
     static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            if (auto&& init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
+            if (auto init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
                 if (!init_func(entity, first_time)) {
                     return false;
                 }

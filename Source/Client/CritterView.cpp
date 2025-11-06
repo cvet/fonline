@@ -161,15 +161,6 @@ auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetInvItems() noexcept -> const vector<ItemView*>&
-{
-    NO_STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _invItems;
-}
-
 auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
 {
     STACK_TRACE_ENTRY();

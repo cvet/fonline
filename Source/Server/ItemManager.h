@@ -57,9 +57,6 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
-    [[nodiscard]] auto GetItemsStatistics() const -> string;
-
     auto CreateItem(hstring pid, uint count, const Properties* props) -> NON_NULL Item*;
     auto SplitItem(Item* item, uint count) -> NON_NULL Item*;
     auto AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> NON_NULL Item*;
@@ -74,7 +71,6 @@ public:
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, vector<uint16>& channels);
     void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, string_view text, bool unsafe_text, TextPackName text_pack, TextPackKey str_num, string_view lexems);
-    void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
     [[nodiscard]] auto GetItemHolder(Item* item) -> NON_NULL Entity*;

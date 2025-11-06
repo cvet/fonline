@@ -58,7 +58,7 @@ public:
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
-    [[nodiscard]] static auto SetupBakers(const BakerSettings& settings, BakeCheckerCallback bake_checker, WriteDataCallback write_data) -> vector<unique_ptr<BaseBaker>>;
+    [[nodiscard]] static auto SetupBakers(const BakerSettings& settings, const BakeCheckerCallback& bake_checker, const WriteDataCallback& write_data) -> vector<unique_ptr<BaseBaker>>;
     [[nodiscard]] virtual auto IsExtSupported(string_view ext) const -> bool = 0;
 
     virtual void BakeFiles(FileCollection&& files) = 0;
@@ -112,6 +112,7 @@ private:
 
     FileSystem& _inputResources;
     BakerSettings& _settings;
-    vector<unique_ptr<BaseBaker>> _bakers {};
+    mutable vector<unique_ptr<BaseBaker>> _bakers {};
     mutable unordered_map<string, unique_ptr<File>> _bakedFiles {};
+    bool _nonConstHelper {};
 };

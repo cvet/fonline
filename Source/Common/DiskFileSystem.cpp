@@ -159,8 +159,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -176,8 +174,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -195,8 +191,6 @@ auto DiskFile::Clear() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
 
@@ -210,8 +204,6 @@ auto DiskFile::Clear() -> bool
 auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -319,8 +311,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -334,8 +324,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -357,8 +345,6 @@ auto DiskFile::Clear() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
 
@@ -375,8 +361,6 @@ auto DiskFile::Clear() -> bool
 auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -482,8 +466,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -497,8 +479,6 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -520,8 +500,6 @@ auto DiskFile::Clear() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
 
@@ -538,8 +516,6 @@ auto DiskFile::Clear() -> bool
 auto DiskFile::SetReadPos(int offset, DiskFileSeek origin) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -854,8 +830,6 @@ auto DiskFile::Write(string_view str) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);
 
@@ -869,8 +843,6 @@ auto DiskFile::Write(string_view str) -> bool
 auto DiskFile::Write(const_span<uint8> data) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_impl);
     RUNTIME_ASSERT(_openedForWriting);

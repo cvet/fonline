@@ -902,8 +902,6 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!entity->GetId()) {
         const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
         const auto id = ident_t {id_num};
@@ -939,8 +937,6 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity->GetId());
 
@@ -1221,8 +1217,6 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const std::function<void(Player* player, bool owner)>& callback)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto view_callback = [&](Player* player, bool owner) {
         if (player != nullptr) {

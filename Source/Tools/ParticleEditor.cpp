@@ -97,7 +97,7 @@ struct ParticleEditor::Impl
     // Renderers
     void DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj);
     // Helpers
-    void DrawSparkArray(const char* label, bool opened, std::function<size_t()> get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw);
+    void DrawSparkArray(const char* label, bool opened, const std::function<size_t()>& get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw);
     void DrawSparkNullableField(const char* label, const std::function<SPK::Ref<SPK::SPKObject>()>& get, const std::function<void()>& del, const std::function<void()>& add_draw);
 
     unique_ptr<EffectManager> EffectMngr {};
@@ -145,18 +145,19 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
         const auto* data = file.GetCurBuf();
 
-        auto* tex = App->Render.CreateTexture({w, h}, true, false);
+        auto tex = App->Render.CreateTexture({w, h}, true, false);
         tex->UpdateTextureRegion({}, {w, h}, reinterpret_cast<const ucolor*>(data));
 
-        _impl->LoadedTextures.emplace_back(tex);
+        RenderTexture* tex_raw_ptr = tex.get();
+        _impl->LoadedTextures.emplace_back(std::move(tex));
 
-        return {tex, {0.0f, 0.0f, 1.0f, 1.0f}};
+        return {tex_raw_ptr, {0.0f, 0.0f, 1.0f, 1.0f}};
     });
 
     _impl->Particle = _impl->ParticleMngr->CreateParticle(asset_path);
     _impl->SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
 
-    _impl->RenderTarget.reset(App->Render.CreateTexture({200, 200}, true, true));
+    _impl->RenderTarget = App->Render.CreateTexture({200, 200}, true, true);
 
     for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
         _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
@@ -986,7 +987,7 @@ void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
     DRAW_SPK_FLOAT_FLOAT("MinForce", "MaxForce", getForceMin, getForceMax, setForce);
     DRAW_SPK_BOOL("UseFullZone", isFullZone, setUseFullZone);
-    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto&& zone) { obj->setZone(zone); });
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
@@ -1025,7 +1026,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& o
     STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
-    DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto zone) { obj->setNormalZone(zone); });
+    DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto&& zone) { obj->setNormalZone(zone); });
     DRAW_SPK_BOOL("NormalEmitter InvertedNormals", isInverted, setInverted);
 }
 
@@ -1044,7 +1045,7 @@ void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModif
     STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
-    DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto zone) { obj->setZone(zone); });
+    DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto&& zone) { obj->setZone(zone); });
     DRAW_SPK_COMBO("ZoneTest", getZoneTest, setZoneTest, "ZONE_TEST_INSIDE", "ZONE_TEST_OUTSIDE", "ZONE_TEST_INTERSECT", "ZONE_TEST_ENTER", "ZONE_TEST_LEAVE", "ZONE_TEST_ALWAYS");
 }
 
@@ -1179,7 +1180,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAct
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!"Not implemented");
+    RUNTIME_ASSERT_STR(false, "Not implemented");
 
     DrawSparkAction(obj);
 
@@ -1216,7 +1217,8 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
         }
 
         vector<const char*> eff_items;
-        for (auto&& eff : AllEffects) {
+
+        for (const auto& eff : AllEffects) {
             eff_items.push_back(eff.c_str());
         }
 
@@ -1237,7 +1239,8 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
         }
 
         vector<const char*> tex_items;
-        for (auto&& tex : AllTextures) {
+
+        for (const auto& tex : AllTextures) {
             tex_items.push_back(tex.c_str());
         }
 
@@ -1265,7 +1268,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 }
 
 // Helpers
-void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::function<size_t()> get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw)
+void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const std::function<size_t()>& get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw)
 {
     STACK_TRACE_ENTRY();
 

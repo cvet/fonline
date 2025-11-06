@@ -163,16 +163,16 @@ FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
         WriteLog("Start networking");
 
-        if (auto* conn_server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto conn_server = NetServerBase::StartInterthreadServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto* conn_server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto conn_server = NetServerBase::StartTcpServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 
-        if (auto* conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); conn_server != nullptr) {
-            _connectionServers.emplace_back(conn_server);
+        if (auto conn_server = NetServerBase::StartWebSocketsServer(Settings, [this](shared_ptr<NetConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
         }
 #endif
 
@@ -353,7 +353,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource(strex("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
+            client_resources.AddDataSource("ClientResources", DataSourceType::DirRoot);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -459,7 +459,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 try {
                     EntityMngr.LoadEntities();
                 }
-                catch (std::exception& ex) {
+                catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                     errors++;
                 }
@@ -549,16 +549,17 @@ FOServer::FOServer(GlobalSettings& settings) :
                 std::scoped_lock locker(_newConnectionsLocker);
 
                 if (!_newConnections.empty()) {
-                    for (auto* conn : _newConnections) {
-                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, conn));
+                    while (!_newConnections.empty()) {
+                        auto conn = std::move(_newConnections.back());
+                        _newConnections.pop_back();
+                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRaw<Player>(this, ident_t {}, std::move(conn)));
                     }
-                    _newConnections.clear();
                 }
             }
 
             for (auto* player : copy_hold_ref(_unloginedPlayers)) {
                 try {
-                    ProcessConnection(player->Connection);
+                    ProcessConnection(player->Connection.get());
                     ProcessUnloginedPlayer(player);
                 }
                 catch (const NetBufferException& ex) {
@@ -587,7 +588,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 try {
                     RUNTIME_ASSERT(!player->IsDestroyed());
 
-                    ProcessConnection(player->Connection);
+                    ProcessConnection(player->Connection.get());
                     ProcessPlayer(player);
                 }
                 catch (const NetBufferException& ex) {
@@ -742,9 +743,8 @@ FOServer::~FOServer()
         ScriptSys.reset();
 
         // Shutdown servers
-        for (auto* conn_server : _connectionServers) {
+        for (auto& conn_server : _connectionServers) {
             conn_server->Shutdown();
-            delete conn_server;
         }
         _connectionServers.clear();
 
@@ -772,9 +772,8 @@ FOServer::~FOServer()
         {
             std::scoped_lock locker(_newConnectionsLocker);
 
-            for (auto* conn : _newConnections) {
+            for (auto& conn : _newConnections) {
                 conn->HardDisconnect();
-                delete conn;
             }
             _newConnections.clear();
         }
@@ -864,8 +863,6 @@ void FOServer::DrawGui(string_view server_name)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     constexpr auto default_buf_size = 1000000; // ~1mb
     string buf;
     buf.reserve(default_buf_size);
@@ -913,13 +910,6 @@ void FOServer::DrawGui(string_view server_name)
             // Locations and maps
             if (ImGui::TreeNode("Locations and maps")) {
                 buf = MapMngr.GetLocationAndMapsStatistics();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-                ImGui::TreePop();
-            }
-
-            // Items count
-            if (ImGui::TreeNode("Items count")) {
-                buf = ItemMngr.GetItemsStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -983,7 +973,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     return result;
 }
 
-void FOServer::OnNewConnection(NetConnection* net_connection)
+void FOServer::OnNewConnection(shared_ptr<NetConnection> net_connection)
 {
     STACK_TRACE_ENTRY();
 
@@ -994,14 +984,14 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
 
     std::scoped_lock locker(_newConnectionsLocker);
 
-    _newConnections.emplace_back(SafeAlloc::MakeRaw<ClientConnection>(net_connection));
+    _newConnections.emplace_back(SafeAlloc::MakeUnique<ClientConnection>(std::move(net_connection)));
 }
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
-    auto* connection = unlogined_player->Connection;
+    auto* connection = unlogined_player->Connection.get();
 
     if (connection->IsHardDisconnected()) {
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
@@ -1130,7 +1120,7 @@ void FOServer::ProcessPlayer(Player* player)
 
         switch (msg) {
         case NETMSG_PING:
-            Process_Ping(player->Connection);
+            Process_Ping(player->Connection.get());
             break;
         case NETMSG_SEND_TEXT:
             Process_Text(player);
@@ -1434,9 +1424,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         case 4:
             result = "WIP";
-            break;
-        case 5:
-            result = ItemMngr.GetItemsStatistics();
             break;
         default:
             break;
@@ -2257,8 +2244,6 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     // Net protocol
     const auto proto_ver = connection->InBuf.Read<uint>();
     const auto outdated = proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION);
@@ -2780,8 +2765,6 @@ void FOServer::Process_StopMove(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
 
@@ -2793,12 +2776,14 @@ void FOServer::Process_StopMove(Player* player)
     [[maybe_unused]] const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     auto* map = EntityMngr.GetMap(map_id);
+
     if (map == nullptr) {
         BreakIntoDebugger();
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
+
     if (cr == nullptr) {
         BreakIntoDebugger();
         return;
@@ -2812,6 +2797,7 @@ void FOServer::Process_StopMove(Player* player)
     }
 
     uint zero_speed = 0;
+
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         BreakIntoDebugger();
         player->Send_Moving(cr);
@@ -2826,23 +2812,24 @@ void FOServer::Process_Dir(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     auto* map = EntityMngr.GetMap(map_id);
+
     if (map == nullptr) {
         return;
     }
 
     auto* cr = map->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
 
     int16 checked_dir_angle = dir_angle;
+
     if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
         BreakIntoDebugger();
         player->Send_Dir(cr);
@@ -3048,8 +3035,6 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto* server_entity = dynamic_cast<ServerEntity*>(entity);
 
     ident_t entry_id;
@@ -3065,7 +3050,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         entry_id = ident_t {1};
     }
 
-    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
+    auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
 
     hstring collection_name;
 
@@ -3254,14 +3239,8 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
-    const auto old_count = entity->GetProperties().GetValue<uint>(prop);
 
-    if (new_count > 0 && (item->GetStackable() || new_count == 1)) {
-        const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
-
-        ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
-    }
-    else {
+    if (new_count == 0 || (!item->GetStackable() && new_count != 1)) {
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
@@ -4375,7 +4354,7 @@ void FOServer::Process_Dialog(Player* player)
 
     Critter* cr = player->GetControlledCritter();
 
-    auto&& bin = player->Connection->InBuf;
+    auto& bin = player->Connection->InBuf;
 
     const auto cr_id = bin.Read<ident_t>();
     const auto dlg_pack_id = bin.Read<hstring>(*this);
@@ -4592,8 +4571,6 @@ void FOServer::Process_RemoteCall(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
     const auto rpc_num = player->Connection->InBuf.Read<uint>();
 
@@ -4636,8 +4613,6 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     bool result = false;
 
     switch (demand.ValuesCount) {
@@ -4662,36 +4637,34 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     switch (result.ValuesCount) {
     case 0:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
             return func(master, slave) ? func.GetResult() : 0;
         }
         break;
     case 1:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0;
         }
         break;
     case 2:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0;
         }
         break;
     case 3:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0;
         }
         break;
     case 4:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0;
         }
         break;
     case 5:
-        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
             return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0;
         }
         break;

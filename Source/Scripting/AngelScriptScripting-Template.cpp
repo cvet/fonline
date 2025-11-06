@@ -952,7 +952,7 @@ static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Sc
 
             for (asUINT i = 0; i < args.size(); i++, it++) {
                 auto* arg = *it;
-                const auto& arg_type = func_desc->ArgsType[i];
+                auto& arg_type = func_desc->ArgsType[i];
 
                 if (arg_type->Accessor->IsArray()) {
                     CScriptArray* arr = CreateASArray(ctx->GetEngine(), strex("{}[]", arg_type->Name).c_str());
@@ -3628,7 +3628,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     auto game_engine_releaser = ScopeCallback([game_engine]() noexcept {
 #if COMPILER_MODE
-        game_engine->ScriptSys.release();
+        (void)game_engine->ScriptSys.release();
 #endif
         game_engine->Release();
     });

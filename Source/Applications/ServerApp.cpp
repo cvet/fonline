@@ -66,8 +66,9 @@ int main(int argc, char** argv) // Handled by SDL
 
         list<vector<string>> log_buffer;
         std::mutex log_buffer_locker;
+
         SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
-            if (auto&& lines = strex(str).split('\n'); !lines.empty()) {
+            if (auto lines = strex(str).split('\n'); !lines.empty()) {
                 auto locker = std::unique_lock {log_buffer_locker};
                 log_buffer.emplace_back(std::move(lines));
             }
@@ -131,7 +132,7 @@ int main(int argc, char** argv) // Handled by SDL
                         auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 
                         try {
-                            auto&& client = SafeAlloc::MakeUnique<FOClient>(App->Settings, &App->MainWindow, false);
+                            auto client = SafeAlloc::MakeUnique<FOClient>(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }
@@ -152,8 +153,9 @@ int main(int argc, char** argv) // Handled by SDL
 
                         {
                             auto locker = std::unique_lock {log_buffer_locker};
-                            for (auto&& lines : log_buffer) {
-                                for (auto&& line : lines) {
+
+                            for (const auto& lines : log_buffer) {
+                                for (const auto& line : lines) {
                                     log_lines += line + '\n';
                                 }
                             }
@@ -202,7 +204,7 @@ int main(int argc, char** argv) // Handled by SDL
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
                     auto locker = std::unique_lock {log_buffer_locker};
 
-                    for (auto&& lines : log_buffer) {
+                    for (const auto& lines : log_buffer) {
                         if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                             for (size_t i = 1; i < lines.size(); i++) {
                                 ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
@@ -230,7 +232,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
 
-            for (auto&& client : Data->Clients) {
+            for (auto& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
                 auto hide_msg_box = ScopeCallback([]() noexcept { ShowExceptionMessageBox(false); });
 

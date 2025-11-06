@@ -146,7 +146,7 @@ static ID3D11DepthStencilView* CurDepthStencil {};
 static ID3D11SamplerState* PointSampler {};
 static ID3D11SamplerState* LinearSampler {};
 static ID3D11Texture2D* OnePixStagingTex {};
-static RenderTexture* DummyTexture {};
+static unique_ptr<RenderTexture> DummyTexture {};
 static mat44 ProjectionMatrixColMaj {};
 static bool ScissorEnabled {};
 static D3D11_RECT ScissorRect {};
@@ -480,11 +480,11 @@ void Direct3D_Renderer::Present()
     D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 }
 
-auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth);
+    auto d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
     tex_desc.Width = size.width;
@@ -539,23 +539,23 @@ auto Direct3D_Renderer::CreateTexture(isize size, bool linear_filtered, bool wit
     const auto d3d_create_shader_res_view = D3DDevice->CreateShaderResourceView(d3d_tex->TexHandle, &tex_view_desc, &d3d_tex->ShaderTexView);
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_shader_res_view));
 
-    return d3d_tex.release();
+    return std::move(d3d_tex);
 }
 
-auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static);
+    auto d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static);
 
-    return d3d_dbuf.release();
+    return std::move(d3d_dbuf);
 }
 
-auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
+auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     STACK_TRACE_ENTRY();
 
-    auto&& d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader);
+    auto d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
@@ -733,7 +733,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
         }
     }
 
-    return d3d_effect.release();
+    return std::move(d3d_effect);
 }
 
 auto Direct3D_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
@@ -871,7 +871,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     }
 }
 
-void Direct3D_Renderer::EnableScissor(ipos pos, isize size)
+void Direct3D_Renderer::EnableScissor(irect rect)
 {
     STACK_TRACE_ENTRY();
 
@@ -879,16 +879,16 @@ void Direct3D_Renderer::EnableScissor(ipos pos, isize size)
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetSize.width);
         const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetSize.height);
 
-        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(pos.x) * x_ratio);
-        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(pos.y) * y_ratio);
-        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(pos.x + size.width) * x_ratio);
-        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(pos.y + size.height) * y_ratio);
+        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(rect.x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(rect.y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(rect.x + rect.width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(rect.y + rect.height) * y_ratio);
     }
     else {
-        ScissorRect.left = ViewPortRect.Left + pos.x;
-        ScissorRect.top = ViewPortRect.Top + pos.y;
-        ScissorRect.right = ViewPortRect.Left + pos.x + size.width;
-        ScissorRect.bottom = ViewPortRect.Top + pos.y + size.height;
+        ScissorRect.left = ViewPortRect.Left + rect.x;
+        ScissorRect.top = ViewPortRect.Top + rect.y;
+        ScissorRect.right = ViewPortRect.Left + rect.x + rect.width;
+        ScissorRect.bottom = ViewPortRect.Top + rect.y + rect.height;
     }
 
     ScissorEnabled = true;
@@ -1207,9 +1207,9 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
     const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #else
-    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture)); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #endif
 
     auto draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1268,12 +1268,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
     };
 
     if (NeedProjBuf && !ProjBuf.has_value()) {
-        auto&& proj_buf = ProjBuf = ProjBuffer();
+        auto& proj_buf = ProjBuf = ProjBuffer();
         MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
     }
 
     if (NeedMainTexBuf && !MainTexBuf.has_value()) {
-        auto&& main_tex_buf = MainTexBuf = MainTexBuffer();
+        auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
@@ -1295,7 +1295,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
 #undef CBUF_UPLOAD_BUFFER
 
-    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
     const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->IndCount : indices_to_draw);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
@@ -1368,7 +1368,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         if (NeedModelTex[pass]) {
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 if (_posModelTex[pass][i] != -1) {
-                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+                    const auto* model_tex = static_cast<Direct3D_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
                     D3DDeviceContext->PSSetShaderResources(_posModelTex[pass][i], 1, &model_tex->ShaderTexView);
                     D3DDeviceContext->PSSetSamplers(_posModelTex[pass][i], 1, find_tex_sampler(model_tex));
                 }

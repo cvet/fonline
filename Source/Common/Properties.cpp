@@ -240,7 +240,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         }
     };
 
-    for (auto&& prop : _registrator->_registeredProperties) {
+    for (const auto& prop : _registrator->_registeredProperties) {
         if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), _registrator->_hashResolver, _registrator->_nameResolver);
 
@@ -250,7 +250,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
             else if (value.Type() == AnyData::ValueType::Array) {
                 const auto& arr = value.AsArray();
 
-                for (auto&& arr_entry : arr) {
+                for (const auto& arr_entry : arr) {
                     add_hash(arr_entry.AsString());
                 }
             }
@@ -258,17 +258,17 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 const auto& dict = value.AsDict();
 
                 if (prop->IsDictKeyHash()) {
-                    for (auto&& dict_entry : dict) {
+                    for (const auto& dict_entry : dict) {
                         add_hash(dict_entry.first);
                     }
                 }
 
                 if (prop->IsBaseTypeHash()) {
-                    for (auto&& dict_entry : dict) {
+                    for (const auto& dict_entry : dict) {
                         if (dict_entry.second.Type() == AnyData::ValueType::Array) {
                             const auto& dict_arr = dict_entry.second.AsArray();
 
-                            for (auto&& dict_arr_entry : dict_arr) {
+                            for (const auto& dict_arr_entry : dict_arr) {
                                 add_hash(dict_arr_entry.AsString());
                             }
                         }
@@ -1259,7 +1259,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     RUNTIME_ASSERT(flags.size() >= 3);
 
-    auto&& prop = SafeAlloc::MakeUnique<Property>(this);
+    auto prop = SafeAlloc::MakeUnique<Property>(this);
 
     prop->_propName = flags[0];
     RUNTIME_ASSERT(_accessMap.count(flags[1]) != 0);
@@ -1548,7 +1548,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         }
     }
 
-    for (const auto& other_prop : _registeredProperties) {
+    for (auto& other_prop : _registeredProperties) {
         if (other_prop->_podDataOffset == Property::INVALID_DATA_MARKER || other_prop == prop) {
             continue;
         }

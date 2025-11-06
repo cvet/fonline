@@ -149,6 +149,15 @@
 #define DISABLE_WARNINGS_POP()
 #endif
 
+// Force inline helper
+#if defined(__GNUC__)
+#define FORCE_INLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define FORCE_INLINE __forceinline
+#else
+#define FORCE_INLINE inline
+#endif
+
 // String formatting lib
 #if CPLUSPLUS_20
 #include <format>
@@ -210,14 +219,135 @@ using std::tuple;
 using std::variant;
 
 // Smart pointers
-using std::shared_ptr;
-using std::unique_ptr;
-using std::weak_ptr;
+template<typename T>
+class propagate_const
+{
+    template<typename U>
+    friend class propagate_const;
+
+public:
+    using element_type = typename T::element_type;
+
+    FORCE_INLINE constexpr propagate_const() noexcept :
+        _smartPtr(nullptr)
+    {
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr propagate_const(nullptr_t) noexcept :
+        _smartPtr(nullptr)
+    {
+    }
+    FORCE_INLINE auto operator=(nullptr_t) noexcept -> propagate_const&
+    {
+        _smartPtr = nullptr;
+        return *this;
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr propagate_const(T&& p) noexcept :
+        _smartPtr(std::move(p))
+    {
+    }
+    FORCE_INLINE explicit constexpr propagate_const(const T& p) noexcept :
+        _smartPtr(p)
+    {
+    }
+    FORCE_INLINE explicit constexpr propagate_const(element_type* p) noexcept :
+        _smartPtr(p)
+    {
+    }
+    FORCE_INLINE explicit constexpr propagate_const(element_type* p, std::function<void(element_type*)>&& deleter) noexcept :
+        _smartPtr(p, std::move(deleter))
+    {
+    }
+
+    FORCE_INLINE propagate_const(propagate_const&& p) noexcept :
+        _smartPtr(std::move(p._smartPtr))
+    {
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr propagate_const(propagate_const<U>&& p) noexcept :
+        _smartPtr(std::move(p._smartPtr))
+    {
+    }
+    FORCE_INLINE auto operator=(propagate_const&& p) noexcept -> propagate_const&
+    {
+        _smartPtr = std::move(p._smartPtr);
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(propagate_const<U>&& p) noexcept -> propagate_const&
+    {
+        _smartPtr = std::move(p._smartPtr);
+        return *this;
+    }
+
+#if 1 // Copy constructible/assignable
+    FORCE_INLINE propagate_const(const propagate_const& p) noexcept :
+        _smartPtr(p._smartPtr)
+    {
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FORCE_INLINE constexpr propagate_const(const propagate_const<U>& p) noexcept :
+        _smartPtr(p._smartPtr)
+    {
+    }
+    FORCE_INLINE auto operator=(const propagate_const& p) noexcept -> propagate_const&
+    {
+        _smartPtr = p._smartPtr;
+        return *this;
+    }
+    template<typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
+    FORCE_INLINE auto operator=(const propagate_const<U>& p) noexcept -> propagate_const&
+    {
+        _smartPtr = p._smartPtr;
+        return *this;
+    }
+#endif
+
+#if 0 // Implicit conversion to pointer
+    // ReSharper disable once CppNonExplicitConversionOperator
+   FORCE_INLINE operator element_type*() noexcept { return _smartPtr.get(); }
+    // ReSharper disable once CppNonExplicitConversionOperator
+   FORCE_INLINE operator const element_type*() const noexcept { return _smartPtr.get(); }
+#endif
+
+    FORCE_INLINE ~propagate_const() noexcept = default;
+
+    [[nodiscard]] FORCE_INLINE explicit operator bool() const noexcept { return !!_smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto operator==(const propagate_const& other) const noexcept -> bool { return _smartPtr == other._smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto operator!=(const propagate_const& other) const noexcept -> bool { return _smartPtr != other._smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto operator->() noexcept -> element_type* { return _smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto operator->() const noexcept -> const element_type* { return _smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto operator*() noexcept -> element_type& { return *_smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto operator*() const noexcept -> const element_type& { return *_smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto get() noexcept -> element_type* { return _smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto get() const noexcept -> const element_type* { return _smartPtr.get(); }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) noexcept -> element_type& { return _smartPtr[index]; }
+    [[nodiscard]] FORCE_INLINE auto operator[](size_t index) const noexcept -> const element_type& { return _smartPtr[index]; }
+    [[nodiscard]] FORCE_INLINE auto release() noexcept -> element_type* { return _smartPtr.release(); }
+    [[nodiscard]] FORCE_INLINE auto lock() noexcept { return propagate_const<std::shared_ptr<element_type>>(_smartPtr.lock()); }
+    [[nodiscard]] FORCE_INLINE auto use_count() const noexcept -> size_t { return _smartPtr.use_count(); }
+    [[nodiscard]] FORCE_INLINE auto get_underlying() noexcept -> T& { return _smartPtr; }
+    [[nodiscard]] FORCE_INLINE auto get_underlying() const noexcept -> const T& { return _smartPtr; }
+    FORCE_INLINE void reset(element_type* p = nullptr) noexcept { _smartPtr.reset(p); }
+
+private:
+    T _smartPtr;
+};
 
 template<typename T>
-using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
+using shared_ptr = propagate_const<std::shared_ptr<T>>;
+template<typename T>
+using unique_ptr = propagate_const<std::unique_ptr<T>>;
+template<typename T>
+using weak_ptr = propagate_const<std::weak_ptr<T>>;
 
-template<class T>
+template<typename T>
+using unique_del_ptr = propagate_const<std::unique_ptr<T, std::function<void(T*)>>>;
+
+template<typename T>
 struct release_delete
 {
     constexpr release_delete() noexcept = default;
@@ -230,7 +360,7 @@ struct release_delete
 };
 
 template<typename T>
-using unique_release_ptr = unique_ptr<T, release_delete<T>>;
+using unique_release_ptr = propagate_const<std::unique_ptr<T, release_delete<T>>>;
 
 // Safe memory allocation
 extern void InitBackupMemoryChunks();
@@ -238,26 +368,26 @@ extern auto FreeBackupMemoryChunk() noexcept -> bool;
 extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
 [[noreturn]] extern void ReportAndExit(string_view message) noexcept;
 
-template<class T>
+template<typename T>
 class SafeAllocator
 {
 public:
     using value_type = T;
 
     SafeAllocator() noexcept = default;
-    template<class U>
+    template<typename U>
     // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr SafeAllocator(const SafeAllocator<U>& other) noexcept
     {
         (void)other;
     }
-    template<class U>
+    template<typename U>
     [[nodiscard]] auto operator==(const SafeAllocator<U>& other) const noexcept -> bool
     {
         (void)other;
         return true;
     }
-    template<class U>
+    template<typename U>
     [[nodiscard]] auto operator!=(const SafeAllocator<U>& other) const noexcept -> bool
     {
         (void)other;
@@ -436,17 +566,23 @@ using vector = std::vector<T, SafeAllocator<T>>;
 
 // Smart pointer helpers
 template<typename T, typename U>
-std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
+inline auto dynamic_ptr_cast(unique_ptr<U>&& p) noexcept -> unique_ptr<T>
 {
     if (T* casted = dynamic_cast<T*>(p.get())) {
         (void)p.release();
-        return std::unique_ptr<T> {casted};
+        return unique_ptr<T> {casted};
     }
     return {};
 }
 
+template<typename T, typename U>
+inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
+{
+    return std::dynamic_pointer_cast<T>(p.get_underlying());
+}
+
 template<typename T>
-inline constexpr void make_if_not_exists(unique_ptr<T>& ptr)
+inline void make_if_not_exists(unique_ptr<T>& ptr)
 {
     if (!ptr) {
         ptr = SafeAlloc::MakeUnique<T>();
@@ -454,7 +590,7 @@ inline constexpr void make_if_not_exists(unique_ptr<T>& ptr)
 }
 
 template<typename T>
-inline constexpr void destroy_if_empty(unique_ptr<T>& ptr) noexcept
+inline void destroy_if_empty(unique_ptr<T>& ptr) noexcept
 {
     if (ptr && ptr->empty()) {
         ptr.reset();
@@ -784,13 +920,6 @@ struct FMTNS::formatter<T, std::enable_if_t<is_atomic_v<T>, char>> : formatter<d
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)
 #define CONCAT_INDIRECT(x, y) x##y
-#if defined(__GNUC__)
-#define FORCE_INLINE __attribute__((always_inline)) inline
-#elif defined(_MSC_VER)
-#define FORCE_INLINE __forceinline
-#else
-#define FORCE_INLINE inline
-#endif
 
 // Todo: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 #if FO_TRACY

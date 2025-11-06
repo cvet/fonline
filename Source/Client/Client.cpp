@@ -329,8 +329,6 @@ auto FOClient::GetChosen() noexcept -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (_chosen != nullptr && _chosen->IsDestroyed()) {
         _chosen->Release();
         _chosen = nullptr;
@@ -466,7 +464,6 @@ void FOClient::MainLoop()
 
     {
         SprMngr.BeginScene({0, 0, 0});
-        auto end_scene = ScopeCallback([this]() noexcept { safe_call([this] { SprMngr.EndScene(); }); });
 
         // Quake effect
         ProcessScreenEffectQuake();
@@ -483,6 +480,8 @@ void FOClient::MainLoop()
 
         ProcessVideo();
         ProcessScreenEffectFading();
+
+        SprMngr.EndScene();
     }
 }
 
@@ -1343,6 +1342,7 @@ void FOClient::Net_OnCritterDir()
     }
 
     auto* cr = CurMap->GetCritter(cr_id);
+
     if (cr != nullptr) {
         cr->ChangeLookDirAngle(dir_angle);
     }
@@ -1771,6 +1771,7 @@ void FOClient::Net_OnCritterPos()
     RUNTIME_ASSERT(CurMap->GetSize().IsValidPos(hex));
 
     auto* cr = CurMap->GetCritter(cr_id);
+
     if (cr == nullptr) {
         return;
     }
@@ -2607,7 +2608,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
     STACK_TRACE_ENTRY();
 
     if (const auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
-        auto&& iface_anim = it->second;
+        auto& iface_anim = it->second;
 
         iface_anim->Anim->PlayDefault();
 
@@ -2617,7 +2618,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
         return _ifaceAnimIndex;
     }
 
-    auto&& anim = SprMngr.LoadSprite(name, atlas_type);
+    auto anim = SprMngr.LoadSprite(name, atlas_type);
 
     if (!anim) {
         BreakIntoDebugger();
@@ -2626,7 +2627,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
 
     anim->PlayDefault();
 
-    auto&& iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
+    auto iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
 
     iface_anim->Name = name;
     iface_anim->Anim = anim;
@@ -2641,7 +2642,7 @@ void FOClient::AnimFree(uint anim_id)
     STACK_TRACE_ENTRY();
 
     if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
-        auto&& iface_anim = it->second;
+        auto& iface_anim = it->second;
 
         iface_anim->Anim->Stop();
 
@@ -3595,14 +3596,15 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
     }
 
     const auto names = strex(video_name).split('|');
+    RUNTIME_ASSERT(!names.empty());
+    const auto file = Resources.ReadFile(names.front());
 
-    const auto file = Resources.ReadFile(names[0]);
     if (!file) {
         return;
     }
 
     _video = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    _videoTex = unique_ptr<RenderTexture> {App->Render.CreateTexture(_video->GetSize(), true, false)};
+    _videoTex = App->Render.CreateTexture(_video->GetSize(), true, false);
 
     if (names.size() > 1) {
         SndMngr.StopMusic();

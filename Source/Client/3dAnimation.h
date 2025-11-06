@@ -58,11 +58,11 @@ public:
     auto operator=(ModelAnimation&&) noexcept = delete;
     ~ModelAnimation() = default;
 
-    [[nodiscard]] auto GetFileName() const noexcept -> string_view;
-    [[nodiscard]] auto GetName() const noexcept -> string_view;
-    [[nodiscard]] auto GetBoneOutputs() const noexcept -> const vector<BoneOutput>&;
-    [[nodiscard]] auto GetDuration() const noexcept -> float;
-    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>&;
+    [[nodiscard]] auto GetFileName() const noexcept -> string_view { return _animFileName; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view { return _animName; }
+    [[nodiscard]] auto GetBoneOutputs() const noexcept -> const vector<BoneOutput>& { return _boneOutputs; }
+    [[nodiscard]] auto GetDuration() const noexcept -> float { return _duration; }
+    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>& { return _bonesHierarchy; }
 
     void Load(DataReader& reader, HashResolver& hash_resolver);
 
@@ -82,15 +82,15 @@ public:
     ModelAnimationController(ModelAnimationController&&) noexcept = default;
     auto operator=(const ModelAnimationController&) = delete;
     auto operator=(ModelAnimationController&&) noexcept = delete;
-    ~ModelAnimationController();
+    ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Clone() const -> ModelAnimationController*;
-    [[nodiscard]] auto GetAnimationSet(uint index) const noexcept -> const ModelAnimation*;
+    [[nodiscard]] auto Clone() const -> unique_ptr<ModelAnimationController>;
+    [[nodiscard]] auto GetAnimationSet(size_t index) const noexcept -> const ModelAnimation*;
     [[nodiscard]] auto GetAnimationSetByName(string_view name) const noexcept -> const ModelAnimation*;
     [[nodiscard]] auto GetTrackEnable(uint track) const noexcept -> bool;
     [[nodiscard]] auto GetTrackPosition(uint track) const noexcept -> float;
-    [[nodiscard]] auto GetNumAnimationSets() const noexcept -> uint;
-    [[nodiscard]] auto GetTime() const noexcept -> float;
+    [[nodiscard]] auto GetAnimationSetCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetTime() const noexcept -> float { return _curTime; }
 
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
@@ -167,12 +167,11 @@ private:
     }
 
     bool _cloned {};
-    vector<ModelAnimation*>* _sets {};
-    vector<Output>* _outputs {};
+    shared_ptr<vector<ModelAnimation*>> _sets {};
+    shared_ptr<vector<Output>> _outputs {};
     vector<Track> _tracks {};
     float _curTime {};
     bool _interpolationDisabled {};
-    bool _nonConstHelper {};
 };
 
 #endif

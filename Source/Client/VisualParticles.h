@@ -123,5 +123,4 @@ private:
     double _elapsedTime {};
     bool _forceDraw {};
     time_point _lastDrawTime {};
-    bool _nonConstHelper {};
 };

@@ -73,6 +73,8 @@ ScriptSystem::ScriptSystem()
 
 auto ScriptSystem::ResolveScriptType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _engineToScriptType.find(ti.name());
 
     if (it == _engineToScriptType.end()) {
@@ -148,7 +150,7 @@ void ScriptSystem::Process()
 
     NON_CONST_METHOD_HINT();
 
-    for (auto&& callback : _loopCallbacks) {
+    for (auto& callback : _loopCallbacks) {
         try {
             callback();
         }

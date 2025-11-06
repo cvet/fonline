@@ -92,7 +92,7 @@ int main(int argc, char** argv)
         try {
             AngelScriptCompiler_ServerScriptSystem().InitAngelScriptScripting(resources);
         }
-        catch (std::exception& ex) {
+        catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
                 ReportExceptionAndExit(ex);
             }
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
         try {
             AngelScriptCompiler_ClientScriptSystem().InitAngelScriptScripting(resources);
         }
-        catch (std::exception& ex) {
+        catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
                 ReportExceptionAndExit(ex);
             }
@@ -118,7 +118,7 @@ int main(int argc, char** argv)
         try {
             AngelScriptCompiler_SingleScriptSystem().InitAngelScriptScripting(resources);
         }
-        catch (std::exception& ex) {
+        catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
                 ReportExceptionAndExit(ex);
             }
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
         try {
             AngelScriptCompiler_MapperScriptSystem().InitAngelScriptScripting(resources);
         }
-        catch (std::exception& ex) {
+        catch (const std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
                 ReportExceptionAndExit(ex);
             }

@@ -63,8 +63,6 @@ public:
     [[nodiscard]] auto IsAnim() const noexcept -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto IsNameVisible() const noexcept -> bool;
-    [[nodiscard]] auto GetNameTextPos() const -> ipos;
-    [[nodiscard]] auto GetNameTextInfo(bool& name_visible, int& lines) const -> irect;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return _model != nullptr; }
     [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }

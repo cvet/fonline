@@ -50,7 +50,7 @@ class ClientConnection final
 {
 public:
     ClientConnection() = delete;
-    explicit ClientConnection(NetConnection* net_connection);
+    explicit ClientConnection(shared_ptr<NetConnection> net_connection);
     ClientConnection(const ClientConnection&) = delete;
     ClientConnection(ClientConnection&&) noexcept = delete;
     auto operator=(const ClientConnection&) = delete;
@@ -85,7 +85,6 @@ public:
     uint UpdateFilePortion {};
 
 private:
-    NetConnection* _netConnection;
+    shared_ptr<NetConnection> _netConnection;
     bool _gracefulDisconnected {};
-    bool _nonConstHelper {};
 };

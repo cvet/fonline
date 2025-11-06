@@ -146,7 +146,7 @@ void MapView::OnDestroySelf()
         item->DestroySelf();
     }
 
-    for (auto&& pattern : _spritePatterns) {
+    for (auto& pattern : _spritePatterns) {
         pattern->Sprites.clear();
         pattern->FinishCallback = nullptr;
         pattern->Finished = true;
@@ -363,8 +363,8 @@ void MapView::Process()
             _prevMapDayTime = map_day_time;
             _prevGlobalDayTime = global_day_time;
 
-            auto&& day_time = GetDayTime();
-            auto&& day_color = GetDayColor();
+            const auto day_time = GetDayTime();
+            const auto day_color = GetDayColor();
 
             _mapDayColor = GenericUtils::GetColorDay(day_time, day_color, map_day_time, &_mapDayLightCapacity);
             _globalDayColor = GenericUtils::GetColorDay(day_time, day_color, global_day_time, &_globalDayLightCapacity);
@@ -735,8 +735,6 @@ auto MapView::GetItem(mpos hex, hstring pid) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     if (!_mapSize.IsValidPos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
         return nullptr;
     }
@@ -753,8 +751,6 @@ auto MapView::GetItem(mpos hex, hstring pid) -> ItemHexView*
 auto MapView::GetItem(mpos hex, ident_t id) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if (!_mapSize.IsValidPos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
         return nullptr;
@@ -791,8 +787,6 @@ auto MapView::GetItems(mpos hex) -> const vector<ItemHexView*>&
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto& field = _hexField->GetCellForReading(hex);
 
     return field.Items;
@@ -801,8 +795,6 @@ auto MapView::GetItems(mpos hex) -> const vector<ItemHexView*>&
 auto MapView::GetTile(mpos hex, bool is_roof, int layer) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
@@ -820,8 +812,6 @@ auto MapView::GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
@@ -831,8 +821,6 @@ auto MapView::GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&
 auto MapView::GetRectForText(mpos hex) -> IRect
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     auto result = IRect();
 
@@ -901,7 +889,7 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+    auto spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
 
     if (!spr) {
         return nullptr;
@@ -910,14 +898,14 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     spr->Prewarm();
     spr->PlayDefault();
 
-    auto&& pattern = SafeAlloc::MakeUniqueReleasable<SpritePattern>();
+    auto pattern = SafeAlloc::MakeUniqueReleasable<SpritePattern>();
 
     pattern->SprName = name;
     pattern->SprCount = count;
     pattern->Sprites.emplace_back(std::move(spr));
 
     for (uint i = 1; i < count; i++) {
-        auto&& next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+        auto next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
 
         next_spr->Prewarm();
         next_spr->PlayDefault();
@@ -935,7 +923,6 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
     };
 
     _spritePatterns.emplace_back(std::move(pattern));
-
     return _spritePatterns.back().get();
 }
 
@@ -1079,7 +1066,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
 
         // Track
         if (_isShowTrack && GetHexTrack(hex) != 0) {
-            auto&& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
+            const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
             const auto hex_offset = ipos {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (spr ? spr->Size.height / 2 : 0)};
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1089,7 +1076,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
 
         // Hex lines
         if (_isShowHex) {
-            auto&& spr = _picHex[0];
+            const auto& spr = _picHex[0];
             const auto hex_offset = ipos {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0};
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, hex_offset, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1193,7 +1180,7 @@ void MapView::RebuildMap(ipos screen_raw_hex)
 
         // Patterns
         if (!_spritePatterns.empty()) {
-            for (auto&& pattern : _spritePatterns) {
+            for (const auto& pattern : _spritePatterns) {
                 if ((hex.x % pattern->EveryHex.x) != 0) {
                     continue;
                 }
@@ -1379,7 +1366,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
 
         // Track
         if (_isShowTrack && GetHexTrack(hex) != 0) {
-            auto&& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
+            const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
             auto& mspr = _mapSprites.InsertSprite(DrawOrderType::Track, hex, //
                 {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1389,7 +1376,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
 
         // Hex lines
         if (_isShowHex) {
-            auto&& spr = _picHex[0];
+            const auto& spr = _picHex[0];
             auto& mspr = _mapSprites.InsertSprite(DrawOrderType::HexGrid, hex, //
                 {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0}, &field.Offset, //
                 spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1493,7 +1480,7 @@ void MapView::RebuildMapOffset(ipos hex_offset)
 
         // Patterns
         if (!_spritePatterns.empty()) {
-            for (auto&& pattern : _spritePatterns) {
+            for (const auto& pattern : _spritePatterns) {
                 if ((hex.x % pattern->EveryHex.x) != 0) {
                     continue;
                 }
@@ -1772,7 +1759,7 @@ void MapView::FinishLightSource(ident_t id)
     const auto it = _lightSources.find(id);
 
     if (it != _lightSources.end()) {
-        auto&& ls = it->second;
+        auto& ls = it->second;
 
         if (!ls->Finishing) {
             ls->Finishing = true;
@@ -1790,7 +1777,7 @@ void MapView::CleanLightSourceOffsets(ident_t id)
     const auto it = _lightSources.find(id);
 
     if (it != _lightSources.end()) {
-        auto&& ls = it->second;
+        auto& ls = it->second;
 
         ls->Offset = nullptr;
     }
@@ -2547,8 +2534,6 @@ void MapView::SwitchShowTrack()
 void MapView::InitView(ipos screen_raw_hex)
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Get center offset
@@ -3592,8 +3577,6 @@ auto MapView::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     vector<CritterHexView*> critters;
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -3788,8 +3771,6 @@ auto MapView::GetHexAtScreenPos(ipos pos, mpos& hex, ipos* hex_offset) const -> 
 auto MapView::GetItemAtScreenPos(ipos pos, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
 
     vector<ItemHexView*> pix_item;
     vector<ItemHexView*> pix_item_egg;

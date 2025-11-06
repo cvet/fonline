@@ -68,7 +68,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
-    auto&& hex_items = mapper->CurMap->GetItems(hex);
+    const auto& hex_items = mapper->CurMap->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());

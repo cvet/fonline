@@ -188,7 +188,7 @@ void ImageBaker::BakeFiles(FileCollection&& files)
 
     int errors = 0;
 
-    for (auto&& file_baking : file_bakings) {
+    for (auto& file_baking : file_bakings) {
         try {
             file_baking.get();
         }

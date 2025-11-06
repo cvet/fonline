@@ -50,7 +50,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props = nullptr) noexcept;
+    Player(FOServer* engine, ident_t id, unique_ptr<ClientConnection> connection, const Properties* props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -114,7 +114,7 @@ public:
     ENTITY_EVENT(OnLogout);
 
     // Todo: incapsulate Player data
-    ClientConnection* Connection {};
+    unique_ptr<ClientConnection> Connection {};
     uint8 Access {ACCESS_CLIENT};
     string LastSay {};
     uint LastSayEqualCount {};
