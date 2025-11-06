@@ -890,8 +890,8 @@ void Baker::BakeAll()
                     if (dlg.DlgScriptFuncName) {
                         if (!script_sys.CheckFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
                             !script_sys.CheckFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
-                            WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
-                            dlg_errors++;
+                            //WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
+                            //dlg_errors++;
                         }
                     }
 
