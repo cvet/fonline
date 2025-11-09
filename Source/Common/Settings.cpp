@@ -35,6 +35,7 @@
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
@@ -163,6 +164,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("UnpackagedSubConfig");
         _appliedSettings.emplace("CommandLine");
         _appliedSettings.emplace("CommandLineArgs");
+        _appliedSettings.emplace("GitBranch");
         _appliedSettings.emplace("WebBuild");
         _appliedSettings.emplace("WindowsBuild");
         _appliedSettings.emplace("LinuxBuild");
@@ -376,6 +378,8 @@ void GlobalSettings::ApplyAutoSettings()
     const_cast<bool&>(DebugBuild) = true;
     const_cast<bool&>(RenderDebug) = true;
 #endif
+
+    const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)

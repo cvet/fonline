@@ -9,6 +9,7 @@ import time
 import uuid
 import glob
 import foconfig
+import subprocess
 
 startTime = time.time()
 
@@ -3379,6 +3380,12 @@ writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHashUint(args.buildhash) + 'u;')
+
+try:
+    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
+    writeFile('static constexpr auto FO_GIT_BRANCH = "' + branch + '";')
+except:
+    writeFile('static constexpr auto FO_GIT_BRANCH = "";')
 
 # Actual writing of generated files
 try:
