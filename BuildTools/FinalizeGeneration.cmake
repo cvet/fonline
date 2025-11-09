@@ -891,6 +891,11 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp")
 endif()
 
+if(MSVC)
+    list(APPEND FO_COMMON_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
+endif()
+
 list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
