@@ -56,21 +56,12 @@ using multimap = std::multimap<K, V, std::less<>, SafeAllocator<pair<const K, V>
 template<typename K>
 using set = std::set<K, std::less<>, SafeAllocator<K>>;
 
-#if FO_DEBUG
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
-using unordered_map = std::unordered_map<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
-using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
-using unordered_set = std::unordered_set<K, H, std::equal_to<>, SafeAllocator<K>>;
-#else
 template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
 template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
 template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, SafeAllocator<K>>;
-#endif
 
 template<typename T, unsigned InlineCapacity>
 using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
