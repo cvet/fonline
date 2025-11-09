@@ -271,12 +271,12 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
         mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32>(draw_order) + //
-            mspr->_hex.y * GameSettings::MAX_MAP_SIZE + mspr->_hex.x;
+            hex.y * GameSettings::MAX_MAP_SIZE + hex.x;
     }
     else {
         mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32>(DrawOrderType::NormalBegin) + //
-            mspr->_hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * GameSettings::MAX_MAP_SIZE + //
-            mspr->_hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + //
+            hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * GameSettings::MAX_MAP_SIZE + //
+            hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + //
             (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
     }
 
@@ -297,7 +297,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
 
-    if (callback) [[likely]] {
+    if (callback != nullptr) [[likely]] {
         *callback = true;
     }
 
