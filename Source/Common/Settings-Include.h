@@ -43,6 +43,7 @@ FIXED_SETTING(string, CommandLine); // Command line used to start the game (read
 FIXED_SETTING(vector<string>, CommandLineArgs); // Command line arguments used to start the game (read only)
 FIXED_SETTING(string, GameName, "FOnline"); // Game name, used in logs and window title
 FIXED_SETTING(string, GameVersion, "0.0.0"); // Game version, used in logs and window title
+FIXED_SETTING(string, GitBranch, ""); // Git branch name (if present)
 FIXED_SETTING(string, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(int32, ScriptOverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, DebugBuild); // If true, debug build is used, otherwise release build (read only)
