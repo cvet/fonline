@@ -80,6 +80,7 @@ static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
 static constexpr auto COLOR_TEXT_DWHITE = ucolor {191, 191, 191};
 static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 
+class SpriteManager;
 class AtlasSprite;
 
 class Sprite : public std::enable_shared_from_this<Sprite>

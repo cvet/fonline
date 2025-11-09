@@ -43,6 +43,7 @@ constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
 
 class RenderEffect;
 class Sprite;
+class MapSpriteList;
 
 ///@ ExportEnum
 enum class DrawOrderType : uint8
