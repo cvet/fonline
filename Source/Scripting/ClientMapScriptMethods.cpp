@@ -50,7 +50,7 @@ FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr)
+FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapSpr)
 {
     if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
@@ -91,15 +91,14 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
         contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
-    const auto& field = self->GetField(mapSpr->Hex);
-    auto& mspr = self->GetDrawList().InsertSprite(draw_order, self->GetSize().clampPos(mapSpr->Hex.x, mapSpr->Hex.y + draw_order_hy_offset), //
-        {(self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->Offset.x, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->Offset.y}, &field.Offset, anim, nullptr, //
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+    auto* mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
+        mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
+        mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
-    mspr.MapSpr = mapSpr;
+    mapSpr->MSpr = mspr;
 
     if (!no_light) {
-        mspr.SetLight(corner, self->GetLightData(), self->GetSize());
+        mspr->SetLight(corner, self->GetLightData(), self->GetSize());
     }
 
     if (!is_flat && !disable_egg) {
@@ -121,16 +120,16 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr
             break;
         }
 
-        mspr.SetEggAppearence(egg_appearence);
+        mspr->SetEggAppearence(egg_appearence);
     }
 
     if (color != ucolor::clear) {
-        mspr.SetColor(ucolor {color, 0});
-        mspr.SetFixedAlpha(color.comp.a);
+        mspr->SetColor(ucolor {color, 0});
+        mspr->SetFixedAlpha(color.comp.a);
     }
 
     if (contour_color != ucolor::clear) {
-        mspr.SetContour(ContourType::Custom, contour_color);
+        mspr->SetContour(ContourType::Custom, contour_color);
     }
 }
 
@@ -527,7 +526,7 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, ipos16 he
     }
 
     if (speed == 0) {
-        self->FindSetCenter(hex);
+        self->InstantScrollTo(hex);
     }
     else {
         self->ScrollToHex(hex, hex_offset, speed, canStop);
@@ -615,61 +614,36 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, boo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_RedrawMap(MapView* self)
 {
-    self->RefreshMap();
+    self->RebuildMap();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
 {
-    if (is_float_equal(targetZoom, self->GetSpritesZoom())) {
+    if (is_float_equal(targetZoom, self->GetSpritesZoomTarget())) {
         return;
     }
 
-    const auto init_zoom = self->GetSpritesZoom();
+    const fpos32 mouse_pos = fpos32(App->Input.GetMousePosition());
+    const fsize32 screen_size = fsize32(self->GetScreenSize());
+    const float32 mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
+    const float32 mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
 
-    if (targetZoom == 1.0f) {
-        self->ChangeZoom(0);
-    }
-    else if (targetZoom > self->GetSpritesZoom()) {
-        while (targetZoom > self->GetSpritesZoom()) {
-            const auto old_zoom = self->GetSpritesZoom();
-
-            self->ChangeZoom(1);
-
-            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
-                break;
-            }
-        }
-    }
-    else if (targetZoom < self->GetSpritesZoom()) {
-        while (targetZoom < self->GetSpritesZoom()) {
-            const auto old_zoom = self->GetSpritesZoom();
-
-            self->ChangeZoom(-1);
-
-            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
-                break;
-            }
-        }
-    }
-
-    if (!is_float_equal(init_zoom, self->GetSpritesZoom())) {
-        self->RebuildFog();
-    }
+    self->ChangeZoom(targetZoom, {mouse_x_factor, mouse_y_factor});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_GetHexScreenPos(MapView* self, mpos hex, ipos32& screenPos)
+FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 {
     if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hex provided");
     }
 
-    screenPos = self->GetHexPosition(hex);
-    screenPos.x += self->GetScrollOffset().x + (self->GetEngine()->Settings.MapHexWidth / 2);
-    screenPos.y += self->GetScrollOffset().y + (self->GetEngine()->Settings.MapHexHeight / 2);
-    screenPos.x = iround<int32>(numeric_cast<float32>(screenPos.x) / self->GetSpritesZoom());
-    screenPos.y = iround<int32>(numeric_cast<float32>(screenPos.y) / self->GetSpritesZoom());
+    const auto hex_pos = self->GetHexMapPos(hex);
+    const auto& settings = self->GetEngine()->Settings;
+    const ipos32 hex_center = {settings.MapHexWidth / 2, settings.MapHexHeight / 2};
+    const auto screen_pos = self->MapToScreenPos(hex_pos + hex_center);
+    return screen_pos;
 }
 
 ///@ ExportMethod
@@ -722,7 +696,7 @@ FO_SCRIPT_API bool Client_Map_IsHexMovable(MapView* self, mpos hex)
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hex).Flags.MoveBlocked;
+    return !self->GetField(hex).MoveBlocked;
 }
 
 ///@ ExportMethod
@@ -732,17 +706,17 @@ FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
         throw ScriptException("Invalid hex args");
     }
 
-    return !self->GetField(hex).Flags.ShootBlocked;
+    return !self->GetField(hex).ShootBlocked;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_IsScrollBlock(MapView* self, mpos hex)
+FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 {
     if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetField(hex).Flags.ScrollBlock;
+    return self->IsOutsideArea(hex);
 }
 
 ///@ ExportMethod
@@ -759,17 +733,6 @@ FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_v
     }
 
     return self->RunSpritePattern(spriteName, spriteCount);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetCursorPos(MapView* self, CritterView* cr, ipos32 mousePos, bool showSteps, bool forceRefresh)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    self->SetCursorPos(hex_cr, mousePos, showSteps, forceRefresh);
 }
 
 ///@ ExportMethod

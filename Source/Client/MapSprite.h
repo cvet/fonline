@@ -39,12 +39,9 @@
 
 FO_BEGIN_NAMESPACE();
 
-constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
+constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
 
 class RenderEffect;
-class SpriteManager;
-class MapSpriteList;
-class MapSprite;
 class Sprite;
 
 ///@ ExportEnum
@@ -98,9 +95,120 @@ enum class EggAppearenceType : uint8
     ByXOrY,
 };
 
-///@ ExportRefType Client HasFactory
-struct MapSpriteData
+class MapSprite final
 {
+    friend class MapSpriteList;
+
+public:
+    MapSprite() noexcept = default;
+    MapSprite(const MapSprite&) = delete;
+    MapSprite(MapSprite&&) noexcept = delete;
+    auto operator=(const MapSprite&) = delete;
+    auto operator=(MapSprite&&) noexcept = delete;
+    ~MapSprite();
+
+    [[nodiscard]] auto IsValid() const noexcept -> bool { return !!_owner; }
+    [[nodiscard]] auto GetDrawOrder() const noexcept -> DrawOrderType { return _drawOrder; }
+    [[nodiscard]] auto GetSortValue() const noexcept -> uint32 { return _globalPos; }
+    [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
+    [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
+    [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
+    [[nodiscard]] auto GetSprite() const noexcept -> const Sprite* { return _pSpr ? *_pSpr.get() : _spr.get(); }
+    [[nodiscard]] auto GetHex() const noexcept -> mpos { return _hex; }
+    [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
+    [[nodiscard]] auto GetPHexOffset() const noexcept -> const ipos32* { return _pHexOffset.get(); }
+    [[nodiscard]] auto GetSprOffset() const noexcept -> const ipos32* { return _sprOffset.get(); }
+    [[nodiscard]] auto GetAlpha() const noexcept -> const uint8* { return _alpha.get(); }
+    [[nodiscard]] auto GetLight() const noexcept -> const ucolor* { return _light.get(); }
+    [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
+    [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
+    [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
+    [[nodiscard]] auto GetContour() const noexcept -> ContourType { return _contour; }
+    [[nodiscard]] auto GetContourColor() const noexcept -> ucolor { return _contourColor; }
+    [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
+    [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
+
+    void Invalidate() noexcept;
+    void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
+    void SetContour(ContourType contour) noexcept;
+    void SetContour(ContourType contour, ucolor color) noexcept;
+    void SetColor(ucolor color) noexcept;
+    void SetAlpha(const uint8* alpha) noexcept;
+    void SetFixedAlpha(uint8 alpha) noexcept;
+    void SetLight(CornerType corner, const ucolor* light, msize size) noexcept;
+    void SetHidden(bool hidden) noexcept;
+    void CreateExtraChain(MapSprite** mspr);
+    void AddToExtraChain(MapSprite* mspr);
+
+private:
+    void Reset() noexcept;
+
+    raw_ptr<MapSpriteList> _owner {};
+    uint32 _drawOrderPos {};
+    uint32 _globalPos {};
+    uint32 _index {};
+    DrawOrderType _drawOrder {};
+    bool _hidden {};
+    raw_ptr<bool> _validCallback {};
+    raw_ptr<const Sprite> _spr {};
+    raw_ptr<const Sprite*> _pSpr {};
+    mpos _hex {};
+    ipos32 _hexOffset {};
+    raw_ptr<const ipos32> _pHexOffset {};
+    raw_ptr<const ipos32> _sprOffset {};
+    raw_ptr<const uint8> _alpha {};
+    raw_ptr<const ucolor> _light {};
+    raw_ptr<const ucolor> _lightRight {};
+    raw_ptr<const ucolor> _lightLeft {};
+    EggAppearenceType _eggAppearence {};
+    ContourType _contour {};
+    ucolor _contourColor {};
+    ucolor _color {};
+    mutable raw_ptr<RenderEffect*> _drawEffect {};
+    raw_ptr<MapSprite*> _extraChainRoot {};
+    raw_ptr<MapSprite> _extraChainParent {};
+    raw_ptr<MapSprite> _extraChainChild {};
+};
+
+class MapSpriteList final
+{
+    friend class MapSprite;
+
+public:
+    MapSpriteList() noexcept = default;
+    MapSpriteList(const MapSpriteList&) = delete;
+    MapSpriteList(MapSpriteList&&) noexcept = delete;
+    auto operator=(const MapSpriteList&) = delete;
+    auto operator=(MapSpriteList&&) noexcept = delete;
+    ~MapSpriteList() = default;
+
+    [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
+    [[nodiscard]] auto GetActiveSprites() noexcept -> const vector<unique_ptr<MapSprite>>& { return _activeSprites; }
+
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*;
+    void InvalidateAll() noexcept;
+    void SortIfNeeded() noexcept;
+
+private:
+    void GrowPool() noexcept;
+    void Invalidate(MapSprite* mspr) noexcept;
+
+    vector<unique_ptr<MapSprite>> _activeSprites {};
+    vector<unique_ptr<MapSprite>> _spritesPool {};
+    uint32 _globalCounter {};
+    bool _needSort {};
+};
+
+///@ ExportRefType Client HasFactory
+struct MapSpriteHolder
+{
+    MapSpriteHolder() = default;
+    MapSpriteHolder(const MapSpriteHolder&) = delete;
+    MapSpriteHolder(MapSpriteHolder&&) noexcept = delete;
+    auto operator=(const MapSpriteHolder&) = delete;
+    auto operator=(MapSpriteHolder&&) noexcept = delete;
+    ~MapSpriteHolder();
+
     FO_SCRIPTABLE_OBJECT_BEGIN();
 
     bool Valid {};
@@ -121,103 +229,12 @@ struct MapSpriteData
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
 
+    void StopDraw();
+
     FO_SCRIPTABLE_OBJECT_END();
+
+    raw_ptr<MapSprite> MSpr {};
 };
-static_assert(std::is_standard_layout_v<MapSpriteData>);
-
-class MapSprite final
-{
-public:
-    MapSprite() = default;
-    MapSprite(const MapSprite&) = delete;
-    MapSprite(MapSprite&&) noexcept = delete;
-    auto operator=(const MapSprite&) = delete;
-    auto operator=(MapSprite&&) noexcept = delete;
-    ~MapSprite() = default;
-
-    [[nodiscard]] auto GetDrawRect() const -> irect32;
-    [[nodiscard]] auto GetViewRect() const -> irect32;
-    [[nodiscard]] auto CheckHit(ipos32 pos, bool check_transparent) const -> bool;
-    [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
-
-    void Invalidate();
-    void SetEggAppearence(EggAppearenceType egg_appearence);
-    void SetContour(ContourType contour);
-    void SetContour(ContourType contour, ucolor color);
-    void SetColor(ucolor color);
-    void SetAlpha(const uint8* alpha);
-    void SetFixedAlpha(uint8 alpha);
-    void SetLight(CornerType corner, const ucolor* light, msize size);
-    void SetHidden(bool hidden);
-
-    // Todo:: incapsulate all sprite data
-    MapSpriteList* Root {};
-    DrawOrderType DrawOrder {};
-    uint32 DrawOrderPos {};
-    size_t TreeIndex {};
-    const Sprite* Spr {};
-    const Sprite* const* PSpr {};
-    mpos Hex {};
-    ipos32 HexOffset {};
-    const ipos32* PHexOffset {};
-    const ipos32* SprOffset {};
-    const uint8* Alpha {};
-    const ucolor* Light {};
-    const ucolor* LightRight {};
-    const ucolor* LightLeft {};
-    EggAppearenceType EggAppearence {};
-    ContourType Contour {};
-    ucolor ContourColor {};
-    ucolor Color {};
-    RenderEffect** DrawEffect {};
-    bool* ValidCallback {};
-    bool Valid {};
-    refcount_ptr<MapSpriteData> MapSpr {};
-
-    MapSprite** ExtraChainRoot {};
-    MapSprite* ExtraChainParent {};
-    MapSprite* ExtraChainChild {};
-    MapSprite** ChainRoot {};
-    MapSprite** ChainLast {};
-    MapSprite* ChainParent {};
-    MapSprite* ChainChild {};
-
-private:
-    bool _hidden {};
-};
-
-class MapSpriteList final
-{
-    friend class MapSprite;
-
-public:
-    MapSpriteList() = delete;
-    explicit MapSpriteList(SpriteManager& spr_mngr);
-    MapSpriteList(const MapSpriteList&) = delete;
-    MapSpriteList(MapSpriteList&&) noexcept = delete;
-    auto operator=(const MapSpriteList&) = delete;
-    auto operator=(MapSpriteList&&) noexcept = delete;
-    ~MapSpriteList();
-
-    [[nodiscard]] auto RootSprite() noexcept -> MapSprite*;
-
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    auto InsertSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    void Invalidate();
-    void Sort();
-
-private:
-    auto PutSprite(MapSprite* child, DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite* const* pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    void GrowPool();
-
-    SpriteManager& _sprMngr;
-    vector<MapSprite*> _spritesPool {};
-    MapSprite* _rootSprite {};
-    MapSprite* _lastSprite {};
-    size_t _spriteCount {};
-    vector<MapSprite*> _sortSprites {};
-    vector<MapSprite*> _invalidatedSprites {};
-    bool _nonConstHelper {};
-};
+static_assert(std::is_standard_layout_v<MapSpriteHolder>);
 
 FO_END_NAMESPACE();

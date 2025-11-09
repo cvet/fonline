@@ -48,7 +48,7 @@ RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* wi
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
-auto RenderTargetManager::GetRenderTargetStack() -> const vector<RenderTarget*>&
+auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -61,7 +61,7 @@ auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return !_rtStack.empty() ? _rtStack.back() : nullptr;
+    return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
 }
 
 auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*
@@ -110,8 +110,8 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
         tex_size.height += _settings.ScreenHeight;
     }
     else if (rt->SizeKind == RenderTarget::SizeKindType::Map) {
-        tex_size.width += _settings.ScreenWidth;
-        tex_size.height += _settings.ScreenHeight - _settings.ScreenHudHeight;
+        tex_size.width += _settings.ScreenWidth + _settings.MapHexWidth;
+        tex_size.height += _settings.ScreenHeight - _settings.ScreenHudHeight + _settings.MapHexLineHeight * 2;
     }
 
     tex_size.width = std::max(tex_size.width, 1);
@@ -121,7 +121,6 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
     FO_RUNTIME_ASSERT(tex_size.height > 0);
 
     rt->MainTex = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
-
     rt->MainTex->FlippedHeight = App->Render.IsRenderTargetFlipped();
 
     auto* prev_tex = App->Render.GetRenderTarget();
@@ -136,11 +135,13 @@ void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
 
     const auto redundant = !_rtStack.empty() && _rtStack.back() == rt;
 
-    _rtStack.push_back(rt);
-
     if (!redundant) {
         _flush();
+    }
 
+    _rtStack.emplace_back(rt);
+
+    if (!redundant) {
         App->Render.SetRenderTarget(rt->MainTex.get());
         rt->LastPixelPicks.clear();
     }
@@ -152,11 +153,13 @@ void RenderTargetManager::PopRenderTarget()
 
     const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
 
+    if (!redundant) {
+        _flush();
+    }
+
     _rtStack.pop_back();
 
     if (!redundant) {
-        _flush();
-
         if (!_rtStack.empty()) {
             App->Render.SetRenderTarget(_rtStack.back()->MainTex.get());
         }
@@ -211,6 +214,10 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
 void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (rt == nullptr) {
+        return;
+    }
 
     const auto it = std::ranges::find_if(_rtAll, [rt](auto&& check_rt) { return check_rt.get() == rt; });
     FO_RUNTIME_ASSERT(it != _rtAll.end());

@@ -151,6 +151,7 @@ public:
     auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
     void ProcessMapperInput();
+    void ChangeZoom(float32 new_zoom);
     void DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font);
 
     void CurDraw();

@@ -80,30 +80,36 @@ void SpritePattern::Finish()
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
-    MapProperties(GetInitRef()),
-    _mapSprites(engine->SprMngr)
+    MapProperties(GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 
     _name = strex("{}_{}", proto->GetName(), id);
 
-    SetSpritesZoom(1.0f);
+    _maxScroll = {_engine->Settings.MapHexWidth, _engine->Settings.MapHexLineHeight * 2};
+    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    _viewSize = fsize32(_screenSize);
 
-    _rtScreenOx = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
-    _rtScreenOy = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
+    const irect32 scroll_area = GetScrollAxialArea();
+    constexpr float32 min_zoom_bias = 1.1f;
+    const float32 min_zoom_x = numeric_cast<float32>(_screenSize.width) / numeric_cast<float32>(scroll_area.width * (_engine->Settings.MapHexWidth / 2)) * min_zoom_bias;
+    const float32 min_zoom_y = numeric_cast<float32>(_screenSize.height) / numeric_cast<float32>(scroll_area.height * _engine->Settings.MapHexLineHeight) * min_zoom_bias;
+    _minZoomScroll = std::max(min_zoom_x, min_zoom_y);
+    SetSpritesZoom(std::max(_minZoomScroll, 1.0f));
+    SetSpritesZoomTarget(std::max(_minZoomScroll, 1.0f));
 
-    _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {_rtScreenOx * 2, _rtScreenOy * 2}, false);
-    _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
+    if (!_engine->Settings.MapDirectDraw) {
+        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+        _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
+    }
 
-    _rtFog = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {_rtScreenOx * 2, _rtScreenOy * 2}, false);
-    _rtFog->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
+    if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
+        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+    }
 
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);
     _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::MapSprites);
     _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::MapSprites);
-    _cursorPrePic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_pre.png", AtlasType::MapSprites);
-    _cursorPostPic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_post.png", AtlasType::MapSprites);
-    _cursorXPic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_x.png", AtlasType::MapSprites);
     _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::MapSprites);
     _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::MapSprites);
     _picHexMask = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::MapSprites);
@@ -124,10 +130,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _lightPoints.resize(1);
     _lightSoftPoints.resize(1);
 
-    _curScrollOffset = fpos32(GetScrollOffset());
-    _screenRawHex = ipos32(GetWorkHex());
-
-    ResizeView();
+    _screenRawHex = ConvertToScreenRawHex(ipos32(GetWorkHex()));
+    InitView();
+    RecacheScrollBlocks();
 
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
@@ -141,11 +146,8 @@ MapView::~MapView()
         BreakIntoDebugger();
     }
 
-    if (_rtMap != nullptr) {
-        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap);
-    }
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight);
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtFog);
+    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap.get());
+    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight.get());
 }
 
 void MapView::OnDestroySelf()
@@ -163,7 +165,7 @@ void MapView::OnDestroySelf()
         pattern->Finish();
     }
 
-    _mapSprites.Invalidate();
+    _mapSprites.InvalidateAll();
     _hexField.reset();
     _viewField.clear();
     _fogLookPoints.clear();
@@ -263,8 +265,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     SetWorkEntityId(ident_t {max_id});
     _mapLoading = false;
 
-    ResizeView();
-    RefreshMap();
+    RebuildMapNow();
 }
 
 void MapView::LoadStaticData()
@@ -331,6 +332,34 @@ void MapView::LoadStaticData()
     reader.VerifyEnd();
 
     // Index roof
+    const auto mark_roof_num = [this](ipos32 raw_hex, int32 num) {
+        std::stack<ipos32, vector<ipos32>> next_raw_hexes;
+        next_raw_hexes.push(raw_hex);
+
+        while (!next_raw_hexes.empty()) {
+            const auto next_raw_hex = next_raw_hexes.top();
+            next_raw_hexes.pop();
+
+            if (!_mapSize.isValidPos(next_raw_hex)) {
+                continue;
+            }
+
+            const auto next_hex = _mapSize.fromRawPos(next_raw_hex);
+            const auto& field = _hexField->GetCellForReading(next_hex);
+
+            if (field.RoofNum != 0 || field.RoofTiles.empty()) {
+                continue;
+            }
+
+            _hexField->GetCellForWriting(next_hex).RoofNum = num;
+
+            next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings.MapTileStep, next_raw_hex.y);
+            next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings.MapTileStep, next_raw_hex.y);
+            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y + _engine->Settings.MapTileStep);
+            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y - _engine->Settings.MapTileStep);
+        }
+    };
+
     int32 roof_num = 1;
 
     for (const auto hx : iterate_range(_mapSize.width)) {
@@ -340,29 +369,13 @@ void MapView::LoadStaticData()
             if (field.RoofNum == 0 && !field.RoofTiles.empty()) {
                 const auto corrected_hx = hx - hx % _engine->Settings.MapTileStep;
                 const auto corrected_hy = hy - hy % _engine->Settings.MapTileStep;
-                MarkRoofNum(ipos32 {corrected_hx, corrected_hy}, roof_num);
+                mark_roof_num(ipos32 {corrected_hx, corrected_hy}, roof_num);
                 roof_num++;
             }
         }
     }
 
-    // Scroll blocks borders
-    for (const auto hx : iterate_range(_mapSize.width)) {
-        for (const auto hy : iterate_range(_mapSize.height)) {
-            const auto& field = _hexField->GetCellForReading({hx, hy});
-
-            if (field.Flags.ScrollBlock) {
-                for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
-                    auto pos_around = mpos {hx, hy};
-                    GeometryHelper::MoveHexByDir(pos_around, numeric_cast<uint8>(dir), _mapSize);
-                    _hexField->GetCellForWriting(pos_around).Flags.MoveBlocked = true;
-                }
-            }
-        }
-    }
-
-    ResizeView();
-    RefreshMap();
+    RebuildMapNow();
 }
 
 void MapView::Process()
@@ -392,16 +405,12 @@ void MapView::Process()
 
             if (_mapDayColor != _prevMapDayColor) {
                 _prevMapDayColor = _mapDayColor;
-
                 _needReapplyLights = true;
             }
 
             if (_globalDayColor != _prevGlobalDayColor) {
                 _prevGlobalDayColor = _globalDayColor;
-
-                if (_globalLights != 0) {
-                    _needReapplyLights = true;
-                }
+                _needReapplyLights = _globalLights != 0;
             }
         }
     }
@@ -442,13 +451,17 @@ void MapView::Process()
         }
     }
 
-    // Scroll
-    const auto fixed_dt = timespan(std::chrono::milliseconds(_engine->Settings.ScrollFixedDt));
-    _scrollDtAccum += _engine->GameTime.GetFrameDeltaTime();
+    // Scroll and zoom
+    {
+        const auto fixed_dt = timespan(std::chrono::milliseconds(_engine->Settings.ScrollFixedDt));
+        _scrollDtAccum += _engine->GameTime.GetFrameDeltaTime();
 
-    while (_scrollDtAccum >= fixed_dt) {
-        _scrollDtAccum -= fixed_dt;
-        ProcessScroll(fixed_dt.toMs<float32>());
+        if (_scrollDtAccum >= fixed_dt) {
+            _scrollDtAccum = std::min(_scrollDtAccum, timespan(fixed_dt.value() * 10));
+            _scrollDtAccum -= fixed_dt;
+            ProcessZoom(fixed_dt.toMs<float32>());
+            ProcessScroll(fixed_dt.toMs<float32>());
+        }
     }
 }
 
@@ -458,12 +471,12 @@ auto MapView::GetViewSize() const -> isize32
 
     const auto& settings = _engine->Settings;
     const auto zoom = GetSpritesZoom();
-    const auto hexes_width = settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) != 0 ? 1 : 0);
-    const auto hexes_height = (settings.ScreenHeight - settings.ScreenHudHeight) / settings.MapHexLineHeight + (((settings.ScreenHeight - settings.ScreenHudHeight) % settings.MapHexLineHeight) != 0 ? 1 : 0);
-    const auto width = is_float_equal(zoom, 1.0f) ? hexes_width : iround<int32>(std::ceil(numeric_cast<float32>(hexes_width) * zoom));
-    const auto height = is_float_equal(zoom, 1.0f) ? hexes_height : iround<int32>(std::ceil(numeric_cast<float32>(hexes_height) * zoom));
+    const auto screen_hexes_width = _screenSize.width / settings.MapHexWidth + ((_screenSize.width % settings.MapHexWidth) != 0 ? 1 : 0);
+    const auto screen_hexes_height = _screenSize.height / settings.MapHexLineHeight + ((_screenSize.height % settings.MapHexLineHeight) != 0 ? 1 : 0);
+    const auto view_hexes_width = is_float_equal(zoom, 1.0f) ? screen_hexes_width : iround<int32>(std::ceil(numeric_cast<float32>(screen_hexes_width) / zoom));
+    const auto view_hexes_height = is_float_equal(zoom, 1.0f) ? screen_hexes_height : iround<int32>(std::ceil(numeric_cast<float32>(screen_hexes_height) / zoom));
 
-    return {width, height};
+    return {view_hexes_width, view_hexes_height};
 }
 
 void MapView::AddItemToField(ItemHexView* item)
@@ -663,8 +676,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     if (!MeasureMapBorders(item->Spr, item->SprOffset)) {
         if (!_mapLoading && IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
             auto& field = _hexField->GetCellForWriting(hex);
-            auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
-
+            auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, spr);
         }
     }
@@ -689,8 +701,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
 
     if (IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
         auto& field = _hexField->GetCellForWriting(hex);
-        auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
-
+        auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
         AddSpriteToChain(field, spr);
     }
 }
@@ -838,7 +849,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                 if (cr->IsSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
 
-                    if (result == irect32()) {
+                    if (result.isZero()) {
                         result = rect;
                     }
                     else {
@@ -862,7 +873,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                         const auto r = l + spr->Size.width;
                         const auto b = t + spr->Size.height;
 
-                        if (result == irect32()) {
+                        if (result.isZero()) {
                             result = irect32 {l, t, r, b};
                         }
                         else {
@@ -911,406 +922,79 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
     return pattern.get();
 }
 
-void MapView::SetCursorPos(CritterHexView* cr, ipos32 pos, bool show_steps, bool refresh)
+void MapView::RebuildMapNow()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+    HideHexLines(0, _hVisible);
+    FO_RUNTIME_ASSERT(!_mapSprites.HasActiveSprites());
+    FO_RUNTIME_ASSERT(_visibleLightSources.empty());
 
-    mpos hex;
+    InitView();
 
-    if (GetHexAtScreenPos(pos, hex, nullptr)) {
-        const auto& field = _hexField->GetCellForReading(hex);
+    ShowHexLines(0, _hVisible);
 
-        _cursorX = field.Offset.x + 1 - 1;
-        _cursorY = field.Offset.y - 1 - 1;
-
-        if (cr == nullptr) {
-            _drawCursorX = -1;
-            return;
-        }
-
-        const auto cr_hex = cr->GetHex();
-        const auto multihex = cr->GetMultihex();
-
-        if (cr_hex == hex || (field.Flags.MoveBlocked && (multihex == 0 || !GeometryHelper::CheckDist(cr_hex, hex, multihex)))) {
-            _drawCursorX = -1;
-        }
-        else {
-            if (refresh || hex != _lastCurPos) {
-                if (cr->IsAlive()) {
-                    const auto find_path = FindPath(cr, cr_hex, hex, -1);
-
-                    if (!find_path) {
-                        _drawCursorX = -1;
-                    }
-                    else {
-                        _drawCursorX = numeric_cast<int32>(show_steps ? find_path->DirSteps.size() : 0);
-                    }
-                }
-                else {
-                    _drawCursorX = -1;
-                }
-
-                _lastCurPos = hex;
-                _lastCurX = _drawCursorX;
-            }
-            else {
-                _drawCursorX = _lastCurX;
-            }
-        }
-    }
-}
-
-void MapView::DrawCursor(const Sprite* spr)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_engine->Settings.HideCursor || !_engine->Settings.ShowMoveCursor) {
-        return;
-    }
-
-    const auto spr_zoom = GetSpritesZoom();
-    const auto scroll_offset = GetScrollOffset();
-    const auto x = iround<int32>(numeric_cast<float32>(_cursorX + scroll_offset.x) / spr_zoom);
-    const auto y = iround<int32>(numeric_cast<float32>(_cursorY + scroll_offset.y) / spr_zoom);
-    const auto width = iround<int32>(numeric_cast<float32>(spr->Size.width) / spr_zoom);
-    const auto height = iround<int32>(numeric_cast<float32>(spr->Size.height) / spr_zoom);
-
-    _engine->SprMngr.DrawSpriteSize(spr, {x, y}, {width, height}, true, false, COLOR_SPRITE);
-}
-
-void MapView::DrawCursor(string_view text)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_engine->Settings.HideCursor || !_engine->Settings.ShowMoveCursor) {
-        return;
-    }
-
-    const auto spr_zoom = GetSpritesZoom();
-    const auto scroll_offset = GetScrollOffset();
-    const auto x = iround<int32>(numeric_cast<float32>(_cursorX + scroll_offset.x) / spr_zoom);
-    const auto y = iround<int32>(numeric_cast<float32>(_cursorY + scroll_offset.y) / spr_zoom);
-    const auto width = iround<int32>(numeric_cast<float32>(_engine->Settings.MapHexWidth) / spr_zoom);
-    const auto height = iround<int32>(numeric_cast<float32>(_engine->Settings.MapHexHeight) / spr_zoom);
-
-    _engine->SprMngr.DrawText({x, y, width, height}, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, -1);
-}
-
-void MapView::RebuildMap(ipos32 screen_raw_hex)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(!_viewField.empty());
-
-    for (const auto& vf : _viewField) {
-        const auto raw_hex = vf.RawHex;
-
-        if (!_mapSize.isValidPos(raw_hex)) {
-            continue;
-        }
-
-        const auto hex = _mapSize.fromRawPos(raw_hex);
-        auto& field = _hexField->GetCellForWriting(hex);
-
-        field.IsView = false;
-        InvalidateSpriteChain(field);
-    }
-
-    InitView(screen_raw_hex);
-
-    // Invalidation
-    _mapSprites.Invalidate();
+    _rebuildMap = false;
     _engine->SprMngr.EggNotValid();
-    _visibleLightSources.clear();
-    _needReapplyLights = true;
-
-    // Begin generate new sprites
-    for (const auto& vf : _viewField) {
-        if (!_mapSize.isValidPos(vf.RawHex)) {
-            continue;
-        }
-
-        const auto hex = _mapSize.fromRawPos(vf.RawHex);
-        auto& field = _hexField->GetCellForWriting(hex);
-        FO_RUNTIME_ASSERT(!field.IsView);
-
-        field.IsView = true;
-        field.Offset = vf.Offset;
-
-        // Lighting
-        if (!field.LightSources.empty()) {
-            for (auto* ls : field.LightSources | std::views::keys) {
-                _visibleLightSources[ls]++;
-            }
-        }
-
-        // Track
-        if (_isShowTrack && GetHexTrack(hex) != 0) {
-            const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
-            const auto hex_offset = ipos32 {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (spr ? spr->Size.height / 2 : 0)};
-            auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, hex_offset, &field.Offset, //
-                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-
-            AddSpriteToChain(field, &mspr);
-        }
-
-        // Hex lines
-        if (_isShowHex) {
-            const auto& spr = _picHex[0];
-            const auto hex_offset = ipos32 {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0};
-            auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, hex_offset, &field.Offset, //
-                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-
-            AddSpriteToChain(field, &mspr);
-        }
-
-        // Tiles
-        if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
-            for (auto* tile : field.GroundTiles) {
-                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
-                    continue;
-                }
-
-                auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Roof
-        if (!field.RoofTiles.empty() && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum) && _engine->Settings.ShowRoof) {
-            for (auto* tile : field.RoofTiles) {
-                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
-                    continue;
-                }
-
-                auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
-                mspr->SetEggAppearence(EggAppearenceType::Always);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Items on hex
-        if (!field.Items.empty()) {
-            for (auto* item : field.Items) {
-                if (!_mapperMode) {
-                    if (item->GetAlwaysHideSprite()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowWall && item->GetIsWall()) {
-                        continue;
-                    }
-                }
-                else {
-                    const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-
-                    if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowFast && is_fast) {
-                        continue;
-                    }
-                    if (_ignorePids.count(item->GetProtoId()) != 0) {
-                        continue;
-                    }
-                }
-
-                auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Critters
-        if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
-            for (auto* cr : field.Critters) {
-                auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
-
-                auto contour = ContourType::None;
-                if (cr->GetId() == _critterContourCrId) {
-                    contour = _critterContour;
-                }
-                else if (!cr->GetIsChosen()) {
-                    contour = _crittersContour;
-                }
-                mspr->SetContour(contour, cr->GetContourColor());
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Patterns
-        if (!_spritePatterns.empty()) {
-            for (auto it = _spritePatterns.begin(); it != _spritePatterns.end();) {
-                const auto& pattern = *it;
-
-                if (pattern->Finished) {
-                    it = _spritePatterns.erase(it);
-                    continue;
-                }
-
-                ++it;
-
-                if ((hex.x % pattern->EveryHex.x) != 0) {
-                    continue;
-                }
-                if ((hex.y % pattern->EveryHex.y) != 0) {
-                    continue;
-                }
-
-                if (pattern->InteractWithRoof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
-                    continue;
-                }
-
-                if (pattern->CheckTileProperty) {
-                    if (field.GroundTiles.empty()) {
-                        continue;
-                    }
-                    if (field.GroundTiles.front()->GetValueAsInt(static_cast<int32>(pattern->TileProperty)) != pattern->ExpectedTilePropertyValue) {
-                        continue;
-                    }
-                }
-                else {
-                    continue;
-                }
-
-                const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
-                auto& mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
-                    {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
-                    spr, nullptr, nullptr, nullptr, nullptr, nullptr);
-
-                AddSpriteToChain(field, &mspr);
-            }
-        }
-    }
-
-    _mapSprites.Sort();
-    _screenRawHex = screen_raw_hex;
     _needRebuildLightPrimitives = true;
+    _needReapplyLights = true;
     _engine->OnRenderMap.Fire();
 }
 
-void MapView::RebuildMapOffset(ipos32 hex_offset)
+void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!_viewField.empty());
-    FO_RUNTIME_ASSERT(hex_offset.x == 0 || hex_offset.x == -1 || hex_offset.x == 1);
-    FO_RUNTIME_ASSERT(hex_offset.y == 0 || hex_offset.y == -2 || hex_offset.y == 2);
+    FO_RUNTIME_ASSERT(std::abs(axial_hex_offset.y) % 2 == 0);
 
-    const auto ox = hex_offset.x;
-    const auto oy = hex_offset.y;
+    const auto ox = axial_hex_offset.x;
+    const auto oy = axial_hex_offset.y;
 
-    auto hide_hex = [this](const ViewField& vf) {
-        if (!_mapSize.isValidPos(vf.RawHex)) {
-            return;
-        }
+    // Hide opposite lines
+    HideHexLines(-ox, -oy);
 
-        const auto hex = _mapSize.fromRawPos(vf.RawHex);
+    // Shift view position
+    uint8 shift_ox_dir;
 
-        if (!IsHexToDraw(hex)) {
-            return;
-        }
-
-        auto& field = _hexField->GetCellForWriting(hex);
-        field.IsView = false;
-
-        InvalidateSpriteChain(field);
-
-        // Lighting
-        if (!field.LightSources.empty()) {
-            for (auto* ls : field.LightSources | std::views::keys) {
-                const auto it = _visibleLightSources.find(ls);
-
-                FO_RUNTIME_ASSERT(it != _visibleLightSources.end());
-                FO_RUNTIME_ASSERT(it->second > 0);
-
-                if (it->second > 1) {
-                    it->second--;
-                }
-                else {
-                    _visibleLightSources.erase(it);
-                }
-            }
-        }
-    };
-
-    if (ox != 0) {
-        const auto from_x = ox > 0 ? 0 : _wVisible + ox;
-        const auto to_x = ox > 0 ? ox : _wVisible;
-
-        for (auto x = from_x; x < to_x; x++) {
-            for (auto y = 0; y < _hVisible; y++) {
-                hide_hex(_viewField[y * _wVisible + x]);
-            }
-        }
-
-        const auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (ox > 0 ? 1 : 4) : (ox > 0 ? 1 : 5));
-        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir);
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        shift_ox_dir = ox > 0 ? 1 : 4;
+    }
+    else {
+        shift_ox_dir = ox > 0 ? 1 : 5;
     }
 
-    if (oy != 0) {
-        const auto from_y = oy > 0 ? 0 : _hVisible + oy;
-        const auto to_y = oy > 0 ? oy : _hVisible;
+    uint8 shift_oy_dir1;
+    uint8 shift_oy_dir2;
 
-        for (auto y = from_y; y < to_y; y++) {
-            for (auto x = 0; x < _wVisible; x++) {
-                hide_hex(_viewField[y * _wVisible + x]);
-            }
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        shift_oy_dir1 = oy > 0 ? 2 : 0;
+        shift_oy_dir2 = oy > 0 ? 3 : 5;
+    }
+    else {
+        shift_oy_dir1 = oy > 0 ? 2 : 0;
+        shift_oy_dir2 = oy > 0 ? 4 : 6;
+    }
+
+    if (ox != 0) {
+        for (int32 i = 0; i < std::abs(ox); i++) {
+            GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, shift_ox_dir);
         }
-
-        const auto dir1 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (oy > 0 ? 2 : 0) : (oy > 0 ? 2 : 0));
-        const auto dir2 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (oy > 0 ? 3 : 5) : (oy > 0 ? 4 : 6));
-        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir1);
-        GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, dir2);
+    }
+    if (oy != 0) {
+        for (int32 i = 0; i < std::abs(oy) / 2; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, shift_oy_dir1);
+            GeometryHelper::MoveHexByDirUnsafe(_screenRawHex, shift_oy_dir2);
+        }
     }
 
     for (auto& vf : _viewField) {
-        if (ox < 0) {
-            vf.RawHex.x++;
-
-            if ((vf.RawHex.x % 2) == 0) {
-                vf.RawHex.y--;
-            }
+        for (int32 i = 0; i < std::abs(ox); i++) {
+            GeometryHelper::MoveHexByDirUnsafe(vf.RawHex, shift_ox_dir);
         }
-        else if (ox > 0) {
-            vf.RawHex.x--;
-
-            if ((vf.RawHex.x % 2) != 0) {
-                vf.RawHex.y++;
-            }
-        }
-
-        if (oy < 0) {
-            vf.RawHex.x--;
-            vf.RawHex.y--;
-
-            if ((vf.RawHex.x % 2) == 0) {
-                vf.RawHex.y--;
-            }
-        }
-        else if (oy > 0) {
-            vf.RawHex.x++;
-            vf.RawHex.y++;
-
-            if ((vf.RawHex.x % 2) != 0) {
-                vf.RawHex.y++;
-            }
+        for (int32 i = 0; i < std::abs(oy) / 2; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(vf.RawHex, shift_oy_dir1);
+            GeometryHelper::MoveHexByDirUnsafe(vf.RawHex, shift_oy_dir2);
         }
 
         if (_mapSize.isValidPos(vf.RawHex)) {
@@ -1320,210 +1004,8 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
         }
     }
 
-    auto show_hex = [this](const ViewField& vf) {
-        if (!_mapSize.isValidPos(vf.RawHex)) {
-            return;
-        }
-
-        const auto hex = _mapSize.fromRawPos(vf.RawHex);
-
-        if (IsHexToDraw(hex)) {
-            return;
-        }
-
-        auto& field = _hexField->GetCellForWriting(hex);
-
-        field.IsView = true;
-
-        // Lighting
-        if (!field.LightSources.empty()) {
-            for (auto& ls : field.LightSources | std::views::keys) {
-                const auto it = _visibleLightSources.find(ls);
-
-                if (it == _visibleLightSources.end()) {
-                    _visibleLightSources.emplace(ls, 1);
-                    ls->NeedReapply = true;
-                }
-                else {
-                    it->second++;
-                }
-            }
-        }
-
-        // Track
-        if (_isShowTrack && GetHexTrack(hex) != 0) {
-            const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
-            auto& mspr = _mapSprites.InsertSprite(DrawOrderType::Track, hex, //
-                {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
-                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-
-            AddSpriteToChain(field, &mspr);
-        }
-
-        // Hex lines
-        if (_isShowHex) {
-            const auto& spr = _picHex[0];
-            auto& mspr = _mapSprites.InsertSprite(DrawOrderType::HexGrid, hex, //
-                {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0}, &field.Offset, //
-                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-
-            AddSpriteToChain(field, &mspr);
-        }
-
-        // Tiles
-        if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
-            for (auto* tile : field.GroundTiles) {
-                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
-                    continue;
-                }
-
-                auto* mspr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Roof
-        if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum)) {
-            for (auto* tile : field.RoofTiles) {
-                if (!_mapperMode && tile->GetAlwaysHideSprite()) {
-                    continue;
-                }
-
-                auto* mspr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
-                mspr->SetEggAppearence(EggAppearenceType::Always);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Items on hex
-        if (!field.Items.empty()) {
-            for (auto* item : field.Items) {
-                if (!_mapperMode) {
-                    if (item->GetAlwaysHideSprite()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowWall && item->GetIsWall()) {
-                        continue;
-                    }
-                }
-                else {
-                    const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-
-                    if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
-                        continue;
-                    }
-                    if (!_engine->Settings.ShowFast && is_fast) {
-                        continue;
-                    }
-                    if (_ignorePids.count(item->GetProtoId()) != 0) {
-                        continue;
-                    }
-                }
-
-                auto* mspr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Critters
-        if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
-            for (auto* cr : field.Critters) {
-                auto* mspr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
-
-                auto contour = ContourType::None;
-                if (cr->GetId() == _critterContourCrId) {
-                    contour = _critterContour;
-                }
-                else if (!cr->GetIsChosen()) {
-                    contour = _crittersContour;
-                }
-                mspr->SetContour(contour, cr->GetContourColor());
-
-                AddSpriteToChain(field, mspr);
-            }
-        }
-
-        // Patterns
-        if (!_spritePatterns.empty()) {
-            for (auto it = _spritePatterns.begin(); it != _spritePatterns.end();) {
-                const auto& pattern = *it;
-
-                if (pattern->Finished) {
-                    it = _spritePatterns.erase(it);
-                    continue;
-                }
-
-                ++it;
-
-                if ((hex.x % pattern->EveryHex.x) != 0) {
-                    continue;
-                }
-                if ((hex.y % pattern->EveryHex.y) != 0) {
-                    continue;
-                }
-
-                if (pattern->InteractWithRoof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
-                    continue;
-                }
-
-                if (pattern->CheckTileProperty) {
-                    if (field.GroundTiles.empty()) {
-                        continue;
-                    }
-                    if (field.GroundTiles.front()->GetValueAsInt(static_cast<int32>(pattern->TileProperty)) != pattern->ExpectedTilePropertyValue) {
-                        continue;
-                    }
-                }
-                else {
-                    continue;
-                }
-
-                const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
-                auto& mspr = _mapSprites.InsertSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
-                    {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
-                    spr, nullptr, nullptr, nullptr, nullptr, nullptr);
-
-                AddSpriteToChain(field, &mspr);
-            }
-        }
-    };
-
-    if (ox != 0) {
-        const auto from_x = ox > 0 ? _wVisible - ox : 0;
-        const auto to_x = ox > 0 ? _wVisible : -ox;
-
-        for (auto x = from_x; x < to_x; x++) {
-            for (auto y = 0; y < _hVisible; y++) {
-                show_hex(_viewField[y * _wVisible + x]);
-            }
-        }
-    }
-
-    if (oy != 0) {
-        const auto from_y = oy > 0 ? _hVisible - oy : 0;
-        const auto to_y = oy > 0 ? _hVisible : -oy;
-
-        for (auto y = from_y; y < to_y; y++) {
-            for (auto x = 0; x < _wVisible; x++) {
-                show_hex(_viewField[y * _wVisible + x]);
-            }
-        }
-    }
+    // Show new lines
+    ShowHexLines(ox, oy);
 
     // Critters text rect
     for (auto& cr : _critters) {
@@ -1531,13 +1013,312 @@ void MapView::RebuildMapOffset(ipos32 hex_offset)
     }
 
     _needRebuildLightPrimitives = true;
-
     _engine->OnRenderMap.Fire();
+}
+
+void MapView::ShowHexLines(int ox, int oy)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Show vertical line
+    if (ox != 0) {
+        const auto from_x = ox > 0 ? std::max(_wVisible - ox, 0) : 0;
+        const auto to_x = ox > 0 ? _wVisible : std::min(-ox, _wVisible);
+        FO_RUNTIME_ASSERT(from_x < to_x);
+
+        for (auto x = from_x; x < to_x; x++) {
+            for (auto y = 0; y < _hVisible; y++) {
+                ShowHex(_viewField[y * _wVisible + x]);
+            }
+        }
+    }
+
+    // Show horizontal line
+    if (oy != 0) {
+        const auto from_y = oy > 0 ? std::max(_hVisible - oy, 0) : 0;
+        const auto to_y = oy > 0 ? _hVisible : std::min(-oy, _hVisible);
+        FO_RUNTIME_ASSERT(from_y < to_y);
+
+        for (auto y = from_y; y < to_y; y++) {
+            for (auto x = 0; x < _wVisible; x++) {
+                ShowHex(_viewField[y * _wVisible + x]);
+            }
+        }
+    }
+}
+
+void MapView::HideHexLines(int ox, int oy)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Hide vertical line
+    if (ox != 0) {
+        const auto from_x = ox > 0 ? std::max(_wVisible - ox, 0) : 0;
+        const auto to_x = ox > 0 ? _wVisible : std::min(-ox, _wVisible);
+        FO_RUNTIME_ASSERT(from_x < to_x);
+
+        for (auto x = from_x; x < to_x; x++) {
+            for (auto y = 0; y < _hVisible; y++) {
+                HideHex(_viewField[y * _wVisible + x]);
+            }
+        }
+    }
+
+    // Hide horizontal line
+    if (oy != 0) {
+        const auto from_y = oy > 0 ? std::max(_hVisible - oy, 0) : 0;
+        const auto to_y = oy > 0 ? _hVisible : std::min(-oy, _hVisible);
+        FO_RUNTIME_ASSERT(from_y < to_y);
+
+        for (auto y = from_y; y < to_y; y++) {
+            for (auto x = 0; x < _wVisible; x++) {
+                HideHex(_viewField[y * _wVisible + x]);
+            }
+        }
+    }
+}
+
+void MapView::ShowHex(const ViewField& vf)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_mapSize.isValidPos(vf.RawHex)) {
+        return;
+    }
+
+    const auto hex = _mapSize.fromRawPos(vf.RawHex);
+
+    if (IsHexToDraw(hex)) {
+        return;
+    }
+
+    auto& field = _hexField->GetCellForWriting(hex);
+    field.IsView = true;
+    field.Offset = vf.Offset;
+
+    // Lighting
+    if (!field.LightSources.empty()) {
+        for (auto& ls : field.LightSources | std::views::keys) {
+            const auto it = _visibleLightSources.find(ls);
+
+            if (it == _visibleLightSources.end()) {
+                _visibleLightSources.emplace(ls, 1);
+                ls->NeedReapply = true;
+            }
+            else {
+                it->second++;
+            }
+        }
+    }
+
+    // Track
+    if (_isShowTrack && GetHexTrack(hex) != 0) {
+        const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
+        auto* mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, //
+            {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
+            spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
+        AddSpriteToChain(field, mspr);
+    }
+
+    // Hex lines
+    if (_isShowHex) {
+        const auto& spr = _picHex[0];
+        auto* mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, //
+            {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0}, &field.Offset, //
+            spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
+        AddSpriteToChain(field, mspr);
+    }
+
+    // Tiles
+    if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
+        for (auto* tile : field.GroundTiles) {
+            if (!_mapperMode && tile->GetAlwaysHideSprite()) {
+                continue;
+            }
+
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            AddSpriteToChain(field, mspr);
+        }
+    }
+
+    // Roof
+    if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum)) {
+        for (auto* tile : field.RoofTiles) {
+            if (!_mapperMode && tile->GetAlwaysHideSprite()) {
+                continue;
+            }
+
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            mspr->SetEggAppearence(EggAppearenceType::Always);
+            AddSpriteToChain(field, mspr);
+        }
+    }
+
+    // Items on hex
+    if (!field.Items.empty()) {
+        for (auto* item : field.Items) {
+            if (!_mapperMode) {
+                if (item->GetAlwaysHideSprite()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowWall && item->GetIsWall()) {
+                    continue;
+                }
+            }
+            else {
+                const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
+
+                if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
+                    continue;
+                }
+                if (!_engine->Settings.ShowFast && is_fast) {
+                    continue;
+                }
+                if (_ignorePids.count(item->GetProtoId()) != 0) {
+                    continue;
+                }
+            }
+
+            auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
+            AddSpriteToChain(field, mspr);
+        }
+    }
+
+    // Critters
+    if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
+        for (auto* cr : field.Critters) {
+            auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
+
+            auto contour = ContourType::None;
+            if (cr->GetId() == _critterContourCrId) {
+                contour = _critterContour;
+            }
+            else if (!cr->GetIsChosen()) {
+                contour = _crittersContour;
+            }
+            mspr->SetContour(contour, cr->GetContourColor());
+
+            AddSpriteToChain(field, mspr);
+        }
+    }
+
+    // Patterns
+    if (!_spritePatterns.empty()) {
+        for (auto it = _spritePatterns.begin(); it != _spritePatterns.end();) {
+            const auto& pattern = *it;
+
+            if (pattern->Finished) {
+                it = _spritePatterns.erase(it);
+                continue;
+            }
+
+            ++it;
+
+            if ((hex.x % pattern->EveryHex.x) != 0) {
+                continue;
+            }
+            if ((hex.y % pattern->EveryHex.y) != 0) {
+                continue;
+            }
+
+            if (pattern->InteractWithRoof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
+                continue;
+            }
+
+            if (pattern->CheckTileProperty) {
+                if (field.GroundTiles.empty()) {
+                    continue;
+                }
+                if (field.GroundTiles.front()->GetValueAsInt(static_cast<int32>(pattern->TileProperty)) != pattern->ExpectedTilePropertyValue) {
+                    continue;
+                }
+            }
+            else {
+                continue;
+            }
+
+            const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
+            auto* mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
+                {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
+                spr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            AddSpriteToChain(field, mspr);
+        }
+    }
+
+    // Scroll block
+    if (_mapperMode) {
+        const irect32 scroll_area = GetScrollAxialArea();
+
+        if (!scroll_area.isZero()) {
+            const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+            if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
+                const auto& spr = _picTrack1;
+                auto* mspr = _mapSprites.AddSprite(DrawOrderType::Last, hex, //
+                    {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
+                    spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
+                AddSpriteToChain(field, mspr);
+            }
+        }
+    }
+}
+
+void MapView::HideHex(const ViewField& vf)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_mapSize.isValidPos(vf.RawHex)) {
+        return;
+    }
+
+    const auto hex = _mapSize.fromRawPos(vf.RawHex);
+
+    if (!IsHexToDraw(hex)) {
+        return;
+    }
+
+    auto& field = _hexField->GetCellForWriting(hex);
+    field.IsView = false;
+
+    InvalidateSpriteChain(field);
+
+    // Lighting
+    if (!field.LightSources.empty()) {
+        for (auto* ls : field.LightSources | std::views::keys) {
+            const auto it = _visibleLightSources.find(ls);
+
+            FO_RUNTIME_ASSERT(it != _visibleLightSources.end());
+            FO_RUNTIME_ASSERT(it->second > 0);
+
+            if (it->second > 1) {
+                it->second--;
+            }
+            else {
+                _visibleLightSources.erase(it);
+            }
+        }
+    }
 }
 
 void MapView::ProcessLighting()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_engine->Settings.DisableLighting) {
+        return;
+    }
 
     if (_needReapplyLights) {
         _needReapplyLights = false;
@@ -1550,12 +1331,11 @@ void MapView::ProcessLighting()
     vector<LightSource*> reapply_sources;
     vector<LightSource*> remove_sources;
 
-    for (auto&& [ls, count] : _visibleLightSources) {
+    for (auto& ls : _visibleLightSources | std::views::keys) {
         const auto prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
             const auto elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32>(std::chrono::milliseconds {200});
-
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
 
@@ -1578,11 +1358,8 @@ void MapView::ProcessLighting()
         _lightSources.erase(ls->Id);
     }
 
-    bool need_render_light = false;
-
     if (_needRebuildLightPrimitives) {
         _needRebuildLightPrimitives = false;
-        need_render_light = true;
 
         for (auto& points : _lightPoints) {
             points.clear();
@@ -1612,37 +1389,6 @@ void MapView::ProcessLighting()
             LightFanToPrimitves(ls, _lightPoints[cur_points], _lightSoftPoints[cur_points]);
         }
     }
-
-    if (!need_render_light) {
-        for (auto* ls : _visibleLightSources | std::views::keys) {
-            if (ls->Offset != nullptr && *ls->Offset != ls->LastOffset) {
-                ls->LastOffset = *ls->Offset;
-                need_render_light = true;
-            }
-        }
-    }
-
-    // Prerender light
-    if (need_render_light && _rtLight != nullptr) {
-        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-
-        const auto zoom = GetSpritesZoom();
-        const auto offset = fpos32 {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
-
-        for (auto& points : _lightPoints) {
-            if (!points.empty()) {
-                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-            }
-        }
-        for (auto& points : _lightPoints) {
-            if (!points.empty()) {
-                _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-            }
-        }
-
-        _engine->SprMngr.GetRtMngr().PopRenderTarget();
-    }
 }
 
 void MapView::UpdateCritterLightSource(const CritterHexView* cr)
@@ -1650,6 +1396,10 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(cr->GetMap() == this);
+
+    if (_engine->Settings.DisableLighting) {
+        return;
+    }
 
     bool light_added = false;
 
@@ -1678,6 +1428,10 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
 
+    if (_engine->Settings.DisableLighting) {
+        return;
+    }
+
     if (item->GetLightSource()) {
         UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->SprOffset);
     }
@@ -1689,6 +1443,10 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
 void MapView::UpdateHexLightSources(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_engine->Settings.DisableLighting) {
+        return;
+    }
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -1706,7 +1464,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distan
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(LightSource(id, hex, color, distance, flags, intensity, offset))).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.get();
     }
     else {
         ls = it->second.get();
@@ -1767,7 +1525,6 @@ void MapView::CleanLightSourceOffsets(ident_t id)
 
     if (it != _lightSources.end()) {
         auto& ls = it->second;
-
         ls->Offset = nullptr;
     }
 }
@@ -1824,9 +1581,19 @@ void MapView::ApplyLightFan(LightSource* ls)
     optional<mpos> last_traced_hex;
 
     for (int32 i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
-        const auto dir = numeric_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+        uint8 dir;
+        int32 iterations;
 
-        for (int32 j = 0, jj = GameSettings::HEXAGONAL_GEOMETRY ? distance : distance * 2; j < jj; j++) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            dir = numeric_cast<uint8>((i + 2) % 6);
+            iterations = distance;
+        }
+        else {
+            dir = numeric_cast<uint8>(((i + 1) * 2) % 8);
+            iterations = distance * 2;
+        }
+
+        for (int32 j = 0; j < iterations; j++) {
             if (seek_start) {
                 for (int32 l = 0; l < distance; l++) {
                     GeometryHelper::MoveHexByDirUnsafe(raw_traced_hex, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
@@ -1865,7 +1632,6 @@ void MapView::ApplyLightFan(LightSource* ls)
                 }
 
                 ls->FanHexes.emplace_back(traced_hex, traced_alpha, use_offsets);
-
                 last_traced_hex = traced_hex;
             }
         }
@@ -1886,7 +1652,6 @@ void MapView::CleanLightFan(LightSource* ls)
 
     if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
         FO_RUNTIME_ASSERT(_globalLights > 0);
-
         _globalLights--;
     }
 
@@ -1899,7 +1664,6 @@ void MapView::CleanLightFan(LightSource* ls)
         if constexpr (FO_DEBUG) {
             if (field.IsView) {
                 FO_RUNTIME_ASSERT(_visibleLightSources[ls] > 0);
-
                 _visibleLightSources[ls]--;
             }
         }
@@ -1934,7 +1698,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
 
     const auto resolve_hex = [this](int32 hx, int32 hy) -> mpos { return _mapSize.fromRawPos(hx, hy); };
 
-    for (;;) {
+    while (true) {
         cur_inten -= inten_sub;
         curx1_f += sx1_f;
         cury1_f += sy1_f;
@@ -1989,7 +1753,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
             // Left side
             ox = old_curx1_i + ox;
 
-            if (ox < 0 || ox >= map_width || _hexField->GetCellForReading(resolve_hex(ox, old_cury1_i)).Flags.LightBlocked) {
+            if (ox < 0 || ox >= map_width || _hexField->GetCellForReading(resolve_hex(ox, old_cury1_i)).LightBlocked) {
                 to_hex = resolve_hex(ox < 0 || ox >= map_width ? old_curx1_i : ox, old_cury1_i);
                 MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
                 break;
@@ -2000,7 +1764,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
             // Right side
             oy = old_cury1_i + oy;
 
-            if (oy < 0 || oy >= map_height || _hexField->GetCellForReading(resolve_hex(old_curx1_i, oy)).Flags.LightBlocked) {
+            if (oy < 0 || oy >= map_height || _hexField->GetCellForReading(resolve_hex(old_curx1_i, oy)).LightBlocked) {
                 to_hex = resolve_hex(old_curx1_i, oy < 0 || oy >= map_height ? old_cury1_i : oy);
                 MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
                 break;
@@ -2010,7 +1774,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= map_width || cury1_i < 0 || cury1_i >= map_height || _hexField->GetCellForReading(resolve_hex(curx1_i, cury1_i)).Flags.LightBlocked) {
+        if (curx1_i < 0 || curx1_i >= map_width || cury1_i < 0 || cury1_i >= map_height || _hexField->GetCellForReading(resolve_hex(curx1_i, cury1_i)).LightBlocked) {
             to_hex = resolve_hex(curx1_i < 0 || curx1_i >= map_width ? old_curx1_i : curx1_i, cury1_i < 0 || cury1_i >= map_height ? old_cury1_i : cury1_i);
             MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
             break;
@@ -2030,7 +1794,7 @@ void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32 i
 
     const auto& field = _hexField->GetCellForReading(to_hex);
 
-    if (field.Flags.HasTransparentWall) {
+    if (field.HasTransparentWall) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
         const auto dir = GeometryHelper::GetDir(from_hex, to_hex);
 
@@ -2051,7 +1815,7 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
     bool north_south = false;
     const auto& field = _hexField->GetCellForReading(to_hex);
 
-    if (field.Flags.HasWall) {
+    if (field.HasWall) {
         is_wall = true;
 
         if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
@@ -2105,7 +1869,7 @@ void MapView::MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, 
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Flags.HasWall) {
+    if (field.HasWall) {
         const auto corner = field.Corner;
 
         if ((north_south && (corner == CornerType::NorthSouth || corner == CornerType::North || corner == CornerType::West)) || (!north_south && (corner == CornerType::EastWest || corner == CornerType::East)) || corner == CornerType::South) {
@@ -2154,26 +1918,26 @@ void MapView::CalculateHexLight(mpos hex, const Field& field)
 
     hex_light = {};
 
-    for (auto&& ls_pair : field.LightSources) {
-        hex_light.comp.r = std::max(hex_light.comp.r, ls_pair.second.comp.r);
-        hex_light.comp.g = std::max(hex_light.comp.g, ls_pair.second.comp.g);
-        hex_light.comp.b = std::max(hex_light.comp.b, ls_pair.second.comp.b);
+    for (const auto& value : field.LightSources | std::views::values) {
+        hex_light.comp.r = std::max(hex_light.comp.r, value.comp.r);
+        hex_light.comp.g = std::max(hex_light.comp.g, value.comp.g);
+        hex_light.comp.b = std::max(hex_light.comp.b, value.comp.b);
     }
 }
 
 void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (ls->FanHexes.size() <= 1) {
         return;
     }
 
-    ipos32 center_pos = GetHexPosition(ls->Hex);
+    ipos32 center_pos = GetHexMapPos(ls->Hex);
     center_pos.x += _engine->Settings.MapHexWidth / 2;
     center_pos.y += _engine->Settings.MapHexHeight / 2;
 
-    const auto center_point = PrimitivePoint {center_pos, ls->CenterColor, ls->Offset};
+    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get()};
 
     const auto points_start_size = points.size();
     points.reserve(points.size() + ls->FanHexes.size() * 3);
@@ -2185,8 +1949,11 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const uint8 alpha = std::get<1>(fan_hex);
         const bool use_offsets = std::get<2>(fan_hex);
 
-        const auto [ox, oy] = _engine->Geometry.GetHexInterval(ls->Hex, hex);
-        const auto edge_point = PrimitivePoint {{center_pos.x + ox, center_pos.y + oy}, ucolor {ls->CenterColor, alpha}, use_offsets ? ls->Offset : nullptr};
+        const auto [ox, oy] = _engine->Geometry.GetHexOffset(ls->Hex, hex);
+        const ipos32 pos = {center_pos.x + ox, center_pos.y + oy};
+        const ucolor color = ucolor(ls->CenterColor, alpha);
+        const ipos32* offset = use_offsets ? ls->Offset.get() : nullptr;
+        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset};
 
         points.emplace_back(edge_point);
 
@@ -2208,8 +1975,8 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const auto& next = points[i + 1];
 
         if ((next.PointPos - cur.PointPos).idist() > _engine->Settings.MapHexWidth) {
-            soft_points.emplace_back(PrimitivePoint {next.PointPos, next.PointColor, next.PointOffset, next.PPointColor});
-            soft_points.emplace_back(PrimitivePoint {cur.PointPos, cur.PointColor, cur.PointOffset, cur.PPointColor});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
 
             const auto dist_comp = (cur.PointPos - center_pos).idist() > (next.PointPos - center_pos).idist();
             const auto x = numeric_cast<float32>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
@@ -2217,10 +1984,10 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
             const auto changed_xy = GenericUtils::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
-                soft_points.emplace_back(PrimitivePoint {{cur.PointPos.x + iround<int32>(changed_xy.x), cur.PointPos.y + iround<int32>(changed_xy.y)}, cur.PointColor, cur.PointOffset, cur.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32>(changed_xy.x), cur.PointPos.y + iround<int32>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
             }
             else {
-                soft_points.emplace_back(PrimitivePoint {{next.PointPos.x + iround<int32>(changed_xy.x), next.PointPos.y + iround<int32>(changed_xy.y)}, next.PointColor, next.PointOffset, next.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32>(changed_xy.x), next.PointPos.y + iround<int32>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
             }
         }
     }
@@ -2236,55 +2003,8 @@ void MapView::SetHiddenRoof(mpos hex)
 
     if (_hiddenRoofNum != _hexField->GetCellForReading(corrected_hex).RoofNum) {
         _hiddenRoofNum = _hexField->GetCellForReading(corrected_hex).RoofNum;
-        RefreshMap();
+        RebuildMap();
     }
-}
-
-void MapView::MarkRoofNum(ipos32 raw_hex, int32 num)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::stack<ipos32, vector<ipos32>> next_raw_hexes;
-    next_raw_hexes.push(raw_hex);
-
-    while (!next_raw_hexes.empty()) {
-        const auto next_raw_hex = next_raw_hexes.top();
-        next_raw_hexes.pop();
-
-        if (!_mapSize.isValidPos(next_raw_hex)) {
-            continue;
-        }
-
-        const auto next_hex = _mapSize.fromRawPos(next_raw_hex);
-        const auto& field = _hexField->GetCellForReading(next_hex);
-
-        if (field.RoofNum != 0 || field.RoofTiles.empty()) {
-            continue;
-        }
-
-        _hexField->GetCellForWriting(next_hex).RoofNum = num;
-
-        next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings.MapTileStep, next_raw_hex.y);
-        next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings.MapTileStep, next_raw_hex.y);
-        next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y + _engine->Settings.MapTileStep);
-        next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y - _engine->Settings.MapTileStep);
-    }
-}
-
-auto MapView::IsVisible(const Sprite* spr, ipos32 offset) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(spr);
-
-    const auto top = offset.y + spr->Offset.x - spr->Size.height - _engine->Settings.MapHexLineHeight * 2;
-    const auto bottom = offset.y + spr->Offset.y + _engine->Settings.MapHexLineHeight * 2;
-    const auto left = offset.x + spr->Offset.x - spr->Size.width / 2 - _engine->Settings.MapHexWidth;
-    const auto right = offset.x + spr->Offset.x + spr->Size.width / 2 + _engine->Settings.MapHexWidth;
-    const auto zoomed_screen_height = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * GetSpritesZoom()));
-    const auto zoomed_screen_width = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
-
-    return top <= zoomed_screen_height && bottom >= 0 && left <= zoomed_screen_width && right >= 0;
 }
 
 auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
@@ -2293,20 +2013,20 @@ auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 
     FO_RUNTIME_ASSERT(spr);
 
-    const auto left = std::max(spr->Size.width / 2 + spr->Offset.x + offset.x + _engine->Settings.MapHexWidth - _wLeft * _engine->Settings.MapHexWidth, 0);
-    const auto right = std::max(spr->Size.width / 2 - spr->Offset.x - offset.x + _engine->Settings.MapHexWidth - _wRight * _engine->Settings.MapHexWidth, 0);
-    const auto top = std::max(0 + spr->Offset.y + offset.y + _engine->Settings.MapHexLineHeight * 2 - _hTop * _engine->Settings.MapHexLineHeight, 0);
-    const auto bottom = std::max(spr->Size.height - spr->Offset.y - offset.y + _engine->Settings.MapHexLineHeight * 2 - _hBottom * _engine->Settings.MapHexLineHeight, 0);
+    const auto left = std::max(spr->Size.width / 2 + spr->Offset.x + offset.x + _maxScroll.width - _wLeft * _engine->Settings.MapHexWidth, 0);
+    const auto right = std::max(spr->Size.width / 2 - spr->Offset.x - offset.x + _maxScroll.width - _wRight * _engine->Settings.MapHexWidth, 0);
+    const auto top = std::max(0 + spr->Offset.y + offset.y + _maxScroll.height - _hTop * _engine->Settings.MapHexLineHeight, 0);
+    const auto bottom = std::max(spr->Size.height - spr->Offset.y - offset.y + _maxScroll.height - _hBottom * _engine->Settings.MapHexLineHeight, 0);
 
     if (left != 0 || right != 0 || top != 0 || bottom != 0) {
         _wLeft += left / _engine->Settings.MapHexWidth + (left % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
         _wRight += right / _engine->Settings.MapHexWidth + (right % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
         _hTop += top / _engine->Settings.MapHexLineHeight + (top % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
+        _hTop += _hTop % 2;
         _hBottom += bottom / _engine->Settings.MapHexLineHeight + (bottom % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
 
         if (!_mapLoading) {
-            ResizeView();
-            RefreshMap();
+            RebuildMap();
         }
 
         return true;
@@ -2339,28 +2059,27 @@ void MapView::RecacheHexFlags(Field& field)
 {
     FO_STACK_TRACE_ENTRY();
 
-    field.Flags.HasWall = false;
-    field.Flags.HasTransparentWall = false;
-    field.Flags.HasScenery = false;
-    field.Flags.MoveBlocked = false;
-    field.Flags.ShootBlocked = false;
-    field.Flags.LightBlocked = false;
-    field.Flags.ScrollBlock = false;
+    field.HasWall = false;
+    field.HasTransparentWall = false;
+    field.HasScenery = false;
+    field.MoveBlocked = field.ScrollBlock;
+    field.ShootBlocked = false;
+    field.LightBlocked = false;
     field.Corner = CornerType::NorthSouth;
 
     if (_engine->Settings.CritterBlockHex) {
         if (!field.Critters.empty()) {
             for (const auto* cr : field.Critters) {
-                if (!field.Flags.MoveBlocked && !cr->IsDead()) {
-                    field.Flags.MoveBlocked = true;
+                if (!field.MoveBlocked && !cr->IsDead()) {
+                    field.MoveBlocked = true;
                 }
             }
         }
 
         if (!field.MultihexCritters.empty()) {
             for (const auto* cr : field.MultihexCritters) {
-                if (!field.Flags.MoveBlocked && !cr->IsDead()) {
-                    field.Flags.MoveBlocked = true;
+                if (!field.MoveBlocked && !cr->IsDead()) {
+                    field.MoveBlocked = true;
                 }
             }
         }
@@ -2368,50 +2087,80 @@ void MapView::RecacheHexFlags(Field& field)
 
     if (!field.Items.empty()) {
         for (const auto* item : field.Items) {
-            if (!field.Flags.HasWall && item->GetIsWall()) {
-                field.Flags.HasWall = true;
-                field.Flags.HasTransparentWall = item->GetLightThru();
+            if (!field.HasWall && item->GetIsWall()) {
+                field.HasWall = true;
+                field.HasTransparentWall = item->GetLightThru();
 
                 field.Corner = item->GetCorner();
             }
-            else if (!field.Flags.HasScenery && item->GetIsScenery()) {
-                field.Flags.HasScenery = true;
+            else if (!field.HasScenery && item->GetIsScenery()) {
+                field.HasScenery = true;
 
-                if (!field.Flags.HasWall) {
+                if (!field.HasWall) {
                     field.Corner = item->GetCorner();
                 }
             }
 
-            if (!field.Flags.MoveBlocked && !item->GetNoBlock()) {
-                field.Flags.MoveBlocked = true;
+            if (!field.MoveBlocked && !item->GetNoBlock()) {
+                field.MoveBlocked = true;
             }
-            if (!field.Flags.ShootBlocked && !item->GetShootThru()) {
-                field.Flags.ShootBlocked = true;
+            if (!field.ShootBlocked && !item->GetShootThru()) {
+                field.ShootBlocked = true;
             }
-            if (!field.Flags.ScrollBlock && item->GetScrollBlock()) {
-                field.Flags.ScrollBlock = true;
-            }
-            if (!field.Flags.LightBlocked && !item->GetLightThru()) {
-                field.Flags.LightBlocked = true;
+            if (!field.LightBlocked && !item->GetLightThru()) {
+                field.LightBlocked = true;
             }
         }
     }
 
     if (!field.BlockLineItems.empty()) {
         for (const auto* item : field.BlockLineItems) {
-            field.Flags.MoveBlocked = true;
+            field.MoveBlocked = true;
 
-            if (!field.Flags.ShootBlocked && !item->GetShootThru()) {
-                field.Flags.ShootBlocked = true;
+            if (!field.ShootBlocked && !item->GetShootThru()) {
+                field.ShootBlocked = true;
             }
-            if (!field.Flags.LightBlocked && !item->GetLightThru()) {
-                field.Flags.LightBlocked = true;
+            if (!field.LightBlocked && !item->GetLightThru()) {
+                field.LightBlocked = true;
             }
         }
     }
 
-    if (field.Flags.ShootBlocked) {
-        field.Flags.MoveBlocked = true;
+    if (field.ShootBlocked) {
+        field.MoveBlocked = true;
+    }
+}
+
+void MapView::RecacheScrollBlocks()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const irect32 scroll_area = GetScrollAxialArea();
+    const int32 scroll_block_size = _engine->Settings.ScrollBlockSize;
+
+    for (const auto hx : iterate_range(_mapSize.width)) {
+        for (const auto hy : iterate_range(_mapSize.height)) {
+            const mpos hex = {hx, hy};
+            const auto& field = _hexField->GetCellForReading(hex);
+            const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+            bool is_on_scroll_block = false;
+
+            if (!scroll_area.isZero()) {
+                // Is hex on scroll block line
+                if (axial_hex.x >= scroll_area.x - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_block_size || //
+                    axial_hex.x >= scroll_area.x + scroll_area.width - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_area.width + scroll_block_size || //
+                    axial_hex.y >= scroll_area.y - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_block_size || //
+                    axial_hex.y >= scroll_area.y + scroll_area.height - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_area.height + scroll_block_size) {
+                    is_on_scroll_block = true;
+                }
+            }
+
+            if (is_on_scroll_block != field.ScrollBlock) {
+                _hexField->GetCellForWriting(hex).ScrollBlock = is_on_scroll_block;
+                RecacheHexFlags(hex);
+            }
+        }
     }
 }
 
@@ -2420,8 +2169,10 @@ void MapView::Resize(msize size)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(size.width >= MAXHEX_MIN);
-    FO_RUNTIME_ASSERT(size.width <= MAXHEX_MAX);
+    FO_RUNTIME_ASSERT(size.width >= GameSettings::MIN_MAP_SIZE);
+    FO_RUNTIME_ASSERT(size.width <= GameSettings::MAX_MAP_SIZE);
+    FO_RUNTIME_ASSERT(size.height >= GameSettings::MIN_MAP_SIZE);
+    FO_RUNTIME_ASSERT(size.height <= GameSettings::MAX_MAP_SIZE);
 
     for (const auto& vf : _viewField) {
         if (_mapSize.isValidPos(vf.RawHex)) {
@@ -2486,7 +2237,8 @@ void MapView::Resize(msize size)
         }
     }
 
-    RefreshMap();
+    RecacheScrollBlocks();
+    RebuildMapNow();
 }
 
 void MapView::SwitchShowHex()
@@ -2495,7 +2247,7 @@ void MapView::SwitchShowHex()
 
     _isShowHex = !_isShowHex;
 
-    RefreshMap();
+    RebuildMap();
 }
 
 void MapView::ClearHexTrack()
@@ -2519,113 +2271,68 @@ void MapView::SwitchShowTrack()
         ClearHexTrack();
     }
 
-    RefreshMap();
+    RebuildMap();
 }
 
-void MapView::InitView(ipos32 screen_raw_hex)
+auto MapView::ScreenToMapPos(ipos32 screen_pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const auto view_size = GetViewSize();
-        const auto halfw = view_size.width / 2 + _wRight;
-        const auto halfh = view_size.height / 2 + _hTop;
-        const auto xa = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth / 2;
-        const auto xb = _wRight * _engine->Settings.MapHexWidth - _engine->Settings.MapHexWidth;
-        const auto wx = iround<int32>(std::ceil(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
-
-        auto line_hex = screen_raw_hex;
-
-        for (int32 i = 0; i < halfw; i++) {
-            GeometryHelper::MoveHexByDirUnsafe(line_hex, 1);
-        }
-        for (int32 i = 0; i < halfh; i++) {
-            GeometryHelper::MoveHexByDirUnsafe(line_hex, i % 2 == 0 ? 0 : 5);
-        }
-
-        auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
-
-        for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hex = line_hex;
-            auto ox = wx + (yv % 2 != 0 ? xb : xa);
-
-            for (auto xv = _wVisible - 1; xv >= 0; xv--) {
-                const auto vpos = yv * _wVisible + xv;
-                auto& vf = _viewField[vpos];
-
-                vf.Offset = {ox, oy};
-                vf.Offsetf = fpos32(vf.Offset);
-                vf.RawHex = hex;
-
-                ox -= _engine->Settings.MapHexWidth;
-                GeometryHelper::MoveHexByDirUnsafe(hex, 4);
-            }
-
-            oy += _engine->Settings.MapHexLineHeight;
-            GeometryHelper::MoveHexByDirUnsafe(line_hex, yv % 2 == 0 ? 3 : 2);
-        }
-    }
-    else {
-        const auto view_size = GetViewSize();
-        const auto halfw = view_size.width / 2 + _wRight;
-        const auto halfh = view_size.height / 2 + _hTop;
-        auto basehx = screen_raw_hex.x - halfh / 2 - halfw;
-        auto basehy = screen_raw_hex.y - halfh / 2 + halfw;
-        auto xa = -_engine->Settings.MapHexWidth * _wRight;
-        auto xb = -_engine->Settings.MapHexWidth * _wRight - _engine->Settings.MapHexWidth / 2;
-        auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
-        const auto wx = iround<int32>(numeric_cast<float32>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
-
-        for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = basehx;
-            auto hy = basehy;
-            auto ox = yv % 2 != 0 ? xa : xb;
-
-            for (auto xv = _wVisible - 1; xv >= 0; xv--) {
-                const auto vpos = yv * _wVisible + xv;
-                auto& vf = _viewField[vpos];
-
-                vf.Offset = {wx - ox, oy};
-                vf.Offsetf = fpos32(vf.Offset);
-                vf.RawHex = {hx, hy};
-
-                hx++;
-                hy--;
-                ox += _engine->Settings.MapHexWidth;
-            }
-
-            if (yv % 2 != 0) {
-                basehy++;
-            }
-            else {
-                basehx++;
-            }
-
-            oy += _engine->Settings.MapHexLineHeight;
-        }
-    }
+    return (fpos32(screen_pos) / GetSpritesZoom() + _scrollOffset).round<int32>();
 }
 
-void MapView::ResizeView()
+auto MapView::MapToScreenPos(ipos32 map_pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_viewField.empty()) {
-        for (const auto& vf : _viewField) {
-            if (_mapSize.isValidPos(vf.RawHex)) {
-                auto& field = _hexField->GetCellForWriting(_mapSize.fromRawPos(vf.RawHex));
-                field.IsView = false;
-                InvalidateSpriteChain(field);
-            }
-        }
-    }
+    return ((fpos32(map_pos) - _scrollOffset) * GetSpritesZoom()).round<int32>();
+}
 
-    const auto view_size = GetViewSize();
+void MapView::InitView()
+{
+    FO_STACK_TRACE_ENTRY();
 
+    const isize32 view_size = GetViewSize();
     _wVisible = view_size.width + _wLeft + _wRight;
     _hVisible = view_size.height + _hTop + _hBottom;
-
     _viewField.resize(numeric_cast<size_t>(_hVisible) * _wVisible);
+
+    // From screen left top to view left top
+    auto row_hex = _screenRawHex;
+
+    for (int32 i = 0; i < _wLeft; i++) {
+        constexpr auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? 4 : 5);
+        GeometryHelper::MoveHexByDirUnsafe(row_hex, dir);
+    }
+    for (int32 i = 0; i < _hTop / 2; i++) {
+        constexpr auto dir1 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
+        constexpr auto dir2 = static_cast<uint8>(0);
+        GeometryHelper::MoveHexByDirUnsafe(row_hex, dir1);
+        GeometryHelper::MoveHexByDirUnsafe(row_hex, dir2);
+    }
+
+    // Assign view coords
+    size_t vpos = 0;
+    auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
+
+    for (auto yv = 0; yv < _hVisible; yv++) {
+        auto cur_hex = row_hex;
+        auto ox = -(_wLeft * _engine->Settings.MapHexWidth) + (yv % 2 != 0 ? _engine->Settings.MapHexWidth / 2 : 0);
+
+        for (auto xv = 0; xv < _wVisible; xv++) {
+            auto& vf = _viewField[vpos];
+            ++vpos;
+
+            vf.Offset = {ox, oy};
+            vf.RawHex = cur_hex;
+
+            ox += _engine->Settings.MapHexWidth;
+            GeometryHelper::MoveHexByDirUnsafe(cur_hex, 1);
+        }
+
+        oy += _engine->Settings.MapHexLineHeight;
+        GeometryHelper::MoveHexByDirUnsafe(row_hex, yv % 2 == 0 ? 2 : 3);
+    }
 }
 
 void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
@@ -2636,15 +2343,10 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 
     if (field.SpriteChain == nullptr) {
         field.SpriteChain = mspr;
-        mspr->ExtraChainRoot = &field.SpriteChain;
+        mspr->CreateExtraChain(&field.SpriteChain);
     }
     else {
-        auto* last_spr = field.SpriteChain;
-        while (last_spr->ExtraChainChild != nullptr) {
-            last_spr = last_spr->ExtraChainChild;
-        }
-        last_spr->ExtraChainChild = mspr;
-        mspr->ExtraChainParent = last_spr;
+        field.SpriteChain->AddToExtraChain(mspr);
     }
 }
 
@@ -2654,63 +2356,12 @@ void MapView::InvalidateSpriteChain(Field& field)
 
     FO_NON_CONST_METHOD_HINT();
 
-    // SpriteChain changed outside loop
     if (field.SpriteChain != nullptr) {
-        FO_RUNTIME_ASSERT(field.SpriteChain->Valid);
+        FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
         while (field.SpriteChain != nullptr) {
-            FO_RUNTIME_ASSERT(field.SpriteChain->Valid);
+            FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
             field.SpriteChain->Invalidate();
         }
-    }
-}
-
-void MapView::ChangeZoom(int32 zoom)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (is_float_equal(_engine->Settings.SpritesZoomMin, _engine->Settings.SpritesZoomMax)) {
-        return;
-    }
-    if (zoom == 0 && GetSpritesZoom() == 1.0f) {
-        return;
-    }
-    if (zoom > 0 && GetSpritesZoom() >= std::min(_engine->Settings.SpritesZoomMax, MAX_ZOOM)) {
-        return;
-    }
-    if (zoom < 0 && GetSpritesZoom() <= std::max(_engine->Settings.SpritesZoomMin, MIN_ZOOM)) {
-        return;
-    }
-
-    // Check screen blockers
-    if (_engine->Settings.ScrollCheck && (zoom > 0 || (zoom == 0 && GetSpritesZoom() < 1.0f))) {
-        for (int32 x = -1; x <= 1; x++) {
-            for (int32 y = -1; y <= 1; y++) {
-                if ((x != 0 || y != 0) && ScrollCheck(x, y)) {
-                    return;
-                }
-            }
-        }
-    }
-
-    if (zoom != 0 || GetSpritesZoom() < 1.0f) {
-        const auto old_zoom = GetSpritesZoom();
-        const auto width = numeric_cast<float32>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0));
-        SetSpritesZoom((width * GetSpritesZoom() + (zoom >= 0 ? 2.0f : -2.0f)) / width);
-
-        if (GetSpritesZoom() < std::max(_engine->Settings.SpritesZoomMin, MIN_ZOOM) || GetSpritesZoom() > std::min(_engine->Settings.SpritesZoomMax, MAX_ZOOM)) {
-            SetSpritesZoom(old_zoom);
-            return;
-        }
-    }
-    else {
-        SetSpritesZoom(1.0f);
-    }
-
-    ResizeView();
-    RefreshMap();
-
-    if (zoom == 0 && GetSpritesZoom() != 1.0f) {
-        ChangeZoom(0);
     }
 }
 
@@ -2721,94 +2372,135 @@ auto MapView::GetScreenRawHex() const -> ipos32
     return _screenRawHex;
 }
 
-auto MapView::GetHexPosition(mpos hex) const -> ipos32
+auto MapView::GetCenterRawHex() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& center_field = _viewField[_hVisible / 2 * _wVisible + _wVisible / 2];
-    const auto center_hex = center_field.RawHex;
-    const auto hex_offset = _engine->Geometry.GetHexInterval(center_hex, ipos32 {hex.x, hex.y});
+    const ipos32 lt_pos = _engine->Geometry.GetHexPos(_screenRawHex);
+    const ipos32 center_offset = ipos32(iround<int32>(_viewSize.width) / 2, iround<int32>(_viewSize.height) / 2);
+    return _engine->Geometry.GetHexPosCoord(lt_pos + center_offset);
+}
 
-    return {center_field.Offset.x + hex_offset.x, center_field.Offset.y + hex_offset.y};
+auto MapView::ConvertToScreenRawHex(ipos32 center_raw_hex) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ipos32 center_pos = _engine->Geometry.GetHexPos(center_raw_hex);
+    const ipos32 center_offset = ipos32(iround<int32>(_viewSize.width) / 2, iround<int32>(_viewSize.height) / 2);
+    return _engine->Geometry.GetHexPosCoord(center_pos - center_offset);
+}
+
+auto MapView::GetHexMapPos(mpos hex) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto hex_offset = _engine->Geometry.GetHexOffset(_screenRawHex, ipos32(hex));
+    return {hex_offset.x, hex_offset.y};
 }
 
 void MapView::DrawMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto zoom = GetSpritesZoom();
-    _engine->SprMngr.SetSpritesZoom(zoom);
-    auto reset_spr_mngr_zoom = ScopeCallback([this]() noexcept { _engine->SprMngr.SetSpritesZoom(1.0f); });
+    if (_rebuildMap) {
+        RebuildMapNow();
+    }
 
-    // Prepare light
     ProcessLighting();
-
-    // Prepare fog
     PrepareFogToDraw();
+    _mapSprites.SortIfNeeded();
 
-    // Prerendered offsets
-    const auto scroll_offset = GetScrollOffset();
-    const auto ox = _rtScreenOx - iround<int32>(numeric_cast<float32>(scroll_offset.x) / zoom);
-    const auto oy = _rtScreenOy - iround<int32>(numeric_cast<float32>(scroll_offset.y) / zoom);
-    const auto prerendered_rect = irect32(ox, oy, _engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight);
+    // Draw by parts if view size too big
+    const fsize32 screen_size = fsize32(_screenSize);
+    const fpos32 draw_scale = {screen_size.width / _viewSize.width, screen_size.height / _viewSize.height};
+    const int32 steps_width = iround<int32>(std::ceil(1.0f / draw_scale.x));
+    const int32 steps_height = iround<int32>(std::ceil(1.0f / draw_scale.y));
+    const bool direct_draw = _engine->Settings.MapDirectDraw;
 
-    // Separate render target
-    if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
-        if (_rtMap == nullptr) {
-            _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, false);
+    for (int32 step_x = 0; step_x < steps_width; step_x++) {
+        for (int32 step_y = 0; step_y < steps_height; step_y++) {
+            irect32 draw_area;
+
+            if (direct_draw) {
+                const int32 draw_x = iround<int32>(_scrollOffset.x);
+                const int32 draw_y = iround<int32>(_scrollOffset.y);
+                draw_area = {draw_x, draw_y, _screenSize.width, _screenSize.height};
+            }
+            else {
+                FO_RUNTIME_ASSERT(_rtMap);
+                _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap.get());
+                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
+                const int32 draw_x = iround<int32>(std::floor(_scrollOffset.x)) + step_x * _screenSize.width;
+                const int32 draw_y = iround<int32>(std::floor(_scrollOffset.y)) + step_y * _screenSize.height;
+                const int32 draw_width = std::min(iround<int32>(std::ceil(_viewSize.width)) - step_x * _screenSize.width, _screenSize.width);
+                const int32 draw_height = std::min(iround<int32>(std::ceil(_viewSize.height)) - step_y * _screenSize.height, _screenSize.height);
+                draw_area = {draw_x, draw_y, draw_width, draw_height};
+            }
+
+            const float32 step_xf = numeric_cast<float32>(step_x);
+            const float32 step_yf = numeric_cast<float32>(step_y);
+            const float32 source_x = std::fmod(_scrollOffset.x, 1.0f);
+            const float32 source_y = std::fmod(_scrollOffset.y, 1.0f);
+            const float32 source_width = std::min(_viewSize.width - step_xf * screen_size.width, screen_size.width);
+            const float32 source_height = std::min(_viewSize.height - step_yf * screen_size.height, screen_size.height);
+            const frect32 source_rect = {source_x, source_y, source_width, source_height};
+            const int32 target_x = iround<int32>(std::floor(step_xf * screen_size.width * draw_scale.x));
+            const int32 target_y = iround<int32>(std::floor(step_yf * screen_size.height * draw_scale.y));
+            const int32 target_width = iround<int32>(std::ceil(source_width * draw_scale.x));
+            const int32 target_height = iround<int32>(std::ceil(source_height * draw_scale.y));
+            const irect32 target_rect = {target_x, target_y, target_width, target_height};
+
+            // Tiles
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
+
+            // Flat sprites
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
+
+            // Lighting
+            if (!_engine->Settings.DisableLighting) {
+                _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
+                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
+                for (auto& points : _lightPoints) {
+                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light);
+                }
+                for (auto& points : _lightSoftPoints) {
+                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light);
+                }
+
+                _engine->SprMngr.GetRtMngr().PopRenderTarget();
+
+                _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
+                _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+            }
+
+            // Other sprites
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
+
+            // Collected contours
+            _engine->SprMngr.DrawContours();
+
+            // Fog
+            if (!_engine->Settings.DisableFog && !_mapperMode) {
+                _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
+                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
+                _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog);
+                _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog);
+
+                _engine->SprMngr.GetRtMngr().PopRenderTarget();
+
+                _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
+                _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+            }
+
+            // Draw streched render target
+            if (!direct_draw) {
+                _engine->SprMngr.GetRtMngr().PopRenderTarget();
+                _engine->SprMngr.DrawRenderTarget(_rtMap.get(), false, &source_rect, &target_rect);
+            }
         }
-
-        _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
-
-        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-    }
-
-    // Tiles
-    _engine->SprMngr.DrawSprites(_mapSprites, scroll_offset, false, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
-
-    // Flat sprites
-    _engine->SprMngr.DrawSprites(_mapSprites, scroll_offset, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
-
-    // Lighting
-    if (_rtLight != nullptr) {
-        _engine->SprMngr.DrawRenderTarget(_rtLight, true, &prerendered_rect);
-    }
-
-    // Cursor flat
-    if (_cursorPrePic != nullptr) {
-        DrawCursor(_cursorPrePic.get());
-    }
-
-    // Sprites
-    _engine->SprMngr.DrawSprites(_mapSprites, scroll_offset, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
-
-    // Contours
-    _engine->SprMngr.DrawContours();
-
-    // Fog
-    if (!_mapperMode && _rtFog != nullptr) {
-        _engine->SprMngr.DrawRenderTarget(_rtFog, true, &prerendered_rect);
-    }
-
-    // Cursor
-    if (_cursorPostPic != nullptr) {
-        DrawCursor(_cursorPostPic.get());
-    }
-
-    if (_cursorXPic != nullptr) {
-        if (_drawCursorX < 0) {
-            DrawCursor(_cursorXPic.get());
-        }
-        else if (_drawCursorX > 0) {
-            DrawCursor(strex("{}", _drawCursorX));
-        }
-    }
-
-    // Draw map from render target
-    if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
-        _engine->SprMngr.GetRtMngr().PopRenderTarget();
-        _engine->SprMngr.DrawRenderTarget(_rtMap, false);
     }
 }
 
@@ -2816,7 +2508,10 @@ void MapView::PrepareFogToDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_mapperMode || _rtFog == nullptr) {
+    if (_engine->Settings.DisableFog) {
+        return;
+    }
+    if (_mapperMode) {
         return;
     }
 
@@ -2843,7 +2538,7 @@ void MapView::PrepareFogToDraw()
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
-            const ipos32 base_pos = GetHexPosition(base_hex);
+            const ipos32 base_pos = GetHexMapPos(base_hex);
             const auto center_look_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 0}, .PointOffset = &chosen->SprOffset};
             const auto center_shoot_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 255}, .PointOffset = &chosen->SprOffset};
 
@@ -2855,11 +2550,19 @@ void MapView::PrepareFogToDraw()
             bool seek_start = true;
 
             for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
-                // ReSharper disable once CppUnreachableCode
-                const auto dir = (GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+                uint8 dir;
+                int32 iterations;
 
-                // ReSharper disable once CppUnreachableCode
-                for (int32 j = 0, jj = GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2; j < jj; j++) {
+                if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                    dir = numeric_cast<uint8>((i + 2) % 6);
+                    iterations = dist;
+                }
+                else {
+                    dir = numeric_cast<uint8>(((i + 1) * 2) % 8);
+                    iterations = dist * 2;
+                }
+
+                for (int32 j = 0; j < iterations; j++) {
                     if (seek_start) {
                         // Move to start position
                         for (int32 l = 0; l < dist; l++) {
@@ -2899,11 +2602,11 @@ void MapView::PrepareFogToDraw()
                     auto dist_look = GeometryHelper::GetDistance(base_hex, target_hex);
 
                     if (_drawLookBorders) {
-                        const auto hex_pos = GetHexPosition(target_hex);
+                        const auto hex_pos = GetHexMapPos(target_hex);
                         const auto color = ucolor {255, numeric_cast<uint8>(dist_look * 255 / dist), 0, 0};
                         const auto* offset = dist_look == dist ? &chosen->SprOffset : nullptr;
 
-                        _fogLookPoints.emplace_back(PrimitivePoint {{hex_pos.x + half_hw, hex_pos.y + half_hh}, color, offset});
+                        _fogLookPoints.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = offset});
 
                         if (++look_points_added % 2 == 0) {
                             _fogLookPoints.emplace_back(center_look_point);
@@ -2916,12 +2619,12 @@ void MapView::PrepareFogToDraw()
 
                         TraceBullet(base_hex, target_hex, max_shoot_dist, 0.0f, nullptr, CritterFindType::Any, nullptr, &block_hex, nullptr, true);
 
-                        const auto block_hex_pos = GetHexPosition(block_hex);
+                        const auto block_hex_pos = GetHexMapPos(block_hex);
                         const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
                         const auto color = ucolor {255, numeric_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
                         const auto* offset = result_shoot_dist == max_shoot_dist ? &chosen->SprOffset : nullptr;
 
-                        _fogShootPoints.emplace_back(PrimitivePoint {{block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, color, offset});
+                        _fogShootPoints.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = offset});
 
                         if (++shoot_points_added % 2 == 0) {
                             _fogShootPoints.emplace_back(center_shoot_point);
@@ -2929,31 +2632,26 @@ void MapView::PrepareFogToDraw()
                     }
                 }
             }
+        }
+    }
+}
 
-            _fogOffset = &chosen->SprOffset;
-            _fogLastOffset = *_fogOffset;
-            _fogForceRerender = true;
+auto MapView::IsOutsideArea(mpos hex) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const irect32 scroll_area = GetScrollAxialArea();
+
+    if (!scroll_area.isZero()) {
+        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+        if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
+            axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
+            return true;
         }
     }
 
-    if (_fogForceRerender || _fogOffset == nullptr || *_fogOffset != _fogLastOffset) {
-        _fogForceRerender = false;
-
-        if (_fogOffset != nullptr) {
-            _fogLastOffset = *_fogOffset;
-        }
-
-        const float32 zoom = GetSpritesZoom();
-        const auto offset = fpos32 {numeric_cast<float32>(_rtScreenOx), numeric_cast<float32>(_rtScreenOy)};
-
-        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-
-        _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
-        _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
-
-        _engine->SprMngr.GetRtMngr().PopRenderTarget();
-    }
+    return false;
 }
 
 auto MapView::IsManualScrolling() const noexcept -> bool
@@ -2970,8 +2668,6 @@ void MapView::ProcessScroll(float32 dt)
     FO_STACK_TRACE_ENTRY();
 
     const bool is_manual_scrolling = IsManualScrolling();
-    const auto scroll_hex_width = numeric_cast<float32>(_engine->Settings.MapHexWidth);
-    const auto scroll_hex_height = numeric_cast<float32>(_engine->Settings.MapHexLineHeight * 2);
 
     if (is_manual_scrolling && _autoScrollCanStop) {
         _autoScrollActive = false;
@@ -2980,7 +2676,7 @@ void MapView::ProcessScroll(float32 dt)
     if (_autoScrollHardLockedCritter) {
         const auto* cr = GetCritter(_autoScrollHardLockedCritter);
 
-        if (cr != nullptr && ipos32(cr->GetHex()) != _screenRawHex) {
+        if (cr != nullptr && ipos32(cr->GetHex()) != GetCenterRawHex()) {
             ScrollToHex(cr->GetHex(), cr->GetHexOffset(), _autoScrollLockSpeed, false);
         }
     }
@@ -2989,25 +2685,23 @@ void MapView::ProcessScroll(float32 dt)
         const auto* cr = GetCritter(_autoScrollSoftLockedCritter);
 
         if (cr != nullptr && cr->GetHex() != _autoScrollCritterLastHex) {
-            const auto hex_offset = _engine->Geometry.GetHexInterval(_autoScrollCritterLastHex, cr->GetHex());
+            const auto hex_offset = _engine->Geometry.GetHexOffset(_autoScrollCritterLastHex, cr->GetHex());
             ApplyScrollOffset(hex_offset - ipos32(_autoScrollCritterLastHexOffset) + ipos32(cr->GetHexOffset()), _autoScrollLockSpeed, true);
             _autoScrollCritterLastHex = cr->GetHex();
             _autoScrollCritterLastHexOffset = cr->GetHexOffset();
         }
     }
 
-    float32 xscroll = 0.0f;
-    float32 yscroll = 0.0f;
+    fpos32 scroll;
 
     if (_autoScrollActive) {
-        const auto scroll_step = numeric_cast<float32>(_autoScrollSpeed) / 10000.0f * GetSpritesZoom() * dt;
-        xscroll = lerp(0.0f, _autoScrollOffset.x, scroll_step);
-        yscroll = lerp(0.0f, _autoScrollOffset.y, scroll_step);
+        const auto scroll_step = numeric_cast<float32>(_autoScrollSpeed) / 10000.0f * dt;
+        scroll.x = lerp(0.0f, _autoScrollOffset.x, scroll_step);
+        scroll.y = lerp(0.0f, _autoScrollOffset.y, scroll_step);
 
-        _autoScrollOffset.x -= xscroll;
-        _autoScrollOffset.y -= yscroll;
+        _autoScrollOffset -= scroll;
 
-        if (_autoScrollOffset.dist() < 0.01f) {
+        if (_autoScrollOffset.dist() < 0.001f) {
             _autoScrollActive = false;
         }
     }
@@ -3017,263 +2711,215 @@ void MapView::ProcessScroll(float32 dt)
         }
 
         if (_engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft) {
-            xscroll += 1.0f;
+            scroll.x -= 1.0f;
         }
         if (_engine->Settings.ScrollMouseRight || _engine->Settings.ScrollKeybRight) {
-            xscroll -= 1.0f;
+            scroll.x += 1.0f;
         }
         if (_engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp) {
-            yscroll += 1.0f;
+            scroll.y -= 1.0f;
         }
         if (_engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown) {
-            yscroll -= 1.0f;
+            scroll.y += 1.0f;
         }
 
-        if (std::abs(xscroll) < 0.1f && std::abs(yscroll) < 0.1f) {
+        if (std::abs(scroll.x) < 0.1f && std::abs(scroll.y) < 0.1f) {
             return;
         }
 
-        const auto scroll_step = numeric_cast<float32>(_engine->Settings.ScrollSpeed) / 1000.f * GetSpritesZoom() * dt;
-        xscroll *= scroll_step;
-        yscroll *= scroll_step;
+        const auto zoom = GetSpritesZoom();
+        const auto scroll_step = numeric_cast<float32>(_engine->Settings.ScrollSpeed) / 1000.f / zoom * dt;
+        scroll.x *= scroll_step;
+        scroll.y *= scroll_step;
     }
 
-    bool moved = false;
-    const int32 scroll_steps = std::max(iround<int32>(std::ceil(std::abs(xscroll) / scroll_hex_width)), iround<int32>(std::ceil(std::abs(yscroll) / scroll_hex_height)));
+    InstantScroll(scroll);
+}
 
-    for (int32 i = 0; i < scroll_steps; i++) {
-        const auto step_xscroll = std::clamp(xscroll, -scroll_hex_width, scroll_hex_width);
-        const auto step_yscroll = std::clamp(yscroll, -scroll_hex_height, scroll_hex_height);
-        auto scr_ox = _curScrollOffset.x;
-        auto scr_oy = _curScrollOffset.y;
-        scr_ox += step_xscroll;
-        scr_oy += step_yscroll;
-        xscroll -= step_xscroll;
-        yscroll -= step_yscroll;
+void MapView::ChangeZoom(float32 new_zoom, fpos32 anchor)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        if (_engine->Settings.ScrollCheck) {
-            int32 xcheck = 0;
-            int32 ycheck = 0;
-
-            if (scr_ox - _curScrollOffset.x > 0.0f) {
-                xcheck = -1;
-            }
-            if (scr_ox - _curScrollOffset.x < 0.0f) {
-                xcheck = 1;
-            }
-            if (scr_oy - _curScrollOffset.y > 0.0f) {
-                ycheck = -1;
-            }
-            if (scr_oy - _curScrollOffset.y < 0.0f) {
-                ycheck = 1;
-            }
-
-            if ((xcheck != 0 || ycheck != 0) && ScrollCheck(xcheck, ycheck)) {
-                if (xcheck != 0 && ycheck != 0 && !ScrollCheck(0, ycheck)) {
-                    scr_ox = (xcheck < 0) == (scr_ox < 0) ? scr_ox : 0;
-                }
-                else if (xcheck != 0 && ycheck != 0 && !ScrollCheck(xcheck, 0)) {
-                    scr_oy = (ycheck < 0) == (scr_oy < 0) ? scr_oy : 0;
-                }
-                else {
-                    if (xcheck != 0) {
-                        scr_ox = (xcheck < 0) == (scr_ox < 0) ? scr_ox : 0;
-                    }
-                    if (ycheck != 0) {
-                        scr_oy = (ycheck < 0) == (scr_oy < 0) ? scr_oy : 0;
-                    }
-                }
-            }
-        }
-
-        int32 xmove = 0;
-        int32 ymove = 0;
-
-        if (scr_ox >= scroll_hex_width) {
-            xmove = -1;
-            scr_ox -= scroll_hex_width;
-        }
-        else if (scr_ox <= -scroll_hex_width) {
-            xmove = 1;
-            scr_ox += scroll_hex_width;
-        }
-
-        if (scr_oy >= scroll_hex_height) {
-            ymove = -2;
-            scr_oy -= scroll_hex_height;
-        }
-        else if (scr_oy <= -scroll_hex_height) {
-            ymove = 2;
-            scr_oy += scroll_hex_height;
-        }
-
-        _curScrollOffset.x = scr_ox;
-        _curScrollOffset.y = scr_oy;
-
-        if (xmove != 0 || ymove != 0) {
-            RebuildMapOffset({xmove, ymove});
-
-            if (_engine->Settings.ScrollCheck) {
-                if (_curScrollOffset.x > 0.0f && ScrollCheck(-1, 0)) {
-                    _curScrollOffset.x = 0.0f;
-                }
-                else if (_curScrollOffset.x < 0.0f && ScrollCheck(1, 0)) {
-                    _curScrollOffset.x = 0.0f;
-                }
-                if (_curScrollOffset.y > 0.0f && ScrollCheck(0, -1)) {
-                    _curScrollOffset.y = 0.0f;
-                }
-                else if (_curScrollOffset.y < 0.0f && ScrollCheck(0, 1)) {
-                    _curScrollOffset.y = 0.0f;
-                }
-            }
-
-            moved = true;
-        }
+    if (!_engine->Settings.MapZoomEnabled) {
+        return;
     }
 
-    if (moved) {
+    _zoomAnchor = anchor;
+    SetSpritesZoomTarget(new_zoom);
+}
+
+void MapView::ProcessZoom(float32 dt)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->Settings.MapZoomEnabled) {
+        return;
+    }
+
+    const float32 init_zoom = GetSpritesZoom();
+    const float32 target_zoom = GetSpritesZoomTarget();
+
+    if (is_float_equal(init_zoom, target_zoom)) {
+        return;
+    }
+
+    const float32 min_zoom = _engine->Settings.ScrollCheck ? _minZoomScroll : GameSettings::MIN_ZOOM;
+    constexpr float32 max_zoom = GameSettings::MAX_ZOOM;
+    const float32 clamped_target_zoom = std::clamp(target_zoom, min_zoom, max_zoom);
+
+    if (!is_float_equal(target_zoom, clamped_target_zoom)) {
+        SetSpritesZoomTarget(clamped_target_zoom);
+    }
+
+    if (is_float_equal(init_zoom, clamped_target_zoom)) {
+        return;
+    }
+
+    if (init_zoom >= min_zoom && init_zoom <= max_zoom) {
+        const int32 zoom_speed = _engine->Settings.ZoomSpeed;
+        constexpr float32 zoom_stop_bias = 0.001f;
+
+        float32 new_zoom = lerp(init_zoom, clamped_target_zoom, dt * numeric_cast<float32>(zoom_speed) / 10000.0f);
+
+        if (std::abs(new_zoom - clamped_target_zoom) < zoom_stop_bias) {
+            new_zoom = clamped_target_zoom;
+        }
+
+        InstantZoom(new_zoom, _zoomAnchor);
+    }
+    else {
+        InstantZoom(clamped_target_zoom, _zoomAnchor);
+    }
+}
+
+void MapView::InstantZoom(float32 new_zoom, fpos32 anchor)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->Settings.MapZoomEnabled) {
+        return;
+    }
+
+    FO_RUNTIME_ASSERT(new_zoom >= GameSettings::MIN_ZOOM);
+    FO_RUNTIME_ASSERT(new_zoom <= GameSettings::MAX_ZOOM);
+
+    const float32 init_zoom = GetSpritesZoom();
+    const isize32 init_size = GetViewSize();
+
+    SetSpritesZoom(new_zoom);
+
+    const isize32 new_size = GetViewSize();
+    const bool size_changed = init_size != new_size;
+
+    _viewSize.width = numeric_cast<float32>(_screenSize.width) / new_zoom;
+    _viewSize.height = numeric_cast<float32>(_screenSize.height) / new_zoom;
+
+    if (size_changed) {
+        const int32 size_diff_width = new_size.width - init_size.width;
+        const int32 size_diff_height = new_size.height - init_size.height;
+
+        if (size_diff_width < 0) {
+            HideHexLines(-size_diff_width, 0);
+        }
+        if (size_diff_height < 0) {
+            HideHexLines(0, -size_diff_height);
+        }
+
+        InitView();
+
+        if (size_diff_width > 0) {
+            ShowHexLines(size_diff_width, 0);
+        }
+        if (size_diff_height > 0) {
+            ShowHexLines(0, size_diff_height);
+        }
+
         _rebuildFog = true;
         _engine->OnScreenScroll.Fire();
     }
 
-    SetScrollOffset((_curScrollOffset + _extraScrollOffset).round<int32>());
+    const float32 screen_width = numeric_cast<float32>(_screenSize.width);
+    const float32 screen_height = numeric_cast<float32>(_screenSize.height);
+    const float32 changed_width = screen_width / new_zoom - screen_width / init_zoom;
+    const float32 changed_height = screen_height / new_zoom - screen_height / init_zoom;
+
+    InstantScroll(-fpos32(changed_width * anchor.x, changed_height * anchor.y));
 }
 
-auto MapView::ScrollCheckPos(int32 (&view_fields_to_check)[4], uint8 dir1, optional<uint8> dir2) const -> bool
+void MapView::InstantScroll(fpos32 scroll)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto max_vf = _wVisible * _hVisible;
+    _scrollOffset += scroll;
 
-    for (const auto vf_index : view_fields_to_check) {
-        if (vf_index < 0 || vf_index >= max_vf) {
-            return true;
-        }
+    if (_engine->Settings.ScrollCheck) {
+        const irect32 scroll_area = GetScrollAxialArea();
 
-        if (!_mapSize.isValidPos(_viewField[vf_index].RawHex)) {
-            return true;
-        }
+        if (!scroll_area.isZero()) {
+            const fpos32 screen_pos = fpos32(_engine->Geometry.GetHexPos(_screenRawHex));
+            const ipos32 half_hex = {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2};
+            const float32 zoom = GetSpritesZoom();
+            const fpos32 view_size = fpos32(numeric_cast<float32>(_screenSize.width), numeric_cast<float32>(_screenSize.height)) / zoom;
+            const fpos32 lt_pos = screen_pos + _scrollOffset;
+            const fpos32 rb_pos = screen_pos + view_size + _scrollOffset;
+            const float32 area_l = numeric_cast<float32>(scroll_area.x * _engine->Settings.MapHexWidth / 2 + half_hex.x);
+            const float32 area_t = numeric_cast<float32>(scroll_area.y * _engine->Settings.MapHexLineHeight + half_hex.y);
+            const float32 area_r = numeric_cast<float32>((scroll_area.x + scroll_area.width) * _engine->Settings.MapHexWidth / 2 + half_hex.x);
+            const float32 area_b = numeric_cast<float32>((scroll_area.y + scroll_area.height) * _engine->Settings.MapHexLineHeight + half_hex.y);
 
-        auto hex = _mapSize.fromRawPos(_viewField[vf_index].RawHex);
-
-        GeometryHelper::MoveHexByDir(hex, dir1, _mapSize);
-
-        if (_hexField->GetCellForReading(hex).Flags.ScrollBlock) {
-            return true;
-        }
-
-        if (dir2.has_value()) {
-            GeometryHelper::MoveHexByDir(hex, dir2.value(), _mapSize);
-
-            if (_hexField->GetCellForReading(hex).Flags.ScrollBlock) {
-                return true;
+            if (lt_pos.x - area_l < 0.0f) {
+                _scrollOffset.x -= lt_pos.x - area_l;
+            }
+            if (lt_pos.y - area_t < 0.0f) {
+                _scrollOffset.y -= lt_pos.y - area_t;
+            }
+            if (rb_pos.x - area_r >= 0.0f) {
+                _scrollOffset.x -= rb_pos.x - area_r + 0.001f;
+            }
+            if (rb_pos.y - area_b >= 0.0f) {
+                _scrollOffset.y -= rb_pos.y - area_b + 0.001f;
             }
         }
     }
 
-    return false;
-}
+    const float32 max_scroll_width = numeric_cast<float32>(_maxScroll.width);
+    const float32 max_scroll_height = numeric_cast<float32>(_maxScroll.height);
+    int32 xmove = 0;
+    int32 ymove = 0;
 
-auto MapView::ScrollCheck(int32 xmod, int32 ymod) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto view_size = GetViewSize();
-
-    int32 positions_left[4] = {
-        (_hTop + 1) * _wVisible + _wLeft - 1, // Left top
-        (_hTop + 2) * _wVisible + _wLeft - 1, // Left top 2
-        (_hTop + view_size.height - 3) * _wVisible + _wLeft - 1, // Left bottom
-        (_hTop + view_size.height - 2) * _wVisible + _wLeft - 1, // Left bottom 2
-    };
-    int32 positions_right[4] = {
-        (_hTop + 1) * _wVisible + _wLeft + view_size.width - 2, // Right top
-        (_hTop + 2) * _wVisible + _wLeft + view_size.width - 2, // Right top 2
-        (_hTop + view_size.height - 3) * _wVisible + _wLeft + view_size.width - 2, // Right bottom
-        (_hTop + view_size.height - 2) * _wVisible + _wLeft + view_size.width - 2, // Right bottom 2
-    };
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0))) {
-            return true; // Up
-        }
-        if (ymod > 0 && (ScrollCheckPos(positions_left, 2, 3) || ScrollCheckPos(positions_right, 3, 2))) {
-            return true; // Down
-        }
-        if (xmod < 0 && (ScrollCheckPos(positions_left, 4, std::nullopt) || ScrollCheckPos(positions_right, 4, std::nullopt))) {
-            return true; // Left
-        }
-        if (xmod > 0 && (ScrollCheckPos(positions_right, 1, std::nullopt) || ScrollCheckPos(positions_left, 1, std::nullopt))) {
-            return true; // Right
-        }
+    while (_scrollOffset.x < 0.0f) {
+        xmove += -1;
+        _scrollOffset.x += max_scroll_width;
     }
-    else {
-        if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 6) || ScrollCheckPos(positions_right, 6, 0))) {
-            return true; // Up
-        }
-        if (ymod > 0 && (ScrollCheckPos(positions_left, 2, 4) || ScrollCheckPos(positions_right, 4, 2))) {
-            return true; // Down
-        }
-        if (xmod < 0 && (ScrollCheckPos(positions_left, 6, 4) || ScrollCheckPos(positions_right, 4, 6))) {
-            return true; // Left
-        }
-        if (xmod > 0 && (ScrollCheckPos(positions_right, 0, 2) || ScrollCheckPos(positions_left, 2, 0))) {
-            return true; // Right
-        }
+    while (_scrollOffset.x >= max_scroll_width) {
+        xmove += 1;
+        _scrollOffset.x -= max_scroll_width;
+    }
+    while (_scrollOffset.y < 0.0f) {
+        ymove += -2;
+        _scrollOffset.y += max_scroll_height;
+    }
+    while (_scrollOffset.y >= max_scroll_height) {
+        ymove += 2;
+        _scrollOffset.y -= max_scroll_height;
     }
 
-    // Add precise for zooming infelicity
-    if (!is_float_equal(GetSpritesZoom(), 1.0f)) {
-        for (auto& i : positions_left) {
-            i--;
-        }
-        for (auto& i : positions_right) {
-            i++;
-        }
+    SetScrollOffset(_scrollOffset.round<int32>());
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0))) {
-                return true; // Up
-            }
-            if (ymod > 0 && (ScrollCheckPos(positions_left, 2, 3) || ScrollCheckPos(positions_right, 3, 2))) {
-                return true; // Down
-            }
-            if (xmod < 0 && (ScrollCheckPos(positions_left, 4, std::nullopt) || ScrollCheckPos(positions_right, 4, std::nullopt))) {
-                return true; // Left
-            }
-            if (xmod > 0 && (ScrollCheckPos(positions_right, 1, std::nullopt) || ScrollCheckPos(positions_left, 1, std::nullopt))) {
-                return true; // Right
-            }
-        }
-        else {
-            if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 6) || ScrollCheckPos(positions_right, 6, 0))) {
-                return true; // Up
-            }
-            if (ymod > 0 && (ScrollCheckPos(positions_left, 2, 4) || ScrollCheckPos(positions_right, 4, 2))) {
-                return true; // Down
-            }
-            if (xmod < 0 && (ScrollCheckPos(positions_left, 6, 4) || ScrollCheckPos(positions_right, 4, 6))) {
-                return true; // Left
-            }
-            if (xmod > 0 && (ScrollCheckPos(positions_right, 0, 2) || ScrollCheckPos(positions_left, 2, 0))) {
-                return true; // Right
-            }
-        }
+    if (xmove != 0 || ymove != 0) {
+        RebuildMapOffset({xmove, ymove});
+        _rebuildFog = true;
+        _engine->OnScreenScroll.Fire();
     }
-
-    return false;
 }
 
 void MapView::ScrollToHex(mpos hex, ipos16 hex_offset, int32 speed, bool can_stop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto scroll_offset = GetScrollOffset();
-    const auto hex_pos = _engine->Geometry.GetHexInterval(_screenRawHex, ipos32(hex));
-
+    const ipos32 hex_pos = _engine->Geometry.GetHexOffset(GetCenterRawHex(), ipos32(hex));
     _autoScrollActive = false;
-    ApplyScrollOffset(hex_pos + scroll_offset - ipos32(hex_offset), speed, can_stop);
+    ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset(), speed, can_stop);
 }
 
 void MapView::ApplyScrollOffset(ipos32 offset, int32 speed, bool can_stop)
@@ -3287,8 +2933,7 @@ void MapView::ApplyScrollOffset(ipos32 offset, int32 speed, bool can_stop)
 
     _autoScrollCanStop = can_stop;
     _autoScrollSpeed = speed;
-    _autoScrollOffset.x += -numeric_cast<float32>(offset.x);
-    _autoScrollOffset.y += -numeric_cast<float32>(offset.y);
+    _autoScrollOffset += fpos32(offset);
 }
 
 void MapView::LockScreenScroll(CritterView* cr, int32 speed, bool soft_lock, bool unlock_if_same)
@@ -3324,8 +2969,9 @@ void MapView::SetExtraScrollOffset(fpos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
+    InstantScroll(-_extraScrollOffset);
+    InstantScroll(offset);
     _extraScrollOffset = offset;
-    SetScrollOffset((_curScrollOffset + _extraScrollOffset).round<int32>());
 }
 
 void MapView::AddCritterToField(CritterHexView* cr)
@@ -3344,7 +2990,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     UpdateCritterLightSource(cr);
 
     if (!_mapLoading && IsHexToDraw(hex)) {
-        auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
+        auto* spr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
 
         auto contour = ContourType::None;
         if (cr->GetId() == _critterContourCrId) {
@@ -3586,7 +3232,7 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
     cr->SetHex(to_hex);
 
     if (smoothly) {
-        const auto hex_offset = _engine->Geometry.GetHexInterval(to_hex, cur_hex);
+        const auto hex_offset = _engine->Geometry.GetHexOffset(to_hex, cur_hex);
 
         cr->AddExtraOffs(hex_offset);
     }
@@ -3639,75 +3285,58 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
     }
 }
 
-auto MapView::GetHexAtScreenPos(ipos32 pos, mpos& hex, ipos32* hex_offset) const -> bool
+auto MapView::GetHexAtScreenPos(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto spr_zoom = GetSpritesZoom();
-    const auto scroll_offset = GetScrollOffset();
-    const auto xf = numeric_cast<float32>(pos.x) - numeric_cast<float32>(scroll_offset.x) / spr_zoom;
-    const auto yf = numeric_cast<float32>(pos.y) - numeric_cast<float32>(scroll_offset.y) / spr_zoom;
-    const auto ox = numeric_cast<float32>(_engine->Settings.MapHexWidth) / spr_zoom;
-    const auto oy = numeric_cast<float32>(_engine->Settings.MapHexHeight) / spr_zoom;
-    int32 y2 = 0;
+    const ipos32 pos = ScreenToMapPos(screen_pos);
+    const ipos32 screen_offset = _engine->Geometry.GetHexPos(_screenRawHex);
+    ipos32 offset;
+    ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
 
-    for (int32 vf_y = 0; vf_y < _hVisible; vf_y++) {
-        for (int32 vf_x = 0; vf_x < _wVisible; vf_x++) {
-            const int32 vf_index = y2 + vf_x;
-            const float32 vf_ox = _viewField[vf_index].Offsetf.x / spr_zoom;
-            const float32 vf_oy = _viewField[vf_index].Offsetf.y / spr_zoom;
+    // Correct with hex color mask
+    if (_picHexMask) {
+        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->Size.width - 1);
+        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->Size.height - 1);
+        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->Size.width + mask_x];
+        const uint8 mask_color_r = mask_color.comp.r;
 
-            if (xf >= vf_ox && xf < vf_ox + ox && yf >= vf_oy && yf < vf_oy + oy) {
-                ipos32 raw_hex = _viewField[vf_index].RawHex;
+        if (mask_color_r == 50) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
+        }
+        else if (mask_color_r == 100) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 0);
+        }
+        else if (mask_color_r == 150) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 3 : 4);
+        }
+        else if (mask_color_r == 200) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 2u);
+        }
+    }
 
-                // Correct with hex color mask
-                if (_picHexMask) {
-                    const int32 mask_x = std::clamp(iround<int32>((xf - vf_ox) * spr_zoom), 0, _picHexMask->Size.width - 1);
-                    const int32 mask_y = std::clamp(iround<int32>((yf - vf_oy) * spr_zoom), 0, _picHexMask->Size.height - 1);
-                    const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->Size.width + mask_x];
-                    const uint8 mask_color_r = mask_color.comp.r;
+    if (_mapSize.isValidPos(raw_hex)) {
+        hex = _mapSize.fromRawPos(raw_hex);
 
-                    if (mask_color_r == 50) {
-                        GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
-                    }
-                    else if (mask_color_r == 100) {
-                        GeometryHelper::MoveHexByDirUnsafe(raw_hex, 0);
-                    }
-                    else if (mask_color_r == 150) {
-                        GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
-                    }
-                    else if (mask_color_r == 200) {
-                        GeometryHelper::MoveHexByDirUnsafe(raw_hex, 2u);
-                    }
-                }
-
-                if (_mapSize.isValidPos(raw_hex)) {
-                    hex = _mapSize.fromRawPos(raw_hex);
-
-                    if (hex_offset != nullptr) {
-                        *hex_offset = {iround<int32>((xf - vf_ox) * spr_zoom) - _engine->Settings.MapHexWidth / 2, iround<int32>((yf - vf_oy) * spr_zoom) - _engine->Settings.MapHexHeight / 2};
-                    }
-
-                    return true;
-                }
-            }
+        if (hex_offset != nullptr) {
+            *hex_offset = offset;
         }
 
-        y2 += _wVisible;
+        return true;
     }
 
     return false;
 }
 
-auto MapView::GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*
+auto MapView::GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<ItemHexView*> pix_item;
     vector<ItemHexView*> pix_item_egg;
 
-    const auto scroll_offset = GetScrollOffset();
-    const auto is_egg = _engine->SprMngr.IsEggTransp(pos, scroll_offset);
+    const auto pos = ScreenToMapPos(screen_pos);
+    const auto is_egg = _engine->SprMngr.IsEggTransp(pos);
 
     for (auto* item : _nonTileItems) {
         if (!item->IsSpriteVisible() || item->IsFinishing()) {
@@ -3717,17 +3346,18 @@ auto MapView::GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, 
         const auto* spr = item->Spr;
         const auto hex = item->GetHex();
         const auto& field = _hexField->GetCellForReading(hex);
-        const auto spr_zoom = GetSpritesZoom();
-        const auto l = iround<int32>(numeric_cast<float32>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + scroll_offset.x - spr->Size.width / 2) / spr_zoom) - extra_range;
-        const auto r = iround<int32>(numeric_cast<float32>(field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + scroll_offset.x + spr->Size.width / 2) / spr_zoom) + extra_range;
-        const auto t = iround<int32>(numeric_cast<float32>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + scroll_offset.y - spr->Size.height) / spr_zoom) - extra_range;
-        const auto b = iround<int32>(numeric_cast<float32>(field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + scroll_offset.y) / spr_zoom) + extra_range;
+        const auto l = field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 - spr->Size.width / 2 - extra_range;
+        const auto r = field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + spr->Size.width / 2 + extra_range;
+        const auto t = field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 - spr->Size.height - extra_range;
+        const auto b = field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
         }
 
-        if (item->GetSprite()->CheckHit({pos.x - l + extra_range, pos.y - t + extra_range}, check_transparent)) {
+        const ipos32 check_pos = {pos.x - l + extra_range, pos.y - t + extra_range};
+
+        if (!check_transparent || _engine->SprMngr.SpriteHitTest(spr, check_pos)) {
             if (is_egg && _engine->SprMngr.CheckEggAppearence(hex, item->GetEggType())) {
                 pix_item_egg.emplace_back(item);
             }
@@ -3740,7 +3370,7 @@ auto MapView::GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, 
     // Sorters
     struct Sorter
     {
-        static auto ByTreeIndex(const ItemHexView* o1, const ItemHexView* o2) -> bool { return o1->GetSprite()->TreeIndex > o2->GetSprite()->TreeIndex; }
+        static auto ByTreeIndex(const ItemHexView* o1, const ItemHexView* o2) -> bool { return o1->GetSprite()->GetSortValue() > o2->GetSprite()->GetSortValue(); }
         static auto ByTransparent(const ItemHexView* o1, const ItemHexView* o2) -> bool { return !o1->IsTransparent() && o2->IsTransparent(); }
     };
 
@@ -3767,7 +3397,7 @@ auto MapView::GetItemAtScreenPos(ipos32 pos, bool& item_egg, int32 extra_range, 
     return pix_item[0];
 }
 
-auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*
+auto MapView::GetCritterAtScreenPos(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3776,7 +3406,7 @@ auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int
     }
 
     vector<CritterHexView*> critters;
-    const auto scroll_offset = GetScrollOffset();
+    const auto pos = ScreenToMapPos(screen_pos);
 
     for (auto& cr : _critters) {
         if (!cr->IsSpriteVisible() || cr->IsFinishing()) {
@@ -3787,18 +3417,16 @@ auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int
         }
 
         const auto rect = cr->GetViewRect();
-        const auto l = iround<int32>(numeric_cast<float32>(rect.x + scroll_offset.x) / GetSpritesZoom()) - extra_range;
-        const auto t = iround<int32>(numeric_cast<float32>(rect.y + scroll_offset.y) / GetSpritesZoom()) - extra_range;
-        const auto r = iround<int32>(numeric_cast<float32>(rect.x + rect.width + scroll_offset.x) / GetSpritesZoom()) + extra_range;
-        const auto b = iround<int32>(numeric_cast<float32>(rect.y + rect.height + scroll_offset.y) / GetSpritesZoom()) + extra_range;
+        const auto l = rect.x - extra_range;
+        const auto t = rect.y - extra_range;
+        const auto r = rect.x + rect.width + extra_range;
+        const auto b = rect.y + rect.height + extra_range;
 
         if (pos.x >= l && pos.x <= r && pos.y >= t && pos.y <= b) {
             if (check_transparent) {
                 const auto rect_draw = cr->GetSprite()->GetDrawRect();
-                const auto l_draw = iround<int32>(numeric_cast<float32>(rect_draw.x + scroll_offset.x) / GetSpritesZoom());
-                const auto t_draw = iround<int32>(numeric_cast<float32>(rect_draw.y + scroll_offset.y) / GetSpritesZoom());
 
-                if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - l_draw, pos.y - t_draw}, true)) {
+                if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - rect_draw.x, pos.y - rect_draw.y})) {
                     critters.emplace_back(cr.get());
                 }
             }
@@ -3813,21 +3441,21 @@ auto MapView::GetCritterAtScreenPos(ipos32 pos, bool ignore_dead_and_chosen, int
     }
 
     if (critters.size() > 1) {
-        std::ranges::stable_sort(critters, [](auto* cr1, auto* cr2) { return cr1->GetSprite()->TreeIndex > cr2->GetSprite()->TreeIndex; });
+        std::ranges::stable_sort(critters, [](auto* cr1, auto* cr2) { return cr1->GetSprite()->GetSortValue() > cr2->GetSprite()->GetSortValue(); });
     }
     return critters.front();
 }
 
-auto MapView::GetEntityAtScreenPos(ipos32 pos, int32 extra_range, bool check_transparent) -> ClientEntity*
+auto MapView::GetEntityAtScreenPos(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
     bool item_egg = false;
-    auto* item = GetItemAtScreenPos(pos, item_egg, extra_range, check_transparent);
-    auto* cr = GetCritterAtScreenPos(pos, false, extra_range, check_transparent);
+    auto* item = GetItemAtScreenPos(screen_pos, item_egg, extra_range, check_transparent);
+    auto* cr = GetCritterAtScreenPos(screen_pos, false, extra_range, check_transparent);
 
     if (cr != nullptr && item != nullptr) {
-        if (item->IsTransparent() || item_egg || item->GetSprite()->TreeIndex <= cr->GetSprite()->TreeIndex) {
+        if (item->IsTransparent() || item_egg || item->GetSprite()->GetSortValue() <= cr->GetSprite()->GetSortValue()) {
             item = nullptr;
         }
         else {
@@ -3895,7 +3523,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                 }
 
                 if (multihex == 0) {
-                    if (_hexField->GetCellForReading(next_hex).Flags.MoveBlocked) {
+                    if (_hexField->GetCellForReading(next_hex).MoveBlocked) {
                         continue;
                     }
                 }
@@ -3910,23 +3538,25 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                     if (!_mapSize.isValidPos(raw_next_hex2)) {
                         continue;
                     }
-                    if (_hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex2)).Flags.MoveBlocked) {
+                    if (_hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex2)).MoveBlocked) {
                         continue;
                     }
 
                     // Clock wise hexes
-                    // ReSharper disable once CppVariableCanBeMadeConstexpr
-                    // ReSharper disable once CppUnreachableCode
-                    const bool is_square_corner = !GameSettings::HEXAGONAL_GEOMETRY && (j % 2) != 0;
-                    // ReSharper disable once CppUnreachableCode
+                    const bool is_square_corner = (j % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
                     const int32 steps_count = is_square_corner ? multihex * 2 : multihex;
                     bool is_move_blocked = false;
 
                     {
-                        // ReSharper disable once CppUnreachableCode
-                        uint8 dir_ = GameSettings::HEXAGONAL_GEOMETRY ? ((j + 2) % 6) : ((j + 2) % 8);
+                        uint8 dir_;
 
-                        // ReSharper disable once CppUnreachableCode
+                        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                            dir_ = (j + 4) % 6;
+                        }
+                        else {
+                            dir_ = (j + 6) % 8;
+                        }
+
                         if (is_square_corner) {
                             dir_ = (dir_ + 1) % 8;
                         }
@@ -3936,7 +3566,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                         for (int32 k = 0; k < steps_count && !is_move_blocked; k++) {
                             GeometryHelper::MoveHexByDirUnsafe(raw_next_hex3, dir_);
                             FO_RUNTIME_ASSERT(_mapSize.isValidPos(raw_next_hex3));
-                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).Flags.MoveBlocked;
+                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).MoveBlocked;
                         }
                     }
 
@@ -3946,10 +3576,15 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
                     // Counter clock wise hexes
                     {
-                        // ReSharper disable once CppUnreachableCode
-                        uint8 dir_ = GameSettings::HEXAGONAL_GEOMETRY ? (j + 4) % 6 : (j + 6) % 8;
+                        uint8 dir_;
 
-                        // ReSharper disable once CppUnreachableCode
+                        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                            dir_ = (j + 4) % 6;
+                        }
+                        else {
+                            dir_ = (j + 6) % 8;
+                        }
+
                         if (is_square_corner) {
                             dir_ = (dir_ + 7) % 8;
                         }
@@ -3959,7 +3594,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                         for (int32 k = 0; k < steps_count && !is_move_blocked; k++) {
                             GeometryHelper::MoveHexByDirUnsafe(raw_next_hex3, dir_);
                             FO_RUNTIME_ASSERT(_mapSize.isValidPos(raw_next_hex3));
-                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).Flags.MoveBlocked;
+                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).MoveBlocked;
                         }
                     }
 
@@ -4206,7 +3841,7 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& d
 
         const auto& field = _hexField->GetCellForReading(check_hex);
 
-        if (field.Flags.MoveBlocked) {
+        if (field.MoveBlocked) {
             return false;
         }
 
@@ -4279,7 +3914,7 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 a
             GetHexTrack(next_hex) = numeric_cast<int8>(next_hex == target_hex ? 1 : 2);
         }
 
-        if (check_shoot_blocks && _hexField->GetCellForReading(next_hex).Flags.ShootBlocked) {
+        if (check_shoot_blocks && _hexField->GetCellForReading(next_hex).ShootBlocked) {
             break;
         }
 
@@ -4303,66 +3938,15 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 a
     }
 }
 
-void MapView::FindSetCenter(mpos hex)
+void MapView::InstantScrollTo(mpos center_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!_viewField.empty());
 
-    RebuildMap(ipos32(hex));
-
-    if (_mapperMode) {
-        return;
-    }
-
-    mpos corrected_hex = hex;
-
-    const auto find_set_center_dir = [this, &corrected_hex](const array<int32, 2>& dirs, size_t steps) {
-        auto moved_hex = corrected_hex;
-        const auto dirs_index = dirs[1] == -1 ? 1 : 2;
-
-        size_t i = 0;
-
-        for (; i < steps; i++) {
-            if (!GeometryHelper::MoveHexByDir(moved_hex, numeric_cast<uint8>(dirs[i % dirs_index]), _mapSize)) {
-                break;
-            }
-            if (_hexField->GetCellForReading(moved_hex).Flags.ScrollBlock) {
-                break;
-            }
-        }
-
-        for (; i < steps; i++) {
-            GeometryHelper::MoveHexByDir(corrected_hex, GeometryHelper::ReverseDir(numeric_cast<uint8>(dirs[i % dirs_index])), _mapSize);
-        }
-    };
-
-    const auto view_size = GetViewSize();
-    const auto iw = view_size.width / 2 + 2;
-    const auto ih = view_size.height / 2 + 2;
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        find_set_center_dir({0, 5}, ih); // Up
-        find_set_center_dir({3, 2}, ih); // Down
-        find_set_center_dir({1, -1}, iw); // Right
-        find_set_center_dir({4, -1}, iw); // Left
-        find_set_center_dir({0, -1}, ih); // Up-Right
-        find_set_center_dir({3, -1}, ih); // Down-Left
-        find_set_center_dir({5, -1}, ih); // Up-Left
-        find_set_center_dir({2, -1}, ih); // Down-Right
-    }
-    else {
-        find_set_center_dir({0, 6}, ih); // Up
-        find_set_center_dir({4, 2}, ih); // Down
-        find_set_center_dir({1, -1}, iw); // Right
-        find_set_center_dir({5, -1}, iw); // Left
-        find_set_center_dir({0, -1}, ih); // Up-Right
-        find_set_center_dir({4, -1}, ih); // Down-Left
-        find_set_center_dir({6, -1}, ih); // Up-Left
-        find_set_center_dir({2, 1}, ih); // Down-Right
-    }
-
-    RebuildMap(ipos32 {corrected_hex.x, corrected_hex.y});
+    const ipos32 new_screen_hex = ConvertToScreenRawHex(ipos32(center_hex));
+    const ipos32 offset_to_new_pos = _engine->Geometry.GetHexOffset(_screenRawHex, new_screen_hex);
+    InstantScroll(fpos32(offset_to_new_pos));
 }
 
 void MapView::SetShootBorders(bool enabled, int32 dist)
@@ -4376,25 +3960,26 @@ void MapView::SetShootBorders(bool enabled, int32 dist)
     }
 }
 
-auto MapView::GetDrawList() noexcept -> MapSpriteList&
+auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32 draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8* palpha, bool* callback) -> MapSprite*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    return _mapSprites;
+    auto& field = _hexField->GetCellForWriting(hex);
+    auto* mspr = _mapSprites.AddSprite(draw_order, _mapSize.clampPos(hex.x, hex.y + draw_order_hy_offset), //
+        {(_engine->Settings.MapHexWidth / 2) + offset.x, (_engine->Settings.MapHexHeight / 2) + offset.y}, &field.Offset, spr, nullptr, //
+        poffset, palpha, nullptr, callback);
+    AddSpriteToChain(field, mspr);
+    return mspr;
 }
 
 void MapView::OnScreenSizeChanged()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_viewField.empty()) {
-        return;
-    }
+    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    _viewSize = fsize32(_screenSize) / GetSpritesZoom();
 
-    _fogForceRerender = true;
-
-    ResizeView();
-    RefreshMap();
+    RebuildMapNow();
 }
 
 void MapView::AddFastPid(hstring pid)
@@ -4473,7 +4058,7 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
     vector<mpos> hexes;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        auto [x, y] = _engine->Geometry.GetHexInterval(from_hex, to_hex);
+        auto [x, y] = _engine->Geometry.GetHexOffset(from_hex, to_hex);
         x = -x;
 
         const auto dx = x / _engine->Settings.MapHexWidth;
@@ -4515,7 +4100,7 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
         }
     }
     else {
-        auto [rw, rh] = _engine->Geometry.GetHexInterval(from_hex, to_hex);
+        auto [rw, rh] = _engine->Geometry.GetHexOffset(from_hex, to_hex);
         if (rw == 0) {
             rw = 1;
         }
@@ -4602,16 +4187,16 @@ void MapView::MarkBlockedHexes()
 
             track = 0;
 
-            if (field.Flags.MoveBlocked) {
+            if (field.MoveBlocked) {
                 track = 2;
             }
-            if (field.Flags.ShootBlocked) {
+            if (field.ShootBlocked) {
                 track = 1;
             }
         }
     }
 
-    RefreshMap();
+    RebuildMap();
 }
 
 auto MapView::GenTempEntityId() -> ident_t

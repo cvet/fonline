@@ -167,10 +167,7 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
     }
 
     // Callbacks vector may be changed/invalidated during cycle work
-    vector<EventCallbackData> callbacks_copy;
-    safe_call([&] { callbacks_copy = copy(callbacks); });
-
-    for (const auto& cb : callbacks_copy) {
+    for (const auto& cb : copy(callbacks)) {
         const auto ex_policy = cb.ExPolicy;
 
         try {

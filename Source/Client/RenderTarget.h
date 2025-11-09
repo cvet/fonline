@@ -52,7 +52,7 @@ struct RenderTarget
     };
 
     unique_ptr<RenderTexture> MainTex {};
-    RenderEffect* CustomDrawEffect {};
+    raw_ptr<RenderEffect> CustomDrawEffect {};
     SizeKindType SizeKind {};
     isize32 BaseSize {};
     vector<tuple<ipos32, ucolor>> LastPixelPicks {};
@@ -72,7 +72,7 @@ public:
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor;
-    [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
+    [[nodiscard]] auto GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&;
     [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
 
     void PushRenderTarget(RenderTarget* rt);
@@ -90,7 +90,7 @@ private:
     RenderSettings& _settings;
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
-    vector<RenderTarget*> _rtStack {};
+    vector<raw_ptr<RenderTarget>> _rtStack {};
     EventUnsubscriber _eventUnsubscriber {};
     bool _nonConstHelper {};
 };

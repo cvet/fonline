@@ -57,7 +57,6 @@ struct StaticMap
     {
         bool MoveBlocked {};
         bool ShootBlocked {};
-        bool ScrollBlock {};
         vector<StaticItem*> StaticItems {};
         vector<StaticItem*> TriggerItems {};
     };
@@ -122,7 +121,7 @@ public:
     [[nodiscard]] auto GetStaticItemsHexEx(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
-    [[nodiscard]] auto IsScrollBlock(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsOutsideArea(mpos hex) const -> bool;
 
     void SetLocation(Location* loc) noexcept;
     void AddCritter(Critter* cr);

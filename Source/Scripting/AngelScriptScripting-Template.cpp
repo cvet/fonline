@@ -4775,7 +4775,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 
     for (const auto& script_file : script_files) {
         string script_name = string(script_file.GetNameNoExt());
-        string script_path = string(script_file.GetPath());
+        string script_path = string(script_file.GetDiskPath());
         string script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');

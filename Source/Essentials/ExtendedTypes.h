@@ -146,18 +146,73 @@ struct ipos
     {
     }
 
+    constexpr auto operator+=(const ipos& other) noexcept -> ipos&
+    {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+    constexpr auto operator-=(const ipos& other) noexcept -> ipos&
+    {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+    constexpr auto operator*=(const ipos& other) noexcept -> ipos&
+    {
+        x *= other.x;
+        y *= other.y;
+        return *this;
+    }
+    constexpr auto operator/=(const ipos& other) noexcept -> ipos&
+    {
+        x /= other.x;
+        y /= other.y;
+        return *this;
+    }
+    constexpr auto operator+=(const T& other) noexcept -> ipos&
+    {
+        x += other;
+        y += other;
+        return *this;
+    }
+    constexpr auto operator-=(const T& other) noexcept -> ipos&
+    {
+        x -= other;
+        y -= other;
+        return *this;
+    }
+    constexpr auto operator*=(const T& other) noexcept -> ipos&
+    {
+        x *= other;
+        y *= other;
+        return *this;
+    }
+    constexpr auto operator/=(const T& other) noexcept -> ipos&
+    {
+        x /= other;
+        y /= other;
+        return *this;
+    }
+
     [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
     [[nodiscard]] constexpr auto operator!=(const ipos& other) const noexcept -> bool { return x != other.x || y != other.y; }
     [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
     [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
     [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
     [[nodiscard]] constexpr auto operator/(const ipos& other) const noexcept -> ipos { return {x / other.x, y / other.y}; }
+    [[nodiscard]] constexpr auto operator+(const T& other) const noexcept -> ipos { return {x + other, y + other}; }
+    [[nodiscard]] constexpr auto operator-(const T& other) const noexcept -> ipos { return {x - other, y - other}; }
+    [[nodiscard]] constexpr auto operator*(const T& other) const noexcept -> ipos { return {x * other, y * other}; }
+    [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> ipos { return {x / other, y / other}; }
+    [[nodiscard]] constexpr auto operator-() const noexcept -> ipos { return {-x, -y}; }
     // [[nodiscard]] constexpr auto operator+(const ipos& other) const -> ipos { return {checked_add(x, other.x), checked_add(y, other.y)}; }
     // [[nodiscard]] constexpr auto operator-(const ipos& other) const -> ipos { return {checked_sub(x, other.x), checked_sub(y, other.y)}; }
     // [[nodiscard]] constexpr auto operator*(const ipos& other) const -> ipos { return {checked_mul(x, other.x), checked_mul(y, other.y)}; }
     // [[nodiscard]] constexpr auto operator/(const ipos& other) const -> ipos { return {checked_div(x, other.x), checked_div(y, other.y)}; }
 
     [[nodiscard]] auto idist() const -> T { return iround<T>(std::sqrt(numeric_cast<float64>(x * x + y * y))); }
+    [[nodiscard]] auto isZero() const noexcept -> bool { return x == 0 && y == 0; }
 
     T x {};
     T y {};
@@ -173,8 +228,66 @@ struct isize
     {
     }
 
+    constexpr auto operator+=(const isize& other) noexcept -> isize&
+    {
+        width += other.width;
+        height += other.height;
+        return *this;
+    }
+    constexpr auto operator-=(const isize& other) noexcept -> isize&
+    {
+        width -= other.width;
+        height -= other.height;
+        return *this;
+    }
+    constexpr auto operator*=(const isize& other) noexcept -> isize&
+    {
+        width *= other.width;
+        height *= other.height;
+        return *this;
+    }
+    constexpr auto operator/=(const isize& other) noexcept -> isize&
+    {
+        width /= other.width;
+        height /= other.height;
+        return *this;
+    }
+    constexpr auto operator+=(const T& other) noexcept -> isize&
+    {
+        width += other;
+        height += other;
+        return *this;
+    }
+    constexpr auto operator-=(const T& other) noexcept -> isize&
+    {
+        width -= other;
+        height -= other;
+        return *this;
+    }
+    constexpr auto operator*=(const T& other) noexcept -> isize&
+    {
+        width *= other;
+        height *= other;
+        return *this;
+    }
+    constexpr auto operator/=(const T& other) noexcept -> isize&
+    {
+        width /= other;
+        height /= other;
+        return *this;
+    }
+
     [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const isize& other) const noexcept -> bool { return width != other.width || height != other.height; }
+    [[nodiscard]] constexpr auto operator+(const isize& other) const noexcept -> isize { return {width + other.width, height + other.height}; }
+    [[nodiscard]] constexpr auto operator-(const isize& other) const noexcept -> isize { return {width - other.width, height - other.height}; }
+    [[nodiscard]] constexpr auto operator*(const isize& other) const noexcept -> isize { return {width * other.width, height * other.height}; }
+    [[nodiscard]] constexpr auto operator/(const isize& other) const noexcept -> isize { return {width / other.width, height / other.height}; }
+    [[nodiscard]] constexpr auto operator+(const T& other) const noexcept -> isize { return {width + other, height + other}; }
+    [[nodiscard]] constexpr auto operator-(const T& other) const noexcept -> isize { return {width - other, height - other}; }
+    [[nodiscard]] constexpr auto operator*(const T& other) const noexcept -> isize { return {width * other, height * other}; }
+    [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> isize { return {width / other, height / other}; }
+    [[nodiscard]] constexpr auto operator-() const noexcept -> isize { return {-width, -height}; }
 
     [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
     [[nodiscard]] constexpr auto isValidPos(std::integral auto x, std::integral auto y) const noexcept -> bool
@@ -182,6 +295,7 @@ struct isize
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
     }
     [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool { return isValidPos(pos.x, pos.y); }
+    [[nodiscard]] auto isZero() const noexcept -> bool { return width == 0 && height == 0; }
 
     T width {};
     T height {};
@@ -221,6 +335,7 @@ struct irect
     }
     [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
     [[nodiscard]] constexpr auto operator!=(const irect& other) const noexcept -> bool { return x != other.x || y != other.y || width != other.width || height != other.height; }
+    [[nodiscard]] auto isZero() const noexcept -> bool { return x == 0 && y == 0 && width == 0 && height == 0; }
 
     T x {};
     T y {};
@@ -267,14 +382,48 @@ struct fpos
         y *= other.y;
         return *this;
     }
+    constexpr auto operator/=(const fpos& other) noexcept -> fpos&
+    {
+        x /= other.x;
+        y /= other.y;
+        return *this;
+    }
+    constexpr auto operator+=(const T& other) noexcept -> fpos&
+    {
+        x += other;
+        y += other;
+        return *this;
+    }
+    constexpr auto operator-=(const T& other) noexcept -> fpos&
+    {
+        x -= other;
+        y -= other;
+        return *this;
+    }
+    constexpr auto operator*=(const T& other) noexcept -> fpos&
+    {
+        x *= other;
+        y *= other;
+        return *this;
+    }
+    constexpr auto operator/=(const T& other) noexcept -> fpos&
+    {
+        x /= other;
+        y /= other;
+        return *this;
+    }
 
     [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
     [[nodiscard]] constexpr auto operator!=(const fpos& other) const noexcept -> bool { return !is_float_equal(x, other.x) || !is_float_equal(y, other.y); }
-    [[nodiscard]] constexpr auto operator+(const fpos& other) const -> fpos { return {x + other.x, y + other.y}; }
-    [[nodiscard]] constexpr auto operator-(const fpos& other) const -> fpos { return {x - other.x, y - other.y}; }
-    [[nodiscard]] constexpr auto operator*(const fpos& other) const -> fpos { return {x * other.x, y * other.y}; }
-    [[nodiscard]] constexpr auto operator/(const fpos& other) const -> fpos { return {x / other.x, y / other.y}; }
-    [[nodiscard]] constexpr auto operator*(T value) const -> fpos { return {x * value, y * value}; }
+    [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
+    [[nodiscard]] constexpr auto operator-(const fpos& other) const noexcept -> fpos { return {x - other.x, y - other.y}; }
+    [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
+    [[nodiscard]] constexpr auto operator/(const fpos& other) const noexcept -> fpos { return {x / other.x, y / other.y}; }
+    [[nodiscard]] constexpr auto operator+(const T& other) const noexcept -> fpos { return {x + other, y + other}; }
+    [[nodiscard]] constexpr auto operator-(const T& other) const noexcept -> fpos { return {x - other, y - other}; }
+    [[nodiscard]] constexpr auto operator*(const T& other) const noexcept -> fpos { return {x * other, y * other}; }
+    [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> fpos { return {x / other, y / other}; }
+    [[nodiscard]] constexpr auto operator-() const noexcept -> fpos { return {-x, -y}; }
 
     [[nodiscard]] auto dist() const noexcept -> T { return std::sqrt(x * x + y * y); }
 
@@ -308,8 +457,66 @@ struct fsize
     {
     }
 
+    constexpr auto operator+=(const fsize& other) noexcept -> fsize&
+    {
+        width += other.width;
+        height += other.height;
+        return *this;
+    }
+    constexpr auto operator-=(const fsize& other) noexcept -> fsize&
+    {
+        width -= other.width;
+        height -= other.height;
+        return *this;
+    }
+    constexpr auto operator*=(const fsize& other) noexcept -> fsize&
+    {
+        width *= other.width;
+        height *= other.height;
+        return *this;
+    }
+    constexpr auto operator/=(const fsize& other) noexcept -> fsize&
+    {
+        width /= other.width;
+        height /= other.height;
+        return *this;
+    }
+    constexpr auto operator+=(const T& other) noexcept -> fsize&
+    {
+        width += other;
+        height += other;
+        return *this;
+    }
+    constexpr auto operator-=(const T& other) noexcept -> fsize&
+    {
+        width -= other;
+        height -= other;
+        return *this;
+    }
+    constexpr auto operator*=(const T& other) noexcept -> fsize&
+    {
+        width *= other;
+        height *= other;
+        return *this;
+    }
+    constexpr auto operator/=(const T& other) noexcept -> fsize&
+    {
+        width /= other;
+        height /= other;
+        return *this;
+    }
+
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
     [[nodiscard]] constexpr auto operator!=(const fsize& other) const noexcept -> bool { return !is_float_equal(width, other.width) || !is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator+(const fsize& other) const noexcept -> fsize { return {width + other.width, height + other.height}; }
+    [[nodiscard]] constexpr auto operator-(const fsize& other) const noexcept -> fsize { return {width - other.width, height - other.height}; }
+    [[nodiscard]] constexpr auto operator*(const fsize& other) const noexcept -> fsize { return {width * other.width, height * other.height}; }
+    [[nodiscard]] constexpr auto operator/(const fsize& other) const noexcept -> fsize { return {width / other.width, height / other.height}; }
+    [[nodiscard]] constexpr auto operator+(const T& other) const noexcept -> fsize { return {width + other, height + other}; }
+    [[nodiscard]] constexpr auto operator-(const T& other) const noexcept -> fsize { return {width - other, height - other}; }
+    [[nodiscard]] constexpr auto operator*(const T& other) const noexcept -> fsize { return {width * other, height * other}; }
+    [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> fsize { return {width / other, height / other}; }
+    [[nodiscard]] constexpr auto operator-() const noexcept -> fsize { return {-width, -height}; }
 
     [[nodiscard]] constexpr auto square() const noexcept -> T { return width * height; }
     [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool

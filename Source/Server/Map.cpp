@@ -955,13 +955,22 @@ auto Map::GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&
     return static_field.TriggerItems;
 }
 
-auto Map::IsScrollBlock(mpos hex) const noexcept -> bool
+auto Map::IsOutsideArea(mpos hex) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const irect32 scroll_area = GetScrollAxialArea();
 
-    return static_field.ScrollBlock;
+    if (!scroll_area.isZero()) {
+        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+        if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
+            axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 FO_END_NAMESPACE();

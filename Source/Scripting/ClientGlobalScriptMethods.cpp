@@ -425,7 +425,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
                 const auto* cr2_hex = dynamic_cast<const CritterHexView*>(cr2);
 
                 if (cr1_hex != nullptr && cr2_hex != nullptr && cr1_hex->IsSpriteValid() && cr2_hex->IsSpriteValid()) {
-                    return cr1_hex->GetSprite()->TreeIndex < cr2_hex->GetSprite()->TreeIndex;
+                    return cr1_hex->GetSprite()->GetSortValue() < cr2_hex->GetSprite()->GetSortValue();
                 }
 
                 return cr1 < cr2;
@@ -597,7 +597,9 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(FOClient* client, const vector<str
     for (const auto& fname : fnames) {
         model_spr_factory->GetModelMngr()->PreloadModel(fname);
     }
+
 #else
+    ignore_unused(client, fnames);
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
 }
@@ -685,11 +687,8 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
 
-    if ((eff_type & static_cast<uint32>(EffectType::ContourStrict)) != 0) {
-        client->EffectMngr.Effects.ContourStrictSprite = reload_effect(client->EffectMngr.Effects.ContourStrictSpriteDefault);
-    }
-    if ((eff_type & static_cast<uint32>(EffectType::ContourDynamic)) != 0) {
-        client->EffectMngr.Effects.ContourDynamicSprite = reload_effect(client->EffectMngr.Effects.ContourDynamicSpriteDefault);
+    if ((eff_type & static_cast<uint32>(EffectType::Contour)) != 0) {
+        client->EffectMngr.Effects.Contour = reload_effect(client->EffectMngr.Effects.ContourDefault);
     }
 
     if (((eff_type & static_cast<uint32>(EffectType::Font)) != 0) && effectSubtype == -1) {
@@ -850,7 +849,7 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint32 sprId, ipos3
         return false;
     }
 
-    return client->SprMngr.SpriteHitTest(spr, pos, false);
+    return client->SprMngr.SpriteHitTest(spr, pos);
 }
 
 ///@ ExportMethod
@@ -1324,8 +1323,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
     const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
     const auto r = std::clamp(pos.x + size.width, 0, client->Settings.ScreenWidth);
     const auto b = std::clamp(pos.y + size.height, 0, client->Settings.ScreenHeight);
-    const auto from = irect32(l, t, r - l, b - t);
-    const auto to = irect32(from);
+    const auto from = frect32(l, t, r - l, b - t);
+    const auto to = irect32(l, t, r - l, b - t);
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1352,7 +1351,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    const auto from = irect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
+    const auto from = frect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
         std::clamp(fromY, 0, client->Settings.ScreenHeight), //
         std::clamp(fromW, 0, client->Settings.ScreenWidth - fromX), //
         std::clamp(fromH, 0, client->Settings.ScreenHeight - fromY));

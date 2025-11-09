@@ -376,6 +376,10 @@ void GlobalSettings::ApplyAutoSettings()
     const_cast<bool&>(DebugBuild) = true;
     const_cast<bool&>(RenderDebug) = true;
 #endif
+
+    if (MapDirectDraw) {
+        const_cast<bool&>(MapZoomEnabled) = false;
+    }
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)

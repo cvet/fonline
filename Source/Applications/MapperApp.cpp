@@ -101,6 +101,9 @@ int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException));
 
+        App->Settings.ScreenHudHeight = 0;
+        App->Settings.ScrollCheck = false;
+
 #if FO_IOS
         MapperEntry(nullptr);
         App->SetMainLoopCallback(MapperEntry);
