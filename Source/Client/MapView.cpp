@@ -560,6 +560,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
+    item->SetStatic(false);
     item->SetHex(hex);
 
     if (!item->GetShootThru()) {
@@ -1706,7 +1707,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distan
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(LightSource(id, hex, color, distance, flags, intensity, offset))).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.get();
     }
     else {
         ls = it->second.get();
