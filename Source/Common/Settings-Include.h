@@ -232,7 +232,7 @@ FIXED_SETTING(int16, RainSpeedX, 0); // Rain speed X value
 FIXED_SETTING(int16, RainSpeedY, 15); // Rain speed Y value
 FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear); // Chosen light color
 FIXED_SETTING(uint8, ChosenLightDistance, 4); // Chosen light distance
-FIXED_SETTING(int32, ChosenLightIntensity, 2500); // Chosen light intensity
+FIXED_SETTING(int32, ChosenLightIntensity, 20); // Chosen light intensity
 FIXED_SETTING(uint8, ChosenLightFlags, 0); // Chosen light flags
 VARIABLE_SETTING(bool, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
