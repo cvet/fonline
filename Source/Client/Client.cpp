@@ -787,7 +787,9 @@ void FOClient::Net_OnInitData()
                 }
             }
 
-            throw ResourcesOutdatedException("Resource pack outdated", fname);
+            if (IsPackaged()) {
+                throw ResourcesOutdatedException("Resource pack outdated", fname);
+            }
         }
 
         reader.VerifyEnd();
