@@ -504,46 +504,124 @@ auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) con
     return angle;
 }
 
-auto GeometryHelper::GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos32
+auto GeometryHelper::GetHexPos(mpos hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetHexInterval(ipos32 {from_hex.x, from_hex.y}, ipos32 {to_hex.x, to_hex.y});
+    return GetHexPos(ipos32(hex));
 }
 
-auto GeometryHelper::GetHexInterval(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32
+auto GeometryHelper::GetHexPos(ipos32 raw_hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    const int32 w = _settings.MapHexWidth;
+    const int32 h = _settings.MapHexLineHeight;
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        auto dx = to_raw_hex.x - from_raw_hex.x;
-        const auto dy = to_raw_hex.y - from_raw_hex.y;
-
-        auto x = dy * (_settings.MapHexWidth / 2) - dx * _settings.MapHexWidth;
-        auto y = dy * _settings.MapHexLineHeight;
-
-        if ((from_raw_hex.x % 2) != 0) {
-            if (dx > 0) {
-                dx++;
-            }
-        }
-        else if (dx < 0) {
-            dx--;
-        }
-
-        dx /= 2;
-
-        x += _settings.MapHexWidth / 2 * dx;
-        y += _settings.MapHexLineHeight * dx;
+        const int32 hx = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
+        const int32 x = raw_hex.y * (w / 2) - raw_hex.x * w + w / 2 * hx;
+        const int32 y = raw_hex.y * h + h * hx;
 
         return {x, y};
     }
     else {
-        const auto dx = to_raw_hex.x - from_raw_hex.x;
-        const auto dy = to_raw_hex.y - from_raw_hex.y;
+        const int32 x = (raw_hex.y - raw_hex.x) * w / 2;
+        const int32 y = (raw_hex.y + raw_hex.x) * h;
 
-        auto x = (dy - dx) * _settings.MapHexWidth / 2;
-        auto y = (dy + dx) * _settings.MapHexLineHeight;
+        return {x, y};
+    }
+}
+
+auto GeometryHelper::GetHexAxialCoord(mpos hex) const -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return GetHexAxialCoord(ipos32(hex));
+}
+
+auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) const -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 w = _settings.MapHexWidth;
+    const int32 h = _settings.MapHexLineHeight;
+    const ipos32 hex_pos = GetHexPos(raw_hex);
+    FO_RUNTIME_ASSERT(hex_pos.x % (w / 2) == 0);
+    FO_RUNTIME_ASSERT(hex_pos.y % h == 0);
+
+    return {hex_pos.x / (w / 2), hex_pos.y / h};
+}
+
+auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 w = _settings.MapHexWidth;
+    const int32 half_w = w / 2;
+    const int32 h = _settings.MapHexLineHeight;
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        const int32 ty = pos.y / h;
+        const int32 num = ty * half_w - pos.x;
+        const int32 rx = -(-num / w - (-num % w != 0 && (-num < 0) != (w < 0) ? 1 : 0));
+        const int32 ry = ty - (rx < 0 ? rx - 1 : rx) / 2;
+        const ipos32 raw_hex = {rx, ry};
+
+        if (hex_offset != nullptr) {
+            const int32 hx_adj = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
+            const int32 base_x = raw_hex.y * half_w - raw_hex.x * w + half_w * hx_adj;
+            const int32 base_y = raw_hex.y * h + h * hx_adj;
+            *hex_offset = {pos.x - base_x, pos.y - base_y};
+        }
+
+        return raw_hex;
+    }
+    else {
+        const int32 ty = pos.y / h;
+        const int32 tx = pos.x / half_w;
+        const int32 rx = (ty - tx) / 2;
+        const int32 ry = (ty + tx) / 2;
+        const ipos32 raw_hex = {rx, ry};
+
+        if (hex_offset != nullptr) {
+            const int32 base_x = (raw_hex.y - raw_hex.x) * half_w;
+            const int32 base_y = (raw_hex.y + raw_hex.x) * h;
+            *hex_offset = {pos.x - base_x, pos.y - base_y};
+        }
+
+        return raw_hex;
+    }
+}
+
+auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) const -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return GetHexOffset(ipos32(from_hex), ipos32(to_hex));
+}
+
+auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 w = _settings.MapHexWidth;
+    const int32 h = _settings.MapHexLineHeight;
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        const int32 dx = to_raw_hex.x - from_raw_hex.x;
+        const int32 dy = to_raw_hex.y - from_raw_hex.y;
+        const int32 dx2 = ((from_raw_hex.x % 2) != 0 ? (dx > 0 ? dx + 1 : dx) : (dx < 0 ? dx - 1 : dx)) / 2;
+        const int32 x = dy * (w / 2) - dx * w + w / 2 * dx2;
+        const int32 y = dy * h + h * dx2;
+
+        return {x, y};
+    }
+    else {
+        const int32 dx = to_raw_hex.x - from_raw_hex.x;
+        const int32 dy = to_raw_hex.y - from_raw_hex.y;
+        const int32 x = (dy - dx) * w / 2;
+        const int32 y = (dy + dx) * h;
 
         return {x, y};
     }

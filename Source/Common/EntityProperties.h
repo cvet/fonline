@@ -141,9 +141,6 @@ public:
     FO_ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);
-    ///@ MigrationRule Property Item IsScrollBlock ScrollBlock
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, ScrollBlock);
     ///@ MigrationRule Property Item IsHidden Hidden
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(PrivateServer, bool, Hidden);
@@ -333,14 +330,18 @@ public:
     FO_ENTITY_PROPERTY(PrivateCommon, msize, Size);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     FO_ENTITY_PROPERTY(PrivateClient, ipos32, ScrollOffset);
+    ///@ ExportProperty
+    FO_ENTITY_PROPERTY(PrivateCommon, irect32, ScrollAxialArea);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, ident_t, WorkEntityId);
 
     // Todo: exclude map properties from engine:
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Temporary
     FO_ENTITY_PROPERTY(PrivateClient, float32, SpritesZoom);
+    ///@ ExportProperty ReadOnly Temporary
+    FO_ENTITY_PROPERTY(PrivateClient, float32, SpritesZoomTarget);
     ///@ MigrationRule Property Map CurDayTime FixedDayTime
     ///@ ExportProperty
     FO_ENTITY_PROPERTY(Public, int32, FixedDayTime);

@@ -141,7 +141,8 @@ void MasterBaker::BakeAllInternal()
     FO_RUNTIME_ASSERT(!_settings.BakeOutput.empty());
     const auto make_output_path = [this](string_view path) -> string { return strex(_settings.BakeOutput).combinePath(path); };
 
-    const auto build_hash_deleted = DiskFileSystem::DeleteFile(make_output_path("Resources.build-hash"));
+    const auto build_hash_path = make_output_path("Resources.build-hash");
+    const auto build_hash_deleted = DiskFileSystem::DeleteFile(build_hash_path);
     FO_RUNTIME_ASSERT(build_hash_deleted);
 
     std::atomic_bool force_baking = false;
@@ -232,10 +233,8 @@ void MasterBaker::BakeAllInternal()
                 const string cfg_path = make_output_path(strex("Configs/{}{}.fomain-bin", cfg_name1, cfg_name2));
 
                 if (!DiskFileSystem::CompareFileContent(cfg_path, {reinterpret_cast<const uint8*>(cfg_content.data()), cfg_content.size()})) {
-                    auto cfg_file = DiskFileSystem::OpenFile(cfg_path, true);
-                    FO_RUNTIME_ASSERT(cfg_file);
-                    const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
-                    FO_RUNTIME_ASSERT(cfg_file_write_ok);
+                    const auto config_write_ok = DiskFileSystem::WriteFile(cfg_path, cfg_content);
+                    FO_RUNTIME_ASSERT(config_write_ok);
                     baked_configs++;
                 }
             };
@@ -272,14 +271,15 @@ void MasterBaker::BakeAllInternal()
         bool engine_data_baked = false;
         const auto engine_data_bin = BakerEngine::GetRestoreInfo();
 
-        const auto del_core_engine_data_ok = DiskFileSystem::DeleteFile(make_output_path("Core/EngineData.fobin"));
-        FO_RUNTIME_ASSERT(del_core_engine_data_ok);
+        const auto engine_data_path = make_output_path("EngineData/EngineData.fobin");
+        const auto core_engine_data_path = make_output_path("Core/EngineData.fobin");
 
-        if (!DiskFileSystem::CompareFileContent(make_output_path("EngineData/EngineData.fobin"), engine_data_bin)) {
-            auto engine_data_file = DiskFileSystem::OpenFile(make_output_path("EngineData/EngineData.fobin"), true);
-            FO_RUNTIME_ASSERT(engine_data_file);
-            const auto engine_data_file_write_ok = engine_data_file.Write(engine_data_bin);
-            FO_RUNTIME_ASSERT(engine_data_file_write_ok);
+        const auto delete_core_engine_data_ok = DiskFileSystem::DeleteFile(core_engine_data_path);
+        FO_RUNTIME_ASSERT(delete_core_engine_data_ok);
+
+        if (!DiskFileSystem::CompareFileContent(engine_data_path, engine_data_bin)) {
+            const auto engine_data_write_ok = DiskFileSystem::WriteFile(engine_data_path, engine_data_bin);
+            FO_RUNTIME_ASSERT(engine_data_write_ok);
             engine_data_baked = true;
         }
 
@@ -344,10 +344,8 @@ void MasterBaker::BakeAllInternal()
                 const auto res_path = strex(output_dir).combinePath(path).str();
 
                 if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
-                    auto res_file = DiskFileSystem::OpenFile(res_path, true);
-                    FO_RUNTIME_ASSERT_STR(res_file, strex("Unable to write file '{}'", res_path));
-                    const auto res_file_write_ok = res_file.Write(baked_data);
-                    FO_RUNTIME_ASSERT(res_file_write_ok);
+                    const auto res_file_write_ok = DiskFileSystem::WriteFile(res_path, baked_data);
+                    FO_RUNTIME_ASSERT_STR(res_file_write_ok, strex("Unable to write file '{}'", res_path));
                     ++baked_files;
                 }
                 else {
@@ -431,12 +429,8 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Time {}", bake_time.GetDuration());
     WriteLog("Baking complete!");
 
-    {
-        auto build_hash_file = DiskFileSystem::OpenFile(make_output_path("Resources.build-hash"), true, true);
-        FO_RUNTIME_ASSERT(build_hash_file);
-        const auto build_hash_writed = build_hash_file.Write(FO_BUILD_HASH);
-        FO_RUNTIME_ASSERT(build_hash_writed);
-    }
+    const auto build_hash_write_ok = DiskFileSystem::WriteFile(build_hash_path, FO_BUILD_HASH);
+    FO_RUNTIME_ASSERT(build_hash_write_ok);
 }
 
 class Item;
@@ -546,6 +540,7 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
 
     // Evaluate output files
     const auto check_file = [&](string_view path, uint64 write_time) {
+        auto locker = std::scoped_lock(_outputFilesLocker);
         _outputFiles.emplace(path, write_time);
         return false;
     };
@@ -593,9 +588,8 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, con
     FO_NON_CONST_METHOD_HINT();
 
     const auto output_path = MakeOutputPath(res_pack_name, path);
-    auto output_file = DiskFileSystem::OpenFile(output_path, true);
-    FO_RUNTIME_ASSERT(output_file);
-    output_file.Write(data);
+    const auto write_file_ok = DiskFileSystem::WriteFile(output_path, data);
+    FO_RUNTIME_ASSERT(write_file_ok);
 }
 
 auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_time, unique_del_ptr<const uint8>* data) const -> bool
@@ -677,6 +671,8 @@ auto BakerDataSource::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto locker = std::scoped_lock(_outputFilesLocker);
+
     return _outputFiles.contains(path);
 }
 
@@ -713,6 +709,8 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
     if (!dir.empty() && dir.back() == '/') {
         fixed_dir.resize(fixed_dir.size() - 1);
     }
+
+    auto locker = std::scoped_lock(_outputFilesLocker);
 
     vector<string> result;
     result.reserve(_outputFiles.size());

@@ -46,20 +46,6 @@ static auto MakeFileSystemPath(string_view path) -> std::filesystem::path
     return std::u8string(path.begin(), path.end());
 }
 
-auto DiskFileSystem::OpenFile(string_view path, bool write) -> DiskFile
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {path, write, false};
-}
-
-auto DiskFileSystem::OpenFile(string_view path, bool write, bool write_through) -> DiskFile
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {path, write, write_through};
-}
-
 DiskFile::DiskFile(string_view path, bool write, bool write_through)
 {
     FO_STACK_TRACE_ENTRY();
@@ -236,6 +222,68 @@ auto DiskFile::GetSize() -> size_t
     }
 
     return _file ? file_len : 0;
+}
+
+auto DiskFileSystem::OpenFile(string_view path, bool write) -> DiskFile
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return DiskFile(path, write, false);
+}
+
+auto DiskFileSystem::OpenFile(string_view path, bool write, bool write_through) -> DiskFile
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return DiskFile(path, write, write_through);
+}
+
+auto DiskFileSystem::ReadFile(string_view path) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, false);
+
+    if (file) {
+        string content;
+        content.resize(file.GetSize());
+
+        if (file.Read(content.data(), content.size())) {
+            return content;
+        }
+    }
+
+    return std::nullopt;
+}
+
+auto DiskFileSystem::WriteFile(string_view path, string_view content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, true, true);
+
+    if (file) {
+        if (file.Write(content)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto DiskFileSystem::WriteFile(string_view path, const_span<uint8> content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, true, true);
+
+    if (file) {
+        if (file.Write(content)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 auto DiskFileSystem::GetWriteTime(string_view path) -> uint64

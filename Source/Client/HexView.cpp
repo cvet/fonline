@@ -52,28 +52,11 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     FO_RUNTIME_ASSERT(!_mapSprValid);
 
     const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
-    auto& mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
+    auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
 
-    SetupSprite(&mspr);
+    SetupSprite(mspr);
 
-    FO_RUNTIME_ASSERT(_mapSpr == &mspr);
-    FO_RUNTIME_ASSERT(_mapSprValid);
-
-    return _mapSpr.get();
-}
-
-auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(!_mapSprValid);
-
-    const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
-    auto& mspr = list.InsertSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
-
-    SetupSprite(&mspr);
-
-    FO_RUNTIME_ASSERT(_mapSpr == &mspr);
+    FO_RUNTIME_ASSERT(_mapSpr == mspr);
     FO_RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr.get();

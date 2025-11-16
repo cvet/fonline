@@ -38,6 +38,10 @@
 
 FO_BEGIN_NAMESPACE();
 
+#if !FO_HAVE_RPMALLOC
+static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= alignof(std::max_align_t));
+#endif
+
 // Safe memory allocation
 using BadAllocCallback = function<void()>;
 
@@ -76,10 +80,6 @@ public:
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
     {
-        if (count == 0) {
-            return nullptr;
-        }
-
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Safe allocator bad size", typeid(T).name(), count, count * sizeof(T));
             ReportAndExit("Alloc size overflow");
@@ -200,17 +200,12 @@ public:
         requires(!is_refcounted<T>)
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
-        if (count == 0) {
-            return nullptr;
-        }
-
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
             ReportAndExit("Alloc size overflow");
         }
 
-        constexpr auto align = static_cast<std::align_val_t>(alignof(std::max_align_t));
-        auto* ptr = new (align, std::nothrow) T[count]();
+        auto* ptr = new (std::nothrow) T[count]();
 
         if (ptr == nullptr) {
             ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));

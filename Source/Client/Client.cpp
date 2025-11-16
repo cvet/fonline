@@ -1499,7 +1499,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     auto* chosen = GetChosen();
 
     if (_curMap != nullptr && chosen != nullptr) {
-        _curMap->FindSetCenter(chosen->GetHex());
+        _curMap->InstantScrollTo(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->RefreshView();
@@ -1939,7 +1939,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->Moving.EndHexOffset = end_hex_offset;
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
+        const auto cr_offset = Geometry.GetHexOffset(start_hex, cr->GetHex());
         cr->Moving.StartHexOffset = {numeric_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), numeric_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
     }
 
@@ -1958,7 +1958,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;
@@ -2253,7 +2253,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
-        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
+        cr->GetSprite()->SetContour(cr->GetSprite()->GetContour(), cr->GetContourColor());
     }
 }
 
@@ -2464,14 +2464,12 @@ void FOClient::LmapPrepareMap()
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, .PointColor = cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, .PointColor = cur_color});
             }
-            else if (field.Flags.HasWall || field.Flags.HasScenery) {
-                if (field.Flags.ScrollBlock) {
+            else if (field.HasWall || field.HasScenery) {
+                if (!_lmapSwitchHi && !field.HasWall) {
                     continue;
                 }
-                if (!_lmapSwitchHi && !field.Flags.HasWall) {
-                    continue;
-                }
-                cur_color = ucolor {(field.Flags.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
+
+                cur_color = ucolor {(field.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
             }
             else {
                 continue;
@@ -2727,7 +2725,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
                 FO_RUNTIME_ASSERT(move_ok);
             }
 
-            auto offset2 = Geometry.GetHexInterval(next_start_hex, hex2);
+            auto offset2 = Geometry.GetHexOffset(next_start_hex, hex2);
 
             if (i == 0) {
                 offset2.x -= cr->Moving.StartHexOffset.x;

@@ -594,7 +594,7 @@ void CritterHexView::ProcessMoving()
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = _engine->Geometry.GetHexInterval(start_hex, hex);
+        auto&& [ox, oy] = _engine->Geometry.GetHexOffset(start_hex, hex);
 
         if (i == 0) {
             ox -= Moving.StartHexOffset.x;
@@ -637,7 +637,7 @@ void CritterHexView::ProcessMoving()
             const auto moved = cur_hex != prev_hex;
 
             // Evaluate current position
-            auto&& [cr_ox, cr_oy] = _engine->Geometry.GetHexInterval(start_hex, cur_hex);
+            auto&& [cr_ox, cr_oy] = _engine->Geometry.GetHexOffset(start_hex, cur_hex);
 
             if (i == 0) {
                 cr_ox -= Moving.StartHexOffset.x;
@@ -661,7 +661,7 @@ void CritterHexView::ProcessMoving()
                     ipos32 model_offset;
 
                     if (moved) {
-                        model_offset = _engine->Geometry.GetHexInterval(prev_hex, cur_hex);
+                        model_offset = _engine->Geometry.GetHexOffset(prev_hex, cur_hex);
                     }
 
                     model_offset.x -= hex_offset.x - mxi;
@@ -767,8 +767,7 @@ void CritterHexView::RefreshOffs()
     FO_STACK_TRACE_ENTRY();
 
     const auto hex_offset = GetHexOffset();
-
-    SprOffset = ipos32 {hex_offset.x, hex_offset.y} + ipos32 {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)} + _offsAnim;
+    SprOffset = ipos32(hex_offset) + _offsExt.round<int32>() + _offsAnim;
 
     if (IsSpriteValid() && GetIsChosen()) {
         _engine->SprMngr.SetEgg(GetHex(), GetSprite());
@@ -780,13 +779,9 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (IsSpriteValid()) {
-        const auto rect = GetViewRect();
-        const auto rect_half_width = rect.width / 2;
-        const auto scroll_offset = _map->GetScrollOffset();
-        const auto x = iround<int32>(numeric_cast<float32>(rect.x + rect_half_width + scroll_offset.x) / _map->GetSpritesZoom());
-        const auto y = iround<int32>(numeric_cast<float32>(rect.y + scroll_offset.y) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
-
-        pos = {x, y};
+        const irect32 rect = GetViewRect();
+        pos = _map->MapToScreenPos({rect.x + rect.width / 2, rect.y});
+        pos.y += _engine->Settings.NameOffset + GetNameOffset();
         return true;
     }
 

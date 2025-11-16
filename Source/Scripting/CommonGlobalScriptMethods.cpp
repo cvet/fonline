@@ -229,7 +229,7 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, 
 {
     ignore_unused(engine);
 
-    hexOffset = engine->Geometry.GetHexInterval(fromHex, toHex);
+    hexOffset = engine->Geometry.GetHexOffset(fromHex, toHex);
 }
 
 ///@ ExportMethod

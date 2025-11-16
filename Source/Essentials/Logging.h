@@ -64,6 +64,11 @@ void WriteLog(LogType type, std::format_string<Args...>&& format, Args&&... args
     WriteLogMessage(type, strex(strex::safe_format, std::move(format), std::forward<Args>(args)...));
 }
 
+inline void WriteLog(string_view str) noexcept
+{
+    WriteLogMessage(LogType::Info, strex(strex::safe_format, "{}", str));
+}
+
 // Control
 extern void SetLogCallback(string_view key, LogFunc callback);
 extern void LogDisableTags();

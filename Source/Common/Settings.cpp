@@ -379,6 +379,10 @@ void GlobalSettings::ApplyAutoSettings()
     const_cast<bool&>(RenderDebug) = true;
 #endif
 
+    if (MapDirectDraw) {
+        const_cast<bool&>(MapZoomEnabled) = false;
+    }
+
     const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
 }
 

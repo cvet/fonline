@@ -3160,7 +3160,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;
@@ -3233,7 +3233,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto cr_hex = cr->GetHex();
             const auto moved = cr_hex != old_hex;
 
-            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
+            auto&& [cr_ox, cr_oy] = Geometry.GetHexOffset(next_start_hex, cr_hex);
 
             if (i == 0) {
                 cr_ox -= cr->Moving.StartHexOffset.x;
@@ -3334,7 +3334,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;
