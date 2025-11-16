@@ -201,7 +201,6 @@ public:
     size_t IndCount {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
-    bool PrimZoomed {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
 #endif

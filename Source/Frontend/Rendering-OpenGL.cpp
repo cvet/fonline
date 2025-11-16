@@ -1060,17 +1060,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             draw_mode = GL_TRIANGLE_STRIP;
             break;
         }
-
-#if !FO_OPENGL_ES
-        if (opengl_dbuf->PrimZoomed) {
-            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-                GL(glEnable(GL_POINT_SMOOTH));
-            }
-            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-                GL(glEnable(GL_LINE_SMOOTH));
-            }
-        }
-#endif
     }
 
     if (DisableBlending) {
@@ -1260,19 +1249,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
     }
 #endif
-
-    if (_usage == EffectUsage::Primitive) {
-#if !FO_OPENGL_ES
-        if (opengl_dbuf->PrimZoomed) {
-            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-                GL(glDisable(GL_POINT_SMOOTH));
-            }
-            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-                GL(glDisable(GL_LINE_SMOOTH));
-            }
-        }
-#endif
-    }
 }
 
 FO_END_NAMESPACE();

@@ -237,21 +237,6 @@ void MapManager::LoadFromResources()
                     static_field.MoveBlocked = true;
                 }
 
-                // Block around scroll blocks
-                if (item->GetScrollBlock()) {
-                    auto& static_field = static_map->HexField->GetCellForWriting(hex);
-                    static_field.ScrollBlock = true;
-
-                    for (uint8 k = 0; k < GameSettings::MAP_DIR_COUNT; k++) {
-                        auto scroll_hex = hex;
-
-                        if (GeometryHelper::MoveHexByDir(scroll_hex, k, map_size)) {
-                            auto& static_field2 = static_map->HexField->GetCellForWriting(scroll_hex);
-                            static_field2.MoveBlocked = true;
-                        }
-                    }
-                }
-
                 if (item->IsNonEmptyBlockLines()) {
                     const auto shooted = item->GetShootThru();
 
@@ -263,6 +248,28 @@ void MapManager::LoadFromResources()
                             block_static_field.ShootBlocked = true;
                         }
                     });
+                }
+            }
+
+            // Scroll blocks
+            const irect32 scroll_area = map_proto->GetScrollAxialArea();
+            const int32 scroll_block_size = _engine->Settings.ScrollBlockSize;
+
+            if (!scroll_area.isZero()) {
+                for (const auto hx : iterate_range(map_proto->GetSize().width)) {
+                    for (const auto hy : iterate_range(map_proto->GetSize().height)) {
+                        const mpos hex = {hx, hy};
+                        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+                        // Is hex on scroll block line
+                        if (axial_hex.x >= scroll_area.x - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_block_size || //
+                            axial_hex.x >= scroll_area.x + scroll_area.width - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_area.width + scroll_block_size || //
+                            axial_hex.y >= scroll_area.y - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_block_size || //
+                            axial_hex.y >= scroll_area.y + scroll_area.height - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_area.height + scroll_block_size) {
+                            auto& field = static_map->HexField->GetCellForWriting(hex);
+                            field.MoveBlocked = true;
+                        }
+                    }
                 }
             }
 

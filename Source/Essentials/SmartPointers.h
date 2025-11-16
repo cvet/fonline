@@ -41,8 +41,6 @@ FO_BEGIN_NAMESPACE();
 template<typename T>
 class raw_ptr
 {
-    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T> || std::is_void_v<T>);
-
     template<typename U>
     friend class raw_ptr;
 

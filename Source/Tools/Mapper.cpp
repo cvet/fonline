@@ -66,8 +66,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    App->Settings.ScreenHudHeight = 0;
-    App->Settings.ScrollCheck = false;
     App->LoadImGuiEffect(Resources);
 
     MapsFileSys.AddDirSource("", false, true, true);
@@ -178,7 +176,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
         if (map != nullptr) {
             if (Settings.StartHexX > 0 && Settings.StartHexY > 0) {
-                _curMap->FindSetCenter(_curMap->GetSize().fromRawPos(Settings.StartHexX, Settings.StartHexY));
+                _curMap->InstantScrollTo(_curMap->GetSize().fromRawPos(Settings.StartHexX, Settings.StartHexY));
             }
 
             ShowMap(map);
@@ -431,37 +429,37 @@ void FOMapper::ProcessMapperInput()
                 case KeyCode::F1:
                     Settings.ShowItem = !Settings.ShowItem;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F2:
                     Settings.ShowScen = !Settings.ShowScen;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F3:
                     Settings.ShowWall = !Settings.ShowWall;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F4:
                     Settings.ShowCrit = !Settings.ShowCrit;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F5:
                     Settings.ShowTile = !Settings.ShowTile;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F6:
                     Settings.ShowFast = !Settings.ShowFast;
                     if (_curMap) {
-                        _curMap->RefreshMap();
+                        _curMap->RebuildMap();
                     }
                     break;
                 case KeyCode::F7:
@@ -589,9 +587,6 @@ void FOMapper::ProcessMapperInput()
                     break;
                 case KeyCode::Q:
                     Settings.ShowCorners = !Settings.ShowCorners;
-                    break;
-                case KeyCode::E:
-                    Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                     break;
                 default:
                     break;
@@ -721,13 +716,16 @@ void FOMapper::ProcessMapperInput()
             }
             else {
                 if (ev.MouseWheel.Delta != 0 && _curMap) {
-                    _curMap->ChangeZoom(ev.MouseWheel.Delta > 0 ? -1 : 1);
+                    const auto cur_zoom = _curMap->GetSpritesZoomTarget();
+                    const auto new_zoom = std::clamp(cur_zoom * (ev.MouseWheel.Delta > 0 ? 1.2f : 0.8f), GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
+                    ChangeZoom(new_zoom);
                 }
             }
         }
         else if (ev_type == InputEvent::EventType::MouseDownEvent) {
             if (ev.MouseDown.Button == MouseButton::Middle) {
                 CurMMouseDown();
+                ChangeZoom(1.0f);
             }
             if (ev.MouseDown.Button == MouseButton::Left) {
                 IntLMouseDown();
@@ -745,6 +743,22 @@ void FOMapper::ProcessMapperInput()
             IntMouseMove();
         }
     }
+}
+
+void FOMapper::ChangeZoom(float32 new_zoom)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_curMap) {
+        return;
+    }
+
+    const fpos32 mouse_pos = fpos32(App->Input.GetMousePosition());
+    const fsize32 screen_size = fsize32(_curMap->GetScreenSize());
+    const float32 mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
+    const float32 mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
+
+    _curMap->ChangeZoom(new_zoom, {mouse_x_factor, mouse_y_factor});
 }
 
 void FOMapper::MapperMainLoop()
@@ -919,7 +933,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             const auto* proto_item = (*CurItemProtos)[i];
-            auto col = (i == numeric_cast<int32>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
+            auto col = i == numeric_cast<int32>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE;
 
             if (const auto* spr = GetIfaceSpr(proto_item->GetPicMap()); spr != nullptr) {
                 SprMngr.DrawSpriteSize(spr, {x, y}, {w, h / 2}, false, true, col);
@@ -1040,7 +1054,7 @@ void FOMapper::IntDraw()
             auto name = fst;
             auto& stab = snd;
 
-            auto color = (TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT);
+            auto color = TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT;
             auto r = irect32(SubTabsRect.x + SubTabsX + 5, SubTabsRect.y + SubTabsY + posy, Settings.ScreenWidth, line_height - 1);
 
             if (IsCurInRect(r)) {
@@ -1066,24 +1080,19 @@ void FOMapper::IntDraw()
 
     // Map info
     if (_curMap) {
-        auto hex_thru = false;
         mpos hex;
+        _curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr);
+        const int32 day_time = GetGlobalDayTime();
 
-        if (_curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr)) {
-            hex_thru = true;
-        }
-
-        auto day_time = GetGlobalDayTime();
-
-        DrawStr(irect32(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
+        DrawStr(irect32(Settings.ScreenWidth - 150, 20, Settings.ScreenWidth, Settings.ScreenHeight),
             strex("Map '{}'\n"
                   "Hex {}\n"
                   "Time {} : {}\n"
                   "Fps {}\n"
                   "Tile layer {}\n"
                   "{}",
-                _curMap->GetName(), hex_thru ? hex : mpos {}, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
-            FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
+                _curMap->GetName(), hex, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
+            FT_NOBREAK_LINE | FT_BORDERED, COLOR_TEXT, FONT_DEFAULT);
     }
 }
 
@@ -1125,6 +1134,7 @@ void FOMapper::ObjDraw()
 
         if (item->GetPicInv()) {
             const auto* inv_spr = GetIfaceSpr(item->GetPicInv());
+
             if (inv_spr != nullptr) {
                 SprMngr.DrawSpriteSize(inv_spr, {x + w - ProtoWidth, y + ProtoWidth}, {ProtoWidth, ProtoWidth}, false, true, COLOR_SPRITE);
             }
@@ -1472,7 +1482,7 @@ void FOMapper::IntLMouseDown()
                 }
 
                 _curMap->SwitchIgnorePid(pid);
-                _curMap->RefreshMap();
+                _curMap->RebuildMap();
             }
             // Add to container
             else if (Keyb.AltDwn && !SelectedEntities.empty()) {
@@ -1495,9 +1505,11 @@ void FOMapper::IntLMouseDown()
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
             ind += *CurProtoScroll;
+
             if (ind >= numeric_cast<int32>(CurNpcProtos->size())) {
                 ind = numeric_cast<int32>(CurNpcProtos->size()) - 1;
             }
+
             SetTabIndex(ind);
         }
         else if (IntMode == INT_MODE_INCONT) {
@@ -1694,31 +1706,31 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
         Settings.ShowItem = !Settings.ShowItem;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowScen, IntX, IntY)) {
         Settings.ShowScen = !Settings.ShowScen;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowWall, IntX, IntY)) {
         Settings.ShowWall = !Settings.ShowWall;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowCrit, IntX, IntY)) {
         Settings.ShowCrit = !Settings.ShowCrit;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowTile, IntX, IntY)) {
         Settings.ShowTile = !Settings.ShowTile;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowRoof, IntX, IntY)) {
         Settings.ShowRoof = !Settings.ShowRoof;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBShowFast, IntX, IntY)) {
         Settings.ShowFast = !Settings.ShowFast;
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
     else if (IsCurInRect(IntBSelectItem, IntX, IntY)) {
         IsSelectItem = !IsSelectItem;
@@ -1846,7 +1858,7 @@ void FOMapper::IntLMouseUp()
             }
         }
 
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
 
     IntHold = INT_NONE;
@@ -1858,11 +1870,13 @@ void FOMapper::IntMouseMove()
 
     if (IntHold == INT_SELECT) {
         _curMap->ClearHexTrack();
+
         if (!_curMap->GetHexAtScreenPos(Settings.MousePos, SelectHex2, nullptr)) {
-            if (SelectHex2 != mpos {0, 0}) {
-                _curMap->RefreshMap();
+            if (!SelectHex2.isZero()) {
+                _curMap->RebuildMap();
                 SelectHex2 = {};
             }
+
             return;
         }
 
@@ -1887,7 +1901,7 @@ void FOMapper::IntMouseMove()
                     }
                 }
 
-                _curMap->RefreshMap();
+                _curMap->RebuildMap();
             }
         }
         else if (CurMode == CUR_MODE_MOVE_SELECTION) {
@@ -1900,7 +1914,7 @@ void FOMapper::IntMouseMove()
                 SelectHex1 = _curMap->GetSize().fromRawPos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
                 SelectPos.x += offs_x;
                 SelectPos.y += offs_y;
-                _curMap->RefreshMap();
+                _curMap->RebuildMap();
             }
         }
     }
@@ -1973,7 +1987,7 @@ void FOMapper::RefreshCurProtos()
         }
 
         // Refresh map
-        _curMap->RefreshMap();
+        _curMap->RebuildMap();
     }
 }
 
@@ -2203,7 +2217,7 @@ void FOMapper::SelectAll()
         }
     }
 
-    _curMap->RefreshMap();
+    _curMap->RebuildMap();
 }
 
 auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool
@@ -2248,8 +2262,8 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        const auto ox = numeric_cast<float32>(offs_x) * _curMap->GetSpritesZoom() + small_ox;
-        const auto oy = numeric_cast<float32>(offs_y) * _curMap->GetSpritesZoom() + small_oy;
+        const auto ox = numeric_cast<float32>(offs_x) / _curMap->GetSpritesZoom() + small_ox;
+        const auto oy = numeric_cast<float32>(offs_y) / _curMap->GetSpritesZoom() + small_oy;
 
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
@@ -2375,7 +2389,7 @@ void FOMapper::SelectDelete()
 
     SelectedEntities.clear();
     SelectClear();
-    _curMap->RefreshMap();
+    _curMap->RebuildMap();
     IntHold = INT_NONE;
     CurMode = CUR_MODE_DEFAULT;
 }
@@ -2400,7 +2414,7 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     SelectAdd(cr);
 
-    _curMap->RefreshMap();
+    _curMap->RebuildMap();
     CurMode = CUR_MODE_DEFAULT;
 
     return cr;
@@ -2654,23 +2668,26 @@ void FOMapper::CurDraw()
             const auto* spr = GetIfaceSpr(proto_item->GetPicMap());
 
             if (spr != nullptr) {
-                const auto scroll_offset = _curMap->GetScrollOffset();
-                auto x = _curMap->GetField(hex).Offset.x - (spr->Size.width / 2) + spr->Offset.x + (Settings.MapHexWidth / 2) + scroll_offset.x + proto_item->GetOffset().x;
-                auto y = _curMap->GetField(hex).Offset.y - spr->Size.height + spr->Offset.y + (Settings.MapHexHeight / 2) + scroll_offset.y + proto_item->GetOffset().y;
+                ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
+                pos += ipos32(proto_item->GetOffset());
+                pos += spr->Offset;
+                pos += ipos32(Settings.MapHexWidth / 2, Settings.MapHexHeight / 2);
+                pos -= ipos32(spr->Size.width / 2, spr->Size.height);
 
                 if (proto_item->GetIsTile()) {
                     if (DrawRoof) {
-                        x += Settings.MapRoofOffsX;
-                        y += Settings.MapRoofOffsY;
+                        pos.x += Settings.MapRoofOffsX;
+                        pos.y += Settings.MapRoofOffsY;
                     }
                     else {
-                        x += Settings.MapTileOffsX;
-                        y += Settings.MapTileOffsY;
+                        pos.x += Settings.MapTileOffsX;
+                        pos.y += Settings.MapTileOffsY;
                     }
                 }
 
-                SprMngr.DrawSpriteSize(spr, {iround<int32>(numeric_cast<float32>(x) / _curMap->GetSpritesZoom()), iround<int32>(numeric_cast<float32>(y) / _curMap->GetSpritesZoom())}, //
-                    {iround<int32>(numeric_cast<float32>(spr->Size.width) / _curMap->GetSpritesZoom()), iround<int32>(numeric_cast<float32>(spr->Size.height) / _curMap->GetSpritesZoom())}, true, false, COLOR_SPRITE);
+                const auto width = iround<int32>(numeric_cast<float32>(spr->Size.width) * _curMap->GetSpritesZoom());
+                const auto height = iround<int32>(numeric_cast<float32>(spr->Size.height) * _curMap->GetSpritesZoom());
+                SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2687,16 +2704,13 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            const auto scroll_offset = _curMap->GetScrollOffset();
-            const auto x = _curMap->GetField(hex).Offset.x - (anim->Size.width / 2) + anim->Offset.x;
-            const auto y = _curMap->GetField(hex).Offset.y - anim->Size.height + anim->Offset.y;
+            ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
+            pos += anim->Offset;
+            pos -= ipos32(anim->Size.width / 2, anim->Size.height);
 
-            SprMngr.DrawSpriteSize(anim, //
-                {iround<int32>((numeric_cast<float32>(x + scroll_offset.x) + (numeric_cast<float32>(Settings.MapHexWidth) / 2.0f)) / _curMap->GetSpritesZoom()), //
-                    iround<int32>((numeric_cast<float32>(y + scroll_offset.y) + (numeric_cast<float32>(Settings.MapHexHeight) / 2.0f)) / _curMap->GetSpritesZoom())}, //
-                {iround<int32>(numeric_cast<float32>(anim->Size.width) / _curMap->GetSpritesZoom()), //
-                    iround<int32>(numeric_cast<float32>(anim->Size.height) / _curMap->GetSpritesZoom())},
-                true, false, COLOR_SPRITE);
+            const auto width = iround<int32>(numeric_cast<float32>(anim->Size.width) * _curMap->GetSpritesZoom());
+            const auto height = iround<int32>(numeric_cast<float32>(anim->Size.height) * _curMap->GetSpritesZoom());
+            SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
         }
         else {
             CurMode = CUR_MODE_DEFAULT;
@@ -2770,7 +2784,7 @@ auto FOMapper::IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.x - ax, Settings.MousePos.y - rect.y - ay}, false);
+    return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.x - ax, Settings.MousePos.y - rect.y - ay});
 }
 
 auto FOMapper::IsCurInInterface() const -> bool
@@ -3044,11 +3058,11 @@ void FOMapper::ParseCommand(string_view command)
         if (command_ext == "new") {
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
             pmap->AddRef(); // Todo: fix memleak
-            pmap->SetSize({MAXHEX_DEFAULT, MAXHEX_DEFAULT});
+            pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
             map->EnableMapperMode();
-            map->FindSetCenter({MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2});
+            map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
 
             LoadedMaps.emplace_back(std::move(map));
             ShowMap(LoadedMaps.back().get());
@@ -3100,7 +3114,7 @@ void FOMapper::ParseCommand(string_view command)
                 item->SetLightColor(ucolor(rgba));
             }
 
-            _curMap->RefreshMap();
+            _curMap->RebuildMap();
         }
     }
     else {
@@ -3142,7 +3156,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         return nullptr;
     }
 
-    new_map->FindSetCenter(new_map->GetWorkHex());
+    new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
     LoadedMaps.emplace_back(std::move(new_map));
 
@@ -3237,11 +3251,11 @@ void FOMapper::ResizeMap(MapView* map, int32 width, int32 height)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
-    const auto corrected_width = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);
-    const auto corrected_height = std::clamp(height, MAXHEX_MIN, MAXHEX_MAX);
+    const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
+    const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
     map->Resize(msize(numeric_cast<int16>(corrected_width), numeric_cast<int16>(corrected_height)));
-    map->FindSetCenter(map->GetWorkHex());
+    map->InstantScrollTo(map->GetWorkHex());
 
     if (_curMap == map) {
         SelectClear();

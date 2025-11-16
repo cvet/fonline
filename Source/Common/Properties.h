@@ -556,14 +556,7 @@ auto Properties::GetValue(const Property* prop) const -> T
                 uint32 str_size;
                 MemCopy(&str_size, data, sizeof(str_size));
                 data += sizeof(str_size);
-
-                if constexpr (std::same_as<T, vector<string>>) {
-                    result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
-                }
-                else {
-                    result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
-                }
-
+                result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                 data += str_size;
             }
         }
@@ -676,14 +669,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
                 uint32 str_size;
                 MemCopy(&str_size, data, sizeof(str_size));
                 data += sizeof(str_size);
-
-                if constexpr (std::same_as<T, vector<string>>) {
-                    result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
-                }
-                else {
-                    result.emplace_back(any_t(string(reinterpret_cast<const char*>(data), str_size)));
-                }
-
+                result.emplace_back(string(reinterpret_cast<const char*>(data), str_size));
                 data += str_size;
             }
         }

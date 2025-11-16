@@ -929,13 +929,13 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Map_IsScrollBlock(Map* self, mpos hex)
+FO_SCRIPT_API bool Server_Map_IsOutsideArea(Map* self, mpos hex)
 {
     if (!self->GetSize().isValidPos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->IsScrollBlock(hex);
+    return self->IsOutsideArea(hex);
 }
 
 ///@ ExportMethod

@@ -118,10 +118,13 @@ FIXED_SETTING(int32, MonitorWidth); // Monitor width (read only)
 FIXED_SETTING(int32, MonitorHeight); // Monitor height (read only)
 VARIABLE_SETTING(int32, ScreenHudHeight, 0); // Screen HUD height in pixels
 VARIABLE_SETTING(bool, ShowCorners, false); // If true, corners are shown
-VARIABLE_SETTING(bool, ShowDrawOrder, false); // If true, draw order is shown
 VARIABLE_SETTING(bool, ShowSpriteBorders, false); // If true, sprite borders are shown
 FIXED_SETTING(bool, HideNativeCursor, false); // If true, native cursor is hidden
 FIXED_SETTING(int32, FadingDuration, 1000); // Fading duration in milliseconds
+FIXED_SETTING(bool, MapZoomEnabled); // Map view zooming
+FIXED_SETTING(bool, MapDirectDraw); // Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)
+FIXED_SETTING(bool, DisableLighting); // Disables lighting for more performance
+FIXED_SETTING(bool, DisableFog); // Disables fog for more performance
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -223,13 +226,9 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
-FIXED_SETTING(float32, SpritesZoomMax, MAX_ZOOM); // Maximum sprites zoom
-FIXED_SETTING(float32, SpritesZoomMin, MIN_ZOOM); // Minimum sprites zoom
 FIXED_SETTING(int32, ScrollFixedDt, 10); // Scroll fixed delta time in milliseconds
 FIXED_SETTING(int32, ScrollSpeed, 1200); // Scroll speed in pixels per second
-FIXED_SETTING(int32, RainTick, 60); // Rain tick duration in milliseconds
-FIXED_SETTING(int16, RainSpeedX, 0); // Rain speed X value
-FIXED_SETTING(int16, RainSpeedY, 15); // Rain speed Y value
+FIXED_SETTING(int32, ZoomSpeed, 100); // Speed of zooming
 FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear); // Chosen light color
 FIXED_SETTING(uint8, ChosenLightDistance, 4); // Chosen light distance
 FIXED_SETTING(int32, ChosenLightIntensity, 20); // Chosen light intensity
@@ -253,8 +252,7 @@ VARIABLE_SETTING(bool, ShowScen, true); // If true, scenery is shown
 VARIABLE_SETTING(bool, ShowWall, true); // If true, walls are shown
 VARIABLE_SETTING(bool, ShowCrit, true); // If true, critters are shown
 VARIABLE_SETTING(bool, ShowFast, true); // If true, fast mode is enabled
-VARIABLE_SETTING(bool, HideCursor, false); // If true, cursor is hidden
-VARIABLE_SETTING(bool, ShowMoveCursor, false); // If true, move cursor is shown
+FIXED_SETTING(int32, ScrollBlockSize, 1); // Blocked hexes around scroll block line
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
