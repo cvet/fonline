@@ -125,7 +125,6 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
 
     try {
         if (_socket->is_open()) {
-            _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
             _socket->close();
         }
     }
