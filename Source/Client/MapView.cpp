@@ -104,7 +104,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
-        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+        const auto tex_size = _engine->Settings.MapDirectDraw ? RenderTarget::SizeKindType::Screen : RenderTarget::SizeKindType::Map;
+        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, tex_size, {}, true);
     }
 
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);

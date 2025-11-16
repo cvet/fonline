@@ -290,7 +290,6 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     Flush();
 
     const auto& rt_stack = _rtMngr.GetRenderTargetStack();
-    const auto flipped_height = tex->FlippedHeight;
     const auto width_from_i = tex->Size.width;
     const auto height_from_i = tex->Size.height;
     const auto width_to_i = rt_stack.empty() ? _settings.ScreenWidth : rt_stack.back()->MainTex->Size.width;
@@ -299,33 +298,35 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     const auto height_from_f = numeric_cast<float32>(height_from_i);
     const auto width_to_f = numeric_cast<float32>(width_to_i);
     const auto height_to_f = numeric_cast<float32>(height_to_i);
+    const auto flip_from = tex->FlippedHeight;
+    const auto flip_to = App->Render.IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->MainTex->FlippedHeight;
 
     if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices;
         size_t vpos = 0;
 
         vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = 0.0f;
+        vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
         vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f : 0.0f;
+        vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = height_to_f;
+        vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
         vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = flipped_height ? 0.0f : 1.0f;
+        vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = height_to_f;
+        vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
         vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = flipped_height ? 0.0f : 1.0f;
+        vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = 0.0f;
+        vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
         vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f : 0.0f;
+        vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
         vbuf[vpos].EggTexU = 0.0f;
     }
     else {
@@ -336,27 +337,27 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         size_t vpos = 0;
 
         vbuf[vpos].PosX = rect_to.x;
-        vbuf[vpos].PosY = flipped_height ? rect_to.y - rect_to.height : rect_to.y;
+        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : rect_from.y / height_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x;
-        vbuf[vpos].PosY = flipped_height ? rect_to.y : rect_to.y + rect_to.height;
+        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.y / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
-        vbuf[vpos].PosY = flipped_height ? rect_to.y : rect_to.y + rect_to.height;
+        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - rect_from.y / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos++].EggTexU = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
-        vbuf[vpos].PosY = flipped_height ? rect_to.y - rect_to.height : rect_to.y;
+        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
-        vbuf[vpos].TexV = flipped_height ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : rect_from.y / height_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos].EggTexU = 0.0f;
     }
 
