@@ -406,6 +406,76 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemComponent component)
+{
+    const auto& map_static_items = self->GetStaticItemsHex(hex);
+
+    vector<StaticItem*> result;
+    result.reserve(map_static_items.size());
+
+    for (auto* item : map_static_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.push_back(item);
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemComponent component)
+{
+    const auto map_static_items = self->GetStaticItemsHexEx(hex, radius, {});
+
+    vector<StaticItem*> result;
+    result.reserve(map_static_items.size());
+
+    for (auto* item : map_static_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.push_back(item);
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto& map_static_items = self->GetStaticItemsHex(hex);
+
+    vector<StaticItem*> result;
+    result.reserve(map_static_items.size());
+
+    for (auto* item : map_static_items) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
+            result.push_back(item);
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemProperty property, int32 propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto map_static_items = self->GetStaticItemsHexEx(hex, radius, {});
+
+    vector<StaticItem*> result;
+    result.reserve(map_static_items.size());
+
+    for (auto* item : map_static_items) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
+            result.push_back(item);
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, hstring pid)
 {
     return self->GetStaticItemsByPid(pid);

@@ -2527,7 +2527,7 @@ static void Game_AddPropertySetter(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, string& enum_name, bool& is_int, bool& is_float, bool& is_bool, int32& base_size)
+static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, string& enum_name, bool& is_int, bool& is_float, bool& is_bool, int32& base_size, bool& is_private)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2549,9 +2549,10 @@ static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum
     is_float = prop->IsBaseTypeFloat();
     is_bool = prop->IsBaseTypeBool();
     base_size = numeric_cast<int32>(prop->GetBaseSize());
+    is_private = IsEnumSet(prop->GetAccess(), Property::AccessType::PrivateMask);
 
 #else
-    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, enum_name, is_int, is_float, is_bool, base_size);
+    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, enum_name, is_int, is_float, is_bool, base_size, is_private);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -4208,7 +4209,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_SetPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV)); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int& baseSize) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int&out baseSize, bool&out isPrivate) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \

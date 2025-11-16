@@ -574,6 +574,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
+    item->SetStatic(false);
     item->SetHex(hex);
 
     if (!item->GetShootThru()) {
