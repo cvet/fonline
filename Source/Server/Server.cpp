@@ -383,7 +383,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             GameTime.SetSynchronizedTime(GetSynchronizedTime());
             FrameAdvance();
-            TimeEventMngr.InitPersistentTimeEvents(this);
 
             // Scripting
             WriteLog("Init script modules");

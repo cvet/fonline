@@ -44,30 +44,6 @@
 FO_BEGIN_NAMESPACE();
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
-}
-
-///@ ExportMethod
 FO_SCRIPT_API ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {
     if (name.empty()) {

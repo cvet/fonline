@@ -371,7 +371,7 @@ auto Entity::HasTimeEvents() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return (_timeEvents && !_timeEvents->empty()) || (_persistentTimeEvents && !_persistentTimeEvents->empty());
+    return _timeEvents && !_timeEvents->empty();
 }
 
 EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) noexcept :

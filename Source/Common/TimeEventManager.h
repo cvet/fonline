@@ -57,8 +57,7 @@ public:
     [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity.get(), _curTimeEvent.get()}; }
     [[nodiscard]] auto CountTimeEvent(Entity* entity, hstring func_name, uint32 id) const -> size_t;
 
-    void InitPersistentTimeEvents(Entity* entity);
-    auto StartTimeEvent(Entity* entity, bool persistent, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint32;
+    auto StartTimeEvent(Entity* entity, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint32;
     void ModifyTimeEvent(Entity* entity, hstring func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data);
     void StopTimeEvent(Entity* entity, hstring func_name, uint32 id);
     void ProcessTimeEvents();
