@@ -80,14 +80,6 @@ public:
     FO_ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
     ///@ ExportProperty ReadOnly
     FO_ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<synctime>, TE_FireTime);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<timespan>, TE_RepeatDuration);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -178,7 +170,6 @@ public:
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
-    [[nodiscard]] auto GetRawPeristentTimeEvents() noexcept -> auto& { return _persistentTimeEvents; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
@@ -219,7 +210,6 @@ private:
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
     unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
-    unique_ptr<vector<shared_ptr<TimeEventData>>> _persistentTimeEvents {};
     unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};

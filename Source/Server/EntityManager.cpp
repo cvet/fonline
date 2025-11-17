@@ -982,8 +982,6 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     FO_RUNTIME_ASSERT(inserted);
-
-    _engine->TimeEventMngr.InitPersistentTimeEvents(entity);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)

@@ -531,37 +531,37 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(BaseEngine* engine, syncti
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFuncName<void> func)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, {});
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, {}, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, vector<any_t> {std::move(data)});
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, {}, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, {}, data);
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, {}, data);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFuncName<void> func)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, {});
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, repeat, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, vector<any_t> {std::move(data)});
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, repeat, vector<any_t> {std::move(data)});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFuncName<void, vector<any_t>> func, const vector<any_t>& data)
 {
-    return engine->TimeEventMngr.StartTimeEvent(engine, false, func, delay, repeat, data);
+    return engine->TimeEventMngr.StartTimeEvent(engine, func, delay, repeat, data);
 }
 
 ///@ ExportMethod
