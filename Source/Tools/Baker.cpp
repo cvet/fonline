@@ -151,30 +151,30 @@ void MasterBaker::BakeAll()
     FileSystem baking_output;
 
     // Configs
-                    {
-            WriteLog("Bake configs");
+    {
+        WriteLog("Bake configs");
 
         if (force_baking) {
             const auto del_configs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Configs"));
             FO_RUNTIME_ASSERT(del_configs_ok);
-            }
+        }
 
         DiskFileSystem::MakeDirTree(MakeOutputPath("Configs"));
 
         int baked_configs = 0;
-                    int settings_errors = 0;
+        int settings_errors = 0;
 
         const auto bake_config = [&](string_view sub_config) {
             FO_RUNTIME_ASSERT(App->Settings.AppliedConfigs.size() == 1);
             const auto maincfg = GlobalSettings(App->Settings.AppliedConfigs.front(), sub_config);
             const auto config_settings = maincfg.Save();
 
-                    auto server_settings = GetServerSettings();
-                    auto client_settings = GetClientSettings();
+            auto server_settings = GetServerSettings();
+            auto client_settings = GetClientSettings();
 
             string server_config_content;
             server_config_content.reserve(0x4000);
-                    string client_config_content;
+            string client_config_content;
             client_config_content.reserve(0x4000);
 
             for (auto&& [key, value] : config_settings) {
@@ -185,30 +185,30 @@ void MasterBaker::BakeAll()
 
                 if (!skip_write) {
                     server_config_content += strex("{}={}\n", key, shortened_value);
-                        }
+                }
 
-                        if (is_server_setting) {
-                            server_settings.erase(key);
-                        }
+                if (is_server_setting) {
+                    server_settings.erase(key);
+                }
 
-                        if (is_client_setting) {
+                if (is_client_setting) {
                     if (!skip_write) {
                         client_config_content += strex("{}={}\n", key, shortened_value);
                     }
 
-                            client_settings.erase(key);
-                        }
+                    client_settings.erase(key);
+                }
 
-                        if (!is_server_setting && !is_client_setting) {
+                if (!is_server_setting && !is_client_setting) {
                     WriteLog("Unknown setting {} = {}", key, value);
-                            settings_errors++;
-                        }
-                    }
+                    settings_errors++;
+                }
+            }
 
             for (const auto& key : server_settings) {
                 WriteLog("Uninitialized server setting {}", key);
                 settings_errors++;
-                    }
+            }
             for (const auto& key : client_settings) {
                 WriteLog("Uninitialized client setting {}", key);
                 settings_errors++;
@@ -220,11 +220,11 @@ void MasterBaker::BakeAll()
                 if (!DiskFileSystem::CompareFileContent(cfg_path, {reinterpret_cast<const uint8*>(cfg_content.data()), cfg_content.size()})) {
                     auto cfg_file = DiskFileSystem::OpenFile(cfg_path, true);
                     FO_RUNTIME_ASSERT(cfg_file);
-                        const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
+                    const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
                     FO_RUNTIME_ASSERT(cfg_file_write_ok);
                     baked_configs++;
                 }
-                    };
+            };
 
             write_config(!sub_config.empty() ? "Server_" : "Server", sub_config, server_config_content);
             write_config(!sub_config.empty() ? "Client_" : "Client", sub_config, client_config_content);
@@ -243,10 +243,10 @@ void MasterBaker::BakeAll()
 
         if (baked_configs != 0) {
             force_baking = true;
-            }
+        }
 
         WriteLog("Baking of configs complete, baked {} file{}", baked_configs, baked_configs != 1 ? "s" : "");
-                            }
+    }
 
     // Engine data
     {
@@ -255,7 +255,7 @@ void MasterBaker::BakeAll()
         if (force_baking) {
             const auto del_engine_data_ok = DiskFileSystem::DeleteDir(MakeOutputPath("EngineData"));
             FO_RUNTIME_ASSERT(del_engine_data_ok);
-                    }
+        }
 
         DiskFileSystem::MakeDirTree(MakeOutputPath("EngineData"));
 
@@ -271,16 +271,16 @@ void MasterBaker::BakeAll()
             const auto engine_data_file_write_ok = engine_data_file.Write(engine_data_bin);
             FO_RUNTIME_ASSERT(engine_data_file_write_ok);
             engine_data_baked = true;
-                    }
+        }
 
         baking_output.AddDataSource(MakeOutputPath("EngineData"));
 
         if (engine_data_baked) {
             force_baking = true;
-                            }
+        }
 
         WriteLog("Baking of engine data complete, baked {} file{}", engine_data_baked ? 1 : 0, engine_data_baked ? "" : "s");
-                }
+    }
 
     {
         std::atomic_bool res_baked = false;
@@ -295,12 +295,16 @@ void MasterBaker::BakeAll()
         ](const ResourcePackInfo& res_pack, const string& output_dir) {
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
+            const auto& input_file = res_pack.InputFile;
 
             FileSystem input_files;
 
             for (const auto& dir : input_dir) {
                 input_files.AddDataSource(dir);
-                            }
+            }
+            for (const auto& file : input_file) {
+                input_files.AddDataSource(file);
+            }
 
             const auto filtered_files = input_files.FilterFiles("", "", res_pack.RecursiveInput);
 
@@ -308,7 +312,7 @@ void MasterBaker::BakeAll()
             if (force_baking_) {
                 const auto del_res_ok = DiskFileSystem::DeleteDir(output_dir);
                 FO_RUNTIME_ASSERT(del_res_ok);
-                        }
+            }
 
             DiskFileSystem::MakeDirTree(output_dir);
 
@@ -320,7 +324,7 @@ void MasterBaker::BakeAll()
                 size_t pos = path.rfind('/');
                 pos = path.find('.', pos != string::npos ? pos : 0);
                 return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
-                };
+            };
 
             const auto bake_checker = [&](const string& path, uint64 write_time) -> bool {
                 if (!force_baking_) {
@@ -329,7 +333,7 @@ void MasterBaker::BakeAll()
                 }
                 else {
                     return true;
-                    }
+                }
             };
 
             const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
@@ -339,13 +343,13 @@ void MasterBaker::BakeAll()
                 FO_RUNTIME_ASSERT(res_file_write_ok);
 
                 ++baked_files;
-                };
+            };
 
             auto bakers = BaseBaker::SetupBakers(res_pack.Name, settings, bake_checker, write_data, &baking_output_);
 
             for (auto& baker : bakers) {
                 baker->BakeFiles(filtered_files.Copy());
-        }
+            }
 
             // Delete outdated
             if (!force_baking_) {
@@ -356,13 +360,13 @@ void MasterBaker::BakeAll()
                     if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
                         DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
                         WriteLog("Delete outdated file {}", path);
-            }
+                    }
                 });
-                        }
+            }
 
             if (baked_files != 0) {
                 res_baked_ = true;
-                                }
+            }
 
             WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
         };
@@ -381,25 +385,25 @@ void MasterBaker::BakeAll()
                     auto res_baking = std::async(async_mode, [&, res_baking_output] { bake_resource_pack(res_pack, res_baking_output); });
                     res_bakings.emplace_back(std::move(res_baking));
                     res_baking_outputs.emplace_back(res_baking_output);
-                                }
-                            }
+                }
+            }
 
             for (auto& res_baking : res_bakings) {
                 try {
                     res_baking.get();
                 }
-        catch (const std::exception& ex) {
+                catch (const std::exception& ex) {
                     WriteLog("{}", ex.what());
-            errors++;
-        }
-        catch (...) {
+                    errors++;
+                }
+                catch (...) {
                     FO_UNKNOWN_EXCEPTION();
-        }
+                }
             }
 
             if (errors != 0) {
                 ExitApp(false);
-                    }
+            }
 
             for (const auto& res_baking_output : res_baking_outputs) {
                 baking_output.AddDataSource(res_baking_output);
@@ -407,13 +411,13 @@ void MasterBaker::BakeAll()
 
             if (res_baked) {
                 force_baking = true;
-                }
-                }
+            }
+        }
 
         // Copy engine data to Core pack
         const auto copy_engine_data_ok = DiskFileSystem::CopyFile(MakeOutputPath("EngineData/EngineData.fobin"), MakeOutputPath("Core/EngineData.fobin"));
         FO_RUNTIME_ASSERT(copy_engine_data_ok);
-                        }
+    }
 
     // Finalize
     WriteLog("Time {}", bake_time.GetDuration());

@@ -283,6 +283,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     _sprMngr.GetRtMngr().PopRenderTarget();
 }
 
-#endif
-
 FO_END_NAMESPACE();
+
+#endif

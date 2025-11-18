@@ -309,7 +309,7 @@ resPacks = fomain.getSections('ResourcePack')
 fomainDir = os.path.dirname(os.path.abspath(args.maincfg))
 for resPack in resPacks:
     recursive = resPack.getBool('RecursiveInput', False)
-    for dir in resPack.getStr('InputDir').split(' '):
+    for dir in resPack.getStr('InputDir', '').split(' '):
         dir = os.path.abspath(os.path.join(fomainDir, dir))
         assert os.path.isdir(dir), 'Invalid resource pack input dir ' + dir
         for f in glob.glob(os.path.join(dir, '*'), recursive=recursive):

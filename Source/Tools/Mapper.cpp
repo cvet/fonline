@@ -59,6 +59,9 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         for (const auto& dir : res_pack.InputDir) {
             ContentFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
         }
+        for (const auto& file : res_pack.InputFile) {
+            ContentFileSys.AddDataSource(file, DataSourceType::Default);
+        }
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING

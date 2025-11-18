@@ -866,7 +866,6 @@ FO_SCRIPT_API void Client_Game_StopSprite(FOClient* client, uint sprId)
 {
     auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -879,7 +878,6 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float
 {
     auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -891,7 +889,6 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float
 FO_SCRIPT_API void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
 {
     auto* spr = client->AnimGetSpr(sprId);
-
 
     if (spr == nullptr) {
         return;
@@ -923,7 +920,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 
     const auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -940,7 +936,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 
     const auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -956,7 +951,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
-
 
     if (spr == nullptr) {
         return;
@@ -982,7 +976,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 
     const auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -998,7 +991,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
-
 
     if (spr == nullptr) {
         return;
@@ -1048,7 +1040,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint sprId, ipos pos
 
     const auto* spr = client->AnimGetSpr(sprId);
 
-
     if (spr == nullptr) {
         return;
     }
@@ -1072,7 +1063,6 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, i
     }
 
     const auto* spr = client->AnimGetSpr(sprId);
-
 
     if (spr == nullptr) {
         return;

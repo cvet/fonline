@@ -60,6 +60,7 @@ struct ResourcePackInfo
 {
     string Name {};
     vector<string> InputDir {};
+    vector<string> InputFile {};
     bool RecursiveInput {};
     bool ServerOnly {};
     bool ClientOnly {};

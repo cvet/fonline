@@ -144,6 +144,9 @@ FOEditor::FOEditor(GlobalSettings& settings) :
         for (const auto& dir : res_pack.InputDir) {
             InputResources.AddDataSource(dir, res_pack.RecursiveInput ? DataSourceType::Default : DataSourceType::DirRoot);
         }
+        for (const auto& file : res_pack.InputFile) {
+            InputResources.AddDataSource(file, DataSourceType::Default);
+        }
     }
 
     BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
