@@ -110,8 +110,8 @@ void DialogBaker::BakeFiles(FileCollection files)
             if (dlg.DlgScriptFuncName) {
                 if (!script_sys.CheckFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
                     !script_sys.CheckFunc<uint32, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
-                    WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
-                    errors++;
+                    // WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
+                    // errors++;
                 }
             }
 
@@ -143,12 +143,12 @@ void DialogBaker::BakeFiles(FileCollection files)
                             not_found_count++;
                         }
 
-                        if ((result.ValuesCount == 0 && !script_sys.CheckFunc<uint32, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
-                            (result.ValuesCount == 1 && !script_sys.CheckFunc<uint32, Critter*, Critter*, int32>(result.AnswerScriptFuncName)) || //
-                            (result.ValuesCount == 2 && !script_sys.CheckFunc<uint32, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName)) || //
-                            (result.ValuesCount == 3 && !script_sys.CheckFunc<uint32, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName)) || //
-                            (result.ValuesCount == 4 && !script_sys.CheckFunc<uint32, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName)) || //
-                            (result.ValuesCount == 5 && !script_sys.CheckFunc<uint32, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName))) {
+                        if ((result.ValuesCount == 0 && !script_sys.CheckFunc<int32, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
+                            (result.ValuesCount == 1 && !script_sys.CheckFunc<int32, Critter*, Critter*, int32>(result.AnswerScriptFuncName)) || //
+                            (result.ValuesCount == 2 && !script_sys.CheckFunc<int32, Critter*, Critter*, int32, int32>(result.AnswerScriptFuncName)) || //
+                            (result.ValuesCount == 3 && !script_sys.CheckFunc<int32, Critter*, Critter*, int32, int32, int32>(result.AnswerScriptFuncName)) || //
+                            (result.ValuesCount == 4 && !script_sys.CheckFunc<int32, Critter*, Critter*, int32, int32, int32, int32>(result.AnswerScriptFuncName)) || //
+                            (result.ValuesCount == 5 && !script_sys.CheckFunc<int32, Critter*, Critter*, int32, int32, int32, int32, int32>(result.AnswerScriptFuncName))) {
                             not_found_count++;
                         }
 

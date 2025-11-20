@@ -1392,14 +1392,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
                 throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
             }
 
-            if (prop->IsBaseTypeInt()) {
-                prop->_maxValueI = strex(flags[i + 2]).toInt64();
-            }
-            else {
-                prop->_maxValueF = strex(flags[i + 2]).toDouble();
-            }
-
-            prop->_checkMaxValue = true;
             i += 2;
         }
         else if (flags[i] == "Min") {
@@ -1409,14 +1401,6 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
                 throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
             }
 
-            if (prop->IsBaseTypeInt()) {
-                prop->_minValueI = strex(flags[i + 2]).toInt64();
-            }
-            else {
-                prop->_minValueF = strex(flags[i + 2]).toDouble();
-            }
-
-            prop->_checkMinValue = true;
             i += 2;
         }
         else if (flags[i] == "Quest") {
