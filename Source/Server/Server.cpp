@@ -194,26 +194,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 if (prop->IsDisabled()) {
                     continue;
                 }
-                if (prop->IsTemporary()) {
-                    continue;
-                }
-
-                switch (prop->GetAccess()) {
-                case Property::AccessType::PrivateCommon:
-                    [[fallthrough]];
-                case Property::AccessType::PrivateServer:
-                    [[fallthrough]];
-                case Property::AccessType::Public:
-                    [[fallthrough]];
-                case Property::AccessType::PublicModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::PublicFullModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::Protected:
-                    [[fallthrough]];
-                case Property::AccessType::ProtectedModifiable:
-                    break;
-                default:
+                if (!prop->IsPersistent()) {
                     continue;
                 }
 
@@ -230,19 +211,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     if (prop->IsDisabled()) {
                         continue;
                     }
-
-                    switch (prop->GetAccess()) {
-                    case Property::AccessType::Public:
-                        [[fallthrough]];
-                    case Property::AccessType::PublicModifiable:
-                        [[fallthrough]];
-                    case Property::AccessType::PublicFullModifiable:
-                        [[fallthrough]];
-                    case Property::AccessType::Protected:
-                        [[fallthrough]];
-                    case Property::AccessType::ProtectedModifiable:
-                        break;
-                    default:
+                    if (!prop->IsSynced()) {
                         continue;
                     }
 
@@ -2513,9 +2482,10 @@ void FOServer::Process_Property(Player* player)
 
     in_buf.Unlock();
 
-    auto is_public = false;
+    bool is_public = false;
     const Property* prop = nullptr;
     Entity* entity = nullptr;
+
     switch (type) {
     case NetProperty::Game:
         is_public = true;
@@ -2589,6 +2559,7 @@ void FOServer::Process_Property(Player* player)
     default:
         break;
     }
+
     if (prop == nullptr || entity == nullptr) {
         return;
     }
@@ -2602,20 +2573,19 @@ void FOServer::Process_Property(Player* player)
         return;
     }
 
-    const auto access = prop->GetAccess();
-    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+    if (is_public && !prop->IsPublicSync()) {
         BreakIntoDebugger();
         return;
     }
-    if (!is_public && !IsEnumSet(access, Property::AccessType::ProtectedMask) && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+    if (!is_public && !prop->IsSynced()) {
         BreakIntoDebugger();
         return;
     }
-    if (!IsEnumSet(access, Property::AccessType::ModifiableMask)) {
+    if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
         BreakIntoDebugger();
         return;
     }
-    if (is_public && access != Property::AccessType::PublicFullModifiable) {
+    if (is_public && !prop->IsModifiableByAnyClient()) {
         BreakIntoDebugger();
         return;
     }
@@ -2695,7 +2665,7 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 
     ignore_unused(entity);
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+    if (prop->IsPublicSync()) {
         for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
@@ -2723,13 +2693,10 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
     auto* cr = dynamic_cast<Critter*>(entity);
     FO_RUNTIME_ASSERT(cr);
 
-    const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
-    const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
-
-    if (is_public || is_protected) {
+    if (prop->IsPublicSync() || prop->IsOwnerSync()) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
     }
-    if (is_public) {
+    if (prop->IsPublicSync()) {
         cr->Broadcast_Property(NetProperty::Critter, prop, cr);
     }
 }
@@ -2742,24 +2709,19 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
     FO_RUNTIME_ASSERT(item);
 
     if (!item->GetStatic() && item->GetId()) {
-        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
-        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
-
         switch (item->GetOwnership()) {
         case ItemOwnership::Nowhere: {
         } break;
         case ItemOwnership::CritterInventory: {
-            if (is_public || is_protected) {
+            if (prop->IsPublicSync() || prop->IsOwnerSync()) {
                 auto* cr = EntityMngr.GetCritter(item->GetCritterId());
 
                 if (cr != nullptr) {
-                    if (is_public || is_protected) {
-                        if (item->CanSendItem(false)) {
-                            cr->Send_Property(NetProperty::ChosenItem, prop, item);
-                        }
+                    if (item->CanSendItem(false)) {
+                        cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
 
-                    if (is_public) {
+                    if (prop->IsPublicSync()) {
                         if (item->CanSendItem(true)) {
                             cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
                         }
@@ -2768,7 +2730,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
             }
         } break;
         case ItemOwnership::MapHex: {
-            if (is_public) {
+            if (prop->IsPublicSync()) {
                 auto* map = EntityMngr.GetMap(item->GetMapId());
 
                 if (map != nullptr) {
@@ -2792,7 +2754,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+    if (prop->IsPublicSync()) {
         auto* map = dynamic_cast<Map*>(entity);
         FO_RUNTIME_ASSERT(map);
 
@@ -2806,7 +2768,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+    if (prop->IsPublicSync()) {
         auto* loc = dynamic_cast<Location*>(entity);
         FO_RUNTIME_ASSERT(loc);
 
@@ -2824,7 +2786,7 @@ void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
     FO_RUNTIME_ASSERT(custom_entity);
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](Player* player, bool owner) {
-        if (owner || IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+        if (owner || prop->IsPublicSync()) {
             player->Send_Property(NetProperty::CustomEntity, prop, custom_entity);
         }
     });

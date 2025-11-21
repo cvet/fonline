@@ -154,14 +154,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
-                switch (prop->GetAccess()) {
-                case Property::AccessType::PublicModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::PublicFullModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::ProtectedModifiable:
-                    break;
-                default:
+                if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
                     continue;
                 }
 
@@ -2091,7 +2084,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Game, prop, this);
     }
     else {
@@ -2130,7 +2123,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
-    else if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    else if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Critter, prop, cr);
     }
     else {
@@ -2153,7 +2146,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
             if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
-            else if (cr != nullptr && prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+            else if (cr != nullptr && prop->IsModifiableByAnyClient()) {
                 Net_SendProperty(NetProperty::CritterItem, prop, item);
             }
             else {
@@ -2161,7 +2154,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
             }
         }
         else if (item->GetOwnership() == ItemOwnership::MapHex) {
-            if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+            if (prop->IsModifiableByAnyClient()) {
                 Net_SendProperty(NetProperty::MapItem, prop, item);
             }
             else {
@@ -2184,7 +2177,7 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Map, prop, _curMap.get());
     }
     else {
@@ -2202,7 +2195,7 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Location, prop, _curLocation.get());
     }
     else {

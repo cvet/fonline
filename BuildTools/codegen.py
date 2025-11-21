@@ -776,7 +776,7 @@ def parseTags():
                 assert not gameEntitiesInfo[entity]['Exported'], 'Entity can\'t be exported ' + entity
                 
                 codeGenTags['EntityHolder'].append((holder, access, entity, entry, flags, comment))
-                codeGenTags['Property'].append((holder, 'PrivateServer', 'arr.ident', entry + 'Ids', ['ReadOnly'], []))
+                codeGenTags['Property'].append((holder, 'Server', 'arr.ident', entry + 'Ids', ['CoreProperty', 'Persistent'], []))
                 
             except Exception as ex:
                 showError('Invalid tag EntityHolder', absPath + ' (' + str(lineIndex + 1) + ')', ex)
@@ -786,28 +786,31 @@ def parseTags():
         
         for tagMeta in tagsMetas['ExportProperty']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-                
+            
             try:    
                 exportFlags = tokenize(tagInfo)
                 entity = tagContext[:tagContext.find(' ')]
                 
+                access = exportFlags[0]
+                assert access in ['Common', 'Server', 'Client'], 'Invalid export property target ' + access
+                exportFlags = exportFlags[1:]
+                
+                toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
+                assert len(toks) == 2
+                ptype = engineTypeToMetaType(toks[0])
+                assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
+                name = toks[1]
+                
+                exportFlags.append('CoreProperty')
+                
                 if entity == 'Entity':
                     entities = gameEntities
-                    exportFlags.append('IsCommon')
+                    exportFlags.append('SharedProperty')
                 else:
                     entities = [entity]
+                    assert entity in gameEntities, 'Invalid entity ' + entity
                 
                 for entity in entities:
-                    assert entity in gameEntities, 'Invalid entity ' + entity
-                    toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
-                    access = toks[0]
-                    assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                            'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
-                            'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid export property access ' + access
-                    ptype = engineTypeToMetaType(toks[1])
-                    assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
-                    name = toks[2]
-                    
                     codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
                 
             except Exception as ex:
@@ -916,35 +919,49 @@ def parseTags():
                 entity = tok[0]
                 assert entity in gameEntities, entity
                 access = tok[1]
-                assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                        'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
-                        'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid property access ' + access
-                if tok[2] == 'const':
-                    ptype = unifiedTypeToMetaType(tok[3])
-                    if len(tok) > 5 and tok[5] == '.':
-                        comp = tok[4]
-                        name = comp + '.' + tok[6]
-                        flags = ['ReadOnly'] + tok[7:]
-                    else:
-                        comp = None
-                        name = tok[4]
-                        flags = ['ReadOnly'] + tok[5:]
+                assert access in ['Common', 'Server', 'Client'], 'Invalid property target ' + access
+                ptype = unifiedTypeToMetaType(tok[2])
+                if len(tok) > 4 and tok[4] == '.':
+                    comp = tok[3]
+                    name = comp + '.' + tok[5]
+                    flags = tok[6:]
                 else:
-                    ptype = unifiedTypeToMetaType(tok[2])
-                    if len(tok) > 4 and tok[4] == '.':
-                        comp = tok[3]
-                        name = comp + '.' + tok[5]
-                        flags = tok[6:]
-                    else:
-                        comp = None
-                        name = tok[3]
-                        flags = tok[4:]
+                    comp = None
+                    name = tok[3]
+                    flags = tok[4:]
                 
                 assert name[0] != '_', 'Property ' + name + ' can\'t start with "_"'
                 if comp:
                     assert (entity, comp) in propertyComponents, 'Entity ' + entity + ' does not has component ' + comp
-                
                 assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
+                
+                isCommon = access == 'Common'
+                isClientOnly = access == 'Client'
+                isOwnerSync = 'OwnerSync' in flags
+                isPublicSync = 'PublicSync' in flags
+                isNoSync = 'NoSync' in flags
+                isMutable = 'Mutable' in flags
+                isPersistent = 'Persistent' in flags
+                isVirtual = 'Virtual' in flags
+                isModifiableByClient = 'ModifiableByClient' in flags
+                isModifiableByAnyClient = 'ModifiableByAnyClient' in flags
+                isNullGetterForProto = 'NullGetterForProto' in flags
+                isSynced = isCommon and isMutable and (isOwnerSync or isPublicSync)
+                
+                assert not (isOwnerSync or isPublicSync or isNoSync) or isCommon, name + ' - synced property must be common'
+                assert not (isOwnerSync or isPublicSync or isNoSync) or isMutable, name + ' - synced property must be mutable'
+                assert not (isOwnerSync or isPublicSync or isNoSync) or not isVirtual, name + ' - synced property can\'t be virtual'
+                assert not isNoSync or not (isOwnerSync or isPublicSync), name + ' - multiple sync types'
+                assert not isOwnerSync or not (isNoSync or isPublicSync), name + ' - multiple sync types'
+                assert not isPublicSync or not (isNoSync or isOwnerSync), name + ' - multiple sync types'
+                assert not (isMutable and isCommon and not isVirtual) or (isOwnerSync or isPublicSync or isNoSync), name + ' - specify sync type for common mutable property'
+                assert not isModifiableByClient or isSynced, name + ' - modifiable property must be synced'
+                assert not isModifiableByAnyClient or isPublicSync, name + ' - modifiable by any property must be public synced'
+                assert not isPersistent or not isClientOnly, name + ' - client property can\'t be persistent'
+                assert not isPersistent or isMutable, name + ' - persistent property myst be mutable'
+                assert not isVirtual or not isSynced, name + ' - virtual property can\'t be synced'
+                assert not isVirtual or not isPersistent, name + ' - virtual property can\'t be persistent'
+                assert not isNullGetterForProto or isVirtual, name + ' - null getter can\'t be on virtual property'
                 
                 codeGenTags['Property'].append((entity, access, ptype, name, flags, comment))
                 
@@ -1448,7 +1465,7 @@ def genGenericCode():
         for propTag in codeGenTags['ExportProperty']:
             ent, _, _, name, flags, _ = propTag
             if ent == entity:
-                if 'IsCommon' not in flags:
+                if 'SharedProperty' not in flags:
                     globalLines.append('uint16 ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
                 elif name not in commonParsed:
                     globalLines.append('uint16 EntityProperties::' + name + '_RegIndex = ' + str(index) + ';')
@@ -1622,7 +1639,7 @@ def genDataRegistration(target, isASCompiler):
             entity, access, type, name, flags, _ = e
             if not entityAllowed(entity, 'Client'):
                 continue
-            if access not in ['PrivateServer', 'VirtualPrivateServer']:
+            if access != 'Server':
                 restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, name, access, flags)) + '",')
             else:
                 restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, '__dummy' + str(dummyIndex), access, flags)) + '",')

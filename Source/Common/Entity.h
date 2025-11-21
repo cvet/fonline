@@ -47,8 +47,7 @@ FO_BEGIN_NAMESPACE();
 ///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
 ///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
 
-#define FO_ENTITY_PROPERTY(access_type, prop_type, prop) \
-    static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
+#define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
         return _propsRef.GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
@@ -76,10 +75,10 @@ FO_BEGIN_NAMESPACE();
 class EntityProperties
 {
 public:
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
 
     explicit EntityProperties(Properties& props) noexcept;
 
