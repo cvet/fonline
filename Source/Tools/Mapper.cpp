@@ -1160,7 +1160,7 @@ void FOMapper::ObjDraw()
     for (const auto* prop : ShowProps) {
         if (prop != nullptr) {
             auto value = entity->GetProperties().SavePropertyToText(prop);
-            DrawLine(prop->GetName(), prop->GetViewTypeName(), value, prop->IsReadOnly(), r);
+            DrawLine(prop->GetName(), prop->GetViewTypeName(), value, !prop->IsMutable(), r);
         }
         else {
             r.y += DRAW_NEXT_HEIGHT;
@@ -1295,7 +1295,7 @@ void FOMapper::SelectEntityProp(int32 line)
         }
         if (ObjCurLine >= start_line && ObjCurLine - start_line < numeric_cast<int32>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
             ObjCurLineInitValue = ObjCurLineValue = entity->GetProperties().SavePropertyToText(ShowProps[ObjCurLine - start_line]);
-            ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsReadOnly();
+            ObjCurLineIsConst = !ShowProps[ObjCurLine - start_line]->IsMutable();
         }
     }
 }

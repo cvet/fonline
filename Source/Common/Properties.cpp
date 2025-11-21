@@ -445,10 +445,10 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
         }
 
         if (!prop->_podDataOffset.has_value() && !prop->_complexDataIndex.has_value()) {
-            if (_registrator->_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+            if (_registrator->GetRelation() == PropertiesRelationType::ServerRelative && prop->IsClientOnly()) {
                 continue;
             }
-            if (_registrator->_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+            if (_registrator->GetRelation() == PropertiesRelationType::ClientRelative && prop->IsServerOnly()) {
                 continue;
             }
 
@@ -491,7 +491,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
         if (prop->IsVirtual()) {
             continue;
         }
-        if (prop->IsTemporary()) {
+        if (!prop->IsPersistent()) {
             continue;
         }
 
@@ -1198,22 +1198,6 @@ PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelati
 {
     FO_STACK_TRACE_ENTRY();
 
-    _accessMap = {
-        {"PrivateCommon", Property::AccessType::PrivateCommon},
-        {"PrivateClient", Property::AccessType::PrivateClient},
-        {"PrivateServer", Property::AccessType::PrivateServer},
-        {"Public", Property::AccessType::Public},
-        {"PublicModifiable", Property::AccessType::PublicModifiable},
-        {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
-        {"Protected", Property::AccessType::Protected},
-        {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
-        {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},
-        {"VirtualPrivateClient", Property::AccessType::VirtualPrivateClient},
-        {"VirtualPrivateServer", Property::AccessType::VirtualPrivateServer},
-        {"VirtualPublic", Property::AccessType::VirtualPublic},
-        {"VirtualProtected", Property::AccessType::VirtualProtected},
-    };
-
     // Add None entry
     _registeredProperties.emplace_back();
 }
@@ -1319,8 +1303,19 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     auto prop = SafeAlloc::MakeUnique<Property>(this);
 
     prop->_propName = flags[0];
-    FO_RUNTIME_ASSERT(_accessMap.count(flags[1]) != 0);
-    prop->_accessType = _accessMap[flags[1]];
+
+    if (flags[1] == "Common") {
+        prop->_isCommon = true;
+    }
+    else if (flags[1] == "Server") {
+        prop->_isServerOnly = true;
+    }
+    else if (flags[1] == "Client") {
+        prop->_isClientOnly = true;
+    }
+    else {
+        throw PropertyRegistrationException("Invalid property side (expect Server/Client/Common)", prop->_propName, flags[1]);
+    }
 
     const auto h = _hashResolver.ToHashedString(prop->_propName);
     ignore_unused(h);
@@ -1381,23 +1376,12 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
         prop->_component = _hashResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
-
-        if (!prop->_component) {
-            throw PropertyRegistrationException("Invalid property component part", prop->_propName, prop->_component);
-        }
-        if (prop->_propNameWithoutComponent.empty()) {
-            throw PropertyRegistrationException("Invalid property name part", prop->_propName, prop->_component);
-        }
-        if (_registeredComponents.count(_hashResolver.ToHashedString(prop->_component)) == 0) {
-            throw PropertyRegistrationException("Unknown property component", prop->_propName, prop->_component);
-        }
+        FO_RUNTIME_ASSERT(!!prop->_component);
+        FO_RUNTIME_ASSERT(!prop->_propNameWithoutComponent.empty());
+        FO_RUNTIME_ASSERT(_registeredComponents.count(_hashResolver.ToHashedString(prop->_component)) != 0);
     }
     else {
         prop->_propNameWithoutComponent = prop->_propName;
-    }
-
-    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
-        prop->_isVirtual = true;
     }
 
     for (size_t i = 3; i < flags.size(); i++) {
@@ -1431,64 +1415,96 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
             i += 2;
         }
-        else if (flags[i] == "ReadOnly") {
-            prop->_isReadOnly = true;
+        else if (flags[i] == "Mutable") {
+            FO_RUNTIME_ASSERT(!prop->_isMutable);
+            prop->_isMutable = true;
         }
-        else if (flags[i] == "Temporary") {
-            prop->_isTemporary = true;
+        else if (flags[i] == "CoreProperty") {
+            FO_RUNTIME_ASSERT(!prop->_isCoreProperty);
+            prop->_isCoreProperty = true;
+        }
+        else if (flags[i] == "Persistent") {
+            FO_RUNTIME_ASSERT(!prop->_isPersistent);
+            prop->_isPersistent = true;
+        }
+        else if (flags[i] == "Virtual") {
+            FO_RUNTIME_ASSERT(!prop->_isVirtual);
+            prop->_isVirtual = true;
+        }
+        else if (flags[i] == "OwnerSync") {
+            FO_RUNTIME_ASSERT(!prop->_isOwnerSync);
+            prop->_isOwnerSync = true;
+        }
+        else if (flags[i] == "PublicSync") {
+            FO_RUNTIME_ASSERT(!prop->_isPublicSync);
+            prop->_isPublicSync = true;
+        }
+        else if (flags[i] == "NoSync") {
+            FO_RUNTIME_ASSERT(!prop->_isNoSync);
+            prop->_isNoSync = true;
+        }
+        else if (flags[i] == "ModifiableByClient") {
+            FO_RUNTIME_ASSERT(!prop->_isModifiableByClient);
+            prop->_isModifiableByClient = true;
+        }
+        else if (flags[i] == "ModifiableByAnyClient") {
+            FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient);
+            prop->_isModifiableByAnyClient = true;
         }
         else if (flags[i] == "Historical") {
+            FO_RUNTIME_ASSERT(!prop->_isHistorical);
             prop->_isHistorical = true;
         }
         else if (flags[i] == "Resource") {
-            if (!prop->IsBaseTypeHash()) {
-                throw PropertyRegistrationException("Expected hstring for Resource flag", prop->_propName);
-            }
-
+            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+            FO_RUNTIME_ASSERT(!prop->_isResourceHash);
             prop->_isResourceHash = true;
         }
         else if (flags[i] == "ScriptFuncType") {
             check_next_param();
-
-            if (!prop->IsBaseTypeHash()) {
-                throw PropertyRegistrationException("Expected hstring for ScriptFunc flag", prop->_propName);
-            }
-
+            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
             prop->_scriptFuncType = flags[i + 2];
             i += 2;
         }
         else if (flags[i] == "NullGetterForProto") {
+            FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto);
             prop->_isNullGetterForProto = true;
         }
-        else if (flags[i] == "IsCommon") {
-            // Skip
+        else if (flags[i] == "SharedProperty") {
+            // For internal use, skip
         }
         else {
             throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);
         }
     }
 
-    if (prop->_isNullGetterForProto && !prop->IsVirtual()) {
-        throw PropertyRegistrationException("Invalid property configuration - NullGetterForProto for non-virtual property", prop->_propName);
-    }
+    prop->_isSynced = prop->_isCommon && prop->_isMutable && (prop->_isOwnerSync || prop->_isPublicSync);
+
+    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon);
+    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable);
+    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || !prop->_isVirtual);
+    FO_RUNTIME_ASSERT(!prop->_isNoSync || !(prop->_isOwnerSync || prop->_isPublicSync));
+    FO_RUNTIME_ASSERT(!prop->_isOwnerSync || !(prop->_isNoSync || prop->_isPublicSync));
+    FO_RUNTIME_ASSERT(!prop->_isPublicSync || !(prop->_isNoSync || prop->_isOwnerSync));
+    FO_RUNTIME_ASSERT(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync));
+    FO_RUNTIME_ASSERT(!prop->_isModifiableByClient || prop->_isSynced);
+    FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient || prop->_isPublicSync);
+    FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
+    FO_RUNTIME_ASSERT(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty));
+    FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isSynced);
+    FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
+    FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
 
     const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
 
     // Disallow set or get accessors
-    auto disabled = false;
+    bool disabled = false;
 
-    if (_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+    if (_relation == PropertiesRelationType::ServerRelative && prop->IsClientOnly()) {
         disabled = true;
     }
-    if (_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+    if (_relation == PropertiesRelationType::ClientRelative && prop->IsServerOnly()) {
         disabled = true;
-    }
-
-    if (_relation == PropertiesRelationType::ClientRelative && //
-        (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && //
-        !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
-        FO_RUNTIME_ASSERT(!disabled);
-        prop->_isReadOnly = true;
     }
 
     // PlainData property data offset
@@ -1498,8 +1514,8 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     optional<size_t> pod_data_base_offset;
 
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
-        const bool is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
-        const bool is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
+        const bool is_public = prop->IsSynced() && prop->IsPublicSync();
+        const bool is_protected = prop->IsSynced() && prop->IsOwnerSync();
         auto& space = is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace);
 
         const size_t space_size = space.size();
@@ -1547,11 +1563,11 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         complex_data_index = _complexProperties.size();
         _complexProperties.emplace_back(prop.get());
 
-        if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
+        if (prop->IsPublicSync()) {
             _publicComplexDataProps.emplace_back(reg_index);
             _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+        else if (prop->IsOwnerSync()) {
             _protectedComplexDataProps.emplace_back(reg_index);
             _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
@@ -1568,10 +1584,10 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     // Fix plain data data offsets
     if (prop->_podDataOffset.has_value()) {
-        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+        if (prop->IsOwnerSync()) {
             *prop->_podDataOffset += _publicPodDataSpace.size();
         }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+        else if (!prop->IsSynced()) {
             *prop->_podDataOffset += _publicPodDataSpace.size() + _protectedPodDataSpace.size();
         }
     }
@@ -1581,11 +1597,11 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             continue;
         }
 
-        if (IsEnumSet(other_prop->_accessType, Property::AccessType::ProtectedMask)) {
+        if (other_prop->IsOwnerSync()) {
             *other_prop->_podDataOffset -= prev_public_space_size;
             *other_prop->_podDataOffset += _publicPodDataSpace.size();
         }
-        else if (IsEnumSet(other_prop->_accessType, Property::AccessType::PrivateMask)) {
+        else if (!other_prop->IsSynced()) {
             *other_prop->_podDataOffset -= prev_public_space_size + prev_protected_space_size;
             *other_prop->_podDataOffset += _publicPodDataSpace.size() + _protectedPodDataSpace.size();
         }

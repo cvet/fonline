@@ -115,31 +115,6 @@ class Property final
     friend class SafeAlloc;
 
 public:
-    enum class AccessType : uint16
-    {
-        PrivateCommon = 0x0010,
-        PrivateClient = 0x0020,
-        PrivateServer = 0x0040,
-        Public = 0x0100,
-        PublicModifiable = 0x0200,
-        PublicFullModifiable = 0x0400,
-        Protected = 0x1000,
-        ProtectedModifiable = 0x2000,
-        VirtualPrivateCommon = 0x0011,
-        VirtualPrivateClient = 0x0021,
-        VirtualPrivateServer = 0x0041,
-        VirtualPublic = 0x0101,
-        VirtualProtected = 0x1001,
-
-        VirtualMask = 0x000F,
-        PrivateMask = 0x00F0,
-        PublicMask = 0x0F00,
-        ProtectedMask = 0xF000,
-        ClientOnlyMask = 0x0020,
-        ServerOnlyMask = 0x0040,
-        ModifiableMask = 0x2600,
-    };
-
     Property(const Property&) = delete;
     Property(Property&&) noexcept = default;
     auto operator=(const Property&) -> Property& = delete;
@@ -151,7 +126,6 @@ public:
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> const string& { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetComponent() const noexcept -> const hstring& { return _component; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16 { return _regIndex; }
-    [[nodiscard]] auto GetAccess() const noexcept -> AccessType { return _accessType; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
     [[nodiscard]] auto GetBaseTypeInfo() const noexcept -> const BaseTypeInfo& { return _baseType; }
@@ -198,9 +172,18 @@ public:
     [[nodiscard]] auto GetViewTypeName() const noexcept -> const string& { return _viewTypeName; }
 
     [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
+    [[nodiscard]] auto IsCoreProperty() const noexcept -> bool { return _isCoreProperty; }
+    [[nodiscard]] auto IsCommon() const noexcept -> bool { return _isCommon; }
+    [[nodiscard]] auto IsServerOnly() const noexcept -> bool { return _isServerOnly; }
+    [[nodiscard]] auto IsClientOnly() const noexcept -> bool { return _isClientOnly; }
+    [[nodiscard]] auto IsSynced() const noexcept -> bool { return _isSynced; }
+    [[nodiscard]] auto IsOwnerSync() const noexcept -> bool { return _isOwnerSync; }
+    [[nodiscard]] auto IsPublicSync() const noexcept -> bool { return _isPublicSync; }
+    [[nodiscard]] auto IsModifiableByClient() const noexcept -> bool { return _isModifiableByClient; }
+    [[nodiscard]] auto IsModifiableByAnyClient() const noexcept -> bool { return _isModifiableByAnyClient; }
     [[nodiscard]] auto IsVirtual() const noexcept -> bool { return _isVirtual; }
-    [[nodiscard]] auto IsReadOnly() const noexcept -> bool { return _isReadOnly; }
-    [[nodiscard]] auto IsTemporary() const noexcept -> bool { return _isTemporary; }
+    [[nodiscard]] auto IsMutable() const noexcept -> bool { return _isMutable; }
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
 
@@ -225,7 +208,6 @@ private:
     string _propNameWithoutComponent {};
     hstring _component {};
     string _scriptFuncType {};
-    AccessType _accessType {};
 
     BaseTypeInfo _baseType {};
 
@@ -249,9 +231,19 @@ private:
     string _viewTypeName {};
 
     bool _isDisabled {};
+    bool _isCoreProperty {};
+    bool _isCommon {};
+    bool _isServerOnly {};
+    bool _isClientOnly {};
     bool _isVirtual {};
-    bool _isReadOnly {};
-    bool _isTemporary {};
+    bool _isMutable {};
+    bool _isPersistent {};
+    bool _isSynced {};
+    bool _isOwnerSync {};
+    bool _isPublicSync {};
+    bool _isNoSync {};
+    bool _isModifiableByClient {};
+    bool _isModifiableByAnyClient {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
     uint16 _regIndex {};
@@ -383,6 +375,7 @@ public:
 
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
+    [[nodiscard]] auto GetRelation() const noexcept -> PropertiesRelationType { return _relation; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
     [[nodiscard]] auto GetPropertyByIndex(int32 property_index) const noexcept -> const Property*;
@@ -412,7 +405,6 @@ private:
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
     map<string, vector<pair<const Property*, int32>>> _propertyGroups {};
-    unordered_map<string_view, Property::AccessType> _accessMap {};
 
     // PlainData info
     size_t _wholePodDataSize {};
@@ -707,6 +699,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
     FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
 
     if (prop->IsVirtual()) {
         FO_RUNTIME_ASSERT(_entity);
@@ -766,6 +759,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
     FO_RUNTIME_ASSERT(prop->IsPlainData());
     FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
 
     if (prop->IsVirtual()) {
         FO_RUNTIME_ASSERT(_entity);
@@ -814,6 +808,7 @@ void Properties::SetValue(const Property* prop, const T& new_value)
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(prop->IsString());
+    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
 
     if (prop->IsVirtual()) {
         FO_RUNTIME_ASSERT(_entity);
@@ -858,6 +853,7 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
 
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(prop->IsArray());
+    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
 
     PropertyRawData prop_data;
 
