@@ -11885,11 +11885,13 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asCExprContext *ct
 				return -1;
 			}
 
+			bool force_const = ctx->property_get && builder->GetFunctionDescription(ctx->property_get)->IsReadOnly(); // (FOnline Patch)
+
 			// Process the get property accessor
 			ProcessPropertyGetAccessor(ctx, node);
 
 			// Compile function call
-			int r = CompileFunctionCall(node->firstChild, ctx, CastToObjectType(ctx->type.dataType.GetTypeInfo()), ctx->type.dataType.IsObjectConst());
+			int r = CompileFunctionCall(node->firstChild, ctx, CastToObjectType(ctx->type.dataType.GetTypeInfo()), ctx->type.dataType.IsObjectConst() || force_const); // (FOnline Patch)
 			if( r < 0 ) return r;
 		}
 	}
