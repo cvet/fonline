@@ -160,17 +160,20 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_PROPERTY: {
         ident_t cr_id;
         string property_name;
-        auto property_value = 0;
-        if (!(args_str >> cr_id >> property_name >> property_value)) {
-            logcb("Invalid arguments. Example: prop cr_id prop_name value");
+        if (!(args_str >> cr_id >> property_name)) {
+            logcb("Invalid arguments. Example: prop cr_id prop_name [value]");
             break;
         }
+
+        string property_value;
+        const bool is_set = !!(args_str >> property_value) && !strex(property_value).trim().empty();
 
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.Write(cr_id);
         buf.Write(property_name);
-        buf.Write(property_value);
+        buf.Write(is_set);
+        buf.Write(strex(property_value).trim().str());
         buf.EndMsg();
     } break;
     case CMD_ADDITEM: {
