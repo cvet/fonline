@@ -322,9 +322,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
 
     // The index operator returns the template subtype
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHOD(CScriptDict, Get), asCALL_THISCALL);
-    assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD(CScriptDict, Set), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in)", asMETHOD(CScriptDict, Get), asCALL_THISCALL);
     assert(r >= 0);
 
     // The assignment operator
@@ -1011,9 +1009,7 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASE, "void f()", WRAP_MFN(CScriptDict, Release), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", WRAP_MFN(CScriptDict, Get), asCALL_GENERIC);
-    assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in)", WRAP_MFN(CScriptDict, Get), asCALL_GENERIC);
     assert(r >= 0);
     // r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
     // WRAP_MFN(CScriptDict, operator=), asCALL_GENERIC); assert(r >= 0);

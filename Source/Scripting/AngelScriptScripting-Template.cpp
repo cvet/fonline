@@ -4442,7 +4442,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             const auto is_handle = prop->IsArray() || prop->IsDict();
 
             if (!prop->IsDisabled()) {
-                const auto decl_get = strex("const {}{} get_{}() const", MakePropertyASName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("{}{} get_{}() const", MakePropertyASName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
@@ -4459,7 +4459,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             if (!prop->IsDisabled() && prop->IsMutable()) {
-                const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", MakePropertyASName(prop), is_handle ? "@+" : "").str();
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakePropertyASName(prop), is_handle ? "@+" : "").str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
             }
         }
@@ -4476,7 +4476,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             const auto it_enum = EnumArrays.emplace(MarshalBackArray<int32>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             FO_RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }
