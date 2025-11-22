@@ -1031,7 +1031,7 @@ class Object
     {
         // Base data
         _Size = _BaseSize;
-        ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ipos();
+        ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
         isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
         isize parentBaseSize = _Parent != null ? _Parent._BaseSize : _BaseSize;
 
@@ -2140,7 +2140,7 @@ class Screen : Panel
 
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
-                    ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ipos();
+                    ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
                     isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
                     ipos prevPos = newPos;
 
@@ -3673,7 +3673,7 @@ void EngineCallback_MouseUp(MouseButton button)
 
 void EngineCallback_MouseMove(ipos offset)
 {
-    bool realMove = offset != ipos();
+    bool realMove = offset != ZERO_IPOS;
 
     // Drop menu
     if (DropMenu != null) {
