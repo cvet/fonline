@@ -1227,7 +1227,8 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();
         const auto property_name = buf.Read<string>();
-        const auto property_value = buf.Read<int32>();
+        const auto is_set = buf.Read<bool>();
+        const auto property_value = buf.Read<string>();
 
         auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
 
@@ -1238,13 +1239,19 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
                 logcb("Property not found");
                 return;
             }
-            if (!prop->IsPlainData()) {
-                logcb("Property is not plain data type");
-                return;
-            }
 
-            cr->SetValueAsInt(prop, property_value);
-            logcb("Done");
+            if (is_set) {
+                if (!prop->IsPlainData()) {
+                    logcb("Property is not plain data type");
+                    return;
+                }
+
+                cr->SetValueAsAny(prop, any_t {property_value});
+                logcb("Done");
+            }
+            else {
+                logcb(cr->GetValueAsAny(prop));
+            }
         }
         else {
             logcb("Critter not found");
