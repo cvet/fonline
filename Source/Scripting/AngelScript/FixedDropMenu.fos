@@ -122,7 +122,7 @@ class FixedDropMenu : Gui::IDropMenu
     bool PreMouseMove(ipos offset)
     {
         if (Pressed) {
-            if (offset != ipos()) {
+            if (offset != ZERO_IPOS) {
                 PressedOffsetY += offset.y;
                 Game.SetMousePos(Settings.MousePos - offset);
             }
@@ -151,7 +151,7 @@ class FixedDropMenu : Gui::IDropMenu
                 }
             }
 
-            if (prevEntity !is SafeSelectedEntity || offset != ipos()) {
+            if (prevEntity !is SafeSelectedEntity || offset != ZERO_IPOS) {
                 MouseStayTick = Game.FrameTime;
                 ShowButtons.clear();
             }
