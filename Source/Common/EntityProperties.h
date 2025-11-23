@@ -56,14 +56,16 @@ public:
     FO_ENTITY_PROPERTY(ident_t, LastEntityId);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(ident_t, HistoryRecordsId);
-    ///@ ExportProperty Server
-    FO_ENTITY_PROPERTY(uint32, LastGlobalMapTripId);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(nanotime, FrameTime);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(timespan, FrameDeltaTime);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(int32, FramesPerSecond);
+
+    // Todo: exclude player properties from engine:
+    ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(uint32, LastGlobalMapTripId);
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(int32, GlobalDayTime);
 };
@@ -80,6 +82,8 @@ public:
 
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);
+
+    // Todo: exclude player properties from engine:
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(ident_t, LastControlledCritterId);
     ///@ ExportProperty Server Persistent
@@ -368,6 +372,8 @@ public:
     FO_ENTITY_PROPERTY(hstring, InitScript);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, MapIds);
+
+    // Todo: exclude location properties from engine:
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<hstring>, MapProtos);
 };
