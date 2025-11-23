@@ -1514,17 +1514,19 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     optional<size_t> pod_data_base_offset;
 
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
-        const bool is_public = prop->IsSynced() && prop->IsPublicSync();
-        const bool is_protected = prop->IsSynced() && prop->IsOwnerSync();
+        const bool is_public = prop->IsPublicSync();
+        const bool is_protected = prop->IsOwnerSync();
         auto& space = is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace);
 
-        const size_t space_size = space.size();
         size_t space_pos = 0;
 
-        while (space_pos + prop->GetBaseSize() <= space_size) {
-            auto fail = false;
+        while (true) {
+            bool fail = false;
 
             for (size_t i = 0; i < prop->GetBaseSize(); i++) {
+                if (space_pos + i >= space.size()) {
+                    break;
+                }
                 if (space[space_pos + i]) {
                     fail = true;
                     break;
@@ -1538,12 +1540,10 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             space_pos += prop->GetBaseSize();
         }
 
-        auto new_size = space_pos + prop->GetBaseSize();
+        const size_t fit_size = ((space_pos + prop->GetBaseSize() + 7) / 8) * 8;
 
-        new_size += 8 - new_size % 8;
-
-        if (new_size > space.size()) {
-            space.resize(new_size);
+        if (fit_size > space.size()) {
+            space.resize(fit_size);
         }
 
         for (size_t i = 0; i < prop->GetBaseSize(); i++) {
