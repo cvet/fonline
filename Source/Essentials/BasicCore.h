@@ -157,11 +157,6 @@
 #define FO_EXPORT_FUNC extern "C"
 #endif
 
-// WinAPI implicitly included in WinRT so add it globally for macro undefining
-#if FO_UWP
-#include "WinApiUndef-Include.h"
-#endif
-
 // Namespace management
 #if FO_USE_NAMESPACE
 #define FO_NAMESPACE_NAME fo

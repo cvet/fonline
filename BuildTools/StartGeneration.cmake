@@ -273,8 +273,22 @@ if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 	set(FO_BUILD_EDITOR_LIB ON)
 endif()
 
-# Shared Windows settings
+# Per OS configurations
 if(WIN32)
+	set(FO_WINDOWS 1)
+	set(FO_HAVE_OPENGL 1)
+	set(FO_HAVE_DIRECT_3D 1)
+
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(FO_BUILD_PLATFORM "Windows-win64")
+		set(FO_MONO_OS "windows")
+		set(FO_MONO_ARCH "x64")
+	else()
+		set(FO_BUILD_PLATFORM "Windows-win32")
+		set(FO_MONO_OS "windows")
+		set(FO_MONO_ARCH "x86")
+	endif()
+
 	add_compile_definitions(UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _CRT_SECURE_NO_DEPRECATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 
 	# Todo: debug /RTCc /sdl _ALLOW_RTCc_IN_STL release /GS-
@@ -301,29 +315,6 @@ if(WIN32)
 	add_link_options($<${expr_FullOptimization}:/LTCG>)
 	add_link_options($<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
-	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
-
-	if(NOT FO_HEADLESS_ONLY)
-		list(APPEND FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
-	endif()
-endif()
-
-# Per OS configurations
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(FO_WINDOWS 1)
-	set(FO_HAVE_OPENGL 1)
-	set(FO_HAVE_DIRECT_3D 1)
-
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(FO_BUILD_PLATFORM "Windows-win64")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x64")
-	else()
-		set(FO_BUILD_PLATFORM "Windows-win32")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x86")
-	endif()
-
 	if(FO_BUILD_CLIENT)
 		add_compile_options_C_CXX($<$<CONFIG:Debug>:/MTd>)
 		add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MT>)
@@ -332,30 +323,13 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 		add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MD>)
 	endif()
 
+	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
+
 	if(NOT FO_HEADLESS_ONLY)
 		set(FO_USE_GLEW ON)
+		list(APPEND FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
 		list(APPEND FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
 	endif()
-
-elseif(CMAKE_SYSTEM_NAME MATCHES "WidnowsStore")
-	set(FO_WINDOWS 1)
-	set(FO_UWP 1)
-	set(FO_HAVE_DIRECT_3D 1)
-
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(FO_BUILD_PLATFORM "UWP-win64")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x64")
-	else()
-		set(FO_BUILD_PLATFORM "UWP-win32")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x86")
-	endif()
-
-	add_compile_options_C_CXX($<$<CONFIG:Debug>:/MDd>)
-	add_compile_options_C_CXX(/ZW)
-	add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MD>)
-	add_link_options(/APPCONTAINER)
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	set(FO_LINUX 1)
