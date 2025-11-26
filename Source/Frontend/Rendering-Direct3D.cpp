@@ -222,35 +222,27 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     VSync = settings.VSync;
     SdlWindow = static_cast<SDL_Window*>(window);
 
-#if !FO_UWP
     auto* hwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(SdlWindow), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-#else
-    HWND hwnd = nullptr;
-#endif
 
     // Device
     {
         constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
-#if !FO_UWP
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
             D3D_FEATURE_LEVEL_10_0,
             D3D_FEATURE_LEVEL_9_3,
             D3D_FEATURE_LEVEL_9_2,
             D3D_FEATURE_LEVEL_9_1,
-#endif
         };
         const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
             {D3D_FEATURE_LEVEL_11_1, "11.1"},
-#if !FO_UWP
             {D3D_FEATURE_LEVEL_11_0, "11.0"},
             {D3D_FEATURE_LEVEL_10_1, "10.1"},
             {D3D_FEATURE_LEVEL_10_0, "10.0"},
             {D3D_FEATURE_LEVEL_9_3, "9.3"},
             {D3D_FEATURE_LEVEL_9_2, "9.2"},
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
-#endif
         };
         constexpr auto feature_levels_count = numeric_cast<UINT>(std::size(feature_levels));
 

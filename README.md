@@ -37,7 +37,7 @@
   + AngelScript
   + Mono C#
 * Cross-platform with target platforms:
-  + Windows (+UWP)
+  + Windows
   + Linux
   + macOS
   + iOS

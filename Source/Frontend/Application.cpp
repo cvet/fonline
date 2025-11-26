@@ -359,7 +359,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_IOS || FO_ANDROID
     _isTablet = true;
 #endif
-#if FO_WINDOWS && !FO_UWP
+#if FO_WINDOWS
     _isTablet = ::GetSystemMetrics(SM_TABLETPC) != 0;
 #endif
 

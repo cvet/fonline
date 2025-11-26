@@ -11,9 +11,6 @@ if [%1] == [win32] (
     set BUILD_ARCH=Win32
 ) else if [%1] == [win64] (
     set BUILD_ARCH=x64
-) else if [%1] == [uwp] (
-    set BUILD_ARCH=x64
-    set BUILD_CACHE=uwp.cache.cmake
 ) else if [%1] == [win32-clang] (
     set BUILD_ARCH=Win32
     set BUILD_TOOLSET=ClangCL
@@ -61,11 +58,8 @@ cd %BUILD_DIR%
 if not [%BUILD_TOOLSET%] == [] (
     cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% -DFO_OUTPUT_PATH="%FO_OUTPUT%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
     if errorlevel 1 exit /b 1
-) else if [%BUILD_CACHE%] == [] (
-    cmake -A %BUILD_ARCH% -DFO_OUTPUT_PATH="%FO_OUTPUT%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
-    if errorlevel 1 exit /b 1
 ) else (
-    cmake -A %BUILD_ARCH% -C "%FO_ENGINE_ROOT%\BuildTool\%BUILD_CACHE%" -DFO_OUTPUT_PATH="%FO_OUTPUT%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
+    cmake -A %BUILD_ARCH% -DFO_OUTPUT_PATH="%FO_OUTPUT%" %BUILD_TARGET% "%FO_PROJECT_ROOT%"
     if errorlevel 1 exit /b 1
 )
 
