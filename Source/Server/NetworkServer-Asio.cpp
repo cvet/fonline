@@ -37,8 +37,6 @@
 
 #define ASIO_STANDALONE 1
 #define ASIO_NO_DEPRECATED 1
-// ReSharper disable once CppInconsistentNaming
-#define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"
 
 FO_BEGIN_NAMESPACE();

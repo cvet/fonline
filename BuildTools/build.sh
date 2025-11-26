@@ -61,19 +61,22 @@ if [[ $1 = "linux" ]]; then
 elif [[ $1 = "web" ]]; then
     source "$FO_WORKSPACE/emsdk/emsdk_env.sh"
 
-    cmake -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
+    TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+    cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [[ $1 = "android" || $1 = "android-arm64" || $1 = "android-x86" ]]; then
     if [[ $1 = "android" ]]; then
-        export ANDROID_ABI=armeabi-v7a
+        ANDROID_ABI=armeabi-v7a
     elif [[ $1 = "android-arm64" ]]; then
-        export ANDROID_ABI=arm64-v8a
+        ANDROID_ABI=arm64-v8a
     elif [[ $1 = "android-x86" ]]; then
-        export ANDROID_ABI=x86
+        ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
+    TOOLCHAIN_SETTINGS="-DANDROID_ABI=$ANDROID_ABI -DANDROID_PLATFORM=android-$ANDROID_NATIVE_API_LEVEL_NUMBER -DANDROID_STL=c++_static"
+    TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
+    cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" $TOOLCHAIN_SETTINGS -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [[ $1 = "mac" || $1 = "ios" ]]; then
@@ -87,7 +90,9 @@ elif [[ $1 = "mac" || $1 = "ios" ]]; then
         $CMAKE -G "Xcode" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
         $CMAKE --build . --config $CONFIG --parallel
     else
-        $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
+        TOOLCHAIN_SETTINGS="-DPLATFORM=SIMULATOR64 -DDEPLOYMENT_TARGET=$FO_IOS_SDK -DENABLE_BITCODE=0 -DENABLE_ARC=0 -DENABLE_VISIBILITY=0 -DENABLE_STRICT_TRY_COMPILE=0"
+        TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
+        $CMAKE -G "Xcode" -DCMAKE_TOOLCHAIN_FILE="$FO_ENGINE_ROOT/BuildTools/ios.toolchain.cmake" $TOOLCHAIN_SETTINGS -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
         $CMAKE --build . --config $CONFIG --parallel
     fi
 

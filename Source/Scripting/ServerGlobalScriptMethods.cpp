@@ -969,7 +969,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
         }
     };
 
-#if FO_WINDOWS && !FO_UWP
+#if FO_WINDOWS
     HANDLE out_read = nullptr;
     HANDLE out_write = nullptr;
 

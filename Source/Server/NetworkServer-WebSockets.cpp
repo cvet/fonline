@@ -37,8 +37,6 @@
 
 #define ASIO_STANDALONE 1
 #define ASIO_NO_DEPRECATED 1
-// ReSharper disable once CppInconsistentNaming
-#define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
 #include "asio.hpp"
 // ReSharper disable CppInconsistentNaming
 #define _WEBSOCKETPP_CPP11_FUNCTIONAL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
