@@ -258,8 +258,8 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 const auto& dict = value.AsDict();
 
                 if (prop->IsDictKeyHash()) {
-                    for (const auto& dict_entry : dict) {
-                        add_hash(dict_entry.first);
+                    for (const auto& key : dict | std::views::keys) {
+                        add_hash(key);
                     }
                 }
 

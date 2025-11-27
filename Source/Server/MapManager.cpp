@@ -59,15 +59,7 @@ void MapManager::LoadFromResources()
         const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
-        std::launch async_flags;
-
-        if constexpr (FO_DEBUG) {
-            async_flags = std::launch::async;
-        }
-        else {
-            async_flags = std::launch::async | std::launch::deferred;
-        }
-
+        const std::launch async_flags = std::launch::async | std::launch::deferred;
         static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() {
             auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
@@ -315,23 +307,29 @@ void MapManager::GenerateMapContent(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(map);
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+
     unordered_map<ident_t, ident_t> id_map;
 
     // Generate critters
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
         const auto* cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
         id_map.emplace(base_cr_id, cr->GetId());
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
     }
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
         map->AddItem(item, base_item->GetHex(), nullptr);
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
     }
 
     // Add children items
-    for (const auto& base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
+    for (const auto* base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
         // Map id to owner
         ident_t owner_id;
 
@@ -353,6 +351,7 @@ void MapManager::GenerateMapContent(Map* map)
 
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
         // Add to parent
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
@@ -360,15 +359,29 @@ void MapManager::GenerateMapContent(Map* map)
             FO_RUNTIME_ASSERT(cr_cont);
 
             _engine->CrMngr.AddItemToCritter(cr_cont, item, false);
+            FO_RUNTIME_ASSERT(!map->IsDestroyed());
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(owner_id);
             FO_RUNTIME_ASSERT(item_cont);
 
             item_cont->AddItemToContainer(item, {});
+            FO_RUNTIME_ASSERT(!map->IsDestroyed());
         }
         else {
             FO_UNREACHABLE_PLACE();
+        }
+    }
+
+    // Process visibility
+    for (auto* cr : copy_hold_ref(map->GetCritters())) {
+        if (!cr->IsDestroyed()) {
+            ProcessVisibleCritters(cr);
+            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        }
+        if (!cr->IsDestroyed()) {
+            ProcessVisibleItems(cr);
+            FO_RUNTIME_ASSERT(!map->IsDestroyed());
         }
     }
 }
@@ -377,62 +390,43 @@ void MapManager::DestroyMapContent(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (InfinityLoopDetector detector; !map->_critters.empty() || !map->_items.empty(); detector.AddLoop()) {
-        KickPlayersToGlobalMap(map);
-
-        for (auto* cr : copy(map->_nonPlayerCritters)) {
+    for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems(); detector.AddLoop()) {
+        for (auto* cr : map->GetPlayerCritters()) {
+            TransferToGlobal(cr, {});
+        }
+        for (auto* cr : copy(map->GetNonPlayerCritters())) {
             _engine->CrMngr.DestroyCritter(cr);
         }
-        for (auto* item : copy(map->_items)) {
+        for (auto* item : copy(map->GetItems())) {
             _engine->ItemMngr.DestroyItem(item);
         }
     }
-
-    FO_RUNTIME_ASSERT(map->_itemsMap.empty());
 }
 
-auto MapManager::CreateLocation(hstring proto_id, const Properties* props) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, const Properties* props) -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), ident_t {}, proto, props);
 
-    vector<ident_t> map_ids;
-
-    for (const auto map_pid : loc->GetMapProtos()) {
-        const auto* map = CreateMap(map_pid, loc.get());
-
-        if (map == nullptr) {
-            throw MapManagerException("Create map for location failed", proto_id, map_pid);
-        }
-
-        vec_add_unique_value(map_ids, map->GetId());
-    }
-
-    loc->SetMapIds(map_ids);
-
     _engine->EntityMngr.RegisterLocation(loc.get());
 
-    for (auto& map : copy_hold_ref(loc->GetMaps())) {
+    for (const auto map_pid : map_pids) {
+        const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+        const auto* static_map = GetStaticMap(map_proto);
+        auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, map_proto, loc.get(), static_map);
+        _engine->EntityMngr.RegisterMap(map.get());
+        loc->AddMap(map.get());
         GenerateMapContent(map.get());
     }
 
-    _engine->EntityMngr.CallInit(loc.get(), true);
+    for (auto& map : copy_hold_ref(loc->GetMaps())) {
+        _engine->EntityMngr.CallInit(map.get(), true);
+    }
 
-    if (!loc->IsDestroyed()) {
-        for (auto& map : copy_hold_ref(loc->GetMaps())) {
-            if (!map->IsDestroyed()) {
-                for (auto* cr : copy_hold_ref(map->GetCritters())) {
-                    if (!cr->IsDestroyed()) {
-                        ProcessVisibleCritters(cr);
-                    }
-                    if (!cr->IsDestroyed()) {
-                        ProcessVisibleItems(cr);
-                    }
-                }
-            }
-        }
+    if (loc->IsDestroyed()) {
+        _engine->EntityMngr.CallInit(loc.get(), true);
     }
 
     if (loc->IsDestroyed()) {
@@ -446,14 +440,30 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(loc);
+    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
+    FO_RUNTIME_ASSERT(!loc->IsDestroying());
+
     const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
     const auto* static_map = GetStaticMap(proto);
-
     auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, proto, loc, static_map);
 
+    _engine->EntityMngr.RegisterMap(map.get());
     loc->AddMap(map.get());
 
-    _engine->EntityMngr.RegisterMap(map.get());
+    GenerateMapContent(map.get());
+
+    if (!map->IsDestroyed()) {
+        _engine->EntityMngr.CallInit(map.get(), true);
+    }
+
+    if (!map->IsDestroyed()) {
+        loc->OnMapAdded.Fire(map.get());
+    }
+
+    if (map->IsDestroyed()) {
+        throw GenericException("Map destroyed during init");
+    }
 
     return map.get();
 }
@@ -462,6 +472,7 @@ void MapManager::RegenerateMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(map);
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     refcount_ptr map_holder = map;
@@ -471,40 +482,13 @@ void MapManager::RegenerateMap(Map* map)
     if (!map->IsDestroyed()) {
         GenerateMapContent(map);
     }
-
-    if (!map->IsDestroyed()) {
-        for (auto* cr : copy_hold_ref(map->GetCritters())) {
-            if (!cr->IsDestroyed()) {
-                _engine->EntityMngr.CallInit(cr, true);
-            }
-        }
-    }
-
-    if (!map->IsDestroyed()) {
-        for (auto* item : copy_hold_ref(map->GetItems())) {
-            if (!item->IsDestroyed()) {
-                _engine->EntityMngr.CallInit(item, true);
-            }
-        }
-    }
-
-    if (!map->IsDestroyed()) {
-        for (auto* cr : copy_hold_ref(map->GetCritters())) {
-            if (!cr->IsDestroyed()) {
-                ProcessVisibleCritters(cr);
-            }
-            if (!cr->IsDestroyed()) {
-                ProcessVisibleItems(cr);
-            }
-        }
-    }
 }
 
 auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& map : _engine->EntityMngr.GetMaps() | std::views::values) {
+    for (auto* map : _engine->EntityMngr.GetMaps() | std::views::values) {
         if (map->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
                 return map;
@@ -521,7 +505,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& loc : _engine->EntityMngr.GetLocations() | std::views::values) {
+    for (auto* loc : _engine->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProtoId() == loc_pid) {
             if (skip_count <= 0) {
                 return loc;
@@ -534,80 +518,86 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept ->
     return nullptr;
 }
 
-void MapManager::KickPlayersToGlobalMap(Map* map)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto* cl : map->GetPlayerCritters()) {
-        TransferToGlobal(cl, {});
-    }
-}
-
 void MapManager::DestroyLocation(Location* loc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Start deleting
-    refcount_ptr loc_holder = loc;
-    auto maps = copy_hold_ref(loc->GetMaps());
-
-    // Redundant calls
     if (loc->IsDestroying() || loc->IsDestroyed()) {
         return;
     }
 
+    // Destroy location in couple with maps
     loc->MarkAsDestroying();
 
-    for (auto& map : maps) {
+    for (auto& map : loc->GetMaps()) {
         map->MarkAsDestroying();
     }
 
-    // Finish events
     _engine->OnLocationFinish.Fire(loc);
 
-    for (auto& map : maps) {
+    for (auto& map : loc->GetMaps()) {
         _engine->OnMapFinish.Fire(map.get());
     }
 
-    // Inner entites
-    for (InfinityLoopDetector detector;; detector.AddLoop()) {
-        bool has_entities = false;
+    for (auto& map : copy_hold_ref(loc->GetMaps())) {
+        loc->RemoveMap(map.get());
+        DestroyMapInternal(map.get());
+    }
 
-        if (loc->HasInnerEntities()) {
-            _engine->EntityMngr.DestroyInnerEntities(loc);
-            has_entities = true;
-        }
-
-        for (auto& map : maps) {
-            if (map->HasInnerEntities()) {
-                _engine->EntityMngr.DestroyInnerEntities(map.get());
-                has_entities = true;
+    for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {
+        try {
+            if (loc->HasInnerEntities()) {
+                _engine->EntityMngr.DestroyInnerEntities(loc);
             }
         }
-
-        if (!has_entities) {
-            break;
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
-    }
-
-    // Destroy maps
-    for (auto& map : maps) {
-        DestroyMapContent(map.get());
-    }
-
-    // Invalidate
-    for (auto& map : maps) {
-        map->MarkAsDestroyed();
     }
 
     loc->MarkAsDestroyed();
-
-    // Erase from main collections
     _engine->EntityMngr.UnregisterLocation(loc);
+}
 
-    for (auto& map : maps) {
-        _engine->EntityMngr.UnregisterMap(map.get());
+void MapManager::DestroyMap(Map* map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map->IsDestroying() || map->IsDestroyed()) {
+        return;
     }
+
+    map->MarkAsDestroying();
+    _engine->OnMapFinish.Fire(map);
+
+    refcount_ptr loc = map->GetLocation();
+    loc->OnMapRemoved.Fire(map);
+    loc->RemoveMap(map);
+
+    DestroyMapInternal(map);
+}
+
+void MapManager::DestroyMapInternal(Map* map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems() || map->HasInnerEntities(); detector.AddLoop()) {
+        try {
+            if (map->HasCritters() || map->HasItems()) {
+                DestroyMapContent(map);
+            }
+
+            if (map->HasInnerEntities()) {
+                _engine->EntityMngr.DestroyInnerEntities(map);
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+    }
+
+    map->MarkAsDestroyed();
+    _engine->EntityMngr.UnregisterMap(map);
 }
 
 auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput

@@ -290,7 +290,7 @@ if(WIN32)
 	endif()
 
 	set(CMAKE_SYSTEM_VERSION 6.1)
-	add_compile_definitions(-D_WIN32_WINNT=0x0601)
+	add_compile_definitions(_WIN32_WINNT=0x0601)
 	add_compile_definitions(UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _CRT_SECURE_NO_DEPRECATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 
 	# Todo: debug /RTCc /sdl _ALLOW_RTCc_IN_STL release /GS-

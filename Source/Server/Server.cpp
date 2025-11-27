@@ -1296,7 +1296,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     } break;
     case CMD_ADDLOCATION: {
         const auto pid = buf.Read<hstring>(Hashes);
-        auto* loc = MapMngr.CreateLocation(pid, nullptr);
+        auto* loc = MapMngr.CreateLocation(pid);
 
         if (loc == nullptr) {
             logcb("Location not created");

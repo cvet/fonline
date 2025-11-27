@@ -69,9 +69,6 @@ enum class MovingState : uint8
 
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
-    friend class Player;
-    friend class CritterManager;
-
 public:
     Critter() = delete;
     Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr) noexcept;

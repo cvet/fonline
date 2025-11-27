@@ -220,30 +220,35 @@ void CritterManager::DestroyCritter(Critter* cr)
         auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
         for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
-            if (cr->GetMapId()) {
-                auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
-                FO_RUNTIME_ASSERT(map);
-                _engine->MapMngr.RemoveCritterFromMap(cr, map);
-            }
-            else {
-                FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
-                _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
-            }
-
-            DestroyInventory(cr);
-
-            if (cr->HasInnerEntities()) {
-                _engine->EntityMngr.DestroyInnerEntities(cr);
-            }
-
-            if (cr->GetIsAttached()) {
-                cr->DetachFromCritter();
-            }
-
-            if (!cr->AttachedCritters.empty()) {
-                for (auto* attached_cr : copy(cr->AttachedCritters)) {
-                    attached_cr->DetachFromCritter();
+            try {
+                if (cr->GetMapId()) {
+                    auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
+                    FO_RUNTIME_ASSERT(map);
+                    _engine->MapMngr.RemoveCritterFromMap(cr, map);
                 }
+                else {
+                    FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+                    _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
+                }
+
+                DestroyInventory(cr);
+
+                if (cr->HasInnerEntities()) {
+                    _engine->EntityMngr.DestroyInnerEntities(cr);
+                }
+
+                if (cr->GetIsAttached()) {
+                    cr->DetachFromCritter();
+                }
+
+                if (!cr->AttachedCritters.empty()) {
+                    for (auto* attached_cr : copy(cr->AttachedCritters)) {
+                        attached_cr->DetachFromCritter();
+                    }
+                }
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
             }
         }
     }
@@ -261,8 +266,8 @@ void CritterManager::DestroyInventory(Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (InfinityLoopDetector detector {cr->_invItems.size()}; !cr->_invItems.empty(); detector.AddLoop()) {
-        _engine->ItemMngr.DestroyItem(cr->_invItems.front());
+    for (InfinityLoopDetector detector {cr->GetInvItems().size()}; cr->HasItems(); detector.AddLoop()) {
+        _engine->ItemMngr.DestroyItem(cr->GetRawInvItems().front());
     }
 }
 
@@ -277,7 +282,7 @@ auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
     vector<Critter*> non_player_critters;
     non_player_critters.reserve(all_critters.size());
 
-    for (auto&& [id, cr] : all_critters) {
+    for (auto* cr : all_critters | std::views::values) {
         if (!cr->GetControlledByPlayer()) {
             non_player_critters.emplace_back(cr);
         }
@@ -297,7 +302,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     vector<Critter*> player_critters;
     player_critters.reserve(all_critters.size());
 
-    for (auto&& [id, cr] : all_critters) {
+    for (auto* cr : all_critters | std::views::values) {
         if (cr->GetControlledByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
             player_critters.emplace_back(cr);
         }
@@ -317,7 +322,7 @@ auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<C
     vector<Critter*> critters;
     critters.reserve(all_critters.size());
 
-    for (auto&& [id, cr] : all_critters) {
+    for (auto* cr : all_critters | std::views::values) {
         if (!cr->GetMapId() && cr->CheckFind(find_type)) {
             critters.emplace_back(cr);
         }
@@ -335,7 +340,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
     const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
     if (proto->GetStackable()) {
-        for (auto* item : cr->_invItems) {
+        for (auto* item : cr->GetRawInvItems()) {
             if (item->GetProtoId() == item_pid) {
                 return item;
             }
@@ -344,7 +349,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
     else {
         Item* another_slot = nullptr;
 
-        for (auto* item : cr->_invItems) {
+        for (auto* item : cr->GetRawInvItems()) {
             if (item->GetProtoId() == item_pid) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
