@@ -134,26 +134,27 @@ public:
     [[nodiscard]] auto TracePath(const TracePathInput& input) const -> TracePathOutput;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, const Properties* props) -> FO_NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
     void DestroyLocation(Location* loc);
+    auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
+    void DestroyMap(Map* map);
     void RegenerateMap(Map* map);
     void AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
     void RemoveCritterFromMap(Critter* cr, Map* map);
     void TransferToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius);
     void TransferToGlobal(Critter* cr, ident_t global_cr_id);
-    void KickPlayersToGlobalMap(Map* map);
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
     void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir);
 
 private:
-    [[nodiscard]] auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
+    auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
 
-    auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
     void Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
     void DestroyMapContent(Map* map);
+    void DestroyMapInternal(Map* map);
 
     raw_ptr<FOServer> _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};

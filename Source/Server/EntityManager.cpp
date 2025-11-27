@@ -582,7 +582,7 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
     try {
         const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
 
-        for (const auto& [entry, entry_info] : holder_type_info.HolderEntries) {
+        for (const auto& entry : holder_type_info.HolderEntries | std::views::keys) {
             LoadInnerEntitiesEntry(holder, entry, is_error);
         }
     }
@@ -992,8 +992,6 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
     const auto type_name_plural = entity->GetTypeNamePlural();
     FO_RUNTIME_ASSERT(entity_id);
 
-    entity->SetId({});
-
     const auto it = _allEntities.find(entity_id);
     FO_RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it); // Maybe last pointer to this entity
@@ -1058,8 +1056,9 @@ void EntityManager::DestroyAllEntities()
     destroy_entities(_allMaps);
     destroy_entities(_allCritters);
     destroy_entities(_allItems);
-    for (auto& custom_entities : _allCustomEntities) {
-        destroy_entities(custom_entities.second);
+
+    for (auto& val : _allCustomEntities | std::views::values) {
+        destroy_entities(val);
     }
 
     FO_RUNTIME_ASSERT(_allEntities.empty());

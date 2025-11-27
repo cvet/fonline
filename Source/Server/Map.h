@@ -72,8 +72,6 @@ struct StaticMap
 
 class Map final : public ServerEntity, public EntityWithProto, public MapProperties
 {
-    friend class MapManager;
-
 public:
     Map() = delete;
     Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr) noexcept;
@@ -103,6 +101,7 @@ public:
     [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(mpos hex) -> vector<Item*>;
+    [[nodiscard]] auto HasItems() const noexcept -> bool { return !_items.empty(); }
     [[nodiscard]] auto IsPlaceForProtoItem(mpos hex, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>;
     [[nodiscard]] auto IsCritter(mpos hex, CritterFindType find_type) const -> bool;
@@ -114,6 +113,7 @@ public:
     [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>& { return _critters; }
     [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>& { return _playerCritters; }
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>& { return _nonPlayerCritters; }
+    [[nodiscard]] auto HasCritters() const noexcept -> bool { return !_critters.empty(); }
     [[nodiscard]] auto IsStaticItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*;

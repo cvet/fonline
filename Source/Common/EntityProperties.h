@@ -372,10 +372,6 @@ public:
     FO_ENTITY_PROPERTY(hstring, InitScript);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, MapIds);
-
-    // Todo: exclude location properties from engine:
-    ///@ ExportProperty Server Persistent
-    FO_ENTITY_PROPERTY(vector<hstring>, MapProtos);
 };
 
 FO_END_NAMESPACE();

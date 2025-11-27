@@ -606,9 +606,16 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(FOServer* server, const vector<id
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId)
 {
-    auto* loc = server->MapMngr.CreateLocation(protoId, nullptr);
+    auto* loc = server->MapMngr.CreateLocation(protoId);
     FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
 
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const vector<hstring>& map_pids)
+{
+    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
+    FO_RUNTIME_ASSERT(loc);
     return loc;
 }
 
@@ -622,9 +629,23 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring pro
         props_.SetValueAsAnyProps(static_cast<int32>(key), value);
     }
 
-    auto* loc = server->MapMngr.CreateLocation(protoId, &props_);
+    auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
     FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
 
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const vector<hstring>& map_pids, const map<LocationProperty, any_t>& props)
+{
+    const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+    auto props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
+    FO_RUNTIME_ASSERT(loc);
     return loc;
 }
 
@@ -640,8 +661,27 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(FOServer* server, Location* loc)
 FO_SCRIPT_API void Server_Game_DestroyLocation(FOServer* server, ident_t locId)
 {
     auto* loc = server->EntityMngr.GetLocation(locId);
+
     if (loc != nullptr) {
         server->MapMngr.DestroyLocation(loc);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyMap(FOServer* server, Map* map)
+{
+    if (map != nullptr) {
+        server->MapMngr.DestroyMap(map);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyMap(FOServer* server, ident_t mapId)
+{
+    auto* map = server->EntityMngr.GetMap(mapId);
+
+    if (map != nullptr) {
+        server->MapMngr.DestroyMap(map);
     }
 }
 
@@ -721,7 +761,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server)
     vector<Map*> maps;
     maps.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
+    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
         maps.emplace_back(map);
     }
 
@@ -737,7 +777,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
         maps.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
+    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
         if (!pid || pid == map->GetProtoId()) {
             maps.emplace_back(map);
         }
@@ -767,7 +807,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationComponent component)
 {
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return loc;
         }
@@ -781,7 +821,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProper
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
             return loc;
         }
@@ -796,7 +836,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server)
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         locs.emplace_back(loc);
     }
 
@@ -812,7 +852,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, hstri
         locs.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (!pid || pid == loc->GetProtoId()) {
             locs.emplace_back(loc);
         }
@@ -827,7 +867,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             locs.emplace_back(loc);
         }
@@ -844,7 +884,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
             locs.emplace_back(loc);
         }
@@ -862,7 +902,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
         items.reserve(server->EntityMngr.GetItemsCount());
     }
 
-    for (auto&& [id, item] : server->EntityMngr.GetItems()) {
+    for (auto* item : server->EntityMngr.GetItems() | std::views::values) {
         FO_RUNTIME_ASSERT(!item->IsDestroyed());
 
         if (!pid || pid == item->GetProtoId()) {
@@ -881,7 +921,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
     vector<Player*> result;
     result.reserve(players.size());
 
-    for (auto&& [id, player] : players) {
+    for (auto* player : players | std::views::values) {
         result.emplace_back(player);
     }
 

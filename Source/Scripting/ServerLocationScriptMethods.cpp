@@ -58,6 +58,13 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
+{
+    Map* map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
+    return map;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API int32 Server_Location_GetMapCount(Location* self)
 {
     return numeric_cast<int32>(self->GetMapsCount());
