@@ -301,7 +301,7 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     if (const auto it = builtin_types.find(type_str); it != builtin_types.end()) {
         it->second(info);
     }
-    else if (const BaseTypeInfo * underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
+    else if (const BaseTypeInfo* underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
         info.IsEnum = true;
         info.IsEnumSigned = underlying_type->IsSignedInt;
         info.Size = underlying_type->Size;

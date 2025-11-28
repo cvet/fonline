@@ -44,8 +44,8 @@ ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _connectCallback = [](auto&&) {};
-    _disconnectCallback = [] {};
+    _connectCallback = [](auto&&) { };
+    _disconnectCallback = [] { };
 
     AddMessageHandler(NetMessage::Disconnect, [this] { Disconnect(); });
     AddMessageHandler(NetMessage::Ping, [this] { Net_OnPing(); });
@@ -56,14 +56,14 @@ void ClientConnection::SetConnectHandler(ConnectCallback handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _connectCallback = handler ? std::move(handler) : [](auto&&) {};
+    _connectCallback = handler ? std::move(handler) : [](auto&&) { };
 }
 
 void ClientConnection::SetDisconnectHandler(DisconnectCallback handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _disconnectCallback = handler ? std::move(handler) : [] {};
+    _disconnectCallback = handler ? std::move(handler) : [] { };
 }
 
 void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler)
