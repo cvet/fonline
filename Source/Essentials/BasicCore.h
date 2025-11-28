@@ -373,10 +373,7 @@ private:
             delete this; \
         } \
     } \
-    mutable std::atomic_int RefCounter \
-    { \
-        1 \
-    }
+    mutable std::atomic_int RefCounter {1}
 #define FO_SCRIPTABLE_OBJECT_END() \
     bool _nonConstHelper \
     { \
