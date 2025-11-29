@@ -906,7 +906,7 @@ void FOClient::Net_OnAddCritter()
     if (_curMap != nullptr) {
         if (is_attached) {
             for (auto& map_cr : _curMap->GetCritters()) {
-                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
                     map_cr->MoveAttachedCritters();
                     break;
                 }
@@ -1112,7 +1112,6 @@ void FOClient::Net_OnCritterAction()
     }
 
     if (_curMap == nullptr) {
-        // Todo: actions on global map
         return;
     }
 
@@ -1324,7 +1323,7 @@ void FOClient::Net_OnCritterAttachments()
 
             if (is_attached) {
                 for (auto& map_cr : _curMap->GetCritters()) {
-                    if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                    if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
                         map_cr->MoveAttachedCritters();
                         break;
                     }

@@ -100,7 +100,7 @@ private:
     size_t _dataSize {};
     bool _useDynamic {};
     uint8 _localBuf[LOCAL_BUF_SIZE] {};
-    unique_ptr<uint8[]> _dynamicBuf {};
+    unique_arr_ptr<uint8> _dynamicBuf {};
     void* _passedPtr {};
 };
 
@@ -349,8 +349,8 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    unique_ptr<uint8[]> _podData {};
-    unique_ptr<pair<unique_ptr<uint8[]>, size_t>[]> _complexData {};
+    unique_arr_ptr<uint8> _podData {};
+    unique_arr_ptr<pair<unique_arr_ptr<uint8>, size_t>> _complexData {};
 
     mutable unique_ptr<vector<const uint8*>> _storeData {};
     mutable unique_ptr<vector<uint32>> _storeDataSizes {};

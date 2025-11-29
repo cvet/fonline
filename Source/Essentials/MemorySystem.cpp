@@ -48,7 +48,7 @@ FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
-static unique_ptr<unique_ptr<uint8[]>[]> BackupMemoryChunks;
+static std::unique_ptr<std::unique_ptr<uint8[]>[]> BackupMemoryChunks;
 static std::atomic_size_t BackupMemoryChunksCount;
 
 // Replace memory allocator
@@ -400,7 +400,7 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    BackupMemoryChunks = std::make_unique<unique_ptr<uint8[]>[]>(BACKUP_MEMORY_CHUNKS);
+    BackupMemoryChunks = std::make_unique<std::unique_ptr<uint8[]>[]>(BACKUP_MEMORY_CHUNKS);
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
         BackupMemoryChunks[i] = std::make_unique<uint8[]>(BACKUP_MEMORY_CHUNK_SIZE);

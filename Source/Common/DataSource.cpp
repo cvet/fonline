@@ -163,7 +163,7 @@ private:
     unordered_map<string, uint8*> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
-    unique_ptr<uint8[]> _memTree {};
+    unique_arr_ptr<uint8> _memTree {};
     uint64 _writeTime {};
     mutable vector<uint8> _readBuf {};
 };
