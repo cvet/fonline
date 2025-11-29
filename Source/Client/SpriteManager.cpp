@@ -248,8 +248,8 @@ void SpriteManager::BeginScene()
     _rtMngr.ClearStack();
     _scissorStack.clear();
 
-    if (_rtMain != nullptr) {
-        _rtMngr.PushRenderTarget(_rtMain);
+    if (_rtMain) {
+        _rtMngr.PushRenderTarget(_rtMain.get());
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
@@ -273,10 +273,10 @@ void SpriteManager::EndScene()
 
     Flush();
 
-    if (_rtMain != nullptr) {
+    if (_rtMain) {
         FO_RUNTIME_ASSERT(_rtMngr.GetCurrentRenderTarget() == _rtMain);
         _rtMngr.PopRenderTarget();
-        DrawRenderTarget(_rtMain, false);
+        DrawRenderTarget(_rtMain.get(), false);
     }
 
     FO_RUNTIME_ASSERT(_rtMngr.GetRenderTargetStack().empty());
@@ -1173,10 +1173,10 @@ void SpriteManager::DrawContours()
     FO_STACK_TRACE_ENTRY();
 
     // Draw collected contours
-    if (_contoursAdded && _rtContours != nullptr) {
-        DrawRenderTarget(_rtContours, true);
+    if (_contoursAdded && _rtContours) {
+        DrawRenderTarget(_rtContours.get(), true);
 
-        _rtMngr.PushRenderTarget(_rtContours);
+        _rtMngr.PushRenderTarget(_rtContours.get());
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
         _rtMngr.PopRenderTarget();
 
@@ -1188,7 +1188,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_rtContours == nullptr) {
+    if (!_rtContours) {
         return;
     }
 
@@ -1213,7 +1213,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
 
     contour_color = ApplyColorBrightness(contour_color);
 
-    _rtMngr.PushRenderTarget(_rtContours);
+    _rtMngr.PushRenderTarget(_rtContours.get());
 
     auto& vbuf = _contourDrawBuf->Vertices;
     size_t vpos = 0;

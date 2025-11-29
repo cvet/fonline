@@ -76,8 +76,8 @@ struct VideoPlayback
 
     FO_SCRIPTABLE_OBJECT_END();
 
-    uniq_ptr<VideoClip> Clip {};
-    uniq_ptr<unique_ptr<RenderTexture>> Tex {};
+    unique_ptr<VideoClip> Clip {};
+    unique_ptr<RenderTexture> Tex {};
 };
 static_assert(std::is_standard_layout_v<VideoPlayback>);
 

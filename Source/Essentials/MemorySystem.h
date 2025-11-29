@@ -144,13 +144,6 @@ public:
     }
 
     template<typename T, typename... Args>
-        requires(!is_refcounted<T>)
-    static auto MakeUniq(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> uniq_ptr<T>
-    {
-        return uniq_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
-    }
-
-    template<typename T, typename... Args>
         requires(is_refcounted<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
@@ -224,9 +217,9 @@ public:
 
     template<typename T>
         requires(!is_refcounted<T>)
-    static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_ptr<T[]>
+    static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
-        return unique_ptr<T[]>(MakeRawArr<T>(count));
+        return unique_arr_ptr<T>(MakeRawArr<T>(count));
     }
 };
 

@@ -247,8 +247,8 @@ private:
     unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
 
-    RenderTarget* _rtMain {};
-    RenderTarget* _rtContours {};
+    raw_ptr<RenderTarget> _rtMain {};
+    raw_ptr<RenderTarget> _rtContours {};
 
     vector<DipData> _dipQueue {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};

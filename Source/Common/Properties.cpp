@@ -143,7 +143,7 @@ void Properties::AllocData() noexcept
     _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
     MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
 
-    _complexData = SafeAlloc::MakeUniqueArr<pair<unique_ptr<uint8[]>, size_t>>(_registrator->_complexProperties.size());
+    _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8>, size_t>>(_registrator->_complexProperties.size());
 }
 
 auto Properties::Copy() const noexcept -> Properties
@@ -264,16 +264,16 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 }
 
                 if (prop->IsBaseTypeHash()) {
-                    for (const auto& dict_entry : dict) {
-                        if (dict_entry.second.Type() == AnyData::ValueType::Array) {
-                            const auto& dict_arr = dict_entry.second.AsArray();
+                    for (const auto& dict_value : dict | std::views::values) {
+                        if (dict_value.Type() == AnyData::ValueType::Array) {
+                            const auto& dict_arr = dict_value.AsArray();
 
                             for (const auto& dict_arr_entry : dict_arr) {
                                 add_hash(dict_arr_entry.AsString());
                             }
                         }
                         else {
-                            add_hash(dict_entry.second.AsString());
+                            add_hash(dict_value.AsString());
                         }
                     }
                 }

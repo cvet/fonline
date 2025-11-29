@@ -75,7 +75,7 @@ struct SpritePattern
 
     FO_SCRIPTABLE_OBJECT_END();
 
-    uniq_ptr<vector<shared_ptr<Sprite>>> Sprites {};
+    unique_ptr<vector<shared_ptr<Sprite>>> Sprites {};
 };
 static_assert(std::is_standard_layout_v<SpritePattern>);
 
