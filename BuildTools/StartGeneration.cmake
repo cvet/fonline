@@ -52,6 +52,7 @@ else()
 endif()
 
 # Global options
+set(CMAKE_POLICY_VERSION_MINIMUM 3.22)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)

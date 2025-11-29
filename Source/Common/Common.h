@@ -144,7 +144,7 @@ public:
     ~EventUnsubscriberCallback() = default;
 
 private:
-    using Callback = std::function<void()>;
+    using Callback = function<void()>;
     explicit EventUnsubscriberCallback(Callback cb) noexcept :
         _unsubscribeCallback {std::move(cb)}
     {
@@ -190,7 +190,7 @@ public:
     }
 
 private:
-    using Callback = std::function<void()>;
+    using Callback = function<void()>;
     explicit EventUnsubscriber(EventUnsubscriberCallback cb) noexcept { _unsubscribeCallbacks.emplace_back(std::move(cb)); }
     vector<EventUnsubscriberCallback> _unsubscribeCallbacks {};
 };
@@ -202,7 +202,7 @@ class EventObserver final
     friend class EventDispatcher;
 
 public:
-    using Callback = std::function<void(Args...)>;
+    using Callback = function<void(Args...)>;
 
     EventObserver() = default;
     EventObserver(const EventObserver&) = delete;
@@ -535,8 +535,8 @@ public:
 };
 
 // Interthread communication between server and client
-using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
-extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadDataCallback = function<void(const_span<uint8>)>;
+extern map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8

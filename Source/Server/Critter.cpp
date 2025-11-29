@@ -688,7 +688,7 @@ void Critter::Broadcast_Teleport(mpos to_hex)
     }
 }
 
-void Critter::SendAndBroadcast(const Player* ignore_player, const std::function<void(Critter*)>& callback)
+void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
