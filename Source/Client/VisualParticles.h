@@ -75,10 +75,10 @@ public:
 private:
     struct Impl;
     unique_ptr<Impl> _impl;
-    RenderSettings& _settings;
-    EffectManager& _effectMngr;
-    FileSystem& _resources;
-    GameTimer& _gameTime;
+    raw_ptr<RenderSettings> _settings;
+    raw_ptr<EffectManager> _effectMngr;
+    raw_ptr<FileSystem> _resources;
+    raw_ptr<GameTimer> _gameTime;
     TextureLoader _textureLoader;
     int32 _animUpdateThreshold {};
     mat44 _projMatColMaj {};
@@ -119,7 +119,7 @@ private:
 
     struct Impl;
     unique_ptr<Impl> _impl;
-    ParticleManager& _particleMngr;
+    raw_ptr<ParticleManager> _particleMngr;
     mat44 _projMat {};
     vec3 _viewOffset {};
     float64 _elapsedTime {};

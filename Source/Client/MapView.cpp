@@ -100,7 +100,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     if (!_engine->Settings.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
-        _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
+        _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap);
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
@@ -118,9 +118,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     if (_picHexMask) {
         const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
         FO_RUNTIME_ASSERT(atlas_spr);
-        const auto mask_x = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.width) * atlas_spr->AtlasRect.x);
-        const auto mask_y = iround<int32>(numeric_cast<float32>(atlas_spr->Atlas->MainTex->Size.height) * atlas_spr->AtlasRect.y);
-        _picHexMaskData = atlas_spr->Atlas->MainTex->GetTextureRegion({mask_x, mask_y}, atlas_spr->Size);
+        const auto mask_x = iround<int32>(numeric_cast<float32>(atlas_spr->GetAtlas()->GetTexture()->Size.width) * atlas_spr->GetAtlasRect().x);
+        const auto mask_y = iround<int32>(numeric_cast<float32>(atlas_spr->GetAtlas()->GetTexture()->Size.height) * atlas_spr->GetAtlasRect().y);
+        _picHexMaskData = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({mask_x, mask_y}, atlas_spr->GetSize());
     }
 
     _mapSize = GetSize();
@@ -870,10 +870,10 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                     const auto* spr = item->Spr;
 
                     if (spr != nullptr) {
-                        const auto l = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->Offset.x;
-                        const auto t = field.Offset.y + _engine->Settings.MapHexHeight / 2 - spr->Offset.y;
-                        const auto r = l + spr->Size.width;
-                        const auto b = t + spr->Size.height;
+                        const auto l = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->GetOffset().x;
+                        const auto t = field.Offset.y + _engine->Settings.MapHexHeight / 2 - spr->GetOffset().y;
+                        const auto r = l + spr->GetSize().width;
+                        const auto b = t + spr->GetSize().height;
 
                         if (result.isZero()) {
                             result = irect32 {l, t, r, b};
@@ -1117,7 +1117,7 @@ void MapView::ShowHex(const ViewField& vf)
     if (_isShowTrack && GetHexTrack(hex) != 0) {
         const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
         auto* mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, //
-            {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
+            {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
             spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
         AddSpriteToChain(field, mspr);
     }
@@ -1126,7 +1126,7 @@ void MapView::ShowHex(const ViewField& vf)
     if (_isShowHex) {
         const auto& spr = _picHex[0];
         auto* mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, //
-            {spr ? spr->Size.width / 2 : 0, spr ? spr->Size.height : 0}, &field.Offset, //
+            {spr ? spr->GetSize().width / 2 : 0, spr ? spr->GetSize().height : 0}, &field.Offset, //
             spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
         AddSpriteToChain(field, mspr);
     }
@@ -1269,7 +1269,7 @@ void MapView::ShowHex(const ViewField& vf)
             if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
                 const auto& spr = _picTrack1;
                 auto* mspr = _mapSprites.AddSprite(DrawOrderType::Last, hex, //
-                    {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Size.height / 2 : 0)}, &field.Offset, //
+                    {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
                     spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
                 AddSpriteToChain(field, mspr);
             }
@@ -2015,10 +2015,10 @@ auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 
     FO_RUNTIME_ASSERT(spr);
 
-    const auto left = std::max(spr->Size.width / 2 + spr->Offset.x + offset.x + _maxScroll.width - _wLeft * _engine->Settings.MapHexWidth, 0);
-    const auto right = std::max(spr->Size.width / 2 - spr->Offset.x - offset.x + _maxScroll.width - _wRight * _engine->Settings.MapHexWidth, 0);
-    const auto top = std::max(0 + spr->Offset.y + offset.y + _maxScroll.height - _hTop * _engine->Settings.MapHexLineHeight, 0);
-    const auto bottom = std::max(spr->Size.height - spr->Offset.y - offset.y + _maxScroll.height - _hBottom * _engine->Settings.MapHexLineHeight, 0);
+    const auto left = std::max(spr->GetSize().width / 2 + spr->GetOffset().x + offset.x + _maxScroll.width - _wLeft * _engine->Settings.MapHexWidth, 0);
+    const auto right = std::max(spr->GetSize().width / 2 - spr->GetOffset().x - offset.x + _maxScroll.width - _wRight * _engine->Settings.MapHexWidth, 0);
+    const auto top = std::max(0 + spr->GetOffset().y + offset.y + _maxScroll.height - _hTop * _engine->Settings.MapHexLineHeight, 0);
+    const auto bottom = std::max(spr->GetSize().height - spr->GetOffset().y - offset.y + _maxScroll.height - _hBottom * _engine->Settings.MapHexLineHeight, 0);
 
     if (left != 0 || right != 0 || top != 0 || bottom != 0) {
         _wLeft += left / _engine->Settings.MapHexWidth + (left % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
@@ -2473,7 +2473,7 @@ void MapView::DrawMap()
 
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
-                _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
+                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight);
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
 
@@ -2493,7 +2493,7 @@ void MapView::DrawMap()
 
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
-                _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
+                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog);
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
 
@@ -3298,9 +3298,9 @@ auto MapView::GetHexAtScreenPos(ipos32 screen_pos, mpos& hex, ipos32* hex_offset
 
     // Correct with hex color mask
     if (_picHexMask) {
-        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->Size.width - 1);
-        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->Size.height - 1);
-        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->Size.width + mask_x];
+        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->GetSize().width - 1);
+        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->GetSize().height - 1);
+        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->GetSize().width + mask_x];
         const uint8 mask_color_r = mask_color.comp.r;
 
         if (mask_color_r == 50) {
@@ -3348,10 +3348,10 @@ auto MapView::GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_
         const auto* spr = item->Spr;
         const auto hex = item->GetHex();
         const auto& field = _hexField->GetCellForReading(hex);
-        const auto l = field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 - spr->Size.width / 2 - extra_range;
-        const auto r = field.Offset.x + item->SprOffset.x + spr->Offset.x + _engine->Settings.MapHexWidth / 2 + spr->Size.width / 2 + extra_range;
-        const auto t = field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 - spr->Size.height - extra_range;
-        const auto b = field.Offset.y + item->SprOffset.y + spr->Offset.y + _engine->Settings.MapHexHeight / 2 + extra_range;
+        const auto l = field.Offset.x + item->SprOffset.x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 - spr->GetSize().width / 2 - extra_range;
+        const auto r = field.Offset.x + item->SprOffset.x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 + spr->GetSize().width / 2 + extra_range;
+        const auto t = field.Offset.y + item->SprOffset.y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 - spr->GetSize().height - extra_range;
+        const auto b = field.Offset.y + item->SprOffset.y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;

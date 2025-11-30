@@ -837,7 +837,7 @@ FO_SCRIPT_API isize32 Client_Game_GetSpriteSize(FOClient* client, uint32 sprId)
         return {};
     }
 
-    return spr->Size;
+    return spr->GetSize();
 }
 
 ///@ ExportMethod
@@ -951,8 +951,8 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
     auto y = pos.y;
 
     if (offs) {
-        x += -spr->Size.width / 2 + spr->Offset.x;
-        y += -spr->Size.height + spr->Offset.y;
+        x += -spr->GetSize().width / 2 + spr->GetOffset().x;
+        y += -spr->GetSize().height + spr->GetOffset().y;
     }
 
     client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_SPRITE);
@@ -1003,7 +1003,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, fpos32
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->Size), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->GetSize()), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -1035,15 +1035,8 @@ FO_SCRIPT_API void Client_Game_DrawSprite(FOClient* client, uint32 sprId, ipos32
         return;
     }
 
-    auto x = pos.x;
-    auto y = pos.y;
-
-    if (offs) {
-        x += spr->Offset.x;
-        y += spr->Offset.y;
-    }
-
-    client->SprMngr.DrawSpriteSizeExt(spr, {x, y}, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    const fpos32 draw_pos = fpos32(pos + (offs ? spr->GetOffset() : ipos32()));
+    client->SprMngr.DrawSpriteSizeExt(spr, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///@ ExportMethod
@@ -1200,8 +1193,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(FOClient* client, uint32 instance, 
 
     model_spr->DrawToAtlas();
 
-    const auto result_x = iround<int32>(x) - model_spr->Size.width / 2 + model_spr->Offset.x;
-    const auto result_y = iround<int32>(y) - model_spr->Size.height + model_spr->Offset.y;
+    const auto result_x = iround<int32>(x) - model_spr->GetSize().width / 2 + model_spr->GetOffset().x;
+    const auto result_y = iround<int32>(y) - model_spr->GetSize().height + model_spr->GetOffset().y;
 
     client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
 
@@ -1292,7 +1285,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
 
     client->SprMngr.DrawRenderTarget(rt, true);
 }
@@ -1317,7 +1310,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
 
     const auto l = std::clamp(pos.x, 0, client->Settings.ScreenWidth);
     const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
@@ -1349,7 +1342,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
 
     const auto from = frect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
         std::clamp(fromY, 0, client->Settings.ScreenHeight), //

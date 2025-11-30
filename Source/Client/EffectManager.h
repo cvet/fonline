@@ -108,10 +108,9 @@ public:
 private:
     void PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time);
 
-    RenderSettings& _settings;
-    FileSystem& _resources;
+    raw_ptr<RenderSettings> _settings;
+    raw_ptr<FileSystem> _resources;
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE();

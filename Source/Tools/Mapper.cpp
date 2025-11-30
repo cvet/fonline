@@ -2670,9 +2670,9 @@ void FOMapper::CurDraw()
             if (spr != nullptr) {
                 ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
                 pos += ipos32(proto_item->GetOffset());
-                pos += spr->Offset;
+                pos += spr->GetOffset();
                 pos += ipos32(Settings.MapHexWidth / 2, Settings.MapHexHeight / 2);
-                pos -= ipos32(spr->Size.width / 2, spr->Size.height);
+                pos -= ipos32(spr->GetSize().width / 2, spr->GetSize().height);
 
                 if (proto_item->GetIsTile()) {
                     if (DrawRoof) {
@@ -2685,8 +2685,8 @@ void FOMapper::CurDraw()
                     }
                 }
 
-                const auto width = iround<int32>(numeric_cast<float32>(spr->Size.width) * _curMap->GetSpritesZoom());
-                const auto height = iround<int32>(numeric_cast<float32>(spr->Size.height) * _curMap->GetSpritesZoom());
+                const auto width = iround<int32>(numeric_cast<float32>(spr->GetSize().width) * _curMap->GetSpritesZoom());
+                const auto height = iround<int32>(numeric_cast<float32>(spr->GetSize().height) * _curMap->GetSpritesZoom());
                 SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
             }
         }
@@ -2705,11 +2705,11 @@ void FOMapper::CurDraw()
             }
 
             ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
-            pos += anim->Offset;
-            pos -= ipos32(anim->Size.width / 2, anim->Size.height);
+            pos += anim->GetOffset();
+            pos -= ipos32(anim->GetSize().width / 2, anim->GetSize().height);
 
-            const auto width = iround<int32>(numeric_cast<float32>(anim->Size.width) * _curMap->GetSpritesZoom());
-            const auto height = iround<int32>(numeric_cast<float32>(anim->Size.height) * _curMap->GetSpritesZoom());
+            const auto width = iround<int32>(numeric_cast<float32>(anim->GetSize().width) * _curMap->GetSpritesZoom());
+            const auto height = iround<int32>(numeric_cast<float32>(anim->GetSize().height) * _curMap->GetSpritesZoom());
             SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
         }
         else {

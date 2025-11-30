@@ -216,7 +216,7 @@ void CritterHexView::NextAnim()
 
         _curAnim->Frames = frames;
         _curAnim->FrameIndex = 0;
-        _curAnim->FramesDuration = timespan(std::chrono::milliseconds(frames->WholeTicks != 0 ? frames->WholeTicks : 100));
+        _curAnim->FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
     }
 
     _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->ContextItem.get(), false);
@@ -338,10 +338,10 @@ void CritterHexView::RefreshView(bool no_smooth)
 
                 _idle2dAnim.Frames = frames;
                 _idle2dAnim.FrameIndex = 0;
-                _idle2dAnim.FramesDuration = timespan(std::chrono::milliseconds(frames->WholeTicks != 0 ? frames->WholeTicks : 100));
+                _idle2dAnim.FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
 
                 if (GetCondition() == CritterCondition::Dead) {
-                    _idle2dAnim.FrameIndex = _idle2dAnim.Frames->CntFrm - 1;
+                    _idle2dAnim.FrameIndex = _idle2dAnim.Frames->GetFramesCount() - 1;
                 }
             }
 
@@ -524,7 +524,7 @@ void CritterHexView::Process()
 
         const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32>() * 100 / cur_anim.FramesDuration.to_ms<int32>();
         const auto frm_proc = _curAnim.has_value() ? std::min(anim_proc, 100) : anim_proc % 100;
-        const auto frm_index = lerp(0, cur_anim.Frames->CntFrm - 1, numeric_cast<float32>(frm_proc) / 100.0f);
+        const auto frm_index = lerp(0, cur_anim.Frames->GetFramesCount() - 1, numeric_cast<float32>(frm_proc) / 100.0f);
 
         if (frm_index != cur_anim.FrameIndex) {
             cur_anim.FrameIndex = frm_index;
@@ -727,19 +727,19 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cur_index = frm_index % anim->CntFrm;
+    const auto cur_index = frm_index % anim->GetFramesCount();
 
     Spr = anim->GetSpr(cur_index);
 
     _offsAnim = {};
 
-    if (anim->ActionAnim == CritterActionAnim::Walk || anim->ActionAnim == CritterActionAnim::Run) {
+    if (anim->GetActionAnim() == CritterActionAnim::Walk || anim->GetActionAnim() == CritterActionAnim::Run) {
         // ...
     }
     else {
         for (const auto i : iterate_range(cur_index + 1)) {
-            _offsAnim.x += anim->SprOffset[i].x;
-            _offsAnim.y += anim->SprOffset[i].y;
+            _offsAnim.x += anim->GetSprOffset()[i].x;
+            _offsAnim.y += anim->GetSprOffset()[i].y;
         }
     }
 

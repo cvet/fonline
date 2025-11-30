@@ -98,7 +98,6 @@ public:
         return *this;
     }
 
-#if 0 // Copy constructible/assignable
     FO_FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept :
         _ptr(p._ptr)
     {
@@ -110,7 +109,7 @@ public:
         _ptr(p._ptr)
     {
     }
-    FO_FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr&
+    FO_FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& // NOLINT(modernize-use-equals-default)
     {
         _ptr = p._ptr;
         return *this;
@@ -122,19 +121,8 @@ public:
         _ptr = p._ptr;
         return *this;
     }
-#else
-    FO_FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept = delete;
-    template<typename U>
-        requires(std::is_convertible_v<U*, T*>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept = delete;
-    FO_FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& = delete;
-    template<typename U>
-        requires(std::is_convertible_v<U*, T*>)
-    FO_FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr& = delete;
-#endif
 
-#if 0 // Implicit conversion to pointer
+#if 0 // Todo: raw_ptr maybe enable implicit conversion to pointer?
     // ReSharper disable once CppNonExplicitConversionOperator
     FO_FORCE_INLINE operator T*() noexcept { return _ptr; }
     // ReSharper disable once CppNonExplicitConversionOperator
@@ -299,9 +287,8 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T*
     {
-        T* p = _ptr;
-        _ptr = nullptr;
-        return p;
+        auto* old = std::exchange(_ptr, nullptr);
+        return old;
     }
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept

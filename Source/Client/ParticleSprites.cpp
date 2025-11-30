@@ -35,8 +35,10 @@
 
 FO_BEGIN_NAMESPACE();
 
-ParticleSprite::ParticleSprite(SpriteManager& spr_mngr) :
-    AtlasSprite(spr_mngr)
+ParticleSprite::ParticleSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, ParticleSpriteFactory* factory, unique_ptr<ParticleSystem>&& particle) :
+    AtlasSprite(spr_mngr, size, offset, atlas, atlas_node, atlas_rect, {}),
+    _factory {factory},
+    _particle {std::move(particle)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -113,8 +115,8 @@ void ParticleSprite::DrawToAtlas()
 }
 
 ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver) :
-    _sprMngr {spr_mngr},
-    _settings {settings}
+    _sprMngr {&spr_mngr},
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -134,7 +136,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     const auto draw_size = particle->GetDrawSize();
     const auto frame_ratio = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(draw_size.height);
-    const auto proj_height = numeric_cast<float32>(draw_size.height) * (1.0f / _settings.ModelProjFactor);
+    const auto proj_height = numeric_cast<float32>(draw_size.height) * (1.0f / _settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
     const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     mat44 world;
@@ -142,23 +144,16 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     particle->Setup(proj, world, {}, {}, {});
 
-    auto particle_spr = SafeAlloc::MakeShared<ParticleSprite>(_sprMngr);
+    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
 
-    particle_spr->_factory = this;
-    particle_spr->_particle = std::move(particle);
-    particle_spr->Size.width = draw_size.width;
-    particle_spr->Size.height = draw_size.height;
-    particle_spr->Offset.y = numeric_cast<int16>(draw_size.height / 4);
+    frect32 atlas_rect;
+    atlas_rect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->GetSize().width);
+    atlas_rect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->GetSize().height);
+    atlas_rect.width = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(atlas->GetSize().width);
+    atlas_rect.height = numeric_cast<float32>(draw_size.height) / numeric_cast<float32>(atlas->GetSize().height);
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr.GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
-
-    particle_spr->Atlas = atlas;
-    particle_spr->AtlasNode = atlas_node;
-    particle_spr->AtlasRect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->Size.width);
-    particle_spr->AtlasRect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->Size.height);
-    particle_spr->AtlasRect.width = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(atlas->Size.width);
-    particle_spr->AtlasRect.height = numeric_cast<float32>(draw_size.height) / numeric_cast<float32>(atlas->Size.height);
-
+    const ipos32 offset = ipos32(0, draw_size.height / 4);
+    auto particle_spr = SafeAlloc::MakeShared<ParticleSprite>(*_sprMngr, draw_size, offset, atlas, atlas_node, atlas_rect, this, std::move(particle));
     return particle_spr;
 }
 
@@ -169,12 +164,12 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, fr
     auto result = pair<RenderTexture*, frect32>();
 
     if (const auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        auto any_spr = _sprMngr.LoadSprite(path, AtlasType::MeshTextures);
+        auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
         auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;
-            result = pair {atlas_spr->Atlas->MainTex, atlas_spr->AtlasRect};
+            result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
             BreakIntoDebugger();
@@ -182,8 +177,8 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, fr
             _loadedParticleTextures[path] = nullptr;
         }
     }
-    else if (const auto& atlas_spr = it->second) {
-        result = pair {atlas_spr->Atlas->MainTex, atlas_spr->AtlasRect};
+    else if (auto& atlas_spr = it->second) {
+        result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
     }
 
     return result;
@@ -196,40 +191,41 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     FO_RUNTIME_ASSERT(_particleMngr);
 
     // Find place for render
-    const auto frame_size = particle_spr->Size;
+    const auto frame_size = particle_spr->GetSize();
 
     RenderTarget* rt_intermediate = nullptr;
-    for (auto* rt : _rtIntermediate) {
-        if (rt->MainTex->Size == frame_size) {
-            rt_intermediate = rt;
+
+    for (auto& rt : _rtIntermediate) {
+        if (rt->GetTexture()->Size == frame_size) {
+            rt_intermediate = rt.get();
             break;
         }
     }
 
     if (rt_intermediate == nullptr) {
-        rt_intermediate = _sprMngr.GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
-        _rtIntermediate.push_back(rt_intermediate);
+        rt_intermediate = _sprMngr->GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
+        _rtIntermediate.emplace_back(rt_intermediate);
     }
 
-    _sprMngr.GetRtMngr().PushRenderTarget(rt_intermediate);
-    _sprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
+    _sprMngr->GetRtMngr().PushRenderTarget(rt_intermediate);
+    _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
     // Draw particles
     particle_spr->GetParticle()->Draw();
 
     // Restore render target
-    _sprMngr.GetRtMngr().PopRenderTarget();
+    _sprMngr->GetRtMngr().PopRenderTarget();
 
     // Copy render
-    const int32 l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-    const int32 t = iround<int32>(particle_spr->AtlasRect.y * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-    const int32 w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-    const int32 h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+    const int32 l = iround<int32>(particle_spr->GetAtlasRect().x * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().width));
+    const int32 t = iround<int32>(particle_spr->GetAtlasRect().y * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().height));
+    const int32 w = iround<int32>(particle_spr->GetAtlasRect().width * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().width));
+    const int32 h = iround<int32>(particle_spr->GetAtlasRect().height * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().height));
     const irect32 region_to = irect32(l, t, w, h);
 
-    _sprMngr.GetRtMngr().PushRenderTarget(particle_spr->Atlas->RTarg);
-    _sprMngr.DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
-    _sprMngr.GetRtMngr().PopRenderTarget();
+    _sprMngr->GetRtMngr().PushRenderTarget(particle_spr->GetAtlas()->GetRenderTarget());
+    _sprMngr->DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
+    _sprMngr->GetRtMngr().PopRenderTarget();
 }
 
 FO_END_NAMESPACE();

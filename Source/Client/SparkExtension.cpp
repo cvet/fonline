@@ -345,7 +345,7 @@ namespace SPK::FO
         _effectName = effect_name;
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
-            _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::QuadSprite, _effectName);
+            _effect = _particleMngr->_effectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
         }
         else {
             _effect = nullptr;

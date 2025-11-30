@@ -93,15 +93,15 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
         return {};
     }
 
-    auto x = _hexOffset.x - spr->Size.width / 2 + spr->Offset.x + _pHexOffset->x;
-    auto y = _hexOffset.y - spr->Size.height + spr->Offset.y + _pHexOffset->y;
+    auto x = _hexOffset.x - spr->GetSize().width / 2 + spr->GetOffset().x + _pHexOffset->x;
+    auto y = _hexOffset.y - spr->GetSize().height + spr->GetOffset().y + _pHexOffset->y;
 
     if (_sprOffset) {
         x += _sprOffset->x;
         y += _sprOffset->y;
     }
 
-    return {x, y, spr->Size.width, spr->Size.height};
+    return {x, y, spr->GetSize().width, spr->GetSize().height};
 }
 
 auto MapSprite::GetViewRect() const noexcept -> irect32

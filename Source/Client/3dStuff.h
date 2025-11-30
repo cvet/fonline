@@ -67,7 +67,7 @@ class ModelHierarchy;
 struct MeshTexture
 {
     hstring Name {};
-    RenderTexture* MainTex {};
+    raw_ptr<RenderTexture> MainTex {};
     frect32 AtlasOffsetData {};
 };
 
@@ -75,32 +75,33 @@ struct MeshData
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
 
-    ModelBone* Owner {};
+    raw_ptr<ModelBone> Owner {};
     vector<Vertex3D> Vertices {};
     vector<vindex_t> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};
-    vector<ModelBone*> SkinBones {};
+    vector<raw_ptr<ModelBone>> SkinBones {};
     string EffectName {};
 };
 
 struct MeshInstance
 {
-    MeshData* Mesh {};
+    raw_ptr<MeshData> Mesh {};
     bool Disabled {};
-    MeshTexture* CurTexures[MODEL_MAX_TEXTURES] {};
-    MeshTexture* DefaultTexures[MODEL_MAX_TEXTURES] {};
-    MeshTexture* LastTexures[MODEL_MAX_TEXTURES] {};
-    RenderEffect* CurEffect {};
-    RenderEffect* DefaultEffect {};
-    RenderEffect* LastEffect {};
+    raw_ptr<MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};
+    raw_ptr<MeshTexture> DefaultTexures[MODEL_MAX_TEXTURES] {};
+    raw_ptr<MeshTexture> LastTexures[MODEL_MAX_TEXTURES] {};
+    raw_ptr<RenderEffect> CurEffect {};
+    raw_ptr<RenderEffect> DefaultEffect {};
+    raw_ptr<RenderEffect> LastEffect {};
 };
 
 struct ModelBone
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
     void FixAfterLoad(ModelBone* root_bone);
+    auto Find(hstring bone_name) const noexcept -> const ModelBone*;
     auto Find(hstring bone_name) noexcept -> ModelBone*;
 
     hstring Name {};
@@ -152,14 +153,14 @@ struct ModelAnimationData
     vector<hstring> DisabledMesh {};
     vector<tuple<string, hstring, int32>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
-    vector<ModelCutData*> CutInfo {};
+    vector<raw_ptr<ModelCutData>> CutInfo {};
 };
 
 struct ModelParticleSystem
 {
     uint32 Id {};
     unique_ptr<ParticleSystem> Particle {};
-    const ModelBone* Bone {};
+    raw_ptr<const ModelBone> Bone {};
     vec3 Move {};
     float32 Rot {};
 };
@@ -205,13 +206,13 @@ private:
     static auto MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool;
     static auto MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool;
 
-    RenderSettings& _settings;
-    FileSystem& _resources;
-    EffectManager& _effectMngr;
-    GameTimer& _gameTime;
-    HashResolver& _hashResolver;
-    NameResolver& _nameResolver;
-    AnimationResolver& _animNameResolver;
+    raw_ptr<RenderSettings> _settings;
+    raw_ptr<FileSystem> _resources;
+    raw_ptr<EffectManager> _effectMngr;
+    raw_ptr<GameTimer> _gameTime;
+    mutable raw_ptr<HashResolver> _hashResolver;
+    raw_ptr<NameResolver> _nameResolver;
+    raw_ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
     GeometryHelper _geometry;
     ParticleManager _particleMngr;
@@ -253,7 +254,7 @@ public:
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _curStateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _curActionAnim; }
     [[nodiscard]] auto GetMovingAnim() const noexcept -> CritterActionAnim;
-    [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
+    [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool;
     [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
@@ -287,17 +288,17 @@ public:
 private:
     struct CombinedMesh
     {
-        RenderEffect* DrawEffect {};
+        raw_ptr<RenderEffect> DrawEffect {};
         unique_ptr<RenderDrawBuffer> MeshBuf {};
         size_t EncapsulatedMeshCount {};
-        vector<MeshData*> Meshes {};
+        vector<raw_ptr<MeshData>> Meshes {};
         vector<uint32> MeshVertices {};
         vector<uint32> MeshIndices {};
         vector<int32> MeshAnimLayers {};
         size_t CurBoneMatrix {};
-        vector<ModelBone*> SkinBones {};
+        vector<raw_ptr<ModelBone>> SkinBones {};
         vector<mat44> SkinBoneOffsets {};
-        MeshTexture* Textures[MODEL_MAX_TEXTURES] {};
+        raw_ptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
@@ -317,7 +318,7 @@ private:
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
 
-    ModelManager& _modelMngr;
+    raw_ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
     mat44 _frameProj {};
     mat44 _frameProjColMaj {};
@@ -328,7 +329,7 @@ private:
     bool _disableCulling {};
     vector<unique_ptr<MeshInstance>> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
-    ModelInformation* _modelInfo {};
+    raw_ptr<ModelInformation> _modelInfo {};
     unique_ptr<ModelAnimationController> _bodyAnimController {};
     unique_ptr<ModelAnimationController> _moveAnimController {};
     int32 _curLayers[MODEL_LAYERS_COUNT] {};
@@ -351,7 +352,7 @@ private:
     float32 _animPosTime {};
     float32 _animDuration {};
     bool _allowMeshGeneration {};
-    vector<ModelCutData*> _allCuts {};
+    vector<raw_ptr<ModelCutData>> _allCuts {};
     function<void(CritterStateAnim&, CritterActionAnim&)> _animInitCallback {};
     bool _isStayingPose {};
     bool _isMoving {};
@@ -367,18 +368,17 @@ private:
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
+    bool _nonConstHelper {};
 
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};
-    ModelInstance* _parent {};
+    raw_ptr<ModelInstance> _parent {};
     raw_ptr<ModelBone> _parentBone {};
     mat44 _parentMatrix {};
-    vector<ModelBone*> _linkBones {};
+    vector<raw_ptr<ModelBone>> _linkBones {};
     vector<mat44> _linkMatricles {};
     ModelAnimationData _animLink {};
     bool _childChecker {};
-
-    bool _nonConstHelper {};
 };
 
 class ModelInformation final
@@ -397,17 +397,17 @@ public:
     ~ModelInformation() = default;
 
 private:
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed) const -> int32;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed) -> int32;
     [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;
     [[nodiscard]] auto CreateInstance() -> ModelInstance*;
 
-    ModelManager& _modelMngr;
+    raw_ptr<ModelManager> _modelMngr;
     string _fileName {};
     string _pathName {};
-    ModelHierarchy* _hierarchy {};
+    raw_ptr<ModelHierarchy> _hierarchy {};
     unique_ptr<ModelAnimationController> _animController {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
@@ -444,12 +444,11 @@ private:
     auto GetTexture(string_view tex_name) -> MeshTexture*;
     auto GetEffect(string_view name) -> RenderEffect*;
 
-    ModelManager& _modelMngr;
+    raw_ptr<ModelManager> _modelMngr;
     string _fileName {};
-    ModelBone* _rootBone {};
-    vector<ModelBone*> _allBones {};
-    vector<ModelBone*> _allDrawBones {};
-    bool _nonConstHelper {};
+    raw_ptr<ModelBone> _rootBone {};
+    vector<raw_ptr<ModelBone>> _allBones {};
+    vector<raw_ptr<ModelBone>> _allDrawBones {};
 };
 
 FO_END_NAMESPACE();

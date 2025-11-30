@@ -36,8 +36,8 @@
 FO_BEGIN_NAMESPACE();
 
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
-    _settings {settings},
-    _resources {resources}
+    _settings {&settings},
+    _resources {&resources}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -52,7 +52,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
 
     // Load new
     auto effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
-        if (const auto file = _resources.ReadFile(path2)) {
+        if (const auto file = _resources->ReadFile(path2)) {
             return file.GetStr();
         }
 
@@ -79,8 +79,6 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
@@ -101,7 +99,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
         auto& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
 
         for (size_t i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
-            script_value_buf->ScriptValue[i] = i < _settings.EffectValues.size() ? _settings.EffectValues[i] : 0.0f;
+            script_value_buf->ScriptValue[i] = i < _settings->EffectValues.size() ? _settings->EffectValues[i] : 0.0f;
         }
     }
 }
@@ -116,7 +114,7 @@ void EffectManager::LoadMinimalEffects()
 
     auto effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings.ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
@@ -132,7 +130,7 @@ void EffectManager::LoadDefaultEffects()
 
     int32 effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings.ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
