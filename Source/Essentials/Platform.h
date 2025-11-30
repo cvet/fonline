@@ -58,6 +58,22 @@ struct Platform
     // Linux & Mac: fork
     // Other: warning log message
     static auto ForkProcess() noexcept -> bool;
+
+    // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
+    // Linux & Mac: dlopen/dlclose/dlsym
+    // Other: nullptr
+    static auto LoadModule(const string& module_name) noexcept -> void*;
+    static void UnloadModule(void* module_handle) noexcept;
+    static auto GetFuncAddr(void* module_handle, const string& func_name) noexcept -> void*;
+    template<typename T>
+    static auto GetFuncAddr(void* module_handle, const string& func_name) noexcept -> T
+    {
+        return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
+    }
+
+    // Windows: GetAsyncKeyState
+    // Other: false
+    static auto IsShiftDown() noexcept -> bool;
 };
 
 FO_END_NAMESPACE();

@@ -47,7 +47,7 @@ FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const D
     FO_RUNTIME_ASSERT(_dataSource);
 }
 
-auto FileHeader::GetName() const -> string_view
+auto FileHeader::GetNameNoExt() const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,12 +80,13 @@ auto FileHeader::GetPath() const -> const string&
     return _filePath;
 }
 
-auto FileHeader::GetFullPath() const -> string
+auto FileHeader::GetDiskPath() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_isLoaded);
     FO_RUNTIME_ASSERT(!_filePath.empty());
+    FO_RUNTIME_ASSERT(_dataSource->IsDiskDir());
 
     return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
@@ -133,19 +134,17 @@ File::File(string_view path, size_t size, uint64 write_time, const DataSource* d
     FO_STACK_TRACE_ENTRY();
 }
 
-File::File(string_view path, uint64 write_time, const DataSource* ds, const_span<uint8> buf, bool make_copy) :
-    FileHeader(path, buf.size(), write_time, ds)
+auto File::Load(const FileHeader& fh) -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (make_copy) {
-        auto buf_copy = SafeAlloc::MakeUniqueArr<uint8>(buf.size());
-        MemCopy(buf_copy.get(), buf.data(), buf.size());
-        _fileBuf = unique_del_ptr<const uint8> {buf_copy.release(), [](const uint8* p) { delete[] p; }};
-    }
-    else {
-        _fileBuf = unique_del_ptr<const uint8> {buf.data(), [](const uint8* p) { ignore_unused(p); }};
-    }
+    FO_RUNTIME_ASSERT(fh);
+    auto size = fh.GetSize();
+    auto write_time = fh.GetWriteTime();
+    auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), size, write_time);
+    FO_RUNTIME_ASSERT(buf);
+
+    return File(fh.GetPath(), size, write_time, fh.GetDataSource(), std::move(buf));
 }
 
 auto File::GetStr() const -> string
@@ -424,85 +423,56 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _allFiles.reserve(files.size());
+    _files.reserve(files.size());
+    _nameToIndex.reserve(_files.size());
+    _pathToIndex.reserve(_files.size());
 
-    for (const auto& file : files) {
-        _allFiles.emplace_back(file.Copy());
+    for (const auto& fh : files) {
+        _files.emplace_back(fh.Copy());
+        _nameToIndex.emplace(_files.back().GetNameNoExt(), _files.size() - 1);
+        _pathToIndex.emplace(_files.back().GetPath(), _files.size() - 1);
     }
 }
 
 FileCollection::FileCollection(vector<FileHeader> files) :
-    _allFiles {std::move(files)}
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
-auto FileCollection::MoveNext() -> bool
+    _files {std::move(files)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
+    _nameToIndex.reserve(_files.size());
+    _pathToIndex.reserve(_files.size());
 
-    return ++_curFileIndex < numeric_cast<int32>(_allFiles.size());
-}
+    size_t index = 0;
 
-void FileCollection::ResetCounter()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _curFileIndex = -1;
-}
-
-auto FileCollection::GetCurFile() const -> File
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
-
-    const auto& fh = _allFiles[_curFileIndex];
-    auto fs = fh.GetSize();
-    auto wt = fh.GetWriteTime();
-    auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-    FO_RUNTIME_ASSERT(buf);
-    return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
-}
-
-auto FileCollection::GetCurFileHeader() const -> FileHeader
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_curFileIndex >= 0);
-    FO_RUNTIME_ASSERT(_curFileIndex < numeric_cast<int32>(_allFiles.size()));
-
-    const auto& fh = _allFiles[_curFileIndex];
-    return FileHeader(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource());
-}
-
-auto FileCollection::FindFileByName(string_view name) const -> File
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_allFiles.empty()) {
-        return {};
+    for (const auto& fh : _files) {
+        _nameToIndex.emplace(fh.GetNameNoExt(), index);
+        _pathToIndex.emplace(fh.GetPath(), index);
+        ++index;
     }
+}
 
-    if (_nameToIndex.empty()) {
-        size_t index = 0;
+auto FileCollection::GetFilesCount() const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
 
-        for (const auto& fh : _allFiles) {
-            _nameToIndex.emplace(fh.GetName(), index);
-            ++index;
-        }
-    }
+    return _files.size();
+}
 
-    if (const auto it = _nameToIndex.find(name); it != _nameToIndex.end()) {
-        const auto& fh = _allFiles[it->second];
-        auto fs = fh.GetSize();
-        auto wt = fh.GetWriteTime();
-        auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-        FO_RUNTIME_ASSERT(buf);
-        return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
+auto FileCollection::GetFileByIndex(size_t index) const -> const FileHeader&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(index < _files.size());
+    return _files[index];
+}
+
+auto FileCollection::FindFileByName(string_view name_no_ext) const -> File
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _nameToIndex.find(name_no_ext); it != _nameToIndex.end()) {
+        const auto& fh = _files[it->second];
+        return File::Load(fh);
     }
 
     return {};
@@ -512,62 +482,46 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_allFiles.empty()) {
-        return {};
-    }
-
-    if (_pathToIndex.empty()) {
-        size_t index = 0;
-
-        for (const auto& fh : _allFiles) {
-            _pathToIndex.emplace(fh.GetPath(), index);
-            ++index;
-        }
-    }
-
     if (const auto it = _pathToIndex.find(path); it != _pathToIndex.end()) {
-        const auto& fh = _allFiles[it->second];
-        auto fs = fh.GetSize();
-        auto wt = fh.GetWriteTime();
-        auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), fs, wt);
-        FO_RUNTIME_ASSERT(buf);
-        return File(fh.GetPath(), fh.GetSize(), fh.GetWriteTime(), fh.GetDataSource(), std::move(buf));
+        const auto& fh = _files[it->second];
+        return File::Load(fh);
     }
 
     return {};
 }
 
-auto FileCollection::GetFilesCount() const -> size_t
+void FileSystem::AddDirSource(string_view dir, bool recursive, bool non_cached, bool maybe_not_available)
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _allFiles.size();
-}
-
-auto FileCollection::Copy() const -> FileCollection
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<FileHeader> files;
-    files.reserve(_allFiles.size());
-
-    for (const auto& file : _allFiles) {
-        files.emplace_back(file.Copy());
-    }
-
-    return FileCollection(std::move(files));
-}
-
-void FileSystem::AddDataSource(string_view path, DataSourceType type)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto ds = DataSource::Mount(path, type);
-
+    auto ds = DataSource::MountDir(dir, recursive, non_cached, maybe_not_available);
     _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
-void FileSystem::AddDataSource(unique_ptr<DataSource> data_source)
+void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not_available)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsPackaged()) {
+        auto ds = DataSource::MountPack(dir, pack, maybe_not_available);
+        _dataSources.emplace(_dataSources.begin(), std::move(ds));
+    }
+    else {
+        auto ds = DataSource::MountDir(strex(dir).combine_path(pack), true, false, maybe_not_available);
+        _dataSources.emplace(_dataSources.begin(), std::move(ds));
+    }
+}
+
+void FileSystem::AddPacksSource(string_view dir, const vector<string>& packs)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& pack : packs) {
+        AddPackSource(dir, pack);
+    }
+}
+
+void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -597,13 +551,13 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
 
     for (const auto& ds : _dataSources) {
         for (const auto& path : ds->GetFileNames(dir, recursive, ext)) {
-            if (!processed_files.insert(path).second) {
+            if (!processed_files.emplace(path).second) {
                 continue;
             }
 
             size_t size = 0;
             uint64 write_time = 0;
-            const auto ok = ds->IsFilePresent(path, size, write_time);
+            const auto ok = ds->GetFileInfo(path, size, write_time);
             FO_RUNTIME_ASSERT(ok);
             auto file_header = FileHeader(path, size, write_time, ds.get());
             files.emplace_back(std::move(file_header));
@@ -611,6 +565,22 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
     }
 
     return FileCollection(std::move(files));
+}
+
+auto FileSystem::IsFileExists(string_view path) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!path.empty());
+    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+
+    for (const auto& ds : _dataSources) {
+        if (ds->IsFileExists(path)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 auto FileSystem::ReadFile(string_view path) const -> File
@@ -651,7 +621,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
         size_t size = 0;
         uint64 write_time = 0;
 
-        if (ds->IsFilePresent(path, size, write_time)) {
+        if (ds->GetFileInfo(path, size, write_time)) {
             return FileHeader(path, size, write_time, ds.get());
         }
     }

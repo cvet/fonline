@@ -139,21 +139,15 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& res_pack : settings.GetResourcePacks()) {
+    for (const auto& res_pack : Settings.GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDir) {
-            InputResources.AddDataSource(dir, res_pack.RecursiveInput ? DataSourceType::Default : DataSourceType::DirRoot);
+            RawResources.AddDirSource(dir, res_pack.RecursiveInput, true);
         }
     }
 
-    BakedResources.AddDataSource(SafeAlloc::MakeUnique<BakerDataSource>(InputResources, settings));
+    BakedResources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(Settings));
 
-    auto imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
-        const auto file = BakedResources.ReadFile(path);
-        FO_RUNTIME_ASSERT_STR(file, "Post load ImGui_Default effect not found");
-        return file.GetStr();
-    });
-
-    App->SetImGuiEffect(std::move(imgui_effect));
+    App->LoadImGuiEffect(BakedResources);
 
     _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(*this));
 }

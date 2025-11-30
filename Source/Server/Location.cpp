@@ -52,7 +52,7 @@ auto Location::GetMapByIndex(int32 index) noexcept -> Map*
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (index < 0 || index >= numeric_cast<int>(_locMaps.size())) {
+    if (index < 0 || index >= numeric_cast<int32>(_locMaps.size())) {
         return nullptr;
     }
 
@@ -97,9 +97,32 @@ void Location::AddMap(Map* map)
 
     FO_RUNTIME_ASSERT(map);
 
-    _locMaps.emplace_back(map);
+    vec_add_unique_value(_locMaps, map);
+
+    auto map_ids = GetMapIds();
+    vec_add_unique_value(map_ids, map->GetId());
+    SetMapIds(map_ids);
+
     map->SetLocId(GetId());
-    map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()));
+    map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()) - 1);
+    map->SetLocation(this);
+}
+
+void Location::RemoveMap(Map* map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(map);
+
+    vec_remove_unique_value(_locMaps, map);
+
+    auto map_ids = GetMapIds();
+    vec_remove_unique_value(map_ids, map->GetId());
+    SetMapIds(map_ids);
+
+    map->SetLocId({});
+    map->SetLocMapIndex({});
+    map->SetLocation(nullptr);
 }
 
 FO_END_NAMESPACE();

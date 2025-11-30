@@ -141,7 +141,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
     }
 
     if (errors != 0) {
-        throw MapLoaderException("Map load error", errors);
+        throw MapLoaderException("Map load error", name);
     }
 }
 

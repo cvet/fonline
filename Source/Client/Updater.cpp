@@ -45,7 +45,7 @@ static auto* StrCantConnectToServer = "Can't connect to the server!";
 static auto* StrConnectionEstablished = "Connection established";
 static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
-static auto* StrClientOutdated = "Client binary outdated";
+static auto* StrClientOutdated = "Client outdated, please update it";
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {settings},
@@ -58,15 +58,14 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddDataSource(_settings.EmbeddedResources);
-    _resources.AddDataSource(_settings.ClientResources, DataSourceType::DirRoot);
+    _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
+    _resources.AddDirSource(_settings.ClientResources, false, true, true);
 
     if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddDataSource(strex(_settings.ClientResources).combine_path(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+        _resources.AddPackSource(IsPackaged() ? _settings.ClientResources : _settings.BakeOutput, _settings.DefaultSplashPack, true);
     }
 
     _effectMngr.LoadMinimalEffects();
-
     _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(_sprMngr));
 
     // Wait screen
@@ -204,13 +203,6 @@ auto Updater::Process() -> bool
     return !_aborted && _fileListReceived && _filesToUpdate.empty();
 }
 
-auto Updater::MakeWritePath(string_view fname) const -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(_settings.ClientResources).combine_path(fname);
-}
-
 void Updater::AddText(string_view text)
 {
     FO_STACK_TRACE_ENTRY();
@@ -252,8 +244,7 @@ void Updater::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-
-        resources.AddDataSource(_settings.ClientResources, DataSourceType::DirRoot);
+        resources.AddDirSource(_settings.ClientResources, false, true, true);
 
         auto reader = DataReader(data);
 
@@ -338,16 +329,18 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto make_write_path = [this](string_view fname) -> string { return strex(_settings.ClientResources).combine_path(fname); };
+
     if (_tempFile) {
         _tempFile = nullptr;
 
         const auto& prev_update_file = _filesToUpdate.front();
 
-        if (!DiskFileSystem::DeleteFile(MakeWritePath(prev_update_file.Name))) {
+        if (!DiskFileSystem::DeleteFile(make_write_path(prev_update_file.Name))) {
             Abort(StrFilesystemError);
             return;
         }
-        if (!DiskFileSystem::RenameFile(MakeWritePath(strex("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
+        if (!DiskFileSystem::RenameFile(make_write_path(strex("~{}", prev_update_file.Name)), make_write_path(prev_update_file.Name))) {
             Abort(StrFilesystemError);
             return;
         }
@@ -362,8 +355,8 @@ void Updater::GetNextFile()
         _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 
-        DiskFileSystem::DeleteFile(MakeWritePath(strex("~{}", next_update_file.Name)));
-        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(strex("~{}", next_update_file.Name)), true));
+        DiskFileSystem::DeleteFile(make_write_path(strex("~{}", next_update_file.Name)));
+        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(make_write_path(strex("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
             Abort(StrFilesystemError);

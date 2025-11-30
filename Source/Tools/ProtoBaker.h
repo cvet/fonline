@@ -56,12 +56,10 @@ public:
     auto operator=(ProtoBaker&&) noexcept = delete;
     ~ProtoBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override;
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    auto BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files, bool write_texts) const -> vector<uint8>;
+    auto BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>;
 };
 
 FO_END_NAMESPACE();

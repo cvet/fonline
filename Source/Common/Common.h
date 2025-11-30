@@ -66,6 +66,9 @@
 
 FO_BEGIN_NAMESPACE();
 
+extern auto IsPackaged() -> bool;
+extern void ForcePackaged();
+
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_NON_NULL // Pointer annotation
@@ -141,7 +144,7 @@ public:
     ~EventUnsubscriberCallback() = default;
 
 private:
-    using Callback = std::function<void()>;
+    using Callback = function<void()>;
     explicit EventUnsubscriberCallback(Callback cb) noexcept :
         _unsubscribeCallback {std::move(cb)}
     {
@@ -187,7 +190,7 @@ public:
     }
 
 private:
-    using Callback = std::function<void()>;
+    using Callback = function<void()>;
     explicit EventUnsubscriber(EventUnsubscriberCallback cb) noexcept { _unsubscribeCallbacks.emplace_back(std::move(cb)); }
     vector<EventUnsubscriberCallback> _unsubscribeCallbacks {};
 };
@@ -199,7 +202,7 @@ class EventObserver final
     friend class EventDispatcher;
 
 public:
-    using Callback = std::function<void(Args...)>;
+    using Callback = function<void(Args...)>;
 
     EventObserver() = default;
     EventObserver(const EventObserver&) = delete;
@@ -275,14 +278,7 @@ static_assert(!is_valid_property_plain_type<hstring>);
 static_assert(!is_valid_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
-static constexpr float32 MIN_ZOOM = 0.1f;
-static constexpr float32 MAX_ZOOM = 20.0f;
-
-// Coordinates
-static constexpr int32 MAXHEX_DEFAULT = 200;
-static constexpr int32 MAXHEX_MIN = 10;
-static constexpr int32 MAXHEX_MAX = 4000;
+static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 
 // Look checks
 static constexpr uint32 LOOK_CHECK_DIR = 0x01;
@@ -322,6 +318,11 @@ struct GameSettings
 #else
 #error FO_GEOMETRY not specified
 #endif
+    static constexpr float32 MIN_ZOOM = 0.05f;
+    static constexpr float32 MAX_ZOOM = 20.0f;
+    static constexpr int32 DEFAULT_MAP_SIZE = 200;
+    static constexpr int32 MIN_MAP_SIZE = 10;
+    static constexpr int32 MAX_MAP_SIZE = 4000;
 };
 
 ///@ ExportEnum
@@ -534,8 +535,8 @@ public:
 };
 
 // Interthread communication between server and client
-using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
-extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadDataCallback = function<void(const_span<uint8>)>;
+extern map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8

@@ -71,12 +71,14 @@ static void MapperEntry([[maybe_unused]] void* data)
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
-            catch (...) {
-                FO_UNKNOWN_EXCEPTION();
-            }
         }
 
-        Data->Mapper->MapperMainLoop();
+        try {
+            Data->Mapper->MapperMainLoop();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
 
         App->EndFrame();
     }
@@ -98,6 +100,9 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException));
+
+        App->Settings.ScreenHudHeight = 0;
+        App->Settings.ScrollCheck = false;
 
 #if FO_IOS
         MapperEntry(nullptr);

@@ -221,26 +221,11 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     _sprMngr.GetRtMngr().PopRenderTarget();
 
     // Copy render
-    irect32 region_to;
-
-    // Render to atlas
-    if (rt_intermediate->MainTex->FlippedHeight) {
-        // Preserve flip
-        const auto l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto t = iround<int32>((1.0f - particle_spr->AtlasRect.y) * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-        const auto w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-
-        region_to = irect32(l, t, w, h);
-    }
-    else {
-        const auto l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto t = iround<int32>(particle_spr->AtlasRect.y * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-        const auto w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
-        const auto h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
-
-        region_to = irect32(l, t, w, h);
-    }
+    const int32 l = iround<int32>(particle_spr->AtlasRect.x * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+    const int32 t = iround<int32>(particle_spr->AtlasRect.y * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+    const int32 w = iround<int32>(particle_spr->AtlasRect.width * numeric_cast<float32>(particle_spr->Atlas->Size.width));
+    const int32 h = iround<int32>(particle_spr->AtlasRect.height * numeric_cast<float32>(particle_spr->Atlas->Size.height));
+    const irect32 region_to = irect32(l, t, w, h);
 
     _sprMngr.GetRtMngr().PushRenderTarget(particle_spr->Atlas->RTarg);
     _sprMngr.DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);

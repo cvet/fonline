@@ -56,47 +56,60 @@ AngelScriptBaker::~AngelScriptBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-void AngelScriptBaker::BakeFiles(FileCollection files)
+void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<File> script_files;
+    if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fos-")) {
+        return;
+    }
+
+    // Collect files
+    vector<File> filtered_files;
     uint64 max_write_time = 0;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).get_file_extension();
+    for (const auto& file_header : files) {
+        const string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (!IsExtSupported(ext)) {
+        if (ext != "fos") {
             continue;
         }
 
         max_write_time = std::max(max_write_time, file_header.GetWriteTime());
-        script_files.emplace_back(files.GetCurFile());
+        filtered_files.emplace_back(File::Load(file_header));
     }
 
-    if (script_files.empty()) {
+    if (filtered_files.empty()) {
         return;
     }
 
+    const bool bake_server = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-server", max_write_time);
+    const bool bake_client = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-client", max_write_time);
+    const bool bake_mapper = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-mapper", max_write_time);
+
+    if (!bake_server && !bake_client && !bake_mapper) {
+        return;
+    }
+
+    // Process files
     vector<std::future<void>> file_bakings;
 
-    if (!_bakeChecker || _bakeChecker(_packName + ".fosb-server", max_write_time)) {
+    if (bake_server) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
-            _writeData(_packName + ".fosb-server", data);
+            auto data = Init_AngelScriptCompiler_ServerScriptSystem(filtered_files);
+            _writeData(_resPackName + ".fos-bin-server", data);
         }));
     }
-    if (!_bakeChecker || _bakeChecker(_packName + ".fosb-client", max_write_time)) {
+    if (bake_client) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
-            _writeData(_packName + ".fosb-client", data);
+            auto data = Init_AngelScriptCompiler_ClientScriptSystem(filtered_files);
+            _writeData(_resPackName + ".fos-bin-client", data);
         }));
     }
-    if (!_bakeChecker || _bakeChecker(_packName + ".fosb-mapper", max_write_time)) {
+    if (bake_mapper) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
-            _writeData(_packName + ".fosb-mapper", data);
+            auto data = Init_AngelScriptCompiler_MapperScriptSystem(filtered_files);
+            _writeData(_resPackName + ".fos-bin-mapper", data);
         }));
     }
 
@@ -110,7 +123,7 @@ void AngelScriptBaker::BakeFiles(FileCollection files)
             errors++;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("AngelScript baking error: {}", ex.what());
             errors++;
         }
         catch (...) {

@@ -438,17 +438,16 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto text_files = resources.FilterFiles("fotxtb");
+    auto text_files = resources.FilterFiles("fotxt-bin");
 
-    while (text_files.MoveNext()) {
-        auto text_file = text_files.GetCurFile();
-        const auto file_name = text_file.GetName();
+    for (const auto& text_file_header : text_files) {
+        const auto text_file = File::Load(text_file_header);
+        const auto file_name = text_file.GetNameNoExt();
 
-        const auto sep = file_name.find('.');
-        FO_RUNTIME_ASSERT(sep != string::npos);
-
-        const auto pack_name_str = file_name.substr(0, sep);
-        const auto lang_name = file_name.substr(sep + 1);
+        const auto name_triplet = strex(file_name).split('.');
+        FO_RUNTIME_ASSERT(name_triplet.size() == 3);
+        const auto& pack_name_str = name_triplet[1];
+        const auto& lang_name = name_triplet[2];
         FO_RUNTIME_ASSERT(!pack_name_str.empty());
         FO_RUNTIME_ASSERT(!lang_name.empty());
 

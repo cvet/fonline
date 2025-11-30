@@ -1,10 +1,16 @@
 #!/bin/bash -e
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
 
-mkdir -p $FO_WORKSPACE
-pushd $FO_WORKSPACE
+mkdir -p "$FO_WORKSPACE"
+pushd "$FO_WORKSPACE"
+
+VALIDATION_PROJECT_ROOT="$FO_WORKSPACE/validation-project"
+mkdir -p "$VALIDATION_PROJECT_ROOT"
+[[ "$(uname -s)" == Darwin* ]] && CP_OPT=-n || CP_OPT=--update=none
+cp $CP_OPT "$FO_ENGINE_ROOT/BuildTools/validation-project/"* "$VALIDATION_PROJECT_ROOT"
+[[ ! -L "$VALIDATION_PROJECT_ROOT/Engine" ]] && ln -sfn "$FO_ENGINE_ROOT" "$VALIDATION_PROJECT_ROOT/Engine"
 
 if [[ $1 = "linux-client" ]]; then
     TARGET=linux
@@ -93,25 +99,28 @@ if [[ $TARGET = "linux" ]]; then
 		export CXX=/usr/bin/clang++
 	fi
 
-    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "web" ]]; then
-    source $FO_WORKSPACE/emsdk/emsdk_env.sh
+    source "$FO_WORKSPACE/emsdk/emsdk_env.sh"
 
-    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+    $CMAKE -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "android" || $TARGET = "android-arm64" || $TARGET = "android-x86" ]]; then
     if [[ $TARGET = "android" ]]; then
-        export ANDROID_ABI=armeabi-v7a
+        ANDROID_ABI=armeabi-v7a
     elif [[ $TARGET = "android-arm64" ]]; then
-        export ANDROID_ABI=arm64-v8a
+        ANDROID_ABI=arm64-v8a
     elif [[ $TARGET = "android-x86" ]]; then
-        export ANDROID_ABI=x86
+        ANDROID_ABI=x86
     fi
 
-    $CMAKE -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+    TOOLCHAIN_SETTINGS="-DANDROID_ABI=$ANDROID_ABI -DANDROID_PLATFORM=android-$ANDROID_NATIVE_API_LEVEL_NUMBER -DANDROID_STL=c++_static"
+    TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
+    $CMAKE -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" $TOOLCHAIN_SETTINGS $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     $CMAKE --build . --config Debug --parallel
 
 elif [[ $TARGET = "mac" || $TARGET = "ios" ]]; then
@@ -120,9 +129,11 @@ elif [[ $TARGET = "mac" || $TARGET = "ios" ]]; then
     fi
 
     if [[ $TARGET = "mac" ]]; then
-        $CMAKE -G "Xcode" $BUILD_TARGET "$FO_PROJECT_ROOT"
+        $CMAKE -G "Xcode" $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     else
-        $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" $BUILD_TARGET "$FO_PROJECT_ROOT"
+        TOOLCHAIN_SETTINGS="-DPLATFORM=SIMULATOR64 -DDEPLOYMENT_TARGET=$FO_IOS_SDK -DENABLE_BITCODE=0 -DENABLE_ARC=0 -DENABLE_VISIBILITY=0 -DENABLE_STRICT_TRY_COMPILE=0"
+        TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
+        $CMAKE -G "Xcode" -DCMAKE_TOOLCHAIN_FILE="$FO_ENGINE_ROOT/BuildTools/ios.toolchain.cmake" $TOOLCHAIN_SETTINGS $BUILD_TARGET "$VALIDATION_PROJECT_ROOT"
     fi
 
     $CMAKE --build . --config Debug --parallel

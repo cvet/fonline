@@ -80,6 +80,7 @@ static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
 static constexpr auto COLOR_TEXT_DWHITE = ucolor {191, 191, 191};
 static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 
+class SpriteManager;
 class AtlasSprite;
 
 class Sprite : public std::enable_shared_from_this<Sprite>
@@ -171,17 +172,17 @@ public:
     ~SpriteManager();
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { FO_NON_CONST_METHOD_HINT_ONELINE() return _hashResolver.ToHashedString(str); }
-    [[nodiscard]] auto GetResources() -> FileSystem& { FO_NON_CONST_METHOD_HINT_ONELINE() return _resources; }
-    [[nodiscard]] auto GetRtMngr() -> RenderTargetManager& { return _rtMngr; }
-    [[nodiscard]] auto GetAtlasMngr() -> TextureAtlasManager& { return _atlasMngr; }
-    [[nodiscard]] auto GetTimer() const -> GameTimer& { return _gameTimer; }
-    [[nodiscard]] auto GetWindow() -> AppWindow* { FO_NON_CONST_METHOD_HINT_ONELINE() return _window; }
+    [[nodiscard]] auto GetResources() noexcept -> FileSystem& { FO_NON_CONST_METHOD_HINT_ONELINE() return _resources; }
+    [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
+    [[nodiscard]] auto GetAtlasMngr() noexcept -> TextureAtlasManager& { return _atlasMngr; }
+    [[nodiscard]] auto GetTimer() const noexcept -> GameTimer& { return _gameTimer; }
+    [[nodiscard]] auto GetWindow() noexcept -> AppWindow* { FO_NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> isize32;
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos, bool with_zoom) const -> bool;
-    [[nodiscard]] auto IsEggTransp(ipos32 pos, ipos32 offset) const -> bool;
+    [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool;
+    [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
@@ -207,16 +208,14 @@ public:
     void BeginScene();
     void EndScene();
 
-    void SetSpritesZoom(float32 zoom);
-
     void DrawSprite(const Sprite* spr, ipos32 pos, ucolor color);
     void DrawSpriteSize(const Sprite* spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, ipos32 offset, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
-    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float32* zoom = nullptr, const fpos32* offset = nullptr, RenderEffect* custom_effect = nullptr);
-    void DrawTexture(const RenderTexture* tex, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr, RenderEffect* custom_effect = nullptr);
-    void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const irect32* region_from = nullptr, const irect32* region_to = nullptr);
+    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
+    void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const irect32* draw_area = nullptr, RenderEffect* custom_effect = nullptr);
+    void DrawTexture(const RenderTexture* tex, bool alpha_blend, const frect32* region_from = nullptr, const irect32* region_to = nullptr, RenderEffect* custom_effect = nullptr);
+    void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const frect32* region_from = nullptr, const irect32* region_to = nullptr);
     void Flush();
 
     void DrawContours();
@@ -248,9 +247,8 @@ private:
     unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
 
-    RenderTarget* _rtMain {};
-    RenderTarget* _rtContours {};
-    RenderTarget* _rtContoursMid {};
+    raw_ptr<RenderTarget> _rtMain {};
+    raw_ptr<RenderTarget> _rtContours {};
 
     vector<DipData> _dipQueue {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};
@@ -263,15 +261,12 @@ private:
     irect32 _scissorRect {};
 
     bool _contoursAdded {};
-    bool _contourClearMid {};
 
     bool _eggValid {};
     mpos _eggHex {};
     ipos32 _eggOffset {};
     shared_ptr<AtlasSprite> _sprEgg {};
     vector<ucolor> _eggData {};
-
-    float32 _spritesZoom {1.0f};
 
     ipos32 _windowSizeDiff {};
 

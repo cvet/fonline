@@ -47,8 +47,7 @@ FO_BEGIN_NAMESPACE();
 ///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
 ///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
 
-#define FO_ENTITY_PROPERTY(access_type, prop_type, prop) \
-    static_assert(!IsEnumSet(Property::AccessType::access_type, Property::AccessType::VirtualMask)); \
+#define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
         return _propsRef.GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
@@ -76,18 +75,10 @@ FO_BEGIN_NAMESPACE();
 class EntityProperties
 {
 public:
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, CustomHolderId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, hstring, CustomHolderEntry);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<synctime>, TE_FireTime);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<timespan>, TE_RepeatDuration);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Data);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -178,7 +169,6 @@ public:
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
-    [[nodiscard]] auto GetRawPeristentTimeEvents() noexcept -> auto& { return _persistentTimeEvents; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
@@ -219,11 +209,10 @@ private:
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
     unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
-    unique_ptr<vector<shared_ptr<TimeEventData>>> _persistentTimeEvents {};
     unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
-    mutable int32 _refCounter {1};
+    mutable std::atomic_int _refCounter {1};
 };
 
 class EntityEventBase
@@ -257,13 +246,13 @@ public:
     {
     }
 
-    auto Fire(const Args&... args) noexcept -> bool
+    auto Fire(Args... args) noexcept -> bool
     {
         if (_callbacks == nullptr) {
             return true;
         }
 
-        const initializer_list<void*> args_list = {const_cast<void*>(static_cast<const void*>(&args))...};
+        const initializer_list<void*> args_list = {static_cast<void*>(&args)...};
         return FireEx(args_list);
     }
 };

@@ -76,8 +76,8 @@ struct VideoPlayback
 
     FO_SCRIPTABLE_OBJECT_END();
 
-    uniq_ptr<VideoClip> Clip {};
-    uniq_ptr<unique_ptr<RenderTexture>> Tex {};
+    unique_ptr<VideoClip> Clip {};
+    unique_ptr<RenderTexture> Tex {};
 };
 static_assert(std::is_standard_layout_v<VideoPlayback>);
 
@@ -92,8 +92,7 @@ enum class EffectType : uint32
     RainSprite = 0x00000010,
     SkinnedMesh = 0x00000400,
     Interface = 0x00001000,
-    ContourStrict = 0x00002000,
-    ContourDynamic = 0x00004000,
+    Contour = 0x00002000,
     Font = 0x00010000,
     Primitive = 0x00100000,
     Light = 0x00200000,
@@ -118,7 +117,8 @@ class FOClient : public BaseEngine, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator);
+    explicit FOClient(GlobalSettings& settings, AppWindow* window); // For client
+    explicit FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator); // For mapper
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
@@ -301,7 +301,7 @@ protected:
 
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
-    void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
+    void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);

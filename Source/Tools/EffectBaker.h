@@ -57,15 +57,11 @@ public:
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fofx"; }
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    void BakeShaderProgram(string_view fname, string_view content);
-    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
-
-    bool _nonConstHelper {};
+    void BakeShaderProgram(string_view fname, string_view content) const;
+    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate) const;
 };
 
 FO_END_NAMESPACE();

@@ -77,7 +77,7 @@ FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, uint8 dir)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -100,7 +100,7 @@ FO_SCRIPT_API void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 di
             self->ChangeDir(corrected_dir);
         }
 
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, self->GetDir(), 2);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
     }
     else if (self->GetDir() != corrected_dir) {
         self->ChangeDir(corrected_dir);
@@ -110,7 +110,7 @@ FO_SCRIPT_API void Server_Critter_TransitToHex(Critter* self, mpos hex, uint8 di
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, uint8 dir)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -125,11 +125,11 @@ FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex
         corrected_dir = self->GetDir();
     }
 
-    self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
+    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, 2);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex, uint8 dir, bool force_hex)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, uint8 dir, bool force_hex)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -145,15 +145,15 @@ FO_SCRIPT_API void Server_Critter_TransitToMap(Critter* self, Map* map, mpos hex
     }
 
     if (force_hex) {
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, std::nullopt);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, std::nullopt);
     }
     else {
-        self->GetEngine()->MapMngr.TransitToMap(self, map, hex, corrected_dir, 2);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, 2);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToGlobal(Critter* self)
+FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -163,27 +163,27 @@ FO_SCRIPT_API void Server_Critter_TransitToGlobal(Critter* self)
         return;
     }
 
-    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
+    self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
     }
 
-    self->GetEngine()->MapMngr.TransitToGlobal(self, {});
+    self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 
     for (auto* cr : group) {
         if (cr != nullptr && !cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
-            self->GetEngine()->MapMngr.TransitToGlobal(cr, self->GetId());
+            self->GetEngine()->MapMngr.TransferToGlobal(cr, self->GetId());
         }
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* globalCr)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* globalCr)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -198,7 +198,7 @@ FO_SCRIPT_API void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* g
         throw ScriptException("Global critter is not on global map");
     }
 
-    self->GetEngine()->MapMngr.TransitToGlobal(self, globalCr->GetId());
+    self->GetEngine()->MapMngr.TransferToGlobal(self, globalCr->GetId());
 }
 
 ///@ ExportMethod
@@ -675,7 +675,6 @@ FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self, ident_t& 
 FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 {
     self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::Success;
 
     if (self->IsMoving()) {
         self->ClearMove();

@@ -167,7 +167,7 @@ public:
     [[nodiscard]] virtual auto GetTexturePixel(ipos32 pos) const -> ucolor = 0;
     [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> = 0;
 
-    virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) = 0;
+    virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch = false) = 0;
 
     const isize32 Size;
     const float32 SizeData[4]; // Width, Height, TexelWidth, TexelHeight
@@ -201,7 +201,6 @@ public:
     size_t IndCount {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
-    bool PrimZoomed {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
 #endif

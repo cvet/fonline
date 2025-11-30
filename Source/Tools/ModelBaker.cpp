@@ -225,25 +225,56 @@ ModelBaker::~ModelBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-void ModelBaker::BakeFiles(FileCollection files)
+void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Collect files
+    vector<File> filtered_files;
+
+    if (target_path.empty()) {
+        for (const auto& file_header : files) {
+            const string ext = strex(file_header.GetPath()).get_file_extension();
+
+            if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
+                continue;
+            }
+            if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+                continue;
+            }
+
+            filtered_files.emplace_back(File::Load(file_header));
+        }
+    }
+    else {
+        const string ext = strex(target_path).get_file_extension();
+
+        if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
+            return;
+        }
+
+        auto file = files.FindFileByPath(target_path);
+
+        if (!file) {
+            return;
+        }
+        if (_bakeChecker && !_bakeChecker(file.GetPath(), file.GetWriteTime())) {
+            return;
+        }
+
+        filtered_files.emplace_back(std::move(file));
+    }
+
+    if (filtered_files.empty()) {
+        return;
+    }
+
+    // Process files
     vector<std::future<void>> file_bakings;
 
-    while (files.MoveNext()) {
-        auto file_header = files.GetCurFileHeader();
-        string ext = strex(file_header.GetPath()).get_file_extension();
-
-        if (!IsExtSupported(ext)) {
-            continue;
-        }
-        if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
-            continue;
-        }
-
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, ext, file = files.GetCurFile()] {
-            if (ext == "fo3d") {
+    for (auto& file_ : filtered_files) {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)] {
+            if (strex(file.GetPath()).get_file_extension() == "fo3d") {
                 _writeData(file.GetPath(), file.GetData());
             }
             else {
@@ -260,7 +291,7 @@ void ModelBaker::BakeFiles(FileCollection files)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            WriteLog("Model baking error: {}", ex.what());
             errors++;
         }
         catch (...) {
@@ -281,11 +312,9 @@ static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion;
 static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor;
 static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44;
 
-auto ModelBaker::BakeFbxFile(string_view fname, const File& file) -> vector<uint8>
+auto ModelBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ufbx_load_opts opts = {};
     opts.ignore_embedded = true;

@@ -320,14 +320,9 @@ extern auto FormatStackTrace(const StackTraceData& st) -> string
 
     ss << "Stack trace (most recent call first):\n";
 
-    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE) - 1;; i--) {
-        const auto& entry = st.CallTree[i];
-
+    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
+        const auto& entry = st.CallTree[i - 1];
         ss << "- " << entry->function << " (" << strex(entry->file).extract_file_name().strv() << " line " << entry->line << ")\n";
-
-        if (i == 0) {
-            break;
-        }
     }
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {

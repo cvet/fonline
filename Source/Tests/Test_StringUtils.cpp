@@ -228,13 +228,13 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
         CHECK(strex(",One,Two").split(',') == vector<string>({"One", "Two"}));
         CHECK(strex("One,Two,").split(',') == vector<string>({"One", "Two"}));
-        CHECK(strex(" 111 222  33Three g66 7").split_to_int(' ') == vector<int32>({111, 222, 0, 0, 7}));
-        CHECK(strex("").split_to_int(' ') == vector<int32>({}));
-        CHECK(strex("             ").split_to_int(' ') == vector<int32>({}));
-        CHECK(strex("1").split_to_int(' ') == vector<int32>({1}));
-        CHECK(strex("1 -2").split_to_int(' ') == vector<int32>({1, -2}));
-        CHECK(strex("\t1   X -2 X 3").split_to_int('X') == vector<int32>({1, -2, 3}));
-        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").split_to_int('X') == vector<int32>({1, -2, 3}));
+        CHECK(strex(" 111 222  33Three g66 7").split_to_int32(' ') == vector<int32>({111, 222, 0, 0, 7}));
+        CHECK(strex("").split_to_int32(' ') == vector<int32>({}));
+        CHECK(strex("             ").split_to_int32(' ') == vector<int32>({}));
+        CHECK(strex("1").split_to_int32(' ') == vector<int32>({1}));
+        CHECK(strex("1 -2").split_to_int32(' ') == vector<int32>({1, -2}));
+        CHECK(strex("\t1   X -2 X 3").split_to_int32('X') == vector<int32>({1, -2, 3}));
+        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").split_to_int32('X') == vector<int32>({1, -2, 3}));
     }
 
     SECTION("Substring")

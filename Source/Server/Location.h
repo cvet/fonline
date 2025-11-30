@@ -63,11 +63,17 @@ public:
     [[nodiscard]] auto GetMapByIndex(int32 index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> size_t;
+    [[nodiscard]] auto HasMaps() const noexcept -> bool { return !_locMaps.empty(); }
 
     void AddMap(Map* map);
+    void RemoveMap(Map* map);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnMapAdded, Map* /*map*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnMapRemoved, Map* /*map*/);
 
 private:
     vector<refcount_ptr<Map>> _locMaps {};

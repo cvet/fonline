@@ -52,18 +52,18 @@ void Entity::AddRef() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_refCounter > 0);
-
-    ++_refCounter;
+    const auto old = _refCounter.fetch_add(1, std::memory_order_relaxed);
+    FO_STRONG_ASSERT(old > 0);
 }
 
 void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_refCounter > 0);
+    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    FO_STRONG_ASSERT(old > 0);
 
-    if (--_refCounter == 0) {
+    if (old == 1) {
         delete this;
     }
 }
@@ -167,10 +167,7 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
     }
 
     // Callbacks vector may be changed/invalidated during cycle work
-    vector<EventCallbackData> callbacks_copy;
-    safe_call([&] { callbacks_copy = copy(callbacks); });
-
-    for (const auto& cb : callbacks_copy) {
+    for (const auto& cb : copy(callbacks)) {
         const auto ex_policy = cb.ExPolicy;
 
         try {
@@ -374,7 +371,7 @@ auto Entity::HasTimeEvents() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return (_timeEvents && !_timeEvents->empty()) || (_persistentTimeEvents && !_persistentTimeEvents->empty());
+    return _timeEvents && !_timeEvents->empty();
 }
 
 EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) noexcept :

@@ -60,7 +60,7 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -222,35 +222,27 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     VSync = settings.VSync;
     SdlWindow = static_cast<SDL_Window*>(window);
 
-#if !FO_UWP
     auto* hwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(SdlWindow), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-#else
-    HWND hwnd = nullptr;
-#endif
 
     // Device
     {
         constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
-#if !FO_UWP
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
             D3D_FEATURE_LEVEL_10_0,
             D3D_FEATURE_LEVEL_9_3,
             D3D_FEATURE_LEVEL_9_2,
             D3D_FEATURE_LEVEL_9_1,
-#endif
         };
         const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
             {D3D_FEATURE_LEVEL_11_1, "11.1"},
-#if !FO_UWP
             {D3D_FEATURE_LEVEL_11_0, "11.0"},
             {D3D_FEATURE_LEVEL_10_1, "10.1"},
             {D3D_FEATURE_LEVEL_10_0, "10.0"},
             {D3D_FEATURE_LEVEL_9_3, "9.3"},
             {D3D_FEATURE_LEVEL_9_2, "9.2"},
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
-#endif
         };
         constexpr auto feature_levels_count = numeric_cast<UINT>(std::size(feature_levels));
 
@@ -564,7 +556,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            const string vertex_shader_fname = strex("{}.{}.vert.hlsl", strex(name).erase_file_extension(), pass + 1);
+            const string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).erase_file_extension(), pass + 1);
             string vertex_shader_content = loader(vertex_shader_fname);
             FO_RUNTIME_ASSERT(!vertex_shader_content.empty());
 
@@ -600,7 +592,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             if (usage == EffectUsage::Model) {
                 static_assert(BONES_PER_VERTEX == 4);
 
-                const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
+                constexpr D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Normal)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, TexCoord)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -621,7 +613,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             else
 #endif
             {
-                const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
+                constexpr D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -638,7 +630,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
         // Create the pixel shader
         {
-            const string pixel_shader_fname = strex("{}.{}.frag.hlsl", strex(name).erase_file_extension(), pass + 1);
+            const string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).erase_file_extension(), pass + 1);
             string pixel_shader_content = loader(pixel_shader_fname);
             FO_RUNTIME_ASSERT(!pixel_shader_content.empty());
 
@@ -1040,7 +1032,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
+void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1057,7 +1049,9 @@ void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolo
     dest_box.front = 0;
     dest_box.back = 1;
 
-    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, 4 * size.width, 0);
+    const UINT src_pitch = (use_dest_pitch ? Size.width : size.width) * 4;
+
+    D3DDeviceContext->UpdateSubresource(TexHandle, 0, &dest_box, data, src_pitch, 0);
 }
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()

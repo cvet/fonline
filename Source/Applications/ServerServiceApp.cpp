@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp(numeric_cast<int32>(argc), argv);
+        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
             // Change executable path, if changed
             if (service != nullptr) {
                 // ReSharper disable once CppLocalVariableMayBeConst
-                uint8 service_cfg_buf[8192] = {};
+                alignas(QUERY_SERVICE_CONFIGW) uint8 service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
                 DWORD dw = 0;
@@ -213,7 +213,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             args[i] = args_holder.back().data();
         }
 
-        InitApp(numeric_cast<int32>(argc), args.data());
+        InitApp(numeric_cast<int32>(argc), args.data(), AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
 

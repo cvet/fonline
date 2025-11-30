@@ -139,7 +139,7 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data) override;
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -435,16 +435,16 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         string ext = "glsl";
 
         if constexpr (FO_OPENGL_ES) {
-            ext = "glsl-es";
+            ext = "glsl_es";
         }
         if (ForceGlslEsProfile) {
-            ext = "glsl-es";
+            ext = "glsl_es";
         }
 
-        const string vert_fname = strex("{}.{}.vert.{}", strex(name).erase_file_extension(), pass + 1, ext);
+        const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         FO_RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = strex("{}.{}.frag.{}", strex(name).erase_file_extension(), pass + 1, ext);
+        const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         FO_RUNTIME_ASSERT(!frag_content.empty());
 
@@ -787,7 +787,7 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data)
+void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -796,9 +796,17 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
     FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
 
+    if (use_dest_pitch) {
+        GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, Size.width));
+    }
+
     GL(glBindTexture(GL_TEXTURE_2D, TexId));
     GL(glTexSubImage2D(GL_TEXTURE_2D, 0, pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, data));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
+
+    if (use_dest_pitch) {
+        GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+    }
 }
 
 static void EnableVertAtribs(EffectUsage usage)
@@ -1052,17 +1060,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             draw_mode = GL_TRIANGLE_STRIP;
             break;
         }
-
-#if !FO_OPENGL_ES
-        if (opengl_dbuf->PrimZoomed) {
-            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-                GL(glEnable(GL_POINT_SMOOTH));
-            }
-            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-                GL(glEnable(GL_LINE_SMOOTH));
-            }
-        }
-#endif
     }
 
     if (DisableBlending) {
@@ -1252,19 +1249,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
     }
 #endif
-
-    if (_usage == EffectUsage::Primitive) {
-#if !FO_OPENGL_ES
-        if (opengl_dbuf->PrimZoomed) {
-            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-                GL(glDisable(GL_POINT_SMOOTH));
-            }
-            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-                GL(glDisable(GL_LINE_SMOOTH));
-            }
-        }
-#endif
-    }
 }
 
 FO_END_NAMESPACE();

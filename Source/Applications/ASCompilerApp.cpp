@@ -67,10 +67,10 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDir) {
-                res_files.AddDataSource(dir);
+                res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            auto script_files_collection = res_files.FilterFiles("fos", "", res_pack.RecursiveInput);
+            auto script_files_collection = res_files.FilterFiles("fos");
 
             if (script_files_collection.GetFilesCount() == 0) {
                 continue;
@@ -78,8 +78,8 @@ int main(int argc, char** argv)
 
             vector<File> script_files;
 
-            while (script_files_collection.MoveNext()) {
-                script_files.emplace_back(script_files_collection.GetCurFile());
+            for (const auto& file_header : script_files_collection) {
+                script_files.emplace_back(File::Load(file_header));
             }
 
             bool server_failed = false;
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 
             try {
                 auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
-                write_file(data, "fosb-server");
+                write_file(data, "fos-bin-server");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
             try {
                 auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
-                write_file(data, "fosb-client");
+                write_file(data, "fos-bin-client");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 
             try {
                 auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
-                write_file(data, "fosb-mapper");
+                write_file(data, "fos-bin-mapper");
             }
             catch (const std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {

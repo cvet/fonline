@@ -82,7 +82,7 @@ bool Compiler::variable_storage_is_aliased(const SPIRVariable &v)
 	            ir.meta[type.self].decoration.decoration_flags.get(DecorationBufferBlock);
 	bool image = type.basetype == SPIRType::Image;
 	bool counter = type.basetype == SPIRType::AtomicCounter;
-	bool buffer_reference = type.storage == StorageClassPhysicalStorageBufferEXT;
+	bool buffer_reference = type.storage == StorageClassPhysicalStorageBuffer;
 
 	bool is_restrict;
 	if (ssbo)
@@ -171,6 +171,7 @@ bool Compiler::block_is_control_dependent(const SPIRBlock &block)
 		case OpGroupNonUniformLogicalXor:
 		case OpGroupNonUniformQuadBroadcast:
 		case OpGroupNonUniformQuadSwap:
+		case OpGroupNonUniformRotateKHR:
 
 		// Control barriers
 		case OpControlBarrier:
@@ -210,6 +211,7 @@ bool Compiler::block_is_pure(const SPIRBlock &block)
 
 		case OpCopyMemory:
 		case OpStore:
+		case OpCooperativeMatrixStoreKHR:
 		{
 			auto &type = expression_type(ops[0]);
 			if (type.storage != StorageClassFunction)
@@ -276,6 +278,9 @@ bool Compiler::block_is_pure(const SPIRBlock &block)
 
 		case OpDemoteToHelperInvocationEXT:
 			// This is a global side effect of the function.
+			return false;
+
+		case OpTensorReadARM:
 			return false;
 
 		case OpExtInst:
@@ -370,6 +375,7 @@ void Compiler::register_global_read_dependencies(const SPIRBlock &block, uint32_
 		}
 
 		case OpLoad:
+		case OpCooperativeMatrixLoadKHR:
 		case OpImageRead:
 		{
 			// If we're in a storage class which does not get invalidated, adding dependencies here is no big deal.
@@ -481,7 +487,7 @@ void Compiler::register_write(uint32_t chain)
 			}
 		}
 
-		if (type.storage == StorageClassPhysicalStorageBufferEXT || variable_storage_is_aliased(*var))
+		if (type.storage == StorageClassPhysicalStorageBuffer || variable_storage_is_aliased(*var))
 			flush_all_aliased_variables();
 		else if (var)
 			flush_dependees(*var);
@@ -819,6 +825,7 @@ bool Compiler::InterfaceVariableAccessHandler::handle(Op opcode, const uint32_t 
 
 	case OpAtomicStore:
 	case OpStore:
+	case OpCooperativeMatrixStoreKHR:
 		// Invalid SPIR-V.
 		if (length < 1)
 			return false;
@@ -911,6 +918,7 @@ bool Compiler::InterfaceVariableAccessHandler::handle(Op opcode, const uint32_t 
 	case OpInBoundsAccessChain:
 	case OpPtrAccessChain:
 	case OpLoad:
+	case OpCooperativeMatrixLoadKHR:
 	case OpCopyObject:
 	case OpImageTexelPointer:
 	case OpAtomicLoad:
@@ -1146,6 +1154,11 @@ ShaderResources Compiler::get_shader_resources(const unordered_set<VariableID> *
 			else if (type.basetype == SPIRType::AccelerationStructure)
 			{
 				res.acceleration_structures.push_back({ var.self, var.basetype, type.self, get_name(var.self) });
+			}
+			// Tensors
+			else if (type.basetype == SPIRType::Tensor)
+			{
+				res.tensors.push_back({ var.self, var.basetype, type.self, get_name(var.self) });
 			}
 			else
 			{
@@ -2365,6 +2378,10 @@ void Compiler::set_execution_mode(ExecutionMode mode, uint32_t arg0, uint32_t ar
 		execution.output_primitives = arg0;
 		break;
 
+	case ExecutionModeFPFastMathDefault:
+		execution.fp_fast_math_defaults[arg0] = arg1;
+		break;
+
 	default:
 		break;
 	}
@@ -3462,6 +3479,7 @@ bool Compiler::AnalyzeVariableScopeAccessHandler::handle(spv::Op op, const uint3
 	switch (op)
 	{
 	case OpStore:
+	case OpCooperativeMatrixStoreKHR:
 	{
 		if (length < 2)
 			return false;
@@ -3582,6 +3600,7 @@ bool Compiler::AnalyzeVariableScopeAccessHandler::handle(spv::Op op, const uint3
 	}
 
 	case OpLoad:
+	case OpCooperativeMatrixLoadKHR:
 	{
 		if (length < 3)
 			return false;
@@ -3801,6 +3820,7 @@ bool Compiler::StaticExpressionAccessHandler::handle(spv::Op op, const uint32_t 
 	switch (op)
 	{
 	case OpStore:
+	case OpCooperativeMatrixStoreKHR:
 		if (length < 2)
 			return false;
 		if (args[0] == variable_id)
@@ -3811,6 +3831,7 @@ bool Compiler::StaticExpressionAccessHandler::handle(spv::Op op, const uint32_t 
 		break;
 
 	case OpLoad:
+	case OpCooperativeMatrixLoadKHR:
 		if (length < 3)
 			return false;
 		if (args[2] == variable_id && static_expression == 0) // Tried to read from variable before it was initialized.
@@ -4286,6 +4307,7 @@ bool Compiler::may_read_undefined_variable_in_block(const SPIRBlock &block, uint
 		switch (op.op)
 		{
 		case OpStore:
+		case OpCooperativeMatrixStoreKHR:
 		case OpCopyMemory:
 			if (ops[0] == var)
 				return false;
@@ -4324,6 +4346,7 @@ bool Compiler::may_read_undefined_variable_in_block(const SPIRBlock &block, uint
 
 		case OpCopyObject:
 		case OpLoad:
+		case OpCooperativeMatrixLoadKHR:
 			if (ops[2] == var)
 				return true;
 			break;
@@ -4349,6 +4372,39 @@ bool Compiler::may_read_undefined_variable_in_block(const SPIRBlock &block, uint
 	// Not accessed somehow, at least not in a usual fashion.
 	// It's likely accessed in a branch, so assume we must preserve.
 	return true;
+}
+
+bool Compiler::GeometryEmitDisocveryHandler::handle(spv::Op opcode, const uint32_t *, uint32_t)
+{
+	if (opcode == OpEmitVertex || opcode == OpEndPrimitive)
+	{
+		for (auto *func : function_stack)
+			func->emits_geometry = true;
+	}
+
+	return true;
+}
+
+bool Compiler::GeometryEmitDisocveryHandler::begin_function_scope(const uint32_t *stream, uint32_t)
+{
+	auto &callee = compiler.get<SPIRFunction>(stream[2]);
+	function_stack.push_back(&callee);
+	return true;
+}
+
+bool Compiler::GeometryEmitDisocveryHandler::end_function_scope([[maybe_unused]] const uint32_t *stream, uint32_t)
+{
+	assert(function_stack.back() == &compiler.get<SPIRFunction>(stream[2]));
+	function_stack.pop_back();
+
+	return true;
+}
+
+void Compiler::discover_geometry_emitters()
+{
+	GeometryEmitDisocveryHandler handler(*this);
+
+	traverse_all_reachable_opcodes(get<SPIRFunction>(ir.default_entry_point), handler);
 }
 
 Bitset Compiler::get_buffer_block_flags(VariableID id) const
@@ -4463,6 +4519,7 @@ bool Compiler::ActiveBuiltinHandler::handle(spv::Op opcode, const uint32_t *args
 	switch (opcode)
 	{
 	case OpStore:
+	case OpCooperativeMatrixStoreKHR:
 		if (length < 1)
 			return false;
 
@@ -4479,6 +4536,7 @@ bool Compiler::ActiveBuiltinHandler::handle(spv::Op opcode, const uint32_t *args
 
 	case OpCopyObject:
 	case OpLoad:
+	case OpCooperativeMatrixLoadKHR:
 		if (length < 3)
 			return false;
 
@@ -5105,7 +5163,7 @@ bool Compiler::is_depth_image(const SPIRType &type, uint32_t id) const
 bool Compiler::type_is_opaque_value(const SPIRType &type) const
 {
 	return !type.pointer && (type.basetype == SPIRType::SampledImage || type.basetype == SPIRType::Image ||
-	                         type.basetype == SPIRType::Sampler);
+	                         type.basetype == SPIRType::Sampler || type.basetype == SPIRType::Tensor);
 }
 
 // Make these member functions so we can easily break on any force_recompile events.
@@ -5181,7 +5239,7 @@ bool Compiler::PhysicalStorageBufferPointerHandler::type_is_bda_block_entry(uint
 
 uint32_t Compiler::PhysicalStorageBufferPointerHandler::get_minimum_scalar_alignment(const SPIRType &type) const
 {
-	if (type.storage == spv::StorageClassPhysicalStorageBufferEXT)
+	if (type.storage == spv::StorageClassPhysicalStorageBuffer)
 		return 8;
 	else if (type.basetype == SPIRType::Struct)
 	{
@@ -5256,6 +5314,13 @@ bool Compiler::PhysicalStorageBufferPointerHandler::handle(Op op, const uint32_t
 		break;
 	}
 
+	case OpCooperativeMatrixLoadKHR:
+	case OpCooperativeMatrixStoreKHR:
+	{
+		// TODO: Can we meaningfully deal with this?
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -5278,6 +5343,10 @@ uint32_t Compiler::PhysicalStorageBufferPointerHandler::get_base_non_block_type_
 
 void Compiler::PhysicalStorageBufferPointerHandler::analyze_non_block_types_from_block(const SPIRType &type)
 {
+	if (analyzed_type_ids.count(type.self))
+		return;
+	analyzed_type_ids.insert(type.self);
+
 	for (auto &member : type.member_types)
 	{
 		auto &subtype = compiler.get<SPIRType>(member);
@@ -5411,6 +5480,7 @@ bool Compiler::InterlockedResourceAccessHandler::handle(Op opcode, const uint32_
 	switch (opcode)
 	{
 	case OpLoad:
+	case OpCooperativeMatrixLoadKHR:
 	{
 		if (length < 3)
 			return false;
@@ -5488,6 +5558,7 @@ bool Compiler::InterlockedResourceAccessHandler::handle(Op opcode, const uint32_
 	case OpStore:
 	case OpImageWrite:
 	case OpAtomicStore:
+	case OpCooperativeMatrixStoreKHR:
 	{
 		if (length < 1)
 			return false;

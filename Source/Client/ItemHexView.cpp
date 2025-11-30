@@ -110,7 +110,7 @@ void ItemHexView::Process()
         const auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {
-            const auto [x, y] = _engine->Geometry.GetHexInterval(hex, step_hex);
+            const auto [x, y] = _engine->Geometry.GetHexOffset(hex, step_hex);
 
             _moveStartOffset.x -= numeric_cast<float32>(x);
             _moveStartOffset.y -= numeric_cast<float32>(y);
@@ -141,7 +141,7 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
     _moveSteps.emplace_back(cur_hex);
     _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
-    auto pos_offset = _engine->Geometry.GetHexInterval(cur_hex, hex);
+    auto pos_offset = _engine->Geometry.GetHexOffset(cur_hex, hex);
     pos_offset.y += GenericUtils::Random(5, 25); // Center of body
 
     _moveStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);

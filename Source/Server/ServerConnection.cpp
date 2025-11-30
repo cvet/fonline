@@ -115,7 +115,7 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
     _settings {settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings.NetBufferSize),
-    _outBuf(_settings.NetBufferSize)
+    _outBuf(_settings.NetBufferSize, _settings.NetDebugHashes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -132,13 +132,6 @@ ServerConnection::~ServerConnection()
     FO_STACK_TRACE_ENTRY();
 
     _netConnection->Disconnect();
-}
-
-auto ServerConnection::GetIp() const noexcept -> uint32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return _netConnection->GetIp();
 }
 
 auto ServerConnection::GetHost() const noexcept -> string_view

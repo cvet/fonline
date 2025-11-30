@@ -2527,7 +2527,7 @@ static void Game_AddPropertySetter(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, string& enum_name, bool& is_int, bool& is_float, bool& is_bool, int32& base_size)
+static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum, bool& is_virtual, bool& is_dict, bool& is_array, bool& is_string_like, string& enum_name, bool& is_int, bool& is_float, bool& is_bool, int32& base_size, bool& is_synced)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2549,9 +2549,10 @@ static void Game_GetPropertyInfo(BaseEngine* engine, ScriptEnum_uint16 prop_enum
     is_float = prop->IsBaseTypeFloat();
     is_bool = prop->IsBaseTypeBool();
     base_size = numeric_cast<int32>(prop->GetBaseSize());
+    is_synced = prop->IsSynced();
 
 #else
-    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, enum_name, is_int, is_float, is_bool, base_size);
+    ignore_unused(engine, prop_enum, is_virtual, is_dict, is_array, is_string_like, enum_name, is_int, is_float, is_bool, base_size, is_synced);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2657,8 +2658,8 @@ static void Property_SetValueAsInt(T* entity, int32 prop_index, int32 value)
     if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled");
     }
-    if (prop->IsReadOnly()) {
-        throw ScriptException("Property is read only");
+    if (!prop->IsMutable()) {
+        throw ScriptException("Property is not mutable");
     }
 
     entity->SetValueAsInt(prop, value);
@@ -2725,8 +2726,8 @@ static void Property_SetValueAsAny(T* entity, int32 prop_index, any_t value)
     if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled");
     }
-    if (prop->IsReadOnly()) {
-        throw ScriptException("Property is read only");
+    if (!prop->IsMutable()) {
+        throw ScriptException("Property is not mutable");
     }
 
     entity->SetValueAsAny(prop, value);
@@ -4208,7 +4209,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_SetPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV)); \
     AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Game_AddPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV)); \
-    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int& baseSize) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void GetPropertyInfo(" class_name "Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int&out baseSize, bool&out isSynced) const", SCRIPT_FUNC_THIS((Game_GetPropertyInfo<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
@@ -4441,7 +4442,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             const auto is_handle = prop->IsArray() || prop->IsDict();
 
             if (!prop->IsDisabled()) {
-                const auto decl_get = strex("const {}{} get_{}() const", MakePropertyASName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("{}{} get_{}() const", MakePropertyASName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
@@ -4457,8 +4458,8 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 }
             }
 
-            if (!prop->IsDisabled() && !prop->IsReadOnly()) {
-                const auto decl_set = strex("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", MakePropertyASName(prop), is_handle ? "@+" : "").str();
+            if (!prop->IsDisabled() && prop->IsMutable()) {
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakePropertyASName(prop), is_handle ? "@+" : "").str();
                 AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, SCRIPT_GENERIC_CONV, PASS_AS_PVOID(prop)));
             }
         }
@@ -4475,7 +4476,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             const auto it_enum = EnumArrays.emplace(MarshalBackArray<int32>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             FO_RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("const {}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }
@@ -4502,15 +4503,14 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     as_engine->ShutDownAndRelease();
 #else
 #if SERVER_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-server");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-server");
 #elif CLIENT_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-client");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-client");
 #elif MAPPER_SCRIPTING
-    FileCollection script_bin_files = resources->FilterFiles("fosb-mapper");
+    FileCollection script_bin_files = resources->FilterFiles("fos-bin-mapper");
 #endif
     FO_RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
-    script_bin_files.MoveNext();
-    auto script_bin_file = script_bin_files.GetCurFile();
+    auto script_bin_file = File::Load(*script_bin_files.begin());
     RestoreRootModule(as_engine, {script_bin_file.GetBuf(), script_bin_file.GetSize()});
 #endif
 
@@ -4775,8 +4775,8 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
     vector<tuple<int32, string, string>> final_script_files_order;
 
     for (const auto& script_file : script_files) {
-        string script_name = string(script_file.GetName());
-        string script_path = string(script_file.GetFullPath());
+        string script_name = string(script_file.GetNameNoExt());
+        string script_path = string(script_file.GetDiskPath());
         string script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');
@@ -4789,8 +4789,8 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
             sort = strex(first_line.substr(sort_pos + "Sort "_len)).substring_until(' ').to_int32();
         }
 
-        final_script_files_order.push_back(std::make_tuple(sort, script_name, script_path));
-        final_script_files.emplace(script_path, std::move(script_content));
+        final_script_files_order.emplace_back(std::make_tuple(sort, std::move(script_name), script_path));
+        final_script_files.emplace(std::move(script_path), std::move(script_content));
     }
 
     std::ranges::stable_sort(final_script_files_order, [](auto&& a, auto&& b) {

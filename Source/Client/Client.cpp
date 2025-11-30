@@ -47,12 +47,21 @@ extern void InitClientEngine(FOClient*);
 extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
 #endif
 
+static auto GetClientResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    return resources;
+}
+
 static void InitClientEngineData(EngineData* engine, const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddDataSource(strex(settings.ClientResources).combine_path("Core"));
+    resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Core");
 
     if (const auto restore_info = resources.ReadFile("EngineData.fobin")) {
         Client_RegisterData(engine, restore_info.GetData());
@@ -62,11 +71,8 @@ static void InitClientEngineData(EngineData* engine, const GlobalSettings& setti
     }
 }
 
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineDataRegistrator& mapper_registrator) :
-    BaseEngine(
-        settings,
-        mapper_registrator ? PropertiesRelationType::BothRelative : PropertiesRelationType::ClientRelative, //
-        mapper_registrator ? mapper_registrator : [&] { InitClientEngineData(this, settings); }),
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
+    BaseEngine(settings, GetClientResources(settings), PropertiesRelationType::ClientRelative, [&] { InitClientEngineData(this, settings); }),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
@@ -76,22 +82,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
-
-    Resources.AddDataSource(Settings.EmbeddedResources);
-
-    for (const auto& entry : Settings.ClientResourceEntries) {
-        Resources.AddDataSource(strex(Settings.ClientResources).combine_path(entry));
-    }
-
-#if FO_IOS
-    Resources.AddDataSource("../../Documents");
-#elif FO_ANDROID
-    Resources.AddDataSource("@AndroidAssets");
-    // AddDataSource(SDL_AndroidGetInternalStoragePath());
-    // AddDataSource(SDL_AndroidGetExternalStoragePath());
-#elif FO_WEB
-    Resources.AddDataSource("PersistentData");
-#endif
 
     EffectMngr.LoadDefaultEffects();
 
@@ -105,26 +95,20 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
-    Settings.MousePos = App->Input.GetMousePosition();
-
     ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
     ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
 
-    if (mapper_registrator) {
-        return;
-    }
-
 #if FO_ANGELSCRIPT_SCRIPTING
     Init_AngelScript_ClientScriptSystem(this);
 #endif
 
+    ProtoMngr.LoadFromResources(Resources);
+
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadFromResources(Resources);
-
-    ProtoMngr.LoadFromResources(Resources);
 
     // Modules initialization
     InitClientEngine(this);
@@ -170,14 +154,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
 
-                switch (prop->GetAccess()) {
-                case Property::AccessType::PublicModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::PublicFullModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::ProtectedModifiable:
-                    break;
-                default:
+                if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
                     continue;
                 }
 
@@ -221,6 +198,19 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const EngineData
     }
 
     _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+}
+
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator) :
+    BaseEngine(settings, std::move(resources), PropertiesRelationType::BothRelative, mapper_registrator),
+    EffectMngr(Settings, Resources),
+    SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
+    ResMngr(Resources, SprMngr, *this),
+    SndMngr(Settings, Resources),
+    Keyb(Settings, SprMngr),
+    Cache(Settings.CacheResources),
+    _conn(Settings)
+{
+    FO_STACK_TRACE_ENTRY();
 }
 
 FOClient::~FOClient()
@@ -698,7 +688,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
+void FOClient::Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -715,23 +705,25 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     switch (type) {
     case NetProperty::CritterItem: {
-        auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
-        _conn.OutBuf.Write(dynamic_cast<ItemView*>(client_entity)->GetCritterId());
+        const auto* item = dynamic_cast<const ItemView*>(client_entity);
+        FO_RUNTIME_ASSERT(item);
+        _conn.OutBuf.Write(item->GetCritterId());
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
-        const auto* client_entity = dynamic_cast<ClientEntity*>(entity);
+        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
         _conn.OutBuf.Write(client_entity->GetId());
     } break;
@@ -763,8 +755,7 @@ void FOClient::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-
-        resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
+        resources.AddDirSource(Settings.ClientResources, false, true, true);
 
         auto reader = DataReader(data);
 
@@ -789,7 +780,9 @@ void FOClient::Net_OnInitData()
                 }
             }
 
-            throw ResourcesOutdatedException("Resource pack outdated", fname);
+            if (IsPackaged()) {
+                throw ResourcesOutdatedException("Resource pack outdated", fname);
+            }
         }
 
         reader.VerifyEnd();
@@ -913,7 +906,7 @@ void FOClient::Net_OnAddCritter()
     if (_curMap != nullptr) {
         if (is_attached) {
             for (auto& map_cr : _curMap->GetCritters()) {
-                if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
                     map_cr->MoveAttachedCritters();
                     break;
                 }
@@ -1119,7 +1112,6 @@ void FOClient::Net_OnCritterAction()
     }
 
     if (_curMap == nullptr) {
-        // Todo: actions on global map
         return;
     }
 
@@ -1331,7 +1323,7 @@ void FOClient::Net_OnCritterAttachments()
 
             if (is_attached) {
                 for (auto& map_cr : _curMap->GetCritters()) {
-                    if (!map_cr->AttachedCritters.empty() && std::find(map_cr->AttachedCritters.begin(), map_cr->AttachedCritters.end(), cr_id) != map_cr->AttachedCritters.end()) {
+                    if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
                         map_cr->MoveAttachedCritters();
                         break;
                     }
@@ -1499,7 +1491,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     auto* chosen = GetChosen();
 
     if (_curMap != nullptr && chosen != nullptr) {
-        _curMap->FindSetCenter(chosen->GetHex());
+        _curMap->InstantScrollTo(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->RefreshView();
@@ -1939,7 +1931,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     cr->Moving.EndHexOffset = end_hex_offset;
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = Geometry.GetHexInterval(start_hex, cr->GetHex());
+        const auto cr_offset = Geometry.GetHexOffset(start_hex, cr->GetHex());
         cr->Moving.StartHexOffset = {numeric_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), numeric_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
     }
 
@@ -1958,7 +1950,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;
@@ -2091,7 +2083,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Game, prop, this);
     }
     else {
@@ -2124,11 +2116,13 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
         return;
     }
 
-    auto* cr = dynamic_cast<CritterView*>(entity);
+    const auto* cr = dynamic_cast<CritterView*>(entity);
+    FO_RUNTIME_ASSERT(cr);
+
     if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
-    else if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    else if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Critter, prop, cr);
     }
     else {
@@ -2144,14 +2138,14 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
+    if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = _curMap ? _curMap->GetCritter(item->GetCritterId()) : GetGlobalMapCritter(item->GetCritterId());
 
             if (cr != nullptr && cr->GetIsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
-            else if (cr != nullptr && prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+            else if (cr != nullptr && prop->IsModifiableByAnyClient()) {
                 Net_SendProperty(NetProperty::CritterItem, prop, item);
             }
             else {
@@ -2159,7 +2153,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
             }
         }
         else if (item->GetOwnership() == ItemOwnership::MapHex) {
-            if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+            if (prop->IsModifiableByAnyClient()) {
                 Net_SendProperty(NetProperty::MapItem, prop, item);
             }
             else {
@@ -2182,7 +2176,7 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Map, prop, _curMap.get());
     }
     else {
@@ -2200,7 +2194,7 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
         return;
     }
 
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+    if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Location, prop, _curLocation.get());
     }
     else {
@@ -2251,7 +2245,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
-        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
+        cr->GetSprite()->SetContour(cr->GetSprite()->GetContour(), cr->GetContourColor());
     }
 }
 
@@ -2462,14 +2456,12 @@ void FOClient::LmapPrepareMap()
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, .PointColor = cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, .PointColor = cur_color});
             }
-            else if (field.Flags.HasWall || field.Flags.HasScenery) {
-                if (field.Flags.ScrollBlock) {
+            else if (field.HasWall || field.HasScenery) {
+                if (!_lmapSwitchHi && !field.HasWall) {
                     continue;
                 }
-                if (!_lmapSwitchHi && !field.Flags.HasWall) {
-                    continue;
-                }
-                cur_color = ucolor {(field.Flags.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
+
+                cur_color = ucolor {(field.HasWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
             }
             else {
                 continue;
@@ -2612,13 +2604,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
-    else if (cmd == "SkipRoof" && args.size() == 3) {
-        if (_curMap != nullptr) {
-            const auto hx = strex(args[1]).to_int32();
-            const auto hy = strex(args[2]).to_int32();
-            _curMap->SetSkipRoof(_curMap->GetSize().from_raw_pos(hx, hy));
-        }
-    }
     else {
         throw ScriptException("Invalid custom call command", cmd, args.size());
     }
@@ -2732,7 +2717,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
                 FO_RUNTIME_ASSERT(move_ok);
             }
 
-            auto offset2 = Geometry.GetHexInterval(next_start_hex, hex2);
+            auto offset2 = Geometry.GetHexOffset(next_start_hex, hex2);
 
             if (i == 0) {
                 offset2.x -= cr->Moving.StartHexOffset.x;

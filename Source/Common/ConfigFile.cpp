@@ -38,8 +38,8 @@ FO_BEGIN_NAMESPACE();
 extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
 extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
 
-ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* hash_resolver, ConfigFileOption options) :
-    _fileNameHint {fname_hint},
+ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* hash_resolver, ConfigFileOption options) :
+    _fileNameHint {name_hint},
     _hashResolver {hash_resolver},
     _options {options}
 {

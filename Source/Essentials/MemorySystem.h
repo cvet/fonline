@@ -38,6 +38,10 @@
 
 FO_BEGIN_NAMESPACE();
 
+#if !FO_HAVE_RPMALLOC
+static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= alignof(std::max_align_t));
+#endif
+
 // Safe memory allocation
 using BadAllocCallback = function<void()>;
 
@@ -76,10 +80,6 @@ public:
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*
     {
-        if (count == 0) {
-            return nullptr;
-        }
-
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Safe allocator bad size", typeid(T).name(), count, count * sizeof(T));
             ReportAndExit("Alloc size overflow");
@@ -144,13 +144,6 @@ public:
     }
 
     template<typename T, typename... Args>
-        requires(!is_refcounted<T>)
-    static auto MakeUniq(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> uniq_ptr<T>
-    {
-        return uniq_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
-    }
-
-    template<typename T, typename... Args>
         requires(is_refcounted<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
@@ -200,10 +193,6 @@ public:
         requires(!is_refcounted<T>)
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
-        if (count == 0) {
-            return nullptr;
-        }
-
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
             ReportAndExit("Alloc size overflow");
@@ -228,9 +217,9 @@ public:
 
     template<typename T>
         requires(!is_refcounted<T>)
-    static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_ptr<T[]>
+    static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
-        return unique_ptr<T[]>(MakeRawArr<T>(count));
+        return unique_arr_ptr<T>(MakeRawArr<T>(count));
     }
 };
 

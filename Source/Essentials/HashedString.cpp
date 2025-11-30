@@ -72,7 +72,8 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         // Add new entry
         auto locker = std::unique_lock {_hashStorageLocker};
 
-        const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry(hash_value, string(s)));
+        hstring::entry entry = {.Hash = hash_value, .Str = string(s)};
+        const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(&it->second);

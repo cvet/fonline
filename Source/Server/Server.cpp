@@ -48,8 +48,17 @@ extern void InitServerEngine(FOServer*);
 extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
 #endif
 
+static auto GetServerResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(IsPackaged() ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    return resources;
+}
+
 FOServer::FOServer(GlobalSettings& settings) :
-    BaseEngine(settings, PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
+    BaseEngine(settings, GetServerResources(settings), PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -90,12 +99,12 @@ FOServer::FOServer(GlobalSettings& settings) :
                     FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file] {
+                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file, &settings_ = Settings] {
                             FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
                             string buf;
                             buf.reserve(health_info.size() + 128);
-                            buf += strex("{} v{}\n\n", App->Settings.GameName, App->Settings.GameVersion);
+                            buf += strex("{} v{}\n\n", settings_.GameName, settings_.GameVersion);
                             buf += health_info;
                             write_health_file(buf);
 
@@ -109,21 +118,6 @@ FOServer::FOServer(GlobalSettings& settings) :
             else {
                 WriteLog("Can't write health file '{}'", health_file_name);
             }
-        }
-
-        return std::nullopt;
-    });
-
-    // Mount resources
-    _starter.AddJob([this] {
-        FO_STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
-
-        WriteLog("Mount data packs");
-
-        Resources.AddDataSource(Settings.EmbeddedResources);
-
-        for (const auto& entry : Settings.ServerResourceEntries) {
-            Resources.AddDataSource(strex(Settings.ServerResources).combine_path(entry));
         }
 
         return std::nullopt;
@@ -200,26 +194,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 if (prop->IsDisabled()) {
                     continue;
                 }
-                if (prop->IsTemporary()) {
-                    continue;
-                }
-
-                switch (prop->GetAccess()) {
-                case Property::AccessType::PrivateCommon:
-                    [[fallthrough]];
-                case Property::AccessType::PrivateServer:
-                    [[fallthrough]];
-                case Property::AccessType::Public:
-                    [[fallthrough]];
-                case Property::AccessType::PublicModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::PublicFullModifiable:
-                    [[fallthrough]];
-                case Property::AccessType::Protected:
-                    [[fallthrough]];
-                case Property::AccessType::ProtectedModifiable:
-                    break;
-                default:
+                if (!prop->IsPersistent()) {
                     continue;
                 }
 
@@ -236,19 +211,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     if (prop->IsDisabled()) {
                         continue;
                     }
-
-                    switch (prop->GetAccess()) {
-                    case Property::AccessType::Public:
-                        [[fallthrough]];
-                    case Property::AccessType::PublicModifiable:
-                        [[fallthrough]];
-                    case Property::AccessType::PublicFullModifiable:
-                        [[fallthrough]];
-                    case Property::AccessType::Protected:
-                        [[fallthrough]];
-                    case Property::AccessType::ProtectedModifiable:
-                        break;
-                    default:
+                    if (!prop->IsSynced()) {
                         continue;
                     }
 
@@ -330,11 +293,11 @@ FOServer::FOServer(GlobalSettings& settings) :
     _starter.AddJob([this] {
         FO_STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
-        if (Settings.DataSynchronization) {
+        if (IsPackaged()) {
             WriteLog("Load client data packs for synchronization");
 
             FileSystem client_resources;
-            client_resources.AddDataSource(Settings.ClientResources, DataSourceType::DirRoot);
+            client_resources.AddDirSource(Settings.ClientResources, false, true, true);
 
             auto writer = DataWriter(_updateFilesDesc);
 
@@ -355,7 +318,9 @@ FOServer::FOServer(GlobalSettings& settings) :
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
-                add_sync_file(strex("{}.zip", resource_entry));
+                if (resource_entry != "Embedded") {
+                    add_sync_file(strex("{}.zip", resource_entry));
+                }
             }
 
             // Complete files list
@@ -387,7 +352,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             GameTime.SetSynchronizedTime(GetSynchronizedTime());
             FrameAdvance();
-            TimeEventMngr.InitPersistentTimeEvents(this);
 
             // Scripting
             WriteLog("Init script modules");
@@ -635,7 +599,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.LoopAvgTime = _stats.LoopWholeAvgTime.value() / _stats.LoopTimeStamps.size();
 
             // Calculate loops per second
-            if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
+            if (cur_time - _stats.LoopCounterBegin >= std::chrono::seconds(1)) {
                 _stats.LoopsPerSecond = _stats.LoopCounter;
                 _stats.LoopCounter = 0;
                 _stats.LoopCounterBegin = cur_time;
@@ -854,7 +818,7 @@ void FOServer::DrawGui(string_view server_name)
 
             // Locations and maps
             if (ImGui::TreeNode("Locations and maps")) {
-                buf = MapMngr.GetLocationAndMapsStatistics();
+                buf = GetLocationAndMapsStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -907,13 +871,39 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     string result = strex("Players: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
 
-    for (auto&& [id, player] : players) {
+    for (const auto& player : players | std::views::values) {
         const auto* cr = player->GetControlledCritter();
         const auto* map = EntityMngr.GetMap(cr->GetMapId());
         const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
 
         const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
         result += strex("{:<20} {:<10} {:<15} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
+    }
+
+    return result;
+}
+
+auto FOServer::GetLocationAndMapsStatistics() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& locations = EntityMngr.GetLocations();
+    const auto& maps = EntityMngr.GetMaps();
+
+    string result = strex("Locations count: {}\n", locations.size());
+    result += strex("Maps count: {}\n", maps.size());
+    result += "Location             Id\n";
+    result += "          Map                 Id          Time Script\n";
+
+    for (const auto& loc : locations | std::views::values) {
+        result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
+
+        int32 map_index = 0;
+
+        for (const auto& map : loc->GetMaps()) {
+            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
+            map_index++;
+        }
     }
 
     return result;
@@ -1144,7 +1134,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             result = GetIngamePlayersStatistics();
             break;
         case 2:
-            result = MapMngr.GetLocationAndMapsStatistics();
+            result = GetLocationAndMapsStatistics();
             break;
         case 3:
             // result = ScriptSys.GetDeferredCallsStatistics();
@@ -1199,7 +1189,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             break;
         }
 
-        MapMngr.TransitToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
+        MapMngr.TransferToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1231,13 +1221,14 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         }
     } break;
     case CMD_TOGLOBAL: {
-        MapMngr.TransitToGlobal(player_cr, {});
+        MapMngr.TransferToGlobal(player_cr, {});
         logcb("Done");
     } break;
     case CMD_PROPERTY: {
         const auto cr_id = buf.Read<ident_t>();
         const auto property_name = buf.Read<string>();
-        const auto property_value = buf.Read<int32>();
+        const auto is_set = buf.Read<bool>();
+        const auto property_value = buf.Read<string>();
 
         auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
 
@@ -1248,13 +1239,19 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
                 logcb("Property not found");
                 return;
             }
-            if (!prop->IsPlainData()) {
-                logcb("Property is not plain data type");
-                return;
-            }
 
-            cr->SetValueAsInt(prop, property_value);
-            logcb("Done");
+            if (is_set) {
+                if (!prop->IsPlainData()) {
+                    logcb("Property is not plain data type");
+                    return;
+                }
+
+                cr->SetValueAsAny(prop, any_t {property_value});
+                logcb("Done");
+            }
+            else {
+                logcb(cr->GetValueAsAny(prop));
+            }
         }
         else {
             logcb("Critter not found");
@@ -1299,7 +1296,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     } break;
     case CMD_ADDLOCATION: {
         const auto pid = buf.Read<hstring>(Hashes);
-        auto* loc = MapMngr.CreateLocation(pid, nullptr);
+        auto* loc = MapMngr.CreateLocation(pid);
 
         if (loc == nullptr) {
             logcb("Location not created");
@@ -1370,7 +1367,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         auto hex = player_cr->GetHex();
         auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.TransitToMap(player_cr, map, hex, dir, 5);
+        MapMngr.TransferToMap(player_cr, map, hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_LOG: {
@@ -1985,10 +1982,10 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0) {
-        auto ip = connection->GetIp();
+        const auto host = connection->GetHost();
         const auto reg_tick = std::chrono::milliseconds {Settings.RegistrationTimeout * 1000};
 
-        if (const auto it = _regIp.find(ip); it != _regIp.end()) {
+        if (const auto it = _registrationHistory.find(host); it != _registrationHistory.end()) {
             auto& last_reg = it->second;
             const auto tick = GameTime.GetFrameTime();
 
@@ -2001,7 +1998,7 @@ void FOServer::Process_Register(Player* unlogined_player)
             last_reg = tick;
         }
         else {
-            _regIp.emplace(ip, GameTime.GetFrameTime());
+            _registrationHistory.emplace(host, GameTime.GetFrameTime());
         }
     }
 
@@ -2013,15 +2010,15 @@ void FOServer::Process_Register(Player* unlogined_player)
     }
 
     // Register
-    auto reg_ip = AnyData::Array();
-    reg_ip.EmplaceBack(numeric_cast<int64>(connection->GetIp()));
+    auto reg_host = AnyData::Array();
+    reg_host.EmplaceBack(string(connection->GetHost()));
     auto reg_port = AnyData::Array();
     reg_port.EmplaceBack(numeric_cast<int64>(connection->GetPort()));
 
     AnyData::Document player_data;
     player_data.Emplace("_Name", string(name));
     player_data.Emplace("Password", string(password));
-    player_data.Emplace("ConnectionIp", std::move(reg_ip));
+    player_data.Emplace("ConnectionHost", std::move(reg_host));
     player_data.Emplace("ConnectionPort", std::move(reg_port));
 
     DbStorage.Insert(PlayersCollectionName, player_id, player_data);
@@ -2140,21 +2137,21 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Connection info
     {
-        const auto ip = connection->GetIp();
+        const auto host = connection->GetHost();
         const auto port = connection->GetPort();
 
-        auto conn_ip = player->GetConnectionIp();
+        auto conn_host = player->GetConnectionHost();
         auto conn_port = player->GetConnectionPort();
-        FO_RUNTIME_ASSERT(conn_ip.size() == conn_port.size());
+        FO_RUNTIME_ASSERT(conn_host.size() == conn_port.size());
 
         bool ip_found = false;
 
-        for (size_t i = 0; i < conn_ip.size(); i++) {
-            if (conn_ip[i] == ip) {
-                if (i < conn_ip.size() - 1) {
-                    conn_ip.erase(conn_ip.begin() + numeric_cast<ptrdiff_t>(i));
-                    conn_ip.push_back(ip);
-                    player->SetConnectionIp(conn_ip);
+        for (size_t i = 0; i < conn_host.size(); i++) {
+            if (conn_host[i] == host) {
+                if (i < conn_host.size() - 1) {
+                    conn_host.erase(conn_host.begin() + numeric_cast<ptrdiff_t>(i));
+                    conn_host.emplace_back(host);
+                    player->SetConnectionHost(conn_host);
                     conn_port.erase(conn_port.begin() + numeric_cast<ptrdiff_t>(i));
                     conn_port.push_back(port);
                     player->SetConnectionPort(conn_port);
@@ -2170,8 +2167,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         }
 
         if (!ip_found) {
-            conn_ip.push_back(ip);
-            player->SetConnectionIp(conn_ip);
+            conn_host.emplace_back(host);
+            player->SetConnectionHost(conn_host);
             conn_port.push_back(port);
             player->SetConnectionPort(conn_port);
         }
@@ -2318,7 +2315,7 @@ void FOServer::Process_Move(Player* player)
 
     if (cr_hex != start_hex) {
         FindPathInput find_input;
-        find_input.MapId = map_id;
+        find_input.TargetMap = map;
         find_input.FromCritter = cr;
         find_input.FromHex = cr_hex;
         find_input.ToHex = start_hex;
@@ -2492,9 +2489,10 @@ void FOServer::Process_Property(Player* player)
 
     in_buf.Unlock();
 
-    auto is_public = false;
+    bool is_public = false;
     const Property* prop = nullptr;
     Entity* entity = nullptr;
+
     switch (type) {
     case NetProperty::Game:
         is_public = true;
@@ -2568,6 +2566,7 @@ void FOServer::Process_Property(Player* player)
     default:
         break;
     }
+
     if (prop == nullptr || entity == nullptr) {
         return;
     }
@@ -2581,20 +2580,19 @@ void FOServer::Process_Property(Player* player)
         return;
     }
 
-    const auto access = prop->GetAccess();
-    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+    if (is_public && !prop->IsPublicSync()) {
         BreakIntoDebugger();
         return;
     }
-    if (!is_public && !IsEnumSet(access, Property::AccessType::ProtectedMask) && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+    if (!is_public && !prop->IsSynced()) {
         BreakIntoDebugger();
         return;
     }
-    if (!IsEnumSet(access, Property::AccessType::ModifiableMask)) {
+    if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
         BreakIntoDebugger();
         return;
     }
-    if (is_public && access != Property::AccessType::PublicFullModifiable) {
+    if (is_public && !prop->IsModifiableByAnyClient()) {
         BreakIntoDebugger();
         return;
     }
@@ -2674,8 +2672,8 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 
     ignore_unused(entity);
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
-        for (auto&& [id, player] : EntityMngr.GetPlayers()) {
+    if (prop->IsPublicSync()) {
+        for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }
@@ -2688,6 +2686,7 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* player = dynamic_cast<Player*>(entity);
+    FO_RUNTIME_ASSERT(player);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
@@ -2699,14 +2698,12 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
+    FO_RUNTIME_ASSERT(cr);
 
-    const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
-    const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
-
-    if (is_public || is_protected) {
+    if (prop->IsPublicSync() || prop->IsOwnerSync()) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
     }
-    if (is_public) {
+    if (prop->IsPublicSync()) {
         cr->Broadcast_Property(NetProperty::Critter, prop, cr);
     }
 }
@@ -2715,25 +2712,23 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
-        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
-        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
+    auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
+    if (!item->GetStatic() && item->GetId()) {
         switch (item->GetOwnership()) {
         case ItemOwnership::Nowhere: {
         } break;
         case ItemOwnership::CritterInventory: {
-            if (is_public || is_protected) {
+            if (prop->IsPublicSync() || prop->IsOwnerSync()) {
                 auto* cr = EntityMngr.GetCritter(item->GetCritterId());
 
                 if (cr != nullptr) {
-                    if (is_public || is_protected) {
-                        if (item->CanSendItem(false)) {
-                            cr->Send_Property(NetProperty::ChosenItem, prop, item);
-                        }
+                    if (item->CanSendItem(false)) {
+                        cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
 
-                    if (is_public) {
+                    if (prop->IsPublicSync()) {
                         if (item->CanSendItem(true)) {
                             cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
                         }
@@ -2742,7 +2737,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
             }
         } break;
         case ItemOwnership::MapHex: {
-            if (is_public) {
+            if (prop->IsPublicSync()) {
                 auto* map = EntityMngr.GetMap(item->GetMapId());
 
                 if (map != nullptr) {
@@ -2766,8 +2761,9 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+    if (prop->IsPublicSync()) {
         auto* map = dynamic_cast<Map*>(entity);
+        FO_RUNTIME_ASSERT(map);
 
         map->SendProperty(NetProperty::Map, prop, map);
     }
@@ -2779,8 +2775,9 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+    if (prop->IsPublicSync()) {
         auto* loc = dynamic_cast<Location*>(entity);
+        FO_RUNTIME_ASSERT(loc);
 
         for (auto& map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -2796,7 +2793,7 @@ void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
     FO_RUNTIME_ASSERT(custom_entity);
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](Player* player, bool owner) {
-        if (owner || IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
+        if (owner || prop->IsPublicSync()) {
             player->Send_Property(NetProperty::CustomEntity, prop, custom_entity);
         }
     });
@@ -2808,6 +2805,7 @@ void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
 
     // LookDistance, InSneakMode, SneakCoefficient
     auto* cr = dynamic_cast<Critter*>(entity);
+    FO_RUNTIME_ASSERT(cr);
 
     MapMngr.ProcessVisibleCritters(cr);
 
@@ -2825,12 +2823,12 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint32*>(new_value);
+    FO_RUNTIME_ASSERT(item);
 
-    if (new_count <= 0 || (!item->GetStackable() && new_count != 1)) {
-        if (!item->GetStackable()) {
-            throw GenericException("Trying to change count of not stackable item");
-        }
-
+    if (!item->GetStackable() && new_count != 1) {
+        throw GenericException("Trying to change count of not stackable item");
+    }
+    else if (new_count <= 0) {
         throw GenericException("Item count can't be zero or negative", new_count);
     }
 }
@@ -2841,6 +2839,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 
     // Hidden, AlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -2877,6 +2876,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
     // NoBlock, ShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -2895,6 +2895,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
+    FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         const auto* map = EntityMngr.GetMap(item->GetMapId());
@@ -2982,7 +2983,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
             }
 
             FindPathInput find_input;
-            find_input.MapId = cr->GetMapId();
+            find_input.TargetMap = EntityMngr.GetMap(cr->GetMapId());
             find_input.FromCritter = cr;
             find_input.FromHex = cr->GetHex();
             find_input.ToHex = hex;
@@ -3000,15 +3001,15 @@ void FOServer::ProcessCritterMoving(Critter* cr)
 
             const auto find_path = MapMngr.FindPath(find_input);
 
-            if (find_path.GagCritter != nullptr) {
+            if (find_path.GagCritterId) {
                 cr->TargetMoving.State = MovingState::GagCritter;
-                cr->TargetMoving.GagEntityId = find_path.GagCritter->GetId();
+                cr->TargetMoving.GagEntityId = find_path.GagCritterId;
                 return;
             }
 
-            if (find_path.GagItem != nullptr) {
+            if (find_path.GagItemId) {
                 cr->TargetMoving.State = MovingState::GagItem;
-                cr->TargetMoving.GagEntityId = find_path.GagItem->GetId();
+                cr->TargetMoving.GagEntityId = find_path.GagItemId;
                 return;
             }
 
@@ -3042,7 +3043,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
                 case FindPathOutput::ResultType::HexBusyRing:
                     reason = MovingState::HexBusyRing;
                     break;
-                case FindPathOutput::ResultType::Deadlock:
+                case FindPathOutput::ResultType::NoWay:
                     reason = MovingState::Deadlock;
                     break;
                 case FindPathOutput::ResultType::TraceFailed:
@@ -3127,7 +3128,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;
@@ -3200,7 +3201,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto cr_hex = cr->GetHex();
             const auto moved = cr_hex != old_hex;
 
-            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hex, cr_hex);
+            auto&& [cr_ox, cr_oy] = Geometry.GetHexOffset(next_start_hex, cr_hex);
 
             if (i == 0) {
                 cr_ox -= cr->Moving.StartHexOffset.x;
@@ -3301,7 +3302,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
             FO_RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hex, hex);
+        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
 
         if (i == 0) {
             ox -= cr->Moving.StartHexOffset.x;

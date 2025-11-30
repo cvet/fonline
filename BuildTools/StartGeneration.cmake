@@ -22,7 +22,6 @@ DeclareOption(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
 DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
-DeclareOption(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
 DeclareOption(FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
@@ -36,8 +35,8 @@ DeclareOption(FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OF
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Client binaries" OFF)
 DeclareOption(FO_BUILD_SERVER "Build Server binaries" OFF)
-DeclareOption(FO_BUILD_EDITOR "Build Editor binaries" OFF)
 DeclareOption(FO_BUILD_MAPPER "Build Mapper binaries" OFF)
+DeclareOption(FO_BUILD_EDITOR "Build Editor binaries" OFF)
 DeclareOption(FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF)
 DeclareOption(FO_BUILD_BAKER "Build Baker binaries" OFF)
 DeclareOption(FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF)
@@ -53,6 +52,7 @@ else()
 endif()
 
 # Global options
+set(CMAKE_POLICY_VERSION_MINIMUM 3.22)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
@@ -152,13 +152,11 @@ AddConfiguration(Debug_Profiling_Total Debug)
 AddConfiguration(Debug_Profiling_OnDemand Debug)
 AddConfiguration(Release_Ext Release)
 
-if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	AddConfiguration(Release_Debugging RelWithDebInfo)
 	AddConfiguration(San_Address RelWithDebInfo)
 	set(expr_SanitizerConfigs $<CONFIG:San_Address>)
-endif()
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 	AddConfiguration(San_Address RelWithDebInfo)
 	AddConfiguration(San_Memory RelWithDebInfo)
 	AddConfiguration(San_MemoryWithOrigins RelWithDebInfo)
@@ -167,6 +165,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
 	AddConfiguration(San_DataFlow RelWithDebInfo)
 	AddConfiguration(San_Address_Undefined RelWithDebInfo)
 	set(expr_SanitizerConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Undefined,San_Thread,San_DataFlow,San_Address_Undefined>)
+else()
+	set(expr_SanitizerConfigs 0)
 endif()
 
 if(FO_MULTICONFIG)
@@ -191,14 +191,6 @@ add_compile_definitions($<$<CONFIG:Debug>:FO_DEBUG=1>)
 add_compile_definitions($<$<NOT:$<CONFIG:Debug>>:NDEBUG>)
 add_compile_definitions($<$<NOT:$<CONFIG:Debug>>:FO_DEBUG=0>)
 
-add_compile_definitions($<$<CONFIG:San_Address>:LLVM_USE_SANITIZER=Address>)
-add_compile_definitions($<$<CONFIG:San_Memory>:LLVM_USE_SANITIZER=Memory>)
-add_compile_definitions($<$<CONFIG:San_MemoryWithOrigins>:LLVM_USE_SANITIZER=MemoryWithOrigins>)
-add_compile_definitions($<$<CONFIG:San_Undefined>:LLVM_USE_SANITIZER=Undefined>)
-add_compile_definitions($<$<CONFIG:San_Thread>:LLVM_USE_SANITIZER=Thread>)
-add_compile_definitions($<$<CONFIG:San_DataFlow>:LLVM_USE_SANITIZER=DataFlow>)
-add_compile_definitions($<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
-
 set(expr_DebugBuild $<OR:$<CONFIG:Debug>,$<CONFIG:Debug_Profiling_Total>,$<CONFIG:Debug_Profiling_OnDemand>>)
 set(expr_FullOptimization $<CONFIG:Release_Ext>)
 set(expr_DebugInfo $<NOT:$<CONFIG:MinSizeRel>>)
@@ -208,13 +200,22 @@ set(expr_TracyOnDemand $<OR:$<CONFIG:Profiling_OnDemand>,$<CONFIG:Debug_Profilin
 set(expr_RpmallocEnabled $<NOT:${expr_SanitizerConfigs}>)
 set(expr_StandaloneRpmallocEnabled $<AND:${expr_RpmallocEnabled},$<NOT:${expr_TracyEnabled}>>)
 
-if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	add_compile_options_C_CXX($<$<CONFIG:San_Address>:/fsanitize=address>)
 	add_compile_options_C_CXX($<$<CONFIG:Release_Debugging>:/dynamicdeopt>)
 	add_link_options($<$<CONFIG:Release_Debugging>:/DYNAMICDEOPT>)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
+	add_compile_definitions($<$<CONFIG:San_Address>:LLVM_USE_SANITIZER=Address>)
+	add_compile_definitions($<$<CONFIG:San_Memory>:LLVM_USE_SANITIZER=Memory>)
+	add_compile_definitions($<$<CONFIG:San_MemoryWithOrigins>:LLVM_USE_SANITIZER=MemoryWithOrigins>)
+	add_compile_definitions($<$<CONFIG:San_Undefined>:LLVM_USE_SANITIZER=Undefined>)
+	add_compile_definitions($<$<CONFIG:San_Thread>:LLVM_USE_SANITIZER=Thread>)
+	add_compile_definitions($<$<CONFIG:San_DataFlow>:LLVM_USE_SANITIZER=DataFlow>)
+	add_compile_definitions($<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
 endif()
 
 # Engine settings
+add_compile_definitions("FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\"")
 add_compile_definitions(FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>)
 add_compile_definitions(FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>)
 add_compile_definitions(FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>)
@@ -238,14 +239,59 @@ include_directories("${FO_ENGINE_ROOT}/Source/Frontend")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR)
 	set(FO_HEADLESS_ONLY OFF)
 else()
 	set(FO_HEADLESS_ONLY ON)
 endif()
 
-# Shared Windows settings
+# Core libs to build
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_COMMON_LIB ON)
+endif()
+
+if(FO_BUILD_CLIENT OR FO_BUILD_MAPPER OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_CLIENT_LIB ON)
+endif()
+
+if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_SERVER_LIB ON)
+endif()
+
+if(FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_MAPPER_LIB ON)
+endif()
+
+if(FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_BAKER OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_BAKER_LIB ON)
+endif()
+
+if(FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER_LIB)
+	set(FO_BUILD_ASCOMPILER_LIB ON)
+endif()
+
+if(FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+	set(FO_BUILD_EDITOR_LIB ON)
+endif()
+
+# Per OS configurations
 if(WIN32)
+	set(FO_WINDOWS 1)
+	set(FO_HAVE_OPENGL 1)
+	set(FO_HAVE_DIRECT_3D 1)
+
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(FO_BUILD_PLATFORM "Windows-win64")
+		set(FO_MONO_OS "windows")
+		set(FO_MONO_ARCH "x64")
+	else()
+		set(FO_BUILD_PLATFORM "Windows-win32")
+		set(FO_MONO_OS "windows")
+		set(FO_MONO_ARCH "x86")
+	endif()
+
+	set(CMAKE_SYSTEM_VERSION 6.1)
+	add_compile_definitions(_WIN32_WINNT=0x0601)
 	add_compile_definitions(UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _CRT_SECURE_NO_DEPRECATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 
 	# Todo: debug /RTCc /sdl _ALLOW_RTCc_IN_STL release /GS-
@@ -272,29 +318,6 @@ if(WIN32)
 	add_link_options($<${expr_FullOptimization}:/LTCG>)
 	add_link_options($<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
-	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
-
-	if(NOT FO_HEADLESS_ONLY)
-		list(APPEND FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
-	endif()
-endif()
-
-# Per OS configurations
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(FO_WINDOWS 1)
-	set(FO_HAVE_OPENGL 1)
-	set(FO_HAVE_DIRECT_3D 1)
-
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(FO_BUILD_PLATFORM "Windows-win64")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x64")
-	else()
-		set(FO_BUILD_PLATFORM "Windows-win32")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x86")
-	endif()
-
 	if(FO_BUILD_CLIENT)
 		add_compile_options_C_CXX($<$<CONFIG:Debug>:/MTd>)
 		add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MT>)
@@ -303,30 +326,13 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 		add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MD>)
 	endif()
 
+	list(APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
+
 	if(NOT FO_HEADLESS_ONLY)
 		set(FO_USE_GLEW ON)
+		list(APPEND FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
 		list(APPEND FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
 	endif()
-
-elseif(CMAKE_SYSTEM_NAME MATCHES "WidnowsStore")
-	set(FO_WINDOWS 1)
-	set(FO_UWP 1)
-	set(FO_HAVE_DIRECT_3D 1)
-
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(FO_BUILD_PLATFORM "UWP-win64")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x64")
-	else()
-		set(FO_BUILD_PLATFORM "UWP-win32")
-		set(FO_MONO_OS "windows")
-		set(FO_MONO_ARCH "x86")
-	endif()
-
-	add_compile_options_C_CXX($<$<CONFIG:Debug>:/MDd>)
-	add_compile_options_C_CXX(/ZW)
-	add_compile_options_C_CXX($<$<NOT:$<CONFIG:Debug>>:/MD>)
-	add_link_options(/APPCONTAINER)
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	set(FO_LINUX 1)
@@ -346,8 +352,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-O3>)
 	add_compile_options_C_CXX($<${expr_FullOptimization}:-flto>)
 	add_link_options($<${expr_FullOptimization}:-flto>)
-	add_link_options(-no-pie)
 	add_link_options(-rdynamic)
+
+	if(NOT FO_BUILD_BAKER)
+		add_link_options(-no-pie)
+	else()
+		add_compile_options_C_CXX(-fPIC)
+	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer

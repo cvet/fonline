@@ -166,16 +166,21 @@ void ItemManager::DestroyItem(Item* item)
 
     // Tear off from environment
     for (InfinityLoopDetector detector; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities(); detector.AddLoop()) {
-        if (item->GetOwnership() != ItemOwnership::Nowhere) {
-            RemoveItemHolder(item, GetItemHolder(item));
-        }
+        try {
+            if (item->GetOwnership() != ItemOwnership::Nowhere) {
+                RemoveItemHolder(item, GetItemHolder(item));
+            }
 
-        while (item->HasInnerItems()) {
-            DestroyItem(item->GetAllInnerItems().front());
-        }
+            while (item->HasInnerItems()) {
+                DestroyItem(item->GetAllInnerItems().front());
+            }
 
-        if (item->HasInnerEntities()) {
-            _engine->EntityMngr.DestroyInnerEntities(item);
+            if (item->HasInnerEntities()) {
+                _engine->EntityMngr.DestroyInnerEntities(item);
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
     }
 

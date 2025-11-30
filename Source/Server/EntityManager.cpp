@@ -58,6 +58,17 @@ EntityManager::EntityManager(FOServer* engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
+auto EntityManager::GetEntity(ident_t id) const noexcept -> const ServerEntity*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
+        return it->second.get();
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -69,11 +80,33 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
     return nullptr;
 }
 
+auto EntityManager::GetPlayer(ident_t id) const noexcept -> const Player*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetLocation(ident_t id) const noexcept -> const Location*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
     }
 
@@ -91,6 +124,17 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
     return nullptr;
 }
 
+auto EntityManager::GetMap(ident_t id) const noexcept -> const Map*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetMap(ident_t id) noexcept -> Map*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -102,11 +146,33 @@ auto EntityManager::GetMap(ident_t id) noexcept -> Map*
     return nullptr;
 }
 
+auto EntityManager::GetCritter(ident_t id) const noexcept -> const Critter*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetItem(ident_t id) const noexcept -> const Item*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
     }
 
@@ -516,7 +582,7 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
     try {
         const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
 
-        for (const auto& [entry, entry_info] : holder_type_info.HolderEntries) {
+        for (const auto& entry : holder_type_info.HolderEntries | std::views::keys) {
             LoadInnerEntitiesEntry(holder, entry, is_error);
         }
     }
@@ -916,8 +982,6 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     FO_RUNTIME_ASSERT(inserted);
-
-    _engine->TimeEventMngr.InitPersistentTimeEvents(entity);
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
@@ -927,8 +991,6 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
     const auto entity_id = entity->GetId();
     const auto type_name_plural = entity->GetTypeNamePlural();
     FO_RUNTIME_ASSERT(entity_id);
-
-    entity->SetId({});
 
     const auto it = _allEntities.find(entity_id);
     FO_RUNTIME_ASSERT(it != _allEntities.end());
@@ -994,8 +1056,9 @@ void EntityManager::DestroyAllEntities()
     destroy_entities(_allMaps);
     destroy_entities(_allCritters);
     destroy_entities(_allItems);
-    for (auto& custom_entities : _allCustomEntities) {
-        destroy_entities(custom_entities.second);
+
+    for (auto& val : _allCustomEntities | std::views::values) {
+        destroy_entities(val);
     }
 
     FO_RUNTIME_ASSERT(_allEntities.empty());

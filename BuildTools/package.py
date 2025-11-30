@@ -18,7 +18,7 @@ parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
 parser.add_argument('-nicename', dest='nicename', required=True, help='Representable game name')
-parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Editor', 'Mapper'], help='package target type')
+parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Editor', 'Mapper', 'Baker'], help='package target type')
 parser.add_argument('-platform', dest='platform', required=True, choices=['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
 parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
 # Windows: win32 win64
@@ -39,7 +39,6 @@ parser.add_argument('-angelscript', dest='angelscript', action='store_true', hel
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 parser.add_argument('-output', dest='output', required=True, help='output dir')
-parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()
 
 fomain = foconfig.ConfigParser()
@@ -51,11 +50,12 @@ def log(*text):
 log(f'Make {args.target} ({args.config}) for {args.platform}')
 
 packArgs = args.pack.split('+')
-outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
+outputPath = os.path.realpath(args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
-baseServerResName = fomain.mainSection().getStr('BaseServerResourcesName')
-baseClientResName = fomain.mainSection().getStr('BaseClientResourcesName')
+serverResDir = fomain.mainSection().getStr('ServerResources')
+clientResDir = fomain.mainSection().getStr('ClientResources')
 embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
+zipCompressLevel = fomain.mainSection().getInt('ZipCompressLevel')
 
 curPath = os.path.dirname(sys.argv[0])
 
@@ -107,8 +107,8 @@ def patchFile(filePath, textFrom, textTo):
 	with open(filePath, 'wb') as f:
 		f.write(content)
 
-def makeZip(name, path):
-	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel))
+def makeZip(name, path, mode='w'):
+	zip = zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel)
 	for root, dirs, files in os.walk(path):
 		for file in files:
 			zip.write(os.path.join(root, file), os.path.join(os.path.relpath(root, path), file))
@@ -127,94 +127,92 @@ def makeTar(name, path, mode):
 	tar.close()
 
 def build():
-	# Make packs
-	def getTargetResPacks(target):
-		resourceEntries = []
-		resPacks = fomain.getSections('ResourcePack')
-		for resPack in resPacks:
-			serverOnly = resPack.getBool('ServerOnly', False)
-			clientOnly = resPack.getBool('ClientOnly', False)
-			mapperOnly = resPack.getBool('MapperOnly', False)
-			if target == 'Server' and not clientOnly and not mapperOnly:
-				resourceEntries.append(resPack.getStr('Name'))
-			if target == 'Client' and not serverOnly and not mapperOnly:
-				resourceEntries.append(resPack.getStr('Name'))
-			if target == 'Mapper' and not serverOnly:
-				resourceEntries.append(resPack.getStr('Name'))
-		if target == 'Editor':
-			resourceEntries.append('Embedded')
-		return resourceEntries
-	
-	def filterFile(target, f):
-		if not os.path.isfile(f):
-			return False
-		if target == 'Server' and (f.endswith('-client') or f.endswith('-mapper')):
-			return False
-		if target == 'Client' and (f.endswith('-server') or f.endswith('-mapper')):
-			return False
-		if target == 'Mapper' and f.endswith('-server'):
-			return False
-		return True
-	
-	bakeOutput = fomain.mainSection().getStr('BakeOutput')
-	bakingPath = getInput(bakeOutput, 'Resources')
-	log('Baking input', bakingPath)
-	
-	if args.target in ['Server']:
-		os.makedirs(os.path.join(targetOutputPath, baseServerResName))
-		os.makedirs(os.path.join(targetOutputPath, baseClientResName))
-	if args.target in ['Client', 'Mapper']:
-		os.makedirs(os.path.join(targetOutputPath, baseClientResName))
-	
-	for packName in getTargetResPacks(args.target):
-		files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile(args.target, f)]
-		assert len(files), 'No files in pack ' + packName
-		if packName == 'Embedded':
-			log('Make pack', packName, '=>', 'embed to executable', '(' + str(len(files)) + ')')
-			embeddedData = io.BytesIO()
-			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
-				for file in files:
-					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
-			embeddedData = embeddedData.getvalue()
-			embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
-		else:
-			log('Make pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
-			baseResName = baseServerResName if args.target in ['Server'] else baseClientResName
-			with zipfile.ZipFile(os.path.join(targetOutputPath, baseResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
-				for file in files:
-					zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
-	
-	if args.target == 'Server':
-		for packName in getTargetResPacks('Client'):
-			files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile('Client', f)]
+	# Pack resorces
+	if 'NoRes' not in packArgs:
+		bakeOutput = fomain.mainSection().getStr('BakeOutput')
+		bakingPath = getInput(bakeOutput, 'Resources')
+		log('Baking input', bakingPath)
+		
+		def getTargetResPacks(target):
+			resourceEntries = []
+			resPacks = fomain.getSections('ResourcePack')
+			for resPack in resPacks:
+				serverOnly = resPack.getBool('ServerOnly', False)
+				clientOnly = resPack.getBool('ClientOnly', False)
+				mapperOnly = resPack.getBool('MapperOnly', False)
+				if target == 'Server' and not clientOnly and not mapperOnly:
+					resourceEntries.append(resPack.getStr('Name'))
+				if target == 'Client' and not serverOnly and not mapperOnly:
+					resourceEntries.append(resPack.getStr('Name'))
+			return resourceEntries
+		
+		def filterFile(target, f):
+			if not os.path.isfile(f):
+				return False
+			if target == 'Server' and (f.endswith('-client') or f.endswith('-mapper')):
+				return False
+			if target == 'Client' and (f.endswith('-server') or f.endswith('-mapper')):
+				return False
+			if target == 'Mapper' and f.endswith('-server'):
+				return False
+			return True
+		
+		if args.target in ['Server']:
+			os.makedirs(os.path.join(targetOutputPath, serverResDir))
+			os.makedirs(os.path.join(targetOutputPath, clientResDir))
+		if args.target in ['Client']:
+			os.makedirs(os.path.join(targetOutputPath, clientResDir))
+		
+		for packName in getTargetResPacks(args.target):
+			files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile(args.target, f)]
 			assert len(files), 'No files in pack ' + packName
-			if packName != 'Embedded':
-				log('Make client pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
-				with zipfile.ZipFile(os.path.join(targetOutputPath, baseClientResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+			if packName == 'Embedded':
+				log('Make pack', packName, '=>', 'embed to executable', '(' + str(len(files)) + ')')
+				embeddedData = io.BytesIO()
+				with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
 					for file in files:
 						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
+				embeddedData = embeddedData.getvalue()
+				embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
+			else:
+				log('Make pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+				baseResName = serverResDir if args.target in ['Server'] else clientResDir
+				with zipfile.ZipFile(os.path.join(targetOutputPath, baseResName, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
+					for file in files:
+						zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
+		
+		# Client resources for server
+		if args.target == 'Server':
+			for packName in getTargetResPacks('Client'):
+				files = [f for f in glob.glob(os.path.join(bakingPath, packName, '**'), recursive=True) if filterFile('Client', f)]
+				assert len(files), 'No files in pack ' + packName
+				if packName != 'Embedded':
+					log('Make client pack', packName, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+					with zipfile.ZipFile(os.path.join(targetOutputPath, clientResDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=zipCompressLevel) as zip:
+						for file in files:
+							zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
+	
+		# Evaluate config
+		configName = ('Server_' if args.target != 'Client' else 'Client_') + args.config
+		log('Config', configName)
+		
+		assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.fomain-bin')), 'Config file not found'
+		with open(os.path.join(bakingPath, 'Configs', configName + '.fomain-bin'), 'r', encoding='utf-8-sig') as f:		
+			configData = str.encode(f.read())
+		
+		log('Embedded data length', len(embeddedData))
+		log('Embedded config length', len(configData))
 	
 	def patchEmbedded(filePath):
 		patchData(filePath, bytearray([(i + 42) % 200 for i in range(embeddedBufSize)]), embeddedData, embeddedBufSize)
-	log('Embedded data length', len(embeddedData))
-	
-	# Evaluate config
-	configName = ('Server_' if args.target != 'Client' else 'Client_') + args.config
-	log('Config', configName)
-	
-	assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.fomainb')), 'Config file not found'
-	with open(os.path.join(bakingPath, 'Configs', configName + '.fomainb'), 'r', encoding='utf-8-sig') as f:		
-		configData = str.encode(f.read())
-	
-	configData += str.encode('\nEmbeddedResources=@Embedded')
-	configData += str.encode('\nServerResources=' + baseServerResName)
-	configData += str.encode('\nClientResources=' + baseClientResName)
 	
 	def patchConfig(filePath, additionalConfigData=None):
 		resultData = configData + (str.encode('\n' + additionalConfigData) if additionalConfigData else b'')
 		patchData(filePath, b'###InternalConfig###1234', resultData, 10048)
-	log('Embedded config length', len(configData))
-
+	
+	def patchPackagedMark(filePath):
+		patchData(filePath, b'###NOT_PACKAGED###', b'###XXXXXXXXXXXX###', 18)
+	
 	if args.platform == 'Windows':
 		# Binaries
 		for arch in args.arch.split('+'):
@@ -224,30 +222,33 @@ def build():
 					(['TotalProfiling'] if 'TotalProfiling' in packArgs else []) + \
 					(['OnDemandProfiling'] if 'OnDemandProfiling' in packArgs else []) + \
 					(['OGL'] if 'OGL' in packArgs else []):
-				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
+				isLib = 'Lib' in packArgs
+				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '') + ('Lib' if isLib else '')
+				log('Setup', arch, binName, binType)
+				
 				binOutName = (binName if args.target != 'Client' else args.nicename) + \
 						('_Profiling' if binType in ['TotalProfiling', 'OnDemandProfiling'] else '') + \
 						('_OpenGL' if binType == 'OGL' else '')
-				log('Setup', arch, binName, binType)
 				binEntry = args.target + '-' + args.platform + '-' + arch + \
 						('-Profiling_Total' if binType == 'TotalProfiling' else '') + \
 						('-Profiling_OnDemand' if binType == 'OnDemandProfiling' else '') + \
 						('-Debug' if 'Debug' in packArgs else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
+				binExt = '.dll' if isLib else '.exe'
 				log('Binary input', binPath)
-				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
+				
+				shutil.copy(os.path.join(binPath, binName + binExt), os.path.join(targetOutputPath, binOutName + binExt))
+				
 				if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
 					log('PDB file included')
 					shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binOutName + '.pdb'))
 				else:
 					log('PDB file NOT included')
-				patchEmbedded(os.path.join(targetOutputPath, binOutName + '.exe'))
-				patchConfig(os.path.join(targetOutputPath, binOutName + '.exe'), 'ForceOpenGL=1' if binType == 'OGL' else None)
-		
-		# Zip
-		if 'Zip' in packArgs:
-			log('Create zipped archive')
-			makeZip(targetOutputPath + '.zip', targetOutputPath)
+				
+				if 'NoRes' not in packArgs:
+					patchEmbedded(os.path.join(targetOutputPath, binOutName + binExt))
+					patchConfig(os.path.join(targetOutputPath, binOutName + binExt), 'ForceOpenGL=1' if binType == 'OGL' else None)
+					patchPackagedMark(os.path.join(targetOutputPath, binOutName + binExt))
 		
 		"""
 		# MSI Installer
@@ -323,10 +324,6 @@ def build():
 		shutil.copy(gameOutputPath + '/' + gameName + '.exe', binPath + '/' + gameName + '.exe')
 		shutil.copy(gameOutputPath + '/' + gameName + '.pdb', binPath + '/' + gameName + '.pdb')
 		"""
-		
-		# Cleanup raw files if not requested
-		if 'Raw' not in packArgs:
-			shutil.rmtree(targetOutputPath, True)
 
 	elif args.platform == 'Linux':
 		# Raw files
@@ -349,32 +346,14 @@ def build():
 				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))
 				patchEmbedded(os.path.join(targetOutputPath, binOutName))
 				patchConfig(os.path.join(targetOutputPath, binOutName))
+				patchPackagedMark(os.path.join(targetOutputPath, binOutName))
 				st = os.stat(os.path.join(targetOutputPath, binOutName))
 				os.chmod(os.path.join(targetOutputPath, binOutName), st.st_mode | stat.S_IEXEC)
 		
-		# Tar
-		if 'Tar' in packArgs:
-			log('Create tar archive')
-			makeTar(targetOutputPath + '.tar', targetOutputPath, 'w')
-		
-		# TarGz
-		if 'TarGz' in packArgs:
-			log('Create tar.gz archive')
-			makeTar(targetOutputPath + '.tar.gz', targetOutputPath, 'w:gz')
-		
-		# Zip
-		if 'Zip' in packArgs:
-			log('Create zipped archive')
-			makeZip(targetOutputPath + '.zip', targetOutputPath)
-		
 		# AppImage
-		if 'Zip' in packArgs:
+		if 'AppImage' in packArgs:
 			# Todo: AppImage
 			pass
-		
-		# Cleanup raw files if not requested
-		if 'Raw' not in packArgs:
-			shutil.rmtree(targetOutputPath, True)
 		
 	elif args.platform == 'Mac':
 		# Raw files
@@ -426,6 +405,7 @@ def build():
 		
 		patchEmbedded(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		patchConfig(os.path.join(targetOutputPath, binOutName + '.wasm'))
+		patchPackagedMark(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		
 		shutil.copy(os.path.join(curPath, 'web', 'default-index.html'), os.path.join(targetOutputPath, 'index.html'))
 		
@@ -438,7 +418,7 @@ def build():
 		assert os.path.isfile(filePackagerPath), 'No emscripten tools/file_packager.py found'
 		
 		packagerArgs = ['python3', filePackagerPath, os.path.join(targetOutputPath, 'Resources.data').replace('\\', '/'),
-				'--preload', os.path.join(targetOutputPath, baseClientResName).replace('\\', '/') + '@' + baseClientResName,
+				'--preload', os.path.join(targetOutputPath, clientResDir).replace('\\', '/') + '@' + clientResDir,
 				'--js-output=' + os.path.join(targetOutputPath, 'Resources.js').replace('\\', '/')]
 		log('Call emscripten packager:')
 		for arg in packagerArgs:
@@ -447,7 +427,7 @@ def build():
 		r = subprocess.call(packagerArgs)
 		assert r == 0, 'Emscripten tools/file_packager.py failed'
 		
-		shutil.rmtree(os.path.join(targetOutputPath, baseClientResName), True)
+		shutil.rmtree(os.path.join(targetOutputPath, clientResDir), True)
 		
 		# Patch *.html
 		patchFile(os.path.join(targetOutputPath, 'index.html'), '$TITLE$', args.nicename)
@@ -459,13 +439,37 @@ def build():
 		#logo = getLogo()
 		#logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
 		
-		# Zip
-		if 'Zip' in packArgs:
-			log('Create zipped archive')
-			makeZip(targetOutputPath + '.zip', targetOutputPath)
-		
 	else:
 		assert False, 'Unknown build target'
+	
+	# Zip
+	if 'Zip' in packArgs:
+		log('Create zipped archive')
+		makeZip(targetOutputPath + '.zip', targetOutputPath)
+	
+	# SingleZip
+	if 'SingleZip' in packArgs:
+		log('Add to single zip archive')
+		singleZipPath = os.path.join(outputPath, os.path.basename(outputPath) + '.zip')
+		makeZip(singleZipPath, targetOutputPath, 'a')
+	
+	# Tar
+	if 'Tar' in packArgs:
+		log('Create tar archive')
+		makeTar(targetOutputPath + '.tar', targetOutputPath, 'w')
+	
+	# TarGz
+	if 'TarGz' in packArgs:
+		log('Create tar.gz archive')
+		makeTar(targetOutputPath + '.tar.gz', targetOutputPath, 'w:gz')
+	
+	# Root raw
+	if 'Root' in packArgs:
+		shutil.copytree(targetOutputPath, outputPath, dirs_exist_ok=True)
+	
+	# Cleanup raw files if not requested
+	if 'Raw' not in packArgs:
+		shutil.rmtree(targetOutputPath, True)
 
 try:
 	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.target)

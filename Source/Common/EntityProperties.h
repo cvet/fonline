@@ -50,22 +50,24 @@ public:
     {
     }
 
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, synctime, SynchronizedTime);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, ident_t, LastEntityId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, ident_t, HistoryRecordsId);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, LastGlobalMapTripId);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, nanotime, FrameTime);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, timespan, FrameDeltaTime);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, int32, FramesPerSecond);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, int32, GlobalDayTime);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(synctime, SynchronizedTime);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(ident_t, LastEntityId);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(ident_t, HistoryRecordsId);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(nanotime, FrameTime);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(timespan, FrameDeltaTime);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(int32, FramesPerSecond);
+
+    // Todo: exclude player properties from engine:
+    ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(uint32, LastGlobalMapTripId);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int32, GlobalDayTime);
 };
 
 class PlayerProperties : public EntityProperties
@@ -78,16 +80,18 @@ public:
     {
     }
 
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateServer, ident_t, ControlledCritterId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, ident_t, LastControlledCritterId);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, vector<uint32>, ConnectionIp);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, vector<uint16>, ConnectionPort);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, string, Password);
+    ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);
+
+    // Todo: exclude player properties from engine:
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(ident_t, LastControlledCritterId);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<string>, ConnectionHost);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<uint16>, ConnectionPort);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(string, Password);
 };
 
 class ItemProperties : public EntityProperties
@@ -101,131 +105,128 @@ public:
     }
 
     ///@ MigrationRule Property Item ScriptId InitScript
-    ///@ ExportProperty ScriptFuncType = ItemInit
-    FO_ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemInit
+    FO_ENTITY_PROPERTY(hstring, InitScript);
     ///@ MigrationRule Property Item IsStatic Static
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, Static);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, Static);
     ///@ MigrationRule Property Item Accessory Ownership
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ItemOwnership, Ownership);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, MapId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(mpos, Hex);
     ///@ MigrationRule Property Item CritId CritterId
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, CritterId);
     ///@ MigrationRule Property Item CritSlot CritterSlot
     ///@ MigrationRule Property Item Slot CritterSlot
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterItemSlot, CritterSlot);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, ContainerId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, any_t, ContainerStack);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(CritterItemSlot, CritterSlot);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, ContainerId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(any_t, ContainerStack);
     ///@ MigrationRule Property Item SubItemIds InnerItemIds
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int32, Count);
-    ///@ ExportProperty Resource
-    FO_ENTITY_PROPERTY(Public, hstring, PicMap);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, ipos16, Offset);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);
-    ///@ MigrationRule Property Item IsScrollBlock ScrollBlock
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, ScrollBlock);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, InnerItemIds);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, Stackable);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int32, Count);
+    ///@ ExportProperty Common Mutable PublicSync Persistent Resource
+    FO_ENTITY_PROPERTY(hstring, PicMap);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(ipos16, Offset);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(CornerType, Corner);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, DisableEgg);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(vector<uint8>, BlockLines);
     ///@ MigrationRule Property Item IsHidden Hidden
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, bool, Hidden);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(bool, Hidden);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, AlwaysHideSprite);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, AlwaysHideSprite);
     ///@ MigrationRule Property Item IsHiddenInStatic HiddenInStatic
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, HiddenInStatic);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, HiddenInStatic);
     ///@ MigrationRule Property Item IsNoBlock NoBlock
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, NoBlock);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, NoBlock);
     ///@ MigrationRule Property Item IsShootThru ShootThru
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, ShootThru);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, ShootThru);
     ///@ MigrationRule Property Item IsLightThru LightThru
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, LightThru);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, LightThru);
     ///@ MigrationRule Property Item IsAlwaysView AlwaysView
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, AlwaysView);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, AlwaysView);
     ///@ MigrationRule Property Item IsLight LightSource
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, LightSource);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int8, LightIntensity);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, uint8, LightDistance);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, uint8, LightFlags);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, ucolor, LightColor);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, ucolor, ColorizeColor);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, LightSource);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int8, LightIntensity);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(uint8, LightDistance);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(uint8, LightFlags);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(ucolor, LightColor);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(ucolor, ColorizeColor);
 
     // Todo: exclude item properties from engine:
     ///@ MigrationRule Property Item SceneryScript StaticScript
-    ///@ ExportProperty ScriptFuncType = ItemStatic
-    FO_ENTITY_PROPERTY(PrivateCommon, hstring, StaticScript);
-    ///@ ExportProperty ScriptFuncType = ItemTrigger
-    FO_ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, IsTrigger);
-    ///@ ExportProperty Resource
-    FO_ENTITY_PROPERTY(Public, hstring, PicInv);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, IsWall);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, IsTile);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, IsRoofTile);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemStatic
+    FO_ENTITY_PROPERTY(hstring, StaticScript);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemTrigger
+    FO_ENTITY_PROPERTY(hstring, TriggerScript);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, IsTrigger);
+    ///@ ExportProperty Common Mutable PublicSync Persistent Resource
+    FO_ENTITY_PROPERTY(hstring, PicInv);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, IsScenery);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, IsWall);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, IsTile);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, IsRoofTile);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(uint8, TileLayer);
     ///@ MigrationRule Property Item IsFlat DrawFlatten
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, DrawFlatten);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, int8, DrawOrderOffsetHexY);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, DrawFlatten);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(int8, DrawOrderOffsetHexY);
     ///@ MigrationRule Property Item IsBadItem BadItem
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, BadItem);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, BadItem);
     ///@ MigrationRule Property Item IsNoHighlight NoHighlight
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, NoHighlight);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, NoHighlight);
     ///@ MigrationRule Property Item IsNoLightInfluence NoLightInfluence
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, NoLightInfluence);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, IsGag);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, NoLightInfluence);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, IsGag);
     ///@ MigrationRule Property Item IsColorize Colorize
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, Colorize);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, string, Lexems);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, IsTrap);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Protected, int16, TrapValue);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, Colorize);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(string, Lexems);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, IsTrap);
+    ///@ ExportProperty Common Mutable OwnerSync Persistent
+    FO_ENTITY_PROPERTY(int16, TrapValue);
 };
 
 class CritterProperties : public EntityProperties
@@ -239,73 +240,73 @@ public:
     }
 
     ///@ MigrationRule Property Critter ScriptId InitScript
-    ///@ ExportProperty ScriptFuncType = CritterInit
-    FO_ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, MapId);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateServer, uint32, GlobalMapTripId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, mpos, Hex);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ipos16, HexOffset);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, uint8, Dir);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, int16, DirAngle);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ ExportProperty Resource
-    FO_ENTITY_PROPERTY(Public, hstring, ModelName);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(Protected, int32, Multihex);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int32, ScaleFactor);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist1);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist2);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, int32, ShowCritterDist3);
-    ///@ ExportProperty Temporary
-    FO_ENTITY_PROPERTY(PrivateClient, vector<int32>, ModelLayers);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = CritterInit
+    FO_ENTITY_PROPERTY(hstring, InitScript);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, MapId);
+    ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(uint32, GlobalMapTripId);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(mpos, Hex);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ipos16, HexOffset);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(uint8, Dir);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(int16, DirAngle);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
+    ///@ ExportProperty Common Mutable PublicSync Persistent Resource
+    FO_ENTITY_PROPERTY(hstring, ModelName);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(int32, Multihex);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int32, ScaleFactor);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(int32, ShowCritterDist1);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(int32, ShowCritterDist2);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(int32, ShowCritterDist3);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(vector<int32>, ModelLayers);
     ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, ControlledByPlayer);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateClient, bool, IsChosen);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateClient, bool, IsPlayerOffline);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, bool, IsAttached);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, AttachMaster);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, bool, HideSprite);
-    ///@ ExportProperty ReadOnly Temporary
-    FO_ENTITY_PROPERTY(PrivateServer, int32, MovingSpeed);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(bool, ControlledByPlayer);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(bool, IsChosen);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(bool, IsPlayerOffline);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(bool, IsAttached);
+    ///@ ExportProperty Common
+    FO_ENTITY_PROPERTY(ident_t, AttachMaster);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, HideSprite);
+    ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(int32, MovingSpeed);
 
     // Todo: exclude critter properties from engine:
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, bool, SexTagFemale);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, SexTagFemale);
     ///@ MigrationRule Property Critter Cond Condition
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateServer, int32, SneakCoefficient);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Protected, int32, LookDistance);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, string, Lexems);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Protected, bool, InSneakMode);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(CritterCondition, Condition);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int16, NameOffset);
+    ///@ ExportProperty Server Mutable Persistent
+    FO_ENTITY_PROPERTY(int32, SneakCoefficient);
+    ///@ ExportProperty Common Mutable OwnerSync Persistent
+    FO_ENTITY_PROPERTY(int32, LookDistance);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(string, Lexems);
+    ///@ ExportProperty Common Mutable OwnerSync Persistent
+    FO_ENTITY_PROPERTY(bool, InSneakMode);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, bool, DeadDrawNoFlatten);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ucolor, ContourColor);
 };
 
 class MapProperties : public EntityProperties
@@ -319,36 +320,40 @@ public:
     }
 
     ///@ MigrationRule Property Map ScriptId InitScript
-    ///@ ExportProperty ScriptFuncType = MapInit
-    FO_ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, ident_t, LocId);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, int32, LocMapIndex);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, CritterIds);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, msize, Size);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, mpos, WorkHex);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateClient, ipos32, ScrollOffset);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateCommon, ident_t, WorkEntityId);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = MapInit
+    FO_ENTITY_PROPERTY(hstring, InitScript);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(ident_t, LocId);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(int32, LocMapIndex);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, CritterIds);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(msize, Size);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(mpos, WorkHex);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ipos32, ScrollOffset);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(irect32, ScrollAxialArea);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(ident_t, WorkEntityId);
 
     // Todo: exclude map properties from engine:
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateClient, float32, SpritesZoom);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(float32, SpritesZoom);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(float32, SpritesZoomTarget);
     ///@ MigrationRule Property Map CurDayTime FixedDayTime
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(Public, int32, FixedDayTime);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int32, FixedDayTime);
     ///@ MigrationRule Property Map DayTime DayColorTime
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateCommon, vector<int32>, DayColorTime);
-    ///@ ExportProperty
-    FO_ENTITY_PROPERTY(PrivateCommon, vector<uint8>, DayColor);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(vector<int32>, DayColorTime);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(vector<uint8>, DayColor);
 };
 
 class LocationProperties : public EntityProperties
@@ -363,12 +368,10 @@ public:
 
     ///@ MigrationRule Property Location ScriptId InitScript
     // Todo: implement Location InitScript
-    ///@ ExportProperty ScriptFuncType = LocationInit
-    FO_ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<ident_t>, MapIds);
-    ///@ ExportProperty ReadOnly
-    FO_ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
+    ///@ ExportProperty Server Mutable Persistent ScriptFuncType = LocationInit
+    FO_ENTITY_PROPERTY(hstring, InitScript);
+    ///@ ExportProperty Server Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, MapIds);
 };
 
 FO_END_NAMESPACE();

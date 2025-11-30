@@ -50,7 +50,7 @@ int main(int argc, char** argv)
     try {
         Platform::ForkProcess();
 
-        InitApp(numeric_cast<int32>(argc), argv);
+        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
 
         {
             auto server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);

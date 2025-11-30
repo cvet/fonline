@@ -55,7 +55,6 @@ public:
     auto operator=(NetworkServerConnection&&) noexcept = delete;
     virtual ~NetworkServerConnection() = default;
 
-    [[nodiscard]] virtual auto GetIp() const noexcept -> uint32 { return _ip; }
     [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
@@ -74,7 +73,6 @@ protected:
     void ReceiveCallback(const_span<uint8> buf);
 
     ServerNetworkSettings& _settings;
-    uint32 _ip {};
     string _host {};
     uint16 _port {};
 

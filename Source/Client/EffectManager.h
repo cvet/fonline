@@ -52,10 +52,8 @@ struct EffectCollection
     RenderEffect* ImGuiDefault {};
     RenderEffect* Font {};
     RenderEffect* FontDefault {};
-    RenderEffect* ContourStrictSprite {};
-    RenderEffect* ContourStrictSpriteDefault {};
-    RenderEffect* ContourDynamicSprite {};
-    RenderEffect* ContourDynamicSpriteDefault {};
+    RenderEffect* Contour {};
+    RenderEffect* ContourDefault {};
     RenderEffect* Generic {};
     RenderEffect* GenericDefault {};
     RenderEffect* Critter {};
@@ -79,7 +77,7 @@ struct EffectCollection
     RenderEffect* FlushPrimitive {};
     RenderEffect* FlushPrimitiveDefault {};
     RenderEffect* FlushMap {};
-    RenderEffect* FlushMapDefault {}; // Null by default
+    RenderEffect* FlushMapDefault {};
     RenderEffect* FlushLight {};
     RenderEffect* FlushLightDefault {};
     RenderEffect* FlushFog {};

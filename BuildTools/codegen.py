@@ -9,6 +9,7 @@ import time
 import uuid
 import glob
 import foconfig
+import subprocess
 
 startTime = time.time()
 
@@ -18,12 +19,12 @@ parser.add_argument('-buildhash', dest='buildhash', required=True, help='build h
 parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
 parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
-parser.add_argument('-commonheader', dest='commonheader', action='append', help='path to common header file')
-parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
+parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
+parser.add_argument('-markdown', dest='markdown', action='store_true', default=None, help='generate api in markdown format')
 parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
-parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
-parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='generate angelscript api')
-parser.add_argument('-csharp', dest='csharp', action='store_true', help='generate csharp api')
+parser.add_argument('-native', dest='native', action='store_true', default=None, help='generate native api')
+parser.add_argument('-angelscript', dest='angelscript', action='store_true', default=None, help='generate angelscript api')
+parser.add_argument('-csharp', dest='csharp', action='store_true', default=None, help='generate csharp api')
 parser.add_argument('-monoassembly', dest='monoassembly', action='append', default=[], help='assembly name')
 parser.add_argument('-monoserverref', dest='monoserverref', action='append', default=[], help='mono assembly server reference')
 parser.add_argument('-monoclientref', dest='monoclientref', action='append', default=[], help='mono assembly client reference')
@@ -775,7 +776,7 @@ def parseTags():
                 assert not gameEntitiesInfo[entity]['Exported'], 'Entity can\'t be exported ' + entity
                 
                 codeGenTags['EntityHolder'].append((holder, access, entity, entry, flags, comment))
-                codeGenTags['Property'].append((holder, 'PrivateServer', 'arr.ident', entry + 'Ids', ['ReadOnly'], []))
+                codeGenTags['Property'].append((holder, 'Server', 'arr.ident', entry + 'Ids', ['CoreProperty', 'Persistent'], []))
                 
             except Exception as ex:
                 showError('Invalid tag EntityHolder', absPath + ' (' + str(lineIndex + 1) + ')', ex)
@@ -785,28 +786,31 @@ def parseTags():
         
         for tagMeta in tagsMetas['ExportProperty']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-                
+            
             try:    
                 exportFlags = tokenize(tagInfo)
                 entity = tagContext[:tagContext.find(' ')]
                 
+                access = exportFlags[0]
+                assert access in ['Common', 'Server', 'Client'], 'Invalid export property target ' + access
+                exportFlags = exportFlags[1:]
+                
+                toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
+                assert len(toks) == 2
+                ptype = engineTypeToMetaType(toks[0])
+                assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
+                name = toks[1]
+                
+                exportFlags.append('CoreProperty')
+                
                 if entity == 'Entity':
                     entities = gameEntities
-                    exportFlags.append('IsCommon')
+                    exportFlags.append('SharedProperty')
                 else:
                     entities = [entity]
+                    assert entity in gameEntities, 'Invalid entity ' + entity
                 
                 for entity in entities:
-                    assert entity in gameEntities, 'Invalid entity ' + entity
-                    toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
-                    access = toks[0]
-                    assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                            'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
-                            'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid export property access ' + access
-                    ptype = engineTypeToMetaType(toks[1])
-                    assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
-                    name = toks[2]
-                    
                     codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
                 
             except Exception as ex:
@@ -915,35 +919,49 @@ def parseTags():
                 entity = tok[0]
                 assert entity in gameEntities, entity
                 access = tok[1]
-                assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                        'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
-                        'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid property access ' + access
-                if tok[2] == 'const':
-                    ptype = unifiedTypeToMetaType(tok[3])
-                    if len(tok) > 5 and tok[5] == '.':
-                        comp = tok[4]
-                        name = comp + '.' + tok[6]
-                        flags = ['ReadOnly'] + tok[7:]
-                    else:
-                        comp = None
-                        name = tok[4]
-                        flags = ['ReadOnly'] + tok[5:]
+                assert access in ['Common', 'Server', 'Client'], 'Invalid property target ' + access
+                ptype = unifiedTypeToMetaType(tok[2])
+                if len(tok) > 4 and tok[4] == '.':
+                    comp = tok[3]
+                    name = comp + '.' + tok[5]
+                    flags = tok[6:]
                 else:
-                    ptype = unifiedTypeToMetaType(tok[2])
-                    if len(tok) > 4 and tok[4] == '.':
-                        comp = tok[3]
-                        name = comp + '.' + tok[5]
-                        flags = tok[6:]
-                    else:
-                        comp = None
-                        name = tok[3]
-                        flags = tok[4:]
+                    comp = None
+                    name = tok[3]
+                    flags = tok[4:]
                 
                 assert name[0] != '_', 'Property ' + name + ' can\'t start with "_"'
                 if comp:
                     assert (entity, comp) in propertyComponents, 'Entity ' + entity + ' does not has component ' + comp
-                
                 assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
+                
+                isCommon = access == 'Common'
+                isClientOnly = access == 'Client'
+                isOwnerSync = 'OwnerSync' in flags
+                isPublicSync = 'PublicSync' in flags
+                isNoSync = 'NoSync' in flags
+                isMutable = 'Mutable' in flags
+                isPersistent = 'Persistent' in flags
+                isVirtual = 'Virtual' in flags
+                isModifiableByClient = 'ModifiableByClient' in flags
+                isModifiableByAnyClient = 'ModifiableByAnyClient' in flags
+                isNullGetterForProto = 'NullGetterForProto' in flags
+                isSynced = isCommon and isMutable and (isOwnerSync or isPublicSync)
+                
+                assert not (isOwnerSync or isPublicSync or isNoSync) or isCommon, name + ' - synced property must be common'
+                assert not (isOwnerSync or isPublicSync or isNoSync) or isMutable, name + ' - synced property must be mutable'
+                assert not (isOwnerSync or isPublicSync or isNoSync) or not isVirtual, name + ' - synced property can\'t be virtual'
+                assert not isNoSync or not (isOwnerSync or isPublicSync), name + ' - multiple sync types'
+                assert not isOwnerSync or not (isNoSync or isPublicSync), name + ' - multiple sync types'
+                assert not isPublicSync or not (isNoSync or isOwnerSync), name + ' - multiple sync types'
+                assert not (isMutable and isCommon and not isVirtual) or (isOwnerSync or isPublicSync or isNoSync), name + ' - specify sync type for common mutable property'
+                assert not isModifiableByClient or isSynced, name + ' - modifiable property must be synced'
+                assert not isModifiableByAnyClient or isPublicSync, name + ' - modifiable by any property must be public synced'
+                assert not isPersistent or not isClientOnly, name + ' - client property can\'t be persistent'
+                assert not isPersistent or isMutable, name + ' - persistent property myst be mutable'
+                assert not isVirtual or not isSynced, name + ' - virtual property can\'t be synced'
+                assert not isVirtual or not isPersistent, name + ' - virtual property can\'t be persistent'
+                assert not isNullGetterForProto or isVirtual, name + ' - null getter can\'t be on virtual property'
                 
                 codeGenTags['Property'].append((entity, access, ptype, name, flags, comment))
                 
@@ -1434,7 +1452,7 @@ def genGenericCode():
         globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
     if not isHookEnabled('SetupBakersHook'):
         globalLines.append('class BaseBaker;')
-        globalLines.append('class BakerData;')
+        globalLines.append('struct BakerData;')
         globalLines.append('void SetupBakersHook(vector<unique_ptr<BaseBaker>>&, BakerData&) { /* Stub */ }')
     globalLines.append('')
     
@@ -1447,7 +1465,7 @@ def genGenericCode():
         for propTag in codeGenTags['ExportProperty']:
             ent, _, _, name, flags, _ = propTag
             if ent == entity:
-                if 'IsCommon' not in flags:
+                if 'SharedProperty' not in flags:
                     globalLines.append('uint16 ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
                 elif name not in commonParsed:
                     globalLines.append('uint16 EntityProperties::' + name + '_RegIndex = ' + str(index) + ';')
@@ -1621,7 +1639,7 @@ def genDataRegistration(target, isASCompiler):
             entity, access, type, name, flags, _ = e
             if not entityAllowed(entity, 'Client'):
                 continue
-            if access not in ['PrivateServer', 'VirtualPrivateServer']:
+            if access != 'Server':
                 restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, name, access, flags)) + '",')
             else:
                 restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, '__dummy' + str(dummyIndex), access, flags)) + '",')
@@ -1878,7 +1896,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + \
                         '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True, selfEntity=selfEntity) + '[]", ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return 'static_cast<int>(' + v + ')'
+                return 'static_cast<int32>(' + v + ')'
             return v
         
         def marshalBackRef(t, v, v2, selfEntity=None):
@@ -1892,7 +1910,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             elif tt[0] == 'arr':
                 return 'AssignArray<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v2 + ', ' + v + ')'
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return v + ' = static_cast<int>(' + v2 + ')'
+                return v + ' = static_cast<int32>(' + v2 + ')'
             return None
         
         def marshalBackRef2(t, v, v2, selfEntity=None):
@@ -1977,7 +1995,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     for m in methods:
                         #argsStr = ', '.join([metaTypeToASEngineType(p[0]) for p in m[2]])
                         #globalLines.append('    ' + metaTypeToASEngineType(m[1]) + ' ' + m[0] + '(' + argsStr + ') { ' + ('return {' + '};' if m[1] != 'void' else '') + ' }')
-                        globalLines.append('    void ' + m[0] + '() { }')
+                        globalLines.append('    void ' + m[0] + '_Dummy() { }')
                     globalLines.append('};')
                     globalLines.append('')
             
@@ -2395,7 +2413,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     registerLines.append('AS_VERIFY(as_engine->RegisterObjectProperty("' + refTypeName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + refTypeName + ', ' + f[1] + ')));')
                 for m in methods:
                     argsStr = ', '.join([metaTypeToASType(p[0], forceNoConst=True) + ' ' + p[1] for p in m[2]])
-                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '(' + argsStr + ')", SCRIPT_METHOD(' + refTypeName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
+                    methodName = m[0] + ('_Dummy' if isASCompiler else '')
+                    registerLines.append('AS_VERIFY(as_engine->RegisterObjectMethod("' + refTypeName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '(' + argsStr + ')", SCRIPT_METHOD(' + refTypeName + ', ' + methodName + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
@@ -3365,7 +3384,7 @@ try:
     embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
     assert embeddedBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('volatile const uint8_t EMBEDDED_RESOURCES[' + str(embeddedBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(embeddedBufSize)]) + '};')
+    writeFile('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(embeddedBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(embeddedBufSize)]) + '};')
     
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)
@@ -3378,7 +3397,12 @@ writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHashUint(args.buildhash) + 'u;')
-writeFile('static constexpr auto FO_DEBUGGING_MAIN_CONFIG = "' + args.maincfg + '";')
+
+try:
+    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
+    writeFile('static constexpr auto FO_GIT_BRANCH = "' + branch + '";')
+except:
+    writeFile('static constexpr auto FO_GIT_BRANCH = "";')
 
 # Actual writing of generated files
 try:

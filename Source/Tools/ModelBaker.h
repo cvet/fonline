@@ -54,14 +54,10 @@ public:
     auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker() override;
 
-    [[nodiscard]] auto IsExtSupported(string_view ext) const -> bool override { return ext == "fo3d" || ext == "fbx" || ext == "obj"; }
-
-    void BakeFiles(FileCollection files) override;
+    void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    [[nodiscard]] auto BakeFbxFile(string_view fname, const File& file) -> vector<uint8>;
-
-    bool _nonConstHelper {};
+    [[nodiscard]] auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>;
 };
 
 FO_END_NAMESPACE();

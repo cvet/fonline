@@ -1,10 +1,10 @@
 #!/bin/bash -e
 
-CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
+CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CUR_DIR/setup-env.sh"
 
-mkdir -p $FO_WORKSPACE
-pushd $FO_WORKSPACE
+mkdir -p "$FO_WORKSPACE"
+pushd "$FO_WORKSPACE"
 
 if [[ -d "emsdk" ]]; then
     echo ""
@@ -14,7 +14,7 @@ if [[ -d "emsdk" ]]; then
     echo ""
 fi
 
-cd build-linux-toolset
+cd "build-linux-toolset"
 cmake --build . --config Release --target $1 --parallel
 
 popd

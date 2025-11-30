@@ -203,12 +203,14 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     _processedFiles.emplace(name_hashed);
 
-    // Load file data
-    const auto file = _resources.ReadFile(fname);
-
-    if (!file) {
+    // File maybe not exists, it's not an error
+    if (!_resources.IsFileExists(fname)) {
         return nullptr;
     }
+
+    // Load file data
+    const auto file = _resources.ReadFile(fname);
+    FO_RUNTIME_ASSERT(file);
 
     // Load bones
     auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
@@ -626,12 +628,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     int32 anim_index = 0;
 
     if (!IsEnumSet(flags, ModelAnimFlags::Init)) {
-        if (state_anim == CritterStateAnim::None) {
-            anim_index = _modelInfo->_renderAnimIndex;
-        }
-        else {
-            anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
-        }
+        anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
     }
 
     // Check animation changes
@@ -1130,23 +1127,6 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
     else {
         return false;
     }
-}
-
-auto ModelInstance::GetRenderFramesData() const -> tuple<float32, int32, int32, int32>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto duration = 0.0f;
-
-    if (_bodyAnimController) {
-        duration = _bodyAnimController->GetAnimationDuration(_modelInfo->_renderAnimIndex);
-    }
-
-    const auto proc_from = _modelInfo->_renderAnimProcFrom;
-    const auto proc_to = _modelInfo->_renderAnimProcTo;
-    const auto dir = _modelInfo->_renderAnimDir;
-
-    return tuple {duration, proc_from, proc_to, dir};
 }
 
 auto ModelInstance::GetDrawSize() const -> isize32
@@ -2758,28 +2738,6 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
             }
-            else if (token == "RenderFrame" || token == "RenderFrames") {
-                anim_entries.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
-
-                *istr >> _renderAnimProcFrom;
-
-                // One frame
-                _renderAnimProcTo = _renderAnimProcFrom;
-
-                // Many frames
-                if (token == "RenderFrames") {
-                    *istr >> _renderAnimProcTo;
-                }
-
-                // Check
-                _renderAnimProcFrom = std::clamp(_renderAnimProcFrom, 0, 100);
-                _renderAnimProcTo = std::clamp(_renderAnimProcTo, 0, 100);
-            }
-            else if (token == "RenderDir") {
-                *istr >> buf;
-
-                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-            }
             else if (token == "DisableShadow") {
                 _shadowDisabled = true;
             }
@@ -2864,13 +2822,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 if (anim != nullptr) {
                     const auto anim_index = _animController->RegisterAnimation(anim, reversed);
-
-                    if (anim_entry.StateAnim == CritterStateAnim::None) {
-                        _renderAnimIndex = anim_index;
-                    }
-                    else {
-                        _animIndexes.emplace(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim), anim_index);
-                    }
+                    _animIndexes.emplace(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim), anim_index);
                 }
             }
 

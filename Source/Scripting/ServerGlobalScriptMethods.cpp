@@ -39,32 +39,9 @@
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
+#include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE();
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void> func)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, ScriptFuncName<void, any_t> func, any_t data)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, {}, vector<any_t> {std::move(data)});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void> func)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_StartPersistentTimeEvent(FOServer* server, timespan delay, timespan repeat, ScriptFuncName<void, any_t> func, any_t data)
-{
-    server->TimeEventMngr.StartTimeEvent(server, true, func, delay, repeat, vector<any_t> {std::move(data)});
-}
 
 ///@ ExportMethod
 FO_SCRIPT_API ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
@@ -629,9 +606,16 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(FOServer* server, const vector<id
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId)
 {
-    auto* loc = server->MapMngr.CreateLocation(protoId, nullptr);
+    auto* loc = server->MapMngr.CreateLocation(protoId);
     FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
 
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const vector<hstring>& map_pids)
+{
+    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
+    FO_RUNTIME_ASSERT(loc);
     return loc;
 }
 
@@ -645,9 +629,23 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring pro
         props_.SetValueAsAnyProps(static_cast<int32>(key), value);
     }
 
-    auto* loc = server->MapMngr.CreateLocation(protoId, &props_);
+    auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
     FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
 
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(FOServer* server, hstring protoId, const vector<hstring>& map_pids, const map<LocationProperty, any_t>& props)
+{
+    const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+    auto props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
+    FO_RUNTIME_ASSERT(loc);
     return loc;
 }
 
@@ -663,8 +661,27 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(FOServer* server, Location* loc)
 FO_SCRIPT_API void Server_Game_DestroyLocation(FOServer* server, ident_t locId)
 {
     auto* loc = server->EntityMngr.GetLocation(locId);
+
     if (loc != nullptr) {
         server->MapMngr.DestroyLocation(loc);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyMap(FOServer* server, Map* map)
+{
+    if (map != nullptr) {
+        server->MapMngr.DestroyMap(map);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyMap(FOServer* server, ident_t mapId)
+{
+    auto* map = server->EntityMngr.GetMap(mapId);
+
+    if (map != nullptr) {
+        server->MapMngr.DestroyMap(map);
     }
 }
 
@@ -744,7 +761,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server)
     vector<Map*> maps;
     maps.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
+    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
         maps.emplace_back(map);
     }
 
@@ -760,7 +777,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
         maps.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, map] : server->EntityMngr.GetMaps()) {
+    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
         if (!pid || pid == map->GetProtoId()) {
             maps.emplace_back(map);
         }
@@ -790,7 +807,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationComponent component)
 {
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return loc;
         }
@@ -804,7 +821,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProper
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
             return loc;
         }
@@ -819,7 +836,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server)
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         locs.emplace_back(loc);
     }
 
@@ -835,7 +852,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, hstri
         locs.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (!pid || pid == loc->GetProtoId()) {
             locs.emplace_back(loc);
         }
@@ -850,7 +867,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             locs.emplace_back(loc);
         }
@@ -867,7 +884,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, Locat
     vector<Location*> locs;
     locs.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto&& [id, loc] : server->EntityMngr.GetLocations()) {
+    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
             locs.emplace_back(loc);
         }
@@ -885,7 +902,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pi
         items.reserve(server->EntityMngr.GetItemsCount());
     }
 
-    for (auto&& [id, item] : server->EntityMngr.GetItems()) {
+    for (auto* item : server->EntityMngr.GetItems() | std::views::values) {
         FO_RUNTIME_ASSERT(!item->IsDestroyed());
 
         if (!pid || pid == item->GetProtoId()) {
@@ -904,7 +921,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
     vector<Player*> result;
     result.reserve(players.size());
 
-    for (auto&& [id, player] : players) {
+    for (auto* player : players | std::views::values) {
         result.emplace_back(player);
     }
 
@@ -968,6 +985,152 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer
 FO_SCRIPT_API bool Server_Game_IsTextPresent(FOServer* server, TextPackName textPack, uint32 strNum)
 {
     return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
+}
+
+static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
+{
+    const auto print_log = [&log_callback](string& log, bool last_call) {
+        log = strex(log).replace('\r', '\n', '\n').erase('\r');
+
+        while (true) {
+            auto pos = log.find('\n');
+
+            if (pos == string::npos && last_call && !log.empty()) {
+                pos = log.size();
+            }
+
+            if (pos != string::npos) {
+                log_callback(log.substr(0, pos));
+                log.erase(0, pos + 1);
+            }
+            else {
+                break;
+            }
+        }
+    };
+
+#if FO_WINDOWS
+    HANDLE out_read = nullptr;
+    HANDLE out_write = nullptr;
+
+    SECURITY_ATTRIBUTES sa = {};
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+
+    if (::CreatePipe(&out_read, &out_write, &sa, 0) == 0) {
+        return -1;
+    }
+
+    if (::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) == 0) {
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
+        return -1;
+    }
+
+    STARTUPINFOW si = {};
+    si.cb = sizeof(STARTUPINFO);
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi = {};
+
+    auto wcommand = strex(command).to_wide_char();
+    const auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
+        nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
+
+    if (result == 0) {
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
+        return -1;
+    }
+
+    string log;
+
+    while (true) {
+        while (true) {
+            DWORD bytes = 0;
+
+            if (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) == 0) {
+                break;
+            }
+            if (bytes == 0) {
+                break;
+            }
+
+            char buf[4096] = {};
+
+            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr) != 0) {
+                log.append(buf, bytes);
+                print_log(log, false);
+            }
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            break;
+        }
+    }
+
+    print_log(log, true);
+
+    DWORD retval = 0;
+    ::GetExitCodeProcess(pi.hProcess, &retval);
+
+    ::CloseHandle(out_read);
+    ::CloseHandle(out_write);
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
+
+    return std::bit_cast<int32>(retval);
+
+#elif !FO_WINDOWS && !FO_WEB
+    FILE* in = popen(string(command).c_str(), "r");
+
+    if (in == nullptr) {
+        return -1;
+    }
+
+    string log;
+    char buf[4096];
+
+    while (fgets(buf, sizeof(buf), in)) {
+        log += buf;
+        print_log(log, false);
+    }
+
+    print_log(log, true);
+
+    return pclose(in);
+
+#else
+    return 1;
+#endif
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Server_Game_SystemCall(FOServer* server, string_view command)
+{
+    ignore_unused(server);
+
+    auto prefix = command.substr(0, command.find(' '));
+    return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Server_Game_SystemCall(FOServer* server, string_view command, string& output)
+{
+    ignore_unused(server);
+
+    output = "";
+
+    return SystemCall(command, [&output](string_view line) {
+        if (!output.empty()) {
+            output += "\n";
+        }
+        output += line;
+    });
 }
 
 FO_END_NAMESPACE();

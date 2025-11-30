@@ -113,6 +113,7 @@ void CScriptDict::SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeF
 static void RegisterScriptDict_Native(asIScriptEngine* engine);
 static void RegisterScriptDict_Generic(asIScriptEngine* engine);
 
+static void* CreateObject(asITypeInfo* objType, int32 subTypeIndex);
 static void* CopyObject(asITypeInfo* objType, int32 subTypeIndex, void* value);
 static void DestroyObject(asITypeInfo* objType, int32 subTypeIndex, void* value);
 static bool Less(SDictCache* cache, int32 typeId, const void* a, const void* b);
@@ -322,9 +323,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
 
     // The index operator returns the template subtype
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHOD(CScriptDict, Get), asCALL_THISCALL);
-    assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD(CScriptDict, Set), asCALL_THISCALL);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in)", asMETHOD(CScriptDict, GetOrCreate), asCALL_THISCALL);
     assert(r >= 0);
 
     // The assignment operator
@@ -608,6 +607,21 @@ void* CScriptDict::Get(void* key)
     return it->second;
 }
 
+void* CScriptDict::GetOrCreate(void* key)
+{
+    DictMap* dict = static_cast<DictMap*>(dictMap);
+
+    const auto it = dict->find(key);
+    if (it == dict->end()) {
+        key = CopyObject(objType, 0, key);
+        void* value = CreateObject(objType, 1);
+        dict->insert(DictMap::value_type(key, value));
+        return value;
+    }
+
+    return it->second;
+}
+
 void* CScriptDict::GetDefault(void* key, void* defaultValue)
 {
     DictMap* dict = static_cast<DictMap*>(dictMap);
@@ -781,6 +795,30 @@ void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data) const
     for (const auto& kv : *dict) {
         data.push_back(std::pair<void*, void*>(kv.first, kv.second));
     }
+}
+
+// internal
+static void* CreateObject(asITypeInfo* objType, int32 subTypeIndex)
+{
+    const int32 subTypeId = objType->GetSubTypeId(subTypeIndex);
+    const asITypeInfo* subType = objType->GetSubType(subTypeIndex);
+    asIScriptEngine* engine = objType->GetEngine();
+
+    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE)) {
+        return engine->CreateScriptObject(subType);
+    }
+
+    int32 elementSize;
+    if (subTypeId & asTYPEID_MASK_OBJECT) {
+        elementSize = sizeof(asPWORD);
+    }
+    else {
+        elementSize = engine->GetSizeOfPrimitiveType(subTypeId);
+    }
+
+    void* ptr = userAlloc(elementSize);
+    memset(ptr, 0, elementSize);
+    return ptr;
 }
 
 // internal
@@ -1011,9 +1049,7 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASE, "void f()", WRAP_MFN(CScriptDict, Release), asCALL_GENERIC);
     assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", WRAP_MFN(CScriptDict, Get), asCALL_GENERIC);
-    assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in)", WRAP_MFN(CScriptDict, GetOrCreate), asCALL_GENERIC);
     assert(r >= 0);
     // r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
     // WRAP_MFN(CScriptDict, operator=), asCALL_GENERIC); assert(r >= 0);

@@ -44,8 +44,8 @@ const int32& AppRender::MAX_BONES {MAX_BONES_};
 const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
 
-Application::Application(int32 argc, char** argv, AppInitFlags flags) :
-    Settings(argc, argv)
+Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
+    Settings {std::move(settings)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,13 +72,13 @@ void Application::OpenLink(string_view link)
     ignore_unused(link);
 }
 
-void Application::SetImGuiEffect(unique_ptr<RenderEffect> effect)
+void Application::LoadImGuiEffect(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(effect);
+    ignore_unused(resources);
 }
 
 auto Application::CreateChildWindow(isize32 size) -> AppWindow*
@@ -505,13 +505,64 @@ void AppAudio::UnlockDevice()
     FO_RUNTIME_ASSERT(IsEnabled());
 }
 
-void MessageBox::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
+void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(message);
     ignore_unused(traceback);
     ignore_unused(fatal_error);
+}
+
+void Application::ShowProgressWindow(string_view text, const ProgressWindowCallback& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(text);
+
+    callback();
+}
+
+void Application::ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32>& selected)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (options.empty()) {
+        return;
+    }
+
+    std::cout << "=== " << title << " ===\n";
+
+    for (size_t i = 0; i < options.size(); i++) {
+        std::cout << (i + 1) << ") " << options[i] << "\n";
+    }
+
+    if (!selected.empty()) {
+        std::cout << "Default input:";
+
+        for (const int32 sel : selected) {
+            std::cout << " " << (sel + 1);
+        }
+
+        std::cout << "\n";
+    }
+
+    std::cout << "Type numbers separated by space: ";
+
+    string str;
+    std::getline(std::cin, str);
+
+    const auto in_selected = strex(str).split_to_int32(' ');
+
+    if (!in_selected.empty()) {
+        selected.clear();
+
+        for (const int32 sel : in_selected) {
+            if (sel >= 1 && sel < numeric_cast<int32>(options.size() + 1)) {
+                selected.emplace(sel - 1);
+            }
+        }
+    }
 }
 
 FO_END_NAMESPACE();

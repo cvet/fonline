@@ -117,8 +117,13 @@ public:
 
     [[nodiscard]] auto GetYProj() const -> float32;
     [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
-    [[nodiscard]] auto GetHexInterval(mpos from_hex, mpos to_hex) const -> ipos32;
-    [[nodiscard]] auto GetHexInterval(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32;
+    [[nodiscard]] auto GetHexPos(mpos hex) const -> ipos32;
+    [[nodiscard]] auto GetHexPos(ipos32 raw_hex) const -> ipos32;
+    [[nodiscard]] auto GetHexAxialCoord(mpos hex) const -> ipos32;
+    [[nodiscard]] auto GetHexAxialCoord(ipos32 raw_hex) const -> ipos32;
+    [[nodiscard]] auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) const -> ipos32;
+    [[nodiscard]] auto GetHexOffset(mpos from_hex, mpos to_hex) const -> ipos32;
+    [[nodiscard]] auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32;
 
     [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;

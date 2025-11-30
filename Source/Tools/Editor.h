@@ -110,7 +110,7 @@ public:
     void MainLoop();
 
     GlobalSettings& Settings;
-    FileSystem InputResources {};
+    FileSystem RawResources {};
     FileSystem BakedResources {};
 
 private:

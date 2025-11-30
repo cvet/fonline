@@ -70,7 +70,7 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto&& [name, effect] : _loadedEffects) {
+    for (auto& effect : _loadedEffects | std::views::values) {
         PerFrameEffectUpdate(effect.get(), game_time);
     }
 }
@@ -116,7 +116,7 @@ void EffectManager::LoadMinimalEffects()
 
     auto effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
@@ -130,9 +130,9 @@ void EffectManager::LoadDefaultEffects()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect_errors = 0;
+    int32 effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
@@ -145,6 +145,7 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::QuadSprite, "Effects/Flush_Primitive.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::QuadSprite, "Effects/Flush_Map.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::QuadSprite, "Effects/Flush_Light.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, "Effects/Flush_Fog.fofx");
 #if FO_ENABLE_3D
@@ -155,8 +156,7 @@ void EffectManager::LoadDefaultEffects()
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.ContourStrictSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.ContourDynamicSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
 
     ignore_unused(effect_errors);
 }

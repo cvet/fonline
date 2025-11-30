@@ -35,8 +35,8 @@
 
 #if FO_HAVE_ASIO
 
-// ReSharper disable once CppInconsistentNaming
-#define _WIN32_WINNT 0x0601 // NOLINT(clang-diagnostic-reserved-macro-identifier)
+#define ASIO_STANDALONE 1
+#define ASIO_NO_DEPRECATED 1
 #include "asio.hpp"
 
 FO_BEGIN_NAMESPACE();
@@ -86,7 +86,7 @@ private:
     void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
     ServerNetworkSettings& _settings;
-    asio::io_context _ioService {};
+    asio::io_context _context {};
     asio::ip::tcp::acceptor _acceptor;
     NewConnectionCallback _connectionCallback;
     std::thread _runThread {};
@@ -107,14 +107,11 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& address = _socket->remote_endpoint().address();
-    _ip = address.is_v4() ? address.to_v4().to_uint() : const_numeric_cast<uint32>(0xFFFFFFFF);
-    _host = address.to_string();
+    _host = _socket->remote_endpoint().address().to_string();
     _port = _socket->remote_endpoint().port();
 
     if (settings.DisableTcpNagle) {
-        asio::error_code error;
-        error = _socket->set_option(asio::ip::tcp::no_delay(true), error);
+        _socket->set_option(asio::ip::tcp::no_delay(true));
     }
 
     _inBufData.resize(_settings.NetBufferSize);
@@ -125,9 +122,9 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        asio::error_code error;
-        error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
-        error = _socket->close(error);
+        if (_socket->is_open()) {
+            _socket->close();
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -225,14 +222,13 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    asio::error_code error;
-    error = _socket->shutdown(asio::ip::tcp::socket::shutdown_both, error);
-    error = _socket->close(error);
+    _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+    _socket->close();
 }
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -245,7 +241,7 @@ void NetworkServer_Asio::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _ioService.stop();
+    _context.stop();
     _runThread.join();
 }
 
@@ -253,14 +249,17 @@ void NetworkServer_Asio::Run()
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        _ioService.run();
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
+    while (true) {
+        try {
+            _context.run();
+            break;
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
     }
 }
 
@@ -268,7 +267,7 @@ void NetworkServer_Asio::AcceptNext()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_ioService);
+    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_context);
     _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
 }
 

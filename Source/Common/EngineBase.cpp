@@ -100,9 +100,9 @@ void EngineData::RegisterEnumGroup(string_view name, BaseTypeInfo underlying_typ
         _enumsFull[full_key] = value;
     }
 
-    _enums[name] = std::move(key_values);
-    _enumsRev[name] = std::move(key_values_rev);
-    _enumTypes[name] = std::move(underlying_type);
+    _enums[string(name)] = std::move(key_values);
+    _enumsRev[string(name)] = std::move(key_values_rev);
+    _enumTypes[string(name)] = std::move(underlying_type);
 }
 
 void EngineData::RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout)
@@ -301,7 +301,7 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
     if (const auto it = builtin_types.find(type_str); it != builtin_types.end()) {
         it->second(info);
     }
-    else if (const BaseTypeInfo * underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
+    else if (const BaseTypeInfo* underlying_type; GetEnumInfo(info.TypeName, &underlying_type)) {
         info.IsEnum = true;
         info.IsEnumSigned = underlying_type->IsSignedInt;
         info.Size = underlying_type->Size;
@@ -518,11 +518,12 @@ auto EngineData::CheckMigrationRule(hstring rule_name, hstring extra_info, hstri
     return result;
 }
 
-BaseEngine::BaseEngine(GlobalSettings& settings, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator) :
+BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator) :
     EngineData(props_relation, registrator),
     Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
+    Resources {std::move(resources)},
     Geometry(settings),
     GameTime(settings),
     ProtoMngr(*this),

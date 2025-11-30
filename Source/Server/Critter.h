@@ -69,9 +69,6 @@ enum class MovingState : uint8
 
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
-    friend class Player;
-    friend class CritterManager;
-
 public:
     Critter() = delete;
     Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr) noexcept;
@@ -108,15 +105,15 @@ public:
 
     auto AddVisibleCritter(Critter* cr) -> bool;
     auto RemoveVisibleCritter(Critter* cr) -> bool;
-    auto AddCrIntoVisGroup1(ident_t cr_id) -> bool;
-    auto AddCrIntoVisGroup2(ident_t cr_id) -> bool;
-    auto AddCrIntoVisGroup3(ident_t cr_id) -> bool;
-    auto RemoveCrFromVisGroup1(ident_t cr_id) -> bool;
-    auto RemoveCrFromVisGroup2(ident_t cr_id) -> bool;
-    auto RemoveCrFromVisGroup3(ident_t cr_id) -> bool;
-    auto AddVisibleItem(ident_t item_id) -> bool;
-    auto RemoveVisibleItem(ident_t item_id) -> bool;
-    auto CheckVisibleItem(ident_t item_id) const -> bool;
+    auto AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool;
+    auto AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool;
+    auto AddCrIntoVisGroup3(ident_t cr_id) noexcept -> bool;
+    auto RemoveCrFromVisGroup1(ident_t cr_id) noexcept -> bool;
+    auto RemoveCrFromVisGroup2(ident_t cr_id) noexcept -> bool;
+    auto RemoveCrFromVisGroup3(ident_t cr_id) noexcept -> bool;
+    auto AddVisibleItem(ident_t item_id) noexcept -> bool;
+    auto RemoveVisibleItem(ident_t item_id) noexcept -> bool;
+    auto CheckVisibleItem(ident_t item_id) const noexcept -> bool;
 
     void MarkIsForPlayer();
     void AttachPlayer(Player* player);

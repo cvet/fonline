@@ -47,15 +47,16 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv);
+        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::DisableLogTags);
+
+        bool baking_result;
 
         {
             auto baker = MasterBaker(App->Settings);
-
-            baker.BakeAll();
+            baking_result = baker.BakeAll();
         }
 
-        ExitApp(true);
+        ExitApp(baking_result);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

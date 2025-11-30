@@ -80,6 +80,7 @@ public:
     FO_NAMESPACE int32 RemoveValues(void* value);
     void Clear();
     void* Get(void* key);
+    void* GetOrCreate(void* key);
     void* GetDefault(void* key, void* defaultValue);
     void* GetKey(FO_NAMESPACE int32 index);
     void* GetValue(FO_NAMESPACE int32 index);

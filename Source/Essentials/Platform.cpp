@@ -40,6 +40,7 @@
 #endif
 
 #if FO_LINUX || FO_MAC
+#include <dlfcn.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -167,6 +168,64 @@ auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing
 
     return true;
 
+#else
+    return false;
+#endif
+}
+
+auto Platform::LoadModule(const string& module_name) noexcept -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    void* module_handle = nullptr;
+
+#if FO_WINDOWS
+    module_handle = ::LoadLibraryW(strex(strex::safe_format, "{}.dll", module_name).to_wide_char().c_str());
+#elif FO_LINUX
+    module_handle = ::dlopen(strex(strex::safe_format, "{}.so", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+#elif FO_MAC
+    module_handle = ::dlopen(strex(strex::safe_format, "{}.dylib", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+#endif
+
+    return module_handle;
+}
+
+void Platform::UnloadModule(void* module_handle) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (module_handle == nullptr) {
+        return;
+    }
+
+#if FO_WINDOWS
+    ::FreeLibrary(static_cast<HMODULE>(module_handle));
+#elif FO_LINUX || FO_MAC
+    ::dlclose(module_handle);
+#endif
+}
+
+auto Platform::GetFuncAddr(void* module_handle, const string& func_name) noexcept -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    void* func = nullptr;
+
+#if FO_WINDOWS
+    func = reinterpret_cast<void*>(::GetProcAddress(static_cast<HMODULE>(module_handle), func_name.c_str()));
+#elif FO_LINUX || FO_MAC
+    func = ::dlsym(module_handle != nullptr ? module_handle : RTLD_DEFAULT, func_name.c_str());
+#endif
+
+    return func;
+}
+
+auto Platform::IsShiftDown() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return (::GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
 #else
     return false;
 #endif

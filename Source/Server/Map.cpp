@@ -360,12 +360,15 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     if (type == NetProperty::Map) {
         const auto* map = dynamic_cast<Map*>(entity);
         FO_RUNTIME_ASSERT(map == this);
+
         for (auto* cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
         }
     }
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
+        FO_RUNTIME_ASSERT(item);
+
         for (auto* cr : copy_hold_ref(GetCritters())) {
             if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
@@ -374,7 +377,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         }
     }
     else {
-        FO_RUNTIME_ASSERT(false);
+        FO_UNREACHABLE_PLACE();
     }
 }
 
@@ -427,16 +430,16 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     return true;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* skip_cr) -> bool
+auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_engine->Settings.CritterBlockHex) {
-        if (skip_cr != nullptr && !skip_cr->IsDead()) {
+        if (ignore_cr != nullptr && !ignore_cr->IsDead()) {
             // Todo: make movable checks without critter removing
-            RemoveCritterFromField(skip_cr);
+            RemoveCritterFromField(ignore_cr);
             const auto result = IsHexesMovable(hex, radius);
-            AddCritterToField(skip_cr);
+            AddCritterToField(ignore_cr);
             return result;
         }
     }
@@ -562,13 +565,13 @@ auto Map::GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     return nullptr;
 }
 
-auto Map::GetItemGag(mpos hex) noexcept -> Item*
+auto Map::GetItemGag(mpos hex) const noexcept -> const Item*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    for (auto* item : field.Items) {
+    for (const auto* item : field.Items) {
         if (item->GetIsGag()) {
             return item;
         }
@@ -952,13 +955,22 @@ auto Map::GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&
     return static_field.TriggerItems;
 }
 
-auto Map::IsScrollBlock(mpos hex) const noexcept -> bool
+auto Map::IsOutsideArea(mpos hex) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
+    const irect32 scroll_area = GetScrollAxialArea();
 
-    return static_field.ScrollBlock;
+    if (!scroll_area.isZero()) {
+        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+
+        if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
+            axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 FO_END_NAMESPACE();

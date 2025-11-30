@@ -39,51 +39,37 @@
 
 FO_BEGIN_NAMESPACE();
 
-static auto MakeFilesystemPath(string_view path) -> std::filesystem::path
+static auto MakeFileSystemPath(string_view path) -> std::filesystem::path
 {
     FO_STACK_TRACE_ENTRY();
 
     return std::u8string(path.begin(), path.end());
 }
 
-auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {fname, write, false};
-}
-
-auto DiskFileSystem::OpenFile(string_view fname, bool write, bool write_through) -> DiskFile
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {fname, write, write_through};
-}
-
-DiskFile::DiskFile(string_view fname, bool write, bool write_through)
+DiskFile::DiskFile(string_view path, bool write, bool write_through)
 {
     FO_STACK_TRACE_ENTRY();
 
     _openedForWriting = write;
     _writeThrough = write_through;
 
-    const auto path = MakeFilesystemPath(fname);
+    const auto fs_path = MakeFileSystemPath(path);
 
     if (write) {
         constexpr auto flags = std::ios::out | std::ios::binary | std::ios::trunc;
-        _file = std::fstream(path, flags);
+        _file = std::fstream(fs_path, flags);
 
         if (!_file) {
-            DiskFileSystem::MakeDirTree(strex(fname).extract_dir());
-            _file = std::fstream(path, flags);
+            DiskFileSystem::MakeDirTree(strex(path).extract_dir());
+            _file = std::fstream(fs_path, flags);
         }
     }
     else {
         constexpr auto flags = std::ios::in | std::ios::binary;
-        _file = std::fstream(path, flags);
+        _file = std::fstream(fs_path, flags);
 
         if (!_file) {
-            _file = std::fstream(path, flags);
+            _file = std::fstream(fs_path, flags);
         }
     }
 }
@@ -238,12 +224,74 @@ auto DiskFile::GetSize() -> size_t
     return _file ? file_len : 0;
 }
 
+auto DiskFileSystem::OpenFile(string_view path, bool write) -> DiskFile
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return DiskFile(path, write, false);
+}
+
+auto DiskFileSystem::OpenFile(string_view path, bool write, bool write_through) -> DiskFile
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return DiskFile(path, write, write_through);
+}
+
+auto DiskFileSystem::ReadFile(string_view path) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, false);
+
+    if (file) {
+        string content;
+        content.resize(file.GetSize());
+
+        if (file.Read(content.data(), content.size())) {
+            return content;
+        }
+    }
+
+    return std::nullopt;
+}
+
+auto DiskFileSystem::WriteFile(string_view path, string_view content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, true, true);
+
+    if (file) {
+        if (file.Write(content)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto DiskFileSystem::WriteFile(string_view path, const_span<uint8> content) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = OpenFile(path, true, true);
+
+    if (file) {
+        if (file.Write(content)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
 {
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto wt = std::filesystem::last_write_time(MakeFilesystemPath(path), ec);
+    const auto wt = std::filesystem::last_write_time(MakeFileSystemPath(path), ec);
     return !ec ? wt.time_since_epoch().count() : 0;
 }
 
@@ -252,7 +300,7 @@ auto DiskFileSystem::IsExists(string_view path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::exists(MakeFilesystemPath(path), ec) && !ec;
+    return std::filesystem::exists(MakeFileSystemPath(path), ec) && !ec;
 }
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
@@ -260,14 +308,14 @@ auto DiskFileSystem::IsDir(string_view path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::is_directory(MakeFilesystemPath(path), ec) && !ec;
+    return std::filesystem::is_directory(MakeFileSystemPath(path), ec) && !ec;
 }
 
 auto DiskFileSystem::DeleteFile(string_view path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fs_path = MakeFilesystemPath(path);
+    const auto fs_path = MakeFileSystemPath(path);
 
     std::error_code ec;
     std::filesystem::remove(fs_path, ec);
@@ -279,7 +327,7 @@ auto DiskFileSystem::CopyFile(string_view path, string_view copy_path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::copy_file(MakeFilesystemPath(path), copy_path, ec);
+    return std::filesystem::copy_file(MakeFileSystemPath(path), copy_path, ec);
 }
 
 auto DiskFileSystem::RenameFile(string_view path, string_view new_path) -> bool
@@ -287,7 +335,7 @@ auto DiskFileSystem::RenameFile(string_view path, string_view new_path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::rename(MakeFilesystemPath(path), new_path, ec);
+    std::filesystem::rename(MakeFileSystemPath(path), new_path, ec);
     return !ec;
 }
 
@@ -296,7 +344,7 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto resolved = std::filesystem::absolute(MakeFilesystemPath(path), ec);
+    const auto resolved = std::filesystem::absolute(MakeFileSystemPath(path), ec);
 
     if (!ec) {
         const auto u8_str = resolved.u8string();
@@ -307,20 +355,21 @@ auto DiskFileSystem::ResolvePath(string_view path) -> string
     }
 }
 
-void DiskFileSystem::MakeDirTree(string_view path)
+auto DiskFileSystem::MakeDirTree(string_view dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto fs_dir = MakeFileSystemPath(dir);
     std::error_code ec;
-    std::filesystem::create_directories(MakeFilesystemPath(path), ec);
+    std::filesystem::create_directories(fs_dir, ec);
+    return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto fs_dir = MakeFilesystemPath(dir);
-
+    const auto fs_dir = MakeFileSystemPath(dir);
     std::error_code ec;
     std::filesystem::remove_all(fs_dir, ec);
     return !std::filesystem::exists(fs_dir, ec) && !ec;
@@ -330,7 +379,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto full_dir = MakeFilesystemPath(strex(base_dir).combine_path(cur_dir));
+    const auto full_dir = MakeFileSystemPath(strex(base_dir).combine_path(cur_dir));
     const auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
@@ -381,6 +430,19 @@ auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf)
     }
 
     return MemCompare(file_buf.data(), buf.data(), buf.size());
+}
+
+auto DiskFileSystem::TouchFile(string_view path) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = std::ofstream(MakeFileSystemPath(path), std::ios::app);
+
+    if (!file || !file.write("", 0)) {
+        return false;
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE();

@@ -54,9 +54,9 @@ void ResourceManager::IndexFiles()
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
-        auto sounds = _resources.FilterFiles(sound_ext);
-        while (sounds.MoveNext()) {
-            auto file_header = sounds.GetCurFileHeader();
+        const auto sound_files = _resources.FilterFiles(sound_ext);
+
+        for (const auto& file_header : sound_files) {
             _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), file_header.GetPath());
         }
     }
@@ -64,7 +64,7 @@ void ResourceManager::IndexFiles()
     auto any_spr = _sprMngr.LoadSprite("CritterStub.png", AtlasType::MapSprites);
     auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_RUNTIME_ASSERT(atlas_spr);
-    _critterDummyAnimFrames = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, 1, 100, 1);
+    _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->Size = atlas_spr->Size;
     _critterDummyAnimFrames->Spr[0] = std::move(atlas_spr);
     FO_RUNTIME_ASSERT(_critterDummyAnimFrames);
@@ -270,6 +270,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
     if (_animNameResolver.ResolveCritterAnimationFallout(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags)) {
         // Load
         const auto* anim = LoadFalloutAnimSubFrames(model_name, f_state_anim, f_action_anim);
+
         if (anim == nullptr) {
             return nullptr;
         }
@@ -277,11 +278,12 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         // Merge
         if (f_state_anim_ex != 0 && f_action_anim_ex != 0) {
             const auto* animex = LoadFalloutAnimSubFrames(model_name, f_state_anim_ex, f_action_anim_ex);
+
             if (animex == nullptr) {
                 return nullptr;
             }
 
-            auto anim_merge_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
+            auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, anim->CntFrm + animex->CntFrm, anim->WholeTicks + animex->WholeTicks, anim->DirCount);
 
             for (int32 d = 0; d < anim->DirCount; d++) {
                 auto* anim_merge = anim_merge_base->GetDir(d);
@@ -313,37 +315,33 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         }
 
         // Clone
-        if (anim != nullptr) {
-            auto anim_clone_base = SafeAlloc::MakeUnique<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
+        auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->WholeTicks, anim->DirCount);
 
-            for (int32 d = 0; d < anim->DirCount; d++) {
-                auto* anim_clone = anim_clone_base->GetDir(d);
-                const auto* anim_ = anim->GetDir(d);
+        for (int32 d = 0; d < anim->DirCount; d++) {
+            auto* anim_clone = anim_clone_base->GetDir(d);
+            const auto* anim_ = anim->GetDir(d);
 
-                if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
-                    for (int32 i = 0; i < anim_->CntFrm; i++) {
-                        anim_clone->Spr[i] = anim_->GetSpr(i)->MakeCopy();
-                        anim_clone->SprOffset[i] = anim_->SprOffset[i];
-                    }
+            if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
+                for (int32 i = 0; i < anim_->CntFrm; i++) {
+                    anim_clone->Spr[i] = anim_->GetSpr(i)->MakeCopy();
+                    anim_clone->SprOffset[i] = anim_->SprOffset[i];
                 }
-                else {
-                    anim_clone->Spr[0] = anim_->GetSpr(IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1)->MakeCopy();
-                    anim_clone->SprOffset[0] = anim_->SprOffset[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
+            }
+            else {
+                anim_clone->Spr[0] = anim_->GetSpr(IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1)->MakeCopy();
+                anim_clone->SprOffset[0] = anim_->SprOffset[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
 
-                    // Append offsets
-                    if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
-                        for (int32 i = 0; i < anim_->CntFrm - 1; i++) {
-                            anim_clone->SprOffset[0].x += anim_->SprOffset[i].x;
-                            anim_clone->SprOffset[0].y += anim_->SprOffset[i].y;
-                        }
+                // Append offsets
+                if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
+                    for (int32 i = 0; i < anim_->CntFrm - 1; i++) {
+                        anim_clone->SprOffset[0].x += anim_->SprOffset[i].x;
+                        anim_clone->SprOffset[0].y += anim_->SprOffset[i].y;
                     }
                 }
             }
-
-            return std::move(anim_clone_base);
         }
 
-        return nullptr;
+        return std::move(anim_clone_base);
     }
 
     return nullptr;
