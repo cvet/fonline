@@ -274,7 +274,7 @@ void SpriteManager::EndScene()
     Flush();
 
     if (_rtMain) {
-        FO_RUNTIME_ASSERT(_rtMngr.GetCurrentRenderTarget() == _rtMain);
+        FO_RUNTIME_ASSERT(_rtMain == _rtMngr.GetCurrentRenderTarget());
         _rtMngr.PopRenderTarget();
         DrawRenderTarget(_rtMain.get(), false);
     }
@@ -469,7 +469,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    const string ext = strex(path).getFileExtension();
+    const string ext = strex(path).get_file_extension();
 
     if (ext.empty()) {
         BreakIntoDebugger();

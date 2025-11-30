@@ -76,7 +76,7 @@ void Platform::InfoLog(const string& str) noexcept
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    ::OutputDebugStringW(strex(str).toWideChar().c_str());
+    ::OutputDebugStringW(strex(str).to_wide_char().c_str());
 #elif FO_ANDROID
     __android_log_write(ANDROID_LOG_INFO, "FO", str.c_str());
 #endif
@@ -91,7 +91,7 @@ void Platform::SetThreadName(const string& str) noexcept
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
 
     if (set_thread_description != nullptr) {
-        set_thread_description(::GetCurrentThread(), strex(str).toWideChar().c_str());
+        set_thread_description(::GetCurrentThread(), strex(str).to_wide_char().c_str());
     }
 #endif
 }
@@ -118,7 +118,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
         }
     }
 
-    return strex().parseWideChar(path.data());
+    return strex().parse_wide_char(path.data());
 
 #elif FO_LINUX
     char path[FILENAME_MAX];
@@ -180,7 +180,7 @@ auto Platform::LoadModule(const string& module_name) noexcept -> void*
     void* module_handle = nullptr;
 
 #if FO_WINDOWS
-    module_handle = ::LoadLibraryW(strex(strex::safe_format, "{}.dll", module_name).toWideChar().c_str());
+    module_handle = ::LoadLibraryW(strex(strex::safe_format, "{}.dll", module_name).to_wide_char().c_str());
 #elif FO_LINUX
     module_handle = ::dlopen(strex(strex::safe_format, "{}.so", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC

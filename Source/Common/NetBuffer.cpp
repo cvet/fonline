@@ -248,10 +248,10 @@ void NetOutBuffer::WriteHashedString(hstring value)
 
     if (_debugHashes) {
         Push(&DEBUG_HASH_VALUE, sizeof(DEBUG_HASH_VALUE));
-        Write(value.asStr());
+        Write(value.as_str());
     }
 
-    const auto hash = value.asHash();
+    const auto hash = value.as_hash();
     Push(&hash, sizeof(hash));
 }
 
@@ -386,7 +386,7 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
             throw NetBufferException("Can't resolve received hash", hash, real_value);
         }
 
-        FO_RUNTIME_ASSERT(result.asStr() == real_value);
+        FO_RUNTIME_ASSERT(result.as_str() == real_value);
         return result;
     }
     else {

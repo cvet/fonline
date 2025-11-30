@@ -83,7 +83,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
-            const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extractFileName().eraseFileExtension().str() : FO_DEV_NAME);
+            const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extract_file_name().erase_file_extension().str() : FO_DEV_NAME);
 
             const auto write_health_file = [health_file_name](string_view text) {
                 if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
@@ -1184,7 +1184,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             break;
         }
 
-        if (!map->GetSize().isValidPos(cr_hex)) {
+        if (!map->GetSize().is_valid_pos(cr_hex)) {
             logcb("Invalid hex position");
             break;
         }
@@ -1264,7 +1264,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
 
-        if (map == nullptr || !map->GetSize().isValidPos(hex)) {
+        if (map == nullptr || !map->GetSize().is_valid_pos(hex)) {
             logcb("Wrong hexes or critter on global map");
             return;
         }
@@ -1956,14 +1956,14 @@ void FOServer::Process_Register(Player* unlogined_player)
     in_buf.Unlock();
 
     // Check data
-    if (!strex(name).isValidUtf8() || name.find('*') != string::npos) {
+    if (!strex(name).is_valid_utf8() || name.find('*') != string::npos) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
         connection->GracefulDisconnect();
         return;
     }
 
     // Check name length
-    const auto name_len_utf8 = numeric_cast<int32>(strex(name).lengthUtf8());
+    const auto name_len_utf8 = numeric_cast<int32>(strex(name).length_utf8());
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
@@ -2059,14 +2059,14 @@ void FOServer::Process_Login(Player* unlogined_player)
     }
 
     // Check valid symbols in name
-    if (!strex(name).isValidUtf8() || name.find('*') != string::npos) {
+    if (!strex(name).is_valid_utf8() || name.find('*') != string::npos) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
         connection->GracefulDisconnect();
         return;
     }
 
     // Check for name length
-    const auto name_len_utf8 = numeric_cast<int32>(strex(name).lengthUtf8());
+    const auto name_len_utf8 = numeric_cast<int32>(strex(name).length_utf8());
 
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
@@ -2648,7 +2648,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
     DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
 
     if (prop->IsHistorical()) {
-        const auto history_id_num = GetHistoryRecordsId().underlyingValue() + 1;
+        const auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
         const auto history_id = ident_t {history_id_num};
 
         SetHistoryRecordsId(history_id);
@@ -2658,7 +2658,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         AnyData::Document doc;
         doc.Emplace("Time", numeric_cast<int64>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
-        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlyingValue()));
+        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlying_value()));
         doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
@@ -3109,7 +3109,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>() / cr->Moving.WholeTime;
+    auto normalized_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>() / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3359,7 +3359,7 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
 
     const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
     const auto cur_time = GameTime.GetFrameTime();
-    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>();
+    const auto elapsed_time = (cur_time - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);

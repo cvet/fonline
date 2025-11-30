@@ -406,7 +406,7 @@ void FOClient::ProcessScreenEffectFading()
         }
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(screen_effect.Duration.toMs<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).toMs<int32>()) + 1;
+            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32>()) + 1;
             int32 res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -435,7 +435,7 @@ void FOClient::ScreenQuake(int32 noise, timespan time)
 
     _quakeScreenOffsX = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.toMs<float32>() / 30.0f);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
 
     _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
 
@@ -1077,7 +1077,7 @@ void FOClient::Net_OnCritterMoveSpeed()
     }
 
     const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
-    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).toMs<float32>();
+    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
 
     cr->Moving.WholeTime /= diff;
     cr->Moving.StartTime = GameTime.GetFrameTime();
@@ -1262,7 +1262,7 @@ void FOClient::Net_OnCritterPos()
         return;
     }
 
-    FO_RUNTIME_ASSERT(_curMap->GetSize().isValidPos(hex));
+    FO_RUNTIME_ASSERT(_curMap->GetSize().is_valid_pos(hex));
 
     auto* cr = _curMap->GetCritter(cr_id);
 
@@ -2435,11 +2435,11 @@ void FOClient::LmapPrepareMap()
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
-            if (!_curMap->GetSize().isValidPos(i1, i2)) {
+            if (!_curMap->GetSize().is_valid_pos(i1, i2)) {
                 continue;
             }
 
-            const auto hex2 = _curMap->GetSize().fromRawPos(i1, i2);
+            const auto hex2 = _curMap->GetSize().from_raw_pos(i1, i2);
 
             bool is_far = false;
             const auto dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
@@ -2574,8 +2574,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         return strex("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
-        const int32 w = strex(args[1]).toInt();
-        const int32 h = strex(args[2]).toInt();
+        const int32 w = strex(args[1]).to_int32();
+        const int32 h = strex(args[2]).to_int32();
 
         SprMngr.SetScreenSize({w, h});
         SprMngr.SetWindowSize({w, h});
@@ -2584,11 +2584,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        const int32 zoom = strex(args[1]).toInt();
-        const int32 x = strex(args[2]).toInt();
-        const int32 y = strex(args[3]).toInt();
-        const int32 w = strex(args[4]).toInt();
-        const int32 h = strex(args[5]).toInt();
+        const int32 zoom = strex(args[1]).to_int32();
+        const int32 x = strex(args[2]).to_int32();
+        const int32 y = strex(args[3]).to_int32();
+        const int32 w = strex(args[4]).to_int32();
+        const int32 h = strex(args[5]).to_int32();
 
         if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
             _lmapZoom = zoom;

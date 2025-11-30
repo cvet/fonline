@@ -67,10 +67,10 @@ struct hstring
     [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept { return _entry->Hash == other._entry->Hash; }
     [[nodiscard]] constexpr auto operator!=(const hstring& other) const noexcept { return _entry->Hash != other._entry->Hash; }
     [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
-    [[nodiscard]] constexpr auto asHash() const noexcept -> hash_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto asInt() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
-    [[nodiscard]] constexpr auto asUInt() const noexcept -> uint32 { return _entry->Hash; }
-    [[nodiscard]] constexpr auto asStr() const noexcept -> const string& { return _entry->Str; }
+    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_int32() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_uint32() const noexcept -> uint32 { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
 
 private:
     static entry _zeroEntry;
@@ -79,7 +79,7 @@ private:
 };
 static_assert(sizeof(hstring::hash_t) == 4);
 static_assert(std::is_standard_layout_v<hstring>);
-FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.asHash());
+FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
 FO_END_NAMESPACE();
 template<>
@@ -88,7 +88,7 @@ struct std::formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view
     template<typename FormatContext>
     auto format(const FO_NAMESPACE hstring& value, FormatContext& ctx) const
     {
-        return formatter<FO_NAMESPACE string_view>::format(value.asStr(), ctx);
+        return formatter<FO_NAMESPACE string_view>::format(value.as_str(), ctx);
     }
 };
 FO_BEGIN_NAMESPACE();

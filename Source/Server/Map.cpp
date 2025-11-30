@@ -100,11 +100,11 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         auto raw_check_hex = ipos32 {hex.x, hex.y};
         GeometryHelper::MoveHexAroundAway(raw_check_hex, pos);
 
-        if (!_mapSize.isValidPos(raw_check_hex)) {
+        if (!_mapSize.is_valid_pos(raw_check_hex)) {
             continue;
         }
 
-        const auto check_hex = _mapSize.fromRawPos(raw_check_hex);
+        const auto check_hex = _mapSize.from_raw_pos(raw_check_hex);
 
         if (!IsHexesMovable(check_hex, multihex)) {
             continue;
@@ -118,7 +118,7 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
 
     auto raw_hex = ipos32 {hex.x, hex.y};
     GeometryHelper::MoveHexAroundAway(raw_hex, pos);
-    const auto result_hex = _mapSize.fromRawPos(raw_hex);
+    const auto result_hex = _mapSize.from_raw_pos(raw_hex);
 
     return result_hex;
 }
@@ -167,7 +167,7 @@ void Map::AddCritterToField(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -181,7 +181,7 @@ void Map::RemoveCritterFromField(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -204,8 +204,8 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
             auto raw_mh_hex = ipos32 {hex.x, hex.y};
             GeometryHelper::MoveHexAroundAway(raw_mh_hex, i);
 
-            if (_mapSize.isValidPos(raw_mh_hex)) {
-                const auto mh_hex = _mapSize.fromRawPos(raw_mh_hex);
+            if (_mapSize.is_valid_pos(raw_mh_hex)) {
+                const auto mh_hex = _mapSize.from_raw_pos(raw_mh_hex);
                 auto& field = _hexField->GetCellForWriting(mh_hex);
 
                 if (set) {
@@ -227,7 +227,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
 
     FO_RUNTIME_ASSERT(item);
     FO_RUNTIME_ASSERT(!item->GetStatic());
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
@@ -420,8 +420,8 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
         auto raw_check_hex = ipos32 {hex.x, hex.y};
         GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
 
-        if (_mapSize.isValidPos(raw_check_hex)) {
-            if (!IsHexMovable(_mapSize.fromRawPos(raw_check_hex))) {
+        if (_mapSize.is_valid_pos(raw_check_hex)) {
+            if (!IsHexMovable(_mapSize.from_raw_pos(raw_check_hex))) {
                 return false;
             }
         }

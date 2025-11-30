@@ -69,7 +69,7 @@ LineTracer::LineTracer(mpos start_hex, float32 dir_angle, int32 dist, msize map_
     const auto sy = numeric_cast<float32>(start_hex.y) + 0.5f;
     const auto tx = iround<int32>(std::floor(sx + dx * numeric_cast<float32>(dist)));
     const auto ty = iround<int32>(std::floor(sy + dy * numeric_cast<float32>(dist)));
-    const auto target_hex = _mapSize.fromRawPos(tx, ty);
+    const auto target_hex = _mapSize.from_raw_pos(tx, ty);
 
     TraceInit(start_hex, target_hex, 0.0f);
 }
@@ -206,7 +206,7 @@ void LineTracer::GetNextSquare(mpos& pos)
     _x += _dx;
     _y += _dy;
 
-    pos = _mapSize.clampPos(iround<int32>(std::floor(_x)), iround<int32>(std::floor(_y)));
+    pos = _mapSize.clamp_pos(iround<int32>(std::floor(_x)), iround<int32>(std::floor(_y)));
 }
 
 FO_END_NAMESPACE();

@@ -60,7 +60,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fos-")) {
+    if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fos-")) {
         return;
     }
 
@@ -69,7 +69,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     uint64 max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).getFileExtension();
+        const string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fos") {
             continue;

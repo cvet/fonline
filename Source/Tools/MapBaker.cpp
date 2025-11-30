@@ -58,15 +58,15 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     vector<File> filtered_files;
 
     const auto check_file = [&](const FileHeader& file_header) -> bool {
-        const bool server_side = _bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-server"), file_header.GetWriteTime());
-        const bool client_side = _bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-client"), file_header.GetWriteTime());
+        const bool server_side = _bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
+        const bool client_side = _bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
 
         if (server_side || client_side) {
             if (!server_side) {
-                (void)_bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-server"), file_header.GetWriteTime());
+                (void)_bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
             }
             if (!client_side) {
-                (void)_bakeChecker(strex(file_header.GetPath()).changeFileExtension("fomap-bin-client"), file_header.GetWriteTime());
+                (void)_bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
             }
         }
 
@@ -75,7 +75,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).getFileExtension();
+            const string ext = strex(file_header.GetPath()).get_file_extension();
 
             if (ext != "fomap") {
                 continue;
@@ -88,11 +88,11 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         }
     }
     else {
-        if (!strex(target_path).getFileExtension().startsWith("fomap-")) {
+        if (!strex(target_path).get_file_extension().starts_with("fomap-")) {
             return;
         }
 
-        auto file = files.FindFileByPath(strex(target_path).changeFileExtension("fomap"));
+        auto file = files.FindFileByPath(strex(target_path).change_file_extension("fomap"));
 
         if (!file) {
             return;
@@ -156,8 +156,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
 
                 map_cr_count++;
-                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
-                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().asHash());
+                map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
                 map_cr_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -169,8 +169,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
 
                 map_item_count++;
-                map_item_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
-                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().asHash());
+                map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
                 map_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_item_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -184,8 +184,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                     client_props.ApplyFromText(kv);
 
                     map_client_item_count++;
-                    map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlyingValue());
-                    map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().asHash());
+                    map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                    map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
                     client_props.StoreAllData(props_data, client_str_hashes);
                     map_client_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                     map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -204,7 +204,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
-                const auto& str = hstr.asStr();
+                const auto& str = hstr.as_str();
                 final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
@@ -225,7 +225,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32>(numeric_cast<uint32>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
-                const auto& str = hstr.asStr();
+                const auto& str = hstr.as_str();
                 final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }

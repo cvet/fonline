@@ -76,19 +76,19 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         const auto write_time = file.GetWriteTime();
 
         for (int32 pass = 1; pass <= passes; pass++) {
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-info", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-spv", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-spv", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-glsl", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-glsl", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-hlsl", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-hlsl", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
-            (void)_bakeChecker(strex(path).changeFileExtension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-hlsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-hlsl", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
+            (void)_bakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
         }
 
         if (!_bakeChecker(path, write_time)) {
@@ -100,7 +100,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).getFileExtension();
+            const string ext = strex(file_header.GetPath()).get_file_extension();
 
             if (ext != "fofx") {
                 continue;
@@ -122,11 +122,11 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         }
     }
     else {
-        if (!strex(target_path).getFileExtension().startsWith("fofx")) {
+        if (!strex(target_path).get_file_extension().starts_with("fofx")) {
             return;
         }
 
-        const string base_name = strex(target_path).changeFileExtension("fofx");
+        const string base_name = strex(target_path).change_file_extension("fofx");
         auto file = files.FindFileByPath(base_name);
 
         if (!file) {
@@ -303,7 +303,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("Invalid uniform buffer", fname, uniform_block.name, uniform_block.size);
         }
 
-        const string fname_wo_ext = strex(fname).eraseFileExtension();
+        const string fname_wo_ext = strex(fname).erase_file_extension();
         BakeShaderStage(strex("{}.fofx-{}-vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
         BakeShaderStage(strex("{}.fofx-{}-frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 

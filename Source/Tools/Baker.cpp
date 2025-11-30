@@ -139,7 +139,7 @@ void MasterBaker::BakeAllInternal()
     WriteLog("Start baking");
 
     FO_RUNTIME_ASSERT(!_settings.BakeOutput.empty());
-    const auto make_output_path = [this](string_view path) -> string { return strex(_settings.BakeOutput).combinePath(path); };
+    const auto make_output_path = [this](string_view path) -> string { return strex(_settings.BakeOutput).combine_path(path); };
 
     const auto build_hash_path = make_output_path("Resources.build-hash");
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(build_hash_path);
@@ -172,8 +172,8 @@ void MasterBaker::BakeAllInternal()
         const auto bake_config = [&](string_view sub_config) {
             FO_RUNTIME_ASSERT(_settings.GetAppliedConfigs().size() == 1);
             const string config_path = _settings.GetAppliedConfigs().front();
-            const string config_name = strex(config_path).extractFileName();
-            const string config_dir = strex(config_path).extractDir();
+            const string config_name = strex(config_path).extract_file_name();
+            const string config_dir = strex(config_path).extract_dir();
 
             auto maincfg = GlobalSettings(true);
             maincfg.ApplyConfigAtPath(config_name, config_dir);
@@ -196,7 +196,7 @@ void MasterBaker::BakeAllInternal()
                 const auto is_server_setting = server_settings.count(key) != 0;
                 const auto is_client_setting = client_settings.count(key) != 0;
                 const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                const auto shortened_value = strex(value).isExplicitBool() ? (strex(value).toBool() ? "1" : "0") : value;
+                const auto shortened_value = strex(value).is_explicit_bool() ? (strex(value).to_bool() ? "1" : "0") : value;
 
                 if (!skip_write) {
                     server_config_content += strex("{}={}\n", key, shortened_value);
@@ -335,7 +335,7 @@ void MasterBaker::BakeAllInternal()
                 actual_resource_names.emplace(exclude_all_ext(path));
 
                 if (!force_baking) {
-                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combinePath(path));
+                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combine_path(path));
                 }
                 else {
                     return true;
@@ -343,7 +343,7 @@ void MasterBaker::BakeAllInternal()
             };
 
             const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
-                const auto res_path = strex(output_dir).combinePath(path).str();
+                const auto res_path = strex(output_dir).combine_path(path).str();
 
                 if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
                     const auto res_file_write_ok = DiskFileSystem::WriteFile(res_path, baked_data);
@@ -367,7 +367,7 @@ void MasterBaker::BakeAllInternal()
                 ignore_unused(size, write_time);
 
                 if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-                    DiskFileSystem::DeleteFile(strex(output_dir).combinePath(path));
+                    DiskFileSystem::DeleteFile(strex(output_dir).combine_path(path));
                     WriteLog("Delete outdated file {}", path);
                 }
             });
@@ -570,7 +570,7 @@ auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(_settings.BakeOutput).combinePath(res_pack_name).combinePath(path);
+    return strex(_settings.BakeOutput).combine_path(res_pack_name).combine_path(path);
 }
 
 auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64 write_time) -> bool
@@ -711,7 +711,7 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
 {
     FO_STACK_TRACE_ENTRY();
 
-    string fixed_dir = strex(dir).normalizePathSlashes();
+    string fixed_dir = strex(dir).normalize_path_slashes();
 
     if (!dir.empty() && dir.back() == '/') {
         fixed_dir.resize(fixed_dir.size() - 1);
@@ -732,7 +732,7 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
         if (!recursive && fpath.find('/', fixed_dir.size() + 1) != string_view::npos) {
             continue;
         }
-        if (!ext.empty() && strex(fpath).getFileExtension() != ext) {
+        if (!ext.empty() && strex(fpath).get_file_extension() != ext) {
             continue;
         }
 

@@ -277,9 +277,9 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
-        _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).toBool();
+        _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
 
-        const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).eraseFileExtension(), pass + 1));
+        const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
         FO_RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
 

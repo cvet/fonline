@@ -299,7 +299,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, Map* toMa
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().isValidPos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -315,7 +315,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(FOServer* server, Item* item, int32 cou
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().isValidPos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -408,7 +408,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(FOServer* server, const vector<Item*>& 
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
     }
-    if (!toMap->GetSize().isValidPos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -1037,7 +1037,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     PROCESS_INFORMATION pi = {};
 
-    auto wcommand = strex(command).toWideChar();
+    auto wcommand = strex(command).to_wide_char();
     const auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
         nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
 

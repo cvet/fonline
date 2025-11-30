@@ -194,7 +194,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
-    else if (value.Type() == AnyData::ValueType::Double) {
+    else if (value.Type() == AnyData::ValueType::Float64) {
         if (!bson_append_double(bson, key_data, key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
@@ -525,18 +525,18 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(strex(_storageDir).combinePath(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(strex(_storageDir).combine_path(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
             ignore_unused(size);
             ignore_unused(write_time);
 
-            if (strex(path).getFileExtension() != "json") {
+            if (strex(path).get_file_extension() != "json") {
                 return;
             }
 
             static_assert(sizeof(ident_t) == sizeof(int64));
 
-            const string id_str = strex(path).extractFileName().eraseFileExtension();
-            const auto id = strex(id_str).toInt64();
+            const string id_str = strex(path).extract_file_name().erase_file_extension();
+            const auto id = strex(id_str).to_int64();
 
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);
@@ -1148,7 +1148,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&filter, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&filter, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1196,7 +1196,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&insert, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&insert, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1228,7 +1228,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1272,7 +1272,7 @@ protected:
 
         static_assert(sizeof(ident_t) == sizeof(int64));
 
-        if (!bson_append_int64(&selector, "_id", 3, id.underlyingValue())) {
+        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
             throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
         }
 
@@ -1297,13 +1297,13 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto it = _collections.find(collection_name.asStr());
+        const auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             return nullptr;
         }
 
-        return it->second.getNoConst();
+        return it->second.get_no_const();
     }
 
     auto GetOrCreateCollection(hstring collection_name) -> mongoc_collection_t*
@@ -1312,16 +1312,16 @@ private:
 
         mongoc_collection_t* collection;
 
-        const auto it = _collections.find(collection_name.asStr());
+        const auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
-            collection = mongoc_database_get_collection(_database.get(), collection_name.asStr().c_str());
+            collection = mongoc_database_get_collection(_database.get(), collection_name.as_str().c_str());
 
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't create collection", collection_name);
             }
 
-            _collections.emplace(collection_name.asStr(), collection);
+            _collections.emplace(collection_name.as_str(), collection);
         }
         else {
             collection = it->second.get();

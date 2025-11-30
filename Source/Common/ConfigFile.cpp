@@ -158,10 +158,10 @@ ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* h
                     offset = last + 1;
 
                     if (i == 0 && num == 0) {
-                        num = strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).asInt();
+                        num = strex(str2).is_number() ? static_cast<uint32>(strex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32();
                     }
                     else if (i == 1 && num != 0) {
-                        num += !str2.empty() ? (strex(str2).isNumber() ? static_cast<uint32>(strex(str2).toInt64()) : _hashResolver->ToHashedString(str2).asInt()) : 0;
+                        num += !str2.empty() ? (strex(str2).is_number() ? static_cast<uint32>(strex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32()) : 0;
                     }
                     else if (i == 2 && num != 0) {
                         (*cur_section)[strex("{}", num)] = str2;
@@ -274,14 +274,14 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 
     const auto* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strex(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && strex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strex(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && strex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strex(*str).toInt() : 0;
+    return str != nullptr ? strex(*str).to_int32() : 0;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32
@@ -290,14 +290,14 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32 
 
     const auto* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strex(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && strex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strex(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && strex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strex(*str).toInt() : def_val;
+    return str != nullptr ? strex(*str).to_int32() : def_val;
 }
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&

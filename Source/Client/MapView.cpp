@@ -201,7 +201,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     FO_RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
-    auto max_id = GetWorkEntityId().underlyingValue();
+    auto max_id = GetWorkEntityId().underlying_value();
 
     MapLoader::Load(
         map_name, str, _engine->ProtoMngr, _engine->Hashes,
@@ -209,15 +209,15 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             FO_RUNTIME_ASSERT(id);
             FO_RUNTIME_ASSERT(_crittersMap.count(id) == 0);
 
-            max_id = std::max(max_id, id.underlyingValue());
+            max_id = std::max(max_id, id.underlying_value());
 
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
 
             auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto, &props);
 
-            if (const auto hex = cr->GetHex(); !_mapSize.isValidPos(hex)) {
-                cr->SetHex(_mapSize.clampPos(hex));
+            if (const auto hex = cr->GetHex(); !_mapSize.is_valid_pos(hex)) {
+                cr->SetHex(_mapSize.clamp_pos(hex));
             }
 
             AddCritterInternal(cr.get());
@@ -226,7 +226,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             FO_RUNTIME_ASSERT(id);
             FO_RUNTIME_ASSERT(_itemsMap.count(id) == 0);
 
-            max_id = std::max(max_id, id.underlyingValue());
+            max_id = std::max(max_id, id.underlying_value());
 
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(kv);
@@ -234,8 +234,8 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto, &props);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
-                if (const auto hex = item->GetHex(); !_mapSize.isValidPos(hex)) {
-                    item->SetHex(_mapSize.clampPos(hex));
+                if (const auto hex = item->GetHex(); !_mapSize.is_valid_pos(hex)) {
+                    item->SetHex(_mapSize.clamp_pos(hex));
                 }
 
                 AddItemInternal(item.get());
@@ -341,11 +341,11 @@ void MapView::LoadStaticData()
             const auto next_raw_hex = next_raw_hexes.top();
             next_raw_hexes.pop();
 
-            if (!_mapSize.isValidPos(next_raw_hex)) {
+            if (!_mapSize.is_valid_pos(next_raw_hex)) {
                 continue;
             }
 
-            const auto next_hex = _mapSize.fromRawPos(next_raw_hex);
+            const auto next_hex = _mapSize.from_raw_pos(next_raw_hex);
             const auto& field = _hexField->GetCellForReading(next_hex);
 
             if (field.RoofNum != 0 || field.RoofTiles.empty()) {
@@ -460,8 +460,8 @@ void MapView::Process()
         if (_scrollDtAccum >= fixed_dt) {
             _scrollDtAccum = std::min(_scrollDtAccum, timespan(fixed_dt.value() * 10));
             _scrollDtAccum -= fixed_dt;
-            ProcessZoom(fixed_dt.toMs<float32>());
-            ProcessScroll(fixed_dt.toMs<float32>());
+            ProcessZoom(fixed_dt.to_ms<float32>());
+            ProcessScroll(fixed_dt.to_ms<float32>());
         }
     }
 }
@@ -568,7 +568,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(id);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
@@ -589,7 +589,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto, props);
@@ -604,7 +604,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
@@ -621,7 +621,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
@@ -638,7 +638,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     const auto hex = item->GetHex();
 
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
     FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
     if (item->GetId()) {
@@ -678,7 +678,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     if (!MeasureMapBorders(item->Spr, item->SprOffset)) {
         if (!_mapLoading && IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
             auto& field = _hexField->GetCellForWriting(hex);
-            auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, spr);
         }
     }
@@ -691,7 +691,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     RemoveItemFromField(item);
     item->SetHex(hex);
@@ -703,7 +703,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
 
     if (IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
         auto& field = _hexField->GetCellForWriting(hex);
-        auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
+        auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
         AddSpriteToChain(field, spr);
     }
 }
@@ -763,7 +763,7 @@ auto MapView::GetItem(mpos hex, hstring pid) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.isValidPos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
+    if (!_mapSize.is_valid_pos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
         return nullptr;
     }
 
@@ -780,7 +780,7 @@ auto MapView::GetItem(mpos hex, ident_t id) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.isValidPos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
+    if (!_mapSize.is_valid_pos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
         return nullptr;
     }
 
@@ -999,8 +999,8 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
             GeometryHelper::MoveHexByDirUnsafe(vf.RawHex, shift_oy_dir2);
         }
 
-        if (_mapSize.isValidPos(vf.RawHex)) {
-            const auto hex = _mapSize.fromRawPos(vf.RawHex);
+        if (_mapSize.is_valid_pos(vf.RawHex)) {
+            const auto hex = _mapSize.from_raw_pos(vf.RawHex);
             auto& field = _hexField->GetCellForWriting(hex);
             field.Offset = vf.Offset;
         }
@@ -1084,11 +1084,11 @@ void MapView::ShowHex(const ViewField& vf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.isValidPos(vf.RawHex)) {
+    if (!_mapSize.is_valid_pos(vf.RawHex)) {
         return;
     }
 
-    const auto hex = _mapSize.fromRawPos(vf.RawHex);
+    const auto hex = _mapSize.from_raw_pos(vf.RawHex);
 
     if (IsHexToDraw(hex)) {
         return;
@@ -1138,7 +1138,7 @@ void MapView::ShowHex(const ViewField& vf)
                 continue;
             }
 
-            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, mspr);
         }
     }
@@ -1150,7 +1150,7 @@ void MapView::ShowHex(const ViewField& vf)
                 continue;
             }
 
-            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clampPos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
             mspr->SetEggAppearence(EggAppearenceType::Always);
             AddSpriteToChain(field, mspr);
         }
@@ -1193,7 +1193,7 @@ void MapView::ShowHex(const ViewField& vf)
                 }
             }
 
-            auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clampPos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, mspr);
         }
     }
@@ -1281,11 +1281,11 @@ void MapView::HideHex(const ViewField& vf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.isValidPos(vf.RawHex)) {
+    if (!_mapSize.is_valid_pos(vf.RawHex)) {
         return;
     }
 
-    const auto hex = _mapSize.fromRawPos(vf.RawHex);
+    const auto hex = _mapSize.from_raw_pos(vf.RawHex);
 
     if (!IsHexToDraw(hex)) {
         return;
@@ -1608,7 +1608,7 @@ void MapView::ApplyLightFan(LightSource* ls)
                 GeometryHelper::MoveHexByDirUnsafe(raw_traced_hex, dir);
             }
 
-            auto traced_hex = _mapSize.clampPos(raw_traced_hex);
+            auto traced_hex = _mapSize.clamp_pos(raw_traced_hex);
 
             if (IsBitSet(ls->Flags & LIGHT_DISABLE_DIR_MASK, 1u << i)) {
                 traced_hex = center_hex;
@@ -1698,7 +1698,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
     auto cur_inten = intensity;
     const auto inten_sub = intensity / distance;
 
-    const auto resolve_hex = [this](int32 hx, int32 hy) -> mpos { return _mapSize.fromRawPos(hx, hy); };
+    const auto resolve_hex = [this](int32 hx, int32 hy) -> mpos { return _mapSize.from_raw_pos(hx, hy); };
 
     while (true) {
         cur_inten -= inten_sub;
@@ -1833,31 +1833,31 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
         if (is_wall) {
             if (north_south) {
                 if (to_hex.y > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x, to_hex.y - 1), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y - 1), true, intensity);
                 }
                 if (to_hex.y < _mapSize.height - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x, to_hex.y + 1), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y + 1), true, intensity);
                 }
             }
             else {
                 if (to_hex.x > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x - 1, to_hex.y), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y), false, intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x - 1, to_hex.y - 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y - 1), false, intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x - 1, to_hex.y + 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y + 1), false, intensity);
                     }
                 }
                 if (to_hex.x < _mapSize.width - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x + 1, to_hex.y), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y), false, intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x + 1, to_hex.y - 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y - 1), false, intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.fromRawPos(to_hex.x + 1, to_hex.y + 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y + 1), false, intensity);
                     }
                 }
             }
@@ -2001,7 +2001,7 @@ void MapView::SetHiddenRoof(mpos hex)
 
     const auto corrected_hx = hex.x - hex.x % _engine->Settings.MapTileStep;
     const auto corrected_hy = hex.y - hex.y % _engine->Settings.MapTileStep;
-    const auto corrected_hex = _mapSize.fromRawPos(corrected_hx, corrected_hy);
+    const auto corrected_hex = _mapSize.from_raw_pos(corrected_hx, corrected_hy);
 
     if (_hiddenRoofNum != _hexField->GetCellForReading(corrected_hex).RoofNum) {
         _hiddenRoofNum = _hexField->GetCellForReading(corrected_hex).RoofNum;
@@ -2050,7 +2050,7 @@ void MapView::RecacheHexFlags(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -2177,8 +2177,8 @@ void MapView::Resize(msize size)
     FO_RUNTIME_ASSERT(size.height <= GameSettings::MAX_MAP_SIZE);
 
     for (const auto& vf : _viewField) {
-        if (_mapSize.isValidPos(vf.RawHex)) {
-            auto& field = _hexField->GetCellForWriting(_mapSize.fromRawPos(vf.RawHex));
+        if (_mapSize.is_valid_pos(vf.RawHex)) {
+            auto& field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(vf.RawHex));
             field.IsView = false;
             InvalidateSpriteChain(field);
         }
@@ -2226,7 +2226,7 @@ void MapView::Resize(msize size)
     SetSize(size);
     _mapSize = size;
 
-    SetWorkHex(_mapSize.clampPos(GetWorkHex()));
+    SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
     _hexTrack.resize(_mapSize.square());
     MemFill(_hexTrack.data(), 0, _hexTrack.size());
@@ -2578,7 +2578,7 @@ void MapView::PrepareFogToDraw()
                         GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, numeric_cast<uint8>(dir));
                     }
 
-                    auto target_hex = _mapSize.clampPos(target_raw_hex);
+                    auto target_hex = _mapSize.clamp_pos(target_raw_hex);
 
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
                         const int32 dir_ = GeometryHelper::GetDir(base_hex, target_hex);
@@ -2981,7 +2981,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -3069,7 +3069,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(id);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
@@ -3086,7 +3086,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, GenTempEntityId(), proto, props);
@@ -3221,7 +3221,7 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(cr->GetMap() == this);
-    FO_RUNTIME_ASSERT(_mapSize.isValidPos(to_hex));
+    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(to_hex));
 
     const auto cur_hex = cr->GetHex();
 
@@ -3268,8 +3268,8 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
             auto multihex_raw_hex = ipos32 {numeric_cast<int32>(hex.x), numeric_cast<int32>(hex.y)};
             GeometryHelper::MoveHexAroundAway(multihex_raw_hex, i);
 
-            if (_mapSize.isValidPos(multihex_raw_hex)) {
-                auto& field = _hexField->GetCellForWriting(_mapSize.fromRawPos(multihex_raw_hex));
+            if (_mapSize.is_valid_pos(multihex_raw_hex)) {
+                auto& field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(multihex_raw_hex));
 
                 if (set) {
                     FO_RUNTIME_ASSERT(std::ranges::find(field.MultihexCritters, cr) == field.MultihexCritters.end());
@@ -3317,8 +3317,8 @@ auto MapView::GetHexAtScreenPos(ipos32 screen_pos, mpos& hex, ipos32* hex_offset
         }
     }
 
-    if (_mapSize.isValidPos(raw_hex)) {
-        hex = _mapSize.fromRawPos(raw_hex);
+    if (_mapSize.is_valid_pos(raw_hex)) {
+        hex = _mapSize.from_raw_pos(raw_hex);
 
         if (hex_offset != nullptr) {
             *hex_offset = offset;
@@ -3514,11 +3514,11 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                 auto raw_next_hex = ipos32 {hex.x, hex.y};
                 GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, static_cast<uint8>(j));
 
-                if (!_mapSize.isValidPos(raw_next_hex)) {
+                if (!_mapSize.is_valid_pos(raw_next_hex)) {
                     continue;
                 }
 
-                const auto next_hex = _mapSize.fromRawPos(raw_next_hex);
+                const auto next_hex = _mapSize.from_raw_pos(raw_next_hex);
 
                 if (grid_at(next_hex) != 0) {
                     continue;
@@ -3537,10 +3537,10 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
                         GeometryHelper::MoveHexByDirUnsafe(raw_next_hex2, numeric_cast<uint8>(j));
                     }
 
-                    if (!_mapSize.isValidPos(raw_next_hex2)) {
+                    if (!_mapSize.is_valid_pos(raw_next_hex2)) {
                         continue;
                     }
-                    if (_hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex2)).MoveBlocked) {
+                    if (_hexField->GetCellForReading(_mapSize.from_raw_pos(raw_next_hex2)).MoveBlocked) {
                         continue;
                     }
 
@@ -3567,8 +3567,8 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
                         for (int32 k = 0; k < steps_count && !is_move_blocked; k++) {
                             GeometryHelper::MoveHexByDirUnsafe(raw_next_hex3, dir_);
-                            FO_RUNTIME_ASSERT(_mapSize.isValidPos(raw_next_hex3));
-                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).MoveBlocked;
+                            FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(raw_next_hex3));
+                            is_move_blocked = _hexField->GetCellForReading(_mapSize.from_raw_pos(raw_next_hex3)).MoveBlocked;
                         }
                     }
 
@@ -3595,8 +3595,8 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
                         for (int32 k = 0; k < steps_count && !is_move_blocked; k++) {
                             GeometryHelper::MoveHexByDirUnsafe(raw_next_hex3, dir_);
-                            FO_RUNTIME_ASSERT(_mapSize.isValidPos(raw_next_hex3));
-                            is_move_blocked = _hexField->GetCellForReading(_mapSize.fromRawPos(raw_next_hex3)).MoveBlocked;
+                            FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(raw_next_hex3));
+                            is_move_blocked = _hexField->GetCellForReading(_mapSize.from_raw_pos(raw_next_hex3)).MoveBlocked;
                         }
                     }
 
@@ -3640,8 +3640,8 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
         float32 best_step_angle_diff = 0.0f;
 
         const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, &grid_at, start_hex, base_angle, this](uint8 dir, ipos32 raw_step_hex) {
-            if (_mapSize.isValidPos(raw_step_hex)) {
-                const auto step_hex = _mapSize.fromRawPos(raw_step_hex);
+            if (_mapSize.is_valid_pos(raw_step_hex)) {
+                const auto step_hex = _mapSize.from_raw_pos(raw_step_hex);
 
                 if (grid_at(step_hex) == numindex) {
                     const float32 angle = GeometryHelper::GetDirAngle(step_hex, start_hex);
@@ -3967,7 +3967,7 @@ auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order
     FO_STACK_TRACE_ENTRY();
 
     auto& field = _hexField->GetCellForWriting(hex);
-    auto* mspr = _mapSprites.AddSprite(draw_order, _mapSize.clampPos(hex.x, hex.y + draw_order_hy_offset), //
+    auto* mspr = _mapSprites.AddSprite(draw_order, _mapSize.clamp_pos(hex.x, hex.y + draw_order_hy_offset), //
         {(_engine->Settings.MapHexWidth / 2) + offset.x, (_engine->Settings.MapHexHeight / 2) + offset.y}, &field.Offset, spr, nullptr, //
         poffset, palpha, nullptr, callback);
     AddSpriteToChain(field, mspr);
@@ -4082,8 +4082,8 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
             }
 
             for (auto i = 0; i <= adx; i++) {
-                if (_mapSize.isValidPos(hx, hy)) {
-                    hexes.emplace_back(_mapSize.fromRawPos(hx, hy));
+                if (_mapSize.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(_mapSize.from_raw_pos(hx, hy));
                 }
 
                 if (dx >= 0) {
@@ -4157,8 +4157,8 @@ auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
             }
 
             for (auto j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
-                if (_mapSize.isValidPos(hx, hy)) {
-                    hexes.emplace_back(_mapSize.fromRawPos(hx, hy));
+                if (_mapSize.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(_mapSize.from_raw_pos(hx, hy));
                 }
 
                 if (rw > 0) {
@@ -4207,10 +4207,10 @@ auto MapView::GenTempEntityId() -> ident_t
 
     FO_RUNTIME_ASSERT(_mapperMode);
 
-    auto next_id = ident_t {(GetWorkEntityId().underlyingValue() + 1)};
+    auto next_id = ident_t {(GetWorkEntityId().underlying_value() + 1)};
 
     while (_itemsMap.count(next_id) != 0 || _crittersMap.count(next_id) != 0) {
-        next_id = ident_t {next_id.underlyingValue() + 1};
+        next_id = ident_t {next_id.underlying_value() + 1};
     }
 
     SetWorkEntityId(next_id);

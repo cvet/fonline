@@ -447,18 +447,18 @@ auto EngineData::ResolveGenericValue(string_view str, bool* failed) const -> int
     }
 
     if (str[0] == '@') {
-        return Hashes.ToHashedString(str.substr(1)).asInt();
+        return Hashes.ToHashedString(str.substr(1)).as_int32();
     }
     else if (str.starts_with("Content::")) {
-        return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).asInt();
+        return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).as_int32();
     }
-    else if (strex(str).isNumber()) {
-        return strex(str).toInt();
+    else if (strex(str).is_number()) {
+        return strex(str).to_int32();
     }
-    else if (strex(str).compareIgnoreCase("true")) {
+    else if (strex(str).compare_ignore_case("true")) {
         return 1;
     }
-    else if (strex(str).compareIgnoreCase("false")) {
+    else if (strex(str).compare_ignore_case("false")) {
         return 0;
     }
 

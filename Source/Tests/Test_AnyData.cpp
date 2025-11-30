@@ -50,21 +50,21 @@ TEST_CASE("AnyData")
     {
         AnyData::Value val = 0.0f;
         CHECK(AnyData::ValueToString(val) == "0");
-        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Double));
+        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 2")
     {
         AnyData::Value val = 0.999999;
         CHECK(AnyData::ValueToString(val) == "0.999999");
-        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Double));
+        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 3")
     {
         AnyData::Value val = 100000000.0;
         CHECK(AnyData::ValueToString(val) == "100000000");
-        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Double));
+        CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Bool True")

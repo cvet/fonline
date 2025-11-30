@@ -93,7 +93,7 @@ void ItemHexView::Process()
 
     if (_isMoving) {
         const auto time = _engine->GameTime.GetFrameTime();
-        const auto dt = (time - _moveUpdateLastTime).toMs<float32>();
+        const auto dt = (time - _moveUpdateLastTime).to_ms<float32>();
         _moveUpdateLastTime = time;
 
         _moveCurOffset += _moveStepOffset * _moveSpeed * dt;

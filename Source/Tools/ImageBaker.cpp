@@ -139,7 +139,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (target_path.empty()) {
         for (auto&& [ext, loader] : _fileLoaders) {
             for (const auto& file_header : files) {
-                const string file_ext = strex(file_header.GetPath()).getFileExtension();
+                const string file_ext = strex(file_header.GetPath()).get_file_extension();
 
                 if (file_ext != ext) {
                     continue;
@@ -153,7 +153,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
     }
     else {
-        const string ext = strex(target_path).getFileExtension();
+        const string ext = strex(target_path).get_file_extension();
 
         if (!_fileLoaders.contains(ext)) {
             return;
@@ -253,11 +253,11 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string ext = strex(fname_with_opt).getFileExtension();
-    const string dir = strex(fname_with_opt).extractDir();
-    const string name = strex(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$');
+    const string ext = strex(fname_with_opt).get_file_extension();
+    const string dir = strex(fname_with_opt).extract_dir();
+    const string name = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
     const string fname = strex("{}/{}.{}", dir, name, ext);
-    const string opt = strex(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
+    const string opt = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
 
     const auto file = files.FindFileByPath(fname);
 
@@ -327,7 +327,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
             oy = fofrm.GetAsInt(dir_str, "OffsetY", oy);
         }
 
-        string frm_dir = strex(fname).extractDir();
+        string frm_dir = strex(fname).extract_dir();
 
         int32 frames = 0;
         bool no_info = false;
@@ -427,7 +427,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).startsWith("art/critters/")) {
+    if (strex(fname).starts_with("art/critters/")) {
         collection.NewName = strex(fname).lower();
     }
 
@@ -480,7 +480,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -686,11 +686,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).startsWith("art/critters/")) {
-        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension().lower(), "fofrm");
+    if (strex(fname).starts_with("art/critters/")) {
+        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension().lower(), "fofrm");
     }
     else {
-        collection.NewName = strex("{}.{}", strex(fname).eraseFileExtension(), "frm");
+        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension(), "frm");
     }
 
     // Animate pixels
@@ -751,7 +751,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).eraseFileExtension()));
+        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -1377,7 +1377,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             reader.GoForward(name_len);
             auto index = reader.GetLEUInt16();
 
-            if (seq_name.empty() || strex(seq_name).compareIgnoreCase(name)) {
+            if (seq_name.empty() || strex(seq_name).compare_ignore_case(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1942,7 +1942,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).startsWith("MOS")) {
+    if (!strex(head).starts_with("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1965,7 +1965,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).startsWith("MOS")) {
+        if (!strex(head).starts_with("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -2071,7 +2071,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).startsWith("BAM")) {
+    if (!strex(head).starts_with("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -2094,7 +2094,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).startsWith("BAM")) {
+        if (!strex(head).starts_with("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }

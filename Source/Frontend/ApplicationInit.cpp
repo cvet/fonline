@@ -127,7 +127,7 @@ static void SetupLogging(bool disable_log_tags)
 
 #if !FO_WEB
     if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(strex("{}.log", strex(exe_path.value()).extractFileName().eraseFileExtension()));
+        LogToFile(strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension()));
     }
     else {
         LogToFile(strex("{}.log", FO_DEV_NAME));
@@ -163,8 +163,8 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
                     throw AppInitException("Config name not provided");
                 }
 
-                config_to_apply = strex(argv[i + 1]).trim().extractFileName();
-                config_to_apply_dir = strex(argv[i + 1]).trim().extractDir();
+                config_to_apply = strex(argv[i + 1]).trim().extract_file_name();
+                config_to_apply_dir = strex(argv[i + 1]).trim().extract_dir();
             }
         }
 
@@ -175,7 +175,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             while (true) {
                 if (std::filesystem::exists(dir / FO_MAIN_CONFIG) && !std::filesystem::is_directory(dir / FO_MAIN_CONFIG)) {
                     config_to_apply = FO_MAIN_CONFIG;
-                    config_to_apply_dir = strex("{}", dir.string()).normalizePathSlashes();
+                    config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
                     break;
                 }
                 else {
@@ -189,7 +189,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             }
         }
 
-        WriteLog("Apply config {}", strex(config_to_apply_dir).combinePath(config_to_apply));
+        WriteLog("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
         settings.ApplyConfigAtPath(config_to_apply, config_to_apply_dir);
 
         // Apply sub config
@@ -278,7 +278,7 @@ static void PrebakeResources(BakingSettings& settings)
 
     if (bake_resources == nullptr) {
         const auto exe_path = Platform::GetExePath();
-        const auto lib_path = strex(exe_path.value_or("")).extractDir().combinePath(lib_name).str();
+        const auto lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
         baker_dll = Platform::LoadModule(lib_path);
 
         if (baker_dll != nullptr) {

@@ -234,7 +234,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            const string ext = strex(file_header.GetPath()).getFileExtension();
+            const string ext = strex(file_header.GetPath()).get_file_extension();
 
             if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
                 continue;
@@ -247,7 +247,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
     }
     else {
-        const string ext = strex(target_path).getFileExtension();
+        const string ext = strex(target_path).get_file_extension();
 
         if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
             return;
@@ -274,7 +274,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (auto& file_ : filtered_files) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)] {
-            if (strex(file.GetPath()).getFileExtension() == "fo3d") {
+            if (strex(file.GetPath()).get_file_extension() == "fo3d") {
                 _writeData(file.GetPath(), file.GetData());
             }
             else {
@@ -517,7 +517,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
 
             for (const ufbx_material_texture& fbx_material_texture : fbx_material->textures) {
                 if (string_view(fbx_material_texture.material_prop.data) == "DiffuseColor" && fbx_material_texture.texture != nullptr && fbx_material_texture.texture->type == UFBX_TEXTURE_FILE) {
-                    mesh->DiffuseTexture = strex(fbx_material_texture.texture->filename.data).extractFileName();
+                    mesh->DiffuseTexture = strex(fbx_material_texture.texture->filename.data).extract_file_name();
                 }
             }
         }

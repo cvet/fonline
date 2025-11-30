@@ -45,7 +45,7 @@ public:
     enum class ValueType : uint8
     {
         Int64 = 0,
-        Double,
+        Float64,
         Bool,
         String,
         Array,

@@ -57,7 +57,7 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
     const auto* st_entry = GetStackTraceEntry(1);
 
     if (st_entry != nullptr) {
-        const string module_name = strex(st_entry->file).extractFileName().eraseFileExtension();
+        const string module_name = strex(st_entry->file).extract_file_name().erase_file_extension();
 
         WriteLog("{}: {}", module_name, text);
     }

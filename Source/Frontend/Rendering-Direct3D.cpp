@@ -556,7 +556,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            const string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).eraseFileExtension(), pass + 1);
+            const string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).erase_file_extension(), pass + 1);
             string vertex_shader_content = loader(vertex_shader_fname);
             FO_RUNTIME_ASSERT(!vertex_shader_content.empty());
 
@@ -630,7 +630,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
         // Create the pixel shader
         {
-            const string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).eraseFileExtension(), pass + 1);
+            const string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).erase_file_extension(), pass + 1);
             string pixel_shader_content = loader(pixel_shader_fname);
             FO_RUNTIME_ASSERT(!pixel_shader_content.empty());
 
@@ -953,7 +953,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.isValidPos(pos));
+    FO_RUNTIME_ASSERT(Size.is_valid_pos(pos));
 
     D3D11_BOX src_box;
     src_box.left = pos.x;

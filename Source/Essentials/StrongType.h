@@ -103,8 +103,8 @@ struct strong_type
         return strong_type(_value % other._value);
     }
 
-    [[nodiscard]] constexpr auto underlyingValue() noexcept -> underlying_type& { return _value; }
-    [[nodiscard]] constexpr auto underlyingValue() const noexcept -> const underlying_type& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
 private:
     underlying_type _value {};
@@ -126,7 +126,7 @@ struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
-        return formatter<typename T::underlying_type>::format(value.underlyingValue(), ctx);
+        return formatter<typename T::underlying_type>::format(value.underlying_value(), ctx);
     }
 };
 FO_BEGIN_NAMESPACE();
@@ -159,7 +159,7 @@ struct FO_HASH_NAMESPACE hash<T>
     {
         static_assert(std::has_unique_object_representations_v<T>);
         if constexpr (sizeof(v) <= sizeof(uint64_t)) {
-            return static_cast<size_t>(detail::wyhash::hash(v.underlyingValue()));
+            return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
         }
         else {
             return static_cast<size_t>(detail::wyhash::hash(&v, sizeof(v)));

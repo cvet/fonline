@@ -42,7 +42,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
 {
     FO_STACK_TRACE_ENTRY();
 
-    string dir_fixed = strex(dir).normalizePathSlashes();
+    string dir_fixed = strex(dir).normalize_path_slashes();
 
     if (!dir_fixed.empty() && dir_fixed.back() != '/') {
         dir_fixed += "/";
@@ -55,7 +55,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
         bool add = false;
 
         if (fname.compare(0, len, dir_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
-            if (ext.empty() || strex(fname).getFileExtension() == ext) {
+            if (ext.empty() || strex(fname).get_file_extension() == ext) {
                 add = true;
             }
         }
@@ -292,7 +292,7 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
         return !!file;
     };
 
-    const string path = strex(dir).combinePath(name);
+    const string path = strex(dir).combine_path(name);
 
     if (name == "Embedded") {
         return SafeAlloc::MakeUnique<EmbeddedFile>();
@@ -363,11 +363,11 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recursive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extract_dir().empty()) {
         return false;
     }
 
-    const string full_path = strex(_baseDir).combinePath(path);
+    const string full_path = strex(_baseDir).combine_path(path);
 
     if (!DiskFileSystem::IsExists(full_path)) {
         return false;
@@ -383,11 +383,11 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64& write_tim
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recursive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extract_dir().empty()) {
         return false;
     }
 
-    const string full_path = strex(_baseDir).combinePath(path);
+    const string full_path = strex(_baseDir).combine_path(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -403,11 +403,11 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_recursive && !strex(path).extractDir().empty()) {
+    if (!_recursive && !strex(path).extract_dir().empty()) {
         return nullptr;
     }
 
-    const string full_path = strex(_baseDir).combinePath(path);
+    const string full_path = strex(_baseDir).combine_path(path);
     auto file = DiskFileSystem::OpenFile(full_path, false);
 
     if (!file) {
@@ -435,7 +435,7 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
 
     vector<string> fnames;
 
-    DiskFileSystem::IterateDir(strex(_baseDir).combinePath(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(strex(_baseDir).combine_path(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -600,7 +600,7 @@ auto FalloutDat::ReadTree() -> bool
             MemCopy(&type, ptr + 4 + fnsz + 4, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
-                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
+                string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalize_path_slashes();
 
                 if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
@@ -681,7 +681,7 @@ auto FalloutDat::ReadTree() -> bool
         }
 
         if (name_len != 0) {
-            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalizePathSlashes();
+            string name = strex(string(reinterpret_cast<const char*>(ptr) + 4, name_len)).normalize_path_slashes();
 
             _filesTree.emplace(name, ptr + 4 + name_len);
             _filesTreeNames.emplace_back(std::move(name));
@@ -896,7 +896,7 @@ ZipFile::ZipFile(string_view fname)
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalizePathSlashes();
+            string name = strex(name_buf).normalize_path_slashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
@@ -1086,7 +1086,7 @@ EmbeddedFile::EmbeddedFile()
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalizePathSlashes();
+            string name = strex(name_buf).normalize_path_slashes();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32>(info.uncompressed_size);
@@ -1205,7 +1205,7 @@ FilesList::FilesList()
         throw DataSourceException("Can't read 'FilesTree.txt' in file list assets");
     }
 
-    auto names = strex(str).normalizeLineEndings().split('\n');
+    auto names = strex(str).normalize_line_endings().split('\n');
 
     for (auto& name : names) {
         auto file = DiskFileSystem::OpenFile(name, false);

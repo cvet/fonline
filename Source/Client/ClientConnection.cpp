@@ -339,7 +339,7 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         const auto time = nanotime::now();
-        _settings.Ping = (time - _pingTime).toMs<int32>();
+        _settings.Ping = (time - _pingTime).to_ms<int32>();
         _pingTime = nanotime::zero;
         _pingCallTime = time + std::chrono::milliseconds(_settings.PingPeriod);
     }

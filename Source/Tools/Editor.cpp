@@ -178,7 +178,7 @@ void FOEditor::OpenAsset(string_view path)
         }
     }
 
-    const string ext = strex(path).getFileExtension();
+    const string ext = strex(path).get_file_extension();
 
     if (ext == "fopts") {
         _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, *this));

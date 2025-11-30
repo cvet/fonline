@@ -56,7 +56,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fotxt")) {
+    if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fotxt")) {
         return;
     }
 
@@ -64,7 +64,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     vector<File> filtered_files;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).getFileExtension();
+        const string ext = strex(file_header.GetPath()).get_file_extension();
 
         if (ext != "fotxt") {
             continue;

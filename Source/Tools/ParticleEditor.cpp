@@ -165,10 +165,10 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
         _impl->AllEffects.emplace_back(file_header.GetPath());
     }
 
-    auto tex_files = _editor.RawResources.FilterFiles("tga", strex(asset_path).extractDir());
+    auto tex_files = _editor.RawResources.FilterFiles("tga", strex(asset_path).extract_dir());
 
     for (const auto& file_header : tex_files) {
-        _impl->AllTextures.emplace_back(file_header.GetPath().substr(strex(asset_path).extractDir().length() + 1));
+        _impl->AllTextures.emplace_back(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1));
     }
 }
 

@@ -77,7 +77,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
 
     uint8 cmd = 0;
     for (const auto& cur_cmd : CMD_LIST) {
-        if (strex(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
+        if (strex(cmd_str).compare_ignore_case(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
         }
     }

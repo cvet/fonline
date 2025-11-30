@@ -172,7 +172,7 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(work_path).combinePath(strex(data_name).replace('/', '_').replace('\\', '_'));
+    return strex(work_path).combine_path(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path)
@@ -307,7 +307,7 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
     FO_STACK_TRACE_ENTRY();
 
     _workPath = DiskFileSystem::ResolvePath(real_path);
-    _workPath = strex(_workPath).combinePath("Cache.db");
+    _workPath = strex(_workPath).combine_path("Cache.db");
 
     if (DiskFileSystem::IsExists(_workPath)) {
         InitCacheStorage();
@@ -319,7 +319,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
-        DiskFileSystem::MakeDirTree(strex(_workPath).extractDir());
+        DiskFileSystem::MakeDirTree(strex(_workPath).extract_dir());
 
         unqlite* db = nullptr;
 

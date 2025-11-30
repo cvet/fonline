@@ -55,7 +55,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fotxt-")) {
+    if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fotxt-")) {
         return;
     }
 
@@ -64,7 +64,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     uint64 max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).getFileExtension();
+        const string ext = strex(file_header.GetPath()).get_file_extension();
         const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
 
         if (it == _settings->ProtoFileExtensions.end()) {
@@ -103,7 +103,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : filtered_files) {
-        const bool is_fomap = strex(file.GetPath()).getFileExtension() == "fomap";
+        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &engine.Hashes, fopro_options);
 
@@ -121,7 +121,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             if (is_fomap && section_name == "Header") {
                 type_name = engine.Hashes.ToHashedString("Map");
             }
-            else if (strex(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
+            else if (strex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else {
@@ -153,7 +153,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         for (auto&& [key, value] : from_kv) {
             FO_RUNTIME_ASSERT(!key.empty());
 
-            if (strex(key).startsWith("$Text")) {
+            if (strex(key).starts_with("$Text")) {
                 to_kv[key] = value;
             }
         }
@@ -164,7 +164,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         const auto& file_proto_pids = file_protos.second;
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
-            const auto base_name = pid.asStr();
+            const auto base_name = pid.as_str();
             FO_RUNTIME_ASSERT(all_proto_texts[type_name].count(pid) == 0);
 
             map<string, string> proto_kv;
@@ -200,22 +200,22 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             all_proto_texts[type_name][pid] = {};
 
             for (auto&& [key, value] : proto_kv) {
-                FO_RUNTIME_ASSERT(strex(key).startsWith("$Text"));
+                FO_RUNTIME_ASSERT(strex(key).starts_with("$Text"));
 
                 const auto key_tok = strex(key).split(' ');
                 const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
-                TextPackKey text_key = pid.asUInt();
+                TextPackKey text_key = pid.as_uint32();
 
                 for (size_t i = 2; i < key_tok.size(); i++) {
                     const string& num = key_tok[i];
 
                     if (!num.empty()) {
-                        if (strex(num).isNumber()) {
-                            text_key += strex(num).toUInt();
+                        if (strex(num).is_number()) {
+                            text_key += strex(num).to_uint32();
                         }
                         else {
-                            text_key += engine.Hashes.ToHashedString(num).asUInt();
+                            text_key += engine.Hashes.ToHashedString(num).as_uint32();
                         }
                     }
                 }

@@ -46,7 +46,7 @@ auto AnyData::Value::operator==(const Value& other) const -> bool
     switch (Type()) {
     case ValueType::Int64:
         return AsInt64() == other.AsInt64();
-    case ValueType::Double:
+    case ValueType::Float64:
         return is_float_equal(AsDouble(), other.AsDouble());
     case ValueType::Bool:
         return AsBool() == other.AsBool();
@@ -68,7 +68,7 @@ auto AnyData::Value::Copy() const -> Value
     switch (Type()) {
     case ValueType::Int64:
         return AsInt64();
-    case ValueType::Double:
+    case ValueType::Float64:
         return AsDouble();
     case ValueType::Bool:
         return AsBool();
@@ -131,7 +131,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     switch (value.Type()) {
     case ValueType::Int64:
         return strex("{}", value.AsInt64());
-    case ValueType::Double:
+    case ValueType::Float64:
         return strex("{:f}", value.AsDouble()).rtrim("0").rtrim(".");
     case ValueType::Bool:
         return value.AsBool() ? "True" : "False";
@@ -201,7 +201,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Double || value_type == ValueType::Bool || value_type == ValueType::String);
+    FO_RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String);
 
     if (as_dict) {
         Dict dict;
@@ -221,13 +221,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
                     case ValueType::Int64:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).toInt64());
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_int64());
                         break;
-                    case ValueType::Double:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).toDouble());
+                    case ValueType::Float64:
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_float64());
                         break;
                     case ValueType::Bool:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).toBool());
+                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_bool());
                         break;
                     case ValueType::String:
                         dict_arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
@@ -242,13 +242,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
             else {
                 switch (value_type) {
                 case ValueType::Int64:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toInt64());
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_int64());
                     break;
-                case ValueType::Double:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toDouble());
+                case ValueType::Float64:
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_float64());
                     break;
                 case ValueType::Bool:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).toBool());
+                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_bool());
                     break;
                 case ValueType::String:
                     dict.Emplace(dict_key_entry, StringEscaping::DecodeString(dict_value_entry));
@@ -270,13 +270,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
             case ValueType::Int64:
-                arr.EmplaceBack(strex("{}", arr_entry).toInt64());
+                arr.EmplaceBack(strex("{}", arr_entry).to_int64());
                 break;
-            case ValueType::Double:
-                arr.EmplaceBack(strex("{}", arr_entry).toDouble());
+            case ValueType::Float64:
+                arr.EmplaceBack(strex("{}", arr_entry).to_float64());
                 break;
             case ValueType::Bool:
-                arr.EmplaceBack(strex("{}", arr_entry).toBool());
+                arr.EmplaceBack(strex("{}", arr_entry).to_bool());
                 break;
             case ValueType::String:
                 arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
@@ -291,11 +291,11 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     else {
         switch (value_type) {
         case ValueType::Int64:
-            return strex("{}", str).toInt64();
-        case ValueType::Double:
-            return strex("{}", str).toDouble();
+            return strex("{}", str).to_int64();
+        case ValueType::Float64:
+            return strex("{}", str).to_float64();
         case ValueType::Bool:
-            return strex("{}", str).toBool();
+            return strex("{}", str).to_bool();
         case ValueType::String:
             return StringEscaping::DecodeString(str);
         default:

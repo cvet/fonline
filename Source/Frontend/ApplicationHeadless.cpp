@@ -552,7 +552,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     string str;
     std::getline(std::cin, str);
 
-    const auto in_selected = strex(str).splitToInt(' ');
+    const auto in_selected = strex(str).split_to_int32(' ');
 
     if (!in_selected.empty()) {
         selected.clear();

@@ -2156,7 +2156,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    event_data.Priority = priority;')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         globalLines.append('    event_data.Callback = [self, as_func = refcount_ptr(func)](const initializer_list<void*>& args) {')
-                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.getNoConst(), args);')
+                        globalLines.append('        return ' + funcEntry + '_Callback(self, as_func.get_no_const(), args);')
                         globalLines.append('    };')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')
@@ -2266,11 +2266,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif type == 'any':
                     globalLines.append('    return any_t {' + 'value};')
                 elif type == 'bool':
-                    globalLines.append('    return strex(value).toBool();')
+                    globalLines.append('    return strex(value).to_bool();')
                 elif type in ['float32', 'float64']:
-                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toDouble());')
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).to_float64());')
                 else:
-                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).toInt64());')
+                    globalLines.append('    return numeric_cast<' + metaTypeToASEngineType(type) + '>(strex(value).to_int64());')
             else:
                 globalLines.append('    ignore_unused(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')

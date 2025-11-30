@@ -88,7 +88,7 @@ auto FileHeader::GetDiskPath() const -> string
     FO_RUNTIME_ASSERT(!_filePath.empty());
     FO_RUNTIME_ASSERT(_dataSource->IsDiskDir());
 
-    return strex(_dataSource->GetPackName()).combinePath(_filePath);
+    return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -507,7 +507,7 @@ void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
     else {
-        auto ds = DataSource::MountDir(strex(dir).combinePath(pack), true, false, maybe_not_available);
+        auto ds = DataSource::MountDir(strex(dir).combine_path(pack), true, false, maybe_not_available);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
     }
 }

@@ -94,8 +94,8 @@ struct ucolor
     [[nodiscard]] constexpr auto operator==(const ucolor& other) const noexcept { return rgba == other.rgba; }
     [[nodiscard]] constexpr auto operator!=(const ucolor& other) const noexcept { return rgba != other.rgba; }
     [[nodiscard]] constexpr auto operator<(const ucolor& other) const noexcept { return rgba < other.rgba; }
-    [[nodiscard]] constexpr auto underlyingValue() noexcept -> underlying_type& { return rgba; }
-    [[nodiscard]] constexpr auto underlyingValue() const noexcept -> const underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return rgba; }
 
     struct components
     {
@@ -114,7 +114,7 @@ struct ucolor
     static const ucolor clear;
 };
 static_assert(is_strong_type<ucolor>);
-FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlyingValue());
+FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
 FO_END_NAMESPACE();
 template<>
@@ -290,11 +290,11 @@ struct isize
     [[nodiscard]] constexpr auto operator-() const noexcept -> isize { return {-width, -height}; }
 
     [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
-    [[nodiscard]] constexpr auto isValidPos(std::integral auto x, std::integral auto y) const noexcept -> bool
+    [[nodiscard]] constexpr auto is_valid_pos(std::integral auto x, std::integral auto y) const noexcept -> bool
     { //
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
     }
-    [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool { return isValidPos(pos.x, pos.y); }
+    [[nodiscard]] constexpr auto is_valid_pos(pos_type auto pos) const noexcept -> bool { return is_valid_pos(pos.x, pos.y); }
     [[nodiscard]] auto isZero() const noexcept -> bool { return width == 0 && height == 0; }
 
     T width {};
@@ -519,7 +519,7 @@ struct fsize
     [[nodiscard]] constexpr auto operator-() const noexcept -> fsize { return {-width, -height}; }
 
     [[nodiscard]] constexpr auto square() const noexcept -> T { return width * height; }
-    [[nodiscard]] constexpr auto isValidPos(pos_type auto pos) const noexcept -> bool
+    [[nodiscard]] constexpr auto is_valid_pos(pos_type auto pos) const noexcept -> bool
     { //
         return std::cmp_greater_equal(pos.x, 0) && std::cmp_greater_equal(pos.y, 0) && std::cmp_less(pos.x, width) && std::cmp_less(pos.y, height);
     }

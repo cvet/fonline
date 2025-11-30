@@ -62,7 +62,7 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry |= any_value.AsBool();
     }
     else if constexpr (std::floating_point<T>) {
-        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Double);
+        const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
         entry += numeric_cast<float32>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -110,7 +110,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::floating_point<T>) {
-        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Double);
+        const auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64);
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
@@ -206,7 +206,7 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
         return;
     }
 
-    const string config_path = strex(config_dir).combinePath(config_name);
+    const string config_path = strex(config_dir).combine_path(config_name);
 
     if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
         _appliedConfigs.emplace_back(config_path);
@@ -316,7 +316,7 @@ void GlobalSettings::ApplyInternalConfig()
 
     const auto config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
-    if (strex(config_str).startsWith("###InternalConfig###")) {
+    if (strex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
@@ -460,7 +460,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                         }
                     }
                     else {
-                        const string file_path = strex(config_dir).combinePath(name);
+                        const string file_path = strex(config_dir).combine_path(name);
                         auto file = DiskFileSystem::OpenFile(file_path, false);
 
                         if (file) {
@@ -543,13 +543,13 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         }
 
         if (auto server_only = get_map_value("ServerOnly"); !server_only.empty()) {
-            pack_info.ServerOnly = strex(server_only).toBool();
+            pack_info.ServerOnly = strex(server_only).to_bool();
         }
         if (auto client_only = get_map_value("ClientOnly"); !client_only.empty()) {
-            pack_info.ClientOnly = strex(client_only).toBool();
+            pack_info.ClientOnly = strex(client_only).to_bool();
         }
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
-            pack_info.MapperOnly = strex(mapper_only).toBool();
+            pack_info.MapperOnly = strex(mapper_only).to_bool();
         }
         if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
@@ -557,7 +557,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
 
         if (auto inpurt_dir = get_map_value("InputDir"); !inpurt_dir.empty()) {
             for (auto& dir : strex(inpurt_dir).split(' ')) {
-                dir = strex(config_dir).combinePath(dir);
+                dir = strex(config_dir).combine_path(dir);
                 pack_info.InputDir.emplace_back(std::move(dir));
             }
         }
@@ -568,10 +568,10 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
             }
         }
         if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strex(recursive_input).toBool();
+            pack_info.RecursiveInput = strex(recursive_input).to_bool();
         }
         if (auto bake_order = get_map_value("BakeOrder"); !bake_order.empty()) {
-            pack_info.BakeOrder = strex(bake_order).toInt();
+            pack_info.BakeOrder = strex(bake_order).to_int32();
         }
 
         if (pack_info.ServerOnly) {

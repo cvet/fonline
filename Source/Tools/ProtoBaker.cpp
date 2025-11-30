@@ -55,7 +55,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!target_path.empty() && !strex(target_path).getFileExtension().startsWith("fopro-")) {
+    if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fopro-")) {
         return;
     }
 
@@ -63,7 +63,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     uint64 max_write_time = 0;
 
     for (const auto& file_header : files) {
-        const string ext = strex(file_header.GetPath()).getFileExtension();
+        const string ext = strex(file_header.GetPath()).get_file_extension();
         const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
 
         if (it == _settings->ProtoFileExtensions.end()) {
@@ -136,7 +136,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
 
     for (const auto& file : files) {
-        const bool is_fomap = strex(file.GetPath()).getFileExtension() == "fomap";
+        const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &engine->Hashes, fopro_options);
 
@@ -154,7 +154,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
             if (is_fomap && section_name == "Header") {
                 type_name = engine->Hashes.ToHashedString("Map");
             }
-            else if (strex(section_name).startsWith("Proto") && section_name.length() > "Proto"_len) {
+            else if (strex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else {
@@ -197,7 +197,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         const auto& file_proto_pids = file_protos.second;
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
-            const auto base_name = pid.asStr();
+            const auto base_name = pid.as_str();
             FO_RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
 
             // Fill content from parents
@@ -298,8 +298,8 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         for (auto&& [type_name, protos] : all_protos) {
             writer.Write<uint32>(numeric_cast<uint32>(protos.size()));
 
-            writer.Write<uint16>(numeric_cast<uint16>(type_name.asStr().length()));
-            writer.WritePtr(type_name.asStr().data(), type_name.asStr().length());
+            writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+            writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
 
             for (auto& proto : protos | std::views::values) {
                 const auto proto_name = proto->GetName();
@@ -309,7 +309,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
                 writer.Write<uint16>(numeric_cast<uint16>(proto->GetComponents().size()));
 
                 for (const auto& component : proto->GetComponents()) {
-                    const auto& component_str = component.asStr();
+                    const auto& component_str = component.as_str();
                     writer.Write<uint16>(numeric_cast<uint16>(component_str.length()));
                     writer.WritePtr(component_str.data(), component_str.length());
                 }
@@ -329,7 +329,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
         final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
 
         for (const auto& hstr : str_hashes) {
-            const auto& str = hstr.asStr();
+            const auto& str = hstr.as_str();
             final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
             final_writer.WritePtr(str.c_str(), str.length());
         }

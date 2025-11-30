@@ -567,7 +567,7 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
         value_type = AnyData::ValueType::Bool;
     }
     else if (prop->IsBaseTypeFloat() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsFloat)) {
-        value_type = AnyData::ValueType::Double;
+        value_type = AnyData::ValueType::Float64;
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -909,54 +909,54 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     if (base_type_info.IsEnum) {
         if (base_type_info.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).toInt()));
+            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).toInt()));
+            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 4) {
             if (base_type_info.IsEnumSigned) {
-                SetValue<int32>(prop, strex(value).toInt());
+                SetValue<int32>(prop, strex(value).to_int32());
             }
             else {
-                SetValue<uint32>(prop, strex(value).toUInt());
+                SetValue<uint32>(prop, strex(value).to_uint32());
             }
         }
     }
     else if (base_type_info.IsBool) {
-        SetValue<bool>(prop, strex(value).toBool());
+        SetValue<bool>(prop, strex(value).to_bool());
     }
     else if (base_type_info.IsFloat) {
         if (base_type_info.IsSingleFloat) {
-            SetValue<float32>(prop, strex(value).toFloat());
+            SetValue<float32>(prop, strex(value).to_float32());
         }
         else if (base_type_info.IsDoubleFloat) {
-            SetValue<float64>(prop, strex(value).toDouble());
+            SetValue<float64>(prop, strex(value).to_float64());
         }
     }
     else if (base_type_info.IsInt && base_type_info.IsSignedInt) {
         if (base_type_info.Size == 1) {
-            SetValue<int8>(prop, numeric_cast<int8>(strex(value).toInt()));
+            SetValue<int8>(prop, numeric_cast<int8>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 2) {
-            SetValue<int16>(prop, numeric_cast<int16>(strex(value).toInt()));
+            SetValue<int16>(prop, numeric_cast<int16>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 4) {
-            SetValue<int32>(prop, numeric_cast<int32>(strex(value).toInt()));
+            SetValue<int32>(prop, numeric_cast<int32>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 8) {
-            SetValue<int64>(prop, numeric_cast<int64>(strex(value).toInt64()));
+            SetValue<int64>(prop, numeric_cast<int64>(strex(value).to_int64()));
         }
     }
     else if (base_type_info.IsInt && !base_type_info.IsSignedInt) {
         if (base_type_info.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).toInt()));
+            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).toInt()));
+            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).to_int32()));
         }
         else if (base_type_info.Size == 4) {
-            SetValue<uint32>(prop, numeric_cast<uint32>(strex(value).toInt()));
+            SetValue<uint32>(prop, numeric_cast<uint32>(strex(value).to_int32()));
         }
     }
     else {
@@ -1398,7 +1398,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             int32 priority = 0;
 
             if (i + 4 < flags.size() && flags[i + 3] == "^") {
-                priority = strex(flags[i + 4]).toInt();
+                priority = strex(flags[i + 4]).to_int32();
                 i += 2;
             }
 
