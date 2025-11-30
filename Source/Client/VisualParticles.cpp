@@ -50,11 +50,11 @@ struct ParticleSystem::Impl
 };
 
 ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
-    _settings {settings},
+    _settings {&settings},
     _impl {SafeAlloc::MakeUnique<Impl>()},
-    _effectMngr {effect_mngr},
-    _resources {resources},
-    _gameTime {game_time},
+    _effectMngr {&effect_mngr},
+    _resources {&resources},
+    _gameTime {&game_time},
     _textureLoader {std::move(tex_loader)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -62,8 +62,8 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     static std::once_flag once;
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
 
-    if (_settings.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32>(1000.0f / numeric_cast<float32>(_settings.Animation3dFPS));
+    if (_settings->Animation3dFPS != 0) {
+        _animUpdateThreshold = iround<int32>(1000.0f / numeric_cast<float32>(_settings->Animation3dFPS));
     }
 }
 
@@ -79,7 +79,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
     SPK::Ref<SPK::System> base_system;
 
     if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
-        if (const auto file = _resources.ReadFile(name)) {
+        if (const auto file = _resources->ReadFile(name)) {
             base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), numeric_cast<unsigned>(file.GetSize()));
         }
 
@@ -115,7 +115,7 @@ auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSys
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
     _impl {SafeAlloc::MakeUnique<Impl>()},
-    _particleMngr {particle_mngr}
+    _particleMngr {&particle_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -172,10 +172,10 @@ auto ParticleSystem::GetDrawSize() const -> isize32
     }
 
     if (max_draw_width == 0) {
-        max_draw_width = _particleMngr._settings.DefaultParticleDrawWidth;
+        max_draw_width = _particleMngr->_settings->DefaultParticleDrawWidth;
     }
     if (max_draw_height == 0) {
-        max_draw_height = _particleMngr._settings.DefaultParticleDrawHeight;
+        max_draw_height = _particleMngr->_settings->DefaultParticleDrawHeight;
     }
 
     return {max_draw_width, max_draw_height};
@@ -185,14 +185,14 @@ auto ParticleSystem::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _particleMngr._gameTime.GetFrameTime();
+    return _particleMngr->_gameTime->GetFrameTime();
 }
 
 auto ParticleSystem::NeedDraw() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr._animUpdateThreshold) && _impl->System->isActive();
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold) && _impl->System->isActive();
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32 look_dir_angle, const vec3& view_offset)
@@ -296,7 +296,7 @@ void ParticleSystem::Draw()
     mat44::Translation({-_viewOffset.x, -_viewOffset.y, -_viewOffset.z}, view_offset_mat);
 
     mat44 cam_rot_mat;
-    mat44::RotationX(_particleMngr._settings.MapCameraAngle * DEG_TO_RAD_FLOAT, cam_rot_mat);
+    mat44::RotationX(_particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, cam_rot_mat);
 
     mat44 view = view_offset_mat * cam_rot_mat;
     view.Transpose();
@@ -304,8 +304,8 @@ void ParticleSystem::Draw()
     mat44 proj = _projMat;
     proj.Transpose();
 
-    _particleMngr._projMatColMaj = view * proj;
-    _particleMngr._viewMatColMaj = view;
+    _particleMngr->_projMatColMaj = view * proj;
+    _particleMngr->_viewMatColMaj = view;
 
     _impl->System->renderParticles();
 }

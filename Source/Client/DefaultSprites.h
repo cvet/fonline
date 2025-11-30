@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE();
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(SpriteManager& spr_mngr);
+    explicit AtlasSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
     AtlasSprite(const AtlasSprite&) = delete;
     AtlasSprite(AtlasSprite&&) noexcept = default;
     auto operator=(const AtlasSprite&) = delete;
@@ -51,20 +51,27 @@ public:
     ~AtlasSprite() override;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
-    [[nodiscard]] auto GetBatchTex() const -> RenderTexture* override { return Atlas->MainTex; }
+    [[nodiscard]] auto GetAtlas() const -> const TextureAtlas* { return _atlas.get(); }
+    [[nodiscard]] auto GetAtlas() -> TextureAtlas* { return _atlas.get(); }
+    [[nodiscard]] auto GetBatchTexture() const -> const RenderTexture* override { return _atlas->GetTexture(); }
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
+    [[nodiscard]] auto GetAtlasRect() const -> const frect32& { return _atlasRect; }
 
     auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
 
-    TextureAtlas* Atlas {};
-    TextureAtlas::SpaceNode* AtlasNode {};
-    frect32 AtlasRect {};
-    vector<bool> HitTestData {};
+protected:
+    raw_ptr<TextureAtlas> _atlas {};
+    raw_ptr<TextureAtlas::SpaceNode> _atlasNode {};
+    frect32 _atlasRect {};
+    vector<bool> _hitTestData {};
 };
 
 class SpriteSheet final : public Sprite
 {
+    friend class DefaultSpriteFactory;
+    friend class ResourceManager;
+
 public:
     SpriteSheet(SpriteManager& spr_mngr, int32 frames, int32 ticks, int32 dirs);
     SpriteSheet(const SpriteSheet&) = delete;
@@ -74,7 +81,7 @@ public:
     ~SpriteSheet() override = default;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
-    [[nodiscard]] auto GetBatchTex() const -> RenderTexture* override;
+    [[nodiscard]] auto GetBatchTexture() const -> const RenderTexture* override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetCurSpr() const -> const Sprite*;
@@ -85,6 +92,12 @@ public:
     [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32 override;
+    [[nodiscard]] auto GetWholeTicks() const noexcept -> int32 { return _wholeTicks; }
+    [[nodiscard]] auto GetFramesCount() const noexcept -> int32 { return _framesCount; }
+    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _stateAnim; }
+    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
+    [[nodiscard]] auto GetDirCount() const noexcept -> int32 { return _dirCount; }
+    [[nodiscard]] auto GetSprOffset() const noexcept -> const vector<ipos32>& { return _sprOffset; }
 
     auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
@@ -95,18 +108,17 @@ public:
     void Stop() override;
     auto Update() -> bool override;
 
-    // Todo: incapsulate sprite sheet data
-    vector<shared_ptr<Sprite>> Spr {};
-    vector<ipos32> SprOffset {};
-    int32 CntFrm {}; // Todo: Spr.size()
-    int32 WholeTicks {};
-    CritterStateAnim StateAnim {};
-    CritterActionAnim ActionAnim {};
-    int32 DirCount {};
-    shared_ptr<SpriteSheet> Dirs[GameSettings::MAP_DIR_COUNT - 1] {};
-
 private:
     void RefreshParams();
+
+    vector<shared_ptr<Sprite>> _spr {};
+    vector<ipos32> _sprOffset {};
+    int32 _framesCount {};
+    int32 _wholeTicks {};
+    CritterStateAnim _stateAnim {};
+    CritterActionAnim _actionAnim {};
+    int32 _dirCount {};
+    shared_ptr<SpriteSheet> _dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 
     uint8 _curDir {};
     int32 _curIndex {};
@@ -131,9 +143,9 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    void FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const ucolor* data);
+    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, const ucolor* data) -> shared_ptr<AtlasSprite>;
 
-    SpriteManager& _sprMngr;
+    raw_ptr<SpriteManager> _sprMngr;
     vector<ucolor> _borderBuf {};
 };
 

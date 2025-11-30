@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE();
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
 RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* window, FlushCallback flush) :
-    _settings {settings},
+    _settings {&settings},
     _flush {std::move(flush)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -59,7 +59,12 @@ auto RenderTargetManager::GetCurrentRenderTarget() -> RenderTarget*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
+}
+
+auto RenderTargetManager::GetCurrentRenderTarget() const -> const RenderTarget*
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
     return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
 }
@@ -75,9 +80,9 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::Size
 
     auto rt = SafeAlloc::MakeUnique<RenderTarget>();
 
-    rt->SizeKind = size_kind;
-    rt->BaseSize = base_size;
-    rt->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
+    rt->_sizeKind = size_kind;
+    rt->_baseSize = base_size;
+    rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     AllocateRenderTargetTexture(rt.get(), linear_filtered, with_depth);
 
@@ -91,8 +96,8 @@ void RenderTargetManager::OnScreenSizeChanged()
 
     // Reallocate fullscreen render targets
     for (auto& rt : _rtAll) {
-        if (rt->SizeKind != RenderTarget::SizeKindType::Custom) {
-            AllocateRenderTargetTexture(rt.get(), rt->MainTex->LinearFiltered, rt->MainTex->WithDepth);
+        if (rt->_sizeKind != RenderTarget::SizeKindType::Custom) {
+            AllocateRenderTargetTexture(rt.get(), rt->_texture->LinearFiltered, rt->_texture->WithDepth);
         }
     }
 }
@@ -103,15 +108,15 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 
     FO_NON_CONST_METHOD_HINT();
 
-    auto tex_size = rt->BaseSize;
+    auto tex_size = rt->_baseSize;
 
-    if (rt->SizeKind == RenderTarget::SizeKindType::Screen) {
-        tex_size.width += _settings.ScreenWidth;
-        tex_size.height += _settings.ScreenHeight;
+    if (rt->_sizeKind == RenderTarget::SizeKindType::Screen) {
+        tex_size.width += _settings->ScreenWidth;
+        tex_size.height += _settings->ScreenHeight;
     }
-    else if (rt->SizeKind == RenderTarget::SizeKindType::Map) {
-        tex_size.width += _settings.ScreenWidth + _settings.MapHexWidth;
-        tex_size.height += _settings.ScreenHeight - _settings.ScreenHudHeight + _settings.MapHexLineHeight * 2;
+    else if (rt->_sizeKind == RenderTarget::SizeKindType::Map) {
+        tex_size.width += _settings->ScreenWidth + _settings->MapHexWidth;
+        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + _settings->MapHexLineHeight * 2;
     }
 
     tex_size.width = std::max(tex_size.width, 1);
@@ -120,11 +125,11 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
     FO_RUNTIME_ASSERT(tex_size.width > 0);
     FO_RUNTIME_ASSERT(tex_size.height > 0);
 
-    rt->MainTex = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
-    rt->MainTex->FlippedHeight = App->Render.IsRenderTargetFlipped();
+    rt->_texture = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
+    rt->_texture->FlippedHeight = App->Render.IsRenderTargetFlipped();
 
     auto* prev_tex = App->Render.GetRenderTarget();
-    App->Render.SetRenderTarget(rt->MainTex.get());
+    App->Render.SetRenderTarget(rt->_texture.get());
     App->Render.ClearRenderTarget(ucolor::clear, with_depth);
     App->Render.SetRenderTarget(prev_tex);
 }
@@ -142,8 +147,8 @@ void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
     _rtStack.emplace_back(rt);
 
     if (!redundant) {
-        App->Render.SetRenderTarget(rt->MainTex.get());
-        rt->LastPixelPicks.clear();
+        App->Render.SetRenderTarget(rt->_texture.get());
+        rt->_lastPixelPicks.clear();
     }
 }
 
@@ -161,7 +166,7 @@ void RenderTargetManager::PopRenderTarget()
 
     if (!redundant) {
         if (!_rtStack.empty()) {
-            App->Render.SetRenderTarget(_rtStack.back()->MainTex.get());
+            App->Render.SetRenderTarget(_rtStack.back()->_texture.get());
         }
         else {
             App->Render.SetRenderTarget(nullptr);
@@ -169,7 +174,7 @@ void RenderTargetManager::PopRenderTarget()
     }
 }
 
-auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor
+auto RenderTargetManager::GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -181,21 +186,21 @@ auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) con
     return ucolor {255, 255, 255, 255};
 
 #else
-    // Try find in last picks
-    for (auto&& [last_pos, last_color] : rt->LastPixelPicks) {
+    // Try to find in last picks
+    for (auto&& [last_pos, last_color] : rt->_lastPixelPicks) {
         if (last_pos == pos) {
             return last_color;
         }
     }
 
     // Read one pixel
-    const auto color = rt->MainTex->GetTexturePixel(pos);
+    const auto color = rt->_texture->GetTexturePixel(pos);
 
     // Refresh picks
-    rt->LastPixelPicks.emplace(rt->LastPixelPicks.begin(), pos, color);
+    rt->_lastPixelPicks.emplace(rt->_lastPixelPicks.begin(), pos, color);
 
-    if (rt->LastPixelPicks.size() > MAX_STORED_PIXEL_PICKS) {
-        rt->LastPixelPicks.pop_back();
+    if (rt->_lastPixelPicks.size() > MAX_STORED_PIXEL_PICKS) {
+        rt->_lastPixelPicks.pop_back();
     }
 
     return color;
@@ -238,7 +243,7 @@ void RenderTargetManager::DumpTextures() const
     size_t atlases_memory_size = 0;
 
     for (const auto& rt : _rtAll) {
-        atlases_memory_size += numeric_cast<size_t>(rt->MainTex->Size.width) * rt->MainTex->Size.height * 4;
+        atlases_memory_size += numeric_cast<size_t>(rt->_texture->Size.width) * rt->_texture->Size.height * 4;
     }
 
     const auto time = nanotime::now().desc(true);
@@ -248,9 +253,9 @@ void RenderTargetManager::DumpTextures() const
 
     const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
         if (rt != nullptr) {
-            const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Size.width, rt->MainTex->Size.height);
-            auto tex_data = rt->MainTex->GetTextureRegion({0, 0}, rt->MainTex->Size);
-            GenericUtils::WriteSimpleTga(fname, rt->MainTex->Size, std::move(tex_data));
+            const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
+            auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
+            GenericUtils::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
         }
     };
 

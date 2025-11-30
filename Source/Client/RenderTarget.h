@@ -42,8 +42,13 @@
 
 FO_BEGIN_NAMESPACE();
 
-struct RenderTarget
+class RenderTargetManager;
+
+class RenderTarget
 {
+    friend class RenderTargetManager;
+
+public:
     enum class SizeKindType : uint8
     {
         Custom,
@@ -51,11 +56,21 @@ struct RenderTarget
         Map,
     };
 
-    unique_ptr<RenderTexture> MainTex {};
-    raw_ptr<RenderEffect> CustomDrawEffect {};
-    SizeKindType SizeKind {};
-    isize32 BaseSize {};
-    vector<tuple<ipos32, ucolor>> LastPixelPicks {};
+    [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _texture.get(); }
+    [[nodiscard]] auto GetTexture() noexcept -> RenderTexture* { return _texture.get(); }
+    [[nodiscard]] auto GetSizeKind() const noexcept -> SizeKindType { return _sizeKind; }
+    [[nodiscard]] auto GetBaseSize() const noexcept -> isize32 { return _baseSize; }
+    [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> RenderEffect* { return _customDrawEffect.get(); }
+
+    void SetCustomDrawEffect(RenderEffect* effect) const noexcept { _customDrawEffect = effect; }
+    void ClearLastPixelPicks() const noexcept { _lastPixelPicks.clear(); }
+
+private:
+    unique_ptr<RenderTexture> _texture {};
+    SizeKindType _sizeKind {};
+    isize32 _baseSize {};
+    mutable raw_ptr<RenderEffect> _customDrawEffect {};
+    mutable vector<tuple<ipos32, ucolor>> _lastPixelPicks {};
 };
 
 class RenderTargetManager
@@ -71,8 +86,9 @@ public:
     ~RenderTargetManager() = default;
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*;
-    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, ipos32 pos) const -> ucolor;
+    [[nodiscard]] auto GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&;
+    [[nodiscard]] auto GetCurrentRenderTarget() const -> const RenderTarget*;
     [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
 
     void PushRenderTarget(RenderTarget* rt);
@@ -87,7 +103,7 @@ private:
     void OnScreenSizeChanged();
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
-    RenderSettings& _settings;
+    raw_ptr<RenderSettings> _settings;
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<raw_ptr<RenderTarget>> _rtStack {};

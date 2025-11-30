@@ -38,6 +38,14 @@ FO_BEGIN_NAMESPACE();
 
 static constexpr int32 ATLAS_SPRITES_PADDING = 1;
 
+TextureAtlas::TextureAtlas(AtlasType type, RenderTarget* rt) noexcept :
+    _type {type},
+    _rt {rt},
+    _rootNode {SafeAlloc::MakeUnique<SpaceNode>(nullptr, ipos32(), rt->GetBaseSize())}
+{
+    _rt->GetTexture()->FlippedHeight = false;
+}
+
 TextureAtlas::SpaceNode::SpaceNode(SpaceNode* parent, ipos32 pos, isize32 size) :
     Parent {parent},
     Pos {pos},
@@ -137,8 +145,8 @@ void TextureAtlas::SpaceNode::Free() noexcept
 }
 
 TextureAtlasManager::TextureAtlasManager(RenderSettings& settings, RenderTargetManager& rt_mngr) :
-    _settings {settings},
-    _rtMngr {rt_mngr}
+    _settings {&settings},
+    _rtMngr {&rt_mngr}
 {
 }
 
@@ -148,7 +156,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
 
     // Cleanup expired atlases
     for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
-        if (it->get()->Type == AtlasType::OneImage && !it->get()->RootNode->Busy) {
+        if (it->get()->GetType() == AtlasType::OneImage && !it->get()->GetLayout()->Busy) {
             it = _allAtlases.erase(it);
         }
         else {
@@ -160,12 +168,9 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     FO_RUNTIME_ASSERT(request_size.width > 0);
     FO_RUNTIME_ASSERT(request_size.height > 0);
 
-    auto atlas = SafeAlloc::MakeUnique<TextureAtlas>();
-    atlas->Type = atlas_type;
-
     isize32 result_size;
 
-    switch (atlas->Type) {
+    switch (atlas_type) {
     case AtlasType::IfaceSprites:
         result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
         result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
@@ -186,11 +191,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     FO_RUNTIME_ASSERT(result_size.width >= request_size.width);
     FO_RUNTIME_ASSERT(result_size.height >= request_size.height);
 
-    atlas->RTarg = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Custom, result_size, _settings.AtlasLinearFiltration);
-    atlas->MainTex = atlas->RTarg->MainTex.get();
-    atlas->MainTex->FlippedHeight = false;
-    atlas->Size = result_size;
-    atlas->RootNode = SafeAlloc::MakeUnique<TextureAtlas::SpaceNode>(nullptr, ipos32 {0, 0}, result_size);
+    auto* rt = _rtMngr->CreateRenderTarget(false, RenderTarget::SizeKindType::Custom, result_size, _settings->AtlasLinearFiltration);
+    auto atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
 
     _allAtlases.push_back(std::move(atlas));
     return _allAtlases.back().get();
@@ -207,11 +209,11 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
     if (atlas_type != AtlasType::OneImage) {
         for (auto& check_atlas : _allAtlases) {
-            if (check_atlas->Type != atlas_type) {
+            if (check_atlas->GetType() != atlas_type) {
                 continue;
             }
 
-            auto* node = check_atlas->RootNode->FindPosition(size_with_padding);
+            auto* node = check_atlas->GetLayout()->FindPosition(size_with_padding);
 
             if (node != nullptr) {
                 atlas = check_atlas.get();
@@ -224,7 +226,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     // Create new
     if (atlas == nullptr) {
         atlas = CreateAtlas(atlas_type, size_with_padding);
-        atlas_node = atlas->RootNode->FindPosition(size_with_padding);
+        atlas_node = atlas->GetLayout()->FindPosition(size_with_padding);
         FO_RUNTIME_ASSERT(atlas_node);
     }
 
@@ -240,7 +242,7 @@ void TextureAtlasManager::DumpAtlases() const
     size_t atlases_memory_size = 0;
 
     for (const auto& atlas : _allAtlases) {
-        atlases_memory_size += numeric_cast<size_t>(atlas->Size.width) * atlas->Size.height * 4;
+        atlases_memory_size += atlas->GetSize().square() * 4;
     }
 
     const auto time = nanotime::now().desc(true);
@@ -252,7 +254,7 @@ void TextureAtlasManager::DumpAtlases() const
 
     for (const auto& atlas : _allAtlases) {
         string atlas_type_name;
-        switch (atlas->Type) {
+        switch (atlas->GetType()) {
         case AtlasType::IfaceSprites:
             atlas_type_name = "Static";
             break;
@@ -267,9 +269,9 @@ void TextureAtlasManager::DumpAtlases() const
             break;
         }
 
-        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->Size.width, atlas->Size.height);
-        auto tex_data = atlas->MainTex->GetTextureRegion({0, 0}, atlas->Size);
-        GenericUtils::WriteSimpleTga(fname, atlas->Size, std::move(tex_data));
+        const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
+        auto tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
+        GenericUtils::WriteSimpleTga(fname, atlas->GetSize(), std::move(tex_data));
         count++;
     }
 }

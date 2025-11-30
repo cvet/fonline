@@ -36,8 +36,10 @@
 
 FO_BEGIN_NAMESPACE();
 
-Sprite::Sprite(SpriteManager& spr_mngr) :
-    _sprMngr {spr_mngr}
+Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
+    _sprMngr {&spr_mngr},
+    _size {size},
+    _offset {offset}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -47,7 +49,6 @@ auto Sprite::IsHitTest(ipos32 pos) const -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(pos);
-
     return false;
 }
 
@@ -55,18 +56,18 @@ void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _sprMngr._updateSprites.emplace(this, weak_from_this());
+    _sprMngr->_updateSprites.emplace(this, weak_from_this());
 }
 
 SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver) :
-    _settings {settings},
+    _settings {&settings},
     _window {window},
-    _resources {resources},
-    _gameTimer {game_time},
+    _resources {&resources},
+    _gameTimer {&game_time},
     _rtMngr(settings, window, [this] { Flush(); }),
     _atlasMngr(settings, _rtMngr),
-    _effectMngr {effect_mngr},
-    _hashResolver {hash_resolver}
+    _effectMngr {&effect_mngr},
+    _hashResolver {&hash_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -116,8 +117,6 @@ void SpriteManager::SetWindowSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _window->SetSize(size);
 }
 
@@ -132,8 +131,8 @@ void SpriteManager::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto diff_w = size.width - _settings.ScreenWidth;
-    const auto diff_h = size.height - _settings.ScreenHeight;
+    const auto diff_w = size.width - _settings->ScreenWidth;
+    const auto diff_h = size.height - _settings->ScreenHeight;
 
     if (!IsFullscreen()) {
         const auto window_pos = _window->GetPosition();
@@ -171,9 +170,7 @@ void SpriteManager::SetMousePosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    App->Input.SetMousePosition(pos, _window);
+    App->Input.SetMousePosition(pos, _window.get());
 }
 
 auto SpriteManager::IsFullscreen() const -> bool
@@ -194,8 +191,6 @@ void SpriteManager::MinimizeWindow()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _window->Minimize();
 }
 
@@ -203,16 +198,12 @@ void SpriteManager::BlinkWindow()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _window->Blink();
 }
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _window->AlwaysOnTop(enable);
 }
@@ -292,14 +283,14 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     const auto& rt_stack = _rtMngr.GetRenderTargetStack();
     const auto width_from_i = tex->Size.width;
     const auto height_from_i = tex->Size.height;
-    const auto width_to_i = rt_stack.empty() ? _settings.ScreenWidth : rt_stack.back()->MainTex->Size.width;
-    const auto height_to_i = rt_stack.empty() ? _settings.ScreenHeight : rt_stack.back()->MainTex->Size.height;
+    const auto width_to_i = rt_stack.empty() ? _settings->ScreenWidth : rt_stack.back()->GetTexture()->Size.width;
+    const auto height_to_i = rt_stack.empty() ? _settings->ScreenHeight : rt_stack.back()->GetTexture()->Size.height;
     const auto width_from_f = numeric_cast<float32>(width_from_i);
     const auto height_from_f = numeric_cast<float32>(height_from_i);
     const auto width_to_f = numeric_cast<float32>(width_to_i);
     const auto height_to_f = numeric_cast<float32>(height_to_i);
     const auto flip_from = tex->FlippedHeight;
-    const auto flip_to = App->Render.IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->MainTex->FlippedHeight;
+    const auto flip_to = App->Render.IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->GetTexture()->FlippedHeight;
 
     if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices;
@@ -361,7 +352,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[vpos].EggTexU = 0.0f;
     }
 
-    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.FlushRenderTarget;
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.FlushRenderTarget;
 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
@@ -373,7 +364,7 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const f
 {
     FO_STACK_TRACE_ENTRY();
 
-    DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect.get());
+    DrawTexture(rt->GetTexture(), alpha_blend, region_from, region_to, rt->GetCustomDrawEffect());
 }
 
 void SpriteManager::PushScissor(irect32 rect)
@@ -450,7 +441,7 @@ auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_w
 {
     FO_STACK_TRACE_ENTRY();
 
-    return LoadSprite(_hashResolver.ToHashedString(path), atlas_type, no_warn_if_not_exists);
+    return LoadSprite(_hashResolver->ToHashedString(path), atlas_type, no_warn_if_not_exists);
 }
 
 auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
@@ -538,16 +529,16 @@ void SpriteManager::Flush()
 
     size_t ipos = 0;
 
-    for (const auto& dip : _dipQueue) {
+    for (auto& dip : _dipQueue) {
         FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
 
         if (_sprEgg) {
-            dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+            dip.SourceEffect->EggTex = _sprEgg->GetAtlas()->GetTexture();
         }
 
-        dip.SourceEffect->DrawBuffer(_spritesDrawBuf.get(), ipos, dip.IndCount, dip.MainTex);
+        dip.SourceEffect->DrawBuffer(_spritesDrawBuf.get(), ipos, dip.IndicesCount, dip.MainTexture.get());
 
-        ipos += dip.IndCount;
+        ipos += dip.IndicesCount;
     }
 
     DisableScissor();
@@ -564,19 +555,19 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
     FO_RUNTIME_ASSERT(effect);
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), frect32 {pos.x, pos.y, spr->Size.width, spr->Size.height}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), frect32 {pos.x, pos.y, spr->_size.width, spr->_size.height}, {color, color});
 
     if (ind_count != 0) {
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
+        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
         else {
-            _dipQueue.back().IndCount += ind_count;
+            _dipQueue.back().IndicesCount += ind_count;
         }
 
         if (_spritesDrawBuf->VertCount >= _flushVertCount) {
@@ -598,8 +589,8 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
 
     auto xf = pos.x;
     auto yf = pos.y;
-    auto wf = numeric_cast<float32>(spr->Size.width);
-    auto hf = numeric_cast<float32>(spr->Size.height);
+    auto wf = numeric_cast<float32>(spr->_size.width);
+    auto hf = numeric_cast<float32>(spr->_size.height);
     const auto k = std::min(size.width / wf, size.height / hf);
 
     if (!stretch) {
@@ -627,7 +618,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
         hf = size.height;
     }
 
-    auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
     FO_RUNTIME_ASSERT(effect);
 
     color = ApplyColorBrightness(color);
@@ -635,11 +626,11 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
     const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
+        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
         }
         else {
-            _dipQueue.back().IndCount += ind_count;
+            _dipQueue.back().IndicesCount += ind_count;
         }
 
         if (_spritesDrawBuf->VertCount >= _flushVertCount) {
@@ -660,8 +651,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
         return;
     }
 
-    auto width = numeric_cast<float32>(atlas_spr->Size.width);
-    auto height = numeric_cast<float32>(atlas_spr->Size.height);
+    auto width = numeric_cast<float32>(atlas_spr->_size.width);
+    auto height = numeric_cast<float32>(atlas_spr->_size.height);
 
     if (spr_size.width != 0 && spr_size.height != 0) {
         width = numeric_cast<float32>(spr_size.width);
@@ -680,11 +671,11 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
     color = ApplyColorBrightness(color);
 
-    auto* effect = atlas_spr->DrawEffect != nullptr ? atlas_spr->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
     FO_RUNTIME_ASSERT(effect);
 
-    const auto last_right_offs = atlas_spr->AtlasRect.width / width;
-    const auto last_bottom_offs = atlas_spr->AtlasRect.height / height;
+    const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
+    const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;
 
     for (auto yy = numeric_cast<float32>(pos.y), end_y = numeric_cast<float32>(pos.y + size.height); yy < end_y;) {
         const auto last_y = yy + height >= end_y;
@@ -694,8 +685,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             const auto local_width = last_x ? end_x - xx : width;
             const auto local_height = last_y ? end_y - yy : height;
-            const auto local_right = last_x ? atlas_spr->AtlasRect.x + last_right_offs * local_width : atlas_spr->AtlasRect.x + atlas_spr->AtlasRect.width;
-            const auto local_bottom = last_y ? atlas_spr->AtlasRect.y + last_bottom_offs * local_height : atlas_spr->AtlasRect.y + atlas_spr->AtlasRect.height;
+            const auto local_right = last_x ? atlas_spr->GetAtlasRect().x + last_right_offs * local_width : atlas_spr->GetAtlasRect().x + atlas_spr->GetAtlasRect().width;
+            const auto local_bottom = last_y ? atlas_spr->GetAtlasRect().y + last_bottom_offs * local_height : atlas_spr->GetAtlasRect().y + atlas_spr->GetAtlasRect().height;
 
             _spritesDrawBuf->CheckAllocBuf(4, 6);
 
@@ -713,22 +704,22 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
-            vbuf[vpos].TexU = atlas_spr->AtlasRect.x;
+            vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
-            vbuf[vpos].TexU = atlas_spr->AtlasRect.x;
-            vbuf[vpos].TexV = atlas_spr->AtlasRect.y;
+            vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
+            vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = local_right;
-            vbuf[vpos].TexV = atlas_spr->AtlasRect.y;
+            vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
@@ -739,11 +730,11 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
             vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
-            if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {.MainTex = atlas_spr->GetBatchTex(), .SourceEffect = effect, .IndCount = 6});
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = 6});
             }
             else {
-                _dipQueue.back().IndCount += 6;
+                _dipQueue.back().IndicesCount += 6;
             }
 
             if (_spritesDrawBuf->VertCount >= _flushVertCount) {
@@ -795,9 +786,9 @@ void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
     _sprEgg = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_RUNTIME_ASSERT(_sprEgg);
 
-    const auto x = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.x);
-    const auto y = iround<int32>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->AtlasRect.y);
-    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion({x, y}, _sprEgg->Size);
+    const auto x = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[0] * _sprEgg->GetAtlasRect().x);
+    const auto y = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[1] * _sprEgg->GetAtlasRect().y);
+    _eggData = _sprEgg->GetAtlas()->GetTexture()->GetTextureRegion({x, y}, _sprEgg->_size);
 }
 
 auto SpriteManager::CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool
@@ -853,8 +844,8 @@ void SpriteManager::SetEgg(mpos hex, const MapSprite* mspr)
     const auto hex_offset = mspr->GetHexOffset();
     const auto* phex_offset = mspr->GetPHexOffset();
     const auto* spr_offset = mspr->GetSprOffset();
-    _eggOffset.x = hex_offset.x + spr->Offset.x - _sprEgg->Size.width / 2 + spr_offset->x + phex_offset->x;
-    _eggOffset.y = hex_offset.y - spr->Size.height / 2 + spr->Offset.y - _sprEgg->Size.height / 2 + spr_offset->y + phex_offset->y;
+    _eggOffset.x = hex_offset.x + spr->_offset.x - _sprEgg->_size.width / 2 + spr_offset->x + phex_offset->x;
+    _eggOffset.y = hex_offset.y - spr->_size.height / 2 + spr->_offset.y - _sprEgg->_size.height / 2 + spr_offset->y + phex_offset->y;
     _eggHex = hex;
     _eggValid = true;
 }
@@ -885,10 +876,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const auto hex_offset = mspr->GetHexOffset();
         const auto* phex_offset = mspr->GetPHexOffset();
         const auto* spr_offset = mspr->GetSprOffset();
-        const int32 xi = hex_offset.x + spr->Offset.x + phex_offset->x - spr->Size.width / 2 + (spr_offset != nullptr ? spr_offset->x : 0) - draw_area.x;
-        const int32 yi = hex_offset.y + spr->Offset.y + phex_offset->y - spr->Size.height + (spr_offset != nullptr ? spr_offset->y : 0) - draw_area.y;
+        const int32 xi = hex_offset.x + spr->_offset.x + phex_offset->x - spr->_size.width / 2 + (spr_offset != nullptr ? spr_offset->x : 0) - draw_area.x;
+        const int32 yi = hex_offset.y + spr->_offset.y + phex_offset->y - spr->_size.height + (spr_offset != nullptr ? spr_offset->y : 0) - draw_area.y;
 
-        if (xi > draw_area.width || xi + spr->Size.width < 0 || yi > draw_area.height || yi + spr->Size.height < 0) {
+        if (xi > draw_area.width || xi + spr->_size.width < 0 || yi > draw_area.height || yi + spr->_size.height < 0) {
             continue;
         }
 
@@ -935,36 +926,36 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         auto* effect = spr_effect != nullptr ? *spr_effect : nullptr;
 
         if (effect == nullptr) {
-            effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Generic;
+            effect = spr->GetDrawEffectOr(_effectMngr->Effects.Generic);
         }
 
         // Fill buffer
         const float32 xf = numeric_cast<float32>(xi);
         const float32 yf = numeric_cast<float32>(yi);
-        const float32 wf = numeric_cast<float32>(spr->Size.width);
-        const float32 hf = numeric_cast<float32>(spr->Size.height);
+        const float32 wf = numeric_cast<float32>(spr->_size.width);
+        const float32 hf = numeric_cast<float32>(spr->_size.height);
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
         // Setup egg
         if (use_egg && _eggValid && ind_count == 6 && CheckEggAppearence(mspr->GetHex(), mspr->GetEggAppearence())) {
             int32 x1 = xi - _eggOffset.x + draw_area.x;
             int32 y1 = yi - _eggOffset.y + draw_area.y;
-            int32 x2 = x1 + spr->Size.width;
-            int32 y2 = y1 + spr->Size.height;
+            int32 x2 = x1 + spr->_size.width;
+            int32 y2 = y1 + spr->_size.height;
 
-            if (x1 < _sprEgg->Size.width - 100 && y1 < _sprEgg->Size.height - 100 && x2 >= 100 && y2 >= 100) {
+            if (x1 < _sprEgg->_size.width - 100 && y1 < _sprEgg->_size.height - 100 && x2 >= 100 && y2 >= 100) {
                 const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
 
                 if (atlas_spr != nullptr) {
                     x1 = std::max(x1, 0);
                     y1 = std::max(y1, 0);
-                    x2 = std::min(x2, _sprEgg->Size.width);
-                    y2 = std::min(y2, _sprEgg->Size.height);
+                    x2 = std::min(x2, _sprEgg->_size.width);
+                    y2 = std::min(y2, _sprEgg->_size.height);
 
-                    const auto x1_f = _sprEgg->AtlasRect.x + numeric_cast<float32>(x1) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto x2_f = _sprEgg->AtlasRect.x + numeric_cast<float32>(x2) / _sprEgg->Atlas->MainTex->SizeData[0];
-                    const auto y1_f = _sprEgg->AtlasRect.y + numeric_cast<float32>(y1) / _sprEgg->Atlas->MainTex->SizeData[1];
-                    const auto y2_f = _sprEgg->AtlasRect.y + numeric_cast<float32>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
+                    const auto x1_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x1) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
+                    const auto x2_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x2) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
+                    const auto y1_f = _sprEgg->GetAtlasRect().y + numeric_cast<float32>(y1) / _sprEgg->GetAtlas()->GetTexture()->SizeData[1];
+                    const auto y2_f = _sprEgg->GetAtlasRect().y + numeric_cast<float32>(y2) / _sprEgg->GetAtlas()->GetTexture()->SizeData[1];
 
                     auto& vbuf = _spritesDrawBuf->Vertices;
                     const auto vpos = _spritesDrawBuf->VertCount;
@@ -982,11 +973,11 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (ind_count != 0) {
-            if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {.MainTex = spr->GetBatchTex(), .SourceEffect = effect, .IndCount = ind_count});
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
             }
             else {
-                _dipQueue.back().IndCount += ind_count;
+                _dipQueue.back().IndicesCount += ind_count;
             }
 
             if (_spritesDrawBuf->VertCount >= _flushVertCount) {
@@ -995,7 +986,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Corners indication
-        if (_settings.ShowCorners && mspr->GetEggAppearence() != EggAppearenceType::None) {
+        if (_settings->ShowCorners && mspr->GetEggAppearence() != EggAppearenceType::None) {
             vector<PrimitivePoint> corner;
             const float32 cx = wf / 2.0f;
 
@@ -1047,7 +1038,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             }
         }
 
-        if (_settings.ShowSpriteBorders && mspr->GetDrawOrder() > DrawOrderType::Tile4) {
+        if (_settings->ShowSpriteBorders && mspr->GetDrawOrder() > DrawOrderType::Tile4) {
             irect32 rect = mspr->GetViewRect();
             rect.x -= draw_area.x;
             rect.y -= draw_area.y;
@@ -1057,7 +1048,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     Flush();
 
-    if (_settings.ShowSpriteBorders) {
+    if (_settings->ShowSpriteBorders) {
         DrawPoints(debug_borders, RenderPrimitiveType::TriangleList);
     }
 }
@@ -1084,11 +1075,11 @@ auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
     const auto ox = pos.x - _eggOffset.x;
     const auto oy = pos.y - _eggOffset.y;
 
-    if (ox < 0 || oy < 0 || ox >= _sprEgg->Size.width || oy >= _sprEgg->Size.height) {
+    if (ox < 0 || oy < 0 || ox >= _sprEgg->_size.width || oy >= _sprEgg->_size.height) {
         return false;
     }
 
-    const auto egg_color = _eggData.at(oy * _sprEgg->Size.width + ox);
+    const auto egg_color = _eggData.at(oy * _sprEgg->_size.width + ox);
     return egg_color.comp.a < 127;
 }
 
@@ -1102,7 +1093,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
     Flush();
 
-    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.Primitive;
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.Primitive;
     FO_RUNTIME_ASSERT(effect);
 
     // Check primitives
@@ -1198,18 +1189,18 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         return;
     }
 
-    auto* contour_effect = _effectMngr.Effects.Contour;
+    auto* contour_effect = _effectMngr->Effects.Contour;
 
     if (contour_effect == nullptr) {
         return;
     }
 
-    const auto* texture = as->Atlas->MainTex;
-    const frect32 sr = as->AtlasRect;
+    const auto* texture = as->GetAtlas()->GetTexture();
+    const frect32 sr = as->GetAtlasRect();
     const float32 txw = texture->SizeData[2];
     const float32 txh = texture->SizeData[3];
     const frect32 textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
-    const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->Size.width + 2, as->Size.height + 2));
+    const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->_size.width + 2, as->_size.height + 2));
 
     contour_color = ApplyColorBrightness(contour_color);
 
@@ -1264,10 +1255,10 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_settings.Brightness != 0) {
-        const auto r = std::clamp(numeric_cast<int32>(color.comp.r) + _settings.Brightness, 0, 255);
-        const auto g = std::clamp(numeric_cast<int32>(color.comp.g) + _settings.Brightness, 0, 255);
-        const auto b = std::clamp(numeric_cast<int32>(color.comp.b) + _settings.Brightness, 0, 255);
+    if (_settings->Brightness != 0) {
+        const auto r = std::clamp(numeric_cast<int32>(color.comp.r) + _settings->Brightness, 0, 255);
+        const auto g = std::clamp(numeric_cast<int32>(color.comp.g) + _settings->Brightness, 0, 255);
+        const auto b = std::clamp(numeric_cast<int32>(color.comp.b) + _settings->Brightness, 0, 255);
         return ucolor {numeric_cast<uint8>(r), numeric_cast<uint8>(g), numeric_cast<uint8>(b), color.comp.a};
     }
     else {
@@ -1308,7 +1299,7 @@ void SpriteManager::SetFontEffect(int32 index, RenderEffect* effect)
 
     auto* font = GetFont(index);
     if (font != nullptr) {
-        font->DrawEffect = effect != nullptr ? effect : _effectMngr.Effects.Font;
+        font->DrawEffect = effect != nullptr ? effect : _effectMngr->Effects.Font;
     }
 }
 
@@ -1319,11 +1310,11 @@ void SpriteManager::BuildFont(int32 index)
     auto& font = *_allFonts[index];
 
     // Fix texture coordinates
-    const auto* atlas_spr = font.ImageNormal.get();
-    auto tex_w = numeric_cast<float32>(atlas_spr->Atlas->Size.width);
-    auto tex_h = numeric_cast<float32>(atlas_spr->Atlas->Size.height);
-    auto image_x = tex_w * atlas_spr->AtlasRect.x;
-    auto image_y = tex_h * atlas_spr->AtlasRect.y;
+    auto* atlas_spr = font.ImageNormal.get();
+    auto tex_w = numeric_cast<float32>(atlas_spr->GetAtlas()->GetSize().width);
+    auto tex_h = numeric_cast<float32>(atlas_spr->GetAtlas()->GetSize().height);
+    auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
+    auto image_y = tex_h * atlas_spr->GetAtlasRect().y;
     auto max_h = 0;
 
     for (auto& letter : font.Letters | std::views::values) {
@@ -1341,7 +1332,7 @@ void SpriteManager::BuildFont(int32 index)
     }
 
     // Fill data
-    font.FontTex = atlas_spr->Atlas->MainTex;
+    font.FontTex = atlas_spr->GetAtlas()->GetTexture();
 
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
@@ -1350,61 +1341,61 @@ void SpriteManager::BuildFont(int32 index)
         font.SpaceWidth = font.Letters[numeric_cast<uint32>(' ')].XAdvance;
     }
 
-    const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
-    font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
+    auto* si_bordered = dynamic_cast<AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
+    font.FontTexBordered = si_bordered != nullptr ? si_bordered->GetAtlas()->GetTexture() : nullptr;
 
-    const auto normal_ox = iround<int32>(tex_w * atlas_spr->AtlasRect.x);
-    const auto normal_oy = iround<int32>(tex_h * atlas_spr->AtlasRect.y);
-    const auto bordered_ox = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.width) * si_bordered->AtlasRect.x) : 0;
-    const auto bordered_oy = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->Atlas->Size.height) * si_bordered->AtlasRect.y) : 0;
+    const auto normal_ox = iround<int32>(tex_w * atlas_spr->GetAtlasRect().x);
+    const auto normal_oy = iround<int32>(tex_h * atlas_spr->GetAtlasRect().y);
+    const auto bordered_ox = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
+    const auto bordered_oy = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
 
     // Read texture data
     const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
-    vector<ucolor> data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->Size);
+    vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->_size);
     vector<ucolor> data_bordered;
 
     if (si_bordered != nullptr) {
-        data_bordered = si_bordered->Atlas->MainTex->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->Size);
+        data_bordered = si_bordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->_size);
     }
 
     // Normalize color to gray
     if (font.MakeGray) {
-        for (auto y = 0; y < atlas_spr->Size.height; y++) {
-            for (auto x = 0; x < atlas_spr->Size.width; x++) {
-                const auto a = pixel_at(data_normal, atlas_spr->Size.width, x, y).comp.a;
+        for (auto y = 0; y < atlas_spr->_size.height; y++) {
+            for (auto x = 0; x < atlas_spr->_size.width; x++) {
+                const auto a = pixel_at(data_normal, atlas_spr->_size.width, x, y).comp.a;
 
                 if (a != 0) {
-                    pixel_at(data_normal, atlas_spr->Size.width, x, y) = ucolor {128, 128, 128, a};
+                    pixel_at(data_normal, atlas_spr->_size.width, x, y) = ucolor {128, 128, 128, a};
 
                     if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->Size.width, x, y) = ucolor {128, 128, 128, a};
+                        pixel_at(data_bordered, si_bordered->_size.width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
-                    pixel_at(data_normal, atlas_spr->Size.width, x, y) = ucolor {0, 0, 0, 0};
+                    pixel_at(data_normal, atlas_spr->_size.width, x, y) = ucolor {0, 0, 0, 0};
 
                     if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->Size.width, x, y) = ucolor {0, 0, 0, 0};
+                        pixel_at(data_bordered, si_bordered->_size.width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
         }
 
-        atlas_spr->Atlas->MainTex->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->Size, data_normal.data());
+        atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->_size, data_normal.data());
     }
 
     // Fill border
     if (si_bordered != nullptr) {
-        for (auto y = 1; y < si_bordered->Size.height - 2; y++) {
-            for (auto x = 1; x < si_bordered->Size.width - 2; x++) {
-                if (pixel_at(data_normal, atlas_spr->Size.width, x, y) != ucolor::clear) {
+        for (auto y = 1; y < si_bordered->_size.height - 2; y++) {
+            for (auto x = 1; x < si_bordered->_size.width - 2; x++) {
+                if (pixel_at(data_normal, atlas_spr->_size.width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
 
-                            if (pixel_at(data_bordered, si_bordered->Size.width, ox, oy) == ucolor::clear) {
-                                pixel_at(data_bordered, si_bordered->Size.width, ox, oy) = ucolor {0, 0, 0, 255};
+                            if (pixel_at(data_bordered, si_bordered->_size.width, ox, oy) == ucolor::clear) {
+                                pixel_at(data_bordered, si_bordered->_size.width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -1412,13 +1403,13 @@ void SpriteManager::BuildFont(int32 index)
             }
         }
 
-        si_bordered->Atlas->MainTex->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->Size, data_bordered.data());
+        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->_size, data_bordered.data());
 
         // Fix texture coordinates on bordered texture
-        tex_w = numeric_cast<float32>(si_bordered->Atlas->Size.width);
-        tex_h = numeric_cast<float32>(si_bordered->Atlas->Size.height);
-        image_x = tex_w * si_bordered->AtlasRect.x;
-        image_y = tex_h * si_bordered->AtlasRect.y;
+        tex_w = numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().width);
+        tex_h = numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().height);
+        image_x = tex_w * si_bordered->GetAtlasRect().x;
+        image_y = tex_h * si_bordered->GetAtlasRect().y;
 
         for (auto& letter : font.Letters | std::views::values) {
             const auto x = numeric_cast<float32>(letter.Pos.x);
@@ -1444,7 +1435,7 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
 
     // Load font data
     const string fname = strex("Fonts/{}.fofnt", font_name);
-    const auto file = _resources.ReadFile(fname);
+    const auto file = _resources->ReadFile(fname);
 
     if (!file) {
         WriteLog("File '{}' not found", fname);
@@ -1452,7 +1443,7 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
     }
 
     auto font = SafeAlloc::MakeUnique<FontData>();
-    font->DrawEffect = _effectMngr.Effects.Font;
+    font->DrawEffect = _effectMngr->Effects.Font;
 
     string image_name;
 
@@ -1572,26 +1563,26 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
     {
         image_name.insert(0, "Fonts/");
 
-        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver->ToHashedString(image_name), atlas_type));
 
         if (!font->ImageNormal) {
             WriteLog("Image file '{}' not found", image_name);
             return false;
         }
 
-        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
+        _copyableSpriteCache.erase({_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
     // Create bordered instance
     if (!not_bordered) {
-        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver->ToHashedString(image_name), atlas_type));
 
         if (!font->ImageBordered) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
         }
 
-        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
+        _copyableSpriteCache.erase({_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
     // Register
@@ -1616,9 +1607,9 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     }
 
     auto font = SafeAlloc::MakeUnique<FontData>();
-    font->DrawEffect = _effectMngr.Effects.Font;
+    font->DrawEffect = _effectMngr->Effects.Font;
 
-    const auto file = _resources.ReadFile(strex("Fonts/{}.fnt", font_name));
+    const auto file = _resources->ReadFile(strex("Fonts/{}.fnt", font_name));
 
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
@@ -1704,26 +1695,26 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
 
     // Load image
     {
-        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageNormal = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver->ToHashedString(image_name), atlas_type));
 
         if (!font->ImageNormal) {
             WriteLog("Image file '{}' not found", image_name);
             return false;
         }
 
-        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
+        _copyableSpriteCache.erase({_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
     // Create bordered instance
     {
-        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        font->ImageBordered = dynamic_ptr_cast<AtlasSprite>(LoadSprite(_hashResolver->ToHashedString(image_name), atlas_type));
 
         if (!font->ImageBordered) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
         }
 
-        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
+        _copyableSpriteCache.erase({_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
     // Register
@@ -1826,11 +1817,9 @@ static void StrInsert(char* to, const char* from, int32 from_len)
     }
 }
 
-void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type)
+void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     fi.PStr = fi.Str;
 
@@ -2277,7 +2266,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     auto curx = fi.CurX;
     auto cury = fi.CurY;
     auto curstr = 0;
-    auto* texture = IsBitSet(flags, FT_BORDERED) && font->FontTexBordered != nullptr ? font->FontTexBordered : font->FontTex;
+    auto& texture = IsBitSet(flags, FT_BORDERED) && font->FontTexBordered != nullptr ? font->FontTexBordered : font->FontTex;
 
     if (!IsBitSet(flags, FT_NO_COLORIZE)) {
         for (auto i = offs_col; i >= 0; i--) {
@@ -2415,11 +2404,11 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     const auto ind_count = ipos - start_ipos;
 
     if (ind_count != 0) {
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != texture || _dipQueue.back().SourceEffect != font->DrawEffect) {
-            _dipQueue.emplace_back(DipData {.MainTex = texture, .SourceEffect = font->DrawEffect, .IndCount = ind_count});
+        if (_dipQueue.empty() || _dipQueue.back().MainTexture != texture || _dipQueue.back().SourceEffect != font->DrawEffect) {
+            _dipQueue.emplace_back(DipData {.MainTexture = texture, .SourceEffect = font->DrawEffect, .IndicesCount = ind_count});
         }
         else {
-            _dipQueue.back().IndCount += ind_count;
+            _dipQueue.back().IndicesCount += ind_count;
         }
 
         if (_spritesDrawBuf->VertCount >= _flushVertCount) {

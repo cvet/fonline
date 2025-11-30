@@ -88,15 +88,18 @@ class Sprite : public std::enable_shared_from_this<Sprite>
     friend class SpriteManager;
 
 public:
-    explicit Sprite(SpriteManager& spr_mngr);
+    explicit Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset);
     Sprite(const Sprite&) = delete;
     Sprite(Sprite&&) noexcept = default;
     auto operator=(const Sprite&) = delete;
     auto operator=(Sprite&&) noexcept -> Sprite& = delete;
     virtual ~Sprite() = default;
 
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
+    [[nodiscard]] auto GetOffset() const noexcept -> ipos32 { return _offset; }
+    [[nodiscard]] auto GetDrawEffectOr(RenderEffect* default_effect) const noexcept -> RenderEffect* { return _drawEffect ? _drawEffect.get() : default_effect; }
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
-    [[nodiscard]] virtual auto GetBatchTex() const -> RenderTexture* { return nullptr; }
+    [[nodiscard]] virtual auto GetBatchTexture() const -> const RenderTexture* { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
@@ -104,6 +107,8 @@ public:
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
     [[nodiscard]] virtual auto GetTime() const -> float32 { return 0.0f; }
 
+    void SetOffset(ipos32 offset) noexcept { _offset = offset; }
+    void SetDrawEffect(RenderEffect* effect) const noexcept { _drawEffect = effect; }
     virtual auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
@@ -114,15 +119,13 @@ public:
     virtual void Stop() { }
     virtual auto Update() -> bool { return false; }
 
-    // Todo: incapsulate sprite data
-    isize32 Size {};
-    ipos32 Offset {};
-    RenderEffect* DrawEffect {};
-
 protected:
     void StartUpdate();
 
-    SpriteManager& _sprMngr;
+    raw_ptr<SpriteManager> _sprMngr;
+    isize32 _size;
+    ipos32 _offset;
+    mutable raw_ptr<RenderEffect> _drawEffect {};
 };
 
 class SpriteFactory
@@ -153,9 +156,9 @@ static_assert(std::is_standard_layout_v<PrimitivePoint>);
 
 struct DipData
 {
-    RenderTexture* MainTex {};
-    RenderEffect* SourceEffect {};
-    size_t IndCount {};
+    raw_ptr<const RenderTexture> MainTexture {};
+    raw_ptr<RenderEffect> SourceEffect {};
+    size_t IndicesCount {};
 };
 
 class SpriteManager final
@@ -171,12 +174,13 @@ public:
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager();
 
-    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { FO_NON_CONST_METHOD_HINT_ONELINE() return _hashResolver.ToHashedString(str); }
-    [[nodiscard]] auto GetResources() noexcept -> FileSystem& { FO_NON_CONST_METHOD_HINT_ONELINE() return _resources; }
+    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->ToHashedString(str); }
+    [[nodiscard]] auto GetResources() noexcept -> FileSystem& { return *_resources; }
+    [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> TextureAtlasManager& { return _atlasMngr; }
-    [[nodiscard]] auto GetTimer() const noexcept -> GameTimer& { return _gameTimer; }
-    [[nodiscard]] auto GetWindow() noexcept -> AppWindow* { FO_NON_CONST_METHOD_HINT_ONELINE() return _window; }
+    [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
+    [[nodiscard]] auto GetWindow() noexcept -> AppWindow* { return _window.get(); }
     [[nodiscard]] auto GetWindowSize() const -> isize32;
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
@@ -232,17 +236,17 @@ private:
 
     void CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color);
 
-    RenderSettings& _settings;
-    AppWindow* _window;
-    FileSystem& _resources;
-    GameTimer& _gameTimer;
+    raw_ptr<RenderSettings> _settings;
+    raw_ptr<AppWindow> _window;
+    raw_ptr<FileSystem> _resources;
+    raw_ptr<GameTimer> _gameTimer;
     RenderTargetManager _rtMngr;
     TextureAtlasManager _atlasMngr;
-    EffectManager& _effectMngr;
-    HashResolver& _hashResolver;
+    raw_ptr<EffectManager> _effectMngr;
+    raw_ptr<HashResolver> _hashResolver;
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
-    unordered_map<string, SpriteFactory*> _spriteFactoryMap {};
+    unordered_map<string, raw_ptr<SpriteFactory>> _spriteFactoryMap {};
     unordered_set<hstring> _nonFoundSprites {};
     unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
@@ -271,8 +275,6 @@ private:
     ipos32 _windowSizeDiff {};
 
     EventUnsubscriber _eventUnsubscriber {};
-
-    bool _nonConstHelper {};
 
     // Todo: move fonts stuff to separate module
 public:
@@ -309,9 +311,9 @@ private:
             frect32 TexBorderedPos {};
         };
 
-        RenderEffect* DrawEffect {};
-        RenderTexture* FontTex {};
-        RenderTexture* FontTexBordered {};
+        raw_ptr<RenderEffect> DrawEffect {};
+        raw_ptr<RenderTexture> FontTex {};
+        raw_ptr<RenderTexture> FontTexBordered {};
         unordered_map<uint32, Letter> Letters {};
         int32 SpaceWidth {};
         int32 LineHeight {};
@@ -346,7 +348,7 @@ private:
     [[nodiscard]] auto GetFont(int32 num) -> FontData*;
 
     void BuildFont(int32 index);
-    void FormatText(FontFormatInfo& fi, int32 fmt_type);
+    void FormatText(FontFormatInfo& fi, int32 fmt_type) const;
 
     vector<unique_ptr<FontData>> _allFonts {};
     int32 _defFontIndex {};

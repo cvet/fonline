@@ -74,19 +74,25 @@ public:
         vector<unique_ptr<SpaceNode>> Children {};
     };
 
-    TextureAtlas() = default;
+    explicit TextureAtlas(AtlasType type, RenderTarget* rt) noexcept;
     TextureAtlas(const TextureAtlas&) = delete;
     TextureAtlas(TextureAtlas&&) noexcept = default;
     auto operator=(const TextureAtlas&) = delete;
     auto operator=(TextureAtlas&&) noexcept -> TextureAtlas& = default;
     ~TextureAtlas() = default;
 
-    // Todo: incapsulate texture atlas & atlas space node data
-    AtlasType Type {};
-    RenderTarget* RTarg {};
-    RenderTexture* MainTex {};
-    isize32 Size {};
-    unique_ptr<SpaceNode> RootNode {};
+    [[nodiscard]] auto GetType() const noexcept -> AtlasType { return _type; }
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _rt->GetBaseSize(); }
+    [[nodiscard]] auto GetRenderTarget() const noexcept -> const RenderTarget* { return _rt.get(); }
+    [[nodiscard]] auto GetRenderTarget() noexcept -> RenderTarget* { return _rt.get(); }
+    [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _rt->GetTexture(); }
+    [[nodiscard]] auto GetTexture() noexcept -> RenderTexture* { return _rt->GetTexture(); }
+    [[nodiscard]] auto GetLayout() noexcept -> SpaceNode* { return _rootNode.get(); }
+
+private:
+    AtlasType _type;
+    raw_ptr<RenderTarget> _rt;
+    unique_ptr<SpaceNode> _rootNode;
 };
 
 class TextureAtlasManager
@@ -104,8 +110,8 @@ public:
     void DumpAtlases() const;
 
 private:
-    RenderSettings& _settings;
-    RenderTargetManager& _rtMngr;
+    raw_ptr<RenderSettings> _settings;
+    raw_ptr<RenderTargetManager> _rtMngr;
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
 };
 

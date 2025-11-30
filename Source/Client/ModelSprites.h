@@ -49,7 +49,7 @@ class ModelSprite final : public AtlasSprite
     friend class ModelSpriteFactory;
 
 public:
-    explicit ModelSprite(SpriteManager& spr_mngr);
+    explicit ModelSprite(SpriteManager& spr_mngr, ModelSpriteFactory* factory, unique_ptr<ModelInstance>&& model, AtlasType atlas_type);
     ModelSprite(const ModelSprite&) = delete;
     ModelSprite(ModelSprite&&) noexcept = default;
     auto operator=(const ModelSprite&) = delete;
@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { FO_NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { return _model.get(); }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
     void Prewarm() override;
@@ -73,10 +73,9 @@ public:
     void DrawToAtlas();
 
 private:
-    ModelSpriteFactory* _factory {};
+    raw_ptr<ModelSpriteFactory> _factory {};
     unique_ptr<ModelInstance> _model {};
     AtlasType _atlasType {};
-    bool _nonConstHelper {};
 };
 
 class ModelSpriteFactory : public SpriteFactory
@@ -92,7 +91,7 @@ public:
     ~ModelSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ModelManager* { FO_NON_CONST_METHOD_HINT_ONELINE() return _modelMngr.get(); }
+    [[nodiscard]] auto GetModelMngr() -> ModelManager* { return _modelMngr.get(); }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
@@ -100,11 +99,10 @@ private:
     auto LoadTexture(hstring path) -> pair<RenderTexture*, frect32>;
     void DrawModelToAtlas(ModelSprite* model_spr);
 
-    SpriteManager& _sprMngr;
+    raw_ptr<SpriteManager> _sprMngr;
     unique_ptr<ModelManager> _modelMngr {};
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
-    vector<RenderTarget*> _rtIntermediate {};
-    bool _nonConstHelper {};
+    vector<raw_ptr<RenderTarget>> _rtIntermediate {};
 };
 
 FO_END_NAMESPACE();
