@@ -518,7 +518,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 {
     FO_STACK_TRACE_ENTRY();
 
-    SDL_SetiOSAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
+    SDL_SetiOSAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), 1, callback, nullptr);
 }
 #endif
 
