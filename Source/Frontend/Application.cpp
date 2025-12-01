@@ -869,7 +869,7 @@ void Application::BeginFrame()
 #if FO_WINDOWS || FO_LINUX || FO_MAC
         const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle.get()) == SDL_GetKeyboardFocus();
 #else
-        const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle.get())) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
 
         if (is_app_focused) {
