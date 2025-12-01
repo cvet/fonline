@@ -36,7 +36,7 @@
 FO_BEGIN_NAMESPACE();
 
 GameTimer::GameTimer(TimerSettings& settings) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -60,11 +60,11 @@ void GameTimer::FrameAdvance()
     const auto now_time = nanotime::now();
 
     // Skip time spent under debugger
-    if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
+    if (IsRunInDebugger() && _settings->DebuggingDeltaTimeCap != 0) {
         const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32>();
 
-        if (dt > _settings.DebuggingDeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds(dt - _settings.DebuggingDeltaTimeCap);
+        if (dt > _settings->DebuggingDeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DebuggingDeltaTimeCap);
         }
 
         _frameTime = now_time - _debuggingOffset;

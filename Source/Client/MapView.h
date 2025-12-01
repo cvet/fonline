@@ -113,13 +113,13 @@ public:
     struct Field
     {
         ipos32 Offset {};
-        MapSprite* SpriteChain {};
-        vector<CritterHexView*> Critters {};
-        vector<CritterHexView*> MultihexCritters {};
-        vector<ItemHexView*> Items {};
-        vector<ItemHexView*> BlockLineItems {};
-        vector<ItemHexView*> GroundTiles {};
-        vector<ItemHexView*> RoofTiles {};
+        raw_ptr<MapSprite> SpriteChain {};
+        vector<raw_ptr<CritterHexView>> Critters {};
+        vector<raw_ptr<CritterHexView>> MultihexCritters {};
+        vector<raw_ptr<ItemHexView>> Items {};
+        vector<raw_ptr<ItemHexView>> BlockLineItems {};
+        vector<raw_ptr<ItemHexView>> GroundTiles {};
+        vector<raw_ptr<ItemHexView>> RoofTiles {};
         int32 RoofNum {};
         CornerType Corner {};
         bool IsView {};
@@ -149,7 +149,7 @@ public:
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
-    [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { FO_NON_CONST_METHOD_HINT_ONELINE() return _hexField->GetCellForReading(hex); }
+    [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
     [[nodiscard]] auto GetHexTrack(mpos hex) noexcept -> int8& { return _hexTrack[static_cast<size_t>(hex.y) * _mapSize.width + hex.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
@@ -222,11 +222,12 @@ public:
     auto GetItem(mpos hex, hstring pid) -> ItemHexView*;
     auto GetItem(mpos hex, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
-    auto GetItems() const -> const vector<refcount_ptr<ItemHexView>>& { return _allItems; }
-    auto GetItems() -> vector<refcount_ptr<ItemHexView>>& { return _allItems; }
-    auto GetItems(mpos hex) -> const vector<ItemHexView*>&;
+    auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _allItems; }
+    auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _allItems; }
+    auto GetItems(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
+    auto GetItems(mpos hex) -> span<raw_ptr<ItemHexView>>;
     auto GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*;
-    auto GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&;
+    auto GetTiles(mpos hex, bool is_roof) -> span<raw_ptr<ItemHexView>>;
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
@@ -315,13 +316,13 @@ private:
     msize _mapSize {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
-    unordered_map<ident_t, CritterHexView*> _crittersMap {};
+    unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};
     vector<refcount_ptr<ItemHexView>> _allItems {};
-    vector<ItemHexView*> _staticItems {};
-    vector<ItemHexView*> _dynamicItems {};
-    vector<ItemHexView*> _nonTileItems {};
-    vector<ItemHexView*> _processingItems {};
-    unordered_map<ident_t, ItemHexView*> _itemsMap {};
+    vector<raw_ptr<ItemHexView>> _staticItems {};
+    vector<raw_ptr<ItemHexView>> _dynamicItems {};
+    vector<raw_ptr<ItemHexView>> _nonTileItems {};
+    vector<raw_ptr<ItemHexView>> _processingItems {};
+    unordered_map<ident_t, raw_ptr<ItemHexView>> _itemsMap {};
 
     unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<int16> _findPathGrid {};

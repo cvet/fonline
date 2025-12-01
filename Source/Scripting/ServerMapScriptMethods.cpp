@@ -68,7 +68,7 @@ FO_SCRIPT_API Location* Server_Map_GetLocation(Map* self)
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
@@ -88,7 +88,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count, const map<ItemProperty, int32>& props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
@@ -128,7 +128,7 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, ident_t itemId)
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetItemHex(hex, pid, nullptr);
@@ -137,11 +137,15 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent component)
 {
-    const auto& map_items = self->GetItems(hex);
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
 
-    for (auto* item : map_items) {
+    const auto map_items = self->GetItems(hex);
+
+    for (auto& item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item;
+            return item.get();
         }
     }
 
@@ -151,12 +155,16 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent compon
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_items = self->GetItems(hex);
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
 
-    for (auto* item : map_items) {
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto map_items = self->GetItems(hex);
+
+    for (auto& item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item;
+            return item.get();
         }
     }
 
@@ -166,6 +174,10 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty propert
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, hstring pid)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto map_items = self->GetItemsInRadius(hex, radius, pid);
 
     if (!map_items.empty()) {
@@ -178,6 +190,10 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, hstrin
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemComponent component)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
     for (auto* item : map_items) {
@@ -192,6 +208,10 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemCo
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemProperty property, int32 propertyValue)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
@@ -214,17 +234,26 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self)
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
-    return self->GetItems(hex);
+    const auto hex_items = self->GetItems(hex);
+
+    vector<Item*> result;
+    result.reserve(hex_items.size());
+
+    for (auto& item : hex_items) {
+        result.emplace_back(item.get());
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetItemsInRadius(hex, radius, hstring());
@@ -234,7 +263,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetItemsInRadius(hex, radius, pid);
@@ -249,57 +278,57 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, hstring pid)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemComponent component)
 {
-    const auto& map_items = self->GetItems();
+    const auto map_items = self->GetItems();
 
-    vector<Item*> items;
-    items.reserve(map_items.size());
+    vector<Item*> result;
+    result.reserve(map_items.size());
 
-    for (auto* item : map_items) {
+    for (auto& item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_items = self->GetItems();
+    const auto map_items = self->GetItems();
 
-    vector<Item*> items;
-    items.reserve(map_items.size());
+    vector<Item*> result;
+    result.reserve(map_items.size());
 
-    for (auto* item : map_items) {
+    for (auto& item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemComponent component)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     const auto& map_items = self->GetItems(hex);
 
-    vector<Item*> items;
-    items.reserve(map_items.size());
+    vector<Item*> result;
+    result.reserve(map_items.size());
 
-    for (auto* item : map_items) {
+    for (auto& item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
@@ -308,42 +337,42 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
-    const auto& map_items = self->GetItems(hex);
+    const auto map_items = self->GetItems(hex);
 
-    vector<Item*> items;
-    items.reserve(map_items.size());
+    vector<Item*> result;
+    result.reserve(map_items.size());
 
-    for (auto* item : map_items) {
+    for (auto& item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius, ItemComponent component)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
-    vector<Item*> items;
+    vector<Item*> result;
     const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
 
-    items.reserve(map_items.size());
+    result.reserve(map_items.size());
 
     for (auto* item : map_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.push_back(item);
+            result.emplace_back(item);
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
@@ -352,7 +381,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     vector<Item*> items;
@@ -362,7 +391,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.push_back(item);
+            items.emplace_back(item);
         }
     }
 
@@ -379,7 +408,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, ident_t id)
 FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetStaticItem(hex, pid);
@@ -389,17 +418,18 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring 
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
-    return self->GetStaticItemsHex(hex);
+    const auto hex_static_items = self->GetStaticItemsHex(hex);
+    return vec_transform(hex_static_items, [](auto&& item) -> StaticItem* { return item.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetStaticItemsHexEx(hex, radius, pid);
@@ -408,14 +438,18 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemComponent component)
 {
-    const auto& map_static_items = self->GetStaticItemsHex(hex);
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    const auto map_static_items = self->GetStaticItemsHex(hex);
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
-    for (auto* item : map_static_items) {
+    for (auto& item : map_static_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -425,6 +459,10 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemComponent component)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto map_static_items = self->GetStaticItemsHexEx(hex, radius, {});
 
     vector<StaticItem*> result;
@@ -432,7 +470,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 
     for (auto* item : map_static_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.push_back(item);
+            result.emplace_back(item);
         }
     }
 
@@ -442,15 +480,19 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_static_items = self->GetStaticItemsHex(hex);
+    const auto map_static_items = self->GetStaticItemsHex(hex);
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
-    for (auto* item : map_static_items) {
+    for (auto& item : map_static_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -460,6 +502,10 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemProperty property, int32 propertyValue)
 {
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     const auto map_static_items = self->GetStaticItemsHexEx(hex, radius, {});
 
@@ -468,7 +514,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 
     for (auto* item : map_static_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.push_back(item);
+            result.emplace_back(item);
         }
     }
 
@@ -484,14 +530,14 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, hstring p
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemComponent component)
 {
-    const auto& map_static_items = self->GetStaticMap()->StaticItems;
+    const auto map_static_items = self->GetStaticItems();
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
-    for (auto* item : map_static_items) {
+    for (auto& item : map_static_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -502,14 +548,14 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemCompo
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto& map_static_items = self->GetStaticMap()->StaticItems;
+    const auto map_static_items = self->GetStaticItems();
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
-    for (auto* item : map_static_items) {
+    for (auto& item : map_static_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.push_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -519,7 +565,8 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemPrope
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self)
 {
-    return self->GetStaticMap()->StaticItems;
+    const auto map_static_items = self->GetStaticItems();
+    return vec_transform(map_static_items, [](auto&& item) -> StaticItem* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -532,7 +579,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, ident_t crid)
 FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     auto* cr = self->GetCritter(hex, CritterFindType::NonDead);
@@ -547,11 +594,11 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterComponent component, CritterFindType findType)
 {
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return cr;
+            return cr.get();
         }
     }
 
@@ -562,11 +609,11 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterComponent compone
 FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterProperty property, int32 propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
-            return cr;
+            return cr.get();
         }
     }
 
@@ -577,7 +624,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterProperty property
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     vector<Critter*> critters = self->GetCritters(hex, findType);
@@ -595,7 +642,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, Critt
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, int32 radius, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     vector<Critter*> critters;
@@ -620,13 +667,13 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, int32
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType)) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -637,13 +684,13 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if ((!pid || cr->GetProtoId() == pid) && cr->CheckFind(findType)) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -653,14 +700,14 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, Cr
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterComponent component, CritterFindType findType)
 {
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
     vector<Critter*> critters;
 
     critters.reserve(map_critters.size());
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -671,14 +718,14 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterComponen
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty property, int32 propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
     vector<Critter*> critters;
 
     critters.reserve(map_critters.size());
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -697,8 +744,8 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos from
     trace.CollectCritters = true;
     trace.FindType = findType;
 
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
-    return trace_output.Critters;
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return cr.get(); });
 }
 
 ///@ ExportMethod
@@ -713,21 +760,21 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos from
     trace.CollectCritters = true;
     trace.FindType = findType;
 
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
     preBlockHex = trace_output.PreBlock;
     blockHex = trace_output.Block;
-    return trace_output.Critters;
+    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return cr.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos hex, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
-    for (auto* cr : map_critters) {
+    for (auto cr : map_critters) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -738,11 +785,11 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos hex, int32 radius, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -753,13 +800,13 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto& map_critters = self->GetCritters();
+    const auto map_critters = self->GetCritters();
 
-    for (auto* cr : map_critters) {
+    for (auto& cr : map_critters) {
         const auto hex = cr->GetHex();
 
         if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
-            critters.push_back(cr);
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -805,10 +852,10 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& to
 FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex, int32 cut)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
-        throw ScriptException("Invalid from hexes args");
+        throw ScriptException("Invalid from hex args");
     }
     if (!self->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid to hexes args");
+        throw ScriptException("Invalid to hex args");
     }
 
     FindPathInput input;
@@ -834,7 +881,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
     }
 
     if (!self->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid to hexes args");
+        throw ScriptException("Invalid to hex args");
     }
 
     FindPathInput input;
@@ -858,7 +905,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, nullptr, self, hex, dir);
@@ -868,7 +915,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int32>& props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
@@ -885,7 +932,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
@@ -902,7 +949,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 FO_SCRIPT_API bool Server_Map_IsHexMovable(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->IsHexMovable(hex);
@@ -912,7 +959,7 @@ FO_SCRIPT_API bool Server_Map_IsHexMovable(Map* self, mpos hex)
 FO_SCRIPT_API bool Server_Map_IsHexesMovable(Map* self, mpos hex, int32 radius)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->IsHexesMovable(hex, radius);
@@ -922,7 +969,7 @@ FO_SCRIPT_API bool Server_Map_IsHexesMovable(Map* self, mpos hex, int32 radius)
 FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->IsHexShootable(hex);
@@ -932,7 +979,7 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(Map* self, mpos hex)
 FO_SCRIPT_API bool Server_Map_IsOutsideArea(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     return self->IsOutsideArea(hex);
@@ -950,7 +997,7 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid
 FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     self->SetHexManualBlock(hex, true, full);
@@ -961,7 +1008,7 @@ FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 FO_SCRIPT_API void Server_Map_UnblockHex(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
 
     self->SetHexManualBlock(hex, false, false);
@@ -1013,7 +1060,7 @@ FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir, int
 FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, uint8 dir)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex args");
     }
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");

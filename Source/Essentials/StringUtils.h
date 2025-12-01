@@ -116,8 +116,8 @@ public:
     // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
+    constexpr auto operator==(const strex& other) const noexcept -> bool { return _sv == other._sv; }
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
-    constexpr auto operator!=(string_view other) const noexcept -> bool { return _sv != other; }
 
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;

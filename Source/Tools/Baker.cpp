@@ -105,7 +105,7 @@ auto BaseBaker::SetupBakers(const string& pack_name, const BakingSettings& setti
 }
 
 MasterBaker::MasterBaker(BakingSettings& settings) noexcept :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -132,14 +132,12 @@ void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const auto bake_time = TimeMeter();
 
     WriteLog("Start baking");
 
-    FO_RUNTIME_ASSERT(!_settings.BakeOutput.empty());
-    const auto make_output_path = [this](string_view path) -> string { return strex(_settings.BakeOutput).combine_path(path); };
+    FO_RUNTIME_ASSERT(!_settings->BakeOutput.empty());
+    const auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
 
     const auto build_hash_path = make_output_path("Resources.build-hash");
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(build_hash_path);
@@ -147,14 +145,14 @@ void MasterBaker::BakeAllInternal()
 
     std::atomic_bool force_baking = false;
 
-    if (_settings.ForceBaking) {
+    if (_settings->ForceBaking) {
         WriteLog("Force rebuild all resources");
-        const auto delete_output_ok = DiskFileSystem::DeleteDir(_settings.BakeOutput);
+        const auto delete_output_ok = DiskFileSystem::DeleteDir(_settings->BakeOutput);
         FO_RUNTIME_ASSERT_STR(delete_output_ok, "Unable to delete baking output dir");
         force_baking = true;
     }
 
-    const auto make_output_ok = DiskFileSystem::MakeDirTree(_settings.BakeOutput);
+    const auto make_output_ok = DiskFileSystem::MakeDirTree(_settings->BakeOutput);
     FO_RUNTIME_ASSERT_STR(make_output_ok, "Unable to recreate baking output dir");
 
     FileSystem baking_output;
@@ -170,8 +168,8 @@ void MasterBaker::BakeAllInternal()
         int32 settings_errors = 0;
 
         const auto bake_config = [&](string_view sub_config) {
-            FO_RUNTIME_ASSERT(_settings.GetAppliedConfigs().size() == 1);
-            const string config_path = _settings.GetAppliedConfigs().front();
+            FO_RUNTIME_ASSERT(_settings->GetAppliedConfigs().size() == 1);
+            const string config_path = _settings->GetAppliedConfigs().front();
             const string config_name = strex(config_path).extract_file_name();
             const string config_dir = strex(config_path).extract_dir();
 
@@ -245,7 +243,7 @@ void MasterBaker::BakeAllInternal()
 
         bake_config("");
 
-        for (const auto& sub_config : _settings.GetSubConfigs()) {
+        for (const auto& sub_config : _settings->GetSubConfigs()) {
             bake_config(sub_config.Name);
 
             if (settings_errors != 0) {
@@ -342,7 +340,7 @@ void MasterBaker::BakeAllInternal()
                 }
             };
 
-            const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
+            const auto write_data = [&](string_view path, span<const uint8> baked_data) {
                 const auto res_path = strex(output_dir).combine_path(path).str();
 
                 if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
@@ -356,7 +354,7 @@ void MasterBaker::BakeAllInternal()
                 }
             };
 
-            auto bakers = BaseBaker::SetupBakers(res_pack.Name, settings, bake_checker, write_data, &baking_output_);
+            auto bakers = BaseBaker::SetupBakers(res_pack.Name, *settings, bake_checker, write_data, &baking_output_);
 
             for (auto& baker : bakers) {
                 baker->BakeFiles(filtered_files);
@@ -381,15 +379,15 @@ void MasterBaker::BakeAllInternal()
 
         size_t errors = 0;
 
-        for (int32 bake_order = 0; bake_order <= _settings.MaxBakeOrder; bake_order++) {
+        for (int32 bake_order = 0; bake_order <= _settings->MaxBakeOrder; bake_order++) {
             vector<std::future<void>> res_bakings;
             vector<string> res_baking_outputs;
 
-            for (const auto& res_pack : _settings.GetResourcePacks()) {
+            for (const auto& res_pack : _settings->GetResourcePacks()) {
                 if (res_pack.BakeOrder == bake_order) {
                     WriteLog("Bake {}", res_pack.Name);
                     const auto res_baking_output = make_output_path(res_pack.Name);
-                    const auto async_mode = _settings.SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
+                    const auto async_mode = _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
                     auto res_baking = std::async(async_mode, [&, res_baking_output] { bake_resource_pack(res_pack, res_baking_output); });
                     res_bakings.emplace_back(std::move(res_baking));
                     res_baking_outputs.emplace_back(res_baking_output);
@@ -516,22 +514,22 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 }
 
 BakerDataSource::BakerDataSource(BakingSettings& settings) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
     _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
     // Prepare input resources
-    const auto res_packs = _settings.GetResourcePacks();
+    const auto res_packs = _settings->GetResourcePacks();
     _inputResources.reserve(res_packs.size());
 
     for (const auto& res_pack : res_packs) {
         auto& res_entry = _inputResources.emplace_back();
         res_entry.Name = res_pack.Name;
         const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64 write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
-        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, const_span<uint8> data) { WriteData(res_pack_name, path, data); };
-        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Name, _settings, bake_checker, write_data, &_outputResources);
+        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8> data) { WriteData(res_pack_name, path, data); };
+        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
         for (const auto& dir : res_pack.InputDir) {
             res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
@@ -552,7 +550,7 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
         return false;
     };
 
-    const auto write_file = [](string_view path, const_span<uint8> data) {
+    const auto write_file = [](string_view path, span<const uint8> data) {
         ignore_unused(path, data);
         FO_UNREACHABLE_PLACE();
     };
@@ -560,7 +558,7 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
 
-        for (auto& baker : BaseBaker::SetupBakers(res_entry.Name, _settings, check_file, write_file, &_outputResources)) {
+        for (auto& baker : BaseBaker::SetupBakers(res_entry.Name, *_settings, check_file, write_file, &_outputResources)) {
             baker->BakeFiles(res_entry.InputFiles);
         }
     }
@@ -570,7 +568,7 @@ auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(_settings.BakeOutput).combine_path(res_pack_name).combine_path(path);
+    return strex(_settings->BakeOutput).combine_path(res_pack_name).combine_path(path);
 }
 
 auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64 write_time) -> bool
@@ -588,7 +586,7 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
     return false;
 }
 
-void BakerDataSource::WriteData(string_view res_pack_name, string_view path, const_span<uint8> data)
+void BakerDataSource::WriteData(string_view res_pack_name, string_view path, span<const uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 

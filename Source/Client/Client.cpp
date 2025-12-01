@@ -336,11 +336,11 @@ void FOClient::MainLoop()
     TimeEventMngr.ProcessTimeEvents();
     OnLoop.Fire();
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         _curMap->Process();
     }
 
-    App->MainWindow.GrabInput(_curMap != nullptr && _curMap->IsManualScrolling());
+    App->MainWindow.GrabInput(_curMap && _curMap->IsManualScrolling());
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
@@ -839,7 +839,7 @@ void FOClient::Net_OnAddCritter()
     refcount_ptr<CritterView> cr;
     CritterHexView* hex_cr;
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
         FO_RUNTIME_ASSERT(hex_cr);
 
@@ -903,7 +903,7 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsAttached(is_attached);
     cr->AttachedCritters = std::move(attached_critters);
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         if (is_attached) {
             for (auto& map_cr : _curMap->GetCritters()) {
                 if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
@@ -961,7 +961,7 @@ void FOClient::Net_OnRemoveCritter()
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         auto* cr = _curMap->GetCritter(cr_id);
 
         if (cr == nullptr) {
@@ -1017,7 +1017,7 @@ void FOClient::Net_OnCritterDir()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1059,7 +1059,7 @@ void FOClient::Net_OnCritterMoveSpeed()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto speed = _conn.InBuf.Read<uint16>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1111,7 +1111,7 @@ void FOClient::Net_OnCritterAction()
         ReceiveCustomEntities(context_item.get());
     }
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         return;
     }
 
@@ -1155,7 +1155,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     CritterView* cr;
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         cr = _curMap->GetCritter(cr_id);
     }
     else {
@@ -1228,7 +1228,7 @@ void FOClient::Net_OnCritterTeleport()
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto to_hex = _conn.InBuf.Read<mpos>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1257,7 +1257,7 @@ void FOClient::Net_OnCritterPos()
     const auto hex_offset = _conn.InBuf.Read<ipos16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1308,7 +1308,7 @@ void FOClient::Net_OnCritterAttachments()
         attached_critters[i] = _conn.InBuf.Read<ident_t>();
     }
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         auto* cr = _curMap->GetCritter(cr_id);
 
         if (cr == nullptr) {
@@ -1381,7 +1381,7 @@ void FOClient::Net_OnChosenAddItem()
 
     ReceiveCustomEntities(item);
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         _curMap->RebuildFog();
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
@@ -1420,7 +1420,7 @@ void FOClient::Net_OnChosenRemoveItem()
 
     OnItemInvOut.Fire(item_clone.get());
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->RefreshView();
             _curMap->UpdateCritterLightSource(hex_chosen);
@@ -1437,7 +1437,7 @@ void FOClient::Net_OnAddItemOnMap()
     const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
     _conn.InBuf.ReadPropsData(_tempPropertiesData);
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
 
         // Skip rest data
@@ -1464,12 +1464,13 @@ void FOClient::Net_OnRemoveItemFromMap()
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
 
     auto* item = _curMap->GetItem(item_id);
+
     if (item != nullptr) {
         OnItemMapOut.Fire(item);
 
@@ -1490,7 +1491,7 @@ void FOClient::Net_OnPlaceToGameComplete()
 
     auto* chosen = GetChosen();
 
-    if (_curMap != nullptr && chosen != nullptr) {
+    if (_curMap && chosen != nullptr) {
         _curMap->InstantScrollTo(chosen->GetHex());
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
@@ -1551,7 +1552,7 @@ void FOClient::Net_OnProperty()
         entity = _curPlayer.get();
         break;
     case NetProperty::Critter:
-        entity = _curMap != nullptr ? _curMap->GetCritter(cr_id) : nullptr;
+        entity = _curMap ? _curMap->GetCritter(cr_id) : nullptr;
         break;
     case NetProperty::Chosen:
         entity = GetChosen();
@@ -1560,7 +1561,7 @@ void FOClient::Net_OnProperty()
         entity = _curMap->GetItem(item_id);
         break;
     case NetProperty::CritterItem:
-        if (_curMap != nullptr) {
+        if (_curMap) {
             if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
                 entity = cr->GetInvItem(item_id);
             }
@@ -1713,7 +1714,7 @@ void FOClient::Net_OnViewMap()
 
     const auto hex = _conn.InBuf.Read<mpos>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1908,7 +1909,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 
     const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
@@ -1987,7 +1988,7 @@ auto FOClient::GetEntity(ident_t id) -> ClientEntity*
 
     const auto it = _allEntities.find(id);
 
-    return it != _allEntities.end() ? it->second : nullptr;
+    return it != _allEntities.end() ? it->second.get() : nullptr;
 }
 
 void FOClient::RegisterEntity(ClientEntity* entity)
@@ -2244,8 +2245,8 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
-        cr->GetSprite()->SetContour(cr->GetSprite()->GetContour(), cr->GetContourColor());
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsMapSpriteValid()) {
+        cr->GetMapSprite()->SetContour(cr->GetMapSprite()->GetContour(), cr->GetContourColor());
     }
 }
 
@@ -2409,12 +2410,13 @@ void FOClient::LmapPrepareMap()
 
     _lmapPrepPix.clear();
 
-    if (_curMap == nullptr) {
+    if (!_curMap) {
         BreakIntoDebugger();
         return;
     }
 
     const auto* chosen = GetMapChosen();
+
     if (chosen == nullptr) {
         return;
     }
@@ -2540,12 +2542,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.GetAtlasMngr().DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
-        if (_curMap != nullptr) {
+        if (_curMap) {
             _curMap->SwitchShowTrack();
         }
     }
     else if (cmd == "SwitchShowHex") {
-        if (_curMap != nullptr) {
+        if (_curMap) {
             _curMap->SwitchShowHex();
         }
     }

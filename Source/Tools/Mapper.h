@@ -70,8 +70,8 @@ class FOMapper final : public FOClient
 public:
     struct SubTab
     {
-        vector<const ProtoItem*> ItemProtos {};
-        vector<const ProtoCritter*> NpcProtos {};
+        vector<raw_ptr<const ProtoItem>> ItemProtos {};
+        vector<raw_ptr<const ProtoCritter>> NpcProtos {};
         int32 Index {};
         int32 Scroll {};
     };
@@ -81,9 +81,9 @@ public:
         mpos Hex {};
         bool IsCritter {};
         bool IsItem {};
-        const ProtoEntity* Proto {};
-        Properties* Props {};
-        vector<EntityBuf*> Children {};
+        raw_ptr<const ProtoEntity> Proto {};
+        unique_ptr<Properties> Props {};
+        vector<unique_ptr<EntityBuf>> Children {};
     };
 
     struct MessBoxMessage
@@ -234,7 +234,7 @@ public:
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unique_ptr<ConfigFile> IfaceIni {};
-    vector<const Property*> ShowProps {};
+    vector<raw_ptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};
     unordered_map<hstring, shared_ptr<Sprite>> IfaceSpr {};
     int32 CurMode {};
@@ -280,7 +280,7 @@ public:
     irect32 IntBShowRoof {};
     irect32 IntBShowFast {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
-    SubTab* TabsActive[TAB_COUNT] {};
+    raw_ptr<SubTab> TabsActive[TAB_COUNT] {};
     string TabsName[INT_MODE_COUNT] {};
     int32 TabsScroll[INT_MODE_COUNT] {};
     bool SubTabsActive {};
@@ -289,10 +289,10 @@ public:
     irect32 SubTabsRect {};
     int32 SubTabsX {};
     int32 SubTabsY {};
-    vector<const ProtoItem*>* CurItemProtos {};
-    vector<const ProtoCritter*>* CurNpcProtos {};
+    raw_ptr<vector<raw_ptr<const ProtoItem>>> CurItemProtos {};
+    raw_ptr<vector<raw_ptr<const ProtoCritter>>> CurNpcProtos {};
     uint8 NpcDir {};
-    int32* CurProtoScroll {};
+    raw_ptr<int32> CurProtoScroll {};
     int32 ProtoWidth {};
     int32 ProtosOnScreen {};
     int32 TabIndex[INT_MODE_COUNT] {};
@@ -314,7 +314,7 @@ public:
     bool IsSelectTile {};
     bool IsSelectRoof {};
     ipos32 BufferRawHex {};
-    vector<ClientEntity*> SelectedEntities {};
+    vector<raw_ptr<ClientEntity>> SelectedEntities {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};
     shared_ptr<Sprite> ObjPbToAllDn {};
@@ -332,7 +332,7 @@ public:
     bool ObjVisible {};
     bool ObjFix {};
     bool ObjToAll {};
-    ClientEntity* InspectorEntity {};
+    raw_ptr<ClientEntity> InspectorEntity {};
     shared_ptr<Sprite> ConsolePic {};
     int32 ConsolePicX {};
     int32 ConsolePicY {};

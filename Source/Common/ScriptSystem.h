@@ -196,7 +196,7 @@ public:
     auto operator()(const Args&... args) noexcept -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, &_ret) : false; }
 
 private:
-    ScriptFuncDesc* _func {};
+    raw_ptr<ScriptFuncDesc> _func {};
     TRet _ret {};
 };
 
@@ -216,7 +216,7 @@ public:
     auto operator()(const Args&... args) noexcept -> bool { return _func != nullptr ? _func->Call({const_cast<void*>(static_cast<const void*>(&args))...}, nullptr) : false; }
 
 private:
-    ScriptFuncDesc* _func {};
+    raw_ptr<ScriptFuncDesc> _func {};
 };
 
 class ScriptSystemBackend
@@ -385,7 +385,7 @@ private:
     unordered_map<string, shared_ptr<ScriptTypeInfo>> _engineToScriptType {};
     vector<function<void()>> _loopCallbacks {};
     unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
-    vector<pair<ScriptFuncDesc*, int32>> _initFunc {};
+    vector<pair<raw_ptr<ScriptFuncDesc>, int32>> _initFunc {};
     unordered_map<uint32, function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };

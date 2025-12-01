@@ -68,13 +68,13 @@ FO_SCRIPT_API ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
-    const auto& hex_items = mapper->GetCurMap()->GetItems(hex);
+    const auto hex_items = mapper->GetCurMap()->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
 
-    for (auto* item : hex_items) {
-        items.push_back(item);
+    for (auto& item : hex_items) {
+        items.emplace_back(item.get());
     }
 
     return items;
@@ -152,7 +152,7 @@ FO_SCRIPT_API void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<Cli
 ///@ ExportMethod
 FO_SCRIPT_API ClientEntity* Mapper_Game_GetSelectedEntity(FOMapper* mapper)
 {
-    return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0] : nullptr;
+    return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0].get() : nullptr;
 }
 
 ///@ ExportMethod
@@ -161,8 +161,8 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(FOMapper* ma
     vector<ClientEntity*> entities;
     entities.reserve(mapper->SelectedEntities.size());
 
-    for (auto* entity : mapper->SelectedEntities) {
-        entities.push_back(entity);
+    for (auto& entity : mapper->SelectedEntities) {
+        entities.emplace_back(entity.get());
     }
 
     return entities;
@@ -264,9 +264,11 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(FOMapper* mapper, int32
 
     vector<hstring> pids;
     const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    for (const auto* proto : stab.ItemProtos) {
-        pids.push_back(proto->GetProtoId());
+
+    for (const auto& proto : stab.ItemProtos) {
+        pids.emplace_back(proto->GetProtoId());
     }
+
     return pids;
 }
 
@@ -282,9 +284,11 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, in
 
     vector<hstring> pids;
     const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    for (const auto* proto : stab.NpcProtos) {
-        pids.push_back(proto->GetProtoId());
+
+    for (const auto& proto : stab.NpcProtos) {
+        pids.emplace_back(proto->GetProtoId());
     }
+
     return pids;
 }
 
@@ -301,13 +305,13 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(FOMapper* mapper, int32 tab, strin
 
     // Add protos to sub tab
     if (!itemPids.empty()) {
-        vector<const ProtoItem*> protos;
+        vector<raw_ptr<const ProtoItem>> protos;
 
         for (const auto item_pid : itemPids) {
             const auto* proto = mapper->ProtoMngr.GetProtoItemSafe(item_pid);
 
             if (proto != nullptr) {
-                protos.push_back(proto);
+                protos.emplace_back(proto);
             }
         }
 
@@ -331,15 +335,13 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(FOMapper* mapper, int32 tab, strin
     auto& stab_default = mapper->Tabs[tab][FOMapper::DEFAULT_SUB_TAB];
     stab_default.ItemProtos.clear();
 
-    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
-        auto& stab = it->second;
-
+    for (auto& stab : mapper->Tabs[tab] | std::views::values) {
         if (&stab == &stab_default) {
             continue;
         }
 
-        for (size_t i = 0; i < stab.ItemProtos.size(); i++) {
-            stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
+        for (auto& proto : stab.ItemProtos) {
+            stab_default.ItemProtos.emplace_back(proto);
         }
     }
 
@@ -363,11 +365,11 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int32 tab, st
 
     // Add protos to sub tab
     if (!critterPids.empty()) {
-        vector<const ProtoCritter*> protos;
+        vector<raw_ptr<const ProtoCritter>> protos;
 
-        for (size_t i = 0; i < critterPids.size(); i++) {
-            const auto* proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
-            protos.push_back(proto);
+        for (const auto pid : critterPids) {
+            const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
+            protos.emplace_back(proto);
         }
 
         if (!protos.empty()) {
@@ -382,6 +384,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int32 tab, st
             if (mapper->TabsActive[tab] == &it->second) {
                 mapper->TabsActive[tab] = nullptr;
             }
+
             mapper->Tabs[tab].erase(it);
         }
     }
@@ -396,7 +399,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int32 tab, st
             continue;
         }
         for (size_t i = 0; i < stab.NpcProtos.size(); i++) {
-            stab_default.NpcProtos.push_back(stab.NpcProtos[i]);
+            stab_default.NpcProtos.emplace_back(stab.NpcProtos[i]);
         }
     }
 

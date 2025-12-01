@@ -59,7 +59,7 @@ void CritterHexView::Init()
     RefreshView(true);
     RefreshOffs();
 
-    DrawEffect = _engine->EffectMngr.Effects.Critter;
+    SetDrawEffect(_engine->EffectMngr.Effects.Critter.get());
 }
 
 void CritterHexView::OnDestroySelf()
@@ -68,7 +68,7 @@ void CritterHexView::OnDestroySelf()
 
     CritterView::OnDestroySelf();
 
-    Spr = nullptr;
+    _spr = nullptr;
 
 #if FO_ENABLE_3D
     _modelSpr.reset();
@@ -379,7 +379,7 @@ void CritterHexView::RefreshModel()
 
     auto animCallbacks = _model ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
 
-    Spr = nullptr;
+    _spr = nullptr;
 
     _modelSpr.reset();
     _model.reset();
@@ -393,7 +393,7 @@ void CritterHexView::RefreshModel()
         if (_modelSpr) {
             _modelSpr->PlayDefault();
 
-            Spr = _modelSpr.get();
+            _spr = _modelSpr.get();
 
             _model = _modelSpr->GetModel();
             _model->AnimationCallbacks = std::move(animCallbacks);
@@ -414,7 +414,7 @@ void CritterHexView::RefreshModel()
         else {
             BreakIntoDebugger();
 
-            Spr = _engine->ResMngr.GetCritterDummyFrames();
+            _spr = _engine->ResMngr.GetCritterDummyFrames();
         }
     }
 }
@@ -718,9 +718,9 @@ auto CritterHexView::GetViewRect() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsSpriteValid());
+    FO_RUNTIME_ASSERT(IsMapSpriteValid());
 
-    return GetSprite()->GetViewRect();
+    return GetMapSprite()->GetViewRect();
 }
 
 void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
@@ -729,7 +729,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
 
     const auto cur_index = frm_index % anim->GetFramesCount();
 
-    Spr = anim->GetSpr(cur_index);
+    _spr = anim->GetSpr(cur_index);
 
     _offsAnim = {};
 
@@ -767,10 +767,10 @@ void CritterHexView::RefreshOffs()
     FO_STACK_TRACE_ENTRY();
 
     const auto hex_offset = GetHexOffset();
-    SprOffset = ipos32(hex_offset) + _offsExt.round<int32>() + _offsAnim;
+    _sprOffset = ipos32(hex_offset) + _offsExt.round<int32>() + _offsAnim;
 
-    if (IsSpriteValid() && GetIsChosen()) {
-        _engine->SprMngr.SetEgg(GetHex(), GetSprite());
+    if (IsMapSpriteValid() && GetIsChosen()) {
+        _engine->SprMngr.SetEgg(GetHex(), GetMapSprite());
     }
 }
 
@@ -778,7 +778,7 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IsSpriteValid()) {
+    if (IsMapSpriteValid()) {
         const irect32 rect = GetViewRect();
         pos = _map->MapToScreenPos({rect.x + rect.width / 2, rect.y});
         pos.y += _engine->Settings.NameOffset + GetNameOffset();

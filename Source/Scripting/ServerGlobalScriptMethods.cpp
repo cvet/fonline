@@ -761,8 +761,8 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server)
     vector<Map*> maps;
     maps.reserve(server->EntityMngr.GetLocationsCount());
 
-    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
-        maps.emplace_back(map);
+    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
+        maps.emplace_back(map.get());
     }
 
     return maps;
@@ -777,9 +777,9 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
         maps.reserve(server->EntityMngr.GetLocationsCount());
     }
 
-    for (auto* map : server->EntityMngr.GetMaps() | std::views::values) {
+    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
         if (!pid || pid == map->GetProtoId()) {
-            maps.emplace_back(map);
+            maps.emplace_back(map.get());
         }
     }
 
@@ -807,9 +807,9 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, hstring locPid
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationComponent component)
 {
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return loc;
+            return loc.get();
         }
     }
 
@@ -821,9 +821,9 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProper
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
-            return loc;
+            return loc.get();
         }
     }
 
@@ -833,96 +833,101 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(FOServer* server, LocationProper
 ///@ ExportMethod
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server)
 {
-    vector<Location*> locs;
-    locs.reserve(server->EntityMngr.GetLocationsCount());
+    auto& locs = server->EntityMngr.GetLocations();
 
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
-        locs.emplace_back(loc);
+    vector<Location*> result;
+    result.reserve(locs.size());
+
+    for (auto& loc : locs | std::views::values) {
+        result.emplace_back(loc.get());
     }
 
-    return locs;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, hstring pid)
 {
-    vector<Location*> locs;
+    auto& locs = server->EntityMngr.GetLocations();
+    vector<Location*> result;
 
     if (!pid) {
-        locs.reserve(server->EntityMngr.GetLocationsCount());
+        result.reserve(locs.size());
     }
 
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : locs | std::views::values) {
         if (!pid || pid == loc->GetProtoId()) {
-            locs.emplace_back(loc);
+            result.emplace_back(loc.get());
         }
     }
 
-    return locs;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationComponent component)
 {
-    vector<Location*> locs;
-    locs.reserve(server->EntityMngr.GetLocationsCount());
+    auto& locs = server->EntityMngr.GetLocations();
 
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
+    vector<Location*> result;
+    result.reserve(locs.size());
+
+    for (auto& loc : locs | std::views::values) {
         if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            locs.emplace_back(loc);
+            result.emplace_back(loc.get());
         }
     }
 
-    return locs;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(FOServer* server, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    auto& locs = server->EntityMngr.GetLocations();
 
-    vector<Location*> locs;
-    locs.reserve(server->EntityMngr.GetLocationsCount());
+    vector<Location*> result;
+    result.reserve(locs.size());
 
-    for (auto* loc : server->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : locs | std::views::values) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
-            locs.emplace_back(loc);
+            result.emplace_back(loc.get());
         }
     }
 
-    return locs;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
-    vector<Item*> items;
+    auto& items = server->EntityMngr.GetItems();
+    vector<Item*> result;
 
     if (!pid) {
-        items.reserve(server->EntityMngr.GetItemsCount());
+        result.reserve(items.size());
     }
 
-    for (auto* item : server->EntityMngr.GetItems() | std::views::values) {
-        FO_RUNTIME_ASSERT(!item->IsDestroyed());
-
+    for (auto& item : items | std::views::values) {
         if (!pid || pid == item->GetProtoId()) {
-            items.emplace_back(item);
+            result.emplace_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
 {
-    const auto& players = server->EntityMngr.GetPlayers();
+    auto& players = server->EntityMngr.GetPlayers();
 
     vector<Player*> result;
     result.reserve(players.size());
 
-    for (auto* player : players | std::views::values) {
-        result.emplace_back(player);
+    for (auto& player : players | std::views::values) {
+        result.emplace_back(player.get());
     }
 
     return result;
@@ -976,9 +981,8 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(FOServer* server, Critter*
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer* server, ProtoMap* proto)
 {
-    const auto* static_map = server->MapMngr.GetStaticMap(proto);
-
-    return static_map->StaticItems;
+    auto* static_map = server->MapMngr.GetStaticMap(proto);
+    return vec_transform(static_map->StaticItems, [](auto&& item) -> StaticItem* { return item.get(); });
 }
 
 ///@ ExportMethod

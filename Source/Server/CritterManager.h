@@ -73,8 +73,7 @@ public:
     void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
 
 private:
-    FOServer* _engine;
-    bool _nonConstHelper {};
+    raw_ptr<FOServer> _engine;
 };
 
 FO_END_NAMESPACE();

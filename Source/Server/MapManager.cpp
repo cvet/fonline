@@ -59,7 +59,7 @@ void MapManager::LoadFromResources()
         const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
-        const std::launch async_flags = std::launch::async | std::launch::deferred;
+        constexpr std::launch async_flags = std::launch::async | std::launch::deferred;
         static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() {
             auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
@@ -293,13 +293,12 @@ void MapManager::LoadFromResources()
     }
 }
 
-auto MapManager::GetStaticMap(const ProtoMap* proto) const -> const StaticMap*
+auto MapManager::GetStaticMap(const ProtoMap* proto) -> StaticMap*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _staticMaps.find(proto);
     FO_RUNTIME_ASSERT(it != _staticMaps.end());
-
     return it->second.get();
 }
 
@@ -329,7 +328,7 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Add children items
-    for (const auto* base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
+    for (const auto& base_item : map->GetStaticMap()->ChildItemBillets | std::views::values) {
         // Map id to owner
         ident_t owner_id;
 
@@ -391,19 +390,19 @@ void MapManager::DestroyMapContent(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems(); detector.AddLoop()) {
-        for (auto* cr : map->GetPlayerCritters()) {
+        for (auto* cr : copy_hold_ref(map->GetPlayerCritters())) {
             TransferToGlobal(cr, {});
         }
-        for (auto* cr : copy(map->GetNonPlayerCritters())) {
+        for (auto* cr : copy_hold_ref(map->GetNonPlayerCritters())) {
             _engine->CrMngr.DestroyCritter(cr);
         }
-        for (auto* item : copy(map->GetItems())) {
+        for (auto* item : copy_hold_ref(map->GetItems())) {
             _engine->ItemMngr.DestroyItem(item);
         }
     }
 }
 
-auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, const Properties* props) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, span<const hstring> map_pids, const Properties* props) -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -414,7 +413,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 
     for (const auto map_pid : map_pids) {
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
-        const auto* static_map = GetStaticMap(map_proto);
+        auto* static_map = GetStaticMap(map_proto);
         auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, map_proto, loc.get(), static_map);
         _engine->EntityMngr.RegisterMap(map.get());
         loc->AddMap(map.get());
@@ -444,9 +443,9 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     FO_RUNTIME_ASSERT(!loc->IsDestroyed());
     FO_RUNTIME_ASSERT(!loc->IsDestroying());
 
-    const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
-    const auto* static_map = GetStaticMap(proto);
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, proto, loc, static_map);
+    const auto* map_proto = _engine->ProtoMngr.GetProtoMap(proto_id);
+    auto* static_map = GetStaticMap(map_proto);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, map_proto, loc, static_map);
 
     _engine->EntityMngr.RegisterMap(map.get());
     loc->AddMap(map.get());
@@ -488,10 +487,10 @@ auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto* map : _engine->EntityMngr.GetMaps() | std::views::values) {
+    for (auto& map : _engine->EntityMngr.GetMaps() | std::views::values) {
         if (map->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
-                return map;
+                return map.get();
             }
 
             skip_count--;
@@ -505,10 +504,10 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto* loc : _engine->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : _engine->EntityMngr.GetLocations() | std::views::values) {
         if (loc->GetProtoId() == loc_pid) {
             if (skip_count <= 0) {
-                return loc;
+                return loc.get();
             }
 
             skip_count--;
@@ -600,7 +599,7 @@ void MapManager::DestroyMapInternal(Map* map)
     _engine->EntityMngr.UnregisterMap(map);
 }
 
-auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput
+auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -609,7 +608,7 @@ auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput
     output.IsCritterFound = false;
     output.HasLastMovable = false;
 
-    auto* map = input.TraceMap;
+    auto& map = input.TraceMap;
     const auto map_size = map->GetSize();
     const auto start_hex = input.StartHex;
     const auto target_hex = input.TargetHex;
@@ -657,7 +656,7 @@ auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput
             }
         }
 
-        if (input.FindCr != nullptr && map->IsCritter(next_hex, input.FindCr)) {
+        if (input.FindCr != nullptr && map->IsCritter(next_hex, input.FindCr.get())) {
             output.IsCritterFound = true;
             break;
         }
@@ -671,7 +670,7 @@ auto MapManager::TracePath(const TracePathInput& input) const -> TracePathOutput
     return output;
 }
 
-auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
+auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -683,7 +682,7 @@ auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
         return output;
     }
 
-    auto* map = input.TargetMap;
+    auto& map = input.TargetMap;
 
     if (map == nullptr) {
         output.Result = FindPathOutput::ResultType::MapNotFound;
@@ -700,7 +699,7 @@ auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
         output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
     }
-    if (input.Cut == 0 && !map->IsHexesMovable(input.ToHex, input.Multihex, input.TraceCr)) {
+    if (input.Cut == 0 && !map->IsHexesMovable(input.ToHex, input.Multihex, input.TraceCr.get())) {
         output.Result = FindPathOutput::ResultType::HexBusy;
         return output;
     }
@@ -785,7 +784,7 @@ auto MapManager::FindPath(const FindPathInput& input) const -> FindPathOutput
                     continue;
                 }
 
-                if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter)) {
+                if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter.get())) {
                     next_hexes.emplace_back(next_hex);
                     grid_cell = next_hex_index;
                 }
@@ -1204,12 +1203,12 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
         cr->DetachFromCritter();
     }
 
-    vector<Critter*> attached_critters;
+    vector<raw_ptr<Critter>> attached_critters;
 
     if (!cr->AttachedCritters.empty()) {
         attached_critters = cr->AttachedCritters;
 
-        for (auto* attached_cr : attached_critters) {
+        for (auto& attached_cr : attached_critters) {
             attached_cr->DetachFromCritter();
         }
     }
@@ -1279,9 +1278,9 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
         cr->Send_AddCritter(cr);
 
         if (map == nullptr) {
-            for (const auto* group_cr : cr->GetGlobalMapGroup()) {
+            for (const auto& group_cr : cr->GetGlobalMapGroup()) {
                 if (group_cr != cr) {
-                    cr->Send_AddCritter(group_cr);
+                    cr->Send_AddCritter(group_cr.get());
                 }
             }
         }
@@ -1304,14 +1303,14 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
 
     // Transfer attached critters
     if (!attached_critters.empty()) {
-        for (auto* attached_cr : attached_critters) {
+        for (auto& attached_cr : attached_critters) {
             if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->GetMapId() == prev_map_id) {
-                Transfer(attached_cr, map, cr->GetHex(), dir, std::nullopt, cr->GetId());
+                Transfer(attached_cr.get(), map, cr->GetHex(), dir, std::nullopt, cr->GetId());
             }
         }
 
         if (!cr->IsDestroyed() && !cr->GetIsAttached()) {
-            for (auto* attached_cr : attached_critters) {
+            for (auto& attached_cr : attached_critters) {
                 if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->AttachedCritters.empty() && attached_cr->GetMapId() == cr->GetMapId()) {
                     attached_cr->AttachToCritter(cr);
                 }
@@ -1364,15 +1363,15 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
             _engine->SetLastGlobalMapTripId(trip_id);
             cr->SetGlobalMapTripId(trip_id);
 
-            cr_group = SafeAlloc::MakeShared<vector<Critter*>>();
+            cr_group = SafeAlloc::MakeShared<vector<raw_ptr<Critter>>>();
         }
         else {
-            const auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
+            auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
             FO_RUNTIME_ASSERT(global_cr_group);
 
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
-            for (auto* group_cr : *global_cr_group) {
+            for (auto& group_cr : *global_cr_group) {
                 group_cr->Send_AddCritter(cr);
             }
 
@@ -1421,10 +1420,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 
         vec_remove_unique_value(*cr_group, cr);
 
-        if (!cr_group->empty()) {
-            for (auto* group_cr : *cr_group) {
-                group_cr->Send_RemoveCritter(cr);
-            }
+        for (auto& group_cr : *cr_group) {
+            group_cr->Send_RemoveCritter(cr);
         }
 
         cr_group.reset();
@@ -1476,11 +1473,11 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target, opti
     bool is_see = IsCritterSeeCritter(map, cr, target, trace_result);
 
     if (!is_see && !target->AttachedCritters.empty()) {
-        for (auto* attached_cr : target->AttachedCritters) {
+        for (auto& attached_cr : target->AttachedCritters) {
             FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
             optional<bool> dummy_trace_result;
-            is_see = IsCritterSeeCritter(map, cr, attached_cr, dummy_trace_result);
+            is_see = IsCritterSeeCritter(map, cr, attached_cr.get(), dummy_trace_result);
 
             if (is_see) {
                 break;

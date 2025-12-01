@@ -38,9 +38,9 @@
 FO_BEGIN_NAMESPACE();
 
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
-    _settings {settings},
-    _netIn(_settings.NetBufferSize),
-    _netOut(_settings.NetBufferSize, _settings.NetDebugHashes)
+    _settings {&settings},
+    _netIn(_settings->NetBufferSize),
+    _netOut(_settings->NetBufferSize, _settings->NetDebugHashes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -83,13 +83,13 @@ void ClientConnection::Connect()
 
     try {
         // First try interthread communication
-        const auto port = numeric_cast<uint16>(_settings.ServerPort);
+        const auto port = numeric_cast<uint16>(_settings->ServerPort);
 
         if (InterthreadListeners.count(port) != 0) {
-            _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
+            _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
         }
         else {
-            _netConnection = NetworkClientConnection::CreateSocketsConnection(_settings);
+            _netConnection = NetworkClientConnection::CreateSocketsConnection(*_settings);
         }
     }
     catch (const ClientConnectionException& ex) {
@@ -167,8 +167,8 @@ void ClientConnection::ProcessConnection()
     }
 
     // Lags emulation
-    if (_settings.ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {GenericUtils::Random(_settings.ArtificalLags / 2, _settings.ArtificalLags)};
+    if (_settings->ArtificalLags != 0 && !_artificalLagTime.has_value()) {
+        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {GenericUtils::Random(_settings->ArtificalLags / 2, _settings->ArtificalLags)};
     }
 
     if (_artificalLagTime.has_value()) {
@@ -189,7 +189,7 @@ void ClientConnection::ProcessConnection()
             _msgHistory.insert(_msgHistory.begin(), msg);
 #endif
 
-            if (_settings.DebugNet) {
+            if (_settings->DebugNet) {
                 _msgCount++;
                 WriteLog("{}) Input net message {}", _msgCount, msg);
             }
@@ -212,7 +212,7 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    if (_netOut.IsEmpty() && !_pingTime && _settings.PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
+    if (_netOut.IsEmpty() && !_pingTime && _settings->PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
         _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(false);
         _netOut.EndMsg();
@@ -285,7 +285,7 @@ auto ClientConnection::ReceiveData() -> bool
 
         _netIn.ShrinkReadBuf();
 
-        if (!_settings.DisableZlibCompression) {
+        if (!_settings->DisableZlibCompression) {
             _decompressor.Decompress(recv_buf, _unpackedReceivedBuf);
             _netIn.AddData(_unpackedReceivedBuf);
             _bytesReceived += recv_buf.size();
@@ -307,7 +307,7 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto comp_version = numeric_cast<uint32>(_settings.BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
+    const auto comp_version = numeric_cast<uint32>(_settings->BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
     _netOut.StartMsg(NetMessage::Handshake);
@@ -339,9 +339,9 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         const auto time = nanotime::now();
-        _settings.Ping = (time - _pingTime).to_ms<int32>();
+        _settings->Ping = (time - _pingTime).to_ms<int32>();
         _pingTime = nanotime::zero;
-        _pingCallTime = time + std::chrono::milliseconds(_settings.PingPeriod);
+        _pingCallTime = time + std::chrono::milliseconds(_settings->PingPeriod);
     }
     else {
         _netOut.StartMsg(NetMessage::Ping);

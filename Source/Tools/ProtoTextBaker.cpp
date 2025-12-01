@@ -65,7 +65,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
-        const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
+        const auto it = std::ranges::find(_settings->ProtoFileExtensions, ext);
 
         if (it == _settings->ProtoFileExtensions.end()) {
             continue;
@@ -242,7 +242,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     const auto fill_proto_texts = [&](hstring type_name, TextPackName pack_name) {
         for (auto&& [pid, proto_texts] : all_proto_texts[type_name]) {
             for (const auto& proto_text : proto_texts) {
-                const auto it = std::find_if(lang_packs.begin(), lang_packs.end(), [&](auto&& l) { return l.first == proto_text.first; });
+                const auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
                 if (it != lang_packs.end()) {
                     const auto& pack_name_str = engine.ResolveEnumValueName("TextPackName", static_cast<int32>(pack_name));

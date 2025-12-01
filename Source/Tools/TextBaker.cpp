@@ -97,7 +97,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
-            if (std::find(_settings->BakeLanguages.begin(), _settings->BakeLanguages.end(), lang_name) == _settings->BakeLanguages.end()) {
+            if (std::ranges::find(_settings->BakeLanguages, lang_name) == _settings->BakeLanguages.end()) {
                 WriteLog(LogType::Warning, "Unsupported language: {}. Skip", lang_name);
             }
             else {

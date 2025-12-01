@@ -71,8 +71,8 @@ public:
 private:
     [[nodiscard]] auto IsInvalidChar(const char* str, uint32 flags, int32& length) const -> bool;
 
-    InputSettings& _settings;
-    SpriteManager& _sprMngr;
+    raw_ptr<InputSettings> _settings;
+    raw_ptr<SpriteManager> _sprMngr;
 };
 
 FO_END_NAMESPACE();

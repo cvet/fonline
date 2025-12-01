@@ -82,7 +82,7 @@ public:
     {
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _propsRef.GetRegistrator()->GetTypeName(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _propsRef->GetRegistrator()->GetTypeName(); }
 };
 
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto

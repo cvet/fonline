@@ -36,7 +36,7 @@
 FO_BEGIN_NAMESPACE();
 
 GeometryHelper::GeometryHelper(GeometrySettings& settings) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -477,7 +477,7 @@ auto GeometryHelper::GetYProj() const -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    return 1.0f / std::sin(_settings->MapCameraAngle * DEG_TO_RAD_FLOAT);
 }
 
 auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32
@@ -515,8 +515,8 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings.MapHexWidth;
-    const int32 h = _settings.MapHexLineHeight;
+    const int32 w = _settings->MapHexWidth;
+    const int32 h = _settings->MapHexLineHeight;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const int32 hx = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
@@ -544,8 +544,8 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) const -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings.MapHexWidth;
-    const int32 h = _settings.MapHexLineHeight;
+    const int32 w = _settings->MapHexWidth;
+    const int32 h = _settings->MapHexLineHeight;
     const ipos32 hex_pos = GetHexPos(raw_hex);
     FO_RUNTIME_ASSERT(hex_pos.x % (w / 2) == 0);
     FO_RUNTIME_ASSERT(hex_pos.y % h == 0);
@@ -557,9 +557,9 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipo
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings.MapHexWidth;
+    const int32 w = _settings->MapHexWidth;
     const int32 half_w = w / 2;
-    const int32 h = _settings.MapHexLineHeight;
+    const int32 h = _settings->MapHexLineHeight;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const int32 ty = pos.y / h;
@@ -605,8 +605,8 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings.MapHexWidth;
-    const int32 h = _settings.MapHexLineHeight;
+    const int32 w = _settings->MapHexWidth;
+    const int32 h = _settings->MapHexLineHeight;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const int32 dx = to_raw_hex.x - from_raw_hex.x;
@@ -627,7 +627,7 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const 
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
+void GeometryHelper::ForEachBlockLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 

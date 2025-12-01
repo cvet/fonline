@@ -172,7 +172,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 {
-    auto& map_items = self->GetItems();
+    const auto map_items = self->GetItems();
 
     vector<ItemView*> items;
     items.reserve(map_items.size());
@@ -189,14 +189,14 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, mpos hex)
 {
-    const auto& hex_items = self->GetItems(hex);
+    const auto hex_items = self->GetItems(hex);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
 
-    for (auto* item : hex_items) {
+    for (auto& item : hex_items) {
         if (!item->IsFinishing()) {
-            items.emplace_back(item);
+            items.emplace_back(item.get());
         }
     }
 
@@ -608,7 +608,16 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, boo
         throw ScriptException("Invalid hex arg");
     }
 
-    return vec_static_cast<ItemView*>(self->GetTiles(hex, roof));
+    const auto tiles = self->GetTiles(hex, roof);
+
+    vector<ItemView*> result;
+    result.reserve(tiles.size());
+
+    for (auto& tile : tiles) {
+        result.emplace_back(tile.get());
+    }
+
+    return result;
 }
 
 ///@ ExportMethod

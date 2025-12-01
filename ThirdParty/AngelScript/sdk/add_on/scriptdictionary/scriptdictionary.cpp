@@ -1184,11 +1184,6 @@ bool CScriptDictionary::CIterator::operator==(const CIterator &other) const
 	return m_it == other.m_it;
 }
 
-bool CScriptDictionary::CIterator::operator!=(const CIterator &other) const 
-{ 
-	return m_it != other.m_it; 
-}
-
 const dictKey_t &CScriptDictionary::CIterator::GetKey() const 
 { 
 	return m_it->first; 

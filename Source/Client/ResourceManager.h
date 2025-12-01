@@ -72,9 +72,9 @@ private:
     void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
     void FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
 
-    FileSystem& _resources;
-    SpriteManager& _sprMngr;
-    AnimationResolver& _animNameResolver;
+    raw_ptr<FileSystem> _resources;
+    raw_ptr<SpriteManager> _sprMngr;
+    raw_ptr<AnimationResolver> _animNameResolver;
     unordered_map<uint32, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};

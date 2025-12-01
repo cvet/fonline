@@ -100,7 +100,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     if (!_engine->Settings.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
-        _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap);
+        _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap.get());
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
@@ -437,13 +437,13 @@ void MapView::Process()
     {
         vector<ItemHexView*> item_to_delete;
 
-        for (auto* item : _processingItems) {
+        for (auto& item : _processingItems) {
             if (item->IsNeedProcess()) {
                 item->Process();
             }
 
             if (item->IsFinished()) {
-                item_to_delete.emplace_back(item);
+                item_to_delete.emplace_back(item.get());
             }
         }
 
@@ -498,8 +498,8 @@ void MapView::AddItemToField(ItemHexView* item)
     else {
         field.Items.emplace_back(item);
 
-        std::ranges::stable_sort(field.Items, [](const auto* i1, const auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
-        std::ranges::stable_sort(field.Items, [](const auto* i1, const auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
+        std::ranges::stable_sort(field.Items, [](auto&& i1, auto&& i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
+        std::ranges::stable_sort(field.Items, [](auto&& i1, auto&& i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
 
         RecacheHexFlags(field);
 
@@ -675,7 +675,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     AddItemToField(item);
 
-    if (!MeasureMapBorders(item->Spr, item->SprOffset)) {
+    if (!MeasureMapBorders(item->GetSprite(), item->GetSpriteOffset())) {
         if (!_mapLoading && IsHexToDraw(hex) && (_mapperMode || !item->GetAlwaysHideSprite())) {
             auto& field = _hexField->GetCellForWriting(hex);
             auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
@@ -697,7 +697,7 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
     item->SetHex(hex);
     AddItemToField(item);
 
-    if (item->IsSpriteValid()) {
+    if (item->IsMapSpriteValid()) {
         item->InvalidateSprite();
     }
 
@@ -716,12 +716,12 @@ void MapView::DestroyItem(ItemHexView* item)
 
     refcount_ptr item_ref_holder = item;
 
-    if (item->IsSpriteValid()) {
+    if (item->IsMapSpriteValid()) {
         item->InvalidateSprite();
     }
 
     {
-        const auto it = std::find(_allItems.begin(), _allItems.end(), item);
+        const auto it = std::ranges::find(_allItems, item);
         FO_RUNTIME_ASSERT(it != _allItems.end());
         _allItems.erase(it);
     }
@@ -763,13 +763,19 @@ auto MapView::GetItem(mpos hex, hstring pid) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.is_valid_pos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
+    if (!_mapSize.is_valid_pos(hex)) {
         return nullptr;
     }
 
-    for (auto* item : _hexField->GetCellForReading(hex).Items) {
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (field.Items.empty()) {
+        return nullptr;
+    }
+
+    for (auto& item : _hexField->GetCellForWriting(hex).Items) {
         if (item->GetProtoId() == pid) {
-            return item;
+            return item.get();
         }
     }
 
@@ -780,13 +786,19 @@ auto MapView::GetItem(mpos hex, ident_t id) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_mapSize.is_valid_pos(hex) || _hexField->GetCellForReading(hex).Items.empty()) {
+    if (!_mapSize.is_valid_pos(hex)) {
         return nullptr;
     }
 
-    for (auto* item : _hexField->GetCellForReading(hex).Items) {
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (field.Items.empty()) {
+        return nullptr;
+    }
+
+    for (auto& item : _hexField->GetCellForWriting(hex).Items) {
         if (item->GetId() == id) {
-            return item;
+            return item.get();
         }
     }
 
@@ -798,19 +810,32 @@ auto MapView::GetItem(ident_t id) -> ItemHexView*
     FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _itemsMap.find(id); it != _itemsMap.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
 }
 
-auto MapView::GetItems(mpos hex) -> const vector<ItemHexView*>&
+auto MapView::GetItems(mpos hex) const -> span<const raw_ptr<ItemHexView>>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
     return field.Items;
+}
+
+auto MapView::GetItems(mpos hex) -> span<raw_ptr<ItemHexView>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (field.Items.empty()) {
+        return {};
+    }
+
+    return _hexField->GetCellForWriting(hex).Items;
 }
 
 auto MapView::GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*
@@ -820,23 +845,37 @@ auto MapView::GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
-    for (auto* tile : field_tiles) {
+    if (field_tiles.empty()) {
+        return nullptr;
+    }
+
+    auto& field2 = _hexField->GetCellForWriting(hex);
+    auto& field_tiles2 = is_roof ? field2.RoofTiles : field2.GroundTiles;
+
+    for (auto& tile : field_tiles2) {
         if (layer < 0 || numeric_cast<int32>(tile->GetTileLayer()) == layer) {
-            return tile;
+            return tile.get();
         }
     }
 
     return nullptr;
 }
 
-auto MapView::GetTiles(mpos hex, bool is_roof) -> const vector<ItemHexView*>&
+auto MapView::GetTiles(mpos hex, bool is_roof) -> span<raw_ptr<ItemHexView>>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& field_tiles = is_roof ? field.RoofTiles : field.GroundTiles;
 
-    return field_tiles;
+    if (field_tiles.empty()) {
+        return {};
+    }
+
+    auto& field2 = _hexField->GetCellForWriting(hex);
+    auto& field_tiles2 = is_roof ? field2.RoofTiles : field2.GroundTiles;
+
+    return field_tiles2;
 }
 
 auto MapView::GetHexContentSize(mpos hex) -> isize32
@@ -847,8 +886,8 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
 
     if (const auto& field = _hexField->GetCellForReading(hex); field.IsView) {
         if (!field.Critters.empty()) {
-            for (const auto* cr : field.Critters) {
-                if (cr->IsSpriteVisible()) {
+            for (const auto& cr : field.Critters) {
+                if (cr->IsMapSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
 
                     if (result.isZero()) {
@@ -865,9 +904,9 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
         }
 
         if (!field.Items.empty()) {
-            for (const auto* item : field.Items) {
-                if (item->IsSpriteVisible()) {
-                    const auto* spr = item->Spr;
+            for (const auto& item : field.Items) {
+                if (item->IsMapSpriteVisible()) {
+                    const auto* spr = item->GetSprite();
 
                     if (spr != nullptr) {
                         const auto l = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->GetOffset().x;
@@ -1133,24 +1172,24 @@ void MapView::ShowHex(const ViewField& vf)
 
     // Tiles
     if (!field.GroundTiles.empty() && _engine->Settings.ShowTile) {
-        for (auto* tile : field.GroundTiles) {
+        for (auto& tile : field.GroundTiles) {
             if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                 continue;
             }
 
-            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile.get()), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, mspr);
         }
     }
 
     // Roof
     if (!field.RoofTiles.empty() && _engine->Settings.ShowRoof && (_hiddenRoofNum == 0 || _hiddenRoofNum != field.RoofNum)) {
-        for (auto* tile : field.RoofTiles) {
+        for (auto& tile : field.RoofTiles) {
             if (!_mapperMode && tile->GetAlwaysHideSprite()) {
                 continue;
             }
 
-            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile.get()), _mapSize.clamp_pos(hex.x, hex.y + tile->GetDrawOrderOffsetHexY()), &field.Offset);
             mspr->SetEggAppearence(EggAppearenceType::Always);
             AddSpriteToChain(field, mspr);
         }
@@ -1158,7 +1197,7 @@ void MapView::ShowHex(const ViewField& vf)
 
     // Items on hex
     if (!field.Items.empty()) {
-        for (auto* item : field.Items) {
+        for (auto& item : field.Items) {
             if (!_mapperMode) {
                 if (item->GetAlwaysHideSprite()) {
                     continue;
@@ -1193,23 +1232,25 @@ void MapView::ShowHex(const ViewField& vf)
                 }
             }
 
-            auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
+            auto* mspr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item.get()), _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY()), &field.Offset);
             AddSpriteToChain(field, mspr);
         }
     }
 
     // Critters
     if (!field.Critters.empty() && _engine->Settings.ShowCrit) {
-        for (auto* cr : field.Critters) {
-            auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hex, &field.Offset);
+        for (auto& cr : field.Critters) {
+            auto* mspr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr.get()), hex, &field.Offset);
 
-            auto contour = ContourType::None;
+            ContourType contour = ContourType::None;
+
             if (cr->GetId() == _critterContourCrId) {
                 contour = _critterContour;
             }
             else if (!cr->GetIsChosen()) {
                 contour = _crittersContour;
             }
+
             mspr->SetContour(contour, cr->GetContourColor());
 
             AddSpriteToChain(field, mspr);
@@ -1407,7 +1448,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     for (const auto& item : cr->GetInvItems()) {
         if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOffset);
+            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), cr->GetSpriteOffsetPtr());
             light_added = true;
             break;
         }
@@ -1415,7 +1456,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     // Default chosen light
     if (!light_added && cr->GetIsChosen()) {
-        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->SprOffset);
+        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
         light_added = true;
     }
 
@@ -1435,7 +1476,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
     }
 
     if (item->GetLightSource()) {
-        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &item->SprOffset);
+        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), item->GetSpriteOffsetPtr());
     }
     else {
         FinishLightSource(item->GetId());
@@ -2043,7 +2084,7 @@ auto MapView::MeasureMapBorders(const ItemHexView* item) -> bool
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
 
-    return MeasureMapBorders(item->Spr, item->SprOffset);
+    return MeasureMapBorders(item->GetSprite(), item->GetSpriteOffset());
 }
 
 void MapView::RecacheHexFlags(mpos hex)
@@ -2071,7 +2112,7 @@ void MapView::RecacheHexFlags(Field& field)
 
     if (_engine->Settings.CritterBlockHex) {
         if (!field.Critters.empty()) {
-            for (const auto* cr : field.Critters) {
+            for (const auto& cr : field.Critters) {
                 if (!field.MoveBlocked && !cr->IsDead()) {
                     field.MoveBlocked = true;
                 }
@@ -2079,7 +2120,7 @@ void MapView::RecacheHexFlags(Field& field)
         }
 
         if (!field.MultihexCritters.empty()) {
-            for (const auto* cr : field.MultihexCritters) {
+            for (const auto& cr : field.MultihexCritters) {
                 if (!field.MoveBlocked && !cr->IsDead()) {
                     field.MoveBlocked = true;
                 }
@@ -2088,7 +2129,7 @@ void MapView::RecacheHexFlags(Field& field)
     }
 
     if (!field.Items.empty()) {
-        for (const auto* item : field.Items) {
+        for (const auto& item : field.Items) {
             if (!field.HasWall && item->GetIsWall()) {
                 field.HasWall = true;
                 field.HasTransparentWall = item->GetLightThru();
@@ -2116,7 +2157,7 @@ void MapView::RecacheHexFlags(Field& field)
     }
 
     if (!field.BlockLineItems.empty()) {
-        for (const auto* item : field.BlockLineItems) {
+        for (const auto& item : field.BlockLineItems) {
             field.MoveBlocked = true;
 
             if (!field.ShootBlocked && !item->GetShootThru()) {
@@ -2191,26 +2232,26 @@ void MapView::Resize(msize size)
                 const auto& field = _hexField->GetCellForReading({hx, hy});
 
                 if (!field.Critters.empty()) {
-                    for (auto* cr : copy(field.Critters)) {
-                        DestroyCritter(cr);
+                    for (auto& cr : copy(field.Critters)) {
+                        DestroyCritter(cr.get());
                     }
                 }
 
                 if (!field.Items.empty()) {
-                    for (auto* item : copy(field.Items)) {
-                        DestroyItem(item);
+                    for (auto& item : copy(field.Items)) {
+                        DestroyItem(item.get());
                     }
                 }
 
                 if (!field.GroundTiles.empty()) {
-                    for (auto* tile : copy(field.GroundTiles)) {
-                        DestroyItem(tile);
+                    for (auto& tile : copy(field.GroundTiles)) {
+                        DestroyItem(tile.get());
                     }
                 }
 
                 if (!field.RoofTiles.empty()) {
-                    for (auto* tile : copy(field.RoofTiles)) {
-                        DestroyItem(tile);
+                    for (auto& tile : copy(field.RoofTiles)) {
+                        DestroyItem(tile.get());
                     }
                 }
 
@@ -2343,9 +2384,9 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (field.SpriteChain == nullptr) {
+    if (!field.SpriteChain) {
         field.SpriteChain = mspr;
-        mspr->CreateExtraChain(&field.SpriteChain);
+        mspr->CreateExtraChain(field.SpriteChain.get_pp());
     }
     else {
         field.SpriteChain->AddToExtraChain(mspr);
@@ -2358,7 +2399,7 @@ void MapView::InvalidateSpriteChain(Field& field)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (field.SpriteChain != nullptr) {
+    if (field.SpriteChain) {
         FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
         while (field.SpriteChain != nullptr) {
             FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
@@ -2465,15 +2506,15 @@ void MapView::DrawMap()
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
                 for (auto& points : _lightPoints) {
-                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light);
+                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light.get());
                 }
                 for (auto& points : _lightSoftPoints) {
-                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light);
+                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light.get());
                 }
 
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
-                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight);
+                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
 
@@ -2488,12 +2529,12 @@ void MapView::DrawMap()
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
-                _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog);
-                _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog);
+                _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
+                _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
 
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
-                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog);
+                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
 
@@ -2541,8 +2582,8 @@ void MapView::PrepareFogToDraw()
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
             const ipos32 base_pos = GetHexMapPos(base_hex);
-            const auto center_look_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 0}, .PointOffset = &chosen->SprOffset};
-            const auto center_shoot_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 255}, .PointOffset = &chosen->SprOffset};
+            const auto center_look_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 0}, .PointOffset = chosen->GetSpriteOffsetPtr()};
+            const auto center_shoot_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 255}, .PointOffset = chosen->GetSpriteOffsetPtr()};
 
             auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
 
@@ -2606,7 +2647,7 @@ void MapView::PrepareFogToDraw()
                     if (_drawLookBorders) {
                         const auto hex_pos = GetHexMapPos(target_hex);
                         const auto color = ucolor {255, numeric_cast<uint8>(dist_look * 255 / dist), 0, 0};
-                        const auto* offset = dist_look == dist ? &chosen->SprOffset : nullptr;
+                        const auto* offset = dist_look == dist ? chosen->GetSpriteOffsetPtr() : nullptr;
 
                         _fogLookPoints.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = offset});
 
@@ -2624,7 +2665,7 @@ void MapView::PrepareFogToDraw()
                         const auto block_hex_pos = GetHexMapPos(block_hex);
                         const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
                         const auto color = ucolor {255, numeric_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
-                        const auto* offset = result_shoot_dist == max_shoot_dist ? &chosen->SprOffset : nullptr;
+                        const auto* offset = result_shoot_dist == max_shoot_dist ? chosen->GetSpriteOffsetPtr() : nullptr;
 
                         _fogShootPoints.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = offset});
 
@@ -3022,7 +3063,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 
     FinishLightSource(cr->GetId());
 
-    if (cr->IsSpriteValid()) {
+    if (cr->IsMapSpriteValid()) {
         cr->InvalidateSprite();
     }
 }
@@ -3036,7 +3077,7 @@ auto MapView::GetCritter(ident_t id) -> CritterHexView*
     }
 
     const auto it = _crittersMap.find(id);
-    return it != _crittersMap.end() ? it->second : nullptr;
+    return it != _crittersMap.end() ? it->second.get() : nullptr;
 }
 
 auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
@@ -3046,17 +3087,17 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (!field.Critters.empty()) {
-        for (auto* cr : field.Critters) {
+        for (auto& cr : _hexField->GetCellForWriting(hex).Critters) {
             if (!cr->IsDead()) {
-                return cr;
+                return cr.get();
             }
         }
     }
 
     if (!field.MultihexCritters.empty()) {
-        for (auto* cr : field.MultihexCritters) {
+        for (auto& cr : _hexField->GetCellForWriting(hex).MultihexCritters) {
             if (!cr->IsDead()) {
-                return cr;
+                return cr.get();
             }
         }
     }
@@ -3150,17 +3191,17 @@ auto MapView::GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (!field.Critters.empty()) {
-        for (auto* cr : field.Critters) {
+        for (auto& cr : _hexField->GetCellForWriting(hex).Critters) {
             if (cr->CheckFind(find_type)) {
-                critters.emplace_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
 
     if (!field.MultihexCritters.empty()) {
-        for (auto* cr : field.MultihexCritters) {
+        for (auto& cr : _hexField->GetCellForWriting(hex).MultihexCritters) {
             if (cr->CheckFind(find_type)) {
-                critters.emplace_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
@@ -3178,12 +3219,12 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
 
     if (cr_id != _critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
-        if (cr != nullptr && cr->IsSpriteValid()) {
+        if (cr != nullptr && cr->IsMapSpriteValid()) {
             if (!cr->IsDead() && !cr->GetIsChosen()) {
-                cr->GetSprite()->SetContour(_crittersContour);
+                cr->GetMapSprite()->SetContour(_crittersContour);
             }
             else {
-                cr->GetSprite()->SetContour(ContourType::None);
+                cr->GetMapSprite()->SetContour(ContourType::None);
             }
         }
     }
@@ -3193,8 +3234,8 @@ void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
 
     if (cr_id) {
         auto* cr = GetCritter(cr_id);
-        if (cr != nullptr && cr->IsSpriteValid()) {
-            cr->GetSprite()->SetContour(contour);
+        if (cr != nullptr && cr->IsMapSpriteValid()) {
+            cr->GetMapSprite()->SetContour(contour);
         }
     }
 }
@@ -3210,8 +3251,8 @@ void MapView::SetCrittersContour(ContourType contour)
     _crittersContour = contour;
 
     for (auto& cr : _critters) {
-        if (!cr->GetIsChosen() && cr->IsSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
-            cr->GetSprite()->SetContour(contour);
+        if (!cr->GetIsChosen() && cr->IsMapSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
+            cr->GetMapSprite()->SetContour(contour);
         }
     }
 }
@@ -3272,13 +3313,10 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
                 auto& field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(multihex_raw_hex));
 
                 if (set) {
-                    FO_RUNTIME_ASSERT(std::ranges::find(field.MultihexCritters, cr) == field.MultihexCritters.end());
-                    field.MultihexCritters.emplace_back(cr);
+                    vec_add_unique_value(field.MultihexCritters, cr);
                 }
                 else {
-                    const auto it = std::ranges::find(field.MultihexCritters, cr);
-                    FO_RUNTIME_ASSERT(it != field.MultihexCritters.end());
-                    field.MultihexCritters.erase(it);
+                    vec_remove_unique_value(field.MultihexCritters, cr);
                 }
 
                 RecacheHexFlags(field);
@@ -3340,18 +3378,18 @@ auto MapView::GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_
     const auto pos = ScreenToMapPos(screen_pos);
     const auto is_egg = _engine->SprMngr.IsEggTransp(pos);
 
-    for (auto* item : _nonTileItems) {
-        if (!item->IsSpriteVisible() || item->IsFinishing()) {
+    for (auto& item : _nonTileItems) {
+        if (!item->IsMapSpriteVisible() || item->IsFinishing()) {
             continue;
         }
 
-        const auto* spr = item->Spr;
+        const auto* spr = item->GetSprite();
         const auto hex = item->GetHex();
         const auto& field = _hexField->GetCellForReading(hex);
-        const auto l = field.Offset.x + item->SprOffset.x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 - spr->GetSize().width / 2 - extra_range;
-        const auto r = field.Offset.x + item->SprOffset.x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 + spr->GetSize().width / 2 + extra_range;
-        const auto t = field.Offset.y + item->SprOffset.y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 - spr->GetSize().height - extra_range;
-        const auto b = field.Offset.y + item->SprOffset.y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 + extra_range;
+        const auto l = field.Offset.x + item->GetSpriteOffset().x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 - spr->GetSize().width / 2 - extra_range;
+        const auto r = field.Offset.x + item->GetSpriteOffset().x + spr->GetOffset().x + _engine->Settings.MapHexWidth / 2 + spr->GetSize().width / 2 + extra_range;
+        const auto t = field.Offset.y + item->GetSpriteOffset().y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 - spr->GetSize().height - extra_range;
+        const auto b = field.Offset.y + item->GetSpriteOffset().y + spr->GetOffset().y + _engine->Settings.MapHexHeight / 2 + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
@@ -3361,10 +3399,10 @@ auto MapView::GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_
 
         if (!check_transparent || _engine->SprMngr.SpriteHitTest(spr, check_pos)) {
             if (is_egg && _engine->SprMngr.CheckEggAppearence(hex, item->GetEggType())) {
-                pix_item_egg.emplace_back(item);
+                pix_item_egg.emplace_back(item.get());
             }
             else {
-                pix_item.emplace_back(item);
+                pix_item.emplace_back(item.get());
             }
         }
     }
@@ -3372,7 +3410,7 @@ auto MapView::GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_
     // Sorters
     struct Sorter
     {
-        static auto ByTreeIndex(const ItemHexView* o1, const ItemHexView* o2) -> bool { return o1->GetSprite()->GetSortValue() > o2->GetSprite()->GetSortValue(); }
+        static auto ByTreeIndex(const ItemHexView* o1, const ItemHexView* o2) -> bool { return o1->GetMapSprite()->GetSortValue() > o2->GetMapSprite()->GetSortValue(); }
         static auto ByTransparent(const ItemHexView* o1, const ItemHexView* o2) -> bool { return !o1->IsTransparent() && o2->IsTransparent(); }
     };
 
@@ -3411,7 +3449,7 @@ auto MapView::GetCritterAtScreenPos(ipos32 screen_pos, bool ignore_dead_and_chos
     const auto pos = ScreenToMapPos(screen_pos);
 
     for (auto& cr : _critters) {
-        if (!cr->IsSpriteVisible() || cr->IsFinishing()) {
+        if (!cr->IsMapSpriteVisible() || cr->IsFinishing()) {
             continue;
         }
         if (ignore_dead_and_chosen && (cr->IsDead() || cr->GetIsChosen())) {
@@ -3426,9 +3464,9 @@ auto MapView::GetCritterAtScreenPos(ipos32 screen_pos, bool ignore_dead_and_chos
 
         if (pos.x >= l && pos.x <= r && pos.y >= t && pos.y <= b) {
             if (check_transparent) {
-                const auto rect_draw = cr->GetSprite()->GetDrawRect();
+                const auto rect_draw = cr->GetMapSprite()->GetDrawRect();
 
-                if (_engine->SprMngr.SpriteHitTest(cr->Spr, {pos.x - rect_draw.x, pos.y - rect_draw.y})) {
+                if (_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - rect_draw.x, pos.y - rect_draw.y})) {
                     critters.emplace_back(cr.get());
                 }
             }
@@ -3443,7 +3481,7 @@ auto MapView::GetCritterAtScreenPos(ipos32 screen_pos, bool ignore_dead_and_chos
     }
 
     if (critters.size() > 1) {
-        std::ranges::stable_sort(critters, [](auto* cr1, auto* cr2) { return cr1->GetSprite()->GetSortValue() > cr2->GetSprite()->GetSortValue(); });
+        std::ranges::stable_sort(critters, [](auto&& cr1, auto&& cr2) -> bool { return cr1->GetMapSprite()->GetSortValue() > cr2->GetMapSprite()->GetSortValue(); });
     }
     return critters.front();
 }
@@ -3457,7 +3495,7 @@ auto MapView::GetEntityAtScreenPos(ipos32 screen_pos, int32 extra_range, bool ch
     auto* cr = GetCritterAtScreenPos(screen_pos, false, extra_range, check_transparent);
 
     if (cr != nullptr && item != nullptr) {
-        if (item->IsTransparent() || item_egg || item->GetSprite()->GetSortValue() <= cr->GetSprite()->GetSortValue()) {
+        if (item->IsTransparent() || item_egg || item->GetMapSprite()->GetSortValue() <= cr->GetMapSprite()->GetSortValue()) {
             item = nullptr;
         }
         else {

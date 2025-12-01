@@ -120,11 +120,11 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor.Settings, _editor.BakedResources);
+    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources);
 
-    _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor.Settings);
+    _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor->Settings);
 
-    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
+    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor->Settings, *_impl->EffectMngr, _editor->BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
         const auto file = editor.BakedResources.ReadFile(path);
         FO_RUNTIME_ASSERT(file);
         auto reader = file.GetReader();
@@ -159,13 +159,13 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
     _impl->RenderTarget = App->Render.CreateTexture({200, 200}, true, true);
 
-    auto fofx_files = _editor.RawResources.FilterFiles("fofx");
+    auto fofx_files = _editor->RawResources.FilterFiles("fofx");
 
     for (const auto& file_header : fofx_files) {
         _impl->AllEffects.emplace_back(file_header.GetPath());
     }
 
-    auto tex_files = _editor.RawResources.FilterFiles("tga", strex(asset_path).extract_dir());
+    auto tex_files = _editor->RawResources.FilterFiles("tga", strex(asset_path).extract_dir());
 
     for (const auto& file_header : tex_files) {
         _impl->AllTextures.emplace_back(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1));
@@ -211,7 +211,7 @@ void ParticleEditor::OnDraw()
 
             ImGui::SameLine();
             if (ImGui::Button("Save")) {
-                const auto file = _editor.RawResources.ReadFileHeader(_assetPath);
+                const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
                 FO_RUNTIME_ASSERT(file);
 
                 const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
@@ -243,7 +243,7 @@ void ParticleEditor::OnDraw()
     const auto frame_width = numeric_cast<float32>(draw_width);
     const auto frame_height = numeric_cast<float32>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height * (1.0f / _editor.Settings.ModelProjFactor);
+    const auto proj_height = frame_height * (1.0f / _editor->Settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);

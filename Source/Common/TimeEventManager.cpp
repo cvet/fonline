@@ -248,7 +248,7 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
         }
         else {
             // Remove event
-            const auto it = std::find_if(timeEvents->begin(), timeEvents->end(), [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
+            const auto it = std::ranges::find_if(*timeEvents, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
             FO_RUNTIME_ASSERT(it != timeEvents->end());
             const auto actual_index = numeric_cast<size_t>(std::distance(timeEvents->begin(), it));
 

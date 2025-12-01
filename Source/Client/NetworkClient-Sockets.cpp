@@ -72,7 +72,7 @@ public:
 
 protected:
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8> buf) -> size_t override;
+    auto SendDataImpl(span<const uint8> buf) -> size_t override;
     auto ReceiveDataImpl(vector<uint8>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
@@ -98,13 +98,13 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 {
     FO_STACK_TRACE_ENTRY();
 
-    string_view host = _settings.ServerHost;
-    auto port = numeric_cast<uint16>(_settings.ServerPort);
+    string_view host = _settings->ServerHost;
+    auto port = numeric_cast<uint16>(_settings->ServerPort);
 
 #if FO_WEB
     port++;
 
-    if (!_settings.SecuredWebSockets) {
+    if (!_settings->SecuredWebSockets) {
         EM_ASM(Module['websocket']['url'] = 'ws://');
         WriteLog("Connecting to server 'ws://{}:{}'", host, port);
     }
@@ -127,8 +127,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
     FillSockAddr(_sockAddr, host, port);
 
-    if (_settings.ProxyType != 0) {
-        FillSockAddr(_proxyAddr, _settings.ProxyHost, numeric_cast<uint16>(_settings.ProxyPort));
+    if (_settings->ProxyType != 0) {
+        FillSockAddr(_proxyAddr, _settings->ProxyHost, numeric_cast<uint16>(_settings->ProxyPort));
     }
 
 #if FO_LINUX
@@ -143,7 +143,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
     // Nagle
 #if !FO_WEB
-    if (_settings.DisableTcpNagle) {
+    if (_settings->DisableTcpNagle) {
         auto optval = 1;
 
         if (::setsockopt(_netSock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof(optval)) != 0) {
@@ -153,7 +153,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 #endif
 
     // Direct connect
-    if (_settings.ProxyType == 0) {
+    if (_settings->ProxyType == 0) {
         // Set non blocking mode
 #if FO_WINDOWS
         u_long mode = 1;
@@ -188,7 +188,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             throw NetworkClientException("Can't connect to proxy server", GetLastSocketError());
         }
 
-        auto send_recv = [this](const_span<uint8> buf) -> vector<uint8> {
+        auto send_recv = [this](span<const uint8> buf) -> vector<uint8> {
             if (!SendData(buf)) {
                 throw NetworkClientException("Net output error");
             }
@@ -216,7 +216,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         ignore_unused(b1);
 
         // Authentication
-        if (_settings.ProxyType == PROXY_SOCKS4) {
+        if (_settings->ProxyType == PROXY_SOCKS4) {
             // Connect
             auto writer = DataWriter(send_buf);
             writer.Write<uint8>(numeric_cast<uint8>(4)); // Socks version
@@ -244,7 +244,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                 }
             }
         }
-        else if (_settings.ProxyType == PROXY_SOCKS5) {
+        else if (_settings->ProxyType == PROXY_SOCKS5) {
             auto writer = DataWriter(send_buf);
             writer.Write<uint8>(numeric_cast<uint8>(5)); // Socks version
             writer.Write<uint8>(numeric_cast<uint8>(1)); // Count methods
@@ -260,10 +260,10 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                 send_buf.clear();
                 writer = DataWriter(send_buf);
                 writer.Write<uint8>(numeric_cast<uint8>(1)); // Subnegotiation version
-                writer.Write<uint8>(numeric_cast<uint8>(_settings.ProxyUser.length())); // Name length
-                writer.WritePtr(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
-                writer.Write<uint8>(numeric_cast<uint8>(_settings.ProxyPass.length())); // Pass length
-                writer.WritePtr(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
+                writer.Write<uint8>(numeric_cast<uint8>(_settings->ProxyUser.length())); // Name length
+                writer.WritePtr(_settings->ProxyUser.c_str(), _settings->ProxyUser.length()); // Name
+                writer.Write<uint8>(numeric_cast<uint8>(_settings->ProxyPass.length())); // Pass length
+                writer.WritePtr(_settings->ProxyPass.c_str(), _settings->ProxyPass.length()); // Pass
 
                 recv_buf = send_recv(send_buf);
 
@@ -318,7 +318,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
                 }
             }
         }
-        else if (_settings.ProxyType == PROXY_HTTP) {
+        else if (_settings->ProxyType == PROXY_HTTP) {
             const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_sockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
             const auto result = send_recv({reinterpret_cast<const uint8*>(request.data()), request.length()});
             const auto result_str = string(reinterpret_cast<const char*>(result.data()), result.size());
@@ -328,7 +328,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             }
         }
         else {
-            throw NetworkClientException("Unknown proxy type", _settings.ProxyType);
+            throw NetworkClientException("Unknown proxy type", _settings->ProxyType);
         }
 
 #else
@@ -389,7 +389,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 }
 
-auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> size_t
+auto NetworkClientConnection_Sockets::SendDataImpl(span<const uint8> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 

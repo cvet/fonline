@@ -61,9 +61,10 @@ public:
     ~Player() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
     [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr.get(); }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
     [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
+    [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection* { return _connection.get(); }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);

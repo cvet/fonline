@@ -56,14 +56,14 @@ struct SoundManager::Sound
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
-static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
+static constexpr auto MakeUInt(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
 SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
-    _settings {settings},
-    _resources {resources}
+    _settings {&settings},
+    _resources {&resources}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,7 +75,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     if (!App->Audio.IsEnabled()) {
         return;
     }
-    if (_settings.DisableAudio) {
+    if (_settings->DisableAudio) {
         return;
     }
 
@@ -114,7 +114,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
         auto& sound = *it;
 
         if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
-            const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
+            const auto volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
             App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32>(volume));
             ++it;
         }
@@ -239,7 +239,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _resources.ReadFile(fname);
+    const auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
@@ -249,7 +249,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     auto dw_buf = reader.GetLEUInt32();
 
-    if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
+    if (dw_buf != MakeUInt('R', 'I', 'F', 'F')) {
         WriteLog("'RIFF' not found");
         return false;
     }
@@ -258,14 +258,14 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     dw_buf = reader.GetLEUInt32();
 
-    if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
+    if (dw_buf != MakeUInt('W', 'A', 'V', 'E')) {
         WriteLog("'WAVE' not found");
         return false;
     }
 
     dw_buf = reader.GetLEUInt32();
 
-    if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
+    if (dw_buf != MakeUInt('f', 'm', 't', ' ')) {
         WriteLog("'fmt ' not found");
         return false;
     }
@@ -299,13 +299,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     dw_buf = reader.GetLEUInt32();
 
-    if (dw_buf == MAKEUINT('f', 'a', 'c', 't')) {
+    if (dw_buf == MakeUInt('f', 'a', 'c', 't')) {
         dw_buf = reader.GetLEUInt32();
         reader.GoForward(dw_buf);
         dw_buf = reader.GetLEUInt32();
     }
 
-    if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
+    if (dw_buf != MakeUInt('d', 'a', 't', 'a')) {
         WriteLog("Unknown format2");
         return false;
     }
@@ -340,7 +340,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file = _resources.ReadFile(fname);
+    const auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
@@ -373,7 +373,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto file = _resources.ReadFile(fname);
+    auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
@@ -566,7 +566,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_isActive || _settings.SoundVolume == 0) {
+    if (!_isActive || _settings->SoundVolume == 0) {
         return true;
     }
 

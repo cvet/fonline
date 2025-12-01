@@ -238,13 +238,13 @@ namespace SPK::FO
             }
         }
 
-        FO_RUNTIME_ASSERT(_effect != nullptr);
-        FO_RUNTIME_ASSERT(_texture != nullptr);
+        FO_RUNTIME_ASSERT(_effect);
+        FO_RUNTIME_ASSERT(_texture);
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         MemCopy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
-        buffer.Render(group.getNbParticles() << 2, _effect);
+        buffer.Render(group.getNbParticles() << 2, _effect.get());
     }
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
@@ -344,7 +344,7 @@ namespace SPK::FO
 
         _effectName = effect_name;
 
-        if (!_effectName.empty() && _particleMngr != nullptr) {
+        if (!_effectName.empty() && _particleMngr) {
             _effect = _particleMngr->_effectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
         }
         else {
@@ -365,7 +365,7 @@ namespace SPK::FO
 
         _textureName = tex_name;
 
-        if (!_textureName.empty() && _particleMngr != nullptr) {
+        if (!_textureName.empty() && _particleMngr) {
             const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
             auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;

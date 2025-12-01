@@ -55,10 +55,14 @@ public:
 
     [[nodiscard]] auto GetMap() noexcept -> MapView* { return _map.get(); }
     [[nodiscard]] auto GetMap() const noexcept -> const MapView* { return _map.get(); }
-    [[nodiscard]] auto IsSpriteValid() const noexcept -> bool { return _mapSprValid; }
-    [[nodiscard]] auto IsSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
-    [[nodiscard]] auto GetSprite() const -> const MapSprite*;
-    [[nodiscard]] auto GetSprite() -> MapSprite*;
+    [[nodiscard]] auto IsMapSpriteValid() const noexcept -> bool { return _mapSprValid; }
+    [[nodiscard]] auto IsMapSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
+    [[nodiscard]] auto GetMapSprite() const -> const MapSprite*;
+    [[nodiscard]] auto GetMapSprite() -> MapSprite*;
+    [[nodiscard]] auto GetSprite() const noexcept -> const Sprite* { return _spr.get(); }
+    [[nodiscard]] auto GetSpriteOffset() const noexcept -> ipos32 { return _sprOffset; }
+    [[nodiscard]] auto GetSpriteOffsetPtr() const noexcept -> const ipos32* { return &_sprOffset; }
+    [[nodiscard]] auto GetDrawEffect() -> RenderEffect* { return _drawEffect.get(); }
     [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8 { return _curAlpha; }
     [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _targetAlpha == 0; }
@@ -77,14 +81,12 @@ public:
     void RefreshSprite();
     void InvalidateSprite();
     void SetSpriteVisiblity(bool enabled);
-
-    // Todo: incapsulate hex view fileds
-    const Sprite* Spr {};
-    ipos32 SprOffset {};
-    RenderEffect* DrawEffect {};
+    void SetDrawEffect(RenderEffect* effect) { _drawEffect = effect; }
 
 protected:
     raw_ptr<MapView> _map;
+    raw_ptr<const Sprite> _spr {};
+    ipos32 _sprOffset {};
 
     virtual void SetupSprite(MapSprite* mspr);
     void ProcessFading();
@@ -96,6 +98,8 @@ private:
     raw_ptr<MapSprite> _mapSpr {};
     bool _mapSprValid {};
     bool _mapSprHidden {};
+
+    raw_ptr<RenderEffect> _drawEffect {};
 
     uint8 _curAlpha {0xFF};
     uint8 _defaultAlpha {0xFF};

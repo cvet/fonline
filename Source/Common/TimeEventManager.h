@@ -74,7 +74,7 @@ private:
     raw_ptr<Entity> _curTimeEventEntity {};
     raw_ptr<const Entity::TimeEventData> _curTimeEvent {};
     uint32 _timeEventCounter {};
-    const any_t _emptyAnyValue {};
+    any_t _emptyAnyValue {};
     bool _nonConstHelper {};
 };
 

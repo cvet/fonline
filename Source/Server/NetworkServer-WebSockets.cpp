@@ -77,7 +77,7 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    web_server_t* _server {};
+    raw_ptr<web_server_t> _server {};
     connection_ptr _connection {};
 };
 

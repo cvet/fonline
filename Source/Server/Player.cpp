@@ -118,13 +118,13 @@ void Player::Send_AddCritter(const Critter* cr)
     vector<uint32>* cr_data_sizes = nullptr;
     cr->StoreData(is_chosen, &cr_data, &cr_data_sizes);
 
-    const auto& inv_items = cr->GetConstInvItems();
+    const auto inv_items = cr->GetInvItems();
     vector<const Item*> send_items;
     send_items.reserve(inv_items.size());
 
-    for (const auto* item : inv_items) {
+    for (const auto& item : inv_items) {
         if (item->CanSendItem(!is_chosen)) {
-            send_items.emplace_back(item);
+            send_items.emplace_back(item.get());
         }
     }
 
@@ -153,7 +153,7 @@ void Player::Send_AddCritter(const Critter* cr)
     out_buf->Write(numeric_cast<uint16>(cr->AttachedCritters.size()));
 
     if (!cr->AttachedCritters.empty()) {
-        for (const auto* attached_cr : cr->AttachedCritters) {
+        for (const auto& attached_cr : cr->AttachedCritters) {
             out_buf->Write(attached_cr->GetId());
         }
     }
@@ -342,12 +342,12 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
     vector<const Item*> send_items;
 
     if (!is_chosen) {
-        const auto& inv_items = from_cr->GetConstInvItems();
+        const auto inv_items = from_cr->GetInvItems();
         send_items.reserve(inv_items.size());
 
-        for (const auto* item : inv_items) {
+        for (const auto& item : inv_items) {
             if (item->CanSendItem(true)) {
-                send_items.emplace_back(item);
+                send_items.emplace_back(item.get());
             }
         }
     }
@@ -482,7 +482,7 @@ void Player::Send_Attachments(const Critter* from_cr)
     out_buf->Write(from_cr->GetAttachMaster());
     out_buf->Write(numeric_cast<uint16>(from_cr->AttachedCritters.size()));
 
-    for (const auto* attached_cr : from_cr->AttachedCritters) {
+    for (const auto& attached_cr : from_cr->AttachedCritters) {
         out_buf->Write(attached_cr->GetId());
     }
 }

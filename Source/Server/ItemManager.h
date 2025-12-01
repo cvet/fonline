@@ -76,7 +76,6 @@ private:
     void RemoveItemHolder(Item* item, Entity* holder);
 
     raw_ptr<FOServer> _engine;
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE();

@@ -149,7 +149,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
     _bufEndPos += len;
 }
 
-void NetOutBuffer::Push(const_span<uint8> buf)
+void NetOutBuffer::Push(span<const uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -264,7 +264,7 @@ void NetInBuffer::ResetBuf() noexcept
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(const_span<uint8> buf)
+void NetInBuffer::AddData(span<const uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

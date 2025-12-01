@@ -262,8 +262,8 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoItem*>(proto));
+    for (const auto& proto : protos | std::views::values) {
+        result.emplace_back(const_cast<ProtoItem*>(proto.get()));
     }
 
     return result;
@@ -277,9 +277,9 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoItem*>(proto));
+            result.emplace_back(const_cast<ProtoItem*>(proto.get()));
         }
     }
 
@@ -295,9 +295,9 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
     vector<ProtoItem*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoItem*>(proto));
+            result.emplace_back(const_cast<ProtoItem*>(proto.get()));
         }
     }
 
@@ -318,8 +318,8 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoCritter*>(proto));
+    for (const auto& proto : protos | std::views::values) {
+        result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
     }
 
     return result;
@@ -333,9 +333,9 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoCritter*>(proto));
+            result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
         }
     }
 
@@ -351,9 +351,9 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoCritter*>(proto));
+            result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
         }
     }
 
@@ -374,8 +374,8 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoMap*>(proto));
+    for (const auto& proto : protos | std::views::values) {
+        result.emplace_back(const_cast<ProtoMap*>(proto.get()));
     }
 
     return result;
@@ -389,9 +389,9 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoMap*>(proto));
+            result.emplace_back(const_cast<ProtoMap*>(proto.get()));
         }
     }
 
@@ -407,9 +407,9 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
     vector<ProtoMap*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoMap*>(proto));
+            result.emplace_back(const_cast<ProtoMap*>(proto.get()));
         }
     }
 
@@ -430,8 +430,8 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
-        result.emplace_back(const_cast<ProtoLocation*>(proto));
+    for (const auto& proto : protos | std::views::values) {
+        result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
     }
 
     return result;
@@ -445,9 +445,9 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoLocation*>(proto));
+            result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
         }
     }
 
@@ -463,9 +463,9 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
 
-    for (const auto* proto : protos | std::views::values) {
+    for (const auto& proto : protos | std::views::values) {
         if (proto->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(const_cast<ProtoLocation*>(proto));
+            result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
         }
     }
 

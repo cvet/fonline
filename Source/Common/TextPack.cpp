@@ -311,7 +311,7 @@ void TextPack::Clear()
     _strData.clear();
 }
 
-void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
+void TextPack::FixPacks(span<const string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -278,7 +278,7 @@ public:
 private:
     AppWindow() = default;
 
-    WindowInternalHandle* _windowHandle {};
+    raw_ptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
@@ -429,7 +429,7 @@ private:
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};
-    vector<AppWindow*> _allWindows {};
+    vector<raw_ptr<AppWindow>> _allWindows {};
     std::atomic_bool _quit {};
     std::condition_variable _quitEvent {};
     std::mutex _quitLocker {};

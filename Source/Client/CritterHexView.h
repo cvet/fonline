@@ -129,7 +129,7 @@ private:
     nanotime _animStartTime {};
     CritterAnim _idle2dAnim {};
     vector<CritterAnim> _animSequence {};
-    std::optional<CritterAnim> _curAnim {};
+    optional<CritterAnim> _curAnim {};
 
     ipos32 _offsAnim {};
     fpos32 _offsExt {};

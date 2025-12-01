@@ -424,8 +424,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(FOClient* clie
                 const auto* cr1_hex = dynamic_cast<const CritterHexView*>(cr1);
                 const auto* cr2_hex = dynamic_cast<const CritterHexView*>(cr2);
 
-                if (cr1_hex != nullptr && cr2_hex != nullptr && cr1_hex->IsSpriteValid() && cr2_hex->IsSpriteValid()) {
-                    return cr1_hex->GetSprite()->GetSortValue() < cr2_hex->GetSprite()->GetSortValue();
+                if (cr1_hex != nullptr && cr2_hex != nullptr && cr1_hex->IsMapSpriteValid() && cr2_hex->IsMapSpriteValid()) {
+                    return cr1_hex->GetMapSprite()->GetSortValue() < cr2_hex->GetMapSprite()->GetSortValue();
                 }
 
                 return cr1 < cr2;
@@ -630,7 +630,7 @@ FO_SCRIPT_API void Client_Game_SetDefaultFont(FOClient* client, int32 font)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType, int64 effectSubtype, string_view effectPath)
 {
-    const auto reload_effect = [&](RenderEffect* def_effect) {
+    const auto reload_effect = [&](raw_ptr<RenderEffect> def_effect) {
         if (!effectPath.empty()) {
             auto* effect = client->EffectMngr.LoadEffect(def_effect->GetUsage(), effectPath);
 
@@ -641,7 +641,7 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
             return effect;
         }
 
-        return def_effect;
+        return def_effect.get();
     };
 
     const auto eff_type = static_cast<uint32>(effectType);
@@ -650,14 +650,14 @@ FO_SCRIPT_API void Client_Game_SetEffect(FOClient* client, EffectType effectType
         auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint32>(effectSubtype)});
 
         if (item != nullptr) {
-            item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
+            item->SetDrawEffect(reload_effect(client->EffectMngr.Effects.Generic));
         }
     }
     if (((eff_type & static_cast<uint32>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
         auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint32>(effectSubtype)});
 
         if (cr != nullptr) {
-            cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
+            cr->SetDrawEffect(reload_effect(client->EffectMngr.Effects.Critter));
         }
     }
 
@@ -1245,13 +1245,14 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(FOClient* client, bool f
         client->OffscreenSurfaces.emplace_back(rt);
     }
 
-    auto* rt = client->OffscreenSurfaces.back();
+    auto& rt = client->OffscreenSurfaces.back();
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.emplace_back(rt);
 
-    client->SprMngr.GetRtMngr().PushRenderTarget(rt);
+    client->SprMngr.GetRtMngr().PushRenderTarget(rt.get());
 
     const auto it = std::ranges::find(client->DirtyOffscreenSurfaces, rt);
+
     if (it != client->DirtyOffscreenSurfaces.end() || forceClear) {
         if (it != client->DirtyOffscreenSurfaces.end()) {
             client->DirtyOffscreenSurfaces.erase(it);
@@ -1275,7 +1276,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("No active offscreen surfaces");
     }
 
-    auto* const rt = client->ActiveOffscreenSurfaces.back();
+    auto& rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.emplace_back(rt);
 
@@ -1285,9 +1286,9 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
 
-    client->SprMngr.DrawRenderTarget(rt, true);
+    client->SprMngr.DrawRenderTarget(rt.get(), true);
 }
 
 ///@ ExportMethod
@@ -1300,7 +1301,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("No active offscreen surfaces");
     }
 
-    auto* const rt = client->ActiveOffscreenSurfaces.back();
+    auto& rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.emplace_back(rt);
 
@@ -1310,7 +1311,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
 
     const auto l = std::clamp(pos.x, 0, client->Settings.ScreenWidth);
     const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
@@ -1319,7 +1320,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
     const auto from = frect32(l, t, r - l, b - t);
     const auto to = irect32(l, t, r - l, b - t);
 
-    client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
+    client->SprMngr.DrawRenderTarget(rt.get(), true, &from, &to);
 }
 
 ///@ ExportMethod
@@ -1332,7 +1333,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("No active offscreen surfaces");
     }
 
-    auto* const rt = client->ActiveOffscreenSurfaces.back();
+    auto& rt = client->ActiveOffscreenSurfaces.back();
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.emplace_back(rt);
 
@@ -1342,7 +1343,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype]);
+    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
 
     const auto from = frect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
         std::clamp(fromY, 0, client->Settings.ScreenHeight), //
@@ -1353,7 +1354,7 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(FOClient* client, int32 e
         std::clamp(toW, 0, client->Settings.ScreenWidth - toX), //
         std::clamp(toH, 0, client->Settings.ScreenHeight - toY));
 
-    client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
+    client->SprMngr.DrawRenderTarget(rt.get(), true, &from, &to);
 }
 
 ///@ ExportMethod

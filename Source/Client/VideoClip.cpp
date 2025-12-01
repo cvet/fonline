@@ -53,10 +53,10 @@ struct VideoClip::Impl
     bool Looped {};
     vector<uint8> RawVideoData {};
     size_t ReadPos {};
-    th_dec_ctx* DecoderContext {};
+    raw_ptr<th_dec_ctx> DecoderContext {};
     th_info VideoInfo {};
     th_comment Comment {};
-    th_setup_info* SetupInfo {};
+    raw_ptr<th_setup_info> SetupInfo {};
     th_ycbcr_buffer ColorBuffer {};
     ogg_sync_state SyncState {};
     ogg_packet Packet {};
@@ -91,7 +91,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
             throw VideoClipException("Decode header packet failed");
         }
 
-        const int32 r = th_decode_headerin(&_impl->VideoInfo, &_impl->Comment, &_impl->SetupInfo, &_impl->Packet);
+        const int32 r = th_decode_headerin(&_impl->VideoInfo, &_impl->Comment, _impl->SetupInfo.get_pp(), &_impl->Packet);
 
         if (r == 0) {
             if (stream_index != _impl->Streams.MainIndex) {
@@ -114,7 +114,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
         }
     }
 
-    _impl->DecoderContext = th_decode_alloc(&_impl->VideoInfo, _impl->SetupInfo);
+    _impl->DecoderContext = th_decode_alloc(&_impl->VideoInfo, _impl->SetupInfo.get());
     _impl->RenderedTextureData.resize(numeric_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
     _impl->StartTime = nanotime::now();
 }
@@ -127,8 +127,8 @@ VideoClip::~VideoClip()
         th_info_clear(&_impl->VideoInfo);
         th_comment_clear(&_impl->Comment);
         ogg_sync_clear(&_impl->SyncState);
-        th_setup_free(_impl->SetupInfo);
-        th_decode_free(_impl->DecoderContext);
+        th_setup_free(_impl->SetupInfo.get());
+        th_decode_free(_impl->DecoderContext.get());
     }
 }
 
@@ -258,7 +258,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
     for (int32 i = 0; i < next_frame_diff; i++) {
         // Decode frame
-        int32 r = th_decode_packetin(_impl->DecoderContext, &_impl->Packet, nullptr);
+        int32 r = th_decode_packetin(_impl->DecoderContext.get(), &_impl->Packet, nullptr);
 
         if (r != TH_DUPFRAME) {
             if (r != 0) {
@@ -268,7 +268,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             }
 
             // Decode color
-            r = th_decode_ycbcr_out(_impl->DecoderContext, _impl->ColorBuffer);
+            r = th_decode_ycbcr_out(_impl->DecoderContext.get(), _impl->ColorBuffer);
 
             if (r != 0) {
                 WriteLog("th_decode_ycbcr_out() failed, error {}", r);

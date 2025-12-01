@@ -86,7 +86,7 @@ int main(int argc, char** argv)
             bool client_failed = false;
             bool mapper_failed = false;
 
-            const auto write_file = [&](const_span<uint8> data, string_view ext) {
+            const auto write_file = [&](span<const uint8> data, string_view ext) {
                 const string path = strex("{}/{}.{}", res_pack.Name, res_pack.Name, ext);
                 auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(path), true);
                 FO_RUNTIME_ASSERT(file);

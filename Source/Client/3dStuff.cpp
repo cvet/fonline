@@ -2100,7 +2100,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel;
+    auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float32));

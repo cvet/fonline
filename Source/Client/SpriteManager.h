@@ -149,8 +149,8 @@ struct PrimitivePoint
 {
     ipos32 PointPos {};
     ucolor PointColor {};
-    const ipos32* PointOffset {};
-    const ucolor* PPointColor {};
+    raw_ptr<const ipos32> PointOffset {};
+    raw_ptr<const ucolor> PPointColor {};
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 
@@ -278,11 +278,11 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32 num_font) -> int32;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32 num_font) -> int32;
-    [[nodiscard]] auto GetLineHeight(int32 num_font) -> int32;
-    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) -> bool;
-    [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) -> bool;
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32 num_font) const -> int32;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32 num_font) const -> int32;
+    [[nodiscard]] auto GetLineHeight(int32 num_font) const -> int32;
+    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) const -> bool;
+    [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) const -> bool;
 
     auto LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
     auto LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool;
@@ -326,11 +326,11 @@ private:
     // Todo: optimize text formatting - cache previous results
     struct FontFormatInfo
     {
-        FontData* CurFont {};
+        raw_ptr<const FontData> CurFont {};
         uint32 Flags {};
         irect32 Rect {};
         char Str[FONT_BUF_LEN] {};
-        char* PStr {};
+        raw_ptr<char> PStr {};
         int32 LinesAll {1};
         int32 LinesInRect {};
         int32 CurX {};
@@ -341,18 +341,19 @@ private:
         int32 LineSpaceWidth[FONT_MAX_LINES] {};
         int32 OffsColDots {};
         ucolor DefColor {COLOR_TEXT};
-        vector<string>* StrLines {};
+        raw_ptr<vector<string>> StrLines {};
         bool IsError {};
     };
 
-    [[nodiscard]] auto GetFont(int32 num) -> FontData*;
+    auto GetFont(int32 num) -> FontData*;
+    auto GetFont(int32 num) const -> const FontData*;
 
     void BuildFont(int32 index);
     void FormatText(FontFormatInfo& fi, int32 fmt_type) const;
 
     vector<unique_ptr<FontData>> _allFonts {};
     int32 _defFontIndex {};
-    FontFormatInfo _fontFormatInfoBuf {};
+    mutable FontFormatInfo _fontFormatInfoBuf {};
 };
 
 FO_END_NAMESPACE();

@@ -424,9 +424,9 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
 {
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item;
+            return item.get();
         }
     }
 
@@ -438,9 +438,9 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property,
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item;
+            return item.get();
         }
     }
 
@@ -450,54 +450,59 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property,
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self)
 {
-    return self->GetInvItems();
+    return vec_transform(self->GetInvItems(), [](auto&& item) -> Item* { return item.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
 {
-    vector<Item*> items;
-    items.reserve(self->GetInvItems().size());
+    const auto items = self->GetInvItems();
 
-    for (auto* item : self->GetInvItems()) {
+    vector<Item*> result;
+    result.reserve(items.size());
+
+    for (auto& item : items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.push_back(item);
+            result.push_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto items = self->GetInvItems();
 
-    vector<Item*> items;
-    items.reserve(self->GetInvItems().size());
+    vector<Item*> result;
+    result.reserve(items.size());
 
-    for (auto* item : self->GetInvItems()) {
+    for (auto& item : items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.push_back(item);
+            result.push_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
 {
-    vector<Item*> items;
-    items.reserve(self->GetInvItems().size());
+    const auto items = self->GetInvItems();
 
-    for (auto* item : self->GetInvItems()) {
+    vector<Item*> result;
+    result.reserve(items.size());
+
+    for (auto& item : items) {
         if (item->GetProtoId() == protoId) {
-            items.push_back(item);
+            result.push_back(item.get());
         }
     }
 
-    return items;
+    return result;
 }
 
 ///@ ExportMethod
@@ -557,6 +562,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
 FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, AbstractItem* contextItem)
 {
     const auto prev_cond = self->GetCondition();
+
     if (prev_cond == cond) {
         return;
     }
@@ -735,7 +741,7 @@ FO_SCRIPT_API void Server_Critter_DetachFromCritter(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 {
-    for (auto* cr : copy(self->AttachedCritters)) {
+    for (auto& cr : copy_hold_ref(self->AttachedCritters)) {
         cr->DetachFromCritter();
     }
 
@@ -745,7 +751,7 @@ FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 {
-    return self->AttachedCritters;
+    return vec_transform(self->AttachedCritters, [](auto&& cr) -> Critter* { return cr.get(); });
 }
 
 ///@ ExportMethod

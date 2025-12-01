@@ -72,7 +72,7 @@ protected:
 class FileReader final
 {
 public:
-    explicit FileReader(const_span<uint8> buf);
+    explicit FileReader(span<const uint8> buf);
     FileReader(const FileReader&) = delete;
     FileReader(FileReader&&) noexcept = default;
     auto operator=(const FileReader&) = delete;
@@ -106,7 +106,7 @@ public:
     void GoBack(size_t offs);
 
 private:
-    const_span<uint8> _buf;
+    span<const uint8> _buf;
     size_t _curPos {};
 };
 

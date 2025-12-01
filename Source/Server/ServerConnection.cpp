@@ -112,15 +112,15 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
 }
 
 ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection) :
-    _settings {settings},
+    _settings {&settings},
     _netConnection {std::move(net_connection)},
-    _inBuf(_settings.NetBufferSize),
-    _outBuf(_settings.NetBufferSize, _settings.NetDebugHashes)
+    _inBuf(_settings->NetBufferSize),
+    _outBuf(_settings->NetBufferSize, _settings->NetDebugHashes)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto send = [this]() -> const_span<uint8> { return AsyncSendData(); };
-    auto receive = [this](const_span<uint8> buf) { AsyncReceiveData(buf); };
+    auto send = [this]() -> span<const uint8> { return AsyncSendData(); };
+    auto receive = [this](span<const uint8> buf) { AsyncReceiveData(buf); };
     auto disconnect = [this]() { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 
@@ -169,7 +169,7 @@ void ServerConnection::StartAsyncSend()
     _netConnection->Dispatch();
 }
 
-auto ServerConnection::AsyncSendData() -> const_span<uint8>
+auto ServerConnection::AsyncSendData() -> span<const uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -181,7 +181,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8>
 
     const auto raw_buf = _outBuf.GetData();
 
-    if (!_settings.DisableZlibCompression) {
+    if (!_settings->DisableZlibCompression) {
         _compressor.Compress(raw_buf, _sendBuf);
     }
     else {
@@ -194,7 +194,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8>
     return _sendBuf;
 }
 
-void ServerConnection::AsyncReceiveData(const_span<uint8> buf)
+void ServerConnection::AsyncReceiveData(span<const uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

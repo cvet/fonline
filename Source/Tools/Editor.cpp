@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE();
 
 EditorView::EditorView(string_view view_name, FOEditor& editor) :
     _viewName {view_name},
-    _editor {editor}
+    _editor {&editor}
 {
     FO_STACK_TRACE_ENTRY();
 }

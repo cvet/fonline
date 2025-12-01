@@ -67,7 +67,7 @@ public:
         auto FindPosition(isize32 size) -> SpaceNode*;
         void Free() noexcept;
 
-        SpaceNode* Parent {};
+        raw_ptr<SpaceNode> Parent {};
         ipos32 Pos {};
         isize32 Size {};
         bool Busy {};
