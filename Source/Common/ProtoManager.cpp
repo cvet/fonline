@@ -178,7 +178,7 @@ auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept(false) -> const
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     throw ProtoManagerException("Item proto not exists", proto_id);
@@ -191,7 +191,7 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept(false) -> co
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     throw ProtoManagerException("Critter proto not exists", proto_id);
@@ -204,7 +204,7 @@ auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept(false) -> const 
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     throw ProtoManagerException("Map proto not exists", proto_id);
@@ -217,7 +217,7 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept(false) -> c
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     throw ProtoManagerException("Location proto not exists", proto_id);
@@ -249,7 +249,7 @@ auto ProtoManager::GetProtoItemSafe(hstring proto_id) const noexcept -> const Pr
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -262,7 +262,7 @@ auto ProtoManager::GetProtoCritterSafe(hstring proto_id) const noexcept -> const
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -275,7 +275,7 @@ auto ProtoManager::GetProtoMapSafe(hstring proto_id) const noexcept -> const Pro
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -288,7 +288,7 @@ auto ProtoManager::GetProtoLocationSafe(hstring proto_id) const noexcept -> cons
     proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;

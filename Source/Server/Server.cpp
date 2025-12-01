@@ -186,7 +186,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Properties that saving to database
         for (const auto& entity_info : GetEntityTypesInfo() | std::views::values) {
-            const auto* registrator = entity_info.PropRegistrator;
+            const auto& registrator = entity_info.PropRegistrator;
 
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
@@ -231,7 +231,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     continue;
                 }
 
-                set_send_callbacks(entity_info.PropRegistrator, [this](Entity* entity, const Property* prop) { OnSendCustomEntityValue(entity, prop); });
+                set_send_callbacks(entity_info.PropRegistrator.get(), [this](Entity* entity, const Property* prop) { OnSendCustomEntityValue(entity, prop); });
             }
         }
 
@@ -666,7 +666,7 @@ FOServer::~FOServer()
         _logClients.clear();
 
         // Logined players
-        for (auto&& [id, player] : copy(EntityMngr.GetPlayers())) {
+        for (auto& player : copy(EntityMngr.GetPlayers()) | std::views::values) {
             player->GetConnection()->HardDisconnect();
         }
 
@@ -930,7 +930,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
         unlogined_player->MarkAsDestroyed();
@@ -1376,7 +1376,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
         SetLogCallback("LogToClients", nullptr);
 
-        auto it = std::find(_logClients.begin(), _logClients.end(), player);
+        auto it = std::ranges::find(_logClients, player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
             logcb("Detached");
@@ -1553,7 +1553,7 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     if (!cr->AttachedCritters.empty()) {
-        for (auto* attached_cr : copy(cr->AttachedCritters)) {
+        for (auto& attached_cr : copy_hold_ref(cr->AttachedCritters)) {
             attached_cr->DetachFromCritter();
         }
     }
@@ -1593,7 +1593,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 
     function<void(Item*)> unload_item;
 
-    unload_item = [this, &unload_item, &unload_inner_entities](Item* item) {
+    unload_item = [&](Item* item) {
         if (item->HasInnerItems()) {
             auto& inner_items = item->GetRawInnerItems();
 
@@ -1610,15 +1610,13 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
 
         item->MarkAsDestroyed();
         EntityMngr.UnregisterItem(item, false);
+
+        cr->RemoveItem(item);
     };
 
-    auto& inv_items = cr->GetRawInvItems();
-
-    for (auto* item : inv_items) {
+    for (auto* item : copy_hold_ref(cr->GetInvItems())) {
         unload_item(item);
     }
-
-    inv_items.clear();
 }
 
 void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
@@ -1712,9 +1710,9 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_AddCritter(cr);
 
     if (map == nullptr) {
-        for (const auto* group_cr : cr->GetGlobalMapGroup()) {
+        for (const auto& group_cr : cr->GetGlobalMapGroup()) {
             if (group_cr != cr) {
-                cr->Send_AddCritter(group_cr);
+                cr->Send_AddCritter(group_cr.get());
             }
         }
     }
@@ -1750,9 +1748,9 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
     FO_STACK_TRACE_ENTRY();
 
     if (map->IsStaticItemTrigger(from_hex)) {
-        for (auto* item : map->GetStaticItemsTrigger(from_hex)) {
+        for (auto& item : map->GetStaticItemsTrigger(from_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc(cr, item, false, dir)) {
+                if (!item->TriggerScriptFunc(cr, item.get(), false, dir)) {
                     // Nop
                 }
 
@@ -1761,7 +1759,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
                 }
             }
 
-            OnStaticItemWalk.Fire(item, cr, false, dir);
+            OnStaticItemWalk.Fire(item.get(), cr, false, dir);
 
             if (cr->IsDestroyed()) {
                 return;
@@ -1770,9 +1768,9 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
     }
 
     if (map->IsStaticItemTrigger(to_hex)) {
-        for (auto* item : map->GetStaticItemsTrigger(to_hex)) {
+        for (auto& item : map->GetStaticItemsTrigger(to_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc(cr, item, true, dir)) {
+                if (!item->TriggerScriptFunc(cr, item.get(), true, dir)) {
                     // Nop
                 }
 
@@ -1781,7 +1779,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
                 }
             }
 
-            OnStaticItemWalk.Fire(item, cr, true, dir);
+            OnStaticItemWalk.Fire(item.get(), cr, true, dir);
 
             if (cr->IsDestroyed()) {
                 return;
@@ -2107,7 +2105,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             return;
         }
 
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -2123,7 +2121,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = true;
 
         // Kick previous
-        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
         FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
@@ -2673,7 +2671,7 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
     ignore_unused(entity);
 
     if (prop->IsPublicSync()) {
-        for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
+        for (auto& player : EntityMngr.GetPlayers() | std::views::values) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }

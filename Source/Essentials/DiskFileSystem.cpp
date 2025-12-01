@@ -142,7 +142,7 @@ auto DiskFile::Write(string_view str) -> bool
     return Write(str.data(), str.length());
 }
 
-auto DiskFile::Write(const_span<uint8> data) -> bool
+auto DiskFile::Write(span<const uint8> data) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,7 +271,7 @@ auto DiskFileSystem::WriteFile(string_view path, string_view content) -> bool
     return false;
 }
 
-auto DiskFileSystem::WriteFile(string_view path, const_span<uint8> content) -> bool
+auto DiskFileSystem::WriteFile(string_view path, span<const uint8> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -407,7 +407,7 @@ void DiskFileSystem::IterateDir(string_view dir, bool recursive, FileVisitor vis
     RecursiveDirLook(dir, "", recursive, visitor);
 }
 
-auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf) -> bool
+auto DiskFileSystem::CompareFileContent(string_view path, span<const uint8> buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

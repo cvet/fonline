@@ -64,7 +64,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
-        const auto it = std::find(_settings->ProtoFileExtensions.begin(), _settings->ProtoFileExtensions.end(), ext);
+        const auto it = std::ranges::find(_settings->ProtoFileExtensions, ext);
 
         if (it == _settings->ProtoFileExtensions.end()) {
             continue;

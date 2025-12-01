@@ -87,9 +87,8 @@ public:
     [[nodiscard]] auto IsKnockout() const noexcept -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> Item*;
-    [[nodiscard]] auto GetRawInvItems() noexcept -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetInvItems() noexcept -> const vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetConstInvItems() const -> vector<const Item*> { return vec_static_cast<const Item*>(_invItems); }
+    [[nodiscard]] auto GetInvItems() noexcept -> span<raw_ptr<Item>> { return _invItems; }
+    [[nodiscard]] auto GetInvItems() const noexcept -> span<const raw_ptr<Item>> { return _invItems; }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32;
@@ -99,7 +98,7 @@ public:
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapGroup() -> const vector<Critter*>&;
+    [[nodiscard]] auto GetGlobalMapGroup() -> span<raw_ptr<Critter>>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> auto& { return _globalMapGroup; }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
 
@@ -227,22 +226,21 @@ public:
         ipos16 EndHexOffset {};
     } Moving {};
 
-    vector<Critter*> AttachedCritters {};
+    vector<raw_ptr<Critter>> AttachedCritters {};
 
 private:
     refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
-    vector<Item*> _invItems {};
-
-    vector<Critter*> _visibleCrWhoSeeMe {};
-    vector<Critter*> _visibleCr {};
-    unordered_map<ident_t, Critter*> _visibleCrWhoSeeMeMap {};
-    unordered_map<ident_t, Critter*> _visibleCrMap {};
+    vector<raw_ptr<Item>> _invItems {};
+    vector<raw_ptr<Critter>> _visibleCrWhoSeeMe {};
+    vector<raw_ptr<Critter>> _visibleCr {};
+    unordered_map<ident_t, raw_ptr<Critter>> _visibleCrWhoSeeMeMap {};
+    unordered_map<ident_t, raw_ptr<Critter>> _visibleCrMap {};
     unordered_set<ident_t> _visibleCrGroup1 {};
     unordered_set<ident_t> _visibleCrGroup2 {};
     unordered_set<ident_t> _visibleCrGroup3 {};
     unordered_set<ident_t> _visibleItems {};
-    shared_ptr<vector<Critter*>> _globalMapGroup {};
+    shared_ptr<vector<raw_ptr<Critter>>> _globalMapGroup {};
 };
 
 FO_END_NAMESPACE();

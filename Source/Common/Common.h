@@ -454,7 +454,7 @@ struct BaseTypeInfo
     bool IsBool {};
     bool IsSimpleStruct {}; // Layout size is one primitive type
     bool IsComplexStruct {}; // Layout more than one primitives
-    const StructLayoutInfo* StructLayout {};
+    raw_ptr<const StructLayoutInfo> StructLayout {};
     size_t Size {};
 };
 
@@ -535,7 +535,7 @@ public:
 };
 
 // Interthread communication between server and client
-using InterthreadDataCallback = function<void(const_span<uint8>)>;
+using InterthreadDataCallback = function<void(span<const uint8>)>;
 extern map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum

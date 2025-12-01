@@ -139,7 +139,7 @@ void TextureAtlas::SpaceNode::Free() noexcept
     }
 
     // Populate collapsing to root
-    if (Children.empty() && Parent != nullptr && !Parent->Busy) {
+    if (Children.empty() && Parent && !Parent->Busy) {
         Parent->Free();
     }
 }

@@ -145,10 +145,10 @@ public:
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;
     static void MoveHexAroundAway(ipos32& hex, int32 index);
-    static void ForEachBlockLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
+    static void ForEachBlockLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
-    GeometrySettings& _settings;
+    raw_ptr<GeometrySettings> _settings;
 };
 
 FO_END_NAMESPACE();

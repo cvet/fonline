@@ -396,7 +396,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
         throw ScriptException("Critter is not on map");
     }
 
-    boneOffset = hex_cr->SprOffset;
+    boneOffset = hex_cr->GetSpriteOffset();
 
     if (!hex_cr->IsModel()) {
         return false;

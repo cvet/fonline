@@ -36,8 +36,8 @@
 FO_BEGIN_NAMESPACE();
 
 Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) :
-    _settings {settings},
-    _sprMngr {spr_mngr}
+    _settings {&settings},
+    _sprMngr {&spr_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -222,7 +222,7 @@ auto Keyboard::IsInvalidChar(const char* str, uint32 flags, int32& length) const
         }
     }
 
-    return !_sprMngr.HaveLetter(-1, ucs);
+    return !_sprMngr->HaveLetter(-1, ucs);
 }
 
 FO_END_NAMESPACE();

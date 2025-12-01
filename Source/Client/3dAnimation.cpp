@@ -248,7 +248,7 @@ void ModelAnimationController::ResetBonesTransition(int32 skip_track, const vect
             }
 
             for (size_t j = 0; j < _tracks[i].AnimOutput.size(); j++) {
-                if (_tracks[i].AnimOutput[j] != nullptr && _tracks[i].AnimOutput[j]->BoneName == bone_name) {
+                if (_tracks[i].AnimOutput[j] && _tracks[i].AnimOutput[j]->BoneName == bone_name) {
                     _tracks[i].AnimOutput[j]->Valid[i] = false;
                     _tracks[i].AnimOutput[j] = nullptr;
                 }
@@ -394,14 +394,14 @@ void ModelAnimationController::AdvanceTime(float32 time)
             o.Valid[i] = false;
         }
 
-        if (!track.Enabled || track.Weight <= 0.0f || track.Anim == nullptr) {
+        if (!track.Enabled || track.Weight <= 0.0f || !track.Anim) {
             continue;
         }
 
         const auto& anim_outputs = track.Anim->GetBoneOutputs();
 
         for (size_t j = 0; j < anim_outputs.size(); j++) {
-            if (track.AnimOutput[j] == nullptr) {
+            if (!track.AnimOutput[j]) {
                 continue;
             }
 

@@ -48,15 +48,15 @@ class Properties;
 class ScriptSystem;
 
 using BakeCheckerCallback = function<bool(string_view, uint64)>;
-using AsyncWriteDataCallback = function<void(string_view, const_span<uint8>)>;
+using AsyncWriteDataCallback = function<void(string_view, span<const uint8>)>;
 
 struct BakerData
 {
-    const BakingSettings* Settings {};
+    raw_ptr<const BakingSettings> Settings {};
     string PackName {};
     BakeCheckerCallback BakeChecker {};
     AsyncWriteDataCallback WriteData {};
-    const FileSystem* BakedFiles {};
+    raw_ptr<const FileSystem> BakedFiles {};
 };
 
 class BaseBaker
@@ -99,8 +99,7 @@ public:
 private:
     void BakeAllInternal();
 
-    BakingSettings& _settings;
-    bool _nonConstHelper {};
+    raw_ptr<BakingSettings> _settings;
 };
 
 class BakerDataSource final : public DataSource
@@ -133,9 +132,9 @@ private:
     [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64& write_time, unique_del_ptr<const uint8>* data) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64 write_time) -> bool;
-    void WriteData(string_view res_pack_name, string_view path, const_span<uint8> data);
+    void WriteData(string_view res_pack_name, string_view path, span<const uint8> data);
 
-    BakingSettings& _settings;
+    raw_ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};
     FileSystem _outputResources {};
     mutable std::mutex _outputFilesLocker {};

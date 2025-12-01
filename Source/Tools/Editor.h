@@ -67,7 +67,7 @@ protected:
     virtual void OnDraw() { }
 
     string _viewName;
-    FOEditor& _editor;
+    raw_ptr<FOEditor> _editor;
 
 private:
     bool _bringToFront {};

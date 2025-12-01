@@ -85,7 +85,7 @@ auto EntityManager::GetPlayer(ident_t id) const noexcept -> const Player*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -96,7 +96,7 @@ auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -107,7 +107,7 @@ auto EntityManager::GetLocation(ident_t id) const noexcept -> const Location*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -118,7 +118,7 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -129,7 +129,7 @@ auto EntityManager::GetMap(ident_t id) const noexcept -> const Map*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -140,7 +140,7 @@ auto EntityManager::GetMap(ident_t id) noexcept -> Map*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -151,7 +151,7 @@ auto EntityManager::GetCritter(ident_t id) const noexcept -> const Critter*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -162,7 +162,7 @@ auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -173,7 +173,7 @@ auto EntityManager::GetItem(ident_t id) const noexcept -> const Item*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -184,7 +184,7 @@ auto EntityManager::GetItem(ident_t id) noexcept -> Item*
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -198,7 +198,7 @@ void EntityManager::LoadEntities()
 
     bool is_error = false;
 
-    LoadInnerEntities(_engine, is_error);
+    LoadInnerEntities(_engine.get(), is_error);
 
     const auto loc_ids = _engine->DbStorage.GetAllIds(_locationCollectionName);
 
@@ -256,7 +256,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         return nullptr;
     }
 
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), loc_id, loc_proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
@@ -300,7 +300,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         }
 
         if (map_ids_changed) {
-            const auto actual_map_ids = vec_transform(loc->GetMaps(), [](const refcount_ptr<Map>& map) -> ident_t { return map->GetId(); });
+            const auto actual_map_ids = vec_transform(loc->GetMaps(), [](auto&& map) -> ident_t { return map->GetId(); });
             loc->SetMapIds(actual_map_ids);
         }
 
@@ -336,8 +336,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         return nullptr;
     }
 
-    const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
+    auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
@@ -378,7 +378,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         }
 
         if (cr_ids_changed) {
-            const auto actual_cr_ids = vec_transform(map->GetCritters(), [](const Critter* cr) -> ident_t { return cr->GetId(); });
+            const auto actual_cr_ids = vec_transform(map->GetCritters(), [](auto&& cr) -> ident_t { return cr->GetId(); });
             map->SetCritterIds(actual_cr_ids);
         }
 
@@ -405,7 +405,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         }
 
         if (item_ids_changed) {
-            const auto actual_item_ids = vec_transform(map->GetItems(), [](const Item* item) -> ident_t { return item->GetId(); });
+            const auto actual_item_ids = vec_transform(map->GetItems(), [](auto&& item) -> ident_t { return item->GetId(); });
             map->SetItemIds(actual_item_ids);
         }
 
@@ -441,7 +441,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         return nullptr;
     }
 
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), cr_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
@@ -479,7 +479,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         }
 
         if (item_ids_changed) {
-            const auto actual_item_ids = vec_transform(cr->GetInvItems(), [](const Item* item) -> ident_t { return item->GetId(); });
+            const auto actual_item_ids = vec_transform(cr->GetInvItems(), [](auto&& item) -> ident_t { return item->GetId(); });
             cr->SetItemIds(actual_item_ids);
         }
 
@@ -515,7 +515,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         return nullptr;
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), item_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
@@ -1081,7 +1081,7 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
-        FO_RUNTIME_ASSERT(holder == _engine);
+        FO_RUNTIME_ASSERT(_engine.get() == holder);
     }
 
     entity->SetCustomHolderEntry(entry);
@@ -1122,10 +1122,10 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     refcount_ptr<CustomEntity> entity;
 
     if (proto != nullptr) {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine.get(), ident_t {}, registrator, proto);
     }
     else {
-        entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
+        entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine.get(), ident_t {}, registrator, nullptr);
     }
 
     RegisterCustomEntity(entity.get());
@@ -1179,10 +1179,10 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         refcount_ptr<CustomEntity> entity;
 
         if (proto != nullptr) {
-            entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrator, proto);
+            entity = SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine.get(), id, registrator, proto);
         }
         else {
-            entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator, nullptr);
+            entity = SafeAlloc::MakeRefCounted<CustomEntity>(_engine.get(), id, registrator, nullptr);
         }
 
         if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
@@ -1210,7 +1210,7 @@ auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> CustomEnti
     auto& custom_entities = _allCustomEntities[type_name];
     const auto it = custom_entities.find(id);
 
-    return it != custom_entities.end() ? it->second : nullptr;
+    return it != custom_entities.end() ? it->second.get() : nullptr;
 }
 
 void EntityManager::DestroyCustomEntity(CustomEntity* entity)
@@ -1234,7 +1234,7 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
         FO_RUNTIME_ASSERT(holder);
     }
     else {
-        holder = _engine;
+        holder = _engine.get();
     }
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) {
@@ -1292,8 +1292,8 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             view_callback(player, true);
         }
         else if (const auto* game = dynamic_cast<FOServer*>(holder); game != nullptr) {
-            for (auto* game_player : GetPlayers() | std::views::values) {
-                view_callback(game_player, false);
+            for (auto& game_player : GetPlayers() | std::views::values) {
+                view_callback(game_player.get(), false);
             }
         }
         else if (auto* loc = dynamic_cast<Location*>(holder); loc != nullptr) {
@@ -1302,7 +1302,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             }
         }
         else if (auto* map = dynamic_cast<Map*>(holder)) {
-            for (auto* map_cr : map->GetPlayerCritters()) {
+            for (auto& map_cr : map->GetPlayerCritters()) {
                 view_callback(map_cr->GetPlayer(), false);
             }
         }
@@ -1316,7 +1316,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             case ItemOwnership::MapHex: {
                 if (derived_access == EntityHolderEntryAccess::Public) {
                     if (auto* item_map = GetMap(item->GetMapId()); item_map != nullptr) {
-                        for (auto* map_cr : item_map->GetPlayerCritters()) {
+                        for (auto& map_cr : item_map->GetPlayerCritters()) {
                             if (map_cr->IsSeeItem(item->GetId())) {
                                 view_callback(map_cr->GetPlayer(), false);
                             }

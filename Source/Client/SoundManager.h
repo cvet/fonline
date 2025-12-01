@@ -68,8 +68,8 @@ private:
     auto StreamOgg(Sound* sound) -> bool;
     auto ConvertData(Sound* sound) -> bool;
 
-    AudioSettings& _settings;
-    FileSystem& _resources;
+    raw_ptr<AudioSettings> _settings;
+    raw_ptr<FileSystem> _resources;
     bool _isActive {};
     int32 _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;

@@ -52,7 +52,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     FO_RUNTIME_ASSERT(!_mapSprValid);
 
     const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
-    auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, &Spr, &SprOffset, &_curAlpha, &DrawEffect, &_mapSprValid);
+    auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
 
     SetupSprite(mspr);
 
@@ -172,7 +172,7 @@ void HexView::RefreshSprite()
     }
 }
 
-auto HexView::GetSprite() const -> const MapSprite*
+auto HexView::GetMapSprite() const -> const MapSprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -181,7 +181,7 @@ auto HexView::GetSprite() const -> const MapSprite*
     return _mapSpr.get();
 }
 
-auto HexView::GetSprite() -> MapSprite*
+auto HexView::GetMapSprite() -> MapSprite*
 {
     FO_STACK_TRACE_ENTRY();
 

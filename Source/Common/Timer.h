@@ -61,7 +61,7 @@ public:
     void FrameAdvance();
 
 private:
-    TimerSettings& _settings;
+    raw_ptr<TimerSettings> _settings;
 
     nanotime _frameTime {};
     timespan _frameDeltaTime {};

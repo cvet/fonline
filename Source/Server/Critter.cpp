@@ -231,7 +231,7 @@ void Critter::MoveAttachedCritters()
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
 
-    for (auto* cr : AttachedCritters) {
+    for (auto& cr : AttachedCritters) {
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(cr->GetIsAttached());
         FO_RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
@@ -242,11 +242,11 @@ void Critter::MoveAttachedCritters()
         const auto hex = cr->GetHex();
 
         if (hex != new_hex) {
-            map->RemoveCritterFromField(cr);
+            map->RemoveCritterFromField(cr.get());
             cr->SetHex(new_hex);
-            map->AddCritterToField(cr);
+            map->AddCritterToField(cr.get());
 
-            moved_critters.emplace_back(cr, hex, cr);
+            moved_critters.emplace_back(cr.get(), hex, cr.get());
         }
     }
 
@@ -296,13 +296,13 @@ void Critter::ClearVisibleEnitites()
     FO_RUNTIME_ASSERT(GetMapId());
 
     while (!_visibleCrWhoSeeMe.empty()) {
-        auto* cr = _visibleCrWhoSeeMe.front();
+        auto* cr = _visibleCrWhoSeeMe.front().get();
         const auto del_ok = RemoveVisibleCritter(cr);
         FO_RUNTIME_ASSERT(del_ok);
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
-        auto* cr = _visibleCr.front();
+        auto* cr = _visibleCr.front().get();
         const auto del_ok2 = cr->RemoveVisibleCritter(this);
         FO_RUNTIME_ASSERT(del_ok2);
     }
@@ -329,7 +329,7 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 
     if (!GetMapId()) {
         FO_RUNTIME_ASSERT(_globalMapGroup);
-        const auto it = std::find_if(_globalMapGroup->begin(), _globalMapGroup->end(), [&cr_id](const Critter* other) { return other->GetId() == cr_id; });
+        const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](auto&& other) { return other->GetId() == cr_id; });
         return it != _globalMapGroup->end() && cr_id != GetId();
     }
 
@@ -346,15 +346,15 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*
 
     if (!GetMapId()) {
         FO_RUNTIME_ASSERT(_globalMapGroup);
-        const auto it = std::find_if(_globalMapGroup->begin(), _globalMapGroup->end(), [&cr_id](const Critter* other) { return other->GetId() == cr_id; });
-        return it != _globalMapGroup->end() && cr_id != GetId() ? *it : nullptr;
+        const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](auto&& other) { return other->GetId() == cr_id; });
+        return it != _globalMapGroup->end() && cr_id != GetId() ? it->get() : nullptr;
     }
 
     if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
         const auto it = _visibleCrWhoSeeMeMap.find(cr_id);
 
         if (it != _visibleCrWhoSeeMeMap.end()) {
-            return it->second;
+            return it->second.get();
         }
     }
 
@@ -362,7 +362,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*
         const auto it = _visibleCrMap.find(cr_id);
 
         if (it != _visibleCrMap.end()) {
-            return it->second;
+            return it->second.get();
         }
     }
 
@@ -377,14 +377,14 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
         FO_RUNTIME_ASSERT(_globalMapGroup);
         auto critters = copy(*_globalMapGroup);
         vec_remove_unique_value(critters, this);
-        return critters;
+        return vec_transform(critters, [](auto&& cr) -> Critter* { return cr.get(); });
     }
 
     if (see_type == CritterSeeType::WhoSeeMe && find_type == CritterFindType::Any) {
-        return _visibleCrWhoSeeMe;
+        return vec_transform(_visibleCrWhoSeeMe, [](auto&& cr) -> Critter* { return cr.get(); });
     }
     if (see_type == CritterSeeType::WhoISee && find_type == CritterFindType::Any) {
-        return _visibleCr;
+        return vec_transform(_visibleCr, [](auto&& cr) -> Critter* { return cr.get(); });
     }
 
     vector<Critter*> critters;
@@ -400,20 +400,20 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
     }
 
     if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
-        for (auto* cr : _visibleCrWhoSeeMe) {
+        for (auto& cr : _visibleCrWhoSeeMe) {
             if (cr->CheckFind(find_type)) {
-                critters.emplace_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
     if (see_type == CritterSeeType::WhoISee || see_type == CritterSeeType::Any) {
-        for (auto* cr : _visibleCr) {
+        for (auto& cr : _visibleCr) {
             if (cr->CheckFind(find_type)) {
                 if (see_type == CritterSeeType::Any && std::ranges::find(critters, cr) != critters.end()) {
                     continue;
                 }
 
-                critters.emplace_back(cr);
+                critters.emplace_back(cr.get());
             }
         }
     }
@@ -421,7 +421,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
     return critters;
 }
 
-auto Critter::GetGlobalMapGroup() -> const vector<Critter*>&
+auto Critter::GetGlobalMapGroup() -> span<raw_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -596,9 +596,9 @@ auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* item : _invItems) {
+    for (auto& item : _invItems) {
         if (item->GetId() == item_id) {
-            return item;
+            return item.get();
         }
     }
 
@@ -611,9 +611,9 @@ auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> Item*
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* item : _invItems) {
+    for (auto& item : _invItems) {
         if (item->GetProtoId() == item_pid) {
-            return item;
+            return item.get();
         }
     }
 
@@ -626,7 +626,13 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return vec_filter_first(_invItems, [&](const Item* item) noexcept { return item->GetCritterSlot() == slot; });
+    const auto it = std::ranges::find_if(_invItems, [&](auto&& item) noexcept -> bool { return item->GetCritterSlot() == slot; });
+
+    if (it == _invItems.end()) {
+        return nullptr;
+    }
+
+    return it->get();
 }
 
 auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32
@@ -635,7 +641,7 @@ auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32
 
     int32 count = 0;
 
-    for (const auto* item : _invItems) {
+    for (const auto& item : _invItems) {
         if (item->GetProtoId() == pid) {
             count += item->GetCount();
         }
@@ -650,7 +656,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Property(type, prop, entity);
     }
 }
@@ -661,7 +667,7 @@ void Critter::Broadcast_Action(CritterAction action, int32 action_data, const It
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Action(this, action, action_data, item);
     }
 }
@@ -672,7 +678,7 @@ void Critter::Broadcast_Dir()
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Dir(this);
     }
 }
@@ -683,7 +689,7 @@ void Critter::Broadcast_Teleport(mpos to_hex)
 
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Teleport(this, to_hex);
     }
 }
@@ -696,9 +702,9 @@ void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(
         callback(this);
     }
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         if (ignore_player == nullptr || ignore_player != cr->GetPlayer()) {
-            callback(cr);
+            callback(cr.get());
         }
     }
 }
@@ -709,7 +715,7 @@ void Critter::SendAndBroadcast_Moving()
 
     Send_Moving(this);
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Moving(this);
     }
 }
@@ -720,7 +726,7 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32 action_data, c
 
     Send_Action(this, action, action_data, context_item);
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Action(this, action, action_data, context_item);
     }
 }
@@ -731,7 +737,7 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, 
 
     Send_MoveItem(this, item, action, prev_slot);
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_MoveItem(this, item, action, prev_slot);
     }
 }
@@ -742,7 +748,7 @@ void Critter::SendAndBroadcast_Attachments()
 
     Send_Attachments(this);
 
-    for (auto* cr : _visibleCrWhoSeeMe) {
+    for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Attachments(this);
     }
 }

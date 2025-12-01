@@ -53,8 +53,8 @@ class CritterManager;
 
 struct FindPathInput // Todo: make FindPathInput pointer fields raw_ptr
 {
-    Map* TargetMap {};
-    Critter* FromCritter {};
+    raw_ptr<Map> TargetMap {};
+    raw_ptr<Critter> FromCritter {};
     mpos FromHex {};
     mpos ToHex {};
     mpos NewToHex {};
@@ -63,7 +63,7 @@ struct FindPathInput // Todo: make FindPathInput pointer fields raw_ptr
     int32 TraceDist {};
     bool CheckCritter {};
     bool CheckGagItems {};
-    Critter* TraceCr {};
+    raw_ptr<Critter> TraceCr {};
 };
 
 struct FindPathOutput
@@ -94,12 +94,12 @@ struct FindPathOutput
 
 struct TracePathInput // Todo: make TracePathInput pointer fields raw_ptr
 {
-    Map* TraceMap {};
+    raw_ptr<Map> TraceMap {};
     mpos StartHex {};
     mpos TargetHex {};
     int32 MaxDist {};
     float32 Angle {};
-    const Critter* FindCr {};
+    raw_ptr<const Critter> FindCr {};
     CritterFindType FindType {};
     bool CheckLastMovable {};
     bool CollectCritters {};
@@ -113,7 +113,7 @@ struct TracePathOutput
     mpos PreBlock {};
     mpos Block {};
     mpos LastMovable {};
-    vector<Critter*> Critters {};
+    vector<raw_ptr<Critter>> Critters {};
 };
 
 class MapManager final
@@ -127,14 +127,14 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) const -> FO_NON_NULL const StaticMap*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> FO_NON_NULL StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*;
-    [[nodiscard]] auto FindPath(const FindPathInput& input) const -> FindPathOutput;
-    [[nodiscard]] auto TracePath(const TracePathInput& input) const -> TracePathOutput;
+    [[nodiscard]] auto FindPath(FindPathInput& input) const -> FindPathOutput;
+    [[nodiscard]] auto TracePath(TracePathInput& input) const -> TracePathOutput;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, span<const hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
     void DestroyLocation(Location* loc);
     auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void DestroyMap(Map* map);

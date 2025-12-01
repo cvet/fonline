@@ -309,7 +309,7 @@ public:
         _value {v}
     {
     }
-    constexpr auto operator!=(const irange_iterator& other) const noexcept -> bool { return _value != other._value; }
+    constexpr auto operator==(const irange_iterator& other) const noexcept -> bool { return _value == other._value; }
     constexpr auto operator*() const noexcept -> const T& { return _value; }
     constexpr auto operator++() noexcept -> irange_iterator&
     {

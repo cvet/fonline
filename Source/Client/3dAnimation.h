@@ -111,7 +111,7 @@ private:
     struct Output
     {
         hstring BoneName {};
-        mat44* Matrix {};
+        raw_ptr<mat44> Matrix {};
         vector<bool> Valid {};
         vector<float32> Factor {};
         vector<vec3> Scale {};
@@ -141,9 +141,9 @@ private:
         float32 Speed {};
         float32 Weight {};
         float32 Position {};
-        const ModelAnimation* Anim {};
+        raw_ptr<const ModelAnimation> Anim {};
         bool Reversed {};
-        vector<Output*> AnimOutput {};
+        vector<raw_ptr<Output>> AnimOutput {};
         vector<Event> Events {};
     };
 

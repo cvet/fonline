@@ -50,8 +50,6 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
         return _engine->EntityMngr.GetCritter(item->GetCritterId());
@@ -69,8 +67,6 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     FO_RUNTIME_ASSERT(item);
     FO_RUNTIME_ASSERT(holder);

@@ -70,12 +70,6 @@ public:
         (void)other;
         return true;
     }
-    template<typename U>
-    [[nodiscard]] auto operator!=(const SafeAllocator<U>& other) const noexcept -> bool
-    {
-        (void)other;
-        return false;
-    }
 
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto allocate(size_t count) const noexcept -> T*

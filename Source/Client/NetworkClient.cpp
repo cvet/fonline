@@ -36,11 +36,11 @@
 FO_BEGIN_NAMESPACE();
 
 NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _incomeBuf.resize(_settings.NetBufferSize);
+    _incomeBuf.resize(_settings->NetBufferSize);
     _isConnecting = true;
 }
 
@@ -61,7 +61,7 @@ auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
     }
 }
 
-auto NetworkClientConnection::SendData(const_span<uint8> buf) -> size_t
+auto NetworkClientConnection::SendData(span<const uint8> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,7 +80,7 @@ auto NetworkClientConnection::SendData(const_span<uint8> buf) -> size_t
     }
 }
 
-auto NetworkClientConnection::ReceiveData() -> const_span<uint8>
+auto NetworkClientConnection::ReceiveData() -> span<const uint8>
 {
     if (!_isConnecting && !_isConnected) {
         return {};

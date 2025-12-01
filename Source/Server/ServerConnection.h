@@ -113,10 +113,10 @@ public:
 
 private:
     void StartAsyncSend();
-    auto AsyncSendData() -> const_span<uint8>;
-    void AsyncReceiveData(const_span<uint8> buf);
+    auto AsyncSendData() -> span<const uint8>;
+    void AsyncReceiveData(span<const uint8> buf);
 
-    ServerNetworkSettings& _settings;
+    raw_ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
     NetInBuffer _inBuf;
     std::mutex _inBufLocker {};

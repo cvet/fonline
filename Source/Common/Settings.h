@@ -62,9 +62,9 @@ struct SubConfigInfo
 struct BaseSettings
 {
 public:
-    [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
-    [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
-    [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
+    [[nodiscard]] auto GetResourcePacks() const -> span<const ResourcePackInfo>;
+    [[nodiscard]] auto GetSubConfigs() const noexcept -> span<const SubConfigInfo> { return _subConfigs; }
+    [[nodiscard]] auto GetAppliedConfigs() const -> span<const string> { return _appliedConfigs; }
 
 protected:
     vector<ResourcePackInfo> _resourcePacks {};

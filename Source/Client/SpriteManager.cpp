@@ -352,7 +352,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[vpos].EggTexU = 0.0f;
     }
 
-    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.FlushRenderTarget;
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.FlushRenderTarget.get();
 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
@@ -555,7 +555,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
+    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
     FO_RUNTIME_ASSERT(effect);
 
     color = ApplyColorBrightness(color);
@@ -618,7 +618,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
         hf = size.height;
     }
 
-    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
+    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
     FO_RUNTIME_ASSERT(effect);
 
     color = ApplyColorBrightness(color);
@@ -671,7 +671,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
     color = ApplyColorBrightness(color);
 
-    auto* effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
+    auto* effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
     FO_RUNTIME_ASSERT(effect);
 
     const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
@@ -926,7 +926,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         auto* effect = spr_effect != nullptr ? *spr_effect : nullptr;
 
         if (effect == nullptr) {
-            effect = spr->GetDrawEffectOr(_effectMngr->Effects.Generic);
+            effect = spr->GetDrawEffectOr(_effectMngr->Effects.Generic.get());
         }
 
         // Fill buffer
@@ -1093,7 +1093,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
     Flush();
 
-    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.Primitive;
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.Primitive.get();
     FO_RUNTIME_ASSERT(effect);
 
     // Check primitives
@@ -1137,7 +1137,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         const auto& point = points[i];
         ipos32 pos = point.PointPos;
 
-        if (point.PointOffset != nullptr) {
+        if (point.PointOffset) {
             pos += *point.PointOffset;
         }
         if (draw_area != nullptr) {
@@ -1146,7 +1146,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
         vbuf[i].PosX = numeric_cast<float32>(pos.x);
         vbuf[i].PosY = numeric_cast<float32>(pos.y);
-        vbuf[i].Color = point.PPointColor != nullptr ? *point.PPointColor : point.PointColor;
+        vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
 
         ibuf[i] = numeric_cast<vindex_t>(i);
     }
@@ -1189,7 +1189,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
         return;
     }
 
-    auto* contour_effect = _effectMngr->Effects.Contour;
+    auto* contour_effect = _effectMngr->Effects.Contour.get();
 
     if (contour_effect == nullptr) {
         return;
@@ -1276,6 +1276,21 @@ auto SpriteManager::GetFont(int32 num) -> FontData*
     if (num < 0 || num >= numeric_cast<int32>(_allFonts.size())) {
         return nullptr;
     }
+
+    return _allFonts[num].get();
+}
+
+auto SpriteManager::GetFont(int32 num) const -> const FontData*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (num < 0) {
+        num = _defFontIndex;
+    }
+    if (num < 0 || num >= numeric_cast<int32>(_allFonts.size())) {
+        return nullptr;
+    }
+
     return _allFonts[num].get();
 }
 
@@ -1298,6 +1313,7 @@ void SpriteManager::SetFontEffect(int32 index, RenderEffect* effect)
     FO_STACK_TRACE_ENTRY();
 
     auto* font = GetFont(index);
+
     if (font != nullptr) {
         font->DrawEffect = effect != nullptr ? effect : _effectMngr->Effects.Font;
     }
@@ -1823,9 +1839,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 
     fi.PStr = fi.Str;
 
-    auto* str = fi.PStr;
+    auto* str = fi.PStr.get();
     auto flags = fi.Flags;
-    auto* font = fi.CurFont;
+    const auto* font = fi.CurFont.get();
     auto r = fi.Rect;
     auto infinity_w = r.width == 0;
     auto infinity_h = r.height == 0;
@@ -1901,7 +1917,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
         str_++;
     }
 
-    StrCopy(fi.PStr, FONT_BUF_LEN, buf);
+    StrCopy(fi.PStr.get(), FONT_BUF_LEN, buf);
 
     // Skip lines
     auto skip_line = IsBitSet(flags, FT_SKIPLINES(0)) ? flags >> 16 : 0;
@@ -2242,7 +2258,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     }
 
     // Get font
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
 
     if (font == nullptr) {
         return;
@@ -2261,12 +2277,12 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
         return;
     }
 
-    const auto* str_ = fi.PStr;
+    const auto* str_ = fi.PStr.get();
     const auto offs_col = fi.OffsColDots;
     auto curx = fi.CurX;
     auto cury = fi.CurY;
     auto curstr = 0;
-    auto& texture = IsBitSet(flags, FT_BORDERED) && font->FontTexBordered != nullptr ? font->FontTexBordered : font->FontTex;
+    const auto& texture = IsBitSet(flags, FT_BORDERED) && font->FontTexBordered ? font->FontTexBordered : font->FontTex;
 
     if (!IsBitSet(flags, FT_NO_COLORIZE)) {
         for (auto i = offs_col; i >= 0; i--) {
@@ -2417,7 +2433,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     }
 }
 
-auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font /* = -1 */) -> int32
+auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font /* = -1 */) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2425,7 +2441,7 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
         return 0;
     }
 
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
 
     if (font == nullptr) {
         return 0;
@@ -2447,7 +2463,7 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
     return fi.LinesInRect;
 }
 
-auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font /* = -1 */) -> int32
+auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font /* = -1 */) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2470,7 +2486,7 @@ auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font
     return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
 }
 
-auto SpriteManager::GetLineHeight(int32 num_font) -> int32
+auto SpriteManager::GetLineHeight(int32 num_font) const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2483,14 +2499,14 @@ auto SpriteManager::GetLineHeight(int32 num_font) -> int32
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) -> bool
+auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     result_size = {};
     lines = {};
 
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
 
     if (font == nullptr) {
         return false;
@@ -2525,7 +2541,7 @@ auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -
         return {};
     }
 
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
 
     if (font == nullptr) {
         return {};
@@ -2544,7 +2560,7 @@ auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -
     return result;
 }
 
-auto SpriteManager::HaveLetter(int32 num_font, uint32 letter) -> bool
+auto SpriteManager::HaveLetter(int32 num_font, uint32 letter) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

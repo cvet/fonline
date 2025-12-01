@@ -99,6 +99,10 @@ class ref_hold_vector
 {
 public:
     explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
+    explicit ref_hold_vector(vector<T>&& vec) noexcept :
+        _vec {std::move(vec)}
+    {
+    }
 
     ref_hold_vector(const ref_hold_vector&) = delete;
     ref_hold_vector(ref_hold_vector&&) noexcept = default;
@@ -138,8 +142,18 @@ template<typename T>
     return ref_vec;
 }
 
+template<typename T>
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<T>
+{
+    auto ref_vec = ref_hold_vector<T>(std::move(value));
+    for (auto&& ref : value) {
+        ref_vec.add(ref);
+    }
+    return ref_vec;
+}
+
 template<typename T, typename U>
-[[nodiscard]] constexpr auto copy_hold_ref(const unordered_map<T, U>& value) -> ref_hold_vector<U>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<U>
 {
     auto ref_vec = ref_hold_vector<U>(value.size());
     for (auto&& ref : value | std::views::values) {
@@ -148,8 +162,18 @@ template<typename T, typename U>
     return ref_vec;
 }
 
+template<typename T, typename U>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, raw_ptr<U>>& value) -> ref_hold_vector<U*>
+{
+    auto ref_vec = ref_hold_vector<U*>(value.size());
+    for (auto&& ref : value | std::views::values) {
+        ref_vec.add(ref.get());
+    }
+    return ref_vec;
+}
+
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<T>& value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<T>
 {
     auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
@@ -159,12 +183,23 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(const unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
 {
     static_assert(!std::is_const_v<T>);
     auto ref_vec = ref_hold_vector<T*>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get_no_const());
+        ref_vec.add(ref.get());
+    }
+    return ref_vec;
+}
+
+template<typename T>
+[[nodiscard]] constexpr auto copy_hold_ref(const span<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+{
+    static_assert(!std::is_const_v<T>);
+    auto ref_vec = ref_hold_vector<T*>(value.size());
+    for (auto&& ref : value) {
+        ref_vec.add(ref.get());
     }
     return ref_vec;
 }
@@ -197,7 +232,7 @@ template<typename T, typename T2>
 template<typename T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::find(vec.begin(), vec.end(), value);
+    const auto it = std::ranges::find(vec, value);
     FO_RUNTIME_ASSERT(it == vec.end());
     vec.emplace_back(std::move(value));
 }
@@ -205,7 +240,7 @@ constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 template<typename T>
 constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
-    const auto it = std::find(vec.begin(), vec.end(), value);
+    const auto it = std::ranges::find(vec, value);
     FO_RUNTIME_ASSERT(it != vec.end());
     vec.erase(it);
 }
@@ -224,18 +259,18 @@ template<typename T, typename U>
 }
 
 template<typename T, typename U>
-[[nodiscard]] constexpr auto vec_filter_first(const vector<T>& vec, const U& filter) noexcept(std::is_nothrow_invocable_v<U>) -> T
+[[nodiscard]] constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
 {
-    for (const auto& value : vec) {
-        if (static_cast<bool>(filter(value))) {
-            return value;
-        }
+    vector<decltype(transfromer(nullptr))> result;
+    result.reserve(vec.size());
+    for (auto&& value : vec) {
+        result.emplace_back(transfromer(value));
     }
-    return T {};
+    return result;
 }
 
 template<typename T, typename U>
-[[nodiscard]] constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
+[[nodiscard]] constexpr auto vec_transform(const span<T>& vec, const U& transfromer) -> auto
 {
     vector<decltype(transfromer(nullptr))> result;
     result.reserve(vec.size());
@@ -248,13 +283,13 @@ template<typename T, typename U>
 template<typename T>
 [[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
 {
-    return std::find(vec.begin(), vec.end(), value) != vec.end();
+    return std::ranges::find(vec, value) != vec.end();
 }
 
 template<typename T, typename U>
 [[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> bool
 {
-    return std::find_if(vec.begin(), vec.end(), predicate) != vec.end();
+    return std::ranges::find_if(vec, predicate) != vec.end();
 }
 
 FO_END_NAMESPACE();

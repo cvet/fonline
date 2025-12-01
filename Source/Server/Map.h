@@ -57,24 +57,24 @@ struct StaticMap
     {
         bool MoveBlocked {};
         bool ShootBlocked {};
-        vector<StaticItem*> StaticItems {};
-        vector<StaticItem*> TriggerItems {};
+        vector<raw_ptr<StaticItem>> StaticItems {};
+        vector<raw_ptr<StaticItem>> TriggerItems {};
     };
 
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> HexField {};
     vector<pair<ident_t, refcount_ptr<Critter>>> CritterBillets {};
     vector<pair<ident_t, refcount_ptr<Item>>> ItemBillets {};
-    vector<pair<ident_t, Item*>> HexItemBillets {};
-    vector<pair<ident_t, Item*>> ChildItemBillets {};
-    vector<StaticItem*> StaticItems {};
-    unordered_map<ident_t, StaticItem*> StaticItemsById {};
+    vector<pair<ident_t, raw_ptr<Item>>> HexItemBillets {};
+    vector<pair<ident_t, raw_ptr<Item>>> ChildItemBillets {};
+    vector<raw_ptr<StaticItem>> StaticItems {};
+    unordered_map<ident_t, raw_ptr<StaticItem>> StaticItemsById {};
 };
 
 class Map final : public ServerEntity, public EntityWithProto, public MapProperties
 {
 public:
     Map() = delete;
-    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr) noexcept;
+    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props = nullptr) noexcept;
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -82,10 +82,10 @@ public:
     ~Map() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap* { return _staticMap; }
+    [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap* { return _staticMap.get(); }
     [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap* { return static_cast<const ProtoMap*>(_proto.get()); }
-    [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation; }
-    [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation; }
+    [[nodiscard]] auto GetLocation() noexcept -> Location* { return _mapLocation.get(); }
+    [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation.get(); }
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius) const -> bool;
@@ -96,8 +96,8 @@ public:
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetItemHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(mpos hex) const noexcept -> const Item*;
-    [[nodiscard]] auto GetItems() noexcept -> const vector<Item*>&;
-    [[nodiscard]] auto GetItems(mpos hex) noexcept -> const vector<Item*>&;
+    [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>> { return _items; }
+    [[nodiscard]] auto GetItems(mpos hex) noexcept -> span<raw_ptr<Item>>;
     [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(mpos hex) -> vector<Item*>;
@@ -108,19 +108,20 @@ public:
     [[nodiscard]] auto IsCritter(mpos hex, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
     [[nodiscard]] auto GetCritter(mpos hex, CritterFindType find_type) noexcept -> Critter*;
+    [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>> { return _critters; }
     [[nodiscard]] auto GetCritters(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters(mpos hex, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritters() noexcept -> const vector<Critter*>& { return _critters; }
-    [[nodiscard]] auto GetPlayerCritters() noexcept -> const vector<Critter*>& { return _playerCritters; }
-    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> const vector<Critter*>& { return _nonPlayerCritters; }
+    [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _playerCritters; }
+    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _nonPlayerCritters; }
     [[nodiscard]] auto HasCritters() const noexcept -> bool { return !_critters.empty(); }
     [[nodiscard]] auto IsStaticItemTrigger(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(mpos hex, hstring pid) noexcept -> StaticItem*;
-    [[nodiscard]] auto GetStaticItemsHex(mpos hex) noexcept -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>> { return _staticMap->StaticItems; }
+    [[nodiscard]] auto GetStaticItemsHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto GetStaticItemsHexEx(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
-    [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> const vector<StaticItem*>&;
+    [[nodiscard]] auto GetStaticItemsTrigger(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const -> bool;
 
     void SetLocation(Location* loc) noexcept;
@@ -154,10 +155,10 @@ private:
         bool HasNoShootItem {};
         bool MoveBlocked {};
         bool ShootBlocked {};
-        vector<Critter*> Critters {};
-        vector<Critter*> MultihexCritters {};
-        vector<Item*> Items {};
-        vector<Item*> BlockLines {};
+        vector<raw_ptr<Critter>> Critters {};
+        vector<raw_ptr<Critter>> MultihexCritters {};
+        vector<raw_ptr<Item>> Items {};
+        vector<raw_ptr<Item>> BlockLines {};
         bool ManualBlock {};
         bool ManualBlockFull {};
     };
@@ -165,16 +166,16 @@ private:
     void SetMultihexCritter(Critter* cr, bool set);
     void RecacheHexFlags(Field& field);
 
-    const StaticMap* _staticMap {};
+    raw_ptr<StaticMap> _staticMap {};
     msize _mapSize {};
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> _hexField {};
-    vector<Critter*> _critters {};
-    unordered_map<ident_t, Critter*> _crittersMap {};
-    vector<Critter*> _playerCritters {};
-    vector<Critter*> _nonPlayerCritters {};
-    vector<Item*> _items {};
-    unordered_map<ident_t, Item*> _itemsMap {};
-    Location* _mapLocation {};
+    vector<raw_ptr<Critter>> _critters {};
+    unordered_map<ident_t, raw_ptr<Critter>> _crittersMap {};
+    vector<raw_ptr<Critter>> _playerCritters {};
+    vector<raw_ptr<Critter>> _nonPlayerCritters {};
+    vector<raw_ptr<Item>> _items {};
+    unordered_map<ident_t, raw_ptr<Item>> _itemsMap {};
+    raw_ptr<Location> _mapLocation {};
 };
 
 FO_END_NAMESPACE();

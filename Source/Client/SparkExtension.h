@@ -118,9 +118,9 @@ namespace SPK::FO
         void Render2DAtlasRot(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D atlas and rotation
 
         string _path {};
-        ParticleManager* _particleMngr {};
-        RenderEffect* _effect {};
-        RenderTexture* _texture {};
+        raw_ptr<ParticleManager> _particleMngr {};
+        mutable raw_ptr<RenderEffect> _effect {};
+        raw_ptr<RenderTexture> _texture {};
         frect32 _textureAtlasOffset {};
 
         int32 _drawWidth {};

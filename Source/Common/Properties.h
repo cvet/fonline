@@ -92,7 +92,7 @@ public:
         MemCopy(Alloc(sizeof(T)), &value, sizeof(T));
     }
 
-    void Pass(const_span<uint8> value) noexcept;
+    void Pass(span<const uint8> value) noexcept;
     void Pass(const void* value, size_t size) noexcept;
     void StoreIfPassed() noexcept;
 
@@ -101,7 +101,7 @@ private:
     bool _useDynamic {};
     uint8 _localBuf[LOCAL_BUF_SIZE] {};
     unique_arr_ptr<uint8> _dynamicBuf {};
-    void* _passedPtr {};
+    raw_ptr<void> _passedPtr {};
 };
 
 using PropertyGetCallback = function<PropertyRawData(Entity*, const Property*)>;
@@ -121,7 +121,7 @@ public:
     auto operator=(Property&&) noexcept -> Property& = default;
     ~Property() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
+    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator.get(); }
     [[nodiscard]] auto GetName() const noexcept -> const string& { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> const string& { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetComponent() const noexcept -> const hstring& { return _component; }
@@ -198,7 +198,7 @@ public:
 private:
     explicit Property(const PropertyRegistrator* registrator);
 
-    const PropertyRegistrator* _registrator;
+    raw_ptr<const PropertyRegistrator> _registrator;
 
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
@@ -265,10 +265,10 @@ public:
     auto operator=(Properties&&) noexcept = delete;
     ~Properties() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator; }
-    [[nodiscard]] auto GetEntity() noexcept -> Entity* { FO_NON_CONST_METHOD_HINT_ONELINE() return _entity; }
+    [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator.get(); }
+    [[nodiscard]] auto GetEntity() const noexcept -> Entity* { return _entity.get(); }
     [[nodiscard]] auto Copy() const noexcept -> Properties;
-    [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> const_span<uint8>;
+    [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> span<const uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int32;
     [[nodiscard]] auto GetPlainDataValueAsAny(const Property* prop) const -> any_t;
@@ -278,7 +278,7 @@ public:
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
 
     void AllocData() noexcept;
-    void SetEntity(Entity* entity) noexcept { _entity = entity; }
+    void SetEntity(Entity* entity) const noexcept { _entity = entity; }
     void CopyFrom(const Properties& other) noexcept;
     void ValidateForRawData(const Property* prop) const noexcept(false);
     void ApplyFromText(const map<string, string>& key_values);
@@ -288,7 +288,7 @@ public:
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint32>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
-    void SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept;
+    void SetRawData(const Property* prop, span<const uint8> raw_data) noexcept;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int32 value);
     void SetPlainDataValueAsAny(const Property* prop, const any_t& value);
@@ -348,15 +348,14 @@ public:
     void SetValue(const Property* prop, PropertyRawData& prop_data);
 
 private:
-    const PropertyRegistrator* _registrator;
+    raw_ptr<const PropertyRegistrator> _registrator;
     unique_arr_ptr<uint8> _podData {};
     unique_arr_ptr<pair<unique_arr_ptr<uint8>, size_t>> _complexData {};
 
     mutable unique_ptr<vector<const uint8*>> _storeData {};
     mutable unique_ptr<vector<uint32>> _storeDataSizes {};
     mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
-    Entity* _entity {};
-    bool _nonConstHelper {};
+    mutable raw_ptr<Entity> _entity {};
 };
 
 class PropertyRegistrator final
@@ -382,15 +381,15 @@ public:
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
-    [[nodiscard]] auto GetProperties() const noexcept -> const vector<const Property*>& { return _constRegisteredProperties; }
+    [[nodiscard]] auto GetProperties() const noexcept -> const vector<raw_ptr<const Property>>& { return _constRegisteredProperties; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>;
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _registeredComponents; }
-    [[nodiscard]] auto GetHashResolver() const noexcept -> const HashResolver& { return _hashResolver; }
-    [[nodiscard]] auto GetNameResolver() const noexcept -> const NameResolver& { return _nameResolver; }
+    [[nodiscard]] auto GetHashResolver() const noexcept -> HashResolver* { return _hashResolver.get(); }
+    [[nodiscard]] auto GetNameResolver() const noexcept -> NameResolver* { return _nameResolver.get(); }
 
     void RegisterComponent(string_view name);
     void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }
-    void RegisterProperty(const const_span<string_view>& flags);
+    void RegisterProperty(const span<const string_view>& flags);
 
 private:
     const hstring _typeName;
@@ -398,13 +397,13 @@ private:
     const PropertiesRelationType _relation;
     const hstring _propMigrationRuleName;
     const hstring _componentMigrationRuleName;
-    HashResolver& _hashResolver;
-    NameResolver& _nameResolver;
+    mutable raw_ptr<HashResolver> _hashResolver;
+    mutable raw_ptr<NameResolver> _nameResolver;
     vector<unique_ptr<Property>> _registeredProperties {};
-    vector<const Property*> _constRegisteredProperties {};
-    unordered_map<string, const Property*> _registeredPropertiesLookup {};
+    vector<raw_ptr<const Property>> _constRegisteredProperties {};
+    unordered_map<string, raw_ptr<const Property>> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
-    map<string, vector<pair<const Property*, int32>>> _propertyGroups {};
+    map<string, vector<pair<raw_ptr<const Property>, int32>>> _propertyGroups {};
 
     // PlainData info
     size_t _wholePodDataSize {};
@@ -413,7 +412,7 @@ private:
     vector<bool> _privatePodDataSpace {};
 
     // Complex types info
-    vector<Property*> _complexProperties {};
+    vector<raw_ptr<Property>> _complexProperties {};
     vector<uint16> _publicComplexDataProps {};
     vector<uint16> _protectedComplexDataProps {};
     vector<uint16> _publicProtectedComplexDataProps {};
@@ -433,7 +432,7 @@ auto Properties::GetValue(const Property* prop) const -> T
         FO_RUNTIME_ASSERT(_entity);
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
             T result = prop_data.GetAs<T>();
             return result;
         }
@@ -462,7 +461,7 @@ auto Properties::GetValue(const Property* prop) const -> T
         FO_RUNTIME_ASSERT(_entity);
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
             const auto hash = prop_data.GetAs<hstring::hash_t>();
             auto result = ResolveHash(hash);
             return result;
@@ -491,7 +490,7 @@ auto Properties::GetValue(const Property* prop) const -> T
         FO_RUNTIME_ASSERT(_entity);
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
             auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
             return result;
         }
@@ -521,7 +520,7 @@ auto Properties::GetValue(const Property* prop) const -> T
         FO_RUNTIME_ASSERT(_entity);
 
         if (prop->_getter) {
-            prop_data = prop->_getter(_entity, prop);
+            prop_data = prop->_getter(_entity.get(), prop);
         }
     }
     else {
@@ -709,7 +708,7 @@ void Properties::SetValue(const Property* prop, T new_value)
         prop_data.SetAs<T>(new_value);
 
         for (const auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
     else {
@@ -726,12 +725,12 @@ void Properties::SetValue(const Property* prop, T new_value)
         }
 
         if (!equal) {
-            if (!prop->_setters.empty() && _entity != nullptr) {
+            if (!prop->_setters.empty() && _entity) {
                 PropertyRawData prop_data;
                 prop_data.SetAs<T>(new_value);
 
                 for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, prop_data);
+                    setter(_entity.get(), prop, prop_data);
                 }
 
                 cur_value = prop_data.GetAs<T>();
@@ -740,9 +739,9 @@ void Properties::SetValue(const Property* prop, T new_value)
                 cur_value = new_value;
             }
 
-            if (_entity != nullptr) {
+            if (_entity) {
                 for (const auto& setter : prop->_postSetters) {
-                    setter(_entity, prop);
+                    setter(_entity.get(), prop);
                 }
             }
         }
@@ -769,7 +768,7 @@ void Properties::SetValue(const Property* prop, T new_value)
         prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
 
         for (const auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
     else {
@@ -777,12 +776,12 @@ void Properties::SetValue(const Property* prop, T new_value)
         const auto new_value_hash = new_value.as_hash();
 
         if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
-            if (!prop->_setters.empty() && _entity != nullptr) {
+            if (!prop->_setters.empty() && _entity) {
                 PropertyRawData prop_data;
                 prop_data.SetAs<hstring::hash_t>(new_value_hash);
 
                 for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, prop_data);
+                    setter(_entity.get(), prop, prop_data);
                 }
 
                 *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
@@ -791,9 +790,9 @@ void Properties::SetValue(const Property* prop, T new_value)
                 *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = new_value_hash;
             }
 
-            if (_entity != nullptr) {
+            if (_entity) {
                 for (const auto& setter : prop->_postSetters) {
-                    setter(_entity, prop);
+                    setter(_entity.get(), prop);
                 }
             }
         }
@@ -818,18 +817,18 @@ void Properties::SetValue(const Property* prop, const T& new_value)
         prop_data.Pass(new_value.c_str(), new_value.length());
 
         for (const auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
     else {
         FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
 
-        if (!prop->_setters.empty() && _entity != nullptr) {
+        if (!prop->_setters.empty() && _entity) {
             PropertyRawData prop_data;
             prop_data.Pass(new_value.c_str(), new_value.length());
 
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
+                setter(_entity.get(), prop, prop_data);
             }
 
             SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
@@ -838,9 +837,9 @@ void Properties::SetValue(const Property* prop, const T& new_value)
             SetRawData(prop, {reinterpret_cast<const uint8*>(new_value.c_str()), new_value.length()});
         }
 
-        if (_entity != nullptr) {
+        if (_entity) {
             for (const auto& setter : prop->_postSetters) {
-                setter(_entity, prop);
+                setter(_entity.get(), prop);
             }
         }
     }
@@ -909,23 +908,23 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
         FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
         for (const auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
     else {
         FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
 
-        if (!prop->_setters.empty() && _entity != nullptr) {
+        if (!prop->_setters.empty() && _entity) {
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
+                setter(_entity.get(), prop, prop_data);
             }
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
 
-        if (_entity != nullptr) {
+        if (_entity) {
             for (const auto& setter : prop->_postSetters) {
-                setter(_entity, prop);
+                setter(_entity.get(), prop);
             }
         }
     }

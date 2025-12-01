@@ -50,13 +50,13 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 // Todo: move all these statics to App class fields
 static unique_ptr<Renderer> ActiveRenderer {};
 static RenderType ActiveRendererType {};
-static RenderTexture* RenderTargetTex {};
+static raw_ptr<RenderTexture> RenderTargetTex {};
 static ucolor ClearColor {150, 150, 150, 255};
 
 static unique_ptr<vector<InputEvent>> EventsQueue {};
 static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
 
-static SDL_AudioStream* AudioStream {};
+static raw_ptr<SDL_AudioStream> AudioStream {};
 static SDL_AudioSpec AudioSpec {};
 static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
 static unique_ptr<vector<uint8>> AudioStreamBuf {};
@@ -419,16 +419,16 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         _allWindows.emplace_back(&MainWindow);
 
         if (IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
-            SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle), true);
+            SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
         }
 
-        ActiveRenderer->Init(Settings, MainWindow._windowHandle);
+        ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
 
         if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
 
-        SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle));
+        SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
 
         // Init Dear ImGui
         ImGuiExt::Init();
@@ -463,7 +463,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
 #if FO_WINDOWS
         if (ActiveRendererType != RenderType::Null) {
-            const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle));
+            const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
             ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
         }
 #endif
@@ -822,8 +822,8 @@ void Application::BeginFrame()
             SDL_GetWindowSizeInPixels(resized_window, &width, &height);
             ActiveRenderer->OnResizeWindow({width, height});
 
-            for (auto* window : copy(_allWindows)) {
-                if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
+            for (auto& window : copy(_allWindows)) {
+                if (static_cast<SDL_Window*>(window->_windowHandle.get()) == resized_window) {
                     window->_onWindowSizeChangedDispatcher();
                 }
             }
@@ -864,10 +864,10 @@ void Application::BeginFrame()
             _pendingMouseLeaveFrame = 0;
         }
 
-        SDL_SetWindowMouseGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed);
+        SDL_SetWindowMouseGrab(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), MainWindow._grabbed);
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-        const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
+        const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle.get()) == SDL_GetKeyboardFocus();
 #else
         const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
@@ -884,7 +884,7 @@ void Application::BeginFrame()
 
                 int32 window_x;
                 int32 window_y;
-                SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
+                SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &window_x, &window_y);
 
                 const auto screen_pos = WindowPosToScreenPos({iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
                 io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
@@ -1035,7 +1035,7 @@ auto AppWindow::GetSize() const -> isize32
     int32 height = 1000;
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle), &width, &height);
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle.get_no_const()), &width, &height);
     }
 
     return {width, height};
@@ -1048,7 +1048,7 @@ void AppWindow::SetSize(isize32 size)
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), size.width, size.height);
+        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle.get()), size.width, size.height);
     }
 }
 
@@ -1079,7 +1079,7 @@ auto AppWindow::GetPosition() const -> ipos32
     int32 y = 0;
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowPosition(static_cast<SDL_Window*>(_windowHandle), &x, &y);
+        SDL_GetWindowPosition(static_cast<SDL_Window*>(_windowHandle.get_no_const()), &x, &y);
     }
 
     return {x, y};
@@ -1092,7 +1092,7 @@ void AppWindow::SetPosition(ipos32 pos)
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), pos.x, pos.y);
+        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle.get()), pos.x, pos.y);
     }
 }
 
@@ -1101,7 +1101,7 @@ auto AppWindow::IsFocused() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle.get_no_const())) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     return true;
@@ -1114,7 +1114,7 @@ void AppWindow::Minimize()
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_MinimizeWindow(static_cast<SDL_Window*>(_windowHandle));
+        SDL_MinimizeWindow(static_cast<SDL_Window*>(_windowHandle.get()));
     }
 }
 
@@ -1123,7 +1123,7 @@ auto AppWindow::IsFullscreen() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_FULLSCREEN) != 0;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle.get_no_const())) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
     return false;
@@ -1142,12 +1142,12 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     const auto is_fullscreen = IsFullscreen();
 
     if (!is_fullscreen && enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), true)) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle.get()), true)) {
             return IsFullscreen();
         }
     }
     else if (is_fullscreen && !enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), false)) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle.get()), false)) {
             return !IsFullscreen();
         }
     }
@@ -1165,7 +1165,7 @@ void AppWindow::Blink()
         return;
     }
 
-    SDL_FlashWindow(static_cast<SDL_Window*>(_windowHandle), SDL_FLASH_UNTIL_FOCUSED);
+    SDL_FlashWindow(static_cast<SDL_Window*>(_windowHandle.get()), SDL_FLASH_UNTIL_FOCUSED);
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
@@ -1178,7 +1178,7 @@ void AppWindow::AlwaysOnTop(bool enable)
         return;
     }
 
-    SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(_windowHandle), enable);
+    SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(_windowHandle.get()), enable);
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -1196,8 +1196,8 @@ void AppWindow::Destroy()
         return;
     }
 
-    if (_windowHandle != nullptr && this != &App->MainWindow) {
-        SDL_DestroyWindow(static_cast<SDL_Window*>(_windowHandle));
+    if (_windowHandle && this != &App->MainWindow) {
+        SDL_DestroyWindow(static_cast<SDL_Window*>(_windowHandle.get()));
         _windowHandle = nullptr;
     }
 }
@@ -1227,7 +1227,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return RenderTargetTex;
+    return RenderTargetTex.get();
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -1321,7 +1321,7 @@ void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
         if (relative_to != nullptr) {
             pos = ScreenPosToWindowPos(pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle.get_no_const()), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
         }
         else {
             SDL_WarpMouseGlobal(numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
@@ -1392,7 +1392,7 @@ auto AppAudio::IsEnabled() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return AudioStream != nullptr;
+    return !!AudioStream;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
@@ -1454,7 +1454,7 @@ void AppAudio::LockDevice()
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    SDL_LockAudioStream(AudioStream);
+    SDL_LockAudioStream(AudioStream.get());
 }
 
 void AppAudio::UnlockDevice()
@@ -1465,7 +1465,7 @@ void AppAudio::UnlockDevice()
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    SDL_UnlockAudioStream(AudioStream);
+    SDL_UnlockAudioStream(AudioStream.get());
 }
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)

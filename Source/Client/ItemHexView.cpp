@@ -51,10 +51,10 @@ void ItemHexView::Init()
     FO_STACK_TRACE_ENTRY();
 
     if (GetIsTile()) {
-        DrawEffect = GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile;
+        SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof.get() : _engine->EffectMngr.Effects.Tile.get());
     }
     else {
-        DrawEffect = _engine->EffectMngr.Effects.Generic;
+        SetDrawEffect(_engine->EffectMngr.Effects.Generic.get());
     }
 
     RefreshAnim();
@@ -147,7 +147,7 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
     _moveStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
     _moveWholeDist = fpos32(pos_offset).dist();
 
-    _moveStartOffset = fpos32(SprOffset);
+    _moveStartOffset = fpos32(_sprOffset);
     _moveCurOffset = _moveStartOffset;
     _moveDir = GeometryHelper::GetDir(cur_hex, hex);
     _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
@@ -239,7 +239,7 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    Spr = _anim.get();
+    _spr = _anim.get();
     RefreshOffs();
 }
 
@@ -273,22 +273,22 @@ void ItemHexView::RefreshOffs()
 
     const auto offset = GetOffset();
 
-    SprOffset = ipos32 {offset.x, offset.y};
+    _sprOffset = ipos32 {offset.x, offset.y};
 
     if (GetIsTile()) {
         if (GetIsRoofTile()) {
-            SprOffset.x += _engine->Settings.MapRoofOffsX;
-            SprOffset.y += _engine->Settings.MapRoofOffsY;
+            _sprOffset.x += _engine->Settings.MapRoofOffsX;
+            _sprOffset.y += _engine->Settings.MapRoofOffsY;
         }
         else {
-            SprOffset.x += _engine->Settings.MapTileOffsX;
-            SprOffset.y += _engine->Settings.MapTileOffsY;
+            _sprOffset.x += _engine->Settings.MapTileOffsX;
+            _sprOffset.y += _engine->Settings.MapTileOffsY;
         }
     }
 
     if (_isMoving) {
-        SprOffset.x += iround<int32>(_moveCurOffset.x);
-        SprOffset.y += iround<int32>(_moveCurOffset.y);
+        _sprOffset.x += iround<int32>(_moveCurOffset.x);
+        _sprOffset.y += iround<int32>(_moveCurOffset.y);
     }
 }
 

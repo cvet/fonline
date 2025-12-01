@@ -92,7 +92,7 @@ private:
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 
-    ClientNetworkSettings& _settings;
+    raw_ptr<ClientNetworkSettings> _settings;
     unique_ptr<NetworkClientConnection> _netConnection {};
     bool _connectingHandled {};
     bool _wasHandshake {};

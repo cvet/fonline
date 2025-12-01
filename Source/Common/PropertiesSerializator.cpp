@@ -43,7 +43,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
     AnyData::Document doc;
 
-    for (const auto* prop : props->GetRegistrator()->GetProperties()) {
+    for (const auto& prop : props->GetRegistrator()->GetProperties()) {
         if (prop->IsDisabled()) {
             continue;
         }
@@ -54,19 +54,19 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             continue;
         }
 
-        props->ValidateForRawData(prop);
+        props->ValidateForRawData(prop.get());
 
         // Skip same as in base or zero values
         if (base != nullptr) {
-            const auto base_raw_data = base->GetRawData(prop);
-            const auto raw_data = props->GetRawData(prop);
+            const auto base_raw_data = base->GetRawData(prop.get());
+            const auto raw_data = props->GetRawData(prop.get());
 
             if (raw_data.size() == base_raw_data.size() && MemCompare(raw_data.data(), base_raw_data.data(), raw_data.size())) {
                 continue;
             }
         }
         else {
-            const auto raw_data = props->GetRawData(prop);
+            const auto raw_data = props->GetRawData(prop.get());
 
             if (prop->IsPlainData()) {
                 const auto* pod_data = raw_data.data();
@@ -87,7 +87,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             }
         }
 
-        auto value = SavePropertyToValue(props, prop, hash_resolver, name_resolver);
+        auto value = SavePropertyToValue(props, prop.get(), hash_resolver, name_resolver);
         doc.Emplace(prop->GetName(), std::move(value));
     }
 
@@ -222,7 +222,7 @@ static auto RawDataToValue(const BaseTypeInfo& base_type_info, HashResolver& has
     }
 }
 
-auto PropertiesSerializator::SavePropertyToValue(const Property* prop, const_span<uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<const uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -384,7 +384,7 @@ void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
 
-    const auto set_data = [props, prop](const_span<uint8> raw_data) { props->SetRawData(prop, raw_data); };
+    const auto set_data = [props, prop](span<const uint8> raw_data) { props->SetRawData(prop, raw_data); };
 
     return LoadPropertyFromValue(prop, value, set_data, hash_resolver, name_resolver);
 }
@@ -578,7 +578,7 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
     pdata += base_type_info.Size;
 }
 
-void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(const_span<uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(span<const uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 

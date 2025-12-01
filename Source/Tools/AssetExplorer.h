@@ -52,7 +52,7 @@ private:
     void OnPreDraw() override;
     void OnDraw() override;
 
-    void DrawSection(const string& section_name, string_view file_ext) const;
+    void DrawSection(const string& section_name, string_view file_ext);
 };
 
 FO_END_NAMESPACE();

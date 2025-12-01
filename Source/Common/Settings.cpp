@@ -681,7 +681,7 @@ void GlobalSettings::Draw(bool editable)
 #include "Settings-Include.h"
 }
 
-auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
+auto BaseSettings::GetResourcePacks() const -> span<const ResourcePackInfo>
 {
     FO_STACK_TRACE_ENTRY();
 

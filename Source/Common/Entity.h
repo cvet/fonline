@@ -50,19 +50,19 @@ FO_BEGIN_NAMESPACE();
 #define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> const Property* \
     { \
-        return _propsRef.GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
+        return _propsRef->GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
     inline auto Get##prop() const noexcept \
     { \
-        return _propsRef.GetValueFast<prop_type>(GetProperty##prop()); \
+        return _propsRef->GetValueFast<prop_type>(GetProperty##prop()); \
     } \
     inline void Set##prop(const prop_type& value) \
     { \
-        _propsRef.SetValue(GetProperty##prop(), value); \
+        _propsRef->SetValue(GetProperty##prop(), value); \
     } \
     inline bool IsNonEmpty##prop() const noexcept \
     { \
-        return _propsRef.GetRawDataSize(GetProperty##prop()) != 0; \
+        return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
     static uint16 prop##_RegIndex
 
@@ -83,7 +83,7 @@ public:
     explicit EntityProperties(Properties& props) noexcept;
 
 protected:
-    Properties& _propsRef;
+    raw_ptr<Properties> _propsRef;
 };
 
 enum class EntityHolderEntryAccess : uint8
@@ -95,7 +95,7 @@ enum class EntityHolderEntryAccess : uint8
 
 struct EntityTypeInfo
 {
-    const PropertyRegistrator* PropRegistrator {};
+    raw_ptr<const PropertyRegistrator> PropRegistrator {};
     bool Exported {};
     bool HasProtos {};
     unordered_map<hstring, tuple<hstring, EntityHolderEntryAccess>> HolderEntries {}; // Target type, access
@@ -129,7 +129,7 @@ public:
     struct EventCallbackData
     {
         EventCallback Callback {};
-        const void* SubscribtionPtr {};
+        raw_ptr<const void> SubscribtionPtr {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal};
         bool OneShot {}; // Todo: improve entity event OneShot

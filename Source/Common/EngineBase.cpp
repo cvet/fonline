@@ -140,7 +140,7 @@ auto EngineData::GetPropertyRegistrator(hstring type_name) const noexcept -> con
 
     const auto it = _entityTypesInfo.find(type_name);
 
-    return it != _entityTypesInfo.end() ? it->second.PropRegistrator : nullptr;
+    return it != _entityTypesInfo.end() ? it->second.PropRegistrator.get() : nullptr;
 }
 
 auto EngineData::GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*
@@ -161,7 +161,7 @@ auto EngineData::GetPropertyRegistratorForEdit(string_view type_name) -> Propert
     const auto it = _entityTypesInfo.find(Hashes.ToHashedString(type_name));
     FO_RUNTIME_ASSERT(it != _entityTypesInfo.end());
 
-    return const_cast<PropertyRegistrator*>(it->second.PropRegistrator);
+    return const_cast<PropertyRegistrator*>(it->second.PropRegistrator.get());
 }
 
 auto EngineData::IsValidEntityType(hstring type_name) const noexcept -> bool
@@ -306,7 +306,7 @@ auto EngineData::ResolveBaseType(string_view type_str) const -> BaseTypeInfo
         info.IsEnumSigned = underlying_type->IsSignedInt;
         info.Size = underlying_type->Size;
     }
-    else if (GetValueTypeInfo(info.TypeName, info.Size, &info.StructLayout)) {
+    else if (GetValueTypeInfo(info.TypeName, info.Size, info.StructLayout.get_pp())) {
         if (info.StructLayout->size() == 1) {
             info.IsSimpleStruct = true;
         }

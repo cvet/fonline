@@ -133,10 +133,8 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const raw_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const raw_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const raw_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -155,6 +153,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> U&
@@ -168,6 +168,34 @@ public:
         return _ptr[index];
     }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
+
+    template<typename U>
+        requires(std::is_base_of_v<T, U>)
+    FO_FORCE_INLINE auto dyn_cast() noexcept -> U*
+    {
+        return dynamic_cast<U*>(_ptr);
+    }
+
+    template<typename U>
+        requires(std::is_base_of_v<T, U>)
+    FO_FORCE_INLINE auto dyn_cast() const noexcept -> U*
+    {
+        return dynamic_cast<const U*>(_ptr);
+    }
+
+    template<typename U>
+        requires(std::is_base_of_v<U, T>)
+    FO_FORCE_INLINE auto cast() noexcept -> T*
+    {
+        return static_cast<U*>(_ptr);
+    }
+
+    template<typename U>
+        requires(std::is_base_of_v<U, T>)
+    FO_FORCE_INLINE auto cast() const noexcept -> T*
+    {
+        return static_cast<const U*>(_ptr);
+    }
 
 private:
     T* _ptr;
@@ -270,10 +298,8 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const unique_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -418,10 +444,8 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const refcount_ptr& other) const noexcept -> bool { return _ptr != other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const refcount_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const T* other) const noexcept -> bool { return _ptr != other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -581,10 +605,8 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return !!_smartPtr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const propagate_const& other) const noexcept -> bool { return _smartPtr == other._smartPtr; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const propagate_const& other) const noexcept -> bool { return _smartPtr != other._smartPtr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const propagate_const& other) const noexcept -> bool { return _smartPtr < other._smartPtr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const element_type* other) const noexcept -> bool { return _smartPtr.get() == other; }
-    [[nodiscard]] FO_FORCE_INLINE auto operator!=(const element_type* other) const noexcept -> bool { return _smartPtr.get() != other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const element_type* other) const noexcept -> bool { return _smartPtr.get() < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> element_type* { return _smartPtr.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const element_type* { return _smartPtr.get(); }
@@ -605,6 +627,10 @@ public:
 private:
     T _smartPtr;
 };
+
+// Todo: apply nullable_raw_ptr to all nullable pointers
+template<typename T>
+using nullable_raw_ptr = raw_ptr<T>;
 
 template<typename T>
 using shared_ptr = propagate_const<std::shared_ptr<T>>;

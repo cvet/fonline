@@ -169,7 +169,6 @@ public:
 		CIterator &operator*();
 
 		bool operator==(const CIterator &other) const;
-		bool operator!=(const CIterator &other) const;
 
 		// Accessors
 		const dictKey_t &GetKey() const;

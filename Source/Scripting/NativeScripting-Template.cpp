@@ -79,8 +79,8 @@
 class ScriptEntity
 {
 protected:
-    void* _mainObjPtr {};
-    Entity* _thisPtr {};
+    raw_ptr<void> _mainObjPtr {};
+    raw_ptr<Entity> _thisPtr {};
 };
 
 class ScriptPlayer;
@@ -446,7 +446,7 @@ public:
 #include "ScriptApi.h"
 #undef THIS_ARG
 private:
-    void* _mainObjPtr {};
+    raw_ptr<void> _mainObjPtr {};
 };
 
 #undef FO_API_PARTLY_UNDEF

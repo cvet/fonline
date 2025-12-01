@@ -57,7 +57,7 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    [[nodiscard]] auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>;
+    auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>;
 };
 
 FO_END_NAMESPACE();

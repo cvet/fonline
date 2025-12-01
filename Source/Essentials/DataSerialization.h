@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(DataReadingException);
 class DataReader
 {
 public:
-    explicit DataReader(const_span<uint8> buf) :
+    explicit DataReader(span<const uint8> buf) :
         _dataBuf {buf}
     {
     }
@@ -97,7 +97,7 @@ public:
     }
 
 private:
-    const_span<uint8> _dataBuf;
+    span<const uint8> _dataBuf;
     size_t _readPos {};
 };
 

@@ -40,8 +40,8 @@ auto PropertyRawData::GetPtr() noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_passedPtr != nullptr) {
-        return _passedPtr;
+    if (_passedPtr) {
+        return _passedPtr.get();
     }
 
     return _useDynamic ? _dynamicBuf.get() : _localBuf;
@@ -65,7 +65,7 @@ auto PropertyRawData::Alloc(size_t size) noexcept -> uint8*
     return static_cast<uint8*>(GetPtr());
 }
 
-void PropertyRawData::Pass(const_span<uint8> value) noexcept
+void PropertyRawData::Pass(span<const uint8> value) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -89,7 +89,7 @@ void PropertyRawData::StoreIfPassed() noexcept
 
     if (_passedPtr != nullptr) {
         PropertyRawData tmp_data;
-        tmp_data.Set(_passedPtr, _dataSize);
+        tmp_data.Set(_passedPtr.get(), _dataSize);
         *this = std::move(tmp_data);
     }
 }
@@ -150,7 +150,7 @@ auto Properties::Copy() const noexcept -> Properties
 {
     FO_STACK_TRACE_ENTRY();
 
-    Properties props(_registrator);
+    Properties props = Properties(_registrator.get());
 
     MemCopy(props._podData.get(), _podData.get(), _registrator->_wholePodDataSize);
 
@@ -175,8 +175,8 @@ void Properties::CopyFrom(const Properties& other) noexcept
     MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
 
     // Copy complex data
-    for (const auto* prop : _registrator->_complexProperties) {
-        SetRawData(prop, {other._complexData[*prop->_complexDataIndex].first.get(), other._complexData[*prop->_complexDataIndex].second});
+    for (const auto& prop : _registrator->_complexProperties) {
+        SetRawData(prop.get(), {other._complexData[*prop->_complexDataIndex].first.get(), other._complexData[*prop->_complexDataIndex].second});
     }
 }
 
@@ -226,7 +226,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     // Store complex properties
     writer.Write<uint32>(numeric_cast<uint32>(_registrator->_complexProperties.size()));
 
-    for (const auto* prop : _registrator->_complexProperties) {
+    for (const auto& prop : _registrator->_complexProperties) {
         FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
         writer.Write<uint32>(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
         writer.WritePtr(_complexData[*prop->_complexDataIndex].first.get(), _complexData[*prop->_complexDataIndex].second);
@@ -235,14 +235,14 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     // Store hashes
     const auto add_hash = [&str_hashes, this](const string& str) {
         if (!str.empty()) {
-            const auto hstr = _registrator->_hashResolver.ToHashedString(str);
+            const auto hstr = _registrator->_hashResolver->ToHashedString(str);
             str_hashes.emplace(hstr);
         }
     };
 
     for (const auto& prop : _registrator->_registeredProperties) {
         if (prop && !prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), _registrator->_hashResolver, _registrator->_nameResolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), *_registrator->_hashResolver, *_registrator->_nameResolver);
 
             if (value.Type() == AnyData::ValueType::String) {
                 add_hash(value.AsString());
@@ -310,10 +310,10 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     const auto complex_props_count = reader.Read<uint32>();
     FO_RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
 
-    for (const auto* prop : _registrator->_complexProperties) {
+    for (const auto& prop : _registrator->_complexProperties) {
         FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
         const auto data_size = reader.Read<uint32>();
-        SetRawData(prop, {reader.ReadPtr<uint8>(data_size), data_size});
+        SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
     }
 
     reader.VerifyEnd();
@@ -574,7 +574,7 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
     }
 
     const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
-    PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_hashResolver, _registrator->_nameResolver);
+    PropertiesSerializator::LoadPropertyFromValue(this, prop, value, *_registrator->_hashResolver, *_registrator->_nameResolver);
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -585,7 +585,7 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
     FO_RUNTIME_ASSERT(_registrator == prop->_registrator);
     FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
 
-    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_hashResolver, _registrator->_nameResolver);
+    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
     return AnyData::ValueToString(value);
 }
 
@@ -609,7 +609,7 @@ void Properties::ValidateForRawData(const Property* prop) const noexcept(false)
     }
 }
 
-auto Properties::GetRawData(const Property* prop) const noexcept -> const_span<uint8>
+auto Properties::GetRawData(const Property* prop) const noexcept -> span<const uint8>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -643,7 +643,7 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
     }
 }
 
-void Properties::SetRawData(const Property* prop, const_span<uint8> raw_data) noexcept
+void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -686,21 +686,21 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
         FO_RUNTIME_ASSERT(!prop->_setters.empty());
 
         for (const auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
     else {
-        if (!prop->_setters.empty() && _entity != nullptr) {
+        if (!prop->_setters.empty() && _entity) {
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, prop_data);
+                setter(_entity.get(), prop, prop_data);
             }
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
 
-        if (_entity != nullptr) {
+        if (_entity) {
             for (const auto& setter : prop->_postSetters) {
-                setter(_entity, prop);
+                setter(_entity.get(), prop);
             }
         }
     }
@@ -1144,14 +1144,14 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _registrator->_hashResolver.ResolveHash(h);
+    return _registrator->_hashResolver->ResolveHash(h);
 }
 
 auto Properties::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _registrator->_hashResolver.ResolveHash(h, failed);
+    return _registrator->_hashResolver->ResolveHash(h, failed);
 }
 
 void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
@@ -1172,7 +1172,7 @@ void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
 
     if (!prop->_setters.empty()) {
         for (auto& setter : prop->_setters) {
-            setter(_entity, prop, prop_data);
+            setter(_entity.get(), prop, prop_data);
         }
     }
 
@@ -1181,7 +1181,7 @@ void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
 
         if (!prop->_postSetters.empty()) {
             for (auto& setter : prop->_postSetters) {
-                setter(_entity, prop);
+                setter(_entity.get(), prop);
             }
         }
     }
@@ -1193,8 +1193,8 @@ PropertyRegistrator::PropertyRegistrator(string_view type_name, PropertiesRelati
     _relation {relation},
     _propMigrationRuleName {hash_resolver.ToHashedString("Property")},
     _componentMigrationRuleName {hash_resolver.ToHashedString("Component")},
-    _hashResolver {hash_resolver},
-    _nameResolver {name_resolver}
+    _hashResolver {&hash_resolver},
+    _nameResolver {&name_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1211,7 +1211,7 @@ void PropertyRegistrator::RegisterComponent(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto name_hash = _hashResolver.ToHashedString(name);
+    const auto name_hash = _hashResolver->ToHashedString(name);
 
     FO_RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
     _registeredComponents.insert(name_hash);
@@ -1234,7 +1234,7 @@ auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_compo
     FO_STACK_TRACE_ENTRY();
 
     auto key = string(property_name);
-    const auto hkey = _hashResolver.ToHashedString(key);
+    const auto hkey = _hashResolver->ToHashedString(key);
 
     if (IsComponentRegistered(hkey)) {
         if (is_component != nullptr) {
@@ -1248,12 +1248,12 @@ auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_compo
         *is_component = false;
     }
 
-    if (const auto rule = _nameResolver.CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
+    if (const auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
     }
 
     if (const auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
-        return it->second;
+        return it->second.get();
     }
 
     return nullptr;
@@ -1265,7 +1265,7 @@ auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const no
 
     hstring migrated_component_name = component_name;
 
-    if (const auto rule = _nameResolver.CheckMigrationRule(_componentMigrationRuleName, _typeName, migrated_component_name); rule.has_value()) {
+    if (const auto rule = _nameResolver->CheckMigrationRule(_componentMigrationRuleName, _typeName, migrated_component_name); rule.has_value()) {
         migrated_component_name = rule.value();
     }
 
@@ -1282,8 +1282,8 @@ auto PropertyRegistrator::GetPropertyGroups() const noexcept -> map<string, vect
         vector<const Property*> group_properties;
         group_properties.reserve(properties.size());
 
-        for (const auto* prop : properties | std::views::keys) {
-            group_properties.emplace_back(prop);
+        for (const auto& prop : properties | std::views::keys) {
+            group_properties.emplace_back(prop.get());
         }
 
         result.emplace(group_name, std::move(group_properties));
@@ -1292,7 +1292,7 @@ auto PropertyRegistrator::GetPropertyGroups() const noexcept -> map<string, vect
     return result;
 }
 
-void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
+void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1317,7 +1317,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         throw PropertyRegistrationException("Invalid property side (expect Server/Client/Common)", prop->_propName, flags[1]);
     }
 
-    const auto h = _hashResolver.ToHashedString(prop->_propName);
+    const auto h = _hashResolver->ToHashedString(prop->_propName);
     ignore_unused(h);
 
     const auto type_tok = strex(flags[2]).split('.');
@@ -1325,7 +1325,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
     if (type_tok[0] == "dict") {
         FO_RUNTIME_ASSERT(type_tok.size() >= 3);
-        const auto key_type = _nameResolver.ResolveBaseType(type_tok[1]);
+        const auto key_type = _nameResolver->ResolveBaseType(type_tok[1]);
 
         prop->_isDict = true;
         prop->_dictKeyType = key_type;
@@ -1335,7 +1335,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 
         if (type_tok[2] == "arr") {
             FO_RUNTIME_ASSERT(type_tok.size() >= 4);
-            const auto value_type = _nameResolver.ResolveBaseType(type_tok[3]);
+            const auto value_type = _nameResolver->ResolveBaseType(type_tok[3]);
 
             prop->_baseType = value_type;
             prop->_isDictOfArray = true;
@@ -1343,7 +1343,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             prop->_viewTypeName = "dict<" + key_type.TypeName + ", " + value_type.TypeName + "[]>";
         }
         else {
-            const auto value_type = _nameResolver.ResolveBaseType(type_tok[2]);
+            const auto value_type = _nameResolver->ResolveBaseType(type_tok[2]);
 
             prop->_baseType = value_type;
             prop->_isDictOfString = value_type.IsString;
@@ -1352,7 +1352,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     }
     else if (type_tok[0] == "arr") {
         FO_RUNTIME_ASSERT(type_tok.size() >= 2);
-        const auto value_type = _nameResolver.ResolveBaseType(type_tok[1]);
+        const auto value_type = _nameResolver->ResolveBaseType(type_tok[1]);
 
         prop->_isArray = true;
         prop->_baseType = value_type;
@@ -1360,7 +1360,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         prop->_viewTypeName = value_type.TypeName + "[]";
     }
     else {
-        const auto value_type = _nameResolver.ResolveBaseType(type_tok[0]);
+        const auto value_type = _nameResolver->ResolveBaseType(type_tok[0]);
 
         prop->_baseType = value_type;
         prop->_viewTypeName = value_type.TypeName;
@@ -1374,11 +1374,11 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     }
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
-        prop->_component = _hashResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
+        prop->_component = _hashResolver->ToHashedString(prop->_propName.substr(0, dot_pos));
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
         FO_RUNTIME_ASSERT(!!prop->_component);
         FO_RUNTIME_ASSERT(!prop->_propNameWithoutComponent.empty());
-        FO_RUNTIME_ASSERT(_registeredComponents.count(_hashResolver.ToHashedString(prop->_component)) != 0);
+        FO_RUNTIME_ASSERT(_registeredComponents.count(_hashResolver->ToHashedString(prop->_component)) != 0);
     }
     else {
         prop->_propNameWithoutComponent = prop->_propName;
@@ -1405,12 +1405,12 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
             if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
                 it->second.emplace_back(pair {prop.get(), priority});
 
-                std::ranges::stable_sort(it->second, [](const pair<const Property*, int32>& a, const pair<const Property*, int32>& b) -> bool {
+                std::ranges::stable_sort(it->second, [](auto&& a, auto&& b) -> bool {
                     return a.second < b.second; // Sort by priority
                 });
             }
             else {
-                _propertyGroups.emplace(group, vector<pair<const Property*, int32>> {pair {prop.get(), priority}});
+                _propertyGroups.emplace(group, vector<pair<raw_ptr<const Property>, int32>> {pair {prop.get(), priority}});
             }
 
             i += 2;

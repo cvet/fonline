@@ -56,10 +56,10 @@ void AssetExplorer::OnDraw()
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx("Opened", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
-        for (const auto* asset_view : _editor.GetAssetViews()) {
+        for (const auto* asset_view : _editor->GetAssetViews()) {
             ImGui::SetNextItemOpen(false);
             if (ImGui::TreeNodeEx(asset_view->GetAssetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                _editor.OpenAsset(asset_view->GetAssetPath());
+                _editor->OpenAsset(asset_view->GetAssetPath());
                 ImGui::TreePop();
             }
         }
@@ -82,17 +82,17 @@ void AssetExplorer::OnDraw()
     // DrawSection("Sprites", "...");
 }
 
-void AssetExplorer::DrawSection(const string& section_name, string_view file_ext) const
+void AssetExplorer::DrawSection(const string& section_name, string_view file_ext)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(section_name.c_str(), ImGuiTreeNodeFlags_Framed)) {
-        auto files = _editor.RawResources.FilterFiles(file_ext);
+        auto files = _editor->RawResources.FilterFiles(file_ext);
 
         for (const auto& file_header : files) {
             ImGui::SetNextItemOpen(false);
             if (ImGui::TreeNodeEx(file_header.GetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                _editor.OpenAsset(file_header.GetPath());
+                _editor->OpenAsset(file_header.GetPath());
                 ImGui::TreePop();
             }
         }

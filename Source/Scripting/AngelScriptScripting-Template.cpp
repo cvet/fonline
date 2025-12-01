@@ -181,7 +181,7 @@ public:
 #define GET_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<BaseEngine*>(as_engine->GetUserData())
 #define GET_AS_ENGINE_FROM_SELF() GET_AS_ENGINE_FROM_ENTITY(self)
 #define GET_AS_ENGINE_FROM_ENTITY(entity) GET_AS_ENGINE_FROM_ENGINE(entity->GetEngine())
-#define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys.GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine
+#define GET_AS_ENGINE_FROM_ENGINE(engine) engine->ScriptSys.GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)->ASEngine.get()
 #define GET_SCRIPT_BACKEND_FROM_SELF() GET_SCRIPT_BACKEND_FROM_ENTITY(self)
 #define GET_SCRIPT_BACKEND_FROM_ENTITY(entity) GET_SCRIPT_BACKEND_FROM_ENGINE(entity->GetEngine())
 #define GET_SCRIPT_BACKEND_FROM_ENGINE(engine) engine->ScriptSys.GetBackend<SCRIPT_BACKEND_CLASS>(SCRIPT_BACKEND_INDEX)
@@ -272,9 +272,9 @@ struct ASContextExtendedData
     bool ExecutionActive {};
     size_t ExecutionCalls {};
     std::string Info {};
-    asIScriptContext* Parent {};
+    FO_NAMESPACE raw_ptr<asIScriptContext> Parent {};
     FO_NAMESPACE nanotime SuspendEndTime {};
-    FO_NAMESPACE Entity* ValidCheck {};
+    FO_NAMESPACE raw_ptr<FO_NAMESPACE Entity> ValidCheck {};
 #if FO_TRACY
     FO_NAMESPACE vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
@@ -291,7 +291,7 @@ public:
     struct EnumInfo
     {
         string EnumName {};
-        BaseEngine* Engine {};
+        raw_ptr<BaseEngine> Engine {};
     };
 
     void Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources);
@@ -334,7 +334,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto it = std::find(FreeContexts.begin(), FreeContexts.end(), ctx);
+        auto it = std::ranges::find(FreeContexts, ctx);
         FO_RUNTIME_ASSERT(it != FreeContexts.end());
         FreeContexts.erase(it);
 
@@ -363,7 +363,7 @@ public:
 
         ctx->Unprepare();
 
-        auto it = std::find(BusyContexts.begin(), BusyContexts.end(), ctx);
+        auto it = std::ranges::find(BusyContexts, ctx);
         FO_RUNTIME_ASSERT(it != BusyContexts.end());
         BusyContexts.erase(it);
         FreeContexts.push_back(ctx);
@@ -372,7 +372,7 @@ public:
         ctx_ext.Parent = nullptr;
         ctx_ext.Info.clear();
         ctx_ext.SuspendEndTime = {};
-        ctx_ext.ValidCheck = {};
+        ctx_ext.ValidCheck = nullptr;
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -517,12 +517,12 @@ public:
         }
     }
 
-    BaseEngine* Engine {};
-    asIScriptEngine* ASEngine {};
+    raw_ptr<BaseEngine> Engine {};
+    raw_ptr<asIScriptEngine> ASEngine {};
     set<CScriptArray*> EnumArrays {};
     map<string, EnumInfo> EnumInfos {};
     set<hstring> ContentData {};
-    asIScriptContext* CurrentCtx {};
+    raw_ptr<asIScriptContext> CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
     StackTraceData ExceptionStackTrace {};
@@ -1201,8 +1201,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
-        const auto& hash_resolver = prop->GetRegistrator()->GetHashResolver();
-        return hash_resolver.ResolveHash(hash);
+        const auto* hash_resolver = prop->GetRegistrator()->GetHashResolver();
+        return hash_resolver->ResolveHash(hash);
     };
     const auto resolve_enum = [](const void* eptr, size_t elen) -> int32 {
         int32 result = 0;
@@ -2495,7 +2495,7 @@ static void Game_AddPropertySetter(asIScriptGeneric* gen)
             if (has_value_ref) {
                 PropertyRawData value_ref_space;
                 auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
-                PropsToAS(prop, prop_data, construct_addr, script_backend->ASEngine);
+                PropsToAS(prop, prop_data, construct_addr, script_backend->ASEngine.get());
                 ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
 
                 const auto run_ok = script_backend->RunContext(ctx, false);
@@ -3708,7 +3708,7 @@ static void CustomEntity_GetOne(asIScriptGeneric* gen)
     auto* entities = holder->GetInnerEntities(entry);
 
     if (entities != nullptr && !entities->empty()) {
-        const auto it = std::find_if(entities->begin(), entities->end(), [id](auto&& entity) {
+        const auto it = std::ranges::find_if(*entities, [id](auto&& entity) {
             FO_RUNTIME_ASSERT(entity->GetTypeName() == T2::ENTITY_TYPE_NAME);
             auto* casted_entity = dynamic_cast<T*>(entity.get());
             FO_RUNTIME_ASSERT(casted_entity);
@@ -3883,7 +3883,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& script_files) -> vector<uint8>;
 #else
-static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin);
+static void RestoreRootModule(asIScriptEngine* as_engine, span<const uint8> script_bin);
 #endif
 
 void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, const vector<File>* script_files, const FileSystem* resources)
@@ -4393,7 +4393,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
     // Register properties
     for (auto&& [type_name, entity_info] : engine->GetEntityTypesInfo()) {
-        const auto* registrator = entity_info.PropRegistrator;
+        const auto& registrator = entity_info.PropRegistrator;
         const auto& type_name_str = type_name.as_str();
         const auto is_global = entity_is_global.count(type_name_str) != 0;
         const auto is_has_abstract = entity_has_abstract.count(type_name_str) != 0;
@@ -4481,7 +4481,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         }
     }
 
-    AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<BaseEngine*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Engine)));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", SCRIPT_GENERIC((Global_Get<BaseEngine*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*Engine.get_pp())));
 
 #if SERVER_SCRIPTING
     AS_VERIFY(as_engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
@@ -4491,11 +4491,11 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 #endif
 
 #if CLIENT_SCRIPTING || MAPPER_SCRIPTING
-    AS_VERIFY(as_engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_GetExt<MapView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurMap(); }))));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_GetExt<MapView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine.get())->GetCurMap(); }))));
 #endif
 #if CLIENT_SCRIPTING
-    AS_VERIFY(as_engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_GetExt<LocationView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurLocation(); }))));
-    AS_VERIFY(as_engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_GetExt<PlayerView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine)->GetCurPlayer(); }))));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_GetExt<LocationView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine.get())->GetCurLocation(); }))));
+    AS_VERIFY(as_engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_GetExt<PlayerView*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(Getters.emplace_back([this]() -> void* { return static_cast<FOClient*>(Engine.get())->GetCurPlayer(); }))));
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
@@ -4578,7 +4578,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
                 }
 
                 const auto name = get_type_name(type_id);
-                const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                const auto it = std::ranges::find_if(engine_type_map, [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                     return entry.second->Name == name && entry.second->Accessor->IsPlainData();
                 });
 
@@ -4596,7 +4596,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
 
             if (is_array) {
                 const auto name = get_type_name(as_type_info->GetSubTypeId());
-                const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+                const auto it = std::ranges::find_if(engine_type_map, [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                     return entry.second->Name == name && entry.second->Accessor->IsArray();
                 });
 
@@ -4608,7 +4608,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             }
 
             const auto name = get_type_name(type_id);
-            const auto it = std::find_if(engine_type_map.begin(), engine_type_map.end(), [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
+            const auto it = std::ranges::find_if(engine_type_map, [name](const pair<string, shared_ptr<ScriptTypeInfo>>& entry) { //
                 return entry.second->Name == name && !entry.second->Accessor->IsArray();
             });
 
@@ -4647,7 +4647,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             int32 ret_type_id = func->GetReturnTypeId(&ret_flags);
             func_desc->RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
-            func_desc->CallSupported = func_desc->RetType && std::find(func_desc->ArgsType.begin(), func_desc->ArgsType.end(), nullptr) == func_desc->ArgsType.end();
+            func_desc->CallSupported = func_desc->RetType && std::ranges::find(func_desc->ArgsType, nullptr) == func_desc->ArgsType.end();
 
             // Check for special module init function
             if (func_desc->ArgsType.empty() && func_desc->RetType && func_desc->RetType->Name == "void") {
@@ -4884,7 +4884,7 @@ static auto CompileRootModule(asIScriptEngine* as_engine, const vector<File>& sc
 }
 
 #else
-static void RestoreRootModule(asIScriptEngine* as_engine, const_span<uint8> script_bin)
+static void RestoreRootModule(asIScriptEngine* as_engine, span<const uint8> script_bin)
 {
     FO_STACK_TRACE_ENTRY();
 

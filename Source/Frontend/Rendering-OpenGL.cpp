@@ -106,10 +106,10 @@ static auto ErrCodeToString(GLenum err_code) -> string
 
 #define GL_HAS(extension) (OGL_##extension)
 
-static GlobalSettings* Settings {};
+static raw_ptr<GlobalSettings> Settings {};
 static bool RenderDebug {};
 static bool ForceGlslEsProfile {};
-static SDL_Window* SdlWindow {};
+static raw_ptr<SDL_Window> SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static bool BaseFrameBufObjBinded {};
@@ -200,10 +200,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     // Create context
 #if !FO_WEB
-    GlContext = SDL_GL_CreateContext(SdlWindow);
+    GlContext = SDL_GL_CreateContext(SdlWindow.get());
     FO_RUNTIME_ASSERT_STR(GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
 
-    const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
+    const auto make_current = SDL_GL_MakeCurrent(SdlWindow.get(), GlContext);
     FO_RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
 
     if (settings.VSync) {
@@ -366,7 +366,7 @@ void OpenGL_Renderer::Present()
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_WEB
-    SDL_GL_SwapWindow(SdlWindow);
+    SDL_GL_SwapWindow(SdlWindow.get());
 #endif
 
     if (const auto err = glGetError(); err != GL_NO_ERROR) {

@@ -75,7 +75,7 @@ private:
     void Net_OnInitData();
     void Net_OnUpdateFileData();
 
-    ClientSettings& _settings;
+    raw_ptr<ClientSettings> _settings;
     ClientConnection _conn;
     FileSystem _resources {};
     GameTimer _gameTime;

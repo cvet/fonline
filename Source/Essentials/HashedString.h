@@ -64,9 +64,8 @@ struct hstring
     // ReSharper disable once CppNonExplicitConversionOperator
     [[nodiscard]] operator string_view() const noexcept { return _entry->Str; }
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->Hash != 0; }
-    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept { return _entry->Hash == other._entry->Hash; }
-    [[nodiscard]] constexpr auto operator!=(const hstring& other) const noexcept { return _entry->Hash != other._entry->Hash; }
-    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->Hash == other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->Hash < other._entry->Hash; }
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_int32() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
     [[nodiscard]] constexpr auto as_uint32() const noexcept -> uint32 { return _entry->Hash; }

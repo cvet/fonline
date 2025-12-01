@@ -259,11 +259,11 @@ public:
 
     bool CanDrawInScripts {};
 
-    vector<RenderEffect*> OffscreenEffects {};
-    vector<RenderTarget*> OffscreenSurfaces {};
-    vector<RenderTarget*> ActiveOffscreenSurfaces {};
-    vector<RenderTarget*> PreDirtyOffscreenSurfaces {};
-    vector<RenderTarget*> DirtyOffscreenSurfaces {};
+    vector<raw_ptr<RenderEffect>> OffscreenEffects {};
+    vector<raw_ptr<RenderTarget>> OffscreenSurfaces {};
+    vector<raw_ptr<RenderTarget>> ActiveOffscreenSurfaces {};
+    vector<raw_ptr<RenderTarget>> PreDirtyOffscreenSurfaces {};
+    vector<raw_ptr<RenderTarget>> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
     vector<shared_ptr<ModelSprite>> DrawCritterModel {};
@@ -364,7 +364,7 @@ protected:
     string _loginName {};
     string _loginPassword {};
 
-    unordered_map<ident_t, ClientEntity*> _allEntities {};
+    unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
     refcount_ptr<PlayerView> _curPlayer {};
     refcount_ptr<LocationView> _curLocation {};
@@ -377,8 +377,8 @@ protected:
 
     int32 _initNetReason {INIT_NET_REASON_NONE};
 
-    const Entity* _sendIgnoreEntity {};
-    const Property* _sendIgnoreProperty {};
+    nullable_raw_ptr<const Entity> _sendIgnoreEntity {};
+    nullable_raw_ptr<const Property> _sendIgnoreProperty {};
 
     vector<vector<uint8>> _globalsPropertiesData {};
     vector<vector<uint8>> _playerPropertiesData {};

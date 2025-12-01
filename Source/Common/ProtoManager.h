@@ -85,10 +85,10 @@ private:
     const hstring _crTypeName;
     const hstring _mapTypeName;
     const hstring _locTypeName;
-    unordered_map<hstring, const ProtoItem*> _itemProtos {};
-    unordered_map<hstring, const ProtoCritter*> _crProtos {};
-    unordered_map<hstring, const ProtoMap*> _mapProtos {};
-    unordered_map<hstring, const ProtoLocation*> _locProtos {};
+    unordered_map<hstring, raw_ptr<const ProtoItem>> _itemProtos {};
+    unordered_map<hstring, raw_ptr<const ProtoCritter>> _crProtos {};
+    unordered_map<hstring, raw_ptr<const ProtoMap>> _mapProtos {};
+    unordered_map<hstring, raw_ptr<const ProtoLocation>> _locProtos {};
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> _protos {};
     const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
 };

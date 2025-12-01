@@ -215,9 +215,6 @@ using std::string_view;
 using std::tuple;
 using std::variant;
 
-template<typename T>
-using const_span = span<const T>;
-
 // String view for null terminated string
 class string_view_nt : public string_view
 {

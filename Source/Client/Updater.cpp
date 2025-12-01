@@ -48,30 +48,30 @@ static auto* StrFilesystemError = "File system error!";
 static auto* StrClientOutdated = "Client outdated, please update it";
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
-    _settings {settings},
-    _conn(_settings),
-    _gameTime(_settings),
-    _effectMngr(_settings, _resources),
-    _sprMngr(_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
+    _settings {&settings},
+    _conn(*_settings),
+    _gameTime(*_settings),
+    _effectMngr(*_settings, _resources),
+    _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
 {
     FO_STACK_TRACE_ENTRY();
 
     _startTime = nanotime::now();
 
     _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
-    _resources.AddDirSource(_settings.ClientResources, false, true, true);
+    _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
-    if (!_settings.DefaultSplashPack.empty()) {
-        _resources.AddPackSource(IsPackaged() ? _settings.ClientResources : _settings.BakeOutput, _settings.DefaultSplashPack, true);
+    if (!_settings->DefaultSplashPack.empty()) {
+        _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
     }
 
     _effectMngr.LoadMinimalEffects();
     _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(_sprMngr));
 
     // Wait screen
-    if (!_settings.DefaultSplash.empty()) {
+    if (!_settings->DefaultSplash.empty()) {
         _splashPic.reset();
-        _splashPic = _sprMngr.LoadSprite(_settings.DefaultSplash, AtlasType::OneImage);
+        _splashPic = _sprMngr.LoadSprite(_settings->DefaultSplash, AtlasType::OneImage);
 
         if (_splashPic) {
             _splashPic->PlayDefault();
@@ -80,7 +80,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
     }
     _sprMngr.EndScene();
 
@@ -180,18 +180,18 @@ auto Updater::Process() -> bool
         _sprMngr.BeginScene();
 
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings.ScreenWidth, _settings.ScreenHeight}, true, true, COLOR_SPRITE);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
         }
 
-        if (elapsed_time >= _settings.UpdaterInfoDelay) {
-            if (_settings.UpdaterInfoPos < 0) {
-                _sprMngr.DrawText({0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+        if (elapsed_time >= _settings->UpdaterInfoDelay) {
+            if (_settings->UpdaterInfoPos < 0) {
+                _sprMngr.DrawText({0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
-            else if (_settings.UpdaterInfoPos == 0) {
-                _sprMngr.DrawText({0, 0, _settings.ScreenWidth, _settings.ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+            else if (_settings->UpdaterInfoPos == 0) {
+                _sprMngr.DrawText({0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else {
-                _sprMngr.DrawText({0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _sprMngr.DrawText({0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
         }
 
@@ -244,7 +244,7 @@ void Updater::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        resources.AddDirSource(_settings.ClientResources, false, true, true);
+        resources.AddDirSource(_settings->ClientResources, false, true, true);
 
         auto reader = DataReader(data);
 
@@ -329,7 +329,7 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto make_write_path = [this](string_view fname) -> string { return strex(_settings.ClientResources).combine_path(fname); };
+    const auto make_write_path = [this](string_view fname) -> string { return strex(_settings->ClientResources).combine_path(fname); };
 
     if (_tempFile) {
         _tempFile = nullptr;
