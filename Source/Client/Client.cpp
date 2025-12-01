@@ -759,7 +759,7 @@ void FOClient::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (int32 file_index = 0;; file_index++) {
+        while (true) {
             const auto name_len = reader.Read<int16>();
 
             if (name_len == -1) {

@@ -155,7 +155,7 @@ if(BUILD_FRAMEWORK)
 endif()
 
 if(MSVC)
-    set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "/MP")
+    #set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "/MP")
 endif()
 
 # Don't override the default runtime output path to avoid conflicts when building for multiple target platforms

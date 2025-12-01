@@ -50,8 +50,8 @@ struct ParticleSystem::Impl
 };
 
 ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
-    _settings {&settings},
     _impl {SafeAlloc::MakeUnique<Impl>()},
+    _settings {&settings},
     _effectMngr {&effect_mngr},
     _resources {&resources},
     _gameTime {&game_time},
