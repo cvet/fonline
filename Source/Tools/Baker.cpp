@@ -372,12 +372,15 @@ void MasterBaker::BakeAllInternal()
         };
 
         size_t errors = 0;
+        size_t baked_packs = 0;
+        int32 bake_order = 0;
+        const auto& res_packs = _settings->GetResourcePacks();
 
-        for (int32 bake_order = 0; bake_order <= _settings->MaxBakeOrder; bake_order++) {
+        while (true) {
             vector<std::future<void>> res_bakings;
             vector<string> res_baking_outputs;
 
-            for (const auto& res_pack : _settings->GetResourcePacks()) {
+            for (const auto& res_pack : res_packs) {
                 if (res_pack.BakeOrder == bake_order) {
                     WriteLog("Bake {}", res_pack.Name);
                     const auto res_baking_output = make_output_path(res_pack.Name);
@@ -391,6 +394,7 @@ void MasterBaker::BakeAllInternal()
             for (auto& res_baking : res_bakings) {
                 try {
                     res_baking.get();
+                    baked_packs++;
                 }
                 catch (const std::exception& ex) {
                     WriteLog("Resource pack baking error: {}", ex.what());
@@ -412,6 +416,11 @@ void MasterBaker::BakeAllInternal()
             if (res_baked) {
                 force_baking = true;
             }
+            if (baked_packs == res_packs.size()) {
+                break;
+            }
+
+            bake_order++;
         }
 
         // Copy engine data to Core pack
