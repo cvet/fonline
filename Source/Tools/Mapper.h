@@ -180,8 +180,7 @@ public:
     void DeleteEntity(ClientEntity* entity);
     void SelectClear();
     void SelectAddItem(ItemHexView* item);
-    void SelectAddCrit(CritterView* npc);
-    void SelectAddTile(mpos hex, bool is_roof);
+    void SelectAddCritter(CritterView* npc);
     void SelectAdd(ClientEntity* entity);
     void SelectErase(ClientEntity* entity);
     void SelectAll();
@@ -192,6 +191,10 @@ public:
     auto CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*;
     auto CloneEntity(Entity* entity) -> Entity*;
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
+    void MergeItemsToMultihexMeshes(MapView* map);
+    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*;
+    auto FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex) const -> ItemHexView*;
+    auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item) const -> bool;
 
     void BufferCopy();
     void BufferCut();
@@ -314,7 +317,7 @@ public:
     bool IsSelectTile {};
     bool IsSelectRoof {};
     ipos32 BufferRawHex {};
-    vector<raw_ptr<ClientEntity>> SelectedEntities {};
+    vector<refcount_ptr<ClientEntity>> SelectedEntities {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};
     shared_ptr<Sprite> ObjPbToAllDn {};

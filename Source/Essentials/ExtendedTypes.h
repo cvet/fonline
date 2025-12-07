@@ -210,7 +210,7 @@ struct ipos
     // [[nodiscard]] constexpr auto operator/(const ipos& other) const -> ipos { return {checked_div(x, other.x), checked_div(y, other.y)}; }
 
     [[nodiscard]] auto idist() const -> T { return iround<T>(std::sqrt(numeric_cast<float64>(x * x + y * y))); }
-    [[nodiscard]] auto isZero() const noexcept -> bool { return x == 0 && y == 0; }
+    [[nodiscard]] auto is_zero() const noexcept -> bool { return x == 0 && y == 0; }
 
     T x {};
     T y {};
@@ -292,7 +292,7 @@ struct isize
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
     }
     [[nodiscard]] constexpr auto is_valid_pos(pos_type auto pos) const noexcept -> bool { return is_valid_pos(pos.x, pos.y); }
-    [[nodiscard]] auto isZero() const noexcept -> bool { return width == 0 && height == 0; }
+    [[nodiscard]] auto is_zero() const noexcept -> bool { return width == 0 && height == 0; }
 
     T width {};
     T height {};
@@ -331,7 +331,19 @@ struct irect
     {
     }
     [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
-    [[nodiscard]] auto isZero() const noexcept -> bool { return x == 0 && y == 0 && width == 0 && height == 0; }
+    [[nodiscard]] auto pos() const noexcept -> ipos<T> { return ipos<T>(x, y); }
+    [[nodiscard]] auto size() const noexcept -> isize<T> { return isize<T>(width, height); }
+    [[nodiscard]] auto is_zero() const noexcept -> bool { return x == 0 && y == 0 && width == 0 && height == 0; }
+
+    void expand(const irect& other) noexcept { *this = expanded(other); }
+    [[nodiscard]] auto expanded(const irect& other) const noexcept -> irect
+    {
+        const T x1 = std::min(x, other.x);
+        const T y1 = std::min(y, other.y);
+        const T x2 = std::max(x + width, other.x + other.width);
+        const T y2 = std::max(y + height, other.y + other.height);
+        return irect(x1, y1, x2 - y2, y2 - y1);
+    }
 
     T x {};
     T y {};
@@ -569,6 +581,18 @@ struct frect
     {
     }
     [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] auto pos() const noexcept -> fpos<T> { return fpos<T>(x, y); }
+    [[nodiscard]] auto size() const noexcept -> fsize<T> { return fsize<T>(width, height); }
+
+    void expand(const frect& other) noexcept { *this = expanded(other); }
+    [[nodiscard]] auto expanded(const frect& other) const noexcept -> frect
+    {
+        const T x1 = std::min(x, other.x);
+        const T y1 = std::min(y, other.y);
+        const T x2 = std::max(x + width, other.x + other.width);
+        const T y2 = std::max(y + height, other.y + other.height);
+        return frect(x1, y1, x2 - y2, y2 - y1);
+    }
 
     T x {};
     T y {};

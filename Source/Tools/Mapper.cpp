@@ -133,7 +133,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
     }
     for (auto& proto : Tabs[INT_MODE_CRIT] | std::views::values) {
-        std::ranges::sort(proto.NpcProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
+        std::ranges::stable_sort(proto.NpcProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
@@ -143,7 +143,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.emplace_back(proto);
     }
     for (auto& proto : Tabs[INT_MODE_ITEM] | std::views::values) {
-        std::ranges::sort(proto.ItemProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
+        std::ranges::stable_sort(proto.ItemProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     for (auto i = 0; i < TAB_COUNT; i++) {
@@ -499,9 +499,11 @@ void FOMapper::ProcessMapperInput()
                     if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
                         int32 day_time = GetGlobalDayTime();
                         day_time += 60;
+
                         while (day_time > 2880) {
                             day_time -= 1440;
                         }
+
                         SetGlobalDayTime(day_time);
                     }
                     break;
@@ -509,9 +511,11 @@ void FOMapper::ProcessMapperInput()
                     if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
                         int32 day_time = GetGlobalDayTime();
                         day_time -= 60;
+
                         while (day_time < 0) {
                             day_time += 1440;
                         }
+
                         SetGlobalDayTime(day_time);
                     }
                     break;
@@ -1082,7 +1086,7 @@ void FOMapper::IntDraw()
     // Map info
     if (_curMap) {
         mpos hex;
-        _curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr);
+        _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
         const int32 day_time = GetGlobalDayTime();
 
         DrawStr(irect32(Settings.ScreenWidth - 150, 20, Settings.ScreenWidth, Settings.ScreenHeight),
@@ -1382,7 +1386,7 @@ void FOMapper::IntLMouseDown()
             return;
         }
 
-        if (!_curMap->GetHexAtScreenPos(Settings.MousePos, SelectHex1, nullptr)) {
+        if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex1, nullptr)) {
             return;
         }
 
@@ -1769,7 +1773,7 @@ void FOMapper::IntLMouseUp()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntHold == INT_SELECT && _curMap->GetHexAtScreenPos(Settings.MousePos, SelectHex2, nullptr)) {
+    if (IntHold == INT_SELECT && _curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHex1 != SelectHex2) {
                 _curMap->ClearHexTrack();
@@ -1797,62 +1801,63 @@ void FOMapper::IntLMouseUp()
                 vector<CritterHexView*> critters;
 
                 for (const auto hex : hexes) {
-                    // Items, critters
-                    for (auto& hex_item : _curMap->GetItems(hex)) {
-                        items.emplace_back(hex_item.get());
+                    for (auto* hex_item : _curMap->GetItemsOnHex(hex)) {
+                        items.emplace_back(hex_item);
                     }
-
-                    const auto hex_critters = _curMap->GetCritters(hex, CritterFindType::Any);
-                    critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
-
-                    // Tile, roof
-                    if (IsSelectTile && Settings.ShowTile) {
-                        SelectAddTile(hex, false);
-                    }
-                    if (IsSelectRoof && Settings.ShowRoof) {
-                        SelectAddTile(hex, true);
+                    for (auto* hex_cr : _curMap->GetCrittersOnHex(hex, CritterFindType::Any)) {
+                        critters.emplace_back(hex_cr);
                     }
                 }
 
-                for (auto* item : items) {
-                    const auto pid = item->GetProtoId();
-                    if (_curMap->IsIgnorePid(pid)) {
-                        continue;
+                const auto check_item_to_add = [&](const ItemHexView* item) -> bool {
+                    if (_curMap->IsIgnorePid(item->GetProtoId())) {
+                        return false;
                     }
-                    if (!Settings.ShowFast && _curMap->IsFastPid(pid)) {
-                        continue;
+                    if (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) {
+                        return true;
                     }
+                    else if (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof) {
+                        return true;
+                    }
+                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
+                        return true;
+                    }
+                    else if (!item->GetIsTile() && item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
+                        return true;
+                    }
+                    else if (!item->GetIsTile() && item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
+                        return true;
+                    }
+                    else if (Settings.ShowFast && _curMap->IsFastPid(item->GetProtoId())) {
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                };
 
-                    if (!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
-                        SelectAddItem(item);
-                    }
-                    else if (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
-                        SelectAddItem(item);
-                    }
-                    else if (item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
-                        SelectAddItem(item);
-                    }
-                    else if (Settings.ShowFast && _curMap->IsFastPid(pid)) {
+                for (auto* item : items) {
+                    if (check_item_to_add(item)) {
                         SelectAddItem(item);
                     }
                 }
 
                 for (auto* cr : critters) {
                     if (IsSelectCrit && Settings.ShowCrit) {
-                        SelectAddCrit(cr);
+                        SelectAddCritter(cr);
                     }
                 }
             }
             else {
-                auto* entity = _curMap->GetEntityAtScreenPos(Settings.MousePos, 0, true);
+                auto* entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
 
                 if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                    if (!_curMap->IsIgnorePid(item->GetProtoId())) {
+                    if (!item->GetIsTile()) {
                         SelectAddItem(item);
                     }
                 }
                 else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                    SelectAddCrit(cr);
+                    SelectAddCritter(cr);
                 }
             }
 
@@ -1875,8 +1880,8 @@ void FOMapper::IntMouseMove()
     if (IntHold == INT_SELECT) {
         _curMap->ClearHexTrack();
 
-        if (!_curMap->GetHexAtScreenPos(Settings.MousePos, SelectHex2, nullptr)) {
-            if (!SelectHex2.isZero()) {
+        if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+            if (!SelectHex2.is_zero()) {
                 _curMap->RebuildMap();
                 SelectHex2 = {};
             }
@@ -2084,6 +2089,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         _curMap->MoveItem(item, hex);
+        TryMergeItemToMultihexMesh(_curMap.get(), item);
     }
 }
 
@@ -2111,18 +2117,22 @@ void FOMapper::SelectClear()
 
     // Delete intersected tiles
     for (auto& entity : SelectedEntities) {
-        if (const auto* tile = dynamic_cast<ItemHexView*>(entity.get()); tile != nullptr && tile->GetIsTile()) {
-            vector<ItemHexView*> tiles;
+        if (!entity->IsDestroyed()) {
+            if (const auto* tile = dynamic_cast<ItemHexView*>(entity.get()); tile != nullptr && tile->GetIsTile()) {
+                vector<ItemHexView*> tiles;
 
-            for (auto& tile2 : _curMap->GetTiles(tile->GetHex(), tile->GetIsRoofTile())) {
-                tiles.emplace_back(tile2.get());
-            }
+                for (auto* item : _curMap->GetItemsOnHex(tile->GetHex())) {
+                    if (item->GetIsTile() == tile->GetIsTile() && item->GetIsRoofTile() == tile->GetIsRoofTile()) {
+                        tiles.emplace_back(item);
+                    }
+                }
 
-            for (auto* sibling_tile : tiles) {
-                const auto is_sibling_selected = std::ranges::find(SelectedEntities, sibling_tile) != SelectedEntities.end();
+                for (auto* sibling_tile : tiles) {
+                    const auto is_sibling_selected = std::ranges::find(SelectedEntities, sibling_tile) != SelectedEntities.end();
 
-                if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
-                    _curMap->DestroyItem(sibling_tile);
+                    if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
+                        _curMap->DestroyItem(sibling_tile);
+                    }
                 }
             }
         }
@@ -2130,8 +2140,19 @@ void FOMapper::SelectClear()
 
     // Restore alpha
     for (auto& entity : SelectedEntities) {
-        if (auto* hex_view = dynamic_cast<HexView*>(entity.get()); hex_view != nullptr) {
-            hex_view->RestoreAlpha();
+        if (!entity->IsDestroyed()) {
+            if (auto* hex_view = dynamic_cast<HexView*>(entity.get()); hex_view != nullptr) {
+                hex_view->RestoreAlpha();
+            }
+        }
+    }
+
+    // Merge multihex items
+    for (auto& entity : SelectedEntities) {
+        if (!entity->IsDestroyed()) {
+            if (auto* item = dynamic_cast<ItemHexView*>(entity.get()); item != nullptr) {
+                TryMergeItemToMultihexMesh(_curMap.get(), item);
+            }
         }
     }
 
@@ -2146,7 +2167,7 @@ void FOMapper::SelectAddItem(ItemHexView* item)
     SelectAdd(item);
 }
 
-void FOMapper::SelectAddCrit(CritterView* npc)
+void FOMapper::SelectAddCritter(CritterView* npc)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2154,24 +2175,11 @@ void FOMapper::SelectAddCrit(CritterView* npc)
     SelectAdd(npc);
 }
 
-void FOMapper::SelectAddTile(mpos hex, bool is_roof)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto& tile : _curMap->GetTiles(hex, is_roof)) {
-        SelectAdd(tile.get());
-    }
-}
-
 void FOMapper::SelectAdd(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find(SelectedEntities, entity);
-
-    if (it == SelectedEntities.end()) {
-        SelectedEntities.emplace_back(entity);
-
+    if (vec_safe_add_unique_value(SelectedEntities, entity)) {
         if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
             hex_view->SetTargetAlpha(SelectAlpha);
         }
@@ -2182,11 +2190,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find(SelectedEntities, entity);
-
-    if (it != SelectedEntities.end()) {
-        SelectedEntities.erase(it);
-
+    if (vec_safe_remove_unique_value(SelectedEntities, entity)) {
         if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
             hex_view->RestoreAlpha();
         }
@@ -2205,25 +2209,25 @@ void FOMapper::SelectAll()
         }
 
         if (!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
-            SelectAddItem(item.get());
         }
         else if (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
-            SelectAddItem(item.get());
         }
         else if (item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
-            SelectAddItem(item.get());
         }
         else if (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) {
-            SelectAddItem(item.get());
         }
         else if (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof) {
-            SelectAddItem(item.get());
         }
+        else {
+            continue;
+        }
+
+        SelectAddItem(item.get());
     }
 
     if (IsSelectCrit && Settings.ShowCrit) {
         for (auto& cr : _curMap->GetCritters()) {
-            SelectAddCrit(cr.get());
+            SelectAddCritter(cr.get());
         }
     }
 
@@ -2243,8 +2247,8 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
 
     // Tile step
     const auto have_tiles = std::ranges::find_if(SelectedEntities, [](auto&& entity) {
-        const auto* item = entity.template dyn_cast<ItemHexView>();
-        return item != nullptr && item->GetIsTile();
+        const auto item = entity.template dyn_cast<ItemHexView>();
+        return item && item->GetIsTile();
     }) != SelectedEntities.end();
 
     if (hex_move && have_tiles) {
@@ -2260,10 +2264,10 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     int32 switcher = 0;
 
     if (!SelectedEntities.empty()) {
-        if (const auto* cr = SelectedEntities[0].dyn_cast<CritterHexView>(); cr != nullptr) {
+        if (auto cr = SelectedEntities[0].dyn_cast<CritterHexView>()) {
             switcher = std::abs(cr->GetHex().x % 2);
         }
-        else if (const auto* item = SelectedEntities[0].dyn_cast<ItemHexView>(); item != nullptr) {
+        else if (auto item = SelectedEntities[0].dyn_cast<ItemHexView>()) {
             switcher = std::abs(item->GetHex().x % 2);
         }
     }
@@ -2295,10 +2299,10 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
         for (auto& entity : SelectedEntities) {
             ipos32 raw_hex;
 
-            if (const auto* cr = entity.dyn_cast<CritterHexView>(); cr != nullptr) {
+            if (auto cr = entity.dyn_cast<CritterHexView>()) {
                 raw_hex = ipos32 {cr->GetHex().x, cr->GetHex().y};
             }
-            else if (const auto* item = entity.dyn_cast<ItemHexView>(); item != nullptr) {
+            else if (auto item = entity.dyn_cast<ItemHexView>()) {
                 raw_hex = ipos32 {item->GetHex().x, item->GetHex().y};
             }
 
@@ -2325,7 +2329,7 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     // Move map objects
     for (auto& entity : SelectedEntities) {
         if (!hex_move) {
-            auto* item = entity.dyn_cast<ItemHexView>();
+            auto item = entity.dyn_cast<ItemHexView>();
 
             if (item == nullptr) {
                 continue;
@@ -2344,10 +2348,10 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
         else {
             ipos32 raw_hex;
 
-            if (const auto* cr = entity.dyn_cast<CritterHexView>(); cr != nullptr) {
+            if (const auto cr = entity.dyn_cast<CritterHexView>()) {
                 raw_hex = ipos32 {cr->GetHex().x, cr->GetHex().y};
             }
-            else if (const auto* item = entity.dyn_cast<ItemHexView>(); item != nullptr) {
+            else if (const auto item = entity.dyn_cast<ItemHexView>()) {
                 raw_hex = ipos32 {item->GetHex().x, item->GetHex().y};
             }
 
@@ -2367,11 +2371,11 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
 
             const mpos hex = _curMap->GetSize().clamp_pos(raw_hex);
 
-            if (auto* item = entity.dyn_cast<ItemHexView>(); item != nullptr) {
-                _curMap->MoveItem(item, hex);
+            if (auto item = entity.dyn_cast<ItemHexView>()) {
+                _curMap->MoveItem(item.get(), hex);
             }
-            else if (auto* cr = entity.dyn_cast<CritterHexView>(); cr != nullptr) {
-                _curMap->MoveCritter(cr, hex, false);
+            else if (auto cr = entity.dyn_cast<CritterHexView>()) {
+                _curMap->MoveCritter(cr.get(), hex, false);
             }
         }
     }
@@ -2471,6 +2475,12 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
     }
 
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(item); hex_item != nullptr) {
+        if (auto* merged_item = TryMergeItemToMultihexMesh(_curMap.get(), hex_item)) {
+            item = merged_item;
+        }
+    }
+
     if (owner == nullptr) {
         SelectAdd(item);
         CurMode = CUR_MODE_DEFAULT;
@@ -2515,11 +2525,195 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 
 void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
+    FO_STACK_TRACE_ENTRY();
+
     for (const auto& inner_item : from_item->GetInnerItems()) {
         const auto stack_id = any_t {string(inner_item->GetContainerStack())};
         auto* inner_item_clone = to_item->AddMapperInnerItem(_curMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inner_item->GetProto()), stack_id, &from_item->GetProperties());
         CloneInnerItems(inner_item_clone, inner_item.get());
     }
+}
+
+void FOMapper::MergeItemsToMultihexMeshes(MapView* map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    // Check if already migrated
+    /*for (const auto& item : map->GetItems()) {
+        if (item->GetMultihexGeneration() != MultihexGenerationType::None && item->HasMultihexEntries()) {
+            return;
+        }
+    }*/
+
+    // Merge in multiple passes
+    while (true) {
+        bool something_merged = false;
+
+        for (auto* item : copy_hold_ref(map->GetItems())) {
+            if (!item->HasMultihexEntries()) {
+                if (TryMergeItemToMultihexMesh(map, item) != nullptr) {
+                    something_merged = true;
+                }
+            }
+        }
+
+        for (auto* item : copy_hold_ref(map->GetItems())) {
+            if (TryMergeItemToMultihexMesh(map, item) != nullptr) {
+                something_merged = true;
+            }
+        }
+
+        if (!something_merged) {
+            break;
+        }
+    }
+}
+
+auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
+        return nullptr;
+    }
+
+    ItemHexView* mergable_item = nullptr;
+
+    if (item->GetMultihexGeneration() == MultihexGenerationType::SiblingHexesToMesh) {
+        mergable_item = FindMultihexMeshForItemAroundHex(map, item, item->GetHex());
+
+        if (mergable_item == nullptr && item->HasMultihexEntries()) {
+            for (const auto multihex : item->GetMultihexEntries()) {
+                mergable_item = FindMultihexMeshForItemAroundHex(map, item, multihex);
+
+                if (mergable_item != nullptr) {
+                    break;
+                }
+            }
+        }
+    }
+    else if (item->GetMultihexGeneration() == MultihexGenerationType::AnyHexesToMesh) {
+        for (auto& check_item : map->GetItems()) {
+            if (CompareMultihexItemForMerge(item, check_item.get())) {
+                mergable_item = check_item.get();
+                break;
+            }
+        }
+    }
+
+    // Merge item and his mesh to another item mesh
+    if (mergable_item != nullptr) {
+        auto multihex_mesh = mergable_item->GetMultihexMesh();
+        bool some_hex_added = false;
+
+        if (item->GetHex() != mergable_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, item->GetHex())) {
+            some_hex_added = true;
+        }
+
+        if (item->HasMultihexEntries()) {
+            multihex_mesh.reserve(multihex_mesh.size() + item->GetMultihexEntries().size());
+
+            for (const auto multihex : item->GetMultihexEntries()) {
+                if (multihex != mergable_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, multihex)) {
+                    some_hex_added = true;
+                }
+            }
+        }
+
+        if (some_hex_added) {
+            mergable_item->SetMultihexMesh(multihex_mesh);
+            map->MoveItem(mergable_item, mergable_item->GetHex()); // Reapply to same hex
+        }
+
+        map->DestroyItem(item);
+        return mergable_item;
+    }
+
+    return nullptr;
+}
+
+auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex) const -> ItemHexView*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto find_mergable_item_on_hex = [&](mpos check_hex) -> const ItemHexView* {
+        if (!map->GetSize().is_valid_pos(check_hex)) {
+            return nullptr;
+        }
+
+        const auto& field = map->GetField(check_hex);
+
+        if (field.Items.empty() && field.MultihexItems.empty()) {
+            return nullptr;
+        }
+
+        for (const auto& check_item : field.Items) {
+            if (CompareMultihexItemForMerge(item, check_item.get())) {
+                return check_item.get();
+            }
+        }
+        for (const auto& check_item : field.MultihexItems) {
+            if (CompareMultihexItemForMerge(item, check_item.get())) {
+                return check_item.get();
+            }
+        }
+
+        return nullptr;
+    };
+
+    const auto find_mergable_item_around = [&]() -> ident_t {
+        // At same hex
+        if (const auto* mergable_item = find_mergable_item_on_hex(hex); mergable_item != nullptr) {
+            return mergable_item->GetId();
+        }
+
+        // Neighbor hexes
+        for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+            if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, static_cast<uint8>(i), map->GetSize())) {
+                if (const auto* mergable_item = find_mergable_item_on_hex(hex2); mergable_item != nullptr) {
+                    return mergable_item->GetId();
+                }
+            }
+        }
+
+        return {};
+    };
+
+    if (const auto item_id = find_mergable_item_around()) {
+        return map->GetItem(item_id);
+    }
+
+    return nullptr;
+}
+
+auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (source_item->GetId() == target_item->GetId()) {
+        return false;
+    }
+    if (source_item->GetProtoId() != target_item->GetProtoId()) {
+        return false;
+    }
+
+    // Our data is not modified (same as in proto)
+    auto ignore_props = vector<const Property*> {source_item->GetPropertyHex(), source_item->GetPropertyMultihexMesh()};
+
+    if (source_item->GetProperties().CompareData(source_item->GetProto()->GetProperties(), ignore_props)) {
+        return true;
+    }
+
+    // Our data is same as checked item
+    if (source_item->GetProperties().CompareData(target_item->GetProperties(), ignore_props)) {
+        return true;
+    }
+
+    return false;
 }
 
 void FOMapper::BufferCopy()
@@ -2603,8 +2797,8 @@ void FOMapper::BufferPaste()
         function<void(const EntityBuf*, ItemView*)> add_item_inner_items;
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
-            for (auto& child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddMapperInnerItem(_curMap->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), {}, child_buf->Props.get());
+            for (const auto& child_buf : item_entity_buf->Children) {
+                auto* inner_item = item->AddMapperInnerItem(_curMap->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>().get(), {}, child_buf->Props.get());
                 add_item_inner_items(child_buf.get(), inner_item);
             }
         };
@@ -2612,8 +2806,8 @@ void FOMapper::BufferPaste()
         if (entity_buf.IsCritter) {
             auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, 0, entity_buf.Props.get());
 
-            for (auto& child_buf : entity_buf.Children) {
-                auto* inv_item = cr->AddMapperInvItem(_curMap->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), CritterItemSlot::Inventory, child_buf->Props.get());
+            for (const auto& child_buf : entity_buf.Children) {
+                auto* inv_item = cr->AddMapperInvItem(_curMap->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>().get(), CritterItemSlot::Inventory, child_buf->Props.get());
                 add_item_inner_items(child_buf.get(), inv_item);
             }
 
@@ -2652,7 +2846,7 @@ void FOMapper::CurDraw()
 
             mpos hex;
 
-            if (!_curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr)) {
+            if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
                 break;
             }
 
@@ -2695,7 +2889,7 @@ void FOMapper::CurDraw()
 
             mpos hex;
 
-            if (!_curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr)) {
+            if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
                 break;
             }
 
@@ -2745,6 +2939,7 @@ void FOMapper::CurMMouseDown()
 
     if (SelectedEntities.empty()) {
         NpcDir++;
+
         if (NpcDir >= GameSettings::MAP_DIR_COUNT) {
             NpcDir = 0;
         }
@@ -2753,7 +2948,7 @@ void FOMapper::CurMMouseDown()
     }
     else {
         for (auto& entity : SelectedEntities) {
-            if (auto* cr = entity.dyn_cast<CritterHexView>(); cr != nullptr) {
+            if (auto cr = entity.dyn_cast<CritterHexView>()) {
                 const auto dir = cr->GetDir() + 1;
                 cr->ChangeDir(numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT));
             }
@@ -2809,7 +3004,8 @@ auto FOMapper::GetCurHex(mpos& hex, bool ignore_interface) -> bool
     if (!ignore_interface && IsCurInInterface()) {
         return false;
     }
-    return _curMap->GetHexAtScreenPos(Settings.MousePos, hex, nullptr);
+
+    return _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
 }
 
 void FOMapper::ConsoleDraw()
@@ -3021,7 +3217,7 @@ void FOMapper::ParseCommand(string_view command)
 
         if (!SelectedEntities.empty()) {
             for (auto& entity : SelectedEntities) {
-                if (auto* cr = entity.dyn_cast<CritterHexView>(); cr != nullptr) {
+                if (auto cr = entity.dyn_cast<CritterHexView>()) {
                     cr->StopAnim();
 
                     for (size_t j = 0; j < anims.size() / 2; j++) {
@@ -3150,6 +3346,8 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         AddMess(strex("Map truncated: {}", ex.what()));
         return nullptr;
     }
+
+    MergeItemsToMultihexMeshes(new_map.get());
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());

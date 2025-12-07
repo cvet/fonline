@@ -109,11 +109,11 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::MoveHexAroundAway(ihex7, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(3));
     CHECK(GeometryHelper::GetDistance(ihex3, ihex7) == 4);
 
-    // ForEachBlockLines
+    // ForEachMultihexLines
     vector<uint8> lines = {2, 2, 4, 1};
     mpos start {5, 5};
     int32 count = 0;
-    GeometryHelper::ForEachBlockLines(lines, start, map_size, [&](mpos pos) {
+    GeometryHelper::ForEachMultihexLines(lines, start, map_size, [&](mpos pos) {
         CHECK(map_size.is_valid_pos(pos));
         count++;
     });

@@ -110,7 +110,7 @@ public:
 
     [[nodiscard]] auto IsValid() const noexcept -> bool { return !!_owner; }
     [[nodiscard]] auto GetDrawOrder() const noexcept -> DrawOrderType { return _drawOrder; }
-    [[nodiscard]] auto GetSortValue() const noexcept -> uint32 { return _globalPos; }
+    [[nodiscard]] auto GetSortValue() const noexcept -> uint32 { return _index; }
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
@@ -118,7 +118,7 @@ public:
     [[nodiscard]] auto GetHex() const noexcept -> mpos { return _hex; }
     [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
     [[nodiscard]] auto GetPHexOffset() const noexcept -> const ipos32* { return _pHexOffset.get(); }
-    [[nodiscard]] auto GetSprOffset() const noexcept -> const ipos32* { return _sprOffset.get(); }
+    [[nodiscard]] auto GetPSprOffset() const noexcept -> const ipos32* { return _pSprOffset.get(); }
     [[nodiscard]] auto GetAlpha() const noexcept -> const uint8* { return _alpha.get(); }
     [[nodiscard]] auto GetLight() const noexcept -> const ucolor* { return _light.get(); }
     [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
@@ -156,7 +156,7 @@ private:
     mpos _hex {};
     ipos32 _hexOffset {};
     raw_ptr<const ipos32> _pHexOffset {};
-    raw_ptr<const ipos32> _sprOffset {};
+    raw_ptr<const ipos32> _pSprOffset {};
     raw_ptr<const uint8> _alpha {};
     raw_ptr<const ucolor> _light {};
     raw_ptr<const ucolor> _lightRight {};

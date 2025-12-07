@@ -958,7 +958,7 @@ def parseTags():
                 assert not isModifiableByClient or isSynced, name + ' - modifiable property must be synced'
                 assert not isModifiableByAnyClient or isPublicSync, name + ' - modifiable by any property must be public synced'
                 assert not isPersistent or not isClientOnly, name + ' - client property can\'t be persistent'
-                assert not isPersistent or isMutable, name + ' - persistent property myst be mutable'
+                assert not isPersistent or isMutable, name + ' - persistent property must be mutable'
                 assert not isVirtual or not isSynced, name + ' - virtual property can\'t be synced'
                 assert not isVirtual or not isPersistent, name + ' - virtual property can\'t be persistent'
                 assert not isNullGetterForProto or isVirtual, name + ' - null getter can\'t be on virtual property'

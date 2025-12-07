@@ -171,16 +171,16 @@ public:
 
     template<typename U>
         requires(std::is_base_of_v<T, U>)
-    FO_FORCE_INLINE auto dyn_cast() noexcept -> U*
+    FO_FORCE_INLINE auto dyn_cast() noexcept -> raw_ptr<U>
     {
-        return dynamic_cast<U*>(_ptr);
+        return raw_ptr<U>(dynamic_cast<U*>(_ptr));
     }
 
     template<typename U>
         requires(std::is_base_of_v<T, U>)
-    FO_FORCE_INLINE auto dyn_cast() const noexcept -> U*
+    FO_FORCE_INLINE auto dyn_cast() const noexcept -> raw_ptr<const U>
     {
-        return dynamic_cast<const U*>(_ptr);
+        return raw_ptr<const U>(dynamic_cast<const U*>(_ptr));
     }
 
     template<typename U>
@@ -462,6 +462,20 @@ public:
         release();
         _ptr = p;
         add_ref();
+    }
+
+    template<typename U>
+        requires(std::is_base_of_v<T, U>)
+    FO_FORCE_INLINE auto dyn_cast() noexcept -> refcount_ptr<U>
+    {
+        return refcount_ptr<U>(dynamic_cast<U*>(_ptr));
+    }
+
+    template<typename U>
+        requires(std::is_base_of_v<T, U>)
+    FO_FORCE_INLINE auto dyn_cast() const noexcept -> refcount_ptr<const U>
+    {
+        return refcount_ptr<const U>(dynamic_cast<const U*>(_ptr));
     }
 
 private:

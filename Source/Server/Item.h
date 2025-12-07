@@ -68,10 +68,13 @@ public:
     [[nodiscard]] auto GetAllInnerItems() -> const vector<Item*>&;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
+    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>& { return *_multihexEntries; }
 
     auto AddItemToContainer(Item* item, const any_t& stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);
     void SetItemToContainer(Item* item);
+    void SetMultihexEntries(vector<mpos> entries);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
@@ -83,6 +86,7 @@ public:
 
 private:
     unique_ptr<vector<Item*>> _innerItems {};
+    unique_ptr<vector<mpos>> _multihexEntries {};
 };
 
 FO_END_NAMESPACE();

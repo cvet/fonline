@@ -62,7 +62,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 
 // Smart pointer helpers
 template<typename T, typename U>
-inline auto dynamic_ptr_cast(unique_ptr<U>&& p) noexcept -> unique_ptr<T>
+inline auto dynamic_ptr_cast(unique_ptr<U>&& p) noexcept -> unique_ptr<T> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
 {
     if (T* casted = dynamic_cast<T*>(p.get())) {
         (void)p.release();
@@ -194,7 +194,18 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(const span<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+[[nodiscard]] constexpr auto copy_hold_ref(span<raw_ptr<T>>&& value) -> ref_hold_vector<T*> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+{
+    static_assert(!std::is_const_v<T>);
+    auto ref_vec = ref_hold_vector<T*>(value.size());
+    for (auto&& ref : value) {
+        ref_vec.add(ref.get());
+    }
+    return ref_vec;
+}
+
+template<typename T>
+[[nodiscard]] constexpr auto copy_hold_ref(span<refcount_ptr<T>>&& value) -> ref_hold_vector<T*> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
 {
     static_assert(!std::is_const_v<T>);
     auto ref_vec = ref_hold_vector<T*>(value.size());
@@ -245,6 +256,26 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
     vec.erase(it);
 }
 
+template<typename T>
+constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) noexcept -> bool
+{
+    if (const auto it = std::ranges::find(vec, value); it == vec.end()) {
+        vec.emplace_back(std::move(value));
+        return true;
+    }
+    return false;
+}
+
+template<typename T>
+constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value) noexcept -> bool
+{
+    if (const auto it = std::ranges::find(vec, value); it != vec.end()) {
+        vec.erase(it);
+        return true;
+    }
+    return false;
+}
+
 template<typename T, typename U>
 [[nodiscard]] constexpr auto vec_filter(const vector<T>& vec, const U& filter) -> vector<T>
 {
@@ -259,37 +290,20 @@ template<typename T, typename U>
 }
 
 template<typename T, typename U>
-[[nodiscard]] constexpr auto vec_transform(T& vec, const U& transfromer) -> auto
+[[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     vector<decltype(transfromer(nullptr))> result;
-    result.reserve(vec.size());
-    for (auto&& value : vec) {
+    result.reserve(cont.size());
+    for (auto&& value : cont) {
         result.emplace_back(transfromer(value));
     }
     return result;
 }
 
 template<typename T, typename U>
-[[nodiscard]] constexpr auto vec_transform(const span<T>& vec, const U& transfromer) -> auto
-{
-    vector<decltype(transfromer(nullptr))> result;
-    result.reserve(vec.size());
-    for (auto&& value : vec) {
-        result.emplace_back(transfromer(value));
-    }
-    return result;
-}
-
-template<typename T>
-[[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const T& value) noexcept -> bool
+[[nodiscard]] constexpr auto vec_exists(T&& vec, const U& value) noexcept -> bool
 {
     return std::ranges::find(vec, value) != vec.end();
-}
-
-template<typename T, typename U>
-[[nodiscard]] constexpr auto vec_exists(const vector<T>& vec, const U& predicate) noexcept -> bool
-{
-    return std::ranges::find_if(vec, predicate) != vec.end();
 }
 
 FO_END_NAMESPACE();

@@ -627,11 +627,11 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const 
     }
 }
 
-void GeometryHelper::ForEachBlockLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
+void GeometryHelper::ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto raw_pos = ipos32 {hex.x, hex.y};
+    auto step_raw_hex = ipos32 {hex.x, hex.y};
 
     for (size_t i = 0; i < dir_line.size() / 2; i++) {
         const auto dir = dir_line[i * 2];
@@ -642,10 +642,14 @@ void GeometryHelper::ForEachBlockLines(span<const uint8> dir_line, mpos hex, msi
         }
 
         for (uint8 j = 0; j < steps; j++) {
-            MoveHexByDirUnsafe(raw_pos, dir);
+            MoveHexByDirUnsafe(step_raw_hex, dir);
 
-            if (map_size.is_valid_pos(raw_pos)) {
-                callback(map_size.from_raw_pos(raw_pos));
+            if (map_size.is_valid_pos(step_raw_hex)) {
+                const auto step_hex = map_size.from_raw_pos(step_raw_hex);
+
+                if (step_hex != hex) {
+                    callback(step_hex);
+                }
             }
         }
     }

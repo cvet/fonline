@@ -473,7 +473,7 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
     }
 }
 
-auto Properties::SaveToText(const Properties* base) const -> map<string, string>
+auto Properties::SaveToText(const Properties* base, bool presistent_only) const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -491,7 +491,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
         if (prop->IsVirtual()) {
             continue;
         }
-        if (!prop->IsPersistent()) {
+        if (presistent_only && !prop->IsPersistent()) {
             continue;
         }
 
@@ -542,6 +542,51 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     }
 
     return key_values;
+}
+
+auto Properties::CompareData(const Properties& other, span<const Property*> ignore_props) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_registrator == other._registrator);
+
+    {
+        const auto pod_data_size = _registrator->_wholePodDataSize;
+        vector<uint8> pod_data1;
+        pod_data1.resize(pod_data_size);
+        MemCopy(pod_data1.data(), _podData.get(), pod_data_size);
+        vector<uint8> pod_data2;
+        pod_data2.resize(pod_data_size);
+        MemCopy(pod_data2.data(), other._podData.get(), pod_data_size);
+
+        for (const auto* ignore_prop : ignore_props) {
+            if (ignore_prop->IsPlainData()) {
+                const auto offset = ignore_prop->_podDataOffset.value();
+                const auto size = ignore_prop->_baseType.Size;
+                MemFill(pod_data1.data() + offset, 0, size);
+                MemFill(pod_data2.data() + offset, 0, size);
+            }
+        }
+
+        if (!MemCompare(pod_data1.data(), pod_data2.data(), pod_data_size)) {
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
+        if (vec_exists(ignore_props, _registrator->_complexProperties[i].get())) {
+            continue;
+        }
+
+        if (_complexData[i].second != other._complexData[i].second) {
+            return false;
+        }
+        if (!MemCompare(_complexData[i].first.get(), other._complexData[i].first.get(), _complexData[i].second)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Properties::ApplyPropertyFromText(const Property* prop, string_view text)

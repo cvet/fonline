@@ -644,6 +644,14 @@ enum class CornerType : uint8
     EastWest = 5,
 };
 
+///@ ExportEnum
+enum class MultihexGenerationType : uint8
+{
+    None = 0,
+    SiblingHexesToMesh = 1,
+    AnyHexesToMesh = 2,
+};
+
 class AnimationResolver
 {
 public:

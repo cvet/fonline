@@ -137,25 +137,29 @@ public:
     FO_ENTITY_PROPERTY(int32, Count);
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource
     FO_ENTITY_PROPERTY(hstring, PicMap);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
+    ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(ipos16, Offset);
-    ///@ ExportProperty Common Persistent
+    ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(CornerType, Corner);
-    ///@ ExportProperty Common Persistent
+    ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(bool, DisableEgg);
+    ///@ MigrationRule Property Item BlockLines MultihexLines
     ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(vector<uint8>, BlockLines);
+    FO_ENTITY_PROPERTY(vector<uint8>, MultihexLines);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(vector<mpos>, MultihexMesh);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(MultihexGenerationType, MultihexGeneration);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(bool, DrawMultihexEntries);
     ///@ MigrationRule Property Item IsHidden Hidden
     ///@ ExportProperty Server Mutable Persistent
     FO_ENTITY_PROPERTY(bool, Hidden);
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
-    ///@ ExportProperty Common Persistent
+    ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(bool, AlwaysHideSprite);
-    ///@ MigrationRule Property Item IsHiddenInStatic HiddenInStatic
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(bool, HiddenInStatic);
     ///@ MigrationRule Property Item IsNoBlock NoBlock
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoBlock);

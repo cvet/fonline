@@ -560,7 +560,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), frect32 {pos.x, pos.y, spr->_size.width, spr->_size.height}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf.get(), frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -589,8 +589,8 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
 
     auto xf = pos.x;
     auto yf = pos.y;
-    auto wf = numeric_cast<float32>(spr->_size.width);
-    auto hf = numeric_cast<float32>(spr->_size.height);
+    auto wf = numeric_cast<float32>(spr->GetSize().width);
+    auto hf = numeric_cast<float32>(spr->GetSize().height);
     const auto k = std::min(size.width / wf, size.height / hf);
 
     if (!stretch) {
@@ -651,8 +651,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
         return;
     }
 
-    auto width = numeric_cast<float32>(atlas_spr->_size.width);
-    auto height = numeric_cast<float32>(atlas_spr->_size.height);
+    auto width = numeric_cast<float32>(atlas_spr->GetSize().width);
+    auto height = numeric_cast<float32>(atlas_spr->GetSize().height);
 
     if (spr_size.width != 0 && spr_size.height != 0) {
         width = numeric_cast<float32>(spr_size.width);
@@ -788,7 +788,7 @@ void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
 
     const auto x = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[0] * _sprEgg->GetAtlasRect().x);
     const auto y = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[1] * _sprEgg->GetAtlasRect().y);
-    _eggData = _sprEgg->GetAtlas()->GetTexture()->GetTextureRegion({x, y}, _sprEgg->_size);
+    _eggData = _sprEgg->GetAtlas()->GetTexture()->GetTextureRegion({x, y}, _sprEgg->GetSize());
 }
 
 auto SpriteManager::CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool
@@ -843,9 +843,9 @@ void SpriteManager::SetEgg(mpos hex, const MapSprite* mspr)
 
     const auto hex_offset = mspr->GetHexOffset();
     const auto* phex_offset = mspr->GetPHexOffset();
-    const auto* spr_offset = mspr->GetSprOffset();
-    _eggOffset.x = hex_offset.x + spr->_offset.x - _sprEgg->_size.width / 2 + spr_offset->x + phex_offset->x;
-    _eggOffset.y = hex_offset.y - spr->_size.height / 2 + spr->_offset.y - _sprEgg->_size.height / 2 + spr_offset->y + phex_offset->y;
+    const auto* pspr_offset = mspr->GetPSprOffset();
+    _eggOffset.x = hex_offset.x + phex_offset->x + pspr_offset->x + spr->GetOffset().x - _sprEgg->GetSize().width / 2;
+    _eggOffset.y = hex_offset.y + phex_offset->y + pspr_offset->y + spr->GetOffset().y - _sprEgg->GetSize().height / 2 - spr->GetSize().height / 2;
     _eggHex = hex;
     _eggValid = true;
 }
@@ -872,14 +872,12 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const Sprite* spr = mspr->GetSprite();
         FO_RUNTIME_ASSERT(spr);
 
-        // Skip not visible
-        const auto hex_offset = mspr->GetHexOffset();
-        const auto* phex_offset = mspr->GetPHexOffset();
-        const auto* spr_offset = mspr->GetSprOffset();
-        const int32 xi = hex_offset.x + spr->_offset.x + phex_offset->x - spr->_size.width / 2 + (spr_offset != nullptr ? spr_offset->x : 0) - draw_area.x;
-        const int32 yi = hex_offset.y + spr->_offset.y + phex_offset->y - spr->_size.height + (spr_offset != nullptr ? spr_offset->y : 0) - draw_area.y;
+        irect32 mspr_rect = mspr->GetDrawRect();
+        mspr_rect.x -= draw_area.x;
+        mspr_rect.y -= draw_area.y;
 
-        if (xi > draw_area.width || xi + spr->_size.width < 0 || yi > draw_area.height || yi + spr->_size.height < 0) {
+        // Skip not visible
+        if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
             continue;
         }
 
@@ -930,27 +928,27 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Fill buffer
-        const float32 xf = numeric_cast<float32>(xi);
-        const float32 yf = numeric_cast<float32>(yi);
-        const float32 wf = numeric_cast<float32>(spr->_size.width);
-        const float32 hf = numeric_cast<float32>(spr->_size.height);
+        const float32 xf = numeric_cast<float32>(mspr_rect.x);
+        const float32 yf = numeric_cast<float32>(mspr_rect.y);
+        const float32 wf = numeric_cast<float32>(spr->GetSize().width);
+        const float32 hf = numeric_cast<float32>(spr->GetSize().height);
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
         // Setup egg
         if (use_egg && _eggValid && ind_count == 6 && CheckEggAppearence(mspr->GetHex(), mspr->GetEggAppearence())) {
-            int32 x1 = xi - _eggOffset.x + draw_area.x;
-            int32 y1 = yi - _eggOffset.y + draw_area.y;
-            int32 x2 = x1 + spr->_size.width;
-            int32 y2 = y1 + spr->_size.height;
+            int32 x1 = mspr_rect.x - _eggOffset.x + draw_area.x;
+            int32 y1 = mspr_rect.y - _eggOffset.y + draw_area.y;
+            int32 x2 = x1 + spr->GetSize().width;
+            int32 y2 = y1 + spr->GetSize().height;
 
-            if (x1 < _sprEgg->_size.width - 100 && y1 < _sprEgg->_size.height - 100 && x2 >= 100 && y2 >= 100) {
+            if (x1 < _sprEgg->GetSize().width - 100 && y1 < _sprEgg->GetSize().height - 100 && x2 >= 100 && y2 >= 100) {
                 const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
 
                 if (atlas_spr != nullptr) {
                     x1 = std::max(x1, 0);
                     y1 = std::max(y1, 0);
-                    x2 = std::min(x2, _sprEgg->_size.width);
-                    y2 = std::min(y2, _sprEgg->_size.height);
+                    x2 = std::min(x2, _sprEgg->GetSize().width);
+                    y2 = std::min(y2, _sprEgg->GetSize().height);
 
                     const auto x1_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x1) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
                     const auto x2_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x2) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
@@ -1034,7 +1032,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             }
 
             if (contour_color != ucolor::clear) {
-                CollectContour({xi, yi}, spr, contour_color);
+                CollectContour(mspr_rect.pos(), spr, contour_color);
             }
         }
 
@@ -1074,12 +1072,13 @@ auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
 
     const auto ox = pos.x - _eggOffset.x;
     const auto oy = pos.y - _eggOffset.y;
+    const auto size = _sprEgg->GetSize();
 
-    if (ox < 0 || oy < 0 || ox >= _sprEgg->_size.width || oy >= _sprEgg->_size.height) {
+    if (ox < 0 || oy < 0 || ox >= size.width || oy >= size.height) {
         return false;
     }
 
-    const auto egg_color = _eggData.at(oy * _sprEgg->_size.width + ox);
+    const auto egg_color = _eggData.at(oy * size.width + ox);
     return egg_color.comp.a < 127;
 }
 
@@ -1200,7 +1199,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     const float32 txw = texture->SizeData[2];
     const float32 txh = texture->SizeData[3];
     const frect32 textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
-    const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->_size.width + 2, as->_size.height + 2));
+    const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->GetSize().width + 2, as->GetSize().height + 2));
 
     contour_color = ApplyColorBrightness(contour_color);
 
@@ -1367,51 +1366,51 @@ void SpriteManager::BuildFont(int32 index)
 
     // Read texture data
     const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
-    vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->_size);
+    vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
     vector<ucolor> data_bordered;
 
     if (si_bordered != nullptr) {
-        data_bordered = si_bordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->_size);
+        data_bordered = si_bordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize());
     }
 
     // Normalize color to gray
     if (font.MakeGray) {
-        for (auto y = 0; y < atlas_spr->_size.height; y++) {
-            for (auto x = 0; x < atlas_spr->_size.width; x++) {
-                const auto a = pixel_at(data_normal, atlas_spr->_size.width, x, y).comp.a;
+        for (auto y = 0; y < atlas_spr->GetSize().height; y++) {
+            for (auto x = 0; x < atlas_spr->GetSize().width; x++) {
+                const auto a = pixel_at(data_normal, atlas_spr->GetSize().width, x, y).comp.a;
 
                 if (a != 0) {
-                    pixel_at(data_normal, atlas_spr->_size.width, x, y) = ucolor {128, 128, 128, a};
+                    pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {128, 128, 128, a};
 
                     if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->_size.width, x, y) = ucolor {128, 128, 128, a};
+                        pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
-                    pixel_at(data_normal, atlas_spr->_size.width, x, y) = ucolor {0, 0, 0, 0};
+                    pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
 
                     if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->_size.width, x, y) = ucolor {0, 0, 0, 0};
+                        pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
         }
 
-        atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->_size, data_normal.data());
+        atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize(), data_normal.data());
     }
 
     // Fill border
     if (si_bordered != nullptr) {
-        for (auto y = 1; y < si_bordered->_size.height - 2; y++) {
-            for (auto x = 1; x < si_bordered->_size.width - 2; x++) {
-                if (pixel_at(data_normal, atlas_spr->_size.width, x, y) != ucolor::clear) {
+        for (auto y = 1; y < si_bordered->GetSize().height - 2; y++) {
+            for (auto x = 1; x < si_bordered->GetSize().width - 2; x++) {
+                if (pixel_at(data_normal, atlas_spr->GetSize().width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
 
-                            if (pixel_at(data_bordered, si_bordered->_size.width, ox, oy) == ucolor::clear) {
-                                pixel_at(data_bordered, si_bordered->_size.width, ox, oy) = ucolor {0, 0, 0, 255};
+                            if (pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) == ucolor::clear) {
+                                pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -1419,7 +1418,7 @@ void SpriteManager::BuildFont(int32 index)
             }
         }
 
-        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->_size, data_bordered.data());
+        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize(), data_bordered.data());
 
         // Fix texture coordinates on bordered texture
         tex_w = numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().width);
