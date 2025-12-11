@@ -191,10 +191,11 @@ public:
     auto CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*;
     auto CloneEntity(Entity* entity) -> Entity*;
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
-    void MergeItemsToMultihexMeshes(MapView* map);
-    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*;
-    auto FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex) const -> ItemHexView*;
-    auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item) const -> bool;
+    auto MergeItemsToMultihexMeshes(MapView* map) -> size_t;
+    auto BreakItemsMultihexMeshes(MapView* map) -> size_t;
+    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it) -> ItemHexView*;
+    auto FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it) const -> ItemHexView*;
+    auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool;
 
     void BufferCopy();
     void BufferCut();

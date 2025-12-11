@@ -147,22 +147,20 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     auto final_hex = hex;
 
     if (!map->IsHexesMovable(hex, multihex)) {
-        // Find in 2 hex radius
-        const auto steps_count = GenericUtils::NumericalNumber(2) * GameSettings::MAP_DIR_COUNT;
+        const auto hexes_around = GeometryHelper::HexesInRadius(2);
         const auto map_size = map->GetSize();
 
-        for (int32 i = 0; i < steps_count; i++) {
-            auto raw_check_hex = ipos32 {hex.x, hex.y};
-            GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
+        for (int32 i = 1; i <= hexes_around; i++) {
+            auto check_hex = hex;
 
-            if (!map_size.is_valid_pos(raw_check_hex)) {
+            if (!GeometryHelper::MoveHexAroundAway(check_hex, i, map_size)) {
                 continue;
             }
-            if (!map->IsHexesMovable(map_size.from_raw_pos(raw_check_hex), multihex)) {
+            if (!map->IsHexesMovable(check_hex, multihex)) {
                 continue;
             }
 
-            final_hex = map_size.from_raw_pos(raw_check_hex);
+            final_hex = check_hex;
             break;
         }
     }

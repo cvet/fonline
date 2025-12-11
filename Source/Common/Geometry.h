@@ -141,10 +141,12 @@ public:
     [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
+    [[nodiscard]] static auto HexesInRadius(int32 radius) -> int32;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;
-    static void MoveHexAroundAway(ipos32& hex, int32 index);
+    static auto MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool;
+    static void MoveHexAroundAwayUnsafe(ipos32& hex, int32 index);
     static void ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:

@@ -47,9 +47,6 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
         if (prop->IsDisabled()) {
             continue;
         }
-        if (prop->IsVirtual()) {
-            continue;
-        }
         if (!prop->IsPersistent()) {
             continue;
         }
@@ -111,7 +108,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             bool is_component;
             const auto* prop = props->GetRegistrator()->FindProperty(doc_key, &is_component);
 
-            if (prop != nullptr && !prop->IsDisabled() && !prop->IsVirtual() && prop->IsPersistent()) {
+            if (prop != nullptr && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
             else {

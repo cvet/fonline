@@ -132,9 +132,9 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent compon
 
     const auto hex_items = self->GetItemsOnHex(hex);
 
-    for (auto* item : hex_items) {
+    for (auto& item : hex_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item;
+            return item.get();
         }
     }
 
@@ -151,9 +151,9 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty propert
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     const auto hex_items = self->GetItemsOnHex(hex);
 
-    for (auto* item : hex_items) {
+    for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item;
+            return item.get();
         }
     }
 
@@ -167,10 +167,12 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, hstrin
         throw ScriptException("Invalid hex args");
     }
 
-    const auto map_items = self->GetItemsInRadius(hex, radius, pid);
+    auto hex_items = self->GetItemsInRadius(hex, radius);
 
-    if (!map_items.empty()) {
-        return map_items.front();
+    for (auto& item : hex_items) {
+        if (item->GetProtoId() == pid) {
+            return item.get();
+        }
     }
 
     return nullptr;
@@ -183,11 +185,11 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemCo
         throw ScriptException("Invalid hex args");
     }
 
-    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
+    auto hex_items = self->GetItemsInRadius(hex, radius);
 
-    for (auto* item : map_items) {
+    for (auto& item : hex_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item;
+            return item.get();
         }
     }
 
@@ -202,11 +204,11 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemPr
     }
 
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
+    auto hex_items = self->GetItemsInRadius(hex, radius);
 
-    for (auto* item : map_items) {
+    for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item;
+            return item.get();
         }
     }
 
@@ -222,7 +224,18 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, hstring pid)
 {
-    return self->GetItems(pid);
+    const auto map_items = self->GetItems();
+
+    vector<Item*> result;
+    result.reserve(map_items.size());
+
+    for (auto& item : map_items) {
+        if (item->GetProtoId() == pid) {
+            result.emplace_back(item.get());
+        }
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
@@ -233,15 +246,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex)
     }
 
     const auto hex_items = self->GetItemsOnHex(hex);
-
-    vector<Item*> result;
-    result.reserve(hex_items.size());
-
-    for (auto* item : hex_items) {
-        result.emplace_back(item);
-    }
-
-    return result;
+    return vec_transform(hex_items, [](auto&& item) -> Item* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -251,7 +256,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
         throw ScriptException("Invalid hex args");
     }
 
-    return self->GetItemsInRadius(hex, radius, hstring());
+    return vec_transform(self->GetItemsInRadius(hex, radius), [](auto&& item) -> Item* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -261,7 +266,18 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
         throw ScriptException("Invalid hex args");
     }
 
-    return self->GetItemsInRadius(hex, radius, pid);
+    auto hex_items = self->GetItemsInRadius(hex, radius);
+
+    vector<Item*> result;
+    result.reserve(hex_items.size());
+
+    for (auto& item : hex_items) {
+        if (item->GetProtoId() == pid) {
+            result.emplace_back(item.get());
+        }
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
@@ -311,9 +327,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemCompone
     vector<Item*> result;
     result.reserve(hex_items.size());
 
-    for (auto* item : hex_items) {
+    for (auto& item : hex_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -334,9 +350,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
     vector<Item*> result;
     result.reserve(hex_items.size());
 
-    for (auto* item : hex_items) {
+    for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -350,14 +366,14 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
         throw ScriptException("Invalid hex args");
     }
 
+    auto hex_items = self->GetItemsInRadius(hex, radius);
+
     vector<Item*> result;
-    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
+    result.reserve(hex_items.size());
 
-    result.reserve(map_items.size());
-
-    for (auto* item : map_items) {
+    for (auto& item : hex_items) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item);
+            result.emplace_back(item.get());
         }
     }
 
@@ -373,14 +389,14 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
         throw ScriptException("Invalid hex args");
     }
 
+    auto hex_items = self->GetItemsInRadius(hex, radius);
+
     vector<Item*> items;
-    const auto map_items = self->GetItemsInRadius(hex, radius, hstring());
+    items.reserve(hex_items.size());
 
-    items.reserve(map_items.size());
-
-    for (auto* item : map_items) {
+    for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.emplace_back(item);
+            items.emplace_back(item.get());
         }
     }
 

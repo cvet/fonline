@@ -115,8 +115,9 @@ public:
         ipos32 Offset {};
         raw_ptr<MapSprite> SpriteChain {};
         vector<raw_ptr<CritterHexView>> Critters {};
-        vector<raw_ptr<CritterHexView>> MultihexCritters {};
+        vector<raw_ptr<CritterHexView>> OriginCritters {};
         vector<raw_ptr<ItemHexView>> Items {};
+        vector<raw_ptr<ItemHexView>> OriginItems {};
         vector<raw_ptr<ItemHexView>> MultihexItems {};
         unordered_map<LightSource*, ucolor> LightSources {};
         raw_ptr<ItemHexView> GroundTile {};
@@ -225,8 +226,8 @@ public:
     auto GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*;
     auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
     auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _items; }
-    auto GetItemsOnHex(mpos hex) -> vector<ItemHexView*>;
-    auto GetItemsOnHex(mpos hex) const -> vector<const ItemHexView*>;
+    auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
+    auto GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 

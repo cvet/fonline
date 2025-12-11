@@ -60,7 +60,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     FO_STRONG_ASSERT(first_call);
 
     // Fork the process if requested
-    if (std::any_of(argv, argv + argc, [](const char* arg) { return string_view(arg) == "--fork"; })) {
+    if (argc > 0 && std::any_of(argv, argv + argc, [](const char* arg) { return string_view(arg) == "--fork"; })) {
         Platform::ForkProcess();
     }
 

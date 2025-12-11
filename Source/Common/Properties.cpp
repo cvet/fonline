@@ -439,12 +439,12 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
                 continue;
             }
 
-            WriteLog("Unknown property {}", key);
+            WriteLog("Failed to load unknown property {}", key);
             errors++;
             continue;
         }
 
-        if (!prop->_podDataOffset.has_value() && !prop->_complexDataIndex.has_value()) {
+        if (prop->IsDisabled()) {
             if (_registrator->GetRelation() == PropertiesRelationType::ServerRelative && prop->IsClientOnly()) {
                 continue;
             }
@@ -452,7 +452,19 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
                 continue;
             }
 
-            WriteLog("Invalid property {} for reading", prop->GetName());
+            WriteLog("Failed to load disabled property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsVirtual()) {
+            WriteLog("Failed to load virtual property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsTemporary()) {
+            WriteLog("Failed to load temporary property {}", prop->GetName());
             errors++;
             continue;
         }
@@ -473,7 +485,7 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
     }
 }
 
-auto Properties::SaveToText(const Properties* base, bool presistent_only) const -> map<string, string>
+auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -491,7 +503,7 @@ auto Properties::SaveToText(const Properties* base, bool presistent_only) const 
         if (prop->IsVirtual()) {
             continue;
         }
-        if (presistent_only && !prop->IsPersistent()) {
+        if (prop->IsTemporary()) {
             continue;
         }
 
@@ -1103,6 +1115,9 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     if (prop->IsVirtual()) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
+    if (!prop->IsMutable()) {
+        throw PropertiesException("Can't set integer value to non mutable property", prop->GetName());
+    }
 
     const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
@@ -1176,10 +1191,13 @@ void Properties::SetValueAsAnyProps(int32 property_index, const any_t& value)
         throw PropertiesException("Property not found", property_index);
     }
     if (prop->IsDisabled()) {
-        throw PropertiesException("Can't set any value to disabled property", prop->GetName());
+        throw PropertiesException("Can't set value to disabled property", prop->GetName());
     }
     if (prop->IsVirtual()) {
-        throw PropertiesException("Can't set any value to virtual property", prop->GetName());
+        throw PropertiesException("Can't set value to virtual property", prop->GetName());
+    }
+    if (!prop->IsMutable()) {
+        throw PropertiesException("Can't set value to non mutable property", prop->GetName());
     }
 
     ApplyPropertyFromText(prop, value);
@@ -1534,7 +1552,6 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
     FO_RUNTIME_ASSERT(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync));
     FO_RUNTIME_ASSERT(!prop->_isModifiableByClient || prop->_isSynced);
     FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient || prop->_isPublicSync);
-    FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty));
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isSynced);
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);

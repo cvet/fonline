@@ -172,7 +172,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self, mpos hex)
         throw ScriptException("Item id arg is zero");
     }
 
-    return vec_transform(self->GetItemsOnHex(hex), [](ItemHexView* item) -> ItemView* { return item; });
+    return vec_transform(self->GetItemsOnHex(hex), [](auto&& item) -> ItemView* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -281,10 +281,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
     }
 
     vector<CritterHexView*> critters;
-
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-
-    return vec_static_cast<CritterView*>(critters);
+    return vec_transform(critters, [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -298,10 +296,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
     }
 
     vector<CritterHexView*> critters;
-
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
-
-    return vec_static_cast<CritterView*>(critters);
+    return vec_transform(critters, [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -315,9 +311,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
     }
 
     mpos pre_block;
-
     self->TraceBullet(fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, &pre_block, nullptr, nullptr, true);
-
     toHex = pre_block;
 }
 

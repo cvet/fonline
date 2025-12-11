@@ -69,15 +69,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
     const auto hex_items = mapper->GetCurMap()->GetItemsOnHex(hex);
-
-    vector<ItemView*> items;
-    items.reserve(hex_items.size());
-
-    for (auto* item : hex_items) {
-        items.emplace_back(item);
-    }
-
-    return items;
+    return vec_transform(hex_items, [](auto&& item) -> ItemView* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -90,7 +82,7 @@ FO_SCRIPT_API CritterView* Mapper_Game_GetCritter(FOMapper* mapper, mpos hex, Cr
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    return vec_static_cast<CritterView*>(mapper->GetCurMap()->GetCrittersOnHex(hex, findType));
+    return vec_transform(mapper->GetCurMap()->GetCrittersOnHex(hex, findType), [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod

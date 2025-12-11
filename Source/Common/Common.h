@@ -525,7 +525,6 @@ public:
 
     [[nodiscard]] static auto Random(int32 minimum, int32 maximum) -> int32;
     [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
-    [[nodiscard]] static auto NumericalNumber(int32 num) noexcept -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
     [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
     [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
@@ -648,8 +647,8 @@ enum class CornerType : uint8
 enum class MultihexGenerationType : uint8
 {
     None = 0,
-    SiblingHexesToMesh = 1,
-    AnyHexesToMesh = 2,
+    SameSibling = 1,
+    AnyUnique = 2,
 };
 
 class AnimationResolver

@@ -66,7 +66,7 @@ public:
     // Todo: exclude player properties from engine:
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(uint32, LastGlobalMapTripId);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client Mutable Persistent
     FO_ENTITY_PROPERTY(int32, GlobalDayTime);
 };
 
@@ -137,28 +137,28 @@ public:
     FO_ENTITY_PROPERTY(int32, Count);
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource
     FO_ENTITY_PROPERTY(hstring, PicMap);
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(ipos16, Offset);
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(CornerType, Corner);
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(bool, DisableEgg);
     ///@ MigrationRule Property Item BlockLines MultihexLines
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(vector<uint8>, MultihexLines);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(vector<mpos>, MultihexMesh);
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(MultihexGenerationType, MultihexGeneration);
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(bool, DrawMultihexEntries);
     ///@ MigrationRule Property Item IsHidden Hidden
     ///@ ExportProperty Server Mutable Persistent
     FO_ENTITY_PROPERTY(bool, Hidden);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client Mutable Persistent
     FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
-    ///@ ExportProperty Client
+    ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(bool, AlwaysHideSprite);
     ///@ MigrationRule Property Item IsNoBlock NoBlock
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -285,7 +285,7 @@ public:
     FO_ENTITY_PROPERTY(bool, IsAttached);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(ident_t, AttachMaster);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client Mutable Persistent
     FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(int32, MovingSpeed);
@@ -296,7 +296,7 @@ public:
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client Mutable Persistent
     FO_ENTITY_PROPERTY(int16, NameOffset);
     ///@ ExportProperty Server Mutable Persistent
     FO_ENTITY_PROPERTY(int32, SneakCoefficient);
@@ -309,7 +309,7 @@ public:
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client Mutable Persistent
     FO_ENTITY_PROPERTY(ucolor, ContourColor);
 };
 
@@ -348,7 +348,7 @@ public:
     // Todo: exclude map properties from engine:
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(float32, SpritesZoom);
-    ///@ ExportProperty Client Mutable
+    ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(float32, SpritesZoomTarget);
     ///@ MigrationRule Property Map CurDayTime FixedDayTime
     ///@ ExportProperty Common Mutable PublicSync Persistent

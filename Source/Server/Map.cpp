@@ -85,27 +85,23 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         return std::nullopt;
     }
 
-    const auto max_pos = GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT;
-    int32 pos = GenericUtils::Random(0, max_pos - 1);
+    const auto hexes_around = GeometryHelper::HexesInRadius(seek_radius);
+    int32 pos = GenericUtils::Random(1, hexes_around);
     int32 iterations = 0;
 
     while (true) {
-        if (++iterations > max_pos) {
+        if (++iterations > hexes_around) {
             return std::nullopt;
         }
-        if (++pos >= max_pos) {
-            pos = 0;
+        if (++pos > hexes_around) {
+            pos = 1;
         }
 
-        auto raw_check_hex = ipos32 {hex.x, hex.y};
-        GeometryHelper::MoveHexAroundAway(raw_check_hex, pos);
+        auto check_hex = hex;
 
-        if (!_mapSize.is_valid_pos(raw_check_hex)) {
+        if (!GeometryHelper::MoveHexAroundAway(check_hex, pos, _mapSize)) {
             continue;
         }
-
-        const auto check_hex = _mapSize.from_raw_pos(raw_check_hex);
-
         if (!IsHexesMovable(check_hex, multihex)) {
             continue;
         }
@@ -116,10 +112,8 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
         break;
     }
 
-    auto raw_hex = ipos32 {hex.x, hex.y};
-    GeometryHelper::MoveHexAroundAway(raw_hex, pos);
-    const auto result_hex = _mapSize.from_raw_pos(raw_hex);
-
+    auto result_hex = hex;
+    GeometryHelper::MoveHexAroundAway(result_hex, pos, _mapSize);
     return result_hex;
 }
 
@@ -198,21 +192,17 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
 
     if (multihex != 0) {
         const auto hex = cr->GetHex();
-        const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
+        const auto hexes_around = GeometryHelper::HexesInRadius(multihex);
 
-        for (int32 i = 0; i < max_hexes; i++) {
-            auto raw_mh_hex = ipos32 {hex.x, hex.y};
-            GeometryHelper::MoveHexAroundAway(raw_mh_hex, i);
-
-            if (_mapSize.is_valid_pos(raw_mh_hex)) {
-                const auto mh_hex = _mapSize.from_raw_pos(raw_mh_hex);
-                auto& field = _hexField->GetCellForWriting(mh_hex);
+        for (int32 i = 1; i < hexes_around; i++) {
+            if (auto hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
+                auto& field = _hexField->GetCellForWriting(hex_around);
 
                 if (set) {
-                    vec_add_unique_value(field.MultihexCritters, cr);
+                    vec_add_unique_value(field.Critters, cr);
                 }
                 else {
-                    vec_remove_unique_value(field.MultihexCritters, cr);
+                    vec_remove_unique_value(field.Critters, cr);
                 }
 
                 RecacheHexFlags(field);
@@ -299,7 +289,7 @@ void Map::SetItem(Item* item)
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
-            if (vec_safe_add_unique_value(multihex_field.MultihexItems, item)) {
+            if (vec_safe_add_unique_value(multihex_field.Items, item)) {
                 RecacheHexFlags(multihex_field);
                 multihex_entries.emplace_back(multihex);
             }
@@ -309,7 +299,7 @@ void Map::SetItem(Item* item)
             if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
                 auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
-                if (vec_safe_add_unique_value(multihex_field.MultihexItems, item)) {
+                if (vec_safe_add_unique_value(multihex_field.Items, item)) {
                     RecacheHexFlags(multihex_field);
                     multihex_entries.emplace_back(multihex);
                 }
@@ -356,7 +346,7 @@ void Map::RemoveItem(ident_t item_id)
     if (item->HasMultihexEntries()) {
         for (const auto multihex : item->GetMultihexEntries()) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
-            vec_remove_unique_value(multihex_field.MultihexItems, item);
+            vec_remove_unique_value(multihex_field.Items, item);
             RecacheHexFlags(multihex_field);
         }
 
@@ -428,23 +418,11 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Base
-    if (!IsHexMovable(hex)) {
-        return false;
-    }
-    if (radius == 0) {
-        return true;
-    }
+    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
 
-    // Neighbors
-    const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
-
-    for (int32 i = 0; i < count; i++) {
-        auto raw_check_hex = ipos32 {hex.x, hex.y};
-        GeometryHelper::MoveHexAroundAway(raw_check_hex, i);
-
-        if (_mapSize.is_valid_pos(raw_check_hex)) {
-            if (!IsHexMovable(_mapSize.from_raw_pos(raw_check_hex))) {
+    for (int32 i = 0; i < hexes_around; i++) {
+        if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
+            if (!IsHexMovable(check_hex)) {
                 return false;
             }
         }
@@ -579,18 +557,13 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return nullptr;
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
 
     for (auto& item : field2.Items) {
-        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
-            return item.get();
-        }
-    }
-    for (auto& item : field2.MultihexItems) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
             return item.get();
         }
@@ -605,7 +578,7 @@ auto Map::GetGagItemOnHex(mpos hex) const noexcept -> const Item*
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return nullptr;
     }
 
@@ -614,65 +587,44 @@ auto Map::GetGagItemOnHex(mpos hex) const noexcept -> const Item*
             return item.get();
         }
     }
-    for (const auto& item : field.MultihexItems) {
-        if (item->GetIsGag()) {
-            return item.get();
-        }
-    }
 
     return nullptr;
 }
 
-auto Map::GetItems(hstring pid) -> vector<Item*>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<Item*> items;
-
-    for (auto& item : _items) {
-        if (item->GetProtoId() == pid) {
-            items.emplace_back(item.get());
-        }
-    }
-
-    return items;
-}
-
-auto Map::GetItemsOnHex(mpos hex) noexcept -> vector<Item*>
+auto Map::GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return {};
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
-    vector<Item*> items;
-    items.reserve(field2.Items.size() + field2.MultihexItems.size());
-
-    for (auto& item : field2.Items) {
-        items.emplace_back(item.get());
-    }
-    for (auto& item : field2.MultihexItems) {
-        items.emplace_back(item.get());
-    }
-
-    return items;
+    return field2.Items;
 }
 
-auto Map::GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>
+auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<Item*> items;
+    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
 
-    // Todo: optimize items radius search by checking directly hexes in radius
-    // Todo: modify find item in radius to include multihex enrties
-    for (auto& item : _items) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::CheckDist(item->GetHex(), hex, radius)) {
-            items.emplace_back(item.get());
+    vector<raw_ptr<Item>> items;
+    items.reserve(numeric_cast<size_t>(hexes_around) * 2);
+
+    for (int32 i = 0; i < hexes_around; i++) {
+        if (mpos next_hex = hex; GeometryHelper::MoveHexAroundAway(next_hex, i, _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(next_hex);
+
+            if (!field.Items.empty()) {
+                auto& field2 = _hexField->GetCellForWriting(hex);
+
+                for (auto& item : field2.Items) {
+                    vec_safe_add_unique_value(items, item.get());
+                }
+            }
         }
     }
 
@@ -685,7 +637,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) -> vector<Item*>
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return {};
     }
 
@@ -693,11 +645,6 @@ auto Map::GetTriggerItemsOnHex(mpos hex) -> vector<Item*>
     vector<Item*> triggers;
 
     for (auto& item : field2.Items) {
-        if (item->GetIsTrigger() || item->GetIsTrap()) {
-            triggers.emplace_back(item.get());
-        }
-    }
-    for (auto& item : field2.MultihexItems) {
         if (item->GetIsTrigger() || item->GetIsTrap()) {
             triggers.emplace_back(item.get());
         }
@@ -739,19 +686,14 @@ void Map::RecacheHexFlags(Field& field)
     field.HasNoMoveItem = false;
     field.HasNoShootItem = false;
 
-    field.HasCritter = !field.Critters.empty() || !field.MultihexCritters.empty();
+    field.HasCritter = !field.Critters.empty();
 
     if (_engine->Settings.CritterBlockHex && field.HasCritter) {
-        if (!field.Critters.empty()) {
-            field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
-        }
-        if (!field.HasBlockCritter && !field.MultihexCritters.empty()) {
-            field.HasBlockCritter = std::ranges::any_of(field.MultihexCritters, [](auto&& cr) { return !cr->IsDead(); });
-        }
+        field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
     }
 
-    if (!field.Items.empty() || !field.MultihexItems.empty()) {
-        const auto process_item = [&field](const Item* item) {
+    if (!field.Items.empty()) {
+        for (const auto& item : field.Items) {
             if (!field.HasNoMoveItem && !item->GetNoBlock()) {
                 field.HasNoMoveItem = true;
             }
@@ -764,13 +706,6 @@ void Map::RecacheHexFlags(Field& field)
             if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
                 field.HasTriggerItem = true;
             }
-        };
-
-        for (const auto& item : field.Items) {
-            process_item(item.get());
-        }
-        for (const auto& item : field.MultihexItems) {
-            process_item(item.get());
         }
     }
 
@@ -806,12 +741,6 @@ auto Map::IsCritterOnHex(mpos hex, CritterFindType find_type) const -> bool
                 return true;
             }
         }
-
-        for (const auto& cr : field.MultihexCritters) {
-            if (cr->CheckFind(find_type)) {
-                return true;
-            }
-        }
     }
 
     return false;
@@ -826,15 +755,7 @@ auto Map::IsCritterOnHex(mpos hex, const Critter* cr) const -> bool
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        const auto it1 = std::find(field.Critters.begin(), field.Critters.end(), cr);
-
-        if (it1 != field.Critters.end()) {
-            return true;
-        }
-
-        const auto it2 = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
-
-        if (it2 != field.MultihexCritters.end()) {
+        if (vec_exists(field.Critters, raw_ptr(cr))) {
             return true;
         }
     }
@@ -867,12 +788,6 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> Critt
                 return cr.get();
             }
         }
-
-        for (auto& cr : field2.MultihexCritters) {
-            if (cr->CheckFind(find_type)) {
-                return cr.get();
-            }
-        }
     }
 
     return nullptr;
@@ -889,12 +804,6 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critte
         auto& field2 = _hexField->GetCellForWriting(hex);
 
         for (auto& cr : field2.Critters) {
-            if (cr->CheckFind(find_type)) {
-                critters.emplace_back(cr.get());
-            }
-        }
-
-        for (auto& cr : field2.MultihexCritters) {
             if (cr->CheckFind(find_type)) {
                 critters.emplace_back(cr.get());
             }

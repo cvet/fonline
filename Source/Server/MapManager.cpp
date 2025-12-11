@@ -701,15 +701,11 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 
     // Ring check
     if (input.Cut <= 1 && input.Multihex == 0) {
-        int32 i = 0;
+        const int32 hexes_around = GeometryHelper::HexesInRadius(1);
+        int32 i = 1;
 
-        for (; i < GameSettings::MAP_DIR_COUNT; i++) {
-            auto ring_raw_hex = ipos32 {input.ToHex.x, input.ToHex.y};
-            GeometryHelper::MoveHexAroundAway(ring_raw_hex, i);
-
-            if (map_size.is_valid_pos(ring_raw_hex)) {
-                const auto ring_hex = map_size.from_raw_pos(ring_raw_hex);
-
+        for (; i < hexes_around; i++) {
+            if (auto ring_hex = input.ToHex; GeometryHelper::MoveHexAroundAway(ring_hex, i, map_size)) {
                 if (map->IsGagItemOnHex(ring_hex)) {
                     break;
                 }
@@ -719,7 +715,7 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
             }
         }
 
-        if (i == GameSettings::MAP_DIR_COUNT) {
+        if (i >= hexes_around) {
             output.Result = FindPathOutput::ResultType::HexBusyRing;
             return output;
         }

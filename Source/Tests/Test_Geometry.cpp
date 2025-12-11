@@ -100,14 +100,20 @@ TEST_CASE("GeometryHelper")
     ipos32 ihex5 = ihex3;
     ipos32 ihex6 = ihex3;
     ipos32 ihex7 = ihex3;
-    GeometryHelper::MoveHexAroundAway(ihex4, 0);
-    CHECK(GeometryHelper::GetDistance(ihex3, ihex4) == 1);
-    GeometryHelper::MoveHexAroundAway(ihex5, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(1));
-    CHECK(GeometryHelper::GetDistance(ihex3, ihex5) == 2);
-    GeometryHelper::MoveHexAroundAway(ihex6, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(2));
-    CHECK(GeometryHelper::GetDistance(ihex3, ihex6) == 3);
-    GeometryHelper::MoveHexAroundAway(ihex7, GameSettings::MAP_DIR_COUNT * GenericUtils::NumericalNumber(3));
-    CHECK(GeometryHelper::GetDistance(ihex3, ihex7) == 4);
+    ipos32 ihex8 = ihex3;
+    ipos32 ihex9 = ihex3;
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex4, 0);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex4) == 0);
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex5, 1);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex5) == 1);
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex6, 6);
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex6) == 1);
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex7, GeometryHelper::HexesInRadius(1));
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex7) == 2);
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex8, GeometryHelper::HexesInRadius(2));
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex8) == 3);
+    GeometryHelper::MoveHexAroundAwayUnsafe(ihex9, GeometryHelper::HexesInRadius(3));
+    CHECK(GeometryHelper::GetDistance(ihex3, ihex9) == 4);
 
     // ForEachMultihexLines
     vector<uint8> lines = {2, 2, 4, 1};

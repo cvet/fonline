@@ -98,9 +98,8 @@ public:
     [[nodiscard]] auto GetGagItemOnHex(mpos hex) const noexcept -> const Item*;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_items.empty(); }
     [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>> { return _items; }
-    [[nodiscard]] auto GetItems(hstring pid) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> vector<Item*>;
-    [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>;
+    [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetTriggerItemsOnHex(mpos hex) -> vector<Item*>;
     [[nodiscard]] auto IsValidPlaceForItem(mpos hex, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>;
@@ -156,9 +155,7 @@ private:
         bool MoveBlocked {};
         bool ShootBlocked {};
         vector<raw_ptr<Critter>> Critters {};
-        vector<raw_ptr<Critter>> MultihexCritters {};
         vector<raw_ptr<Item>> Items {};
-        vector<raw_ptr<Item>> MultihexItems {};
         bool ManualBlock {};
         bool ManualBlockFull {};
     };

@@ -1801,8 +1801,8 @@ void FOMapper::IntLMouseUp()
                 vector<CritterHexView*> critters;
 
                 for (const auto hex : hexes) {
-                    for (auto* hex_item : _curMap->GetItemsOnHex(hex)) {
-                        items.emplace_back(hex_item);
+                    for (auto& hex_item : _curMap->GetItemsOnHex(hex)) {
+                        items.emplace_back(hex_item.get());
                     }
                     for (auto* hex_cr : _curMap->GetCrittersOnHex(hex, CritterFindType::Any)) {
                         critters.emplace_back(hex_cr);
@@ -2089,7 +2089,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         _curMap->MoveItem(item, hex);
-        TryMergeItemToMultihexMesh(_curMap.get(), item);
+        TryMergeItemToMultihexMesh(_curMap.get(), item, false);
     }
 }
 
@@ -2121,9 +2121,9 @@ void FOMapper::SelectClear()
             if (const auto* tile = dynamic_cast<ItemHexView*>(entity.get()); tile != nullptr && tile->GetIsTile()) {
                 vector<ItemHexView*> tiles;
 
-                for (auto* item : _curMap->GetItemsOnHex(tile->GetHex())) {
+                for (auto& item : _curMap->GetItemsOnHex(tile->GetHex())) {
                     if (item->GetIsTile() == tile->GetIsTile() && item->GetIsRoofTile() == tile->GetIsRoofTile()) {
-                        tiles.emplace_back(item);
+                        tiles.emplace_back(item.get());
                     }
                 }
 
@@ -2151,7 +2151,7 @@ void FOMapper::SelectClear()
     for (auto& entity : SelectedEntities) {
         if (!entity->IsDestroyed()) {
             if (auto* item = dynamic_cast<ItemHexView*>(entity.get()); item != nullptr) {
-                TryMergeItemToMultihexMesh(_curMap.get(), item);
+                TryMergeItemToMultihexMesh(_curMap.get(), item, false);
             }
         }
     }
@@ -2476,7 +2476,7 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     }
 
     if (auto* hex_item = dynamic_cast<ItemHexView*>(item); hex_item != nullptr) {
-        if (auto* merged_item = TryMergeItemToMultihexMesh(_curMap.get(), hex_item)) {
+        if (auto* merged_item = TryMergeItemToMultihexMesh(_curMap.get(), hex_item, false)) {
             item = merged_item;
         }
     }
@@ -2534,44 +2534,73 @@ void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
     }
 }
 
-void FOMapper::MergeItemsToMultihexMeshes(MapView* map)
+auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    // Check if already migrated
-    /*for (const auto& item : map->GetItems()) {
-        if (item->GetMultihexGeneration() != MultihexGenerationType::None && item->HasMultihexEntries()) {
-            return;
-        }
-    }*/
+    size_t merges = 0;
 
-    // Merge in multiple passes
-    while (true) {
-        bool something_merged = false;
+    // First merge to modified items
+    for (auto* item : copy_hold_ref(map->GetItems())) {
+        if (!item->IsDestroyed() && item->GetMultihexGeneration() != MultihexGenerationType::None && !item->HasMultihexEntries()) {
+            auto ignore_props = vector<const Property*> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
-        for (auto* item : copy_hold_ref(map->GetItems())) {
-            if (!item->HasMultihexEntries()) {
-                if (TryMergeItemToMultihexMesh(map, item) != nullptr) {
-                    something_merged = true;
+            if (!item->GetProperties().CompareData(item->GetProto()->GetProperties(), ignore_props)) {
+                while (TryMergeItemToMultihexMesh(map, item, true) != nullptr) {
+                    merges++;
                 }
             }
         }
+    }
 
-        for (auto* item : copy_hold_ref(map->GetItems())) {
-            if (TryMergeItemToMultihexMesh(map, item) != nullptr) {
-                something_merged = true;
+    // Rest merge clean items
+    for (auto* item : copy_hold_ref(map->GetItems())) {
+        if (!item->IsDestroyed() && item->GetMultihexGeneration() != MultihexGenerationType::None && !item->HasMultihexEntries()) {
+            while (TryMergeItemToMultihexMesh(map, item, true) != nullptr) {
+                merges++;
             }
         }
-
-        if (!something_merged) {
-            break;
-        }
     }
+
+    return merges;
 }
 
-auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*
+auto FOMapper::BreakItemsMultihexMeshes(MapView* map) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    size_t breaks = 0;
+
+    for (auto& item : to_vector(map->GetItems())) {
+        if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
+            continue;
+        }
+        if (item->IsNonEmptyMultihexLines()) {
+            continue;
+        }
+        if (!item->IsNonEmptyMultihexMesh()) {
+            continue;
+        }
+
+        const auto multihex_mesh = item->GetMultihexMesh();
+        item->SetMultihexMesh({});
+
+        for (const auto multihex : multihex_mesh) {
+            map->AddMapperItem(item->GetProtoId(), multihex, &item->GetProperties());
+            breaks++;
+        }
+
+        map->MoveItem(item.get(), item->GetHex());
+    }
+
+    return breaks;
+}
+
+auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2583,12 +2612,12 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> It
 
     ItemHexView* mergable_item = nullptr;
 
-    if (item->GetMultihexGeneration() == MultihexGenerationType::SiblingHexesToMesh) {
-        mergable_item = FindMultihexMeshForItemAroundHex(map, item, item->GetHex());
+    if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
+        mergable_item = FindMultihexMeshForItemAroundHex(map, item, item->GetHex(), merge_to_it);
 
         if (mergable_item == nullptr && item->HasMultihexEntries()) {
             for (const auto multihex : item->GetMultihexEntries()) {
-                mergable_item = FindMultihexMeshForItemAroundHex(map, item, multihex);
+                mergable_item = FindMultihexMeshForItemAroundHex(map, item, multihex, merge_to_it);
 
                 if (mergable_item != nullptr) {
                     break;
@@ -2596,9 +2625,9 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> It
             }
         }
     }
-    else if (item->GetMultihexGeneration() == MultihexGenerationType::AnyHexesToMesh) {
+    else if (item->GetMultihexGeneration() == MultihexGenerationType::AnyUnique) {
         for (auto& check_item : map->GetItems()) {
-            if (CompareMultihexItemForMerge(item, check_item.get())) {
+            if (CompareMultihexItemForMerge(merge_to_it ? check_item.get() : item, merge_to_it ? item : check_item.get(), false)) {
                 mergable_item = check_item.get();
                 break;
             }
@@ -2607,36 +2636,39 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> It
 
     // Merge item and his mesh to another item mesh
     if (mergable_item != nullptr) {
-        auto multihex_mesh = mergable_item->GetMultihexMesh();
+        auto* source_item = merge_to_it ? mergable_item : item;
+        auto* target_item = merge_to_it ? item : mergable_item;
+
+        auto multihex_mesh = target_item->GetMultihexMesh();
         bool some_hex_added = false;
 
-        if (item->GetHex() != mergable_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, item->GetHex())) {
+        if (source_item->GetHex() != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, source_item->GetHex())) {
             some_hex_added = true;
         }
 
-        if (item->HasMultihexEntries()) {
-            multihex_mesh.reserve(multihex_mesh.size() + item->GetMultihexEntries().size());
+        if (source_item->HasMultihexEntries()) {
+            multihex_mesh.reserve(multihex_mesh.size() + source_item->GetMultihexEntries().size());
 
-            for (const auto multihex : item->GetMultihexEntries()) {
-                if (multihex != mergable_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, multihex)) {
+            for (const auto multihex : source_item->GetMultihexEntries()) {
+                if (multihex != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, multihex)) {
                     some_hex_added = true;
                 }
             }
         }
 
         if (some_hex_added) {
-            mergable_item->SetMultihexMesh(multihex_mesh);
-            map->MoveItem(mergable_item, mergable_item->GetHex()); // Reapply to same hex
+            target_item->SetMultihexMesh(multihex_mesh);
+            map->MoveItem(target_item, target_item->GetHex()); // Reapply to same hex
         }
 
-        map->DestroyItem(item);
-        return mergable_item;
+        map->DestroyItem(source_item);
+        return target_item;
     }
 
     return nullptr;
 }
 
-auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex) const -> ItemHexView*
+auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it) const -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2647,17 +2679,14 @@ auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item,
 
         const auto& field = map->GetField(check_hex);
 
-        if (field.Items.empty() && field.MultihexItems.empty()) {
+        if (field.Items.empty()) {
             return nullptr;
         }
 
-        for (const auto& check_item : field.Items) {
-            if (CompareMultihexItemForMerge(item, check_item.get())) {
-                return check_item.get();
-            }
-        }
-        for (const auto& check_item : field.MultihexItems) {
-            if (CompareMultihexItemForMerge(item, check_item.get())) {
+        const auto sort_by_less_id = [](auto&& item1, auto&& item2) -> bool { return item1->GetId().underlying_value() < item2->GetId().underlying_value(); };
+
+        for (const auto& check_item : vec_sorted(field.Items, sort_by_less_id)) {
+            if (CompareMultihexItemForMerge(merge_to_it ? check_item.get() : item, merge_to_it ? item : check_item.get(), true)) {
                 return check_item.get();
             }
         }
@@ -2690,7 +2719,7 @@ auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item,
     return nullptr;
 }
 
-auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item) const -> bool
+auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2704,8 +2733,10 @@ auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const
     // Our data is not modified (same as in proto)
     auto ignore_props = vector<const Property*> {source_item->GetPropertyHex(), source_item->GetPropertyMultihexMesh()};
 
-    if (source_item->GetProperties().CompareData(source_item->GetProto()->GetProperties(), ignore_props)) {
-        return true;
+    if (allow_clean_merge) {
+        if (source_item->GetProperties().CompareData(source_item->GetProto()->GetProperties(), ignore_props)) {
+            return true;
+        }
     }
 
     // Our data is same as checked item
@@ -3307,6 +3338,14 @@ void FOMapper::ParseCommand(string_view command)
 
             _curMap->RebuildMap();
         }
+        else if (command_ext == "merge-items" && _curMap) {
+            MergeItemsToMultihexMeshes(_curMap.get());
+            FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(_curMap.get()) == 0);
+        }
+        else if (command_ext == "break-items" && _curMap) {
+            BreakItemsMultihexMeshes(_curMap.get());
+            FO_RUNTIME_ASSERT(BreakItemsMultihexMeshes(_curMap.get()) == 0);
+        }
     }
     else {
         AddMess("Unknown command");
@@ -3348,6 +3387,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     }
 
     MergeItemsToMultihexMeshes(new_map.get());
+    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(new_map.get()) == 0);
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
@@ -3377,6 +3417,9 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
+
+    MergeItemsToMultihexMeshes(map);
+    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(map) == 0);
 
     const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());

@@ -346,6 +346,14 @@ auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
     return numeric_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
+auto GeometryHelper::HexesInRadius(int32 radius) -> int32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 count = radius % 2 != 0 ? radius * (radius / 2 + 1) : radius * radius / 2 + radius / 2;
+    return 1 + GameSettings::MAP_DIR_COUNT * count;
+}
+
 auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -437,9 +445,29 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept
     }
 }
 
-void GeometryHelper::MoveHexAroundAway(ipos32& hex, int32 index)
+auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    ipos32 raw_hex = {hex.x, hex.y};
+    MoveHexAroundAwayUnsafe(raw_hex, index);
+
+    if (map_size.is_valid_pos(raw_hex)) {
+        hex = map_size.from_raw_pos(raw_hex);
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32 index)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (index <= 0) {
+        return;
+    }
 
     // Move to first hex around
     constexpr uint8 init_dir = GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7;
@@ -447,15 +475,15 @@ void GeometryHelper::MoveHexAroundAway(ipos32& hex, int32 index)
 
     uint8 dir = 2;
     int32 round = 1;
-    int32 round_count = GameSettings::MAP_DIR_COUNT;
+    int32 round_count = HexesInRadius(1) - 1;
 
     // Move around in a spiral away from the start position
-    for (int32 i = 1; i <= index; i++) {
+    for (int32 i = 1; i < index; i++) {
         MoveHexByDirUnsafe(hex, dir);
 
         if (i >= round_count) {
             round++;
-            round_count = GenericUtils::NumericalNumber(round) * GameSettings::MAP_DIR_COUNT;
+            round_count = HexesInRadius(round) - 1;
             MoveHexByDirUnsafe(hex, init_dir);
             FO_RUNTIME_ASSERT(dir == 1);
         }

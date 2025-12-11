@@ -460,6 +460,7 @@ void MapView::AddItemToField(ItemHexView* item)
     const auto hex = item->GetHex();
     auto& field = _hexField->GetCellForWriting(hex);
 
+    vec_add_unique_value(field.OriginItems, item);
     vec_add_unique_value(field.Items, item);
     RecacheHexFlags(field);
 
@@ -472,7 +473,8 @@ void MapView::AddItemToField(ItemHexView* item)
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
-            if (vec_safe_add_unique_value(multihex_field.MultihexItems, item)) {
+            if (vec_safe_add_unique_value(multihex_field.Items, item)) {
+                vec_add_unique_value(multihex_field.MultihexItems, item);
                 RecacheHexFlags(multihex_field);
                 multihex_entries.emplace_back(multihex);
             }
@@ -482,7 +484,8 @@ void MapView::AddItemToField(ItemHexView* item)
             if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
                 auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
-                if (vec_safe_add_unique_value(multihex_field.MultihexItems, item)) {
+                if (vec_safe_add_unique_value(multihex_field.Items, item)) {
+                    vec_add_unique_value(multihex_field.MultihexItems, item);
                     RecacheHexFlags(multihex_field);
                     multihex_entries.emplace_back(multihex);
                 }
@@ -523,12 +526,14 @@ void MapView::RemoveItemFromField(ItemHexView* item)
     const auto hex = item->GetHex();
     auto& field = _hexField->GetCellForWriting(hex);
 
+    vec_remove_unique_value(field.OriginItems, item);
     vec_remove_unique_value(field.Items, item);
     RecacheHexFlags(field);
 
     if (item->HasMultihexEntries()) {
         for (const auto multihex : item->GetMultihexEntries()) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
+            vec_remove_unique_value(multihex_field.Items, item);
             vec_remove_unique_value(multihex_field.MultihexItems, item);
             RecacheHexFlags(multihex_field);
         }
@@ -787,20 +792,12 @@ auto MapView::GetItemOnHex(mpos hex) -> ItemHexView*
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return nullptr;
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
-
-    if (!field2.Items.empty()) {
-        return field2.Items.front().get();
-    }
-    if (!field2.MultihexItems.empty()) {
-        return field2.MultihexItems.front().get();
-    }
-
-    return nullptr;
+    return field2.Items.front().get();
 }
 
 auto MapView::GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*
@@ -810,7 +807,7 @@ auto MapView::GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return nullptr;
     }
 
@@ -821,60 +818,30 @@ auto MapView::GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*
             return item.get();
         }
     }
-    for (auto& item : field2.MultihexItems) {
-        if (item->GetProtoId() == pid) {
-            return item.get();
-        }
-    }
 
     return nullptr;
 }
 
-auto MapView::GetItemsOnHex(mpos hex) -> vector<ItemHexView*>
+auto MapView::GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Items.empty() && field.MultihexItems.empty()) {
+    if (field.Items.empty()) {
         return {};
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
-    vector<ItemHexView*> items;
-    items.reserve(field2.Items.size() + field2.MultihexItems.size());
-
-    for (auto& item : field2.Items) {
-        items.emplace_back(item.get());
-    }
-    for (auto& item : field2.MultihexItems) {
-        items.emplace_back(item.get());
-    }
-
-    return items;
+    return field2.Items;
 }
 
-auto MapView::GetItemsOnHex(mpos hex) const -> vector<const ItemHexView*>
+auto MapView::GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
-
-    if (field.Items.empty() && field.MultihexItems.empty()) {
-        return {};
-    }
-
-    vector<const ItemHexView*> items;
-    items.reserve(field.Items.size() + field.MultihexItems.size());
-
-    for (const auto& item : field.Items) {
-        items.emplace_back(item.get());
-    }
-    for (const auto& item : field.MultihexItems) {
-        items.emplace_back(item.get());
-    }
-
-    return items;
+    return field.Items;
 }
 
 auto MapView::GetHexContentSize(mpos hex) -> isize32
@@ -884,24 +851,17 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
     optional<irect32> result;
 
     if (const auto& field = _hexField->GetCellForReading(hex); field.IsView) {
-        if (!field.Critters.empty() || !field.MultihexCritters.empty()) {
-            const auto process_cr = [&](const CritterHexView* cr) {
+        if (!field.Critters.empty()) {
+            for (const auto& cr : field.Critters) {
                 if (cr->IsMapSpriteVisible()) {
                     const auto rect = cr->GetViewRect();
                     result = result.has_value() ? result->expanded(rect) : rect;
                 }
-            };
-
-            for (const auto& cr : field.Critters) {
-                process_cr(cr.get());
-            }
-            for (const auto& cr : field.MultihexCritters) {
-                process_cr(cr.get());
             }
         }
 
-        if (!field.Items.empty() || !field.MultihexItems.empty()) {
-            const auto process_item = [&](const ItemHexView* item) {
+        if (!field.Items.empty()) {
+            for (const auto& item : field.Items) {
                 if (item->IsMapSpriteVisible()) {
                     const auto* spr = item->GetSprite();
 
@@ -912,13 +872,6 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                         result = result.has_value() ? result->expanded(rect) : rect;
                     }
                 }
-            };
-
-            for (const auto& item : field.Items) {
-                process_item(item.get());
-            }
-            for (const auto& item : field.MultihexItems) {
-                process_item(item.get());
             }
         }
     }
@@ -1165,8 +1118,8 @@ void MapView::ShowHex(const ViewField& vf)
     }
 
     // Items on hex
-    if (!field.Items.empty()) {
-        for (auto& item : field.Items) {
+    if (!field.OriginItems.empty()) {
+        for (auto& item : field.OriginItems) {
             DrawHexItem(item.get(), field, hex, false);
         }
     }
@@ -1181,8 +1134,8 @@ void MapView::ShowHex(const ViewField& vf)
     }
 
     // Critters
-    if (!field.Critters.empty()) {
-        for (auto& cr : field.Critters) {
+    if (!field.OriginCritters.empty()) {
+        for (auto& cr : field.OriginCritters) {
             DrawHexCritter(cr.get(), field, hex);
         }
     }
@@ -1520,7 +1473,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     const auto prev_fan_hexes = std::move(ls->FanHexes);
 
     ls->MarkedHexes.clear();
-    ls->MarkedHexes.reserve(numeric_cast<size_t>(GenericUtils::NumericalNumber(distance)) * GameSettings::MAP_DIR_COUNT + 1);
+    ls->MarkedHexes.reserve(GeometryHelper::HexesInRadius(distance));
     ls->FanHexes.clear();
     ls->FanHexes.reserve(numeric_cast<size_t>(distance) * GameSettings::MAP_DIR_COUNT);
 
@@ -2042,23 +1995,16 @@ void MapView::RecacheHexFlags(Field& field)
     field.GroundTile.reset();
     field.HasRoof = false;
 
-    if (_engine->Settings.CritterBlockHex && (!field.Critters.empty() || !field.MultihexCritters.empty())) {
-        const auto process_cr = [&](const CritterHexView* cr) {
+    if (_engine->Settings.CritterBlockHex && !field.Critters.empty()) {
+        for (const auto& cr : field.Critters) {
             if (!field.MoveBlocked && !cr->IsDead()) {
                 field.MoveBlocked = true;
             }
-        };
-
-        for (const auto& cr : field.Critters) {
-            process_cr(cr.get());
-        }
-        for (const auto& cr : field.MultihexCritters) {
-            process_cr(cr.get());
         }
     }
 
-    if (!field.Items.empty() || !field.MultihexItems.empty()) {
-        const auto process_item = [&](ItemHexView* item) {
+    if (!field.Items.empty()) {
+        for (auto& item : field.Items) {
             if (!field.HasWall && item->GetIsWall()) {
                 field.HasWall = true;
                 field.HasTransparentWall = item->GetLightThru();
@@ -2091,13 +2037,6 @@ void MapView::RecacheHexFlags(Field& field)
                     field.GroundTile = item;
                 }
             }
-        };
-
-        for (auto& item : field.Items) {
-            process_item(item.get());
-        }
-        for (auto& item : field.MultihexItems) {
-            process_item(item.get());
         }
     }
 
@@ -2163,19 +2102,19 @@ void MapView::Resize(msize size)
             if (hx >= size.width || hy >= size.height) {
                 const auto& field = _hexField->GetCellForReading({hx, hy});
 
-                if (!field.Critters.empty()) {
-                    for (auto& cr : copy(field.Critters)) {
+                if (!field.OriginCritters.empty()) {
+                    for (auto& cr : copy(field.OriginCritters)) {
                         DestroyCritter(cr.get());
                     }
                 }
-                if (!field.Items.empty()) {
-                    for (auto& item : copy(field.Items)) {
+                if (!field.OriginItems.empty()) {
+                    for (auto& item : copy(field.OriginItems)) {
                         DestroyItem(item.get());
                     }
                 }
 
-                FO_RUNTIME_ASSERT(field.Critters.empty());
-                FO_RUNTIME_ASSERT(field.Items.empty());
+                FO_RUNTIME_ASSERT(field.OriginCritters.empty());
+                FO_RUNTIME_ASSERT(field.OriginItems.empty());
                 FO_RUNTIME_ASSERT(!field.SpriteChain);
             }
         }
@@ -2942,6 +2881,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
     auto& field = _hexField->GetCellForWriting(hex);
 
+    vec_add_unique_value(field.OriginCritters, cr);
     vec_add_unique_value(field.Critters, cr);
     RecacheHexFlags(field);
     SetMultihexCritter(cr, true);
@@ -2960,6 +2900,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
     auto& field = _hexField->GetCellForWriting(hex);
 
+    vec_remove_unique_value(field.OriginCritters, cr);
     vec_remove_unique_value(field.Critters, cr);
     RecacheHexFlags(field);
     SetMultihexCritter(cr, false);
@@ -2985,18 +2926,13 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Critters.empty() && field.MultihexCritters.empty()) {
+    if (field.Critters.empty()) {
         return nullptr;
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
 
     for (auto& cr : field2.Critters) {
-        if (!cr->IsDead()) {
-            return cr.get();
-        }
-    }
-    for (auto& cr : field2.MultihexCritters) {
         if (!cr->IsDead()) {
             return cr.get();
         }
@@ -3085,20 +3021,15 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Cr
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Critters.empty() && field.MultihexCritters.empty()) {
+    if (field.Critters.empty()) {
         return {};
     }
 
     auto& field2 = _hexField->GetCellForWriting(hex);
     vector<CritterHexView*> critters;
-    critters.reserve(field2.Critters.size() + field2.MultihexCritters.size());
+    critters.reserve(field2.Critters.size());
 
     for (auto& cr : field2.Critters) {
-        if (cr->CheckFind(find_type)) {
-            critters.emplace_back(cr.get());
-        }
-    }
-    for (auto& cr : field2.MultihexCritters) {
         if (cr->CheckFind(find_type)) {
             critters.emplace_back(cr.get());
         }
@@ -3113,19 +3044,14 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vec
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (field.Critters.empty() && field.MultihexCritters.empty()) {
+    if (field.Critters.empty()) {
         return {};
     }
 
     vector<const CritterHexView*> critters;
-    critters.reserve(field.Critters.size() + field.MultihexCritters.size());
+    critters.reserve(field.Critters.size());
 
     for (const auto& cr : field.Critters) {
-        if (cr->CheckFind(find_type)) {
-            critters.emplace_back(cr.get());
-        }
-    }
-    for (const auto& cr : field.MultihexCritters) {
         if (cr->CheckFind(find_type)) {
             critters.emplace_back(cr.get());
         }
@@ -3228,20 +3154,17 @@ void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
 
     if (multihex != 0) {
         const auto hex = cr->GetHex();
-        const auto max_hexes = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
+        const auto hexes_around = GeometryHelper::HexesInRadius(multihex);
 
-        for (int32 i = 0; i < max_hexes; i++) {
-            auto multihex_raw_hex = ipos32 {numeric_cast<int32>(hex.x), numeric_cast<int32>(hex.y)};
-            GeometryHelper::MoveHexAroundAway(multihex_raw_hex, i);
-
-            if (_mapSize.is_valid_pos(multihex_raw_hex)) {
-                auto& field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(multihex_raw_hex));
+        for (int32 i = 1; i < hexes_around; i++) {
+            if (auto multihex_hex = hex; GeometryHelper::MoveHexAroundAway(multihex_hex, i, _mapSize)) {
+                auto& field = _hexField->GetCellForWriting(multihex_hex);
 
                 if (set) {
-                    vec_add_unique_value(field.MultihexCritters, cr);
+                    vec_add_unique_value(field.Critters, cr);
                 }
                 else {
-                    vec_remove_unique_value(field.MultihexCritters, cr);
+                    vec_remove_unique_value(field.Critters, cr);
                 }
 
                 RecacheHexFlags(field);
@@ -3363,13 +3286,13 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
         const auto hex = _mapSize.from_raw_pos(vf.RawHex);
         const auto& field = _hexField->GetCellForReading(hex);
 
-        if (field.Items.empty() && field.MultihexItems.empty()) {
+        if (field.Items.empty()) {
             continue;
         }
 
         auto& field2 = _hexField->GetCellForWriting(hex);
 
-        for (auto& item : field2.Items) {
+        for (auto& item : field2.OriginItems) {
             if (item->IsMapSpriteVisible()) {
                 process_sprite(item.get(), item->GetMapSprite());
             }
@@ -4281,21 +4204,21 @@ auto MapView::SaveToText() const -> string
     };
 
     const auto fill_critter = [&fill_generic_section](const CritterView* cr) {
-        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties(), false);
+        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", cr->GetId());
         kv["$Proto"] = cr->GetProto()->GetName();
         fill_generic_section("Critter", kv);
     };
 
     const auto fill_item = [&fill_item_section](const ItemView* item) {
-        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties(), false);
+        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();
         fill_item_section("Item", kv);
     };
 
     // Header
-    fill_generic_section("ProtoMap", GetProperties().SaveToText(nullptr, false));
+    fill_generic_section("ProtoMap", GetProperties().SaveToText(nullptr));
 
     // Critters
     for (const auto& cr : _critters) {
