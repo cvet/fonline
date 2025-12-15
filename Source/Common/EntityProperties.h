@@ -151,7 +151,9 @@ public:
     ///@ ExportProperty Client Persistent
     FO_ENTITY_PROPERTY(MultihexGenerationType, MultihexGeneration);
     ///@ ExportProperty Client Persistent
-    FO_ENTITY_PROPERTY(bool, DrawMultihexEntries);
+    FO_ENTITY_PROPERTY(bool, DrawMultihexLines);
+    ///@ ExportProperty Client Persistent
+    FO_ENTITY_PROPERTY(bool, DrawMultihexMesh);
     ///@ MigrationRule Property Item IsHidden Hidden
     ///@ ExportProperty Server Mutable Persistent
     FO_ENTITY_PROPERTY(bool, Hidden);
@@ -342,8 +344,6 @@ public:
     FO_ENTITY_PROPERTY(ipos32, ScrollOffset);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(irect32, ScrollAxialArea);
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(ident_t, WorkEntityId);
 
     // Todo: exclude map properties from engine:
     ///@ ExportProperty Client

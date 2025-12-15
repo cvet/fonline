@@ -268,7 +268,8 @@ FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 // Explicit copying
 // Todo: optimize copy() to pass placement storage for value
 template<typename T>
-constexpr auto copy(T&& value) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
+    requires(std::is_copy_constructible_v<std::remove_cvref_t<T>>)
+constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     if (std::is_rvalue_reference_v<T>) {
         return std::move(value); // NOLINT(bugprone-move-forwarding-reference)

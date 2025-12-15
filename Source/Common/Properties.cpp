@@ -171,7 +171,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
     FO_STRONG_ASSERT(_registrator == other._registrator);
 
-    // Copy PlainData data
+    // Copy plain data
     MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
 
     // Copy complex data

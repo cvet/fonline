@@ -577,22 +577,22 @@ FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos&
 FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;
-    return self->GetItemAtScreen(pos, item_egg, 0, true);
+    return self->GetItemAtScreen(pos, item_egg, 0, true).first;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
 {
-    return self->GetCritterAtScreen(pos, false, 0, true);
+    return self->GetCritterAtScreen(pos, false, 0, true).first;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32 extraRange)
 {
-    auto* cr = self->GetCritterAtScreen(pos, false, 0, true);
+    auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
     if (cr == nullptr && extraRange != 0) {
-        cr = self->GetCritterAtScreen(pos, true, extraRange, false);
+        cr = self->GetCritterAtScreen(pos, true, extraRange, false).first;
     }
 
     return cr;
@@ -601,7 +601,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 ///@ ExportMethod
 FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
-    return self->GetEntityAtScreen(pos, 0, true);
+    return self->GetEntityAtScreen(pos, 0, true).first;
 }
 
 ///@ ExportMethod

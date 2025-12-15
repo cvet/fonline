@@ -232,6 +232,14 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
     vec.erase(it);
 }
 
+template<std::ranges::range T, typename U>
+constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
+{
+    const auto it = std::ranges::find_if(vec, predicate);
+    FO_RUNTIME_ASSERT(it != vec.end());
+    vec.erase(it);
+}
+
 template<std::ranges::range T>
 constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
@@ -253,11 +261,21 @@ constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value
 }
 
 template<std::ranges::range T, typename U>
+constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexcept -> bool
+{
+    if (const auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
+        vec.erase(it);
+        return true;
+    }
+    return false;
+}
+
+template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     vector<std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
-    for (const auto& value : cont) {
+    for (auto&& value : cont) {
         if (static_cast<bool>(filter(value))) {
             vec.emplace_back(value);
         }

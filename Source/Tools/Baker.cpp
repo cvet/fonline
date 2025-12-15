@@ -132,7 +132,7 @@ void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto bake_time = TimeMeter();
+    const TimeMeter backing_time;
 
     WriteLog("Start baking");
 
@@ -299,6 +299,8 @@ void MasterBaker::BakeAllInternal()
             &baking_output_ = std::as_const(baking_output),
             &force_baking, &res_baked // clang-format on
         ](const ResourcePackInfo& res_pack, const string& output_dir) {
+            const TimeMeter pack_baking_time;
+
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
 
@@ -368,7 +370,7 @@ void MasterBaker::BakeAllInternal()
                 res_baked = true;
             }
 
-            WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
+            WriteLog("Baking of {} complete in {}, baked {} file{}", pack_name, pack_baking_time.GetDuration(), baked_files, baked_files != 1 ? "s" : "");
         };
 
         size_t errors = 0;
@@ -429,7 +431,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     // Finalize
-    WriteLog("Time {}", bake_time.GetDuration());
+    WriteLog("Time {}", backing_time.GetDuration());
     WriteLog("Baking complete!");
 
     const auto build_hash_write_ok = DiskFileSystem::WriteFile(build_hash_path, FO_BUILD_HASH);

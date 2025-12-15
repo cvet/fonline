@@ -177,7 +177,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     FO_RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
-    auto max_id = GetWorkEntityId().underlying_value();
+    auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
         map_name, str, _engine->ProtoMngr, _engine->Hashes,
@@ -220,7 +220,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 auto* cr = GetCritter(item->GetCritterId());
 
                 if (cr == nullptr) {
-                    throw GenericException("Critter {} not found", item->GetCritterId());
+                    throw GenericException("Critter not found", item->GetCritterId());
                 }
 
                 cr->AddRawInvItem(item.get());
@@ -229,7 +229,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 auto* cont = GetItem(item->GetContainerId());
 
                 if (cont == nullptr) {
-                    throw GenericException("Container {} not found", item->GetContainerId());
+                    throw GenericException("Container not found", item->GetContainerId());
                 }
 
                 cont->AddRawInnerItem(item.get());
@@ -239,7 +239,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             }
         });
 
-    SetWorkEntityId(ident_t {max_id});
+    _workEntityId = ident_t {max_id};
     _mapLoading = false;
 
     RebuildMapNow();
@@ -474,7 +474,7 @@ void MapView::AddItemToField(ItemHexView* item)
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
             if (vec_safe_add_unique_value(multihex_field.Items, item)) {
-                vec_add_unique_value(multihex_field.MultihexItems, item);
+                vec_add_unique_value(multihex_field.MultihexItems, pair(item, item->GetDrawMultihexLines()));
                 RecacheHexFlags(multihex_field);
                 multihex_entries.emplace_back(multihex);
             }
@@ -485,9 +485,21 @@ void MapView::AddItemToField(ItemHexView* item)
                 auto& multihex_field = _hexField->GetCellForWriting(multihex);
 
                 if (vec_safe_add_unique_value(multihex_field.Items, item)) {
-                    vec_add_unique_value(multihex_field.MultihexItems, item);
+                    vec_add_unique_value(multihex_field.MultihexItems, pair(item, item->GetDrawMultihexMesh()));
                     RecacheHexFlags(multihex_field);
                     multihex_entries.emplace_back(multihex);
+                }
+
+                if (item->IsNonEmptyMultihexLines()) {
+                    GeometryHelper::ForEachMultihexLines(multihex_lines, multihex, _mapSize, [&](mpos multihex2) {
+                        auto& multihex_field2 = _hexField->GetCellForWriting(multihex2);
+
+                        if (vec_safe_add_unique_value(multihex_field2.Items, item)) {
+                            vec_add_unique_value(multihex_field2.MultihexItems, pair(item, item->GetDrawMultihexLines()));
+                            RecacheHexFlags(multihex_field2);
+                            multihex_entries.emplace_back(multihex2);
+                        }
+                    });
                 }
             }
         }
@@ -508,11 +520,14 @@ void MapView::AddItemToField(ItemHexView* item)
             DrawHexItem(item, field, hex, false);
         }
 
-        if (item->HasMultihexEntries() && item->GetDrawMultihexEntries()) {
+        if (item->HasMultihexEntries() && (item->GetDrawMultihexLines() || item->GetDrawMultihexMesh())) {
             for (const auto multihex : item->GetMultihexEntries()) {
-                if (IsHexToDraw(multihex)) {
-                    auto& multihex_field = _hexField->GetCellForWriting(multihex);
-                    DrawHexItem(item, multihex_field, multihex, true);
+                if (auto& multihex_field = _hexField->GetCellForWriting(multihex); multihex_field.IsView) {
+                    for (const auto drawable : multihex_field.MultihexItems | std::views::values) {
+                        if (drawable) {
+                            DrawHexItem(item, multihex_field, multihex, true);
+                        }
+                    }
                 }
             }
         }
@@ -534,7 +549,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         for (const auto multihex : item->GetMultihexEntries()) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
             vec_remove_unique_value(multihex_field.Items, item);
-            vec_remove_unique_value(multihex_field.MultihexItems, item);
+            vec_remove_unique_value_if(multihex_field.MultihexItems, [item](auto&& i) { return i.first == item; });
             RecacheHexFlags(multihex_field);
         }
 
@@ -730,6 +745,16 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     AddItemToField(item);
     return item;
+}
+
+void MapView::RefreshItem(ItemHexView* item)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(item->GetMap() == this);
+
+    RemoveItemFromField(item);
+    AddItemToField(item);
 }
 
 void MapView::MoveItem(ItemHexView* item, mpos hex)
@@ -1126,8 +1151,8 @@ void MapView::ShowHex(const ViewField& vf)
 
     // Multihex items
     if (!field.MultihexItems.empty()) {
-        for (auto& item : field.MultihexItems) {
-            if (item->GetDrawMultihexEntries()) {
+        for (auto&& [item, drawable] : field.MultihexItems) {
+            if (drawable) {
                 DrawHexItem(item.get(), field, hex, true);
             }
         }
@@ -3239,12 +3264,12 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
     return false;
 }
 
-auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*
+auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> pair<ItemHexView*, const MapSprite*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<pair<ItemHexView*, uint32>> pix_item;
-    vector<pair<ItemHexView*, uint32>> pix_item_egg;
+    vector<pair<ItemHexView*, const MapSprite*>> pix_item;
+    vector<pair<ItemHexView*, const MapSprite*>> pix_item_egg;
 
     const auto pos = ScreenToMapPos(screen_pos);
     const auto is_egg = _engine->SprMngr.IsEggTransp(pos);
@@ -3271,10 +3296,10 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
         }
 
         if (is_egg && _engine->SprMngr.CheckEggAppearence(mspr->GetHex(), mspr->GetEggAppearence())) {
-            pix_item_egg.emplace_back(item, mspr->GetSortValue());
+            pix_item_egg.emplace_back(item, mspr);
         }
         else {
-            pix_item.emplace_back(item, mspr->GetSortValue());
+            pix_item.emplace_back(item, mspr);
         }
     };
 
@@ -3298,8 +3323,8 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
             }
         }
 
-        for (auto& item : field2.MultihexItems) {
-            if (item->HasExtraMapSprites()) {
+        for (auto&& [item, drawable] : field2.MultihexItems) {
+            if (drawable) {
                 for (const auto& extra_mspr_entry : item->GetExtraMapSprites()) {
                     if (extra_mspr_entry.second && extra_mspr_entry.first->GetHex() == hex) {
                         process_sprite(item.get(), extra_mspr_entry.first.get());
@@ -3311,21 +3336,21 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
 
     if (pix_item.empty()) {
         if (pix_item_egg.empty()) {
-            return nullptr;
+            return {};
         }
 
-        std::ranges::stable_sort(pix_item_egg, [](auto&& i1, auto&& i2) -> bool { return i1.second > i2.second; });
+        std::ranges::stable_sort(pix_item_egg, [](auto&& i1, auto&& i2) -> bool { return i1.second->GetSortValue() > i2.second->GetSortValue(); });
         item_egg = true;
-        return pix_item_egg.front().first;
+        return pix_item_egg.front();
     }
     else {
-        std::ranges::stable_sort(pix_item, [](auto&& i1, auto&& i2) -> bool { return i1.second > i2.second; });
+        std::ranges::stable_sort(pix_item, [](auto&& i1, auto&& i2) -> bool { return i1.second->GetSortValue() > i2.second->GetSortValue(); });
         item_egg = false;
-        return pix_item.front().first;
+        return pix_item.front();
     }
 }
 
-auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*
+auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> pair<CritterHexView*, const MapSprite*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3362,33 +3387,37 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
     }
 
     if (critters.empty()) {
-        return nullptr;
+        return {};
     }
-
     if (critters.size() > 1) {
         std::ranges::stable_sort(critters, [](auto&& cr1, auto&& cr2) -> bool { return cr1->GetMapSprite()->GetSortValue() > cr2->GetMapSprite()->GetSortValue(); });
     }
-    return critters.front();
+    return pair(critters.front(), critters.front()->GetMapSprite());
 }
 
-auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> ClientEntity*
+auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> pair<ClientEntity*, const MapSprite*>
 {
     FO_STACK_TRACE_ENTRY();
 
     bool item_egg = false;
-    auto* item = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent);
-    auto* cr = GetCritterAtScreen(screen_pos, false, extra_range, check_transparent);
+    auto item_hit = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent);
+    auto cr_hit = GetCritterAtScreen(screen_pos, false, extra_range, check_transparent);
 
-    if (cr != nullptr && item != nullptr) {
-        if (item->IsTransparent() || item_egg || item->GetMapSprite()->GetSortValue() <= cr->GetMapSprite()->GetSortValue()) {
-            item = nullptr;
+    if (cr_hit.first != nullptr && item_hit.first != nullptr) {
+        if (item_hit.first->IsTransparent() || item_egg || item_hit.second->GetSortValue() <= cr_hit.second->GetSortValue()) {
+            item_hit.first = nullptr;
         }
         else {
-            cr = nullptr;
+            cr_hit.first = nullptr;
         }
     }
 
-    return cr != nullptr ? static_cast<ClientEntity*>(cr) : static_cast<ClientEntity*>(item);
+    if (cr_hit.first != nullptr) {
+        return pair(static_cast<ClientEntity*>(cr_hit.first), cr_hit.second);
+    }
+    else {
+        return pair(static_cast<ClientEntity*>(item_hit.first), item_hit.second);
+    }
 }
 
 auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> optional<FindPathResult>
@@ -3974,131 +4003,6 @@ void MapView::ClearIgnorePids()
     _ignorePids.clear();
 }
 
-auto MapView::GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    vector<mpos> hexes;
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        auto [x, y] = _engine->Geometry.GetHexOffset(from_hex, to_hex);
-        x = -x;
-
-        const auto dx = x / _engine->Settings.MapHexWidth;
-        const auto dy = y / _engine->Settings.MapHexLineHeight;
-        const auto adx = std::abs(dx);
-        const auto ady = std::abs(dy);
-
-        int32 hx;
-        int32 hy;
-
-        for (auto j = 1; j <= ady; j++) {
-            if (dy >= 0) {
-                hx = from_hex.x + j / 2 + ((j % 2) != 0 ? 1 : 0);
-                hy = from_hex.y + (j - (hx - from_hex.x - ((from_hex.x % 2) != 0 ? 1 : 0)) / 2);
-            }
-            else {
-                hx = from_hex.x - j / 2 - ((j % 2) != 0 ? 1 : 0);
-                hy = from_hex.y - (j - (from_hex.x - hx - ((from_hex.x % 2) != 0 ? 0 : 1)) / 2);
-            }
-
-            for (auto i = 0; i <= adx; i++) {
-                if (_mapSize.is_valid_pos(hx, hy)) {
-                    hexes.emplace_back(_mapSize.from_raw_pos(hx, hy));
-                }
-
-                if (dx >= 0) {
-                    if ((hx % 2) != 0) {
-                        hy--;
-                    }
-                    hx++;
-                }
-                else {
-                    hx--;
-                    if ((hx % 2) != 0) {
-                        hy++;
-                    }
-                }
-            }
-        }
-    }
-    else {
-        auto [rw, rh] = _engine->Geometry.GetHexOffset(from_hex, to_hex);
-        if (rw == 0) {
-            rw = 1;
-        }
-        if (rh == 0) {
-            rh = 1;
-        }
-
-        const auto hw = std::abs(rw / (_engine->Settings.MapHexWidth / 2)) + ((rw % (_engine->Settings.MapHexWidth / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= _engine->Settings.MapHexWidth / 2 ? 1 : 0); // Hexes width
-        const auto hh = std::abs(rh / _engine->Settings.MapHexLineHeight) + ((rh % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0) + (std::abs(rh) >= _engine->Settings.MapHexLineHeight ? 1 : 0); // Hexes height
-        auto shx = numeric_cast<int32>(from_hex.x);
-        auto shy = numeric_cast<int32>(from_hex.y);
-
-        for (auto i = 0; i < hh; i++) {
-            auto hx = shx;
-            auto hy = shy;
-
-            if (rh > 0) {
-                if (rw > 0) {
-                    if ((i % 2) != 0) {
-                        shx++;
-                    }
-                    else {
-                        shy++;
-                    }
-                }
-                else {
-                    if ((i % 2) != 0) {
-                        shy++;
-                    }
-                    else {
-                        shx++;
-                    }
-                }
-            }
-            else {
-                if (rw > 0) {
-                    if ((i % 2) != 0) {
-                        shy--;
-                    }
-                    else {
-                        shx--;
-                    }
-                }
-                else {
-                    if ((i % 2) != 0) {
-                        shx--;
-                    }
-                    else {
-                        shy--;
-                    }
-                }
-            }
-
-            for (auto j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
-                if (_mapSize.is_valid_pos(hx, hy)) {
-                    hexes.emplace_back(_mapSize.from_raw_pos(hx, hy));
-                }
-
-                if (rw > 0) {
-                    hx--;
-                    hy++;
-                }
-                else {
-                    hx++;
-                    hy--;
-                }
-            }
-        }
-    }
-
-    return hexes;
-}
-
 void MapView::MarkBlockedHexes()
 {
     FO_STACK_TRACE_ENTRY();
@@ -4130,14 +4034,13 @@ auto MapView::GenTempEntityId() -> ident_t
 
     FO_RUNTIME_ASSERT(_mapperMode);
 
-    auto next_id = ident_t {(GetWorkEntityId().underlying_value() + 1)};
+    auto next_id = ident_t {(_workEntityId.underlying_value() + 1)};
 
     while (_itemsMap.count(next_id) != 0 || _crittersMap.count(next_id) != 0) {
         next_id = ident_t {next_id.underlying_value() + 1};
     }
 
-    SetWorkEntityId(next_id);
-
+    _workEntityId = next_id;
     return next_id;
 }
 

@@ -118,7 +118,7 @@ public:
         vector<raw_ptr<CritterHexView>> OriginCritters {};
         vector<raw_ptr<ItemHexView>> Items {};
         vector<raw_ptr<ItemHexView>> OriginItems {};
-        vector<raw_ptr<ItemHexView>> MultihexItems {};
+        vector<pair<raw_ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
         unordered_map<LightSource*, ucolor> LightSources {};
         raw_ptr<ItemHexView> GroundTile {};
         int32 RoofNum {};
@@ -156,7 +156,6 @@ public:
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
-    [[nodiscard]] auto GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
@@ -228,13 +227,14 @@ public:
     auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _items; }
     auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
     auto GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
+    void RefreshItem(ItemHexView* item);
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
     auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool;
-    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*;
-    auto GetEntityAtScreen(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> ClientEntity*;
+    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> pair<ItemHexView*, const MapSprite*>; // With transparent egg
+    auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> pair<CritterHexView*, const MapSprite*>;
+    auto GetEntityAtScreen(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> pair<ClientEntity*, const MapSprite*>;
 
     void UpdateCritterLightSource(const CritterHexView* cr);
     void UpdateItemLightSource(const ItemHexView* item);
@@ -316,6 +316,7 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
+    ident_t _workEntityId {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
     unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};

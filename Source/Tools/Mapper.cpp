@@ -129,11 +129,11 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     const auto& cr_protos = ProtoMngr.GetProtoCritters();
 
     for (const auto& proto : cr_protos | std::views::values) {
-        Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.emplace_back(proto);
-        Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.emplace_back(proto);
+        Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].CritterProtos.emplace_back(proto);
+        Tabs[INT_MODE_CRIT][proto->CollectionName].CritterProtos.emplace_back(proto);
     }
     for (auto& proto : Tabs[INT_MODE_CRIT] | std::views::values) {
-        std::ranges::stable_sort(proto.NpcProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
+        std::ranges::stable_sort(proto.CritterProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
@@ -277,11 +277,10 @@ void FOMapper::InitIface()
     IntVisible = true;
     IntFix = true;
     IntMode = INT_MODE_MESS;
-    SelectType = SELECT_TYPE_NEW;
     ProtoWidth = ini.GetAsInt("", "ProtoWidth", 50);
     ProtosOnScreen = IntWWork.width / ProtoWidth;
     MemFill(TabIndex, 0, sizeof(TabIndex));
-    NpcDir = 3;
+    CritterDir = 3;
     CurMode = CUR_MODE_DEFAULT;
     IsSelectItem = true;
     IsSelectScen = true;
@@ -520,7 +519,7 @@ void FOMapper::ProcessMapperInput()
                     }
                     break;
                 case KeyCode::Tab:
-                    SelectType = (SelectType == SELECT_TYPE_OLD ? SELECT_TYPE_NEW : SELECT_TYPE_OLD);
+                    SelectAxialGrid = !SelectAxialGrid;
                     break;
                 default:
                     break;
@@ -557,6 +556,9 @@ void FOMapper::ProcessMapperInput()
                 case KeyCode::C4:
                 case KeyCode::Numpad4:
                     TileLayer = 4;
+                    break;
+                case KeyCode::Tab:
+                    SelectEntireEntity = !SelectEntireEntity;
                     break;
                 default:
                     break;
@@ -705,10 +707,10 @@ void FOMapper::ProcessMapperInput()
                             *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
                         }
                     }
-                    else if (IsCritMode() && !CurNpcProtos->empty()) {
+                    else if (IsCritMode() && !CurCritterProtos->empty()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
-                            *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
+                        if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
+                            *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
                         }
                     }
                     else if (IntMode == INT_MODE_INCONT) {
@@ -964,13 +966,13 @@ void FOMapper::IntDraw()
     else if (IsCritMode()) {
         auto i = *CurProtoScroll;
         auto j = i + ProtosOnScreen;
-        j = std::min(j, numeric_cast<int32>(CurNpcProtos->size()));
+        j = std::min(j, numeric_cast<int32>(CurCritterProtos->size()));
 
         for (; i < j; i++, x += w) {
-            const auto& proto = (*CurNpcProtos)[i];
+            const auto& proto = (*CurCritterProtos)[i];
 
             auto model_name = proto->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
 
             if (anim == nullptr) {
                 continue;
@@ -986,13 +988,13 @@ void FOMapper::IntDraw()
             DrawStr(irect32(x, y + h - 15, w, h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
-        if (GetTabIndex() < numeric_cast<int32>(CurNpcProtos->size())) {
-            const auto& proto = (*CurNpcProtos)[GetTabIndex()];
+        if (GetTabIndex() < numeric_cast<int32>(CurCritterProtos->size())) {
+            const auto& proto = (*CurCritterProtos)[GetTabIndex()];
             DrawStr(irect32(IntWHint.x + IntX, IntWHint.y + IntY, IntWHint.width, IntWHint.height), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
-        auto& entity = SelectedEntities[0];
+        auto& entity = SelectedEntities.front();
         auto inner_items = GetEntityInnerItems(entity.get());
 
         auto i = InContScroll;
@@ -1066,7 +1068,7 @@ void FOMapper::IntDraw()
                 color = COLOR_TEXT_DWHITE;
             }
 
-            auto count = numeric_cast<int32>(stab.NpcProtos.size());
+            auto count = numeric_cast<int32>(stab.CritterProtos.size());
 
             if (count == 0) {
                 count = numeric_cast<int32>(stab.ItemProtos.size());
@@ -1090,13 +1092,16 @@ void FOMapper::IntDraw()
         const int32 day_time = GetGlobalDayTime();
 
         DrawStr(irect32(Settings.ScreenWidth - 150, 20, Settings.ScreenWidth, Settings.ScreenHeight),
-            strex("Map '{}'\n"
-                  "Hex {}\n"
-                  "Time {} : {}\n"
-                  "Fps {}\n"
-                  "Tile layer {}\n"
-                  "{}",
-                _curMap->GetName(), hex, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
+            strex("Map: '{}'\n"
+                  "Mouse hex: {}\n"
+                  "Game time: {} : {}\n"
+                  "Fps: {}\n"
+                  "Tile layer: {}\n"
+                  "Scroll check: {}\n"
+                  "Grid select: {}"
+                  "Entity select: {}",
+                _curMap->GetName(), hex, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, //
+                Settings.ScrollCheck ? "Yes" : "No", SelectAxialGrid ? "Axial" : "Native", SelectEntireEntity ? "Yes" : "No"),
             FT_NOBREAK_LINE | FT_BORDERED, COLOR_TEXT, FONT_DEFAULT);
     }
 }
@@ -1217,7 +1222,7 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             FO_RUNTIME_ASSERT(entity);
             ObjKeyDownApply(entity);
 
-            if (!SelectedEntities.empty() && SelectedEntities[0] == entity && ObjToAll) {
+            if (ObjToAll && !SelectedEntities.empty() && SelectedEntities.front() == entity) {
                 for (size_t i = 1; i < SelectedEntities.size(); i++) {
                     const auto is_same1 = dynamic_cast<CritterView*>(SelectedEntities[i].get()) != nullptr && dynamic_cast<CritterView*>(entity) != nullptr;
                     const auto is_same2 = dynamic_cast<ItemView*>(SelectedEntities[i].get()) != nullptr && dynamic_cast<ItemView*>(entity) != nullptr;
@@ -1266,6 +1271,27 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
         if (prop) {
             try {
                 entity->GetPropertiesForEdit().ApplyPropertyFromText(prop.get(), ObjCurLineValue);
+
+                // Modify main mesh
+                if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+                    if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
+                        for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+                            if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, static_cast<uint8>(i), _curMap->GetSize())) {
+                                auto main_mesh_items = vec_filter(_curMap->GetItemsOnHex(hex), [&](auto&& item2) -> bool {
+                                    if (vec_exists(SelectedEntities, item2.get())) {
+                                        return false;
+                                    }
+                                    return item->GetProtoId() == item2->GetProtoId();
+                                });
+                                for (auto&& item2 : main_mesh_items) {
+                                    item2->GetPropertiesForEdit().ApplyPropertyFromText(prop.get(), ObjCurLineValue);
+                                }
+                            }
+                        }
+
+                        // Todo: walk around multihex lines?
+                    }
+                }
             }
             catch (const std::exception& ex) {
                 ignore_unused(ex);
@@ -1310,7 +1336,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* entity = IntMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities[0].get() : nullptr);
+    auto* entity = IntMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities.front().get() : nullptr);
 
     if (entity == InspectorEntity) {
         return entity;
@@ -1427,8 +1453,8 @@ void FOMapper::IntLMouseDown()
             if (IsItemMode() && !CurItemProtos->empty()) {
                 CreateItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHex1, nullptr);
             }
-            else if (IsCritMode() && !CurNpcProtos->empty()) {
-                CreateCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHex1);
+            else if (IsCritMode() && !CurCritterProtos->empty()) {
+                CreateCritter((*CurCritterProtos)[GetTabIndex()]->GetProtoId(), SelectHex1);
             }
         }
 
@@ -1496,7 +1522,7 @@ void FOMapper::IntLMouseDown()
                 const auto& proto_item = (*CurItemProtos)[ind];
 
                 if (proto_item->GetStackable()) {
-                    for (const auto& child : GetEntityInnerItems(SelectedEntities[0].get())) {
+                    for (const auto& child : GetEntityInnerItems(SelectedEntities.front().get())) {
                         if (proto_item->GetProtoId() == child->GetProtoId()) {
                             add = false;
                             break;
@@ -1505,15 +1531,15 @@ void FOMapper::IntLMouseDown()
                 }
 
                 if (add) {
-                    CreateItem(proto_item->GetProtoId(), {}, SelectedEntities[0].get());
+                    CreateItem(proto_item->GetProtoId(), {}, SelectedEntities.front().get());
                 }
             }
         }
-        else if (IsCritMode() && !CurNpcProtos->empty()) {
+        else if (IsCritMode() && !CurCritterProtos->empty()) {
             ind += *CurProtoScroll;
 
-            if (ind >= numeric_cast<int32>(CurNpcProtos->size())) {
-                ind = numeric_cast<int32>(CurNpcProtos->size()) - 1;
+            if (ind >= numeric_cast<int32>(CurCritterProtos->size())) {
+                ind = numeric_cast<int32>(CurCritterProtos->size()) - 1;
             }
 
             SetTabIndex(ind);
@@ -1525,7 +1551,7 @@ void FOMapper::IntLMouseDown()
             vector<refcount_ptr<ItemView>> inner_items;
 
             if (!SelectedEntities.empty()) {
-                inner_items = GetEntityInnerItems(SelectedEntities[0].get());
+                inner_items = GetEntityInnerItems(SelectedEntities.front().get());
             }
 
             if (!inner_items.empty()) {
@@ -1552,13 +1578,13 @@ void FOMapper::IntLMouseDown()
                     InContItem = nullptr;
 
                     // Reselect
-                    auto* tmp = SelectedEntities[0].get();
+                    auto* next_entity = SelectedEntities.front().get();
                     SelectClear();
-                    SelectAdd(tmp);
+                    SelectAdd(next_entity);
                 }
                 else if (Keyb.ShiftDwn && InContItem != nullptr) {
                     // Change child slot
-                    if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0].get()); cr != nullptr) {
+                    if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities.front().get()); cr != nullptr) {
                         auto to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
 
                         while (numeric_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
@@ -1673,14 +1699,16 @@ void FOMapper::IntLMouseDown()
     else if (IsCurInRect(IntBScrFront, IntX, IntY)) {
         if (IsItemMode() && !CurItemProtos->empty()) {
             (*CurProtoScroll)++;
+
             if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
                 *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
             }
         }
-        else if (IsCritMode() && !CurNpcProtos->empty()) {
+        else if (IsCritMode() && !CurCritterProtos->empty()) {
             (*CurProtoScroll)++;
-            if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
+
+            if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
@@ -1693,14 +1721,16 @@ void FOMapper::IntLMouseDown()
     else if (IsCurInRect(IntBScrFrontFst, IntX, IntY)) {
         if (IsItemMode() && !CurItemProtos->empty()) {
             (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
+
             if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
                 *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
             }
         }
-        else if (IsCritMode() && !CurNpcProtos->empty()) {
+        else if (IsCritMode() && !CurCritterProtos->empty()) {
             (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
-            if (*CurProtoScroll >= numeric_cast<int32>(CurNpcProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurNpcProtos->size()) - 1;
+
+            if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
+                *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
@@ -1780,7 +1810,10 @@ void FOMapper::IntLMouseUp()
 
                 vector<mpos> hexes;
 
-                if (SelectType == SELECT_TYPE_OLD) {
+                if (SelectAxialGrid) {
+                    hexes = Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize());
+                }
+                else {
                     const auto map_size = _curMap->GetSize();
                     const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
                     const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
@@ -1791,21 +1824,6 @@ void FOMapper::IntLMouseUp()
                         for (int32 j = fy; j <= ty; j++) {
                             hexes.emplace_back(map_size.from_raw_pos(i, j));
                         }
-                    }
-                }
-                else {
-                    hexes = _curMap->GetHexesRect(SelectHex1, SelectHex2);
-                }
-
-                vector<ItemHexView*> items;
-                vector<CritterHexView*> critters;
-
-                for (const auto hex : hexes) {
-                    for (auto& hex_item : _curMap->GetItemsOnHex(hex)) {
-                        items.emplace_back(hex_item.get());
-                    }
-                    for (auto* hex_cr : _curMap->GetCrittersOnHex(hex, CritterFindType::Any)) {
-                        critters.emplace_back(hex_cr);
                     }
                 }
 
@@ -1836,33 +1854,34 @@ void FOMapper::IntLMouseUp()
                     }
                 };
 
-                for (auto* item : items) {
-                    if (check_item_to_add(item)) {
-                        SelectAddItem(item);
+                for (const auto hex : hexes) {
+                    for (auto* hex_item : copy_hold_ref(_curMap->GetItemsOnHex(hex))) {
+                        if (check_item_to_add(hex_item)) {
+                            SelectAdd(hex_item, hex);
+                        }
                     }
-                }
-
-                for (auto* cr : critters) {
-                    if (IsSelectCrit && Settings.ShowCrit) {
-                        SelectAddCritter(cr);
+                    for (auto* hex_cr : copy_hold_ref(_curMap->GetCrittersOnHex(hex, CritterFindType::Any))) {
+                        if (IsSelectCrit && Settings.ShowCrit) {
+                            SelectAdd(hex_cr, hex);
+                        }
                     }
                 }
             }
             else {
-                auto* entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
+                const auto entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
 
-                if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+                if (auto* item = dynamic_cast<ItemHexView*>(entity.first); item != nullptr) {
                     if (!item->GetIsTile()) {
-                        SelectAddItem(item);
+                        SelectAdd(item, entity.second->GetHex());
                     }
                 }
-                else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                    SelectAddCritter(cr);
+                else if (auto* cr = dynamic_cast<CritterHexView*>(entity.first); cr != nullptr) {
+                    SelectAdd(cr, entity.second->GetHex());
                 }
             }
 
             // Crits or item container
-            if (!SelectedEntities.empty() && !GetEntityInnerItems(SelectedEntities[0].get()).empty()) {
+            if (!SelectedEntities.empty() && !GetEntityInnerItems(SelectedEntities.front().get()).empty()) {
                 IntSetMode(INT_MODE_INCONT);
             }
         }
@@ -1891,7 +1910,12 @@ void FOMapper::IntMouseMove()
 
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHex1 != SelectHex2) {
-                if (SelectType == SELECT_TYPE_OLD) {
+                if (SelectAxialGrid) {
+                    for (const auto hex : Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
+                        _curMap->GetHexTrack(hex) = 1;
+                    }
+                }
+                else {
                     const auto map_size = _curMap->GetSize();
                     const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
                     const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
@@ -1902,11 +1926,6 @@ void FOMapper::IntMouseMove()
                         for (auto j = fy; j <= ty; j++) {
                             _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
                         }
-                    }
-                }
-                else if (SelectType == SELECT_TYPE_NEW) {
-                    for (const auto hex : _curMap->GetHexesRect(SelectHex1, SelectHex2)) {
-                        _curMap->GetHexTrack(hex) = 1;
                     }
                 }
 
@@ -1964,14 +1983,14 @@ void FOMapper::RefreshCurProtos()
     // Select protos and scroll
     CurItemProtos = nullptr;
     CurProtoScroll = nullptr;
-    CurNpcProtos = nullptr;
+    CurCritterProtos = nullptr;
     InContItem = nullptr;
 
     if (IntMode >= 0 && IntMode < TAB_COUNT) {
         auto* stab = TabsActive[IntMode].get();
 
-        if (!stab->NpcProtos.empty()) {
-            CurNpcProtos = &stab->NpcProtos;
+        if (!stab->CritterProtos.empty()) {
+            CurCritterProtos = &stab->CritterProtos;
         }
         else {
             CurItemProtos = &stab->ItemProtos;
@@ -2084,12 +2103,13 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
         return;
     }
 
+    SelectClear();
+
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         _curMap->MoveCritter(cr, hex, false);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         _curMap->MoveItem(item, hex);
-        TryMergeItemToMultihexMesh(_curMap.get(), item, false);
     }
 }
 
@@ -2097,11 +2117,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find(SelectedEntities, entity);
-
-    if (it != SelectedEntities.end()) {
-        SelectedEntities.erase(it);
-    }
+    vec_safe_remove_unique_value(SelectedEntities, entity);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         _curMap->DestroyCritter(cr);
@@ -2111,89 +2127,26 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
     }
 }
 
-void FOMapper::SelectClear()
+void FOMapper::SelectAdd(ClientEntity* entity, optional<mpos> hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Delete intersected tiles
-    for (auto& entity : SelectedEntities) {
-        if (!entity->IsDestroyed()) {
-            if (const auto* tile = dynamic_cast<ItemHexView*>(entity.get()); tile != nullptr && tile->GetIsTile()) {
-                vector<ItemHexView*> tiles;
+    if (!vec_safe_add_unique_value(SelectedEntities, entity)) {
+        return;
+    }
 
-                for (auto& item : _curMap->GetItemsOnHex(tile->GetHex())) {
-                    if (item->GetIsTile() == tile->GetIsTile() && item->GetIsRoofTile() == tile->GetIsRoofTile()) {
-                        tiles.emplace_back(item.get());
-                    }
-                }
-
-                for (auto* sibling_tile : tiles) {
-                    const auto is_sibling_selected = std::ranges::find(SelectedEntities, sibling_tile) != SelectedEntities.end();
-
-                    if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
-                        _curMap->DestroyItem(sibling_tile);
-                    }
-                }
-            }
+    // Break from merged mesh
+    if (!SelectEntireEntity && hex.has_value()) {
+        if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            vec_remove_unique_value(SelectedEntities, entity);
+            entity = TryBreakItemFromMultihexMesh(_curMap.get(), item, hex.value());
+            vec_add_unique_value(SelectedEntities, entity);
         }
     }
 
-    // Restore alpha
-    for (auto& entity : SelectedEntities) {
-        if (!entity->IsDestroyed()) {
-            if (auto* hex_view = dynamic_cast<HexView*>(entity.get()); hex_view != nullptr) {
-                hex_view->RestoreAlpha();
-            }
-        }
-    }
-
-    // Merge multihex items
-    for (auto& entity : SelectedEntities) {
-        if (!entity->IsDestroyed()) {
-            if (auto* item = dynamic_cast<ItemHexView*>(entity.get()); item != nullptr) {
-                TryMergeItemToMultihexMesh(_curMap.get(), item, false);
-            }
-        }
-    }
-
-    SelectedEntities.clear();
-}
-
-void FOMapper::SelectAddItem(ItemHexView* item)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(item);
-    SelectAdd(item);
-}
-
-void FOMapper::SelectAddCritter(CritterView* npc)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(npc);
-    SelectAdd(npc);
-}
-
-void FOMapper::SelectAdd(ClientEntity* entity)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (vec_safe_add_unique_value(SelectedEntities, entity)) {
-        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
-            hex_view->SetTargetAlpha(SelectAlpha);
-        }
-    }
-}
-
-void FOMapper::SelectErase(ClientEntity* entity)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (vec_safe_remove_unique_value(SelectedEntities, entity)) {
-        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
-            hex_view->RestoreAlpha();
-        }
+    // Make transparent
+    if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+        hex_view->SetTargetAlpha(SelectAlpha);
     }
 }
 
@@ -2208,30 +2161,77 @@ void FOMapper::SelectAll()
             continue;
         }
 
-        if (!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
+        if ((!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) || //
+            (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) || //
+            (item->GetIsWall() && IsSelectWall && Settings.ShowWall) || //
+            (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) || //
+            (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof)) {
+            SelectAdd(item.get());
         }
-        else if (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
-        }
-        else if (item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
-        }
-        else if (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) {
-        }
-        else if (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof) {
-        }
-        else {
-            continue;
-        }
-
-        SelectAddItem(item.get());
     }
 
     if (IsSelectCrit && Settings.ShowCrit) {
         for (auto& cr : _curMap->GetCritters()) {
-            SelectAddCritter(cr.get());
+            SelectAdd(cr.get());
         }
     }
 
     _curMap->RebuildMap();
+}
+
+void FOMapper::SelectRemove(ClientEntity* entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    refcount_ptr entity_holder = entity;
+
+    if (!vec_safe_remove_unique_value(SelectedEntities, entity)) {
+        return;
+    }
+
+    // Delete intersected tiles
+    if (!entity->IsDestroyed()) {
+        if (const auto* tile = dynamic_cast<ItemHexView*>(entity); tile != nullptr && tile->GetIsTile()) {
+            vector<ItemHexView*> same_siblings;
+
+            for (auto& item : _curMap->GetItemsOnHex(tile->GetHex())) {
+                if (item != tile && item->GetIsTile() == tile->GetIsTile() && item->GetIsRoofTile() == tile->GetIsRoofTile() && //
+                    item->GetTileLayer() == tile->GetTileLayer() && !vec_exists(SelectedEntities, static_cast<ClientEntity*>(item.get()))) {
+                    same_siblings.emplace_back(item.get());
+                }
+            }
+
+            for (auto* same_sibling : copy_hold_ref(same_siblings)) {
+                if (!same_sibling->IsDestroyed()) {
+                    same_sibling = TryBreakItemFromMultihexMesh(_curMap.get(), same_sibling, tile->GetHex());
+                    _curMap->DestroyItem(same_sibling);
+                }
+            }
+        }
+    }
+
+    // Restore alpha
+    if (!entity->IsDestroyed()) {
+        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+            hex_view->RestoreAlpha();
+        }
+    }
+
+    // Merge multihex items
+    if (!entity->IsDestroyed()) {
+        if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            AutoMergeItemToMultihexMesh(_curMap.get(), item);
+        }
+    }
+}
+
+void FOMapper::SelectClear()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    while (!SelectedEntities.empty()) {
+        SelectRemove(SelectedEntities.back().get());
+    }
 }
 
 auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool
@@ -2264,10 +2264,10 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     int32 switcher = 0;
 
     if (!SelectedEntities.empty()) {
-        if (auto cr = SelectedEntities[0].dyn_cast<CritterHexView>()) {
+        if (auto cr = SelectedEntities.front().dyn_cast<CritterHexView>()) {
             switcher = std::abs(cr->GetHex().x % 2);
         }
-        else if (auto item = SelectedEntities[0].dyn_cast<ItemHexView>()) {
+        else if (auto item = SelectedEntities.front().dyn_cast<ItemHexView>()) {
             switcher = std::abs(item->GetHex().x % 2);
         }
     }
@@ -2380,13 +2380,6 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
         }
     }
 
-    // Restore alpha
-    for (auto& entity : SelectedEntities) {
-        if (auto* hex_view = dynamic_cast<HexView*>(entity.get()); hex_view != nullptr) {
-            hex_view->RestoreAlpha();
-        }
-    }
-
     return true;
 }
 
@@ -2406,7 +2399,7 @@ void FOMapper::SelectDelete()
     SelectClear();
     _curMap->RebuildMap();
     IntHold = INT_NONE;
-    CurMode = CUR_MODE_DEFAULT;
+    SetCurMode(CUR_MODE_DEFAULT);
 }
 
 auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
@@ -2425,12 +2418,12 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     SelectClear();
 
-    CritterHexView* cr = _curMap->AddMapperCritter(pid, hex, GeometryHelper::DirToAngle(NpcDir), nullptr);
+    CritterHexView* cr = _curMap->AddMapperCritter(pid, hex, GeometryHelper::DirToAngle(CritterDir), nullptr);
 
-    SelectAdd(cr);
+    SelectAdd(cr, hex);
 
     _curMap->RebuildMap();
-    CurMode = CUR_MODE_DEFAULT;
+    SetCurMode(CUR_MODE_DEFAULT);
 
     return cr;
 }
@@ -2441,9 +2434,7 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
     FO_RUNTIME_ASSERT(_curMap);
 
-    // Checks
     const auto* proto = ProtoMngr.GetProtoItem(pid);
-
     mpos corrected_hex = hex;
 
     if (proto->GetIsTile()) {
@@ -2475,15 +2466,9 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
     }
 
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(item); hex_item != nullptr) {
-        if (auto* merged_item = TryMergeItemToMultihexMesh(_curMap.get(), hex_item, false)) {
-            item = merged_item;
-        }
-    }
-
     if (owner == nullptr) {
-        SelectAdd(item);
-        CurMode = CUR_MODE_DEFAULT;
+        SelectAdd(item, corrected_hex);
+        SetCurMode(CUR_MODE_DEFAULT);
     }
     else {
         IntSetMode(INT_MODE_INCONT);
@@ -2564,40 +2549,52 @@ auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
         }
     }
 
+    // Normalize mutihex meshes (sort and move origin to first entry)
+    const auto hex_less = [](auto&& hex1, auto&& hex2) { return hex1.y == hex2.y ? hex1.x < hex2.x : hex1.y < hex2.y; };
+
+    for (auto& item : map->GetItems()) {
+        if (item->IsNonEmptyMultihexMesh()) {
+            auto multihex_mesh = item->GetMultihexMesh();
+            std::ranges::sort(multihex_mesh, hex_less);
+
+            if (hex_less(multihex_mesh.front(), item->GetHex())) {
+                const auto hex = multihex_mesh.front();
+                multihex_mesh.front() = item->GetHex();
+                std::ranges::sort(multihex_mesh, hex_less);
+                item->SetMultihexMesh(multihex_mesh);
+                map->MoveItem(item.get(), hex);
+            }
+            else {
+                item->SetMultihexMesh(multihex_mesh);
+            }
+        }
+    }
+
     return merges;
 }
 
-auto FOMapper::BreakItemsMultihexMeshes(MapView* map) -> size_t
+auto FOMapper::AutoMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    size_t breaks = 0;
-
-    for (auto& item : to_vector(map->GetItems())) {
-        if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
-            continue;
-        }
-        if (item->IsNonEmptyMultihexLines()) {
-            continue;
-        }
-        if (!item->IsNonEmptyMultihexMesh()) {
-            continue;
-        }
-
-        const auto multihex_mesh = item->GetMultihexMesh();
-        item->SetMultihexMesh({});
-
-        for (const auto multihex : multihex_mesh) {
-            map->AddMapperItem(item->GetProtoId(), multihex, &item->GetProperties());
-            breaks++;
-        }
-
-        map->MoveItem(item.get(), item->GetHex());
+    if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
+        return item;
     }
 
-    return breaks;
+    auto* next_item = item;
+
+    while (true) {
+        auto* merged_item = TryMergeItemToMultihexMesh(map, next_item, false);
+
+        if (merged_item != nullptr) {
+            next_item = merged_item;
+        }
+        else {
+            return next_item;
+        }
+    }
 }
 
 auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it) -> ItemHexView*
@@ -2638,34 +2635,43 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool 
     if (mergable_item != nullptr) {
         auto* source_item = merge_to_it ? mergable_item : item;
         auto* target_item = merge_to_it ? item : mergable_item;
-
-        auto multihex_mesh = target_item->GetMultihexMesh();
-        bool some_hex_added = false;
-
-        if (source_item->GetHex() != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, source_item->GetHex())) {
-            some_hex_added = true;
-        }
-
-        if (source_item->HasMultihexEntries()) {
-            multihex_mesh.reserve(multihex_mesh.size() + source_item->GetMultihexEntries().size());
-
-            for (const auto multihex : source_item->GetMultihexEntries()) {
-                if (multihex != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, multihex)) {
-                    some_hex_added = true;
-                }
-            }
-        }
-
-        if (some_hex_added) {
-            target_item->SetMultihexMesh(multihex_mesh);
-            map->MoveItem(target_item, target_item->GetHex()); // Reapply to same hex
-        }
-
-        map->DestroyItem(source_item);
+        MergeItemToMultihexMesh(map, source_item, target_item);
         return target_item;
     }
 
     return nullptr;
+}
+
+void FOMapper::MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    auto multihex_mesh = target_item->GetMultihexMesh();
+    bool some_hex_added = false;
+
+    if (source_item->GetHex() != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, source_item->GetHex())) {
+        some_hex_added = true;
+    }
+
+    if (source_item->IsNonEmptyMultihexMesh()) {
+        const auto source_multihex_mesh = source_item->GetMultihexMesh();
+        multihex_mesh.reserve(multihex_mesh.size() + source_multihex_mesh.size());
+
+        for (const auto multihex : source_multihex_mesh) {
+            if (multihex != target_item->GetHex() && vec_safe_add_unique_value(multihex_mesh, multihex)) {
+                some_hex_added = true;
+            }
+        }
+    }
+
+    if (some_hex_added) {
+        target_item->SetMultihexMesh(multihex_mesh);
+        map->RefreshItem(target_item);
+    }
+
+    map->DestroyItem(source_item);
 }
 
 auto FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it) const -> ItemHexView*
@@ -2745,6 +2751,70 @@ auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const
     }
 
     return false;
+}
+
+auto FOMapper::BreakItemsMultihexMeshes(MapView* map) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    size_t breaks = 0;
+
+    for (auto& item : to_vector(map->GetItems())) {
+        if (!item->IsNonEmptyMultihexMesh()) {
+            continue;
+        }
+
+        const auto multihex_mesh = item->GetMultihexMesh();
+        item->SetMultihexMesh({});
+
+        for (const auto multihex : multihex_mesh) {
+            map->AddMapperItem(item->GetProtoId(), multihex, &item->GetProperties());
+            breaks++;
+        }
+
+        map->RefreshItem(item.get());
+    }
+
+    return breaks;
+}
+
+auto FOMapper::TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (!item->IsNonEmptyMultihexMesh()) {
+        return item;
+    }
+
+    auto multihex_mesh = item->GetMultihexMesh();
+
+    if (item->GetHex() == hex) {
+        item->SetMultihexMesh({});
+        auto* separated_item = map->AddMapperItem(item->GetProtoId(), hex, &item->GetProperties());
+
+        const auto new_mesh_holder_hex = multihex_mesh.front();
+        vec_remove_unique_value(multihex_mesh, new_mesh_holder_hex);
+        item->SetMultihexMesh(multihex_mesh);
+        map->MoveItem(item, new_mesh_holder_hex);
+
+        return separated_item;
+    }
+    else if (vec_safe_remove_unique_value(multihex_mesh, hex)) {
+        item->SetMultihexMesh({});
+        auto* separated_item = map->AddMapperItem(item->GetProtoId(), hex, &item->GetProperties());
+
+        item->SetMultihexMesh(multihex_mesh);
+        map->RefreshItem(item);
+
+        return separated_item;
+    }
+    else {
+        return item;
+    }
 }
 
 void FOMapper::BufferCopy()
@@ -2910,9 +2980,9 @@ void FOMapper::CurDraw()
                 SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
             }
         }
-        else if (IsCritMode() && !CurNpcProtos->empty()) {
-            const auto model_name = (*CurNpcProtos)[GetTabIndex()]->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, NpcDir, nullptr);
+        else if (IsCritMode() && !CurCritterProtos->empty()) {
+            const auto model_name = (*CurCritterProtos)[GetTabIndex()]->GetModelName();
+            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
 
             if (anim == nullptr) {
                 anim = ResMngr.GetItemDefaultSpr().get();
@@ -2933,11 +3003,11 @@ void FOMapper::CurDraw()
             SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
         }
         else {
-            CurMode = CUR_MODE_DEFAULT;
+            SetCurMode(CUR_MODE_DEFAULT);
         }
         break;
     default:
-        CurMode = CUR_MODE_DEFAULT;
+        SetCurMode(CUR_MODE_DEFAULT);
         break;
     }
 }
@@ -2948,17 +3018,17 @@ void FOMapper::CurRMouseUp()
 
     if (IntHold == INT_NONE) {
         if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            CurMode = CUR_MODE_DEFAULT;
+            SetCurMode(CUR_MODE_DEFAULT);
         }
         else if (CurMode == CUR_MODE_PLACE_OBJECT) {
-            CurMode = CUR_MODE_DEFAULT;
+            SetCurMode(CUR_MODE_DEFAULT);
         }
         else if (CurMode == CUR_MODE_DEFAULT) {
             if (!SelectedEntities.empty()) {
-                CurMode = CUR_MODE_MOVE_SELECTION;
+                SetCurMode(CUR_MODE_MOVE_SELECTION);
             }
             else if (IsItemMode() || IsCritMode()) {
-                CurMode = CUR_MODE_PLACE_OBJECT;
+                SetCurMode(CUR_MODE_PLACE_OBJECT);
             }
         }
     }
@@ -2969,10 +3039,10 @@ void FOMapper::CurMMouseDown()
     FO_STACK_TRACE_ENTRY();
 
     if (SelectedEntities.empty()) {
-        NpcDir++;
+        CritterDir++;
 
-        if (NpcDir >= GameSettings::MAP_DIR_COUNT) {
-            NpcDir = 0;
+        if (CritterDir >= GameSettings::MAP_DIR_COUNT) {
+            CritterDir = 0;
         }
 
         DrawRoof = !DrawRoof;
@@ -2982,6 +3052,25 @@ void FOMapper::CurMMouseDown()
             if (auto cr = entity.dyn_cast<CritterHexView>()) {
                 const auto dir = cr->GetDir() + 1;
                 cr->ChangeDir(numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT));
+            }
+        }
+    }
+}
+
+void FOMapper::SetCurMode(int cur_mode)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    CurMode = cur_mode;
+
+    // Restore alpha
+    for (auto& entity : SelectedEntities) {
+        if (auto* hex_view = dynamic_cast<HexView*>(entity.get()); hex_view != nullptr) {
+            if (CurMode == CUR_MODE_MOVE_SELECTION) {
+                hex_view->RestoreAlpha();
+            }
+            else {
+                hex_view->SetTargetAlpha(SelectAlpha);
             }
         }
     }

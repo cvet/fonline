@@ -655,6 +655,132 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const 
     }
 }
 
+auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<mpos> hexes;
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        auto [x, y] = GetHexOffset(from_hex, to_hex);
+        x = -x;
+
+        const int32 dx = x / _settings->MapHexWidth;
+        const int32 dy = y / _settings->MapHexLineHeight;
+        const int32 adx = std::abs(dx);
+        const int32 ady = std::abs(dy);
+
+        int32 hx;
+        int32 hy;
+
+        for (int32 j = 1; j <= ady; j++) {
+            if (dy >= 0) {
+                hx = from_hex.x + j / 2 + ((j % 2) != 0 ? 1 : 0);
+                hy = from_hex.y + (j - (hx - from_hex.x - ((from_hex.x % 2) != 0 ? 1 : 0)) / 2);
+            }
+            else {
+                hx = from_hex.x - j / 2 - ((j % 2) != 0 ? 1 : 0);
+                hy = from_hex.y - (j - (from_hex.x - hx - ((from_hex.x % 2) != 0 ? 0 : 1)) / 2);
+            }
+
+            for (int32 i = 0; i <= adx; i++) {
+                if (map_size.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(map_size.from_raw_pos(hx, hy));
+                }
+
+                if (dx >= 0) {
+                    if ((hx % 2) != 0) {
+                        hy--;
+                    }
+
+                    hx++;
+                }
+                else {
+                    hx--;
+
+                    if ((hx % 2) != 0) {
+                        hy++;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        auto [rw, rh] = GetHexOffset(from_hex, to_hex);
+
+        if (rw == 0) {
+            rw = 1;
+        }
+        if (rh == 0) {
+            rh = 1;
+        }
+
+        const int32 hw = std::abs(rw / (_settings->MapHexWidth / 2)) + ((rw % (_settings->MapHexWidth / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= _settings->MapHexWidth / 2 ? 1 : 0); // Hexes width
+        const int32 hh = std::abs(rh / _settings->MapHexLineHeight) + ((rh % _settings->MapHexLineHeight) != 0 ? 1 : 0) + (std::abs(rh) >= _settings->MapHexLineHeight ? 1 : 0); // Hexes height
+        int32 shx = numeric_cast<int32>(from_hex.x);
+        int32 shy = numeric_cast<int32>(from_hex.y);
+
+        for (int32 i = 0; i < hh; i++) {
+            int32 hx = shx;
+            int32 hy = shy;
+
+            if (rh > 0) {
+                if (rw > 0) {
+                    if ((i % 2) != 0) {
+                        shx++;
+                    }
+                    else {
+                        shy++;
+                    }
+                }
+                else {
+                    if ((i % 2) != 0) {
+                        shy++;
+                    }
+                    else {
+                        shx++;
+                    }
+                }
+            }
+            else {
+                if (rw > 0) {
+                    if ((i % 2) != 0) {
+                        shy--;
+                    }
+                    else {
+                        shx--;
+                    }
+                }
+                else {
+                    if ((i % 2) != 0) {
+                        shx--;
+                    }
+                    else {
+                        shy--;
+                    }
+                }
+            }
+
+            for (int32 j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
+                if (map_size.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(map_size.from_raw_pos(hx, hy));
+                }
+
+                if (rw > 0) {
+                    hx--;
+                    hy++;
+                }
+                else {
+                    hx++;
+                    hy--;
+                }
+            }
+        }
+    }
+
+    return hexes;
+}
+
 void GeometryHelper::ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
