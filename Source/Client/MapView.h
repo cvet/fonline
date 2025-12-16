@@ -227,7 +227,8 @@ public:
     auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _items; }
     auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
     auto GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
-    void RefreshItem(ItemHexView* item);
+    void RefreshItem(ItemHexView* item, bool deferred = false);
+    void DefferedRefreshItems();
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
@@ -325,6 +326,7 @@ private:
     vector<raw_ptr<ItemHexView>> _dynamicItems {};
     vector<raw_ptr<ItemHexView>> _processingItems {};
     unordered_map<ident_t, raw_ptr<ItemHexView>> _itemsMap {};
+    unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
     unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<int16> _findPathGrid {};

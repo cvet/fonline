@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE();
 class ProtoEntity : public Entity
 {
 public:
-    [[nodiscard]] auto GetName() const noexcept -> string_view override;
-    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
-    [[nodiscard]] auto HasComponent(hstring name) const noexcept -> bool;
-    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const noexcept -> bool;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _protoId.as_str(); }
+    [[nodiscard]] auto GetProtoId() const noexcept -> hstring { return _protoId; }
+    [[nodiscard]] auto HasComponent(hstring name) const noexcept -> bool { return _components.contains(name); }
+    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const noexcept -> bool { return _componentHashes.contains(hash); }
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _components; }
 
     void EnableComponent(hstring component);
@@ -71,12 +71,12 @@ public:
     auto operator=(const EntityWithProto&) = delete;
     auto operator=(EntityWithProto&&) noexcept = delete;
 
-    [[nodiscard]] auto GetProtoId() const noexcept -> hstring;
-    [[nodiscard]] auto GetProto() const noexcept -> const ProtoEntity*;
+    [[nodiscard]] auto GetProtoId() const noexcept -> hstring { return _proto->GetProtoId(); }
+    [[nodiscard]] auto GetProto() const noexcept -> const ProtoEntity* { return _proto.get(); }
 
 protected:
     explicit EntityWithProto(const ProtoEntity* proto) noexcept;
-    virtual ~EntityWithProto();
+    virtual ~EntityWithProto() = default;
 
     refcount_ptr<const ProtoEntity> _proto;
 };

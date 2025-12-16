@@ -277,7 +277,7 @@ public:
     [[nodiscard]] auto GetValueAsAny(int32 property_index) const -> any_t;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
-    [[nodiscard]] auto CompareData(const Properties& other, span<const Property*> ignore_props) const -> bool;
+    [[nodiscard]] auto CompareData(const Properties& other, span<const Property*> ignore_props, bool ignore_temporary) const -> bool;
 
     void AllocData() noexcept;
     void SetEntity(Entity* entity) const noexcept { _entity = entity; }

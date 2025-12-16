@@ -468,7 +468,7 @@ void MapView::AddItemToField(ItemHexView* item)
         vector<mpos> multihex_entries;
         const auto multihex_lines = item->GetMultihexLines();
         const auto multihex_mesh = item->GetMultihexMesh();
-        multihex_entries.reserve(multihex_lines.size() / 2 + multihex_mesh.size());
+        multihex_entries.reserve((1 + multihex_mesh.size()) * (1 + multihex_lines.size() / 2));
 
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
             auto& multihex_field = _hexField->GetCellForWriting(multihex);
@@ -523,8 +523,8 @@ void MapView::AddItemToField(ItemHexView* item)
         if (item->HasMultihexEntries() && (item->GetDrawMultihexLines() || item->GetDrawMultihexMesh())) {
             for (const auto multihex : item->GetMultihexEntries()) {
                 if (auto& multihex_field = _hexField->GetCellForWriting(multihex); multihex_field.IsView) {
-                    for (const auto drawable : multihex_field.MultihexItems | std::views::values) {
-                        if (drawable) {
+                    for (auto&& [multihex_item, drawable] : multihex_field.MultihexItems) {
+                        if (drawable && multihex_item == item) {
                             DrawHexItem(item, multihex_field, multihex, true);
                         }
                     }
@@ -747,14 +747,32 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     return item;
 }
 
-void MapView::RefreshItem(ItemHexView* item)
+void MapView::RefreshItem(ItemHexView* item, bool deferred)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(item->GetMap() == this);
 
-    RemoveItemFromField(item);
-    AddItemToField(item);
+    if (deferred) {
+        _deferredRefreshItems.emplace(item);
+    }
+    else {
+        RemoveItemFromField(item);
+        AddItemToField(item);
+    }
+}
+
+void MapView::DefferedRefreshItems()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& item : to_vector(_deferredRefreshItems)) {
+        if (!item->IsDestroyed()) {
+            RefreshItem(item.get(), false);
+        }
+    }
+
+    _deferredRefreshItems.clear();
 }
 
 void MapView::MoveItem(ItemHexView* item, mpos hex)
@@ -3324,7 +3342,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
         }
 
         for (auto&& [item, drawable] : field2.MultihexItems) {
-            if (drawable) {
+            if (drawable && item->HasExtraMapSprites()) {
                 for (const auto& extra_mspr_entry : item->GetExtraMapSprites()) {
                     if (extra_mspr_entry.second && extra_mspr_entry.first->GetHex() == hex) {
                         process_sprite(item.get(), extra_mspr_entry.first.get());

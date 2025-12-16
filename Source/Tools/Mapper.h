@@ -178,9 +178,9 @@ public:
 
     void MoveEntity(ClientEntity* entity, mpos hex);
     void DeleteEntity(ClientEntity* entity);
-    void SelectAdd(ClientEntity* entity, optional<mpos> hex = std::nullopt);
+    void SelectAdd(ClientEntity* entity, optional<mpos> hex = std::nullopt, bool skip_refresh = false);
     void SelectAll();
-    void SelectRemove(ClientEntity* entity);
+    void SelectRemove(ClientEntity* entity, bool skip_refresh = false);
     void SelectClear();
     auto SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool;
     void SelectDelete();
@@ -191,10 +191,9 @@ public:
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
 
     auto MergeItemsToMultihexMeshes(MapView* map) -> size_t;
-    auto AutoMergeItemToMultihexMesh(MapView* map, ItemHexView* item) -> ItemHexView*;
-    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it) -> ItemHexView*;
+    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it, bool skip_selected) -> ItemHexView*;
     void MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item);
-    auto FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it) const -> ItemHexView*;
+    void FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const;
     auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool;
     auto BreakItemsMultihexMeshes(MapView* map) -> size_t;
     auto TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*;
@@ -322,6 +321,7 @@ public:
     bool IsSelectRoof {};
     ipos32 BufferRawHex {};
     vector<refcount_ptr<ClientEntity>> SelectedEntities {};
+    unordered_set<raw_ptr<ClientEntity>> SelectedEntitiesSet {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};
     shared_ptr<Sprite> ObjPbToAllDn {};

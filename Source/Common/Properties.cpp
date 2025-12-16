@@ -556,7 +556,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     return key_values;
 }
 
-auto Properties::CompareData(const Properties& other, span<const Property*> ignore_props) const -> bool
+auto Properties::CompareData(const Properties& other, span<const Property*> ignore_props, bool ignore_temporary) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -572,11 +572,22 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
         MemCopy(pod_data2.data(), other._podData.get(), pod_data_size);
 
         for (const auto* ignore_prop : ignore_props) {
-            if (ignore_prop->IsPlainData()) {
+            if (ignore_prop->_podDataOffset.has_value()) {
                 const auto offset = ignore_prop->_podDataOffset.value();
                 const auto size = ignore_prop->_baseType.Size;
                 MemFill(pod_data1.data() + offset, 0, size);
                 MemFill(pod_data2.data() + offset, 0, size);
+            }
+        }
+
+        if (ignore_temporary) {
+            for (const auto& prop : _registrator->_registeredProperties) {
+                if (prop && prop->IsTemporary() && prop->_podDataOffset.has_value()) {
+                    const auto offset = prop->_podDataOffset.value();
+                    const auto size = prop->_baseType.Size;
+                    MemFill(pod_data1.data() + offset, 0, size);
+                    MemFill(pod_data2.data() + offset, 0, size);
+                }
             }
         }
 
@@ -587,6 +598,9 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
 
     for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
         if (vec_exists(ignore_props, _registrator->_complexProperties[i].get())) {
+            continue;
+        }
+        if (ignore_temporary && _registrator->_complexProperties[i]->IsTemporary()) {
             continue;
         }
 
