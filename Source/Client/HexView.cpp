@@ -54,20 +54,34 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
     auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
 
+    _mapSpr = mspr;
     SetupSprite(mspr);
 
     FO_RUNTIME_ASSERT(_mapSpr == mspr);
     FO_RUNTIME_ASSERT(_mapSprValid);
-
     return _mapSpr.get();
+}
+
+auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    make_if_not_exists(_extraMapSpr);
+    _extraMapSpr->remove_if([](auto&& entry) { return !entry.second; });
+    auto& entry = _extraMapSpr->emplace_back();
+
+    const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
+    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
+
+    SetupSprite(entry.first.get());
+    return entry.first.get();
 }
 
 void HexView::SetupSprite(MapSprite* mspr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _mapSpr = mspr;
-    _mapSpr->SetHidden(_mapSprHidden || IsFullyTransparent());
+    mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
 void HexView::Finish()
@@ -170,6 +184,14 @@ void HexView::RefreshSprite()
     if (_mapSprValid) {
         SetupSprite(_mapSpr.get());
     }
+
+    if (_extraMapSpr) {
+        for (auto&& [mspr, valid] : *_extraMapSpr) {
+            if (valid) {
+                SetupSprite(mspr.get());
+            }
+        }
+    }
 }
 
 auto HexView::GetMapSprite() const -> const MapSprite*
@@ -194,13 +216,24 @@ void HexView::InvalidateSprite()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSpr);
-    FO_RUNTIME_ASSERT(_mapSprValid);
+    if (_mapSprValid) {
+        FO_RUNTIME_ASSERT(_mapSpr);
 
-    _mapSpr->Invalidate();
-    _mapSpr.reset();
+        _mapSpr->Invalidate();
+        _mapSpr.reset();
 
-    FO_RUNTIME_ASSERT(!_mapSprValid);
+        FO_RUNTIME_ASSERT(!_mapSprValid);
+    }
+
+    if (_extraMapSpr) {
+        for (auto&& [mspr, valid] : *_extraMapSpr) {
+            if (valid) {
+                mspr->Invalidate();
+            }
+        }
+
+        _extraMapSpr.reset();
+    }
 }
 
 void HexView::SetSpriteVisiblity(bool enabled)
@@ -214,10 +247,7 @@ void HexView::SetSpriteVisiblity(bool enabled)
     }
 
     _mapSprHidden = hidden;
-
-    if (_mapSpr) {
-        SetupSprite(_mapSpr.get());
-    }
+    RefreshSprite();
 }
 
 FO_END_NAMESPACE();

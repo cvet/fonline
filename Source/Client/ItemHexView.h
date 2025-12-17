@@ -58,6 +58,8 @@ public:
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
     [[nodiscard]] auto GetAnim() const -> const Sprite* { return _anim.get(); }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return _isMoving; }
+    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>& { return *_multihexEntries; }
 
     void Init();
     void Process();
@@ -69,6 +71,7 @@ public:
     void RefreshAnim();
     void MoveToHex(mpos hex, float32 speed);
     void RefreshOffs();
+    void SetMultihexEntries(vector<mpos> entries);
 
 private:
     void SetupSprite(MapSprite* mspr) override;
@@ -90,6 +93,8 @@ private:
     nanotime _moveUpdateLastTime {};
     uint8 _moveDir {};
     vector<mpos> _moveSteps {};
+
+    unique_ptr<vector<mpos>> _multihexEntries {};
 };
 
 FO_END_NAMESPACE();

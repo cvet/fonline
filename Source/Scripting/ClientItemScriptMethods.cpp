@@ -39,6 +39,18 @@
 FO_BEGIN_NAMESPACE();
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Item_IsVisible(ItemView* self)
+{
+    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
+
+    if (hex_item == nullptr) {
+        throw ScriptException("Item is not on map");
+    }
+
+    return hex_item->IsMapSpriteVisible();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 {
     auto cloned_item = self->CreateRefClone();

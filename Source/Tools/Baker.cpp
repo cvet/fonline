@@ -132,7 +132,7 @@ void MasterBaker::BakeAllInternal()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto bake_time = TimeMeter();
+    const TimeMeter backing_time;
 
     WriteLog("Start baking");
 
@@ -299,6 +299,8 @@ void MasterBaker::BakeAllInternal()
             &baking_output_ = std::as_const(baking_output),
             &force_baking, &res_baked // clang-format on
         ](const ResourcePackInfo& res_pack, const string& output_dir) {
+            const TimeMeter pack_baking_time;
+
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
 
@@ -368,16 +370,19 @@ void MasterBaker::BakeAllInternal()
                 res_baked = true;
             }
 
-            WriteLog("Baking of {} complete, baked {} file{}", pack_name, baked_files, baked_files != 1 ? "s" : "");
+            WriteLog("Baking of {} complete in {}, baked {} file{}", pack_name, pack_baking_time.GetDuration(), baked_files, baked_files != 1 ? "s" : "");
         };
 
         size_t errors = 0;
+        size_t baked_packs = 0;
+        int32 bake_order = 0;
+        const auto& res_packs = _settings->GetResourcePacks();
 
-        for (int32 bake_order = 0; bake_order <= _settings->MaxBakeOrder; bake_order++) {
+        while (true) {
             vector<std::future<void>> res_bakings;
             vector<string> res_baking_outputs;
 
-            for (const auto& res_pack : _settings->GetResourcePacks()) {
+            for (const auto& res_pack : res_packs) {
                 if (res_pack.BakeOrder == bake_order) {
                     WriteLog("Bake {}", res_pack.Name);
                     const auto res_baking_output = make_output_path(res_pack.Name);
@@ -391,6 +396,7 @@ void MasterBaker::BakeAllInternal()
             for (auto& res_baking : res_bakings) {
                 try {
                     res_baking.get();
+                    baked_packs++;
                 }
                 catch (const std::exception& ex) {
                     WriteLog("Resource pack baking error: {}", ex.what());
@@ -412,6 +418,11 @@ void MasterBaker::BakeAllInternal()
             if (res_baked) {
                 force_baking = true;
             }
+            if (baked_packs == res_packs.size()) {
+                break;
+            }
+
+            bake_order++;
         }
 
         // Copy engine data to Core pack
@@ -420,7 +431,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     // Finalize
-    WriteLog("Time {}", bake_time.GetDuration());
+    WriteLog("Time {}", backing_time.GetDuration());
     WriteLog("Baking complete!");
 
     const auto build_hash_write_ok = DiskFileSystem::WriteFile(build_hash_path, FO_BUILD_HASH);

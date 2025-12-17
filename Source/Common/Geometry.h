@@ -124,6 +124,7 @@ public:
     [[nodiscard]] auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) const -> ipos32;
     [[nodiscard]] auto GetHexOffset(mpos from_hex, mpos to_hex) const -> ipos32;
     [[nodiscard]] auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32;
+    [[nodiscard]] auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;
 
     [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;
@@ -141,11 +142,13 @@ public:
     [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
+    [[nodiscard]] static auto HexesInRadius(int32 radius) -> int32;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;
-    static void MoveHexAroundAway(ipos32& hex, int32 index);
-    static void ForEachBlockLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
+    static auto MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool;
+    static void MoveHexAroundAwayUnsafe(ipos32& hex, int32 index);
+    static void ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
     raw_ptr<GeometrySettings> _settings;

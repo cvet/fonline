@@ -47,9 +47,6 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
         if (prop->IsDisabled()) {
             continue;
         }
-        if (prop->IsVirtual()) {
-            continue;
-        }
         if (!prop->IsPersistent()) {
             continue;
         }
@@ -111,7 +108,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             bool is_component;
             const auto* prop = props->GetRegistrator()->FindProperty(doc_key, &is_component);
 
-            if (prop != nullptr && !prop->IsDisabled() && !prop->IsVirtual() && prop->IsPersistent()) {
+            if (prop != nullptr && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
             else {
@@ -489,6 +486,8 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         else {
             throw PropertySerializationException("Wrong hash value type");
         }
+
+        pdata += base_type_info.Size;
     }
     else if (base_type_info.IsEnum) {
         int32 enum_value = 0;
@@ -514,6 +513,8 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         else {
             MemCopy(pdata, &enum_value, base_type_info.Size);
         }
+
+        pdata += base_type_info.Size;
     }
     else if (base_type_info.IsPrimitive || base_type_info.IsSimpleStruct) {
         const auto& primitive_info = base_type_info.IsSimpleStruct ? base_type_info.StructLayout->front().second : base_type_info;
@@ -551,14 +552,31 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
         else {
             FO_UNREACHABLE_PLACE();
         }
+
+        pdata += base_type_info.Size;
     }
     else if (base_type_info.IsComplexStruct) {
+        const auto& struct_layout = *base_type_info.StructLayout;
+
         if (value.Type() == AnyData::ValueType::Array) {
             const auto& struct_value = value.AsArray();
-            const auto& struct_layout = *base_type_info.StructLayout;
 
             if (struct_value.Size() != struct_layout.size()) {
-                throw PropertySerializationException("Wrong struct size", struct_value.Size(), struct_layout.size());
+                throw PropertySerializationException("Wrong struct size (from array)", struct_value.Size(), struct_layout.size());
+            }
+
+            for (size_t i = 0; i < struct_layout.size(); i++) {
+                const auto& [field_name, field_type_info] = struct_layout[i];
+                const auto& field_value = struct_value[i];
+                ConvertFixedValue(field_type_info, hash_resolver, name_resolver, field_value, pdata);
+            }
+        }
+        else if (value.Type() == AnyData::ValueType::String) {
+            const auto arr_value = AnyData::ParseValue(value.AsString(), false, true, AnyData::ValueType::String);
+            const auto& struct_value = arr_value.AsArray();
+
+            if (struct_value.Size() != struct_layout.size()) {
+                throw PropertySerializationException("Wrong struct size (from string)", struct_value.Size(), struct_layout.size());
             }
 
             for (size_t i = 0; i < struct_layout.size(); i++) {
@@ -574,8 +592,6 @@ static void ConvertFixedValue(const BaseTypeInfo& base_type_info, HashResolver& 
     else {
         FO_UNREACHABLE_PLACE();
     }
-
-    pdata += base_type_info.Size;
 }
 
 void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(span<const uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)

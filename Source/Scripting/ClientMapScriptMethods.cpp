@@ -146,61 +146,33 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
         throw ScriptException("Item id arg is zero");
     }
 
-    // On map
-    ItemView* item = self->GetItem(itemId);
-
-    // On Chosen
-    if (item == nullptr && self->GetEngine()->GetChosen() != nullptr) {
-        item = self->GetEngine()->GetChosen()->GetInvItem(itemId);
-    }
-
-    // On other critters
-    if (item == nullptr) {
-        for (auto& cr : self->GetCritters()) {
-            if (!cr->GetIsChosen()) {
-                item = cr->GetInvItem(itemId);
-            }
-        }
-    }
-
-    if (item == nullptr || item->IsDestroyed()) {
-        return nullptr;
-    }
-    return item;
+    return self->GetItem(itemId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
+FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, mpos hex)
 {
-    const auto map_items = self->GetItems();
-
-    vector<ItemView*> items;
-    items.reserve(map_items.size());
-
-    for (auto& item : map_items) {
-        if (!item->IsFinishing() && !item->GetIsTile()) {
-            items.emplace_back(item.get());
-        }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Item id arg is zero");
     }
 
-    return items;
+    return self->GetItemOnHex(hex);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, mpos hex)
+FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self)
 {
-    const auto hex_items = self->GetItems(hex);
+    return vec_transform(self->GetItems(), [](auto&& item) -> ItemView* { return item.get(); });
+}
 
-    vector<ItemView*> items;
-    items.reserve(hex_items.size());
-
-    for (auto& item : hex_items) {
-        if (!item->IsFinishing()) {
-            items.emplace_back(item.get());
-        }
+///@ ExportMethod
+FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Item id arg is zero");
     }
 
-    return items;
+    return vec_transform(self->GetItemsOnHex(hex), [](auto&& item) -> ItemView* { return item.get(); });
 }
 
 ///@ ExportMethod
@@ -210,34 +182,22 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterI
         return nullptr;
     }
 
-    auto* cr = self->GetCritter(critterId);
-
-    if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
-        return nullptr;
-    }
-
-    return cr;
+    return self->GetCritter(critterId);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self)
 {
-    auto& map_critters = self->GetCritters();
-
-    vector<CritterView*> critters;
-    critters.reserve(map_critters.size());
-
-    for (auto& cr : map_critters) {
-        critters.emplace_back(cr.get());
-    }
-
-    return critters;
+    return vec_transform(self->GetCritters(), [](auto&& cr) -> CritterView* { return cr.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
 {
+    const auto map_critters = self->GetCritters();
+
     vector<CritterView*> critters;
+    critters.reserve(map_critters.size());
 
     for (auto& cr : self->GetCritters()) {
         if (cr->CheckFind(findType)) {
@@ -253,18 +213,9 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
 {
     vector<CritterView*> critters;
 
-    if (!pid) {
-        for (auto& cr : self->GetCritters()) {
-            if (cr->CheckFind(findType)) {
-                critters.emplace_back(cr.get());
-            }
-        }
-    }
-    else {
-        for (auto& cr : self->GetCritters()) {
-            if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
-                critters.emplace_back(cr.get());
-            }
+    for (auto& cr : self->GetCritters()) {
+        if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
         }
     }
 
@@ -330,10 +281,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
     }
 
     vector<CritterHexView*> critters;
-
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-
-    return vec_static_cast<CritterView*>(critters);
+    return vec_transform(critters, [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -347,10 +296,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
     }
 
     vector<CritterHexView*> critters;
-
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
-
-    return vec_static_cast<CritterView*>(critters);
+    return vec_transform(critters, [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -364,9 +311,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
     }
 
     mpos pre_block;
-
     self->TraceBullet(fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, &pre_block, nullptr, nullptr, true);
-
     toHex = pre_block;
 }
 
@@ -582,45 +527,6 @@ FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex arg");
-    }
-
-    return self->GetTile(hex, roof, -1);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetTile(MapView* self, mpos hex, bool roof, uint8 layer)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex arg");
-    }
-
-    return self->GetTile(hex, roof, layer);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetTiles(MapView* self, mpos hex, bool roof)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex arg");
-    }
-
-    const auto tiles = self->GetTiles(hex, roof);
-
-    vector<ItemView*> result;
-    result.reserve(tiles.size());
-
-    for (auto& tile : tiles) {
-        result.emplace_back(tile.get());
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Map_RedrawMap(MapView* self)
 {
     self->RebuildMap();
@@ -658,35 +564,35 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex)
 {
-    return self->GetHexAtScreenPos(pos, hex, nullptr);
+    return self->GetHexAtScreen(pos, hex, nullptr);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex, ipos32& hexOffset)
 {
-    return self->GetHexAtScreenPos(pos, hex, &hexOffset);
+    return self->GetHexAtScreen(pos, hex, &hexOffset);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;
-    return self->GetItemAtScreenPos(pos, item_egg, 0, true);
+    return self->GetItemAtScreen(pos, item_egg, 0, true).first;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
 {
-    return self->GetCritterAtScreenPos(pos, false, 0, true);
+    return self->GetCritterAtScreen(pos, false, 0, true).first;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32 extraRange)
 {
-    auto* cr = self->GetCritterAtScreenPos(pos, false, 0, true);
+    auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
     if (cr == nullptr && extraRange != 0) {
-        cr = self->GetCritterAtScreenPos(pos, true, extraRange, false);
+        cr = self->GetCritterAtScreen(pos, true, extraRange, false).first;
     }
 
     return cr;
@@ -695,14 +601,24 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 ///@ ExportMethod
 FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
-    return self->GetEntityAtScreenPos(pos, 0, true);
+    return self->GetEntityAtScreen(pos, 0, true).first;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsHexVisible(MapView* self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    return self->GetField(hex).IsView;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
+        throw ScriptException("Invalid hex arg");
     }
 
     return !self->GetField(hex).MoveBlocked;
@@ -712,7 +628,7 @@ FO_SCRIPT_API bool Client_Map_IsHexMovable(MapView* self, mpos hex)
 FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
+        throw ScriptException("Invalid hex arg");
     }
 
     return !self->GetField(hex).ShootBlocked;
@@ -722,7 +638,7 @@ FO_SCRIPT_API bool Client_Map_IsHexShootable(MapView* self, mpos hex)
 FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
+        throw ScriptException("Invalid hex arg");
     }
 
     return self->IsOutsideArea(hex);

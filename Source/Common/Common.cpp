@@ -160,17 +160,6 @@ auto GenericUtils::Percent(int32 full, int32 peace) -> int32
     return std::clamp(percent, 0, 100);
 }
 
-auto GenericUtils::NumericalNumber(int32 num) noexcept -> int32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (num % 2 != 0) {
-        return num * (num / 2 + 1);
-    }
-
-    return num * num / 2 + num / 2;
-}
-
 auto GenericUtils::IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

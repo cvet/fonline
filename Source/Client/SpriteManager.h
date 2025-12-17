@@ -85,8 +85,6 @@ class AtlasSprite;
 
 class Sprite : public std::enable_shared_from_this<Sprite>
 {
-    friend class SpriteManager;
-
 public:
     explicit Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset);
     Sprite(const Sprite&) = delete;

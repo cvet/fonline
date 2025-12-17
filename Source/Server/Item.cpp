@@ -218,4 +218,17 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
     return true;
 }
 
+void Item::SetMultihexEntries(vector<mpos> entries)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!entries.empty()) {
+        make_if_not_exists(_multihexEntries);
+        *_multihexEntries = std::move(entries);
+    }
+    else {
+        _multihexEntries.reset();
+    }
+}
+
 FO_END_NAMESPACE();

@@ -151,7 +151,6 @@ void MapManager::LoadFromResources()
                         item_props.RestoreAllData(props_data);
 
                         auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, item_proto, &item_props);
-
                         static_map->ItemBillets.emplace_back(item_id, item);
 
                         // Checks
@@ -181,18 +180,46 @@ void MapManager::LoadFromResources()
                         // Sort
                         if (item->GetStatic()) {
                             FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+                            static_map->StaticItems.emplace_back(item.get());
+                            static_map->StaticItemsById.emplace(item_id, item.get());
+
+                            const auto add_item_to_field = [item = item.get()](StaticMap::Field& static_field) {
+                                if (!vec_exists(static_field.StaticItems, item)) {
+                                    static_field.StaticItems.reserve(static_field.StaticItems.size() + 1);
+                                    static_field.StaticItems.emplace_back(item);
+
+                                    if (item->GetIsTrigger() || item->GetIsTrap()) {
+                                        static_field.TriggerItems.reserve(static_field.TriggerItems.size() + 1);
+                                        static_field.TriggerItems.emplace_back(item);
+                                    }
+
+                                    if (!item->GetNoBlock()) {
+                                        static_field.MoveBlocked = true;
+                                    }
+                                    if (!item->GetShootThru()) {
+                                        static_field.ShootBlocked = true;
+                                        static_field.MoveBlocked = true;
+                                    }
+                                }
+                            };
 
                             const auto hex = item->GetHex();
+                            auto& static_field = static_map->HexField->GetCellForWriting(hex);
+                            add_item_to_field(static_field);
 
-                            if (!item->GetHiddenInStatic()) {
-                                static_map->StaticItems.emplace_back(item.get());
-                                static_map->StaticItemsById.emplace(item_id, item.get());
-                                static_map->HexField->GetCellForWriting(hex).StaticItems.emplace_back(item.get());
+                            if (item->IsNonEmptyMultihexLines()) {
+                                GeometryHelper::ForEachMultihexLines(item->GetMultihexLines(), hex, map_size, [&](mpos multihex) {
+                                    auto& multihex_field = static_map->HexField->GetCellForWriting(multihex);
+                                    add_item_to_field(multihex_field);
+                                });
                             }
-
-                            if (item->GetIsTrigger() || item->GetIsTrap()) {
-                                auto& static_field = static_map->HexField->GetCellForWriting(hex);
-                                static_field.TriggerItems.emplace_back(item.get());
+                            if (item->IsNonEmptyMultihexMesh()) {
+                                for (const auto multihex : item->GetMultihexMesh()) {
+                                    if (multihex != hex && map_size.is_valid_pos(multihex)) {
+                                        auto& multihex_field = static_map->HexField->GetCellForWriting(multihex);
+                                        add_item_to_field(multihex_field);
+                                    }
+                                }
                             }
                         }
                         else {
@@ -210,46 +237,13 @@ void MapManager::LoadFromResources()
 
             reader.VerifyEnd();
 
-            // Fill hex flags from static items on map
-            for (auto& item : static_map->ItemBillets | std::views::values) {
-                if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetStatic() || item->GetIsTile()) {
-                    continue;
-                }
-
-                const auto hex = item->GetHex();
-
-                if (!item->GetNoBlock()) {
-                    auto& static_field = static_map->HexField->GetCellForWriting(hex);
-                    static_field.MoveBlocked = true;
-                }
-
-                if (!item->GetShootThru()) {
-                    auto& static_field = static_map->HexField->GetCellForWriting(hex);
-                    static_field.ShootBlocked = true;
-                    static_field.MoveBlocked = true;
-                }
-
-                if (item->IsNonEmptyBlockLines()) {
-                    const auto shooted = item->GetShootThru();
-
-                    GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hex, map_size, [&static_map, shooted](mpos block_hex) {
-                        auto& block_static_field = static_map->HexField->GetCellForWriting(block_hex);
-                        block_static_field.MoveBlocked = true;
-
-                        if (!shooted) {
-                            block_static_field.ShootBlocked = true;
-                        }
-                    });
-                }
-            }
-
             // Scroll blocks
             const irect32 scroll_area = map_proto->GetScrollAxialArea();
             const int32 scroll_block_size = _engine->Settings.ScrollBlockSize;
 
-            if (!scroll_area.isZero()) {
-                for (const auto hx : iterate_range(map_proto->GetSize().width)) {
-                    for (const auto hy : iterate_range(map_proto->GetSize().height)) {
+            if (!scroll_area.is_zero()) {
+                for (const auto hx : iterate_range(map_size.width)) {
+                    for (const auto hy : iterate_range(map_size.height)) {
                         const mpos hex = {hx, hy};
                         const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
 
@@ -270,6 +264,7 @@ void MapManager::LoadFromResources()
             static_map->HexItemBillets.shrink_to_fit();
             static_map->ChildItemBillets.shrink_to_fit();
             static_map->StaticItems.shrink_to_fit();
+
             return static_map;
         }));
     }
@@ -646,8 +641,8 @@ auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
             break;
         }
 
-        if (input.CollectCritters && map->IsCritter(next_hex, CritterFindType::Any)) {
-            const auto critters = map->GetCritters(next_hex, input.FindType);
+        if (input.CollectCritters && map->IsCritterOnHex(next_hex, CritterFindType::Any)) {
+            const auto critters = map->GetCrittersOnHex(next_hex, input.FindType);
 
             for (auto* cr : critters) {
                 if (std::ranges::find(output.Critters, cr) == output.Critters.end()) {
@@ -656,7 +651,7 @@ auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
             }
         }
 
-        if (input.FindCr != nullptr && map->IsCritter(next_hex, input.FindCr.get())) {
+        if (input.FindCr != nullptr && map->IsCritterOnHex(next_hex, input.FindCr.get())) {
             output.IsCritterFound = true;
             break;
         }
@@ -706,16 +701,12 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 
     // Ring check
     if (input.Cut <= 1 && input.Multihex == 0) {
-        int32 i = 0;
+        const int32 hexes_around = GeometryHelper::HexesInRadius(1);
+        int32 i = 1;
 
-        for (; i < GameSettings::MAP_DIR_COUNT; i++) {
-            auto ring_raw_hex = ipos32 {input.ToHex.x, input.ToHex.y};
-            GeometryHelper::MoveHexAroundAway(ring_raw_hex, i);
-
-            if (map_size.is_valid_pos(ring_raw_hex)) {
-                const auto ring_hex = map_size.from_raw_pos(ring_raw_hex);
-
-                if (map->IsItemGag(ring_hex)) {
+        for (; i < hexes_around; i++) {
+            if (auto ring_hex = input.ToHex; GeometryHelper::MoveHexAroundAway(ring_hex, i, map_size)) {
+                if (map->IsGagItemOnHex(ring_hex)) {
                     break;
                 }
                 if (map->IsHexMovable(ring_hex)) {
@@ -724,7 +715,7 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
             }
         }
 
-        if (i == GameSettings::MAP_DIR_COUNT) {
+        if (i >= hexes_around) {
             output.Result = FindPathOutput::ResultType::HexBusyRing;
             return output;
         }
@@ -788,11 +779,11 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
                     next_hexes.emplace_back(next_hex);
                     grid_cell = next_hex_index;
                 }
-                else if (input.CheckGagItems && map->IsItemGag(next_hex)) {
+                else if (input.CheckGagItems && map->IsGagItemOnHex(next_hex)) {
                     gag_hexes.emplace_back(next_hex);
                     grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
                 }
-                else if (input.CheckCritter && map->IsCritter(next_hex, CritterFindType::NonDead)) {
+                else if (input.CheckCritter && map->IsCritterOnHex(next_hex, CritterFindType::NonDead)) {
                     cr_hexes.emplace_back(next_hex);
                     grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
                 }
@@ -982,8 +973,8 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
             const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
             FO_RUNTIME_ASSERT(move_ok);
 
-            if (input.CheckGagItems && map->IsItemGag(check_hex)) {
-                const Item* item = map->GetItemGag(check_hex);
+            if (input.CheckGagItems && map->IsGagItemOnHex(check_hex)) {
+                const Item* item = map->GetGagItemOnHex(check_hex);
 
                 if (item == nullptr) {
                     continue;
@@ -995,8 +986,8 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
                 break;
             }
 
-            if (input.CheckCritter && map->IsCritter(check_hex, CritterFindType::NonDead)) {
-                const Critter* cr = map->GetCritter(check_hex, CritterFindType::NonDead);
+            if (input.CheckCritter && map->IsCritterOnHex(check_hex, CritterFindType::NonDead)) {
+                const Critter* cr = map->GetCritterOnHex(check_hex, CritterFindType::NonDead);
 
                 if (cr == nullptr || cr == input.FromCritter) {
                     continue;
@@ -1024,7 +1015,7 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
             const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
             FO_RUNTIME_ASSERT(move_ok);
 
-            if (map->IsItemGag(check_hex)) {
+            if (map->IsGagItemOnHex(check_hex)) {
                 trace_seq[i + 2 - 2] += 1;
                 trace_seq[i + 2 - 1] += 2;
                 trace_seq[i + 2 - 0] += 3;
