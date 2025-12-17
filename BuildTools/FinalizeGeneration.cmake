@@ -893,6 +893,7 @@ endif()
 
 if(MSVC)
     list(APPEND FO_COMMON_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc"
         "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
 endif()
 
