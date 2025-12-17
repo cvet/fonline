@@ -304,6 +304,7 @@ template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     vector<std::ranges::range_value_t<T>> vec;
+    vec.reserve(cont.size());
     vec.assign(cont.begin(), cont.end());
     std::ranges::stable_sort(vec, predicate);
     return vec;

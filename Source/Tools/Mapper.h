@@ -191,7 +191,7 @@ public:
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
 
     auto MergeItemsToMultihexMeshes(MapView* map) -> size_t;
-    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it, bool skip_selected) -> ItemHexView*;
+    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*;
     void MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item);
     void FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const;
     auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool;

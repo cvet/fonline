@@ -2245,7 +2245,7 @@ void FOMapper::SelectRemove(ClientEntity* entity, bool skip_refresh)
     if (!entity->IsDestroyed()) {
         if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->GetMultihexGeneration() != MultihexGenerationType::None) {
             while (item != nullptr) {
-                item = TryMergeItemToMultihexMesh(_curMap.get(), item, false, true);
+                item = TryMergeItemToMultihexMesh(_curMap.get(), item, true);
             }
         }
     }
@@ -2580,7 +2580,7 @@ auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
             auto ignore_props = vector<const Property*> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
             if (!item->GetProperties().CompareData(item->GetProto()->GetProperties(), ignore_props, true)) {
-                while (TryMergeItemToMultihexMesh(map, item, true, false) != nullptr) {
+                while ((item = TryMergeItemToMultihexMesh(map, item, false)) != nullptr) {
                     merges++;
                 }
             }
@@ -2590,7 +2590,7 @@ auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
     // Rest merge clean items
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (!item->IsDestroyed() && item->GetMultihexGeneration() != MultihexGenerationType::None) {
-            while (TryMergeItemToMultihexMesh(map, item, true, false) != nullptr) {
+            while ((item = TryMergeItemToMultihexMesh(map, item, false)) != nullptr) {
                 merges++;
             }
         }
@@ -2621,7 +2621,7 @@ auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
     return merges;
 }
 
-auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool merge_to_it, bool skip_selected) -> ItemHexView*
+auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2631,20 +2631,24 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool 
         return nullptr;
     }
 
-    ItemHexView* mergable_item = nullptr;
+    ItemHexView* source_item = nullptr;
+    ItemHexView* target_item = nullptr;
 
+    // Find mergable item by selected strategy
+    // Always prefer merge from higher ids to lower
     if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
-        unordered_set<ItemHexView*> items_around;
+        unordered_set<ItemHexView*> target_items;
+        unordered_set<ItemHexView*> source_items;
         const auto multihex_lines = item->GetMultihexLines();
 
         const auto find_include_multihex_lines = [&](mpos hex) {
-            FindMultihexMeshForItemAroundHex(map, item, hex, merge_to_it, items_around);
+            FindMultihexMeshForItemAroundHex(map, item, hex, true, target_items);
+            FindMultihexMeshForItemAroundHex(map, item, hex, false, source_items);
 
-            if (mergable_item == nullptr && !multihex_lines.empty()) {
+            if (!multihex_lines.empty()) {
                 GeometryHelper::ForEachMultihexLines(multihex_lines, hex, map->GetSize(), [&](mpos hex2) {
-                    if (mergable_item == nullptr) {
-                        FindMultihexMeshForItemAroundHex(map, item, hex2, merge_to_it, items_around);
-                    }
+                    FindMultihexMeshForItemAroundHex(map, item, hex2, true, target_items);
+                    FindMultihexMeshForItemAroundHex(map, item, hex2, false, source_items);
                 });
             }
         };
@@ -2657,66 +2661,45 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool 
             }
         }
 
-        const auto check_item_for_merge = [&](ItemHexView* check_item) -> bool {
-            if (skip_selected && SelectedEntitiesSet.contains(check_item)) {
-                return false;
-            }
-            return true;
-        };
+        auto sorted_target_items = vec_sorted(target_items, [](auto&& i1, auto&& i2) { return i1->GetId() < i2->GetId(); });
+        auto sorted_source_items = vec_sorted(source_items, [](auto&& i1, auto&& i2) { return i1->GetId() > i2->GetId(); });
 
-        if (merge_to_it) {
-            for (auto* check_item : to_vector(items_around) | std::views::reverse) {
-                if (check_item_for_merge(check_item)) {
-                    mergable_item = check_item;
-                    break;
-                }
-            }
+        if (skip_selected) {
+            sorted_target_items = vec_filter(sorted_target_items, [&](auto&& i) { return !SelectedEntitiesSet.contains(i); });
+            sorted_source_items = vec_filter(sorted_source_items, [&](auto&& i) { return !SelectedEntitiesSet.contains(i); });
         }
-        else {
-            for (auto* check_item : to_vector(items_around)) {
-                if (check_item_for_merge(check_item)) {
-                    mergable_item = check_item;
-                    break;
-                }
-            }
+
+        auto* best_target_item = !sorted_target_items.empty() ? sorted_target_items.front() : nullptr;
+        auto* best_source_item = !sorted_source_items.empty() ? sorted_source_items.front() : nullptr;
+
+        if (best_target_item != nullptr && (best_source_item == nullptr || best_target_item->GetId() < item->GetId())) {
+            source_item = item;
+            target_item = best_target_item;
+        }
+        else if (best_source_item != nullptr) {
+            source_item = best_source_item;
+            target_item = item;
         }
     }
     else if (item->GetMultihexGeneration() == MultihexGenerationType::AnyUnique) {
-        const auto check_item_for_merge = [&](ItemHexView* check_item) -> bool {
+        for (auto& check_item : map->GetItems() | std::views::reverse) {
             if (check_item->GetProtoId() != item->GetProtoId()) {
-                return false;
+                continue;
             }
-            if (skip_selected && SelectedEntitiesSet.contains(check_item)) {
-                return false;
+            if (skip_selected && SelectedEntitiesSet.contains(check_item.get())) {
+                continue;
             }
-            if (CompareMultihexItemForMerge(merge_to_it ? check_item : item, merge_to_it ? item : check_item, false)) {
-                return true;
-            }
-            return false;
-        };
 
-        if (merge_to_it) {
-            for (auto& check_item : map->GetItems() | std::views::reverse) {
-                if (check_item_for_merge(check_item.get())) {
-                    mergable_item = check_item.get();
-                    break;
-                }
-            }
-        }
-        else {
-            for (auto& check_item : map->GetItems()) {
-                if (check_item_for_merge(check_item.get())) {
-                    mergable_item = check_item.get();
-                    break;
-                }
+            if (CompareMultihexItemForMerge(check_item.get(), item, false)) {
+                source_item = check_item->GetId() > item->GetId() ? check_item.get() : item;
+                target_item = check_item->GetId() > item->GetId() ? item : check_item.get();
+                break;
             }
         }
     }
 
     // Merge item and his mesh to another item mesh
-    if (mergable_item != nullptr) {
-        auto* source_item = merge_to_it ? mergable_item : item;
-        auto* target_item = merge_to_it ? item : mergable_item;
+    if (source_item != nullptr && target_item != nullptr) {
         MergeItemToMultihexMesh(map, source_item, target_item);
         return target_item;
     }
@@ -2766,9 +2749,13 @@ void FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item,
         }
 
         for (auto& check_item : map->GetItemsOnHex(check_hex)) {
+            if (result.contains(check_item.get())) {
+                continue;
+            }
             if (check_item->GetProtoId() != item->GetProtoId()) {
                 continue;
             }
+
             if (CompareMultihexItemForMerge(merge_to_it ? check_item.get() : item, merge_to_it ? item : check_item.get(), true)) {
                 return check_item.get();
             }
