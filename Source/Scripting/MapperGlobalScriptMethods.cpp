@@ -62,35 +62,27 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid,
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_GetItem(FOMapper* mapper, mpos hex)
 {
-    return mapper->GetCurMap()->GetItem(hex, hstring());
+    return mapper->GetCurMap()->GetItemOnHex(hex, hstring());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, mpos hex)
 {
-    const auto hex_items = mapper->GetCurMap()->GetItems(hex);
-
-    vector<ItemView*> items;
-    items.reserve(hex_items.size());
-
-    for (auto& item : hex_items) {
-        items.emplace_back(item.get());
-    }
-
-    return items;
+    const auto hex_items = mapper->GetCurMap()->GetItemsOnHex(hex);
+    return vec_transform(hex_items, [](auto&& item) -> ItemView* { return item.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API CritterView* Mapper_Game_GetCritter(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    const auto critters = mapper->GetCurMap()->GetCritters(hex, findType);
+    const auto critters = mapper->GetCurMap()->GetCrittersOnHex(hex, findType);
     return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, mpos hex, CritterFindType findType)
 {
-    return vec_static_cast<CritterView*>(mapper->GetCurMap()->GetCritters(hex, findType));
+    return vec_transform(mapper->GetCurMap()->GetCrittersOnHex(hex, findType), [](auto&& cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -130,7 +122,7 @@ FO_SCRIPT_API void Mapper_Game_SelectEntity(FOMapper* mapper, ClientEntity* enti
         mapper->SelectAdd(entity);
     }
     else {
-        mapper->SelectErase(entity);
+        mapper->SelectRemove(entity);
     }
 }
 
@@ -143,7 +135,7 @@ FO_SCRIPT_API void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<Cli
                 mapper->SelectAdd(entity);
             }
             else {
-                mapper->SelectErase(entity);
+                mapper->SelectRemove(entity);
             }
         }
     }
@@ -285,7 +277,7 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, in
     vector<hstring> pids;
     const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
 
-    for (const auto& proto : stab.NpcProtos) {
+    for (const auto& proto : stab.CritterProtos) {
         pids.emplace_back(proto->GetProtoId());
     }
 
@@ -374,7 +366,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int32 tab, st
 
         if (!protos.empty()) {
             auto& stab = mapper->Tabs[tab][string(subTab)];
-            stab.NpcProtos = protos;
+            stab.CritterProtos = protos;
         }
     }
     else {
@@ -391,15 +383,15 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int32 tab, st
 
     // Recalculate whole pids
     auto& stab_default = mapper->Tabs[tab][FOMapper::DEFAULT_SUB_TAB];
-    stab_default.NpcProtos.clear();
+    stab_default.CritterProtos.clear();
 
     for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
         auto& stab = it->second;
         if (&stab == &stab_default) {
             continue;
         }
-        for (size_t i = 0; i < stab.NpcProtos.size(); i++) {
-            stab_default.NpcProtos.emplace_back(stab.NpcProtos[i]);
+        for (size_t i = 0; i < stab.CritterProtos.size(); i++) {
+            stab_default.CritterProtos.emplace_back(stab.CritterProtos[i]);
         }
     }
 

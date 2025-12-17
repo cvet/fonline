@@ -171,7 +171,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
     FO_STRONG_ASSERT(_registrator == other._registrator);
 
-    // Copy PlainData data
+    // Copy plain data
     MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
 
     // Copy complex data
@@ -439,12 +439,12 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
                 continue;
             }
 
-            WriteLog("Unknown property {}", key);
+            WriteLog("Failed to load unknown property {}", key);
             errors++;
             continue;
         }
 
-        if (!prop->_podDataOffset.has_value() && !prop->_complexDataIndex.has_value()) {
+        if (prop->IsDisabled()) {
             if (_registrator->GetRelation() == PropertiesRelationType::ServerRelative && prop->IsClientOnly()) {
                 continue;
             }
@@ -452,7 +452,19 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
                 continue;
             }
 
-            WriteLog("Invalid property {} for reading", prop->GetName());
+            WriteLog("Failed to load disabled property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsVirtual()) {
+            WriteLog("Failed to load virtual property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsTemporary()) {
+            WriteLog("Failed to load temporary property {}", prop->GetName());
             errors++;
             continue;
         }
@@ -491,7 +503,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
         if (prop->IsVirtual()) {
             continue;
         }
-        if (!prop->IsPersistent()) {
+        if (prop->IsTemporary()) {
             continue;
         }
 
@@ -542,6 +554,65 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     }
 
     return key_values;
+}
+
+auto Properties::CompareData(const Properties& other, span<const Property*> ignore_props, bool ignore_temporary) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_registrator == other._registrator);
+
+    {
+        const auto pod_data_size = _registrator->_wholePodDataSize;
+        vector<uint8> pod_data1;
+        pod_data1.resize(pod_data_size);
+        MemCopy(pod_data1.data(), _podData.get(), pod_data_size);
+        vector<uint8> pod_data2;
+        pod_data2.resize(pod_data_size);
+        MemCopy(pod_data2.data(), other._podData.get(), pod_data_size);
+
+        for (const auto* ignore_prop : ignore_props) {
+            if (ignore_prop->_podDataOffset.has_value()) {
+                const auto offset = ignore_prop->_podDataOffset.value();
+                const auto size = ignore_prop->_baseType.Size;
+                MemFill(pod_data1.data() + offset, 0, size);
+                MemFill(pod_data2.data() + offset, 0, size);
+            }
+        }
+
+        if (ignore_temporary) {
+            for (const auto& prop : _registrator->_registeredProperties) {
+                if (prop && prop->IsTemporary() && prop->_podDataOffset.has_value()) {
+                    const auto offset = prop->_podDataOffset.value();
+                    const auto size = prop->_baseType.Size;
+                    MemFill(pod_data1.data() + offset, 0, size);
+                    MemFill(pod_data2.data() + offset, 0, size);
+                }
+            }
+        }
+
+        if (!MemCompare(pod_data1.data(), pod_data2.data(), pod_data_size)) {
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
+        if (vec_exists(ignore_props, _registrator->_complexProperties[i].get())) {
+            continue;
+        }
+        if (ignore_temporary && _registrator->_complexProperties[i]->IsTemporary()) {
+            continue;
+        }
+
+        if (_complexData[i].second != other._complexData[i].second) {
+            return false;
+        }
+        if (!MemCompare(_complexData[i].first.get(), other._complexData[i].first.get(), _complexData[i].second)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
@@ -1058,6 +1129,9 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     if (prop->IsVirtual()) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
+    if (!prop->IsMutable()) {
+        throw PropertiesException("Can't set integer value to non mutable property", prop->GetName());
+    }
 
     const auto& base_type_info = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseTypeInfo();
 
@@ -1131,10 +1205,13 @@ void Properties::SetValueAsAnyProps(int32 property_index, const any_t& value)
         throw PropertiesException("Property not found", property_index);
     }
     if (prop->IsDisabled()) {
-        throw PropertiesException("Can't set any value to disabled property", prop->GetName());
+        throw PropertiesException("Can't set value to disabled property", prop->GetName());
     }
     if (prop->IsVirtual()) {
-        throw PropertiesException("Can't set any value to virtual property", prop->GetName());
+        throw PropertiesException("Can't set value to virtual property", prop->GetName());
+    }
+    if (!prop->IsMutable()) {
+        throw PropertiesException("Can't set value to non mutable property", prop->GetName());
     }
 
     ApplyPropertyFromText(prop, value);
@@ -1512,7 +1589,6 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
     FO_RUNTIME_ASSERT(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync));
     FO_RUNTIME_ASSERT(!prop->_isModifiableByClient || prop->_isSynced);
     FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient || prop->_isPublicSync);
-    FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty));
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isSynced);
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);

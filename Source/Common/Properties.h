@@ -186,6 +186,7 @@ public:
     [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
+    [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
     [[nodiscard]] auto GetGetter() const noexcept -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const noexcept -> auto& { return _setters; }
@@ -276,6 +277,7 @@ public:
     [[nodiscard]] auto GetValueAsAny(int32 property_index) const -> any_t;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
+    [[nodiscard]] auto CompareData(const Properties& other, span<const Property*> ignore_props, bool ignore_temporary) const -> bool;
 
     void AllocData() noexcept;
     void SetEntity(Entity* entity) const noexcept { _entity = entity; }

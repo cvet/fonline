@@ -115,11 +115,12 @@ public:
         ipos32 Offset {};
         raw_ptr<MapSprite> SpriteChain {};
         vector<raw_ptr<CritterHexView>> Critters {};
-        vector<raw_ptr<CritterHexView>> MultihexCritters {};
+        vector<raw_ptr<CritterHexView>> OriginCritters {};
         vector<raw_ptr<ItemHexView>> Items {};
-        vector<raw_ptr<ItemHexView>> BlockLineItems {};
-        vector<raw_ptr<ItemHexView>> GroundTiles {};
-        vector<raw_ptr<ItemHexView>> RoofTiles {};
+        vector<raw_ptr<ItemHexView>> OriginItems {};
+        vector<pair<raw_ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
+        unordered_map<LightSource*, ucolor> LightSources {};
+        raw_ptr<ItemHexView> GroundTile {};
         int32 RoofNum {};
         CornerType Corner {};
         bool IsView {};
@@ -130,7 +131,7 @@ public:
         bool MoveBlocked {};
         bool ShootBlocked {};
         bool LightBlocked {};
-        unordered_map<LightSource*, ucolor> LightSources {};
+        bool HasRoof {};
     };
 
     struct FindPathResult
@@ -155,7 +156,6 @@ public:
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
-    [[nodiscard]] auto GetHexesRect(mpos from_hex, mpos to_hex) const -> vector<mpos>;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
@@ -204,9 +204,10 @@ public:
     auto AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
-    auto GetCritters() const -> const vector<refcount_ptr<CritterHexView>>& { return _critters; }
-    auto GetCritters() -> vector<refcount_ptr<CritterHexView>>& { return _critters; }
-    auto GetCritters(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
+    auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
+    auto GetCritters() const -> span<const refcount_ptr<CritterHexView>> { return _critters; }
+    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
+    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
     void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);
@@ -219,22 +220,22 @@ public:
     auto AddMapperItem(hstring pid, mpos hex, const Properties* props) -> ItemHexView*;
     auto AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) -> ItemHexView*;
     auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;
-    auto GetItem(mpos hex, hstring pid) -> ItemHexView*;
-    auto GetItem(mpos hex, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
-    auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _allItems; }
-    auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _allItems; }
-    auto GetItems(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
-    auto GetItems(mpos hex) -> span<raw_ptr<ItemHexView>>;
-    auto GetTile(mpos hex, bool is_roof, int32 layer) -> ItemHexView*;
-    auto GetTiles(mpos hex, bool is_roof) -> span<raw_ptr<ItemHexView>>;
+    auto GetItemOnHex(mpos hex) -> ItemHexView*;
+    auto GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*;
+    auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
+    auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _items; }
+    auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
+    auto GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
+    void RefreshItem(ItemHexView* item, bool deferred = false);
+    void DefferedRefreshItems();
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
 
-    auto GetHexAtScreenPos(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool;
-    auto GetItemAtScreenPos(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> CritterHexView*;
-    auto GetEntityAtScreenPos(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> ClientEntity*;
+    auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool;
+    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_range, bool check_transparent) -> pair<ItemHexView*, const MapSprite*>; // With transparent egg
+    auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32 extra_range, bool check_transparent) -> pair<CritterHexView*, const MapSprite*>;
+    auto GetEntityAtScreen(ipos32 screen_pos, int32 extra_range, bool check_transparent) -> pair<ClientEntity*, const MapSprite*>;
 
     void UpdateCritterLightSource(const CritterHexView* cr);
     void UpdateItemLightSource(const ItemHexView* item);
@@ -267,10 +268,12 @@ private:
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
     void SetMultihexCritter(CritterHexView* cr, bool set);
+    void DrawHexCritter(CritterHexView* cr, Field& field, mpos hex);
 
     auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
+    void DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_draw);
 
     void RecacheHexFlags(Field& field);
     void RecacheScrollBlocks();
@@ -314,15 +317,16 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
+    ident_t _workEntityId {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
     unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};
-    vector<refcount_ptr<ItemHexView>> _allItems {};
+    vector<refcount_ptr<ItemHexView>> _items {};
     vector<raw_ptr<ItemHexView>> _staticItems {};
     vector<raw_ptr<ItemHexView>> _dynamicItems {};
-    vector<raw_ptr<ItemHexView>> _nonTileItems {};
     vector<raw_ptr<ItemHexView>> _processingItems {};
     unordered_map<ident_t, raw_ptr<ItemHexView>> _itemsMap {};
+    unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
     unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
     vector<int16> _findPathGrid {};

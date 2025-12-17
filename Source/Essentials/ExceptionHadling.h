@@ -151,20 +151,20 @@ private:
 
 #if !FO_NO_EXTRA_ASSERTS
 #define FO_RUNTIME_ASSERT(expr) \
-    if (!(expr)) { \
+    if (!(expr)) [[unlikely]] { \
         throw FO_NAMESPACE AssertationException(#expr, __FILE__, __LINE__); \
     }
 #define FO_RUNTIME_ASSERT_STR(expr, str) \
-    if (!(expr)) { \
+    if (!(expr)) [[unlikely]] { \
         throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
     }
 #define FO_RUNTIME_VERIFY(expr, ...) \
-    if (!(expr)) { \
+    if (!(expr)) [[unlikely]] { \
         FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
         return __VA_ARGS__; \
     }
 #define FO_STRONG_ASSERT(expr) \
-    if (!(expr)) { \
+    if (!(expr)) [[unlikely]] { \
         FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
     }
 #else

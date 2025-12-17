@@ -346,6 +346,14 @@ auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
     return numeric_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
+auto GeometryHelper::HexesInRadius(int32 radius) -> int32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 count = radius % 2 != 0 ? radius * (radius / 2 + 1) : radius * radius / 2 + radius / 2;
+    return 1 + GameSettings::MAP_DIR_COUNT * count;
+}
+
 auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -437,9 +445,29 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept
     }
 }
 
-void GeometryHelper::MoveHexAroundAway(ipos32& hex, int32 index)
+auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    ipos32 raw_hex = {hex.x, hex.y};
+    MoveHexAroundAwayUnsafe(raw_hex, index);
+
+    if (map_size.is_valid_pos(raw_hex)) {
+        hex = map_size.from_raw_pos(raw_hex);
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32 index)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (index <= 0) {
+        return;
+    }
 
     // Move to first hex around
     constexpr uint8 init_dir = GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7;
@@ -447,15 +475,15 @@ void GeometryHelper::MoveHexAroundAway(ipos32& hex, int32 index)
 
     uint8 dir = 2;
     int32 round = 1;
-    int32 round_count = GameSettings::MAP_DIR_COUNT;
+    int32 round_count = HexesInRadius(1) - 1;
 
     // Move around in a spiral away from the start position
-    for (int32 i = 1; i <= index; i++) {
+    for (int32 i = 1; i < index; i++) {
         MoveHexByDirUnsafe(hex, dir);
 
         if (i >= round_count) {
             round++;
-            round_count = GenericUtils::NumericalNumber(round) * GameSettings::MAP_DIR_COUNT;
+            round_count = HexesInRadius(round) - 1;
             MoveHexByDirUnsafe(hex, init_dir);
             FO_RUNTIME_ASSERT(dir == 1);
         }
@@ -627,11 +655,137 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const 
     }
 }
 
-void GeometryHelper::ForEachBlockLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
+auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto raw_pos = ipos32 {hex.x, hex.y};
+    vector<mpos> hexes;
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        auto [x, y] = GetHexOffset(from_hex, to_hex);
+        x = -x;
+
+        const int32 dx = x / _settings->MapHexWidth;
+        const int32 dy = y / _settings->MapHexLineHeight;
+        const int32 adx = std::abs(dx);
+        const int32 ady = std::abs(dy);
+
+        int32 hx;
+        int32 hy;
+
+        for (int32 j = 1; j <= ady; j++) {
+            if (dy >= 0) {
+                hx = from_hex.x + j / 2 + ((j % 2) != 0 ? 1 : 0);
+                hy = from_hex.y + (j - (hx - from_hex.x - ((from_hex.x % 2) != 0 ? 1 : 0)) / 2);
+            }
+            else {
+                hx = from_hex.x - j / 2 - ((j % 2) != 0 ? 1 : 0);
+                hy = from_hex.y - (j - (from_hex.x - hx - ((from_hex.x % 2) != 0 ? 0 : 1)) / 2);
+            }
+
+            for (int32 i = 0; i <= adx; i++) {
+                if (map_size.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(map_size.from_raw_pos(hx, hy));
+                }
+
+                if (dx >= 0) {
+                    if ((hx % 2) != 0) {
+                        hy--;
+                    }
+
+                    hx++;
+                }
+                else {
+                    hx--;
+
+                    if ((hx % 2) != 0) {
+                        hy++;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        auto [rw, rh] = GetHexOffset(from_hex, to_hex);
+
+        if (rw == 0) {
+            rw = 1;
+        }
+        if (rh == 0) {
+            rh = 1;
+        }
+
+        const int32 hw = std::abs(rw / (_settings->MapHexWidth / 2)) + ((rw % (_settings->MapHexWidth / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= _settings->MapHexWidth / 2 ? 1 : 0); // Hexes width
+        const int32 hh = std::abs(rh / _settings->MapHexLineHeight) + ((rh % _settings->MapHexLineHeight) != 0 ? 1 : 0) + (std::abs(rh) >= _settings->MapHexLineHeight ? 1 : 0); // Hexes height
+        int32 shx = numeric_cast<int32>(from_hex.x);
+        int32 shy = numeric_cast<int32>(from_hex.y);
+
+        for (int32 i = 0; i < hh; i++) {
+            int32 hx = shx;
+            int32 hy = shy;
+
+            if (rh > 0) {
+                if (rw > 0) {
+                    if ((i % 2) != 0) {
+                        shx++;
+                    }
+                    else {
+                        shy++;
+                    }
+                }
+                else {
+                    if ((i % 2) != 0) {
+                        shy++;
+                    }
+                    else {
+                        shx++;
+                    }
+                }
+            }
+            else {
+                if (rw > 0) {
+                    if ((i % 2) != 0) {
+                        shy--;
+                    }
+                    else {
+                        shx--;
+                    }
+                }
+                else {
+                    if ((i % 2) != 0) {
+                        shx--;
+                    }
+                    else {
+                        shy--;
+                    }
+                }
+            }
+
+            for (int32 j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
+                if (map_size.is_valid_pos(hx, hy)) {
+                    hexes.emplace_back(map_size.from_raw_pos(hx, hy));
+                }
+
+                if (rw > 0) {
+                    hx--;
+                    hy++;
+                }
+                else {
+                    hx++;
+                    hy--;
+                }
+            }
+        }
+    }
+
+    return hexes;
+}
+
+void GeometryHelper::ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto step_raw_hex = ipos32 {hex.x, hex.y};
 
     for (size_t i = 0; i < dir_line.size() / 2; i++) {
         const auto dir = dir_line[i * 2];
@@ -642,10 +796,14 @@ void GeometryHelper::ForEachBlockLines(span<const uint8> dir_line, mpos hex, msi
         }
 
         for (uint8 j = 0; j < steps; j++) {
-            MoveHexByDirUnsafe(raw_pos, dir);
+            MoveHexByDirUnsafe(step_raw_hex, dir);
 
-            if (map_size.is_valid_pos(raw_pos)) {
-                callback(map_size.from_raw_pos(raw_pos));
+            if (map_size.is_valid_pos(step_raw_hex)) {
+                const auto step_hex = map_size.from_raw_pos(step_raw_hex);
+
+                if (step_hex != hex) {
+                    callback(step_hex);
+                }
             }
         }
     }

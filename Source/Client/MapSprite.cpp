@@ -88,20 +88,19 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
+    FO_RUNTIME_VERIFY(spr, irect32());
 
-    if (spr == nullptr) [[unlikely]] {
-        return {};
+    const ipos32 spr_offset = spr->GetOffset();
+    const isize32 spr_size = spr->GetSize();
+    int32 x = _hexOffset.x + _pHexOffset->x - spr_size.width / 2 + spr_offset.x;
+    int32 y = _hexOffset.y + _pHexOffset->y - spr_size.height + spr_offset.y;
+
+    if (_pSprOffset) {
+        x += _pSprOffset->x;
+        y += _pSprOffset->y;
     }
 
-    auto x = _hexOffset.x - spr->GetSize().width / 2 + spr->GetOffset().x + _pHexOffset->x;
-    auto y = _hexOffset.y - spr->GetSize().height + spr->GetOffset().y + _pHexOffset->y;
-
-    if (_sprOffset) {
-        x += _sprOffset->x;
-        y += _sprOffset->y;
-    }
-
-    return {x, y, spr->GetSize().width, spr->GetSize().height};
+    return {ipos32(x, y), spr_size};
 }
 
 auto MapSprite::GetViewRect() const noexcept -> irect32
@@ -109,10 +108,7 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-
-    if (spr == nullptr) [[unlikely]] {
-        return {};
-    }
+    FO_RUNTIME_VERIFY(spr, irect32());
 
     auto rect = GetDrawRect();
 
@@ -285,7 +281,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_pHexOffset = phex_offset;
     mspr->_spr = spr;
     mspr->_pSpr = pspr;
-    mspr->_sprOffset = spr_offset;
+    mspr->_pSprOffset = spr_offset;
     mspr->_alpha = alpha;
     mspr->_light = nullptr;
     mspr->_lightRight = nullptr;
@@ -313,6 +309,8 @@ void MapSpriteList::InvalidateAll() noexcept
     while (!_activeSprites.empty()) {
         Invalidate(_activeSprites.back().get());
     }
+
+    _globalCounter = 0;
 }
 
 void MapSpriteList::Invalidate(MapSprite* mspr) noexcept

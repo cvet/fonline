@@ -258,7 +258,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemMultihexLines(entity, prop); });
         }
 
         return std::nullopt;
@@ -1747,8 +1747,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (map->IsStaticItemTrigger(from_hex)) {
-        for (auto& item : map->GetStaticItemsTrigger(from_hex)) {
+    if (map->IsTriggerStaticItemOnHex(from_hex)) {
+        for (auto& item : map->GetTriggerStaticItemsOnHex(from_hex)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item.get(), false, dir)) {
                     // Nop
@@ -1767,8 +1767,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
         }
     }
 
-    if (map->IsStaticItemTrigger(to_hex)) {
-        for (auto& item : map->GetStaticItemsTrigger(to_hex)) {
+    if (map->IsTriggerStaticItemOnHex(to_hex)) {
+        for (auto& item : map->GetTriggerStaticItemsOnHex(to_hex)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item.get(), true, dir)) {
                     // Nop
@@ -1787,8 +1787,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
         }
     }
 
-    if (map->IsItemTrigger(from_hex)) {
-        for (auto* item : map->GetItemsTrigger(from_hex)) {
+    if (map->IsTriggerItemOnHex(from_hex)) {
+        for (auto* item : map->GetTriggerItemsOnHex(from_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -1801,8 +1801,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
         }
     }
 
-    if (map->IsItemTrigger(to_hex)) {
-        for (auto* item : map->GetItemsTrigger(to_hex)) {
+    if (map->IsTriggerItemOnHex(to_hex)) {
+        for (auto* item : map->GetTriggerItemsOnHex(to_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -2885,7 +2885,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
+void FOServer::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3188,7 +3188,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                         return;
                     }
                 }
-                else if (map->IsBlockItem(hex2)) {
+                else if (map->IsBlockItemOnHex(hex2)) {
                     cr->ClearMove();
                     cr->SendAndBroadcast_Moving();
                     return;

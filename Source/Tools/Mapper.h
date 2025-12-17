@@ -71,7 +71,7 @@ public:
     struct SubTab
     {
         vector<raw_ptr<const ProtoItem>> ItemProtos {};
-        vector<raw_ptr<const ProtoCritter>> NpcProtos {};
+        vector<raw_ptr<const ProtoCritter>> CritterProtos {};
         int32 Index {};
         int32 Scroll {};
     };
@@ -93,6 +93,7 @@ public:
         string Time {};
     };
 
+    // Todo: move mapper constants to enums
     static constexpr auto FONT_FO = 0;
     static constexpr auto FONT_NUM = 1;
     static constexpr auto FONT_BIG_NUM = 2;
@@ -131,14 +132,12 @@ public:
     static constexpr auto INT_SELECT = 3;
     static constexpr auto INT_OBJECT = 4;
     static constexpr auto INT_SUB_TAB = 5;
-    static constexpr auto SELECT_TYPE_OLD = 0;
-    static constexpr auto SELECT_TYPE_NEW = 1;
     static constexpr auto DEFAULT_SUB_TAB = "000 - all";
     static constexpr auto DRAW_NEXT_HEIGHT = 12;
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    FOMapper(GlobalSettings& settings, AppWindow* window);
+    explicit FOMapper(GlobalSettings& settings, AppWindow* window);
 
     FOMapper(const FOMapper&) = delete;
     FOMapper(FOMapper&&) noexcept = delete;
@@ -157,6 +156,7 @@ public:
     void CurDraw();
     void CurRMouseUp();
     void CurMMouseDown();
+    void SetCurMode(int cur_mode);
 
     auto IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool;
     auto IsCurInRect(const irect32& rect) const -> bool;
@@ -174,17 +174,14 @@ public:
     void SetTabIndex(int32 index);
     void RefreshCurProtos();
     auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
-    auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
+    auto IsCritMode() const -> bool { return CurCritterProtos != nullptr && CurProtoScroll != nullptr; }
 
     void MoveEntity(ClientEntity* entity, mpos hex);
     void DeleteEntity(ClientEntity* entity);
-    void SelectClear();
-    void SelectAddItem(ItemHexView* item);
-    void SelectAddCrit(CritterView* npc);
-    void SelectAddTile(mpos hex, bool is_roof);
-    void SelectAdd(ClientEntity* entity);
-    void SelectErase(ClientEntity* entity);
+    void SelectAdd(ClientEntity* entity, optional<mpos> hex = std::nullopt, bool skip_refresh = false);
     void SelectAll();
+    void SelectRemove(ClientEntity* entity, bool skip_refresh = false);
+    void SelectClear();
     auto SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool;
     void SelectDelete();
 
@@ -192,6 +189,14 @@ public:
     auto CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*;
     auto CloneEntity(Entity* entity) -> Entity*;
     void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
+
+    auto MergeItemsToMultihexMeshes(MapView* map) -> size_t;
+    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*;
+    void MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item);
+    void FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const;
+    auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool;
+    auto BreakItemsMultihexMeshes(MapView* map) -> size_t;
+    auto TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*;
 
     void BufferCopy();
     void BufferCut();
@@ -253,7 +258,8 @@ public:
     mpos SelectHex1 {};
     mpos SelectHex2 {};
     ipos32 SelectPos {};
-    int32 SelectType {};
+    bool SelectAxialGrid {true};
+    bool SelectEntireEntity {};
     bool IntVisible {};
     bool IntFix {};
     irect32 IntWMain {};
@@ -290,8 +296,8 @@ public:
     int32 SubTabsX {};
     int32 SubTabsY {};
     raw_ptr<vector<raw_ptr<const ProtoItem>>> CurItemProtos {};
-    raw_ptr<vector<raw_ptr<const ProtoCritter>>> CurNpcProtos {};
-    uint8 NpcDir {};
+    raw_ptr<vector<raw_ptr<const ProtoCritter>>> CurCritterProtos {};
+    uint8 CritterDir {};
     raw_ptr<int32> CurProtoScroll {};
     int32 ProtoWidth {};
     int32 ProtosOnScreen {};
@@ -314,7 +320,8 @@ public:
     bool IsSelectTile {};
     bool IsSelectRoof {};
     ipos32 BufferRawHex {};
-    vector<raw_ptr<ClientEntity>> SelectedEntities {};
+    vector<refcount_ptr<ClientEntity>> SelectedEntities {};
+    unordered_set<raw_ptr<ClientEntity>> SelectedEntitiesSet {};
     vector<EntityBuf> EntitiesBuffer {};
     shared_ptr<Sprite> ObjWMainPic {};
     shared_ptr<Sprite> ObjPbToAllDn {};

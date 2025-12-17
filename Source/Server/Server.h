@@ -241,7 +241,7 @@ private:
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop);
+    void OnSetItemMultihexLines(Entity* entity, const Property* prop);
 
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);

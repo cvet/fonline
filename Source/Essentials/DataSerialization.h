@@ -50,7 +50,7 @@ public:
     }
 
     template<typename T>
-        requires(std::is_arithmetic_v<T>)
+        requires(std::is_standard_layout_v<T>)
     auto Read() -> T
     {
         if (_readPos + sizeof(T) > _dataBuf.size()) {
@@ -113,7 +113,7 @@ public:
     }
 
     template<typename T, typename U>
-        requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
+        requires(std::is_standard_layout_v<T> && std::same_as<T, U>)
     void Write(U data) noexcept
     {
         GrowBuf(sizeof(T));
