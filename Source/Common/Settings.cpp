@@ -561,6 +561,12 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
                 pack_info.InputDir.emplace_back(std::move(dir));
             }
         }
+        if (auto input_file = get_map_value("InputFile"); !input_file.empty()) {
+            for (auto& path : strex(input_file).split(' ')) {
+                path = strex(config_dir).combinePath(path);
+                pack_info.InputFile.emplace_back(std::move(path));
+            }
+        }
         if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
             pack_info.RecursiveInput = strex(recursive_input).toBool();
         }
