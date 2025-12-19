@@ -303,15 +303,11 @@ void MasterBaker::BakeAllInternal()
         ](const ResourcePackInfo& res_pack, const string& output_dir) {
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
-            const auto& input_file = res_pack.InputFile;
 
             FileSystem input_files;
 
             for (const auto& dir : input_dir) {
                 input_files.AddDirSource(dir, res_pack.RecursiveInput);
-            }
-            for (const auto& file : input_file) {
-                input_files.AddDataSource(file);
             }
 
             const auto filtered_files = input_files.GetAllFiles();
