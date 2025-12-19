@@ -309,8 +309,8 @@ void MasterBaker::BakeAllInternal()
                 input_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
             for (const auto& path : input_file) {
-                const auto dir = strex(path).extractDir().str();
-                const auto pack = strex(path).extractFileName().eraseFileExtension().str();
+                const auto dir = strex(path).extract_dir().str();
+                const auto pack = strex(path).extract_file_name().erase_file_extension().str();
                 input_files.AddCustomSource(DataSource::MountPack(dir, pack, false));
             }
 
@@ -535,8 +535,8 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
             res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
         }
         for (const auto& path : res_pack.InputFile) {
-            const auto dir = strex(path).extractDir().str();
-            const auto pack = strex(path).extractFileName().eraseFileExtension().str();
+            const auto dir = strex(path).extract_dir().str();
+            const auto pack = strex(path).extract_file_name().erase_file_extension().str();
             res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
