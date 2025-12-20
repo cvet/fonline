@@ -619,7 +619,6 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_tim
         const auto it = _outputFiles.find(path);
 
         if (it == _outputFiles.end()) {
-            BreakIntoDebugger();
             return false;
         }
 

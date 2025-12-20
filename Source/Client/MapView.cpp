@@ -65,13 +65,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
     _viewSize = fsize32(_screenSize);
 
-    const irect32 scroll_area = GetScrollAxialArea();
-    constexpr float32 min_zoom_bias = 1.1f;
-    const float32 min_zoom_x = numeric_cast<float32>(_screenSize.width) / numeric_cast<float32>(scroll_area.width * (_engine->Settings.MapHexWidth / 2)) * min_zoom_bias;
-    const float32 min_zoom_y = numeric_cast<float32>(_screenSize.height) / numeric_cast<float32>(scroll_area.height * _engine->Settings.MapHexLineHeight) * min_zoom_bias;
-    _minZoomScroll = std::max(min_zoom_x, min_zoom_y);
-    SetSpritesZoom(std::max(_minZoomScroll, 1.0f));
-    SetSpritesZoomTarget(std::max(_minZoomScroll, 1.0f));
+    SetSpritesZoom(1.0f);
+    SetSpritesZoomTarget(1.0f);
+    RefreshMinZoom();
 
     if (!_engine->Settings.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
@@ -2916,6 +2912,24 @@ void MapView::SetExtraScrollOffset(fpos32 offset)
     _extraScrollOffset = offset;
 }
 
+void MapView::RefreshMinZoom()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const irect32 scroll_area = GetScrollAxialArea(); !scroll_area.is_zero()) {
+        constexpr float32 min_zoom_bias = 1.1f;
+        const float32 min_zoom_x = numeric_cast<float32>(_screenSize.width) / numeric_cast<float32>(scroll_area.width * (_engine->Settings.MapHexWidth / 2)) * min_zoom_bias;
+        const float32 min_zoom_y = numeric_cast<float32>(_screenSize.height) / numeric_cast<float32>(scroll_area.height * _engine->Settings.MapHexLineHeight) * min_zoom_bias;
+        _minZoomScroll = std::max(min_zoom_x, min_zoom_y);
+    }
+    else {
+        _minZoomScroll = GameSettings::MIN_ZOOM;
+    }
+
+    SetSpritesZoom(std::max(_minZoomScroll, GetSpritesZoom()));
+    SetSpritesZoomTarget(std::max(_minZoomScroll, GetSpritesZoomTarget()));
+}
+
 void MapView::AddCritterToField(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4060,27 +4074,6 @@ auto MapView::GenTempEntityId() -> ident_t
 
     _workEntityId = next_id;
     return next_id;
-}
-
-auto MapView::ValidateForSave() const -> vector<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<string> errors;
-
-    unordered_set<const CritterHexView*> cr_reported;
-
-    for (const auto& cr : _critters) {
-        for (const auto& cr2 : _critters) {
-            if (cr != cr2 && cr->GetHex() == cr2->GetHex() && cr_reported.count(cr.get()) == 0 && cr_reported.count(cr2.get()) == 0) {
-                errors.emplace_back(strex("Critters have same hex coords at {}", cr->GetHex()));
-                cr_reported.emplace(cr.get());
-                cr_reported.emplace(cr2.get());
-            }
-        }
-    }
-
-    return errors;
 }
 
 auto MapView::SaveToText() const -> string

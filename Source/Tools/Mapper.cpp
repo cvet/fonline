@@ -3591,16 +3591,6 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
-    const auto map_errors = map->ValidateForSave();
-
-    if (!map_errors.empty()) {
-        for (const auto& error : map_errors) {
-            AddMess(error);
-        }
-
-        return;
-    }
-
     const auto fomap_content = map->SaveToText();
 
     const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
