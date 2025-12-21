@@ -2,7 +2,6 @@
 #include <string.h>
 #include <assert.h>
 #include <new>
-#include "../autowrapper/aswrappedcall.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -25,7 +24,7 @@ CDateTime &CDateTime::operator=(const CDateTime &o)
 	return *this;
 }
 
-int CDateTime::getYear() const
+asUINT CDateTime::getYear() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -33,7 +32,7 @@ int CDateTime::getYear() const
 	return local.tm_year + 1900;
 }
 
-int CDateTime::getMonth() const
+asUINT CDateTime::getMonth() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -41,7 +40,7 @@ int CDateTime::getMonth() const
 	return local.tm_mon + 1;
 }
 
-int CDateTime::getDay() const
+asUINT CDateTime::getDay() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -49,7 +48,7 @@ int CDateTime::getDay() const
 	return local.tm_mday;
 }
 
-int CDateTime::getHour() const
+asUINT CDateTime::getHour() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -57,7 +56,7 @@ int CDateTime::getHour() const
 	return local.tm_hour;
 }
 
-int CDateTime::getMinute() const
+asUINT CDateTime::getMinute() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -65,7 +64,7 @@ int CDateTime::getMinute() const
 	return local.tm_min;
 }
 
-int CDateTime::getSecond() const
+asUINT CDateTime::getSecond() const
 {
 	time_t t = system_clock::to_time_t(tp);
 	tm local = *localtime(&t);
@@ -86,33 +85,19 @@ static void ConstructCopy(CDateTime *mem, const CDateTime &o)
 void RegisterScriptDateTime(asIScriptEngine *engine)
 {
 	// TODO: Add support for generic calling convention
+	assert(strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0);
+
 	int r = engine->RegisterObjectType("datetime", sizeof(CDateTime), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<CDateTime>()); assert(r >= 0);
 
-	// (FOnline Patch)
-	if(strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
-	{
-		r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(Construct), asCALL_CDECL_OBJLAST); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f(const datetime &in)", asFUNCTION(ConstructCopy), asCALL_CDECL_OBJLAST); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "datetime &opAssign(const datetime &in)", asMETHOD(CDateTime, operator=), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_year() const", asMETHOD(CDateTime, getYear), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_month() const", asMETHOD(CDateTime, getMonth), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_day() const", asMETHOD(CDateTime, getDay), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_hour() const", asMETHOD(CDateTime, getHour), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_minute() const", asMETHOD(CDateTime, getMinute), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_second() const", asMETHOD(CDateTime, getSecond), asCALL_THISCALL); assert(r >= 0);
-	}
-	else
-	{
-		r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f()", WRAP_OBJ_LAST(Construct), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f(const datetime &in)", WRAP_OBJ_LAST(ConstructCopy), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "datetime &opAssign(const datetime &in)", WRAP_MFN(CDateTime, operator=), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_year() const", WRAP_MFN(CDateTime, getYear), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_month() const", WRAP_MFN(CDateTime, getMonth), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_day() const", WRAP_MFN(CDateTime, getDay), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_hour() const", WRAP_MFN(CDateTime, getHour), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_minute() const", WRAP_MFN(CDateTime, getMinute), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("datetime", "int get_second() const", WRAP_MFN(CDateTime, getSecond), asCALL_GENERIC); assert(r >= 0);
-	}
+	r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(Construct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f(const datetime &in)", asFUNCTION(ConstructCopy), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "datetime &opAssign(const datetime &in)", asMETHOD(CDateTime, operator=), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_year() const", asMETHOD(CDateTime, getYear), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_month() const", asMETHOD(CDateTime, getMonth), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_day() const", asMETHOD(CDateTime, getDay), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_hour() const", asMETHOD(CDateTime, getHour), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_minute() const", asMETHOD(CDateTime, getMinute), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("datetime", "uint get_second() const", asMETHOD(CDateTime, getSecond), asCALL_THISCALL); assert(r >= 0);
 }
 
 END_AS_NAMESPACE

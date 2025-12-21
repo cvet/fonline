@@ -35,15 +35,13 @@
 
 #include "Common.h"
 
-class asIScriptEngine;
+#include "ScriptSystem.h"
 
-class ScriptExtensions final
-{
-public:
-    ScriptExtensions() = delete;
+#include <angelscript.h>
 
-    static void RegisterScriptArrayExtensions(asIScriptEngine* engine);
-    static void RegisterScriptDictExtensions(asIScriptEngine* engine);
-    static void RegisterScriptStdStringExtensions(asIScriptEngine* engine);
-    static void RegisterScriptStdStringAnyExtensions(asIScriptEngine* engine);
-};
+FO_BEGIN_NAMESPACE();
+
+void RegisterAngelScriptString(AngelScript::asIScriptEngine* engine);
+void RegisterAngelScriptStringAnyExtensions(AngelScript::asIScriptEngine* engine);
+
+FO_END_NAMESPACE();

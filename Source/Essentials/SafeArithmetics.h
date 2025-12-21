@@ -48,12 +48,12 @@ template<typename T>
 
 template<typename T>
     requires(std::floating_point<T>)
-[[nodiscard]] constexpr auto is_float_equal(T f1, T f2) noexcept -> bool
+[[nodiscard]] constexpr auto is_float_equal(T f1, T f2, T epsilon = 1.0e-5f) noexcept -> bool
 {
-    if (float_abs(f1 - f2) <= 1.0e-5f) {
+    if (float_abs(f1 - f2) <= epsilon) {
         return true;
     }
-    return float_abs(f1 - f2) <= 1.0e-5f * std::max(float_abs(f1), float_abs(f2));
+    return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
 }
 
 // Numeric cast

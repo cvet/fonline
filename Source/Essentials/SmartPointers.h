@@ -60,65 +60,67 @@ public:
         return *this;
     }
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr raw_ptr(T* p) noexcept :
-        _ptr(p)
+    FO_FORCE_INLINE constexpr raw_ptr(T* other) noexcept :
+        _ptr(other)
     {
     }
-    FO_FORCE_INLINE auto operator=(T* p) noexcept -> raw_ptr&
+    FO_FORCE_INLINE auto operator=(T* other) noexcept -> raw_ptr&
     {
-        _ptr = p;
+        _ptr = other;
         return *this;
     }
 
-    FO_FORCE_INLINE raw_ptr(raw_ptr&& p) noexcept
+    FO_FORCE_INLINE raw_ptr(raw_ptr&& other) noexcept
     {
-        _ptr = std::move(p._ptr);
-        p._ptr = nullptr;
+        _ptr = std::move(other._ptr);
+        other._ptr = nullptr;
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr raw_ptr(raw_ptr<U>&& p) noexcept // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+    FO_FORCE_INLINE constexpr raw_ptr(raw_ptr<U>&& other) noexcept // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        _ptr = p._ptr;
-        p._ptr = nullptr;
+        _ptr = other._ptr;
+        other._ptr = nullptr;
     }
-    FO_FORCE_INLINE auto operator=(raw_ptr&& p) noexcept -> raw_ptr&
+    FO_FORCE_INLINE auto operator=(raw_ptr&& other) noexcept -> raw_ptr&
     {
-        _ptr = std::move(p._ptr);
-        p._ptr = nullptr;
+        _ptr = std::move(other._ptr);
+        other._ptr = nullptr;
         return *this;
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
-    FO_FORCE_INLINE auto operator=(raw_ptr<U>&& p) noexcept -> raw_ptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+    FO_FORCE_INLINE auto operator=(raw_ptr<U>&& other) noexcept -> raw_ptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        _ptr = std::move(p._ptr);
-        p._ptr = nullptr;
+        _ptr = std::move(other._ptr);
+        other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE raw_ptr(const raw_ptr& p) noexcept :
-        _ptr(p._ptr)
+    FO_FORCE_INLINE raw_ptr(const raw_ptr& other) noexcept :
+        _ptr(other._ptr)
     {
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& p) noexcept :
-        _ptr(p._ptr)
+    FO_FORCE_INLINE constexpr raw_ptr(const raw_ptr<U>& other) noexcept :
+        _ptr(other._ptr)
     {
     }
-    FO_FORCE_INLINE auto operator=(const raw_ptr& p) noexcept -> raw_ptr& // NOLINT(modernize-use-equals-default)
+    FO_FORCE_INLINE auto operator=(const raw_ptr& other) noexcept -> raw_ptr& // NOLINT(modernize-use-equals-default)
     {
-        _ptr = p._ptr;
+        if (this != &other) {
+            _ptr = other._ptr;
+        }
         return *this;
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
-    FO_FORCE_INLINE auto operator=(const raw_ptr<U>& p) noexcept -> raw_ptr&
+    FO_FORCE_INLINE auto operator=(const raw_ptr<U>& other) noexcept -> raw_ptr&
     {
-        _ptr = p._ptr;
+        _ptr = other._ptr;
         return *this;
     }
 
@@ -310,12 +312,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
-
-    [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T*
-    {
-        auto* old = std::exchange(_ptr, nullptr);
-        return old;
-    }
+    [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_ptr, nullptr); }
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
@@ -347,7 +344,7 @@ class refcount_ptr final
 public:
     struct adopt_tag
     {
-    };
+    } static constexpr adopt {};
 
     FO_FORCE_INLINE constexpr refcount_ptr() noexcept :
         _ptr(nullptr)
@@ -361,7 +358,7 @@ public:
     }
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr&
     {
-        release();
+        dec_ref();
         _ptr = nullptr;
         return *this;
     }
@@ -424,7 +421,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_ptr&& other) noexcept -> refcount_ptr&
     {
         if (this != &other) {
-            release();
+            dec_ref();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -434,13 +431,13 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        release();
+        dec_ref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_ptr() { release(); }
+    FO_FORCE_INLINE ~refcount_ptr() { dec_ref(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
@@ -456,10 +453,11 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
+    [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
-        release();
+        dec_ref();
         _ptr = p;
         add_ref();
     }
@@ -485,7 +483,7 @@ private:
             _ptr->AddRef();
         }
     }
-    FO_FORCE_INLINE void release() noexcept
+    FO_FORCE_INLINE void dec_ref() noexcept
     {
         if (_ptr != nullptr) {
             _ptr->Release();

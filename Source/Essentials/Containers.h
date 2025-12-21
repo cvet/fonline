@@ -43,18 +43,19 @@ using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<cha
 using wstring = std::basic_string<wchar_t, std::char_traits<wchar_t>, SafeAllocator<wchar_t>>;
 using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 using ostringstream = std::basic_ostringstream<char, std::char_traits<char>, SafeAllocator<char>>;
+using stringstream = std::basic_stringstream<char, std::char_traits<char>, SafeAllocator<char>>;
 
 template<typename T>
 using list = std::list<T, SafeAllocator<T>>;
 template<typename T>
 using deque = std::deque<T, SafeAllocator<T>>;
 
-template<typename K, typename V>
-using map = std::map<K, V, std::less<>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename V>
-using multimap = std::multimap<K, V, std::less<>, SafeAllocator<pair<const K, V>>>;
-template<typename K>
-using set = std::set<K, std::less<>, SafeAllocator<K>>;
+template<typename K, typename V, typename Cmp = std::less<>>
+using map = std::map<K, V, Cmp, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename V, typename Cmp = std::less<>>
+using multimap = std::multimap<K, V, Cmp, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename Cmp = std::less<>>
+using set = std::set<K, Cmp, SafeAllocator<K>>;
 
 template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;

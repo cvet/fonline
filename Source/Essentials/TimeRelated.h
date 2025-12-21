@@ -80,12 +80,11 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const timespan& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const timespan& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator<(const timespan& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const timespan& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const timespan& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const timespan& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator==(const timespan& other) const noexcept -> bool { return _value == other._value; }
+    [[nodiscard]] constexpr auto operator<(const timespan& other) const noexcept -> bool { return _value < other._value; }
+    [[nodiscard]] constexpr auto operator<=(const timespan& other) const noexcept -> bool { return _value <= other._value; }
+    [[nodiscard]] constexpr auto operator>(const timespan& other) const noexcept -> bool { return _value > other._value; }
+    [[nodiscard]] constexpr auto operator>=(const timespan& other) const noexcept -> bool { return _value >= other._value; }
     [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> timespan { return value() + other.value(); }
     [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value()).count(); }
@@ -172,12 +171,11 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const nanotime& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const nanotime& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator<(const nanotime& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const nanotime& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const nanotime& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const nanotime& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator==(const nanotime& other) const noexcept -> bool { return _value == other._value; }
+    [[nodiscard]] constexpr auto operator<(const nanotime& other) const noexcept -> bool { return _value < other._value; }
+    [[nodiscard]] constexpr auto operator<=(const nanotime& other) const noexcept -> bool { return _value <= other._value; }
+    [[nodiscard]] constexpr auto operator>(const nanotime& other) const noexcept -> bool { return _value > other._value; }
+    [[nodiscard]] constexpr auto operator>=(const nanotime& other) const noexcept -> bool { return _value >= other._value; }
     [[nodiscard]] constexpr auto operator-(const nanotime& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> nanotime { return value() + other.value(); }
     [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> nanotime { return value() - other.value(); }
@@ -242,12 +240,11 @@ public:
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != 0; }
-    [[nodiscard]] constexpr auto compare(const synctime& other) const noexcept -> int32 { return _value < other._value ? -1 : (_value > other._value ? 1 : 0); }
-    [[nodiscard]] constexpr auto operator==(const synctime& other) const noexcept -> bool { return value() == other.value(); }
-    [[nodiscard]] constexpr auto operator<(const synctime& other) const noexcept -> bool { return value() < other.value(); }
-    [[nodiscard]] constexpr auto operator<=(const synctime& other) const noexcept -> bool { return value() <= other.value(); }
-    [[nodiscard]] constexpr auto operator>(const synctime& other) const noexcept -> bool { return value() > other.value(); }
-    [[nodiscard]] constexpr auto operator>=(const synctime& other) const noexcept -> bool { return value() >= other.value(); }
+    [[nodiscard]] constexpr auto operator==(const synctime& other) const noexcept -> bool { return _value == other._value; }
+    [[nodiscard]] constexpr auto operator<(const synctime& other) const noexcept -> bool { return _value < other._value; }
+    [[nodiscard]] constexpr auto operator<=(const synctime& other) const noexcept -> bool { return _value <= other._value; }
+    [[nodiscard]] constexpr auto operator>(const synctime& other) const noexcept -> bool { return _value > other._value; }
+    [[nodiscard]] constexpr auto operator>=(const synctime& other) const noexcept -> bool { return _value >= other._value; }
     [[nodiscard]] constexpr auto operator+(const timespan& other) const noexcept -> synctime { return synctime(value() + other.value()); }
     [[nodiscard]] constexpr auto operator-(const timespan& other) const noexcept -> synctime { return synctime(value() - other.value()); }
     [[nodiscard]] constexpr auto operator-(const synctime& other) const noexcept -> timespan { return value() - other.value(); }
