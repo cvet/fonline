@@ -167,6 +167,11 @@ bool CScriptWeakRef::operator==(const CScriptWeakRef &o) const
 	return false;
 }
 
+bool CScriptWeakRef::operator!=(const CScriptWeakRef &o) const
+{
+	return !(*this == o);
+}
+
 // AngelScript: used as '@obj = ref.get();'
 void *CScriptWeakRef::Get() const
 {

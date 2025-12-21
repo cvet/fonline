@@ -68,24 +68,18 @@
 #include "Properties.h"
 #include "ScriptSystem.h"
 
-#include "AngelScriptExtensions.h"
+#include "AngelScriptArray.h"
+#include "AngelScriptDict.h"
+#include "AngelScriptMath.h"
 #include "AngelScriptReflection.h"
-#include "AngelScriptScriptDict.h"
+#include "AngelScriptString.h"
+#include "AngelScriptWrappedCall.h"
 
-#include "../autowrapper/aswrappedcall.h"
-#include "angelscript.h"
-#include "as_context.h"
-#include "datetime/datetime.h"
-#include "preprocessor.h"
-#include "scriptarray.h"
-#include "scriptarray/scriptarray.h"
-#include "scriptdictionary/scriptdictionary.h"
-#include "scriptfile/scriptfile.h"
-#include "scriptfile/scriptfilesystem.h"
-#include "scripthelper/scripthelper.h"
-#include "scriptmath/scriptmath.h"
-#include "scriptstdstring/scriptstdstring.h"
-#include "weakref/weakref.h"
+#include <angelscript.h>
+#include <as_context.h>
+#include <preprocessor.h>
+
+using namespace AngelScript;
 
 #if !COMPILER_MODE
 ///@ CodeGen Includes
@@ -211,28 +205,6 @@ static void ThrowInitException(int32 line, int32 result)
     throw ScriptInitException(strex("Line: {}", line).str(), strex("Result: {}", result).str());
 }
 
-#ifdef AS_MAX_PORTABILITY
-#define SCRIPT_GENERIC(name) asFUNCTION(name)
-#define SCRIPT_GENERIC_CONV asCALL_GENERIC
-#define SCRIPT_FUNC(name) WRAP_FN(name)
-#define SCRIPT_FUNC_CONV asCALL_GENERIC
-#define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
-#define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
-#define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
-#define SCRIPT_METHOD_PR(type, name, params, ret) WRAP_MFN_PR(type, name, params, ret)
-#define SCRIPT_METHOD_CONV asCALL_GENERIC
-#else
-#define SCRIPT_GENERIC(name) asFUNCTION(name)
-#define SCRIPT_GENERIC_CONV asCALL_GENERIC
-#define SCRIPT_FUNC(name) asFUNCTION(name)
-#define SCRIPT_FUNC_CONV asCALL_CDECL
-#define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
-#define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
-#define SCRIPT_METHOD(type, name) asMETHOD(type, name)
-#define SCRIPT_METHOD_PR(type, name, params, ret) asMETHODPR(type, name, params, ret)
-#define SCRIPT_METHOD_CONV asCALL_THISCALL
-#endif
-
 #define PASS_AS_PVOID(ptr) const_cast<void*>(static_cast<const void*>(ptr))
 
 #if !COMPILER_MODE
@@ -271,7 +243,7 @@ struct ASContextExtendedData
 {
     bool ExecutionActive {};
     size_t ExecutionCalls {};
-    std::string Info {};
+    FO_NAMESPACE string Info {};
     FO_NAMESPACE raw_ptr<asIScriptContext> Parent {};
     FO_NAMESPACE nanotime SuspendEndTime {};
     FO_NAMESPACE raw_ptr<FO_NAMESPACE Entity> ValidCheck {};
@@ -519,7 +491,7 @@ public:
 
     raw_ptr<BaseEngine> Engine {};
     raw_ptr<asIScriptEngine> ASEngine {};
-    set<CScriptArray*> EnumArrays {};
+    set<ScriptArray*> EnumArrays {};
     map<string, EnumInfo> EnumInfos {};
     set<hstring> ContentData {};
     raw_ptr<asIScriptContext> CurrentCtx {};
@@ -536,9 +508,9 @@ struct StackTraceEntryStorage
     static constexpr size_t STACK_TRACE_FUNC_BUF_SIZE = 64;
     static constexpr size_t STACK_TRACE_FILE_BUF_SIZE = 128;
 
-    std::array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
+    array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
     size_t FuncBufLen {};
-    std::array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
+    array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
     size_t FileBufLen {};
 
     SourceLocationData SrcLoc {};
@@ -714,7 +686,7 @@ static T* ScriptableObject_Factory()
 
 #if !COMPILER_MODE
 // Arrays stuff
-[[maybe_unused]] static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
+[[maybe_unused]] static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -723,13 +695,13 @@ static T* ScriptableObject_Factory()
     FO_RUNTIME_ASSERT(type_id);
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
     FO_RUNTIME_ASSERT(as_type_info);
-    auto* as_array = CScriptArray::Create(as_type_info);
+    auto* as_array = ScriptArray::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_array);
     return as_array;
 }
 
 template<typename T, typename T2 = T>
-[[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
+[[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, ScriptArray* as_array) -> vector<T>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -754,7 +726,7 @@ template<typename T, typename T2 = T>
 }
 
 template<typename T, typename T2 = T>
-[[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, CScriptArray* as_array)
+[[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, ScriptArray* as_array)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -779,7 +751,7 @@ template<typename T, typename T2 = T>
 }
 
 template<typename T, typename T2 = T>
-[[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+[[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -792,7 +764,7 @@ template<typename T, typename T2 = T>
     return as_array;
 }
 
-[[maybe_unused]] static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
+[[maybe_unused]] static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> ScriptDict*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -801,13 +773,13 @@ template<typename T, typename T2 = T>
     FO_RUNTIME_ASSERT(type_id);
     auto* as_type_info = as_engine->GetTypeInfoById(type_id);
     FO_RUNTIME_ASSERT(as_type_info);
-    auto* as_dict = CScriptDict::Create(as_type_info);
+    auto* as_dict = ScriptDict::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_dict);
     return as_dict;
 }
 
 template<typename T, typename U, typename T2 = T, typename U2 = U>
-[[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
+[[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, ScriptDict* as_dict) -> map<T, U>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -820,12 +792,9 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
         return {};
     }
 
-    std::vector<std::pair<void*, void*>> dict_data;
-    as_dict->GetMap(dict_data);
-
     map<T, U> map;
 
-    for (auto&& [pkey, pvalue] : dict_data) {
+    for (auto&& [pkey, pvalue] : as_dict->GetMap()) {
         const auto& key = *static_cast<T2*>(pkey);
         const auto& value = *static_cast<U2*>(pvalue);
         map.emplace(static_cast<T>(key), static_cast<U>(value));
@@ -835,7 +804,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 
 template<typename T, typename U, typename T2 = T, typename U2 = U>
-[[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
+[[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, ScriptDict* as_dict)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -856,7 +825,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 
 template<typename T, typename U, typename T2 = T, typename U2 = U>
-[[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
+[[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> ScriptDict*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1049,7 +1018,7 @@ static auto AngelScriptFuncCall(SCRIPT_BACKEND_CLASS* script_backend, ScriptFunc
                 auto& arg_type = func_desc->ArgsType[i];
 
                 if (arg_type->Accessor->IsArray()) {
-                    CScriptArray* arr = CreateASArray(ctx->GetEngine(), strex("{}[]", arg_type->Name).c_str());
+                    ScriptArray* arr = CreateASArray(ctx->GetEngine(), strex("{}[]", arg_type->Name).c_str());
 
                     for (size_t n = 0, m = arg_type->Accessor->GetArraySize(arg); n < m; n++) {
                         auto* elem = arg_type->Accessor->GetArrayElement(arg, n);
@@ -1162,10 +1131,10 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
         return sizeof(string);
     }
     else if (prop->IsArray()) {
-        return sizeof(CScriptArray*);
+        return sizeof(ScriptArray*);
     }
     else if (prop->IsDict()) {
-        return sizeof(CScriptDict*);
+        return sizeof(ScriptDict*);
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -1185,10 +1154,10 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
         static_cast<string*>(construct_addr)->~string();
     }
     else if (prop->IsArray()) {
-        (*static_cast<CScriptArray**>(construct_addr))->Release();
+        (*static_cast<ScriptArray**>(construct_addr))->Release();
     }
     else if (prop->IsDict()) {
-        (*static_cast<CScriptDict**>(construct_addr))->Release();
+        (*static_cast<ScriptDict**>(construct_addr))->Release();
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -1315,10 +1284,10 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             FO_UNREACHABLE_PLACE();
         }
 
-        *static_cast<CScriptArray**>(construct_addr) = arr;
+        *static_cast<ScriptArray**>(construct_addr) = arr;
     }
     else if (prop->IsDict()) {
-        CScriptDict* dict = CreateASDict(as_engine, MakePropertyASName(prop).c_str());
+        ScriptDict* dict = CreateASDict(as_engine, MakePropertyASName(prop).c_str());
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
@@ -1522,7 +1491,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
 
-        *static_cast<CScriptDict**>(construct_addr) = dict;
+        *static_cast<ScriptDict**>(construct_addr) = dict;
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -1550,7 +1519,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         prop_data.Pass(str.data(), str.length());
     }
     else if (prop->IsArray()) {
-        const auto* arr = *static_cast<CScriptArray**>(as_obj);
+        const auto* arr = *static_cast<ScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
             const auto arr_size = numeric_cast<uint32>(arr != nullptr ? arr->GetSize() : 0);
@@ -1630,16 +1599,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         }
     }
     else if (prop->IsDict()) {
-        const auto* dict = *static_cast<CScriptDict**>(as_obj);
+        const auto* dict = *static_cast<ScriptDict**>(as_obj);
 
         if (prop->IsDictOfArray()) {
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                std::vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
 
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
                         const auto key_len = numeric_cast<uint32>(key_str.length());
@@ -1649,7 +1616,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         data_size += prop->GetDictKeySize();
                     }
 
-                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                    const auto* arr = *static_cast<const ScriptArray**>(value);
                     const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += sizeof(arr_size);
 
@@ -1667,8 +1634,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 // Make buffer
                 auto* buf = prop_data.Alloc(data_size);
 
-                for (auto&& [key, value] : dict_map) {
-                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                for (auto&& [key, value] : dict->GetMap()) {
+                    const auto* arr = *static_cast<const ScriptArray**>(value);
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
@@ -1753,10 +1720,8 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                std::vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
 
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *static_cast<const string*>(key);
                         const auto key_len = numeric_cast<uint32>(key_str.length());
@@ -1775,7 +1740,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 // Make buffer
                 uint8* buf = prop_data.Alloc(data_size);
 
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     const auto& str = *static_cast<const string*>(value);
 
                     if (prop->IsDictKeyString()) {
@@ -1816,12 +1781,10 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
                 size_t data_size = 0;
-                std::vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
 
                 const auto value_element_size = prop->GetBaseSize();
 
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     const auto& key_str = *static_cast<const string*>(key);
                     const auto key_len = numeric_cast<uint32>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
@@ -1831,7 +1794,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 // Make buffer
                 auto* buf = prop_data.Alloc(data_size);
 
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     const auto& key_str = *static_cast<const string*>(key);
                     const auto key_len = numeric_cast<uint32>(key_str.length());
 
@@ -1861,10 +1824,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
 
-                std::vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
-
-                for (auto&& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
                         MemCopy(buf, &hkey, key_element_size);
@@ -2613,12 +2573,11 @@ static auto Property_GetValueAsInt(const T* entity, int32 prop_index) -> int32
     ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
-    if (prop_index == -1) {
-        throw ScriptException("Property invalid enum");
-    }
-
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    FO_RUNTIME_ASSERT(prop);
+
+    if (prop == nullptr) {
+        throw ScriptException("Property invalid enum", prop_index);
+    }
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2645,12 +2604,11 @@ static void Property_SetValueAsInt(T* entity, int32 prop_index, int32 value)
     ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
-    if (prop_index == -1) {
-        throw ScriptException("Property invalid enum");
-    }
-
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    FO_RUNTIME_ASSERT(prop);
+
+    if (prop == nullptr) {
+        throw ScriptException("Property invalid enum", prop_index);
+    }
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2681,12 +2639,11 @@ static auto Property_GetValueAsAny(const T* entity, int32 prop_index) -> any_t
     ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
-    if (prop_index == -1) {
-        throw ScriptException("Property invalid enum");
-    }
-
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    FO_RUNTIME_ASSERT(prop);
+
+    if (prop == nullptr) {
+        throw ScriptException("Property invalid enum", prop_index);
+    }
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2713,12 +2670,11 @@ static void Property_SetValueAsAny(T* entity, int32 prop_index, any_t value)
     ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
-    if (prop_index == -1) {
-        throw ScriptException("Property invalid enum");
-    }
-
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
-    FO_RUNTIME_ASSERT(prop);
+
+    if (prop == nullptr) {
+        throw ScriptException("Property invalid enum", prop_index);
+    }
 
     if (!prop->IsPlainData()) {
         throw ScriptException("Property in not plain data type");
@@ -2948,20 +2904,6 @@ static void HashedString_Assign(hstring& self, const hstring& other)
 
 #if !COMPILER_MODE
     self = other;
-
-#else
-    ignore_unused(self);
-    ignore_unused(other);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    return self == other;
 
 #else
     ignore_unused(self);
@@ -3238,21 +3180,6 @@ static void StrongType_ConstructFromUnderlying(T* self, const typename T::underl
 
 #if !COMPILER_MODE
     new (self) T(other);
-
-#else
-    ignore_unused(self);
-    ignore_unused(other);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
-template<typename T>
-static auto StrongType_Equals(const T& self, const T& other) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    return self == other;
 
 #else
     ignore_unused(self);
@@ -3560,7 +3487,7 @@ static auto Game_GetProtoCustomEntity(BaseEngine* engine, hstring pid) -> const 
 }
 
 template<typename T>
-static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
+static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3578,7 +3505,7 @@ static auto Game_GetProtoCustomEntities(BaseEngine* engine) -> CScriptArray*
     }
 
     auto* as_engine = GET_AS_ENGINE_FROM_ENGINE(engine);
-    CScriptArray* result_arr = MarshalBackArray(as_engine, strex("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
+    ScriptArray* result_arr = MarshalBackArray(as_engine, strex("{}[]", T::ENTITY_TYPE_NAME).c_str(), result);
     return result_arr;
 
 #else
@@ -3631,7 +3558,7 @@ static void Game_DestroyOne(BaseEngine* engine, T* entity)
 }
 
 template<typename T>
-static void Game_DestroyAll(BaseEngine* engine, CScriptArray* as_entities)
+static void Game_DestroyAll(BaseEngine* engine, ScriptArray* as_entities)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3754,12 +3681,12 @@ static void CustomEntity_GetAll(asIScriptGeneric* gen)
             casted_entities.emplace_back(casted_entity);
         }
 
-        CScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str(), casted_entities);
-        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
+        ScriptArray* result_arr = MarshalBackArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str(), casted_entities);
+        new (gen->GetAddressOfReturnLocation()) ScriptArray*(result_arr);
     }
     else {
-        CScriptArray* result_arr = CreateASArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str());
-        new (gen->GetAddressOfReturnLocation()) CScriptArray*(result_arr);
+        ScriptArray* result_arr = CreateASArray(gen->GetEngine(), strex("{}[]", T2::ENTITY_TYPE_NAME).c_str());
+        new (gen->GetAddressOfReturnLocation()) ScriptArray*(result_arr);
     }
 
 #else
@@ -3839,6 +3766,41 @@ static void Game_EnumToString(asIScriptGeneric* gen)
 static auto Game_ParseGenericEnum(BaseEngine* engine, string enum_name, string value_name) -> int32
 {
     return engine->ResolveEnumValue(enum_name, value_name);
+}
+
+template<typename T>
+static auto Type_Cmp(const T& self, const T& other) -> int32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    if (self < other) {
+        return -1;
+    }
+    else if (other < self) {
+        return 1;
+    }
+
+    return 0;
+
+#else
+    ignore_unused(self, other);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T, typename U = T>
+static auto Type_Equals(const T& self, const U& other) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    return self == other;
+
+#else
+    ignore_unused(self, other);
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
@@ -3946,21 +3908,11 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false));
 #endif
 
-    RegisterScriptArray(as_engine, true);
-    ScriptExtensions::RegisterScriptArrayExtensions(as_engine);
-    RegisterStdString(as_engine);
-    ScriptExtensions::RegisterScriptStdStringExtensions(as_engine);
-    RegisterScriptDictionary(as_engine);
-    RegisterScriptDict(as_engine);
-    ScriptExtensions::RegisterScriptDictExtensions(as_engine);
-    RegisterScriptFile(as_engine);
-    RegisterScriptFileSystem(as_engine);
-    RegisterScriptDateTime(as_engine);
-    AS_VERIFY(as_engine->SetDefaultNamespace("math"));
-    RegisterScriptMath(as_engine);
-    AS_VERIFY(as_engine->SetDefaultNamespace(""));
-    RegisterScriptWeakRef(as_engine);
-    RegisterScriptReflection(as_engine);
+    RegisterAngelScriptArray(as_engine);
+    RegisterAngelScriptString(as_engine);
+    RegisterAngelScriptDict(as_engine);
+    RegisterAngelScriptReflection(as_engine);
+    RegisterAngelScriptMath(as_engine);
 
     // Register enums
     for (auto&& [enum_name, enum_pairs] : engine->GetAllEnums()) {
@@ -3979,7 +3931,8 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", SCRIPT_GENERIC(HashedString_IsValidHash), SCRIPT_GENERIC_CONV, engine));
     AS_VERIFY(as_engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, engine));
     AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "hstring& opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int opCmp(const hstring &in) const", SCRIPT_FUNC_THIS(Type_Cmp<hstring>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(Type_Equals<hstring>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string opImplConv() const", SCRIPT_FUNC_THIS(HashedString_StringConv), SCRIPT_FUNC_THIS_CONV));
@@ -4006,6 +3959,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opCmp(const any &in) const", SCRIPT_FUNC_THIS(Type_Cmp<any_t>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
@@ -4022,7 +3976,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, engine));
     AS_VERIFY(as_engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
-    ScriptExtensions::RegisterScriptStdStringAnyExtensions(as_engine);
+    RegisterAngelScriptStringAnyExtensions(as_engine);
 
     // Global functions
     AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_GENERIC(Global_Assert<0>), SCRIPT_GENERIC_CONV));
@@ -4056,7 +4010,8 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
         AS_VERIFY(as_engine->RegisterObjectType(name, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
         AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(as_engine->RegisterObjectBehaviour(name, asBEHAVE_CONSTRUCT, "void f(const " name " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(as_engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, "int opCmp(const " name " &in) const", SCRIPT_FUNC_THIS(Type_Cmp<type>), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(as_engine->RegisterObjectMethod(name, "bool opEquals(const " name " &in) const", SCRIPT_FUNC_THIS((Type_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(as_engine->RegisterObjectMethod(name, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(as_engine->RegisterObjectMethod(name, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(as_engine->RegisterObjectMethod("any", name " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV)); \
@@ -4083,43 +4038,40 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     // Register timespan
     REGISTER_VALUE_TYPE("timespan", timespan);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("timespan", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<timespan>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int opCmp(const timespan &in) const", SCRIPT_METHOD_PR(timespan, compare, (const timespan&) const, int32), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", SCRIPT_METHOD_PR(timespan, operator-, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(timespan, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", SCRIPT_METHOD_PR(timespan, microseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(timespan, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_PR(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opAddAssign(const timespan &in)", SCRIPT_METHOD_EXT(timespan, operator+=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", SCRIPT_METHOD_EXT(timespan, operator-=, (const timespan&), timespan&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", SCRIPT_METHOD_EXT(timespan, operator+, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", SCRIPT_METHOD_EXT(timespan, operator-, (const timespan&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", SCRIPT_METHOD_EXT(timespan, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", SCRIPT_METHOD_EXT(timespan, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", SCRIPT_METHOD_EXT(timespan, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", SCRIPT_METHOD_EXT(timespan, seconds, () const, int64), SCRIPT_METHOD_CONV));
 
     // Register nanotime
     REGISTER_VALUE_TYPE("nanotime", nanotime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int opCmp(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, compare, (const nanotime&) const, int32), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", SCRIPT_METHOD_PR(nanotime, operator-, (const nanotime&) const, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", SCRIPT_METHOD_PR(nanotime, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD_PR(nanotime, microseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(nanotime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD_PR(nanotime, seconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opAddAssign(const timespan &in)", SCRIPT_METHOD_EXT(nanotime, operator+=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime& opSubAssign(const timespan &in)", SCRIPT_METHOD_EXT(nanotime, operator-=, (const timespan&), nanotime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", SCRIPT_METHOD_EXT(nanotime, operator+, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", SCRIPT_METHOD_EXT(nanotime, operator-, (const timespan&) const, nanotime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", SCRIPT_METHOD_EXT(nanotime, operator-, (const nanotime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", SCRIPT_METHOD_EXT(nanotime, nanoseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", SCRIPT_METHOD_EXT(nanotime, microseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", SCRIPT_METHOD_EXT(nanotime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", SCRIPT_METHOD_EXT(nanotime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_EXT(nanotime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register synctime
     REGISTER_VALUE_TYPE("synctime", synctime);
     AS_VERIFY(as_engine->RegisterObjectBehaviour("synctime", asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", SCRIPT_FUNC_THIS((Time_ConstructWithPlace<synctime>)), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int opCmp(const synctime &in) const", SCRIPT_METHOD_PR(synctime, compare, (const synctime&) const, int32), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_PR(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_PR(synctime, operator-, (const synctime&) const, timespan), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD_PR(synctime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD_PR(synctime, seconds, () const, int64), SCRIPT_METHOD_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_PR(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opAddAssign(const timespan &in)", SCRIPT_METHOD_EXT(synctime, operator+=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime& opSubAssign(const timespan &in)", SCRIPT_METHOD_EXT(synctime, operator-=, (const timespan&), synctime&), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", SCRIPT_METHOD_EXT(synctime, operator+, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", SCRIPT_METHOD_EXT(synctime, operator-, (const timespan&) const, synctime), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", SCRIPT_METHOD_EXT(synctime, operator-, (const synctime&) const, timespan), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", SCRIPT_METHOD_EXT(synctime, milliseconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", SCRIPT_METHOD_EXT(synctime, seconds, () const, int64), SCRIPT_METHOD_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", SCRIPT_METHOD_EXT(synctime, duration_value, () const, timespan), SCRIPT_METHOD_CONV));
 
     // Register ipos
     REGISTER_VALUE_TYPE("ipos", ipos32);
@@ -4476,7 +4428,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
             const auto it_enum = EnumArrays.emplace(MarshalBackArray<int32>(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str(), prop_enums));
             FO_RUNTIME_ASSERT(it_enum.second);
 #endif
-            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<CScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
+            AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), SCRIPT_GENERIC((Global_Get<ScriptArray*>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }

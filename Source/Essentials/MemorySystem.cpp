@@ -376,6 +376,15 @@ extern void MemCopy(void* dest, const void* src, size_t size) noexcept
     }
 }
 
+void MemMove(void* dest, const void* src, size_t size) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (size != 0) {
+        std::memmove(dest, src, size);
+    }
+}
+
 extern void MemFill(void* ptr, int32 value, size_t size) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();

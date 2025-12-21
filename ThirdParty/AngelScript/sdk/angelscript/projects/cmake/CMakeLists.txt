@@ -128,12 +128,12 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64" AND NOT APPLE)
 endif()
 
 if(NOT BUILD_FRAMEWORK)
-    set(ANGELSCRIPT_LIBRARY_NAME Angelscript)
+    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" angelscript) #!
 else()
-    set(ANGELSCRIPT_LIBRARY_NAME Angelscript) # OS X frameworks should have capitalized name
+    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" Angelscript) #! # OS X frameworks should have capitalized name
     set(BUILD_SHARED_LIBS TRUE)
 endif()
-set(ANGELSCRIPT_LIBRARY_NAME ${ANGELSCRIPT_LIBRARY_NAME} CACHE STRING "" FORCE)
+#! set(ANGELSCRIPT_LIBRARY_NAME ${ANGELSCRIPT_LIBRARY_NAME} CACHE STRING "" FORCE)
 
 add_library(${ANGELSCRIPT_LIBRARY_NAME} ${ANGELSCRIPT_SOURCE} ${ANGELSCRIPT_HEADERS})
 # Don't override the default library output path to avoid conflicts when building for multiple target platforms
