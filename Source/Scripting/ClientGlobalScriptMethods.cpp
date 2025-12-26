@@ -846,7 +846,7 @@ FO_SCRIPT_API bool Client_Game_IsSpriteHit(FOClient* client, uint32 sprId, ipos3
     const auto* spr = client->AnimGetSpr(sprId);
 
     if (spr == nullptr) {
-        return 0;
+        return false;
     }
 
     return client->SprMngr.SpriteHitTest(spr, pos);
