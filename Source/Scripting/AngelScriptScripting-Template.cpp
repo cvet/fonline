@@ -3060,20 +3060,6 @@ static void Any_Assign(any_t& self, const any_t& other)
 #endif
 }
 
-static auto Any_Equals(const any_t& self, const any_t& other) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    return self == other;
-
-#else
-    ignore_unused(self);
-    ignore_unused(other);
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
 template<typename T>
 static auto Any_Conv(const any_t& self) -> T
 {
@@ -3959,8 +3945,7 @@ void SCRIPT_BACKEND_CLASS::Init(BaseEngine* engine, ScriptSystem& script_sys, co
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opCmp(const any &in) const", SCRIPT_FUNC_THIS(Type_Cmp<any_t>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Type_Equals<any_t>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
