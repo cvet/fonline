@@ -195,6 +195,7 @@ struct ipos
     }
 
     [[nodiscard]] constexpr auto operator==(const ipos& other) const noexcept -> bool { return x == other.x && y == other.y; }
+    [[nodiscard]] constexpr auto operator<(const ipos& other) const noexcept -> bool { return std::tie(x, y) < std::tie(other.x, other.y); }
     [[nodiscard]] constexpr auto operator+(const ipos& other) const noexcept -> ipos { return {x + other.x, y + other.y}; }
     [[nodiscard]] constexpr auto operator-(const ipos& other) const noexcept -> ipos { return {x - other.x, y - other.y}; }
     [[nodiscard]] constexpr auto operator*(const ipos& other) const noexcept -> ipos { return {x * other.x, y * other.y}; }
@@ -276,6 +277,7 @@ struct isize
     }
 
     [[nodiscard]] constexpr auto operator==(const isize& other) const noexcept -> bool { return width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator<(const isize& other) const noexcept -> bool { return std::tie(width, height) < std::tie(other.width, other.height); }
     [[nodiscard]] constexpr auto operator+(const isize& other) const noexcept -> isize { return {width + other.width, height + other.height}; }
     [[nodiscard]] constexpr auto operator-(const isize& other) const noexcept -> isize { return {width - other.width, height - other.height}; }
     [[nodiscard]] constexpr auto operator*(const isize& other) const noexcept -> isize { return {width * other.width, height * other.height}; }
@@ -331,6 +333,7 @@ struct irect
     {
     }
     [[nodiscard]] constexpr auto operator==(const irect& other) const noexcept -> bool { return x == other.x && y == other.y && width == other.width && height == other.height; }
+    [[nodiscard]] constexpr auto operator<(const irect& other) const noexcept -> bool { return std::tie(x, y, width, height) < std::tie(other.x, other.y, other.width, other.height); }
     [[nodiscard]] auto pos() const noexcept -> ipos<T> { return ipos<T>(x, y); }
     [[nodiscard]] auto size() const noexcept -> isize<T> { return isize<T>(width, height); }
     [[nodiscard]] auto is_zero() const noexcept -> bool { return x == 0 && y == 0 && width == 0 && height == 0; }
@@ -422,6 +425,7 @@ struct fpos
     }
 
     [[nodiscard]] constexpr auto operator==(const fpos& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y); }
+    [[nodiscard]] constexpr auto operator<(const fpos& other) const noexcept -> bool { return std::tie(x, y) < std::tie(other.x, other.y); }
     [[nodiscard]] constexpr auto operator+(const fpos& other) const noexcept -> fpos { return {x + other.x, y + other.y}; }
     [[nodiscard]] constexpr auto operator-(const fpos& other) const noexcept -> fpos { return {x - other.x, y - other.y}; }
     [[nodiscard]] constexpr auto operator*(const fpos& other) const noexcept -> fpos { return {x * other.x, y * other.y}; }
@@ -514,6 +518,7 @@ struct fsize
     }
 
     [[nodiscard]] constexpr auto operator==(const fsize& other) const noexcept -> bool { return is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator<(const fsize& other) const noexcept -> bool { return std::tie(width, height) < std::tie(other.width, other.height); }
     [[nodiscard]] constexpr auto operator+(const fsize& other) const noexcept -> fsize { return {width + other.width, height + other.height}; }
     [[nodiscard]] constexpr auto operator-(const fsize& other) const noexcept -> fsize { return {width - other.width, height - other.height}; }
     [[nodiscard]] constexpr auto operator*(const fsize& other) const noexcept -> fsize { return {width * other.width, height * other.height}; }
@@ -581,6 +586,7 @@ struct frect
     {
     }
     [[nodiscard]] constexpr auto operator==(const frect& other) const noexcept -> bool { return is_float_equal(x, other.x) && is_float_equal(y, other.y) && is_float_equal(width, other.width) && is_float_equal(height, other.height); }
+    [[nodiscard]] constexpr auto operator<(const frect& other) const noexcept -> bool { return std::tie(x, y, width, height) < std::tie(other.x, other.y, other.width, other.height); }
     [[nodiscard]] auto pos() const noexcept -> fpos<T> { return fpos<T>(x, y); }
     [[nodiscard]] auto size() const noexcept -> fsize<T> { return fsize<T>(width, height); }
 

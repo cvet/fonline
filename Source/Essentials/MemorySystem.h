@@ -155,7 +155,7 @@ public:
             }
         }
 
-        return refcount_ptr<T>(typename refcount_ptr<T>::adopt_tag(), ptr);
+        return refcount_ptr<T>(refcount_ptr<T>::adopt, ptr);
     }
 
     template<typename T, typename... Args>
@@ -223,6 +223,7 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
 extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
 extern void MemFree(void* ptr) noexcept;
 extern void MemCopy(void* dest, const void* src, size_t size) noexcept;
+extern void MemMove(void* dest, const void* src, size_t size) noexcept;
 extern void MemFill(void* ptr, int32 value, size_t size) noexcept;
 extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool;
 

@@ -26,6 +26,7 @@ public:
 
 	// Compare equalness
 	bool operator==(const CScriptWeakRef &o) const;
+	bool operator!=(const CScriptWeakRef &o) const;
 
 	// Sets a new reference
 	CScriptWeakRef &Set(void *newRef);

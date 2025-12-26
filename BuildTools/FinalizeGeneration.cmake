@@ -141,7 +141,6 @@ include_directories("${FO_VORBIS_DIR}/lib")
 add_library(Vorbis STATIC EXCLUDE_FROM_ALL ${FO_VORBIS_SOURCE})
 target_link_libraries(Vorbis Ogg)
 list(APPEND FO_CLIENT_LIBS Vorbis)
-target_compile_definitions(Vorbis PRIVATE "_CRT_SECURE_NO_WARNINGS")
 DisableLibWarnings(Vorbis)
 
 # Theora
@@ -470,85 +469,47 @@ include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
-    # AngelScript
     StatusMessage("+ AngelScript")
-    set(FO_ANGELSCRIPT_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript")
 
-    # add_compile_definitions( $<$<CONFIG:Debug>:AS_DEBUG=1> )
-    # set( CMAKE_ASM_FLAGS "/gg5" CACHE STRING "Forced by FOnline" FORCE )
-    # set( CMAKE_ASM_FLAGS_DEBUG "/gg6" CACHE STRING "Forced by FOnline" FORCE )
-    # set( CMAKE_ASM_MASM_FLAGS "/gg1" CACHE STRING "Forced by FOnline" FORCE )
-    # set( CMAKE_ASM_MASM_FLAGS_DEBUG "/gg2" CACHE STRING "Forced by FOnline" FORCE )
-    # set( CMAKE_ASM_MASMFLAGS "/gg3" CACHE STRING "Forced by FOnline" FORCE )
-    # set( CMAKE_ASM_MASMFLAGS_DEBUG "/gg4" CACHE STRING "Forced by FOnline" FORCE )
-    add_subdirectory("${FO_ANGELSCRIPT_DIR}/sdk/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
-    include_directories("${FO_ANGELSCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGELSCRIPT_DIR}/sdk/add_on")
-    list(APPEND FO_COMMON_LIBS Angelscript)
-    DisableLibWarnings(Angelscript)
-
-    # target_compile_options( Angelscript PRIVATE "/wdA4018" )
-    # target_compile_options( Angelscript PRIVATE  )
-
-    # AngelScriptExt
-    StatusMessage("+ AngelScriptExt")
-    set(FO_ANGELSCRIPT_EXT_DIR "${FO_ENGINE_ROOT}/Source/Common/AngelScriptExt")
-    set(FO_ANGELSCRIPT_PREPROCESSOR_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/preprocessor")
+    # AngelScript core
     set(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
-    include_directories("${FO_ANGELSCRIPT_EXT_DIR}")
-    include_directories("${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper")
-    set(FO_ANGELSCRIPT_EXT_SOURCE
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptExtensions.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptExtensions.h"
+    set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
+    add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
+    target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
+    target_compile_definitions(AngelScriptCore PUBLIC WIP_16BYTE_ALIGN)
+    target_compile_definitions(AngelScriptCore PUBLIC $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
+    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include")
+    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
+    list(APPEND FO_COMMON_LIBS AngelScriptCore)
+    DisableLibWarnings(AngelScriptCore)
+
+    # AngelScript preprocessor
+    set(FO_ANGELSCRIPT_PREPROCESSOR_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/preprocessor")
+    add_library(AngelScriptPreprocessor STATIC EXCLUDE_FROM_ALL
+        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.h"
+        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.cpp")
+    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
+    list(APPEND FO_COMMON_LIBS AngelScriptPreprocessor)
+    DisableLibWarnings(AngelScriptPreprocessor)
+
+    # AngelScript engine specific
+    set(FO_ANGELSCRIPT_EXT_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    add_library(AngelScript STATIC EXCLUDE_FROM_ALL
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptArray.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptArray.h"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptDict.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptMath.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptMath.h"
         "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.cpp"
         "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptScriptDict.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptScriptDict.h"
-        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.cpp"
-        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring_utils.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/scriptarray.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/scriptarray.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/scriptdictionary.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/scriptdictionary.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfile.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfile.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfilesystem.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfilesystem.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/datetime.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/datetime.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/scriptmath.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/scriptmath.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/weakref.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/weakref.h"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/scripthelper.cpp"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/scripthelper.h")
-    add_library(AngelscriptExt STATIC EXCLUDE_FROM_ALL ${FO_ANGELSCRIPT_EXT_SOURCE})
-    target_link_libraries(AngelscriptExt Angelscript)
-    list(APPEND FO_COMMON_LIBS AngelscriptExt)
-    target_compile_definitions(AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS")
-    DisableLibWarnings(AngelscriptExt)
-
-    if(FO_WEB OR FO_MAC OR FO_IOS OR FO_ANDROID)
-        target_compile_definitions(Angelscript PRIVATE "AS_MAX_PORTABILITY")
-        target_compile_definitions(AngelscriptExt PRIVATE "AS_MAX_PORTABILITY")
-        add_compile_definitions(AS_MAX_PORTABILITY)
-    endif()
-
-    if(FO_WEB)
-        target_compile_definitions(Angelscript PRIVATE "WIP_16BYTE_ALIGN")
-        target_compile_definitions(AngelscriptExt PRIVATE "WIP_16BYTE_ALIGN")
-        add_compile_definitions(WIP_16BYTE_ALIGN)
-    endif()
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptString.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptString.h" 
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptWrappedCall.h"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptWrappedCall.cpp")
+    target_include_directories(AngelScript PUBLIC "${FO_ANGELSCRIPT_EXT_DIR}")
+    target_link_libraries(AngelScript AngelScriptCore AngelScriptPreprocessor)
+    list(APPEND FO_CORE_LIBS_GROUP AngelScript)
 endif()
 
 # Mono scripting
@@ -1109,7 +1070,7 @@ if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
+    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScript>)
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 endif()
 

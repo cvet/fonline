@@ -1305,10 +1305,14 @@ int asCContext::Execute()
 
 	// (FOnline Patch)
 	if (Ext2.BeginScriptCall)
-		Ext2.BeginScriptCall(this, m_currentFunction, (size_t)m_regs.programPointer);
+		Ext2.BeginScriptCall(this, m_currentFunction, (size_t)m_currentFunction);
 
 	while( m_status == asEXECUTION_ACTIVE )
 		ExecuteNext();
+
+	// (FOnline Patch)
+	if (Ext2.EndScriptCall)
+		Ext2.EndScriptCall(this);
 
 	if( m_lineCallback )
 	{

@@ -361,9 +361,9 @@ bool CScriptDictionary::IsEmpty() const
 	return false;
 }
 
-int CScriptDictionary::GetSize() const
+asUINT CScriptDictionary::GetSize() const
 {
-	return int(dict.size());
+	return asUINT(dict.size());
 }
 
 bool CScriptDictionary::Delete(const dictKey_t &key)
@@ -510,8 +510,8 @@ void ScriptDictionaryIsEmpty_Generic(asIScriptGeneric *gen)
 void ScriptDictionaryGetSize_Generic(asIScriptGeneric *gen)
 {
 	CScriptDictionary *dict = (CScriptDictionary*)gen->GetObject();
-	int ret = dict->GetSize();
-	*(int*)gen->GetAddressOfReturnLocation() = ret;
+	asUINT ret = dict->GetSize();
+	*(asUINT*)gen->GetAddressOfReturnLocation() = ret;
 }
 
 void ScriptDictionaryDelete_Generic(asIScriptGeneric *gen)
@@ -743,11 +743,9 @@ bool CScriptDictValue::Get(asIScriptEngine *engine, void *value, int typeId) con
 			}
 			return true;
 		}
-		else if (typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64)
+		else if( typeId == asTYPEID_INT64 )
 		{
-			if (m_typeId >= asTYPEID_INT8 && m_typeId <= asTYPEID_UINT64) // (FOnline Patch)
-				*(asINT64*)value = asINT64(m_valueInt);
-			else if (m_typeId == asTYPEID_DOUBLE)
+			if( m_typeId == asTYPEID_DOUBLE )
 				*(asINT64*)value = asINT64(m_valueFlt);
 			else if (m_typeId == asTYPEID_BOOL)
 			{
@@ -1042,7 +1040,7 @@ void RegisterScriptDictionary_Native(asIScriptEngine *engine)
 
 	r = engine->RegisterObjectMethod("dictionary", "bool exists(const string &in) const", asMETHOD(CScriptDictionary,Exists), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "bool isEmpty() const", asMETHOD(CScriptDictionary, IsEmpty), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("dictionary", "int getSize() const", asMETHOD(CScriptDictionary, GetSize), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("dictionary", "uint getSize() const", asMETHOD(CScriptDictionary, GetSize), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "bool delete(const string &in)", asMETHOD(CScriptDictionary,Delete), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "void deleteAll()", asMETHOD(CScriptDictionary,DeleteAll), asCALL_THISCALL); assert( r >= 0 );
 
@@ -1062,7 +1060,7 @@ void RegisterScriptDictionary_Native(asIScriptEngine *engine)
 	// Same as isEmpty
 	r = engine->RegisterObjectMethod("dictionary", "bool empty() const", asMETHOD(CScriptDictionary, IsEmpty), asCALL_THISCALL); assert( r >= 0 );
 	// Same as getSize
-	r = engine->RegisterObjectMethod("dictionary", "int size() const", asMETHOD(CScriptDictionary, GetSize), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("dictionary", "uint size() const", asMETHOD(CScriptDictionary, GetSize), asCALL_THISCALL); assert( r >= 0 );
 	// Same as delete
 	r = engine->RegisterObjectMethod("dictionary", "void erase(const string &in)", asMETHOD(CScriptDictionary,Delete), asCALL_THISCALL); assert( r >= 0 );
 	// Same as deleteAll
@@ -1117,7 +1115,7 @@ void RegisterScriptDictionary_Generic(asIScriptEngine *engine)
 
 	r = engine->RegisterObjectMethod("dictionary", "bool exists(const string &in) const", asFUNCTION(ScriptDictionaryExists_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "bool isEmpty() const", asFUNCTION(ScriptDictionaryIsEmpty_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("dictionary", "int getSize() const", asFUNCTION(ScriptDictionaryGetSize_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("dictionary", "uint getSize() const", asFUNCTION(ScriptDictionaryGetSize_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "bool delete(const string &in)", asFUNCTION(ScriptDictionaryDelete_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("dictionary", "void deleteAll()", asFUNCTION(ScriptDictionaryDeleteAll_Generic), asCALL_GENERIC); assert( r >= 0 );
 
@@ -1182,6 +1180,11 @@ CScriptDictionary::CIterator &CScriptDictionary::CIterator::operator*()
 bool CScriptDictionary::CIterator::operator==(const CIterator &other) const 
 { 
 	return m_it == other.m_it;
+}
+
+bool CScriptDictionary::CIterator::operator!=(const CIterator &other) const 
+{ 
+	return m_it != other.m_it; 
 }
 
 const dictKey_t &CScriptDictionary::CIterator::GetKey() const 

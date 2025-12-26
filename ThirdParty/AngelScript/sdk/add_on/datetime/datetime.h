@@ -25,12 +25,12 @@ public:
 	CDateTime &operator=(const CDateTime &other);
 
 	// Accessors
-	int getYear() const;
-	int getMonth() const;
-	int getDay() const;
-	int getHour() const;
-	int getMinute() const;
-	int getSecond() const;
+	asUINT getYear() const;
+	asUINT getMonth() const;
+	asUINT getDay() const;
+	asUINT getHour() const;
+	asUINT getMinute() const;
+	asUINT getSecond() const;
 
 protected:
 	std::chrono::system_clock::time_point tp;

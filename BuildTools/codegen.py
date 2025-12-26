@@ -1779,9 +1779,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         def metaTypeToASEngineType(t, ret=False):
             tt = t.split('.')
             if tt[0] == 'arr':
-                return 'CScriptArray*' if tt[-1] != 'ref' else 'CScriptArray*&'
+                return 'ScriptArray*' if tt[-1] != 'ref' else 'ScriptArray*&'
             elif tt[0] == 'dict':
-                return 'CScriptDict*' if tt[-1] != 'ref' else 'CScriptDict*&'
+                return 'ScriptDict*' if tt[-1] != 'ref' else 'ScriptDict*&'
             elif tt[0] in ['init', 'callback', 'predicate']:
                 return 'asIScriptFunction*'
             elif tt[0] == 'Entity':
@@ -2787,17 +2787,17 @@ def genApi(target):
                         'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*', 'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
                         'CritterView': 'ScriptCritter*', 'CritterHexView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
                         'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*',
-                        'string': 'std::string', 'Entity': 'ScriptEntity*'}
+                        'string': 'string', 'Entity': 'ScriptEntity*'}
                 return typeMap[t] if t in typeMap else t
             tt = t.split('.')
             if tt[0] == 'dict':
-                r = 'std::map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
+                r = 'map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
             elif tt[0] in refTypes:
                 return tt[0] + '*'
             else:
                 r = mapType(tt[0])
             if 'arr' in tt:
-                r = 'std::vector<' + r + '>'
+                r = 'vector<' + r + '>'
             if 'ref' in tt:
                 r += '&'
             return r

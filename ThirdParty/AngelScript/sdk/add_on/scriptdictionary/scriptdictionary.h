@@ -147,7 +147,7 @@ public:
 	bool IsEmpty() const;
 
 	// Returns the number of key/value pairs in the dictionary
-	int GetSize() const;
+	asUINT GetSize() const;
 
 	// Deletes the key
 	bool Delete(const dictKey_t &key);
@@ -169,6 +169,7 @@ public:
 		CIterator &operator*();
 
 		bool operator==(const CIterator &other) const;
+		bool operator!=(const CIterator &other) const;
 
 		// Accessors
 		const dictKey_t &GetKey() const;
