@@ -303,11 +303,17 @@ void MasterBaker::BakeAllInternal()
 
             const auto& pack_name = res_pack.Name;
             const auto& input_dir = res_pack.InputDir;
+            const auto& input_file = res_pack.InputFile;
 
             FileSystem input_files;
 
             for (const auto& dir : input_dir) {
                 input_files.AddDirSource(dir, res_pack.RecursiveInput);
+            }
+            for (const auto& path : input_file) {
+                const auto dir = strex(path).extract_dir().str();
+                const auto pack = strex(path).extract_file_name().erase_file_extension().str();
+                input_files.AddCustomSource(DataSource::MountPack(dir, pack, false));
             }
 
             const auto filtered_files = input_files.GetAllFiles();
@@ -539,6 +545,11 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
         for (const auto& dir : res_pack.InputDir) {
             res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
         }
+        for (const auto& path : res_pack.InputFile) {
+            const auto dir = strex(path).extract_dir().str();
+            const auto pack = strex(path).extract_file_name().erase_file_extension().str();
+            res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir, pack, false));
+        }
 
         res_entry.InputFiles = res_entry.InputDir.GetAllFiles();
     }
@@ -608,7 +619,6 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_tim
         const auto it = _outputFiles.find(path);
 
         if (it == _outputFiles.end()) {
-            BreakIntoDebugger();
             return false;
         }
 

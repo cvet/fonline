@@ -257,12 +257,12 @@ public:
     void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
 
-    auto ValidateForSave() const -> vector<string>;
     auto SaveToText() const -> string;
 
 private:
     void ProcessScroll(float32 dt);
     void ProcessZoom(float32 dt);
+    void RefreshMinZoom();
 
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);

@@ -315,6 +315,8 @@ void CritterHexView::RefreshView(bool no_smooth)
         else
 #endif
         {
+            ignore_unused(no_smooth);
+
             if (IsMoving()) {
                 if (Moving.Speed < numeric_cast<uint16>(_engine->Settings.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
