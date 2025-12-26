@@ -1544,6 +1544,7 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
             i += 2;
         }
         else if (flags[i] == "Max") {
+            // Todo: restore property Max modifier
             check_next_param();
 
             if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
@@ -1553,6 +1554,7 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
             i += 2;
         }
         else if (flags[i] == "Min") {
+            // Todo: restore property Min modifier
             check_next_param();
 
             if (!prop->IsBaseTypeInt() && !prop->IsBaseTypeFloat()) {
@@ -1562,7 +1564,7 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
             i += 2;
         }
         else if (flags[i] == "Quest") {
-            // Todo: restore quest variables
+            // Todo: remove property Quest modifier
             check_next_param();
             i += 2;
         }
