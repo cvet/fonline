@@ -32,6 +32,7 @@
 //
 
 #include "AngelScriptDict.h"
+#include "AngelScriptArray.h"
 #include "AngelScriptWrappedCall.h"
 
 FO_BEGIN_NAMESPACE();
@@ -89,7 +90,7 @@ auto ScriptDict::Create(AngelScript::asITypeInfo* ti, void* init_list) -> Script
     return SafeAlloc::MakeRefCounted<ScriptDict>(ti, init_list).release_ownership();
 }
 
-static auto CScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 sub_type_index, bool& dont_garbage_collect) -> bool
+static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 sub_type_index, bool& dont_garbage_collect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -157,11 +158,11 @@ static auto CScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 
     return true;
 }
 
-static auto CScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
+static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return CScriptDict_TemplateCallbackExt(ti, 0, dont_garbage_collect) && CScriptDict_TemplateCallbackExt(ti, 1, dont_garbage_collect);
+    return ScriptDict_TemplateCallbackExt(ti, 0, dont_garbage_collect) && ScriptDict_TemplateCallbackExt(ti, 1, dont_garbage_collect);
 }
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
@@ -574,6 +575,40 @@ auto ScriptDict::GetValue(int32 index) -> void*
     return it->second;
 }
 
+auto ScriptDict::GetKeys() const -> ScriptArray*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(0)->GetName());
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    auto* arr = ScriptArray::Create(arr_type);
+
+    arr->Reserve(GetSize());
+
+    for (const auto* key : _data | std::views::keys) {
+        arr->InsertLast(const_cast<void*>(key));
+    }
+
+    return arr;
+}
+
+auto ScriptDict::GetValues() const -> ScriptArray*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(1)->GetName());
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    auto* arr = ScriptArray::Create(arr_type);
+
+    arr->Reserve(GetSize());
+
+    for (const auto* value : _data | std::views::values) {
+        arr->InsertLast(const_cast<void*>(value));
+    }
+
+    return arr;
+}
+
 auto ScriptDict::Exists(void* key) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -970,14 +1005,14 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
     return false;
 }
 
-static auto CScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
+static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return ScriptDict::Create(ti);
 }
 
-static auto CScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
+static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1026,14 +1061,14 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine)
     int32 r = engine->RegisterObjectType("dict<class T1, class T2>", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_GC | AngelScript::asOBJ_TEMPLATE);
     FO_RUNTIME_ASSERT(r >= 0);
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", SCRIPT_FUNC(CScriptDict_TemplateCallback), SCRIPT_FUNC_CONV);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", SCRIPT_FUNC(ScriptDict_TemplateCallback), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", SCRIPT_FUNC(CScriptDict_Create), SCRIPT_FUNC_CONV);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", SCRIPT_FUNC(ScriptDict_Create), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC(ScriptDict_Factory), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", SCRIPT_FUNC(CScriptDict_CreateList), SCRIPT_FUNC_CONV);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", SCRIPT_FUNC(ScriptDict_CreateList), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
     r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(ScriptDict, AddRef), SCRIPT_METHOD_CONV);
@@ -1049,6 +1084,8 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", SCRIPT_METHOD(ScriptDict, Remove), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "int32 removeValues(const T1&in)", SCRIPT_METHOD(ScriptDict, RemoveValues), SCRIPT_METHOD_CONV);
+    FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", SCRIPT_METHOD(ScriptDict, GetSize), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", SCRIPT_METHOD(ScriptDict, Clear), SCRIPT_METHOD_CONV);
@@ -1060,6 +1097,10 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine)
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", SCRIPT_METHOD(ScriptDict, GetKey), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", SCRIPT_METHOD(ScriptDict, GetValue), SCRIPT_METHOD_CONV);
+    FO_RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T1[]@ getKeys() const", SCRIPT_METHOD(ScriptDict, GetKeys), SCRIPT_METHOD_CONV);
+    FO_RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2[]@ getValues() const", SCRIPT_METHOD(ScriptDict, GetValues), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", SCRIPT_METHOD(ScriptDict, Exists), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);

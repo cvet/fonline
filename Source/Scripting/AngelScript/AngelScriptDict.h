@@ -41,8 +41,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-FO_DECLARE_EXCEPTION(ScriptDictException);
-
+class ScriptArray;
 struct ScriptDictTypeData;
 
 class ScriptDict
@@ -80,6 +79,8 @@ public:
     auto GetDefault(void* key, void* def_val) -> void*;
     auto GetKey(int32 index) -> void*;
     auto GetValue(int32 index) -> void*;
+    auto GetKeys() const -> ScriptArray*;
+    auto GetValues() const -> ScriptArray*;
     auto Exists(void* key) const -> bool;
 
     void Set(void* key, void* value);

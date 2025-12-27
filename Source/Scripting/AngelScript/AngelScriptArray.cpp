@@ -292,10 +292,7 @@ void ScriptArray::SetValue(int32 index, void* value)
     FO_NO_STACK_TRACE_ENTRY();
 
     void* ptr = At(index);
-
-    if (ptr == nullptr) {
-        return;
-    }
+    FO_RUNTIME_ASSERT(ptr != nullptr);
 
     if ((_subTypeId & ~AngelScript::asTYPEID_MASK_SEQNBR) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
         _typeInfo->GetEngine()->AssignScriptObject(ptr, value, _typeInfo->GetSubType());
@@ -1296,21 +1293,21 @@ auto ScriptArray::GetFlag() const -> bool
     return _gcFlag;
 }
 
-static auto CScriptArray_InsertFirst(ScriptArray& arr, void* value) -> void
+static auto ScriptArray_InsertFirst(ScriptArray& arr, void* value) -> void
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     arr.InsertAt(0, value);
 }
 
-static auto CScriptArray_RemoveFirst(ScriptArray& arr) -> void
+static auto ScriptArray_RemoveFirst(ScriptArray& arr) -> void
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     arr.RemoveAt(0);
 }
 
-static auto CScriptArray_Grow(ScriptArray& arr, int32 count) -> void
+static auto ScriptArray_Grow(ScriptArray& arr, int32 count) -> void
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1321,7 +1318,7 @@ static auto CScriptArray_Grow(ScriptArray& arr, int32 count) -> void
     arr.Resize(arr.GetSize() + count);
 }
 
-static auto CScriptArray_Reduce(ScriptArray& arr, int32 count) -> void
+static auto ScriptArray_Reduce(ScriptArray& arr, int32 count) -> void
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1338,21 +1335,21 @@ static auto CScriptArray_Reduce(ScriptArray& arr, int32 count) -> void
     arr.Resize(size - count);
 }
 
-static auto CScriptArray_First(ScriptArray& arr) -> void*
+static auto ScriptArray_First(ScriptArray& arr) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return arr.At(0);
 }
 
-static auto CScriptArray_Last(ScriptArray& arr) -> void*
+static auto ScriptArray_Last(ScriptArray& arr) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return arr.At(arr.GetSize() - 1);
 }
 
-static void CScriptArray_Clear(ScriptArray& arr)
+static void ScriptArray_Clear(ScriptArray& arr)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1361,14 +1358,14 @@ static void CScriptArray_Clear(ScriptArray& arr)
     }
 }
 
-static auto CScriptArray_Exists(const ScriptArray& arr, void* value) -> bool
+static auto ScriptArray_Exists(const ScriptArray& arr, void* value) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return arr.Find(0, value) != -1;
 }
 
-static auto CScriptArray_Remove(ScriptArray& arr, void* value) -> bool
+static auto ScriptArray_Remove(ScriptArray& arr, void* value) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1382,7 +1379,7 @@ static auto CScriptArray_Remove(ScriptArray& arr, void* value) -> bool
     return false;
 }
 
-static auto CScriptArray_RemoveAll(ScriptArray& arr, void* value) -> int32
+static auto ScriptArray_RemoveAll(ScriptArray& arr, void* value) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1404,7 +1401,7 @@ static auto CScriptArray_RemoveAll(ScriptArray& arr, void* value) -> int32
     return count;
 }
 
-static auto CScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray* other) -> ScriptArray*
+static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray* other) -> ScriptArray*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1417,7 +1414,7 @@ static auto CScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray
     return clone;
 }
 
-static auto CScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
+static auto ScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1426,7 +1423,7 @@ static auto CScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
     return clone;
 }
 
-static void CScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
+static void ScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1437,7 +1434,7 @@ static void CScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
     arr = *other;
 }
 
-static void CScriptArray_InsertArrAt(ScriptArray& arr, int32 index, const ScriptArray* other)
+static void ScriptArray_InsertArrAt(ScriptArray& arr, int32 index, const ScriptArray* other)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1452,7 +1449,7 @@ static void CScriptArray_InsertArrAt(ScriptArray& arr, int32 index, const Script
     arr.InsertAt(index, *other);
 }
 
-static void CScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* other)
+static void ScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* other)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1463,7 +1460,7 @@ static void CScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* oth
     arr.InsertAt(0, *other);
 }
 
-static void CScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other)
+static void ScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1474,7 +1471,7 @@ static void CScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* othe
     arr.InsertAt(arr.GetSize(), *other);
 }
 
-static auto CScriptArray_Equals(ScriptArray& arr, const ScriptArray* other) -> bool
+static auto ScriptArray_Equals(ScriptArray& arr, const ScriptArray* other) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1503,9 +1500,8 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int&in, int length, const T &in value)", SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*, int32, void*), ScriptArray*), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", SCRIPT_FUNC(CScriptArray_Factory), SCRIPT_FUNC_CONV);
+    r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", SCRIPT_FUNC(ScriptArray_Factory), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-
     r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_LIST_FACTORY, "array<T>@ f(int&in type, int&in list) {repeat T}", SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*, void*), ScriptArray*), SCRIPT_FUNC_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
@@ -1556,9 +1552,8 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine)
     r = engine->RegisterObjectMethod("array<T>", "bool isEmpty() const", SCRIPT_METHOD(ScriptArray, IsEmpty), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
+    // Todo: remove script array 'length' property, keep only 'length()' method
     r = engine->RegisterObjectMethod("array<T>", "int get_length() const", SCRIPT_METHOD(ScriptArray, GetSize), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void set_length(int)", SCRIPT_METHOD_EXT(ScriptArray, Resize, (int32), void), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
     r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_GETREFCOUNT, "int f()", SCRIPT_METHOD(ScriptArray, GetRefCount), SCRIPT_METHOD_CONV);
@@ -1572,41 +1567,41 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine)
     r = engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_RELEASEREFS, "void f(int&in)", SCRIPT_METHOD(ScriptArray, ReleaseAllHandles), SCRIPT_METHOD_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
-    r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_InsertFirst), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS(ScriptArray_InsertFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void removeFirst()", SCRIPT_FUNC_THIS(CScriptArray_RemoveFirst), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void removeFirst()", SCRIPT_FUNC_THIS(ScriptArray_RemoveFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void grow(int)", SCRIPT_FUNC_THIS(CScriptArray_Grow), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void grow(int)", SCRIPT_FUNC_THIS(ScriptArray_Grow), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void reduce(int)", SCRIPT_FUNC_THIS(CScriptArray_Reduce), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void reduce(int)", SCRIPT_FUNC_THIS(ScriptArray_Reduce), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "T& first()", SCRIPT_FUNC_THIS(CScriptArray_First), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "T& first()", SCRIPT_FUNC_THIS(ScriptArray_First), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "const T& first() const", SCRIPT_FUNC_THIS(CScriptArray_First), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "const T& first() const", SCRIPT_FUNC_THIS(ScriptArray_First), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "T& last()", SCRIPT_FUNC_THIS(CScriptArray_Last), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "T& last()", SCRIPT_FUNC_THIS(ScriptArray_Last), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "const T& last() const", SCRIPT_FUNC_THIS(CScriptArray_Last), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "const T& last() const", SCRIPT_FUNC_THIS(ScriptArray_Last), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void clear()", SCRIPT_FUNC_THIS(CScriptArray_Clear), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void clear()", SCRIPT_FUNC_THIS(ScriptArray_Clear), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "bool exists(const T&in) const", SCRIPT_FUNC_THIS(CScriptArray_Exists), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "bool exists(const T&in) const", SCRIPT_FUNC_THIS(ScriptArray_Exists), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "bool remove(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_Remove), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "bool remove(const T&in)", SCRIPT_FUNC_THIS(ScriptArray_Remove), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "int removeAll(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_RemoveAll), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "int removeAll(const T&in)", SCRIPT_FUNC_THIS(ScriptArray_RemoveAll), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "array<T>@ clone() const", SCRIPT_FUNC_THIS(CScriptArray_Clone), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "array<T>@ clone() const", SCRIPT_FUNC_THIS(ScriptArray_Clone), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void set(const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_Set), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void set(const array<T>@+)", SCRIPT_FUNC_THIS(ScriptArray_Set), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void insertAt(int, const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrAt), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void insertAt(int, const array<T>@+)", SCRIPT_FUNC_THIS(ScriptArray_InsertArrAt), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrFirst), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void insertFirst(const array<T>@+)", SCRIPT_FUNC_THIS(ScriptArray_InsertArrFirst), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "void insertLast(const array<T>@+)", SCRIPT_FUNC_THIS(CScriptArray_InsertArrLast), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "void insertLast(const array<T>@+)", SCRIPT_FUNC_THIS(ScriptArray_InsertArrLast), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("array<T>", "bool equals(const array<T>@+) const", SCRIPT_FUNC_THIS(CScriptArray_Equals), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("array<T>", "bool equals(const array<T>@+) const", SCRIPT_FUNC_THIS(ScriptArray_Equals), SCRIPT_FUNC_THIS_CONV);
     FO_RUNTIME_ASSERT(r >= 0);
 
     r = engine->RegisterDefaultArrayType("array<T>");

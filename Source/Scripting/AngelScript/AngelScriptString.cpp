@@ -670,9 +670,11 @@ static auto ScriptString_TrimEnd(const string& str, const string& chars) -> stri
     FO_NO_STACK_TRACE_ENTRY();
 
     const size_t last = str.find_last_not_of(chars);
+
     if (last == string::npos) {
         return str;
     }
+
     return str.substr(0, last + 1);
 }
 
@@ -782,9 +784,7 @@ void RegisterAngelScriptString(AngelScript::asIScriptEngine* engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 r = 0;
-
-    r = engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>());
+    int32 r = engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>());
     FO_RUNTIME_ASSERT(r >= 0);
 
     r = engine->RegisterStringFactory("string", SCRIPT_FUNC(StringFactory), SCRIPT_FUNC_CONV);
