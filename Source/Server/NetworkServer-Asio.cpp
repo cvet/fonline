@@ -129,9 +129,6 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
     }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
-    }
 }
 
 void NetworkServerConnection_Asio::StartAsyncRead()
@@ -158,7 +155,7 @@ void NetworkServerConnection_Asio::NextAsyncRead()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto read_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+    const auto read_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) FO_DEFERRED {
         auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
         thiz_->AsyncReadComplete(error, bytes);
     };
@@ -199,7 +196,7 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) {
+        const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) FO_DEFERRED {
             auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
             thiz_->AsyncWriteComplete(error, bytes);
         };
@@ -257,9 +254,6 @@ void NetworkServer_Asio::Run()
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
-        }
     }
 }
 
@@ -268,7 +262,7 @@ void NetworkServer_Asio::AcceptNext()
     FO_STACK_TRACE_ENTRY();
 
     auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_context);
-    _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
+    _acceptor.async_accept(*socket, [this, socket](std::error_code error) FO_DEFERRED { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
 }
 
 void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket)

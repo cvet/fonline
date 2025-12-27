@@ -128,8 +128,8 @@ void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* from_ = static_cast<const uint8*>(from);
-    auto* to_ = static_cast<uint8*>(to);
+    const auto* from_ = cast_from_void<const uint8*>(from);
+    auto* to_ = cast_from_void<uint8*>(to);
 
     for (size_t i = 0; i < len; i++, to_++, from_++) {
         *to_ = *from_ ^ crypt_key;
@@ -149,7 +149,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
     _bufEndPos += len;
 }
 
-void NetOutBuffer::Push(span<const uint8> buf)
+void NetOutBuffer::Push(const_span<uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -264,7 +264,7 @@ void NetInBuffer::ResetBuf() noexcept
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(span<const uint8> buf)
+void NetInBuffer::AddData(const_span<uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

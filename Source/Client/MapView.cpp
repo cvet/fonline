@@ -52,7 +52,7 @@ void SpritePattern::Finish()
     }
 }
 
-MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
+MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef())
@@ -106,7 +106,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     InitView();
     RecacheScrollBlocks();
 
-    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
+    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 MapView::~MapView()
@@ -271,7 +271,7 @@ void MapView::LoadStaticData()
     // Read static items
     {
         _mapLoading = true;
-        auto reset_loading = ScopeCallback([this]() noexcept { _mapLoading = false; });
+        auto reset_loading = scope_exit([this]() noexcept { _mapLoading = false; });
 
         const auto items_count = reader.Read<uint32>();
 

@@ -96,7 +96,7 @@ public:
 	asCArray<asIScriptContext *> activeContexts;
 	asCString string;
 
-protected:
+//protected: // (FOnline Patch)
 	friend class asCThreadManager;
 
 	asCThreadLocalData();

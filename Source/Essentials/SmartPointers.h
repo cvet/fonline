@@ -45,6 +45,8 @@ class raw_ptr
     friend class raw_ptr;
 
 public:
+    using element_type = T;
+
     FO_FORCE_INLINE constexpr raw_ptr() noexcept :
         _ptr(nullptr)
     {
@@ -236,6 +238,8 @@ class unique_ptr
     friend class unique_ptr;
 
 public:
+    using element_type = T;
+
     FO_FORCE_INLINE constexpr unique_ptr() noexcept :
         _ptr(nullptr)
     {
@@ -342,6 +346,8 @@ class refcount_ptr final
     friend class refcount_ptr;
 
 public:
+    using element_type = T;
+
     struct adopt_tag
     {
     } static constexpr adopt {};
@@ -451,6 +457,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
@@ -664,7 +672,7 @@ FO_BEGIN_NAMESPACE();
 
 // Template helpers
 template<typename T>
-concept is_refcounted = requires(T t) {
+concept refcountable = requires(T t) {
     t.AddRef();
     t.Release();
 };

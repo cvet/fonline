@@ -72,7 +72,7 @@ public:
 
 protected:
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(span<const uint8> buf) -> size_t override;
+    auto SendDataImpl(const_span<uint8> buf) -> size_t override;
     auto ReceiveDataImpl(vector<uint8>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
@@ -188,7 +188,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             throw NetworkClientException("Can't connect to proxy server", GetLastSocketError());
         }
 
-        auto send_recv = [this](span<const uint8> buf) -> vector<uint8> {
+        auto send_recv = [this](const_span<uint8> buf) -> vector<uint8> FO_DEFERRED {
             if (!SendData(buf)) {
                 throw NetworkClientException("Net output error");
             }
@@ -389,7 +389,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 }
 
-auto NetworkClientConnection_Sockets::SendDataImpl(span<const uint8> buf) -> size_t
+auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -523,7 +523,7 @@ auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
     wchar_t* ws = nullptr;
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
         nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
-    auto free_ws = ScopeCallback([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
+    auto free_ws = scope_exit([ws]() noexcept { safe_call([ws] { ::LocalFree(ws); }); });
     const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);

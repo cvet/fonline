@@ -46,6 +46,7 @@ FO_DECLARE_EXCEPTION(ImageBakerException);
 class ImageBaker final : public BaseBaker
 {
 public:
+    static constexpr string_view_nt NAME = "Image";
     static constexpr int32 MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
@@ -79,12 +80,15 @@ public:
 
     using LoadFunc = function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
 
-    explicit ImageBaker(BakerData& data);
+    explicit ImageBaker(shared_ptr<BakingContext> ctx);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = delete;
     auto operator=(const ImageBaker&) = delete;
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
+
+    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
+    [[nodiscard]] auto GetOrder() const -> int32 override { return 4; }
 
     void AddLoader(const LoadFunc& loader, const vector<string>& file_extensions);
     void BakeFiles(const FileCollection& files, string_view target_path) const override;

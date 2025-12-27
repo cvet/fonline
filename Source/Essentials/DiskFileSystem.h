@@ -64,7 +64,7 @@ public:
     auto Read(void* buf, size_t len) -> bool;
     auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
-    auto Write(span<const uint8> data) -> bool;
+    auto Write(const_span<uint8> data) -> bool;
     auto SetReadPos(int32 offset, DiskFileSeek origin) -> bool;
 
 private:
@@ -86,7 +86,7 @@ public:
     static auto OpenFile(string_view path, bool write, bool write_through) -> DiskFile;
     static auto ReadFile(string_view path) -> optional<string>;
     static auto WriteFile(string_view path, string_view content) -> bool;
-    static auto WriteFile(string_view path, span<const uint8> content) -> bool;
+    static auto WriteFile(string_view path, const_span<uint8> content) -> bool;
     static auto GetWriteTime(string_view path) -> uint64;
     static auto IsExists(string_view path) -> bool;
     static auto IsDir(string_view path) -> bool;
@@ -97,7 +97,7 @@ public:
     static auto MakeDirTree(string_view dir) -> bool;
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view dir, bool recursive, FileVisitor visitor);
-    static auto CompareFileContent(string_view path, span<const uint8> buf) -> bool;
+    static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
     static auto TouchFile(string_view path) -> bool;
 };
 

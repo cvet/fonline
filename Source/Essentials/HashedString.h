@@ -70,6 +70,7 @@ struct hstring
     [[nodiscard]] constexpr auto as_int32() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
     [[nodiscard]] constexpr auto as_uint32() const noexcept -> uint32 { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
+    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
 
 private:
     static entry _zeroEntry;
@@ -99,10 +100,10 @@ FO_DECLARE_EXCEPTION(HashCollisionException);
 class HashResolver
 {
 public:
-    virtual ~HashResolver() = default;
     [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring = 0;
+    virtual ~HashResolver() = default;
 };
 
 class HashStorage : public HashResolver

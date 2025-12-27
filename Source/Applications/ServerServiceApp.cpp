@@ -46,7 +46,7 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    refcount_ptr<FOServer> Server {};
+    refcount_ptr<ServerEngine> Server {};
     std::thread ServerThread {};
     uint32 LastState {};
     uint32 CheckPoint {};
@@ -67,10 +67,9 @@ static void ServerEntry()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        Data->Server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings);
-
+        Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
         App->WaitForRequestedQuit();
-
+        Data->Server->Shutdown();
         Data->Server.reset();
     }
     catch (const std::exception& ex) {

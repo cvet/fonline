@@ -53,7 +53,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props = nullptr) noexcept;
+    Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -90,7 +90,7 @@ public:
     void Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
-    void Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param);
+    void Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
     void Send_AddCustomEntity(CustomEntity* entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);

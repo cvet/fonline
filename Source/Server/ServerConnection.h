@@ -53,8 +53,8 @@ public:
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor() noexcept(false);
-        FO_FORCE_INLINE auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
-        FO_FORCE_INLINE auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
+        auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
+        auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
         raw_ptr<ServerConnection> _owner;
@@ -73,8 +73,8 @@ public:
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor();
-        FO_FORCE_INLINE auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
-        FO_FORCE_INLINE auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
+        auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
+        auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock();
         void Unlock() noexcept;
 
@@ -113,8 +113,8 @@ public:
 
 private:
     void StartAsyncSend();
-    auto AsyncSendData() -> span<const uint8>;
-    void AsyncReceiveData(span<const uint8> buf);
+    auto AsyncSendData() -> const_span<uint8>;
+    void AsyncReceiveData(const_span<uint8> buf);
 
     raw_ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;

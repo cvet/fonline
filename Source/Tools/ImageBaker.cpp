@@ -100,8 +100,8 @@ alignas(ucolor) static uint8 FoPalette[] = {
 static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
-ImageBaker::ImageBaker(BakerData& data) :
-    BaseBaker(data)
+ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -144,7 +144,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 if (file_ext != ext) {
                     continue;
                 }
-                if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+                if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                     continue;
                 }
 
@@ -164,7 +164,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         if (!file) {
             return;
         }
-        if (_bakeChecker && !_bakeChecker(target_path, file.GetWriteTime())) {
+        if (_context->BakeChecker && !_context->BakeChecker(target_path, file.GetWriteTime())) {
             return;
         }
 
@@ -174,7 +174,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     vector<std::future<void>> file_bakings;
 
     for (auto& file_to_bake : files_to_bake) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
             const auto& path = file_to_bake.first.GetPath();
             const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
             BakeCollection(path, collection);
@@ -190,9 +190,6 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         catch (const std::exception& ex) {
             WriteLog("Image baking error: {}", ex.what());
             errors++;
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -242,10 +239,10 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<uint8>(check_number);
 
     if (!collection.NewName.empty()) {
-        _writeData(collection.NewName, data);
+        _context->WriteData(collection.NewName, data);
     }
     else {
-        _writeData(fname, data);
+        _context->WriteData(fname, data);
     }
 }
 
@@ -2280,14 +2277,14 @@ static auto PngLoad(const uint8* data, int32& result_width, int32& result_height
         {
             static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
             {
-                auto** io_ptr = static_cast<uint8**>(png_get_io_ptr(png_ptr));
+                auto** io_ptr = cast_from_void<uint8**>(png_get_io_ptr(png_ptr));
                 MemCopy(png_data, *io_ptr, length);
                 *io_ptr += length;
             }
         };
 
         // Get info
-        png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
+        png_set_read_fn(png_ptr, cast_to_void(&data), &PngReader::Read);
         png_read_info(png_ptr, info_ptr);
 
         png_uint_32 width = 0;

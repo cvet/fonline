@@ -47,7 +47,7 @@ class CritterView : public ClientEntity, public EntityWithProto, public CritterP
 {
 public:
     CritterView() = delete;
-    CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
+    CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;

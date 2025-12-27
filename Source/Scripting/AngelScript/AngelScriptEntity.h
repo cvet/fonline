@@ -31,6 +31,20 @@
 // SOFTWARE.
 //
 
-// Based on AngelScript add-on autowrapper
+#pragma once
 
-#include "AngelScriptWrappedCall.h"
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
+#include "EngineBase.h"
+
+#include <angelscript.h>
+
+FO_BEGIN_NAMESPACE();
+
+void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine);
+
+FO_END_NAMESPACE();
+
+#endif

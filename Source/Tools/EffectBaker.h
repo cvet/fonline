@@ -50,12 +50,17 @@ FO_DECLARE_EXCEPTION(EffectBakerException);
 class EffectBaker final : public BaseBaker
 {
 public:
-    explicit EffectBaker(BakerData& data);
+    static constexpr string_view_nt NAME = "Effect";
+
+    explicit EffectBaker(shared_ptr<BakingContext> ctx);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = delete;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
+
+    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
+    [[nodiscard]] auto GetOrder() const -> int32 override { return 4; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 

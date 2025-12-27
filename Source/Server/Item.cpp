@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
+Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
@@ -105,7 +105,7 @@ auto Item::HasInnerItems() const noexcept -> bool
     return _innerItems && !_innerItems->empty();
 }
 
-auto Item::GetAllInnerItems() -> const vector<Item*>&
+auto Item::GetAllInnerItems() -> span<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 

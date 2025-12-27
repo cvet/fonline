@@ -311,7 +311,7 @@ void TextPack::Clear()
     _strData.clear();
 }
 
-void TextPack::FixPacks(span<const string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
+void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -444,7 +444,7 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
         const auto text_file = File::Load(text_file_header);
         const auto file_name = text_file.GetNameNoExt();
 
-        const auto name_triplet = strex(file_name).split('.');
+        const auto name_triplet = strvex(file_name).split('.');
         FO_RUNTIME_ASSERT(name_triplet.size() == 3);
         const auto& pack_name_str = name_triplet[1];
         const auto& lang_name = name_triplet[2];

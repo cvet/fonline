@@ -119,9 +119,9 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto send = [this]() -> span<const uint8> { return AsyncSendData(); };
-    auto receive = [this](span<const uint8> buf) { AsyncReceiveData(buf); };
-    auto disconnect = [this]() { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
+    auto send = [this]() FO_DEFERRED -> const_span<uint8> { return AsyncSendData(); };
+    auto receive = [this](const_span<uint8> buf) FO_DEFERRED { AsyncReceiveData(buf); };
+    auto disconnect = [this]() FO_DEFERRED { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
@@ -169,7 +169,7 @@ void ServerConnection::StartAsyncSend()
     _netConnection->Dispatch();
 }
 
-auto ServerConnection::AsyncSendData() -> span<const uint8>
+auto ServerConnection::AsyncSendData() -> const_span<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -194,7 +194,7 @@ auto ServerConnection::AsyncSendData() -> span<const uint8>
     return _sendBuf;
 }
 
-void ServerConnection::AsyncReceiveData(span<const uint8> buf)
+void ServerConnection::AsyncReceiveData(const_span<uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

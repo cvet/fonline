@@ -46,7 +46,7 @@ auto Compressor::CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> 
     return initial_size * 110 / 100 + 12;
 }
 
-auto Compressor::Compress(span<const uint8> data) -> vector<uint8>
+auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -63,7 +63,7 @@ auto Compressor::Compress(span<const uint8> data) -> vector<uint8>
     return buf;
 }
 
-auto Compressor::Decompress(span<const uint8> data, size_t mul_approx) -> vector<uint8>
+auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -105,7 +105,7 @@ StreamCompressor::~StreamCompressor()
     Reset();
 }
 
-void StreamCompressor::Compress(span<const uint8> buf, vector<uint8>& result)
+void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -169,7 +169,7 @@ StreamDecompressor::~StreamDecompressor()
     Reset();
 }
 
-void StreamDecompressor::Decompress(span<const uint8> buf, vector<uint8>& result)
+void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result)
 {
     FO_STACK_TRACE_ENTRY();
 

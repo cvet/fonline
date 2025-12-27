@@ -214,8 +214,8 @@ struct BakerAnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(BakerData& data) :
-    BaseBaker(data)
+ModelBaker::ModelBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -239,7 +239,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
             if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
                 continue;
             }
-            if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+            if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                 continue;
             }
 
@@ -258,7 +258,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
         if (!file) {
             return;
         }
-        if (_bakeChecker && !_bakeChecker(file.GetPath(), file.GetWriteTime())) {
+        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), file.GetWriteTime())) {
             return;
         }
 
@@ -273,13 +273,13 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
     vector<std::future<void>> file_bakings;
 
     for (auto& file_ : filtered_files) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)] {
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)]() FO_DEFERRED {
             if (strex(file.GetPath()).get_file_extension() == "fo3d") {
-                _writeData(file.GetPath(), file.GetData());
+                _context->WriteData(file.GetPath(), file.GetData());
             }
             else {
                 auto data = BakeFbxFile(file.GetPath(), file);
-                _writeData(file.GetPath(), data);
+                _context->WriteData(file.GetPath(), data);
             }
         }));
     }
@@ -293,9 +293,6 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
         catch (const std::exception& ex) {
             WriteLog("Model baking error: {}", ex.what());
             errors++;
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -332,7 +329,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) const -> vecto
         throw ModelBakerException("Unable to load FBX", fbx_error.description.data);
     }
 
-    auto fbx_scene_cleanup = ScopeCallback([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });
+    auto fbx_scene_cleanup = scope_exit([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });
 
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
@@ -543,7 +540,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         ufbx_baked_anim* fbx_baked_anim = ufbx_bake_anim(fbx_scene, fbx_anim, &fbx_bake_opts, &fbx_error);
         FO_RUNTIME_ASSERT(fbx_baked_anim);
 
-        auto fbx_baked_anim_cleanup = ScopeCallback([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
+        auto fbx_baked_anim_cleanup = scope_exit([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
 
         auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;

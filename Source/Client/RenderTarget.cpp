@@ -45,7 +45,7 @@ RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* wi
 
     FO_RUNTIME_ASSERT(_flush);
 
-    _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
+    _eventUnsubscriber += window->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&

@@ -207,7 +207,6 @@ FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
 FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
-FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
 FIXED_SETTING(int32, ZipCompressLevel, 1); // Zip deflate level (0-9)
 SETTING_GROUP_END();
 
@@ -298,6 +297,7 @@ SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual BakingSettings, vi
 FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start
+FIXED_SETTING(int32, MaxServerLogLines, 1000); // Maximum server log lines in UI
 FIXED_SETTING(int32, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
 FIXED_SETTING(int32, LoopsPerSecondCap, 1000); // Loops per second cap
 FIXED_SETTING(int32, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds

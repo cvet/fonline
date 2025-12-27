@@ -79,8 +79,8 @@ namespace Preprocessor
     LineNumberTranslator* RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
     const std::string&    ResolveOriginalFile( Context* ctx, unsigned int line_number );
     unsigned int          ResolveOriginalLine( Context* ctx, unsigned int line_number );
-    const std::string&    ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt );
-    unsigned int          ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt );
+    const std::string&    ResolveOriginalFile( unsigned int line_number, const LineNumberTranslator* lnt );
+    unsigned int          ResolveOriginalLine( unsigned int line_number, const LineNumberTranslator* lnt );
 
     /************************************************************************/
     /* Streams                                                              */

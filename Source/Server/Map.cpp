@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE();
 
-Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props) noexcept :
+Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
@@ -619,7 +619,7 @@ auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
             const auto& field = _hexField->GetCellForReading(next_hex);
 
             if (!field.Items.empty()) {
-                auto& field2 = _hexField->GetCellForWriting(hex);
+                auto& field2 = _hexField->GetCellForWriting(next_hex);
 
                 for (auto& item : field2.Items) {
                     vec_safe_add_unique_value(items, item.get());

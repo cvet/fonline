@@ -66,10 +66,8 @@ extern auto GetThisThreadName() noexcept -> const string&
     FO_STACK_TRACE_ENTRY();
 
     if (ThreadName.empty()) {
-        static size_t thread_counter = 0;
-        thread_local size_t thread_num = ++thread_counter;
-
-        ThreadName = strex(strex::safe_format, "{}", thread_num);
+        static std::atomic_int32_t thread_counter = 0;
+        ThreadName = strex(strex::safe_format, "{}", ++thread_counter);
     }
 
     return ThreadName;

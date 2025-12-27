@@ -85,7 +85,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     _streamingPortion = 0x10000; // 64kb
 #endif
 
-    App->Audio.SetSource([this](uint8 silence, span<uint8> output) { ProcessSounds(silence, output); });
+    App->Audio.SetSource([this](uint8 silence, span<uint8> output) FO_DEFERRED { ProcessSounds(silence, output); });
     _isActive = true;
 }
 
@@ -393,7 +393,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     ov_callbacks callbacks;
 
     callbacks.read_func = [](void* ptr, size_t size, size_t count, void* datasource) -> size_t {
-        auto* file_context = static_cast<OggFileContext*>(datasource);
+        auto* file_context = cast_from_void<OggFileContext*>(datasource);
         const auto bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
@@ -404,7 +404,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32 whence) -> int32 {
-        auto* file_context = static_cast<OggFileContext*>(datasource);
+        auto* file_context = cast_from_void<OggFileContext*>(datasource);
 
         switch (whence) {
         case SEEK_SET:
@@ -429,23 +429,23 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     };
 
     callbacks.close_func = [](void* datasource) -> int32 {
-        const auto* file_context = static_cast<OggFileContext*>(datasource);
+        const auto* file_context = cast_from_void<OggFileContext*>(datasource);
         delete file_context;
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        const auto* file_context = static_cast<OggFileContext*>(datasource);
+        const auto* file_context = cast_from_void<OggFileContext*>(datasource);
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) {
+    sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) FO_DEFERRED {
         ov_clear(vf);
         delete vf;
     });
 
     auto file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
-    const auto error = ov_open_callbacks(file_context.release(), sound->OggStream.get(), nullptr, 0, callbacks);
+    const auto error = ov_open_callbacks(cast_to_void(file_context.release()), sound->OggStream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);

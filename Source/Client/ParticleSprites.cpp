@@ -121,7 +121,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSett
     FO_STACK_TRACE_ENTRY();
 
     _particleMngr = SafeAlloc::MakeUnique<ParticleManager>(settings, effect_mngr, spr_mngr.GetResources(), game_time, //
-        [this, &hash_resolver](string_view path) { return LoadTexture(hash_resolver.ToHashedString(path)); });
+        [this, &hash_resolver](string_view path) FO_DEFERRED { return LoadTexture(hash_resolver.ToHashedString(path)); });
 }
 
 auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>

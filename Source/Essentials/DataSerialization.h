@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(DataReadingException);
 class DataReader
 {
 public:
-    explicit DataReader(span<const uint8> buf) :
+    explicit DataReader(const_span<uint8> buf) :
         _dataBuf {buf}
     {
     }
@@ -97,7 +97,67 @@ public:
     }
 
 private:
-    span<const uint8> _dataBuf;
+    const_span<uint8> _dataBuf;
+    size_t _readPos {};
+};
+
+class MutableDataReader
+{
+public:
+    explicit MutableDataReader(span<uint8> buf) :
+        _dataBuf {buf}
+    {
+    }
+
+    template<typename T>
+        requires(std::is_standard_layout_v<T>)
+    auto Read() -> T
+    {
+        if (_readPos + sizeof(T) > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        T data = *reinterpret_cast<const T*>(_dataBuf.data() + _readPos);
+        _readPos += sizeof(T);
+        return data;
+    }
+
+    template<typename T>
+    auto ReadPtr(size_t size) -> T*
+    {
+        if (_readPos + size > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        if (size != 0) {
+            T* ptr = reinterpret_cast<T*>(_dataBuf.data() + _readPos);
+            _readPos += size;
+            return ptr;
+        }
+
+        return nullptr;
+    }
+
+    template<typename T>
+    void ReadPtr(T* ptr, size_t size)
+    {
+        if (_readPos + size > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
+        MemCopy(ptr, _dataBuf.data() + _readPos, size);
+        _readPos += size;
+    }
+
+    void VerifyEnd() const
+    {
+        if (_readPos != _dataBuf.size()) {
+            throw DataReadingException("Not all data read");
+        }
+    }
+
+private:
+    span<uint8> _dataBuf;
     size_t _readPos {};
 };
 

@@ -56,23 +56,30 @@ int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
 
-        refcount_ptr<FOServer> server;
-        vector<refcount_ptr<FOClient>> clients;
+        refcount_ptr<ServerEngine> server;
+        vector<refcount_ptr<ClientEngine>> clients;
         bool auto_start_triggered = false;
         bool hide_controls = false;
 
-        list<vector<string>> log_buffer;
+        list<pair<vector<string>, StackTraceData>> log_buffer;
         std::mutex log_buffer_locker;
 
-        SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
-            if (auto lines = strex(str).split('\n'); !lines.empty()) {
-                auto locker = std::unique_lock {log_buffer_locker};
-                log_buffer.emplace_back(std::move(lines));
+        SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) FO_DEFERRED {
+            auto locker = std::unique_lock {log_buffer_locker};
+
+            auto lines = strex(str).split('\n');
+            log_buffer.emplace_back(std::move(lines), GetStackTrace());
+
+            if (log_buffer.size() > numeric_cast<size_t>(App->Settings.MaxServerLogLines)) {
+                log_buffer.pop_front();
             }
         });
 
-        const auto start_server = [&server] { server = SafeAlloc::MakeRefCounted<FOServer>(App->Settings); };
-        const auto stop_server = [&server] { server.reset(); };
+        const auto start_server = [&server] { server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings)); };
+        const auto stop_server = [&server] {
+            server->Shutdown();
+            server.reset();
+        };
 
         if (!App->Settings.NoStart) {
             WriteLog("Auto start server");
@@ -122,7 +129,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         try {
-                            auto client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow);
+                            auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
                             clients.emplace_back(std::move(client));
                             hide_controls = true;
                         }
@@ -140,7 +147,7 @@ int main(int argc, char** argv) // Handled by SDL
                         {
                             auto locker = std::unique_lock {log_buffer_locker};
 
-                            for (const auto& lines : log_buffer) {
+                            for (const auto& lines : log_buffer | std::views::keys) {
                                 for (const auto& line : lines) {
                                     log_lines += line + '\n';
                                 }
@@ -190,10 +197,13 @@ int main(int argc, char** argv) // Handled by SDL
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
                     auto locker = std::unique_lock {log_buffer_locker};
 
-                    for (const auto& lines : log_buffer) {
-                        if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                    for (const auto& [lines, st] : log_buffer) {
+                        if (ImGui::TreeNodeEx(lines.front().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
                             for (size_t i = 1; i < lines.size(); i++) {
                                 ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
+                            }
+                            for (const auto& st_line : strex(FormatStackTrace(st)).split('\n')) {
+                                ImGui::TextUnformatted(st_line.c_str(), st_line.c_str() + st_line.size());
                             }
 
                             ImGui::TreePop();
@@ -244,7 +254,9 @@ int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->IsQuitRequested()) {
-                clients.clear();
+                for (auto& client : std::exchange(clients, {})) {
+                    client->Shutdown();
+                }
 
                 if (server) {
                     stop_server();
@@ -254,15 +266,16 @@ int main(int argc, char** argv) // Handled by SDL
             }
         }
 
-        clients.clear();
-        server.reset();
-
+        FO_RUNTIME_ASSERT(!server);
+        FO_RUNTIME_ASSERT(clients.empty());
         ExitApp(true);
     }
     catch (const std::exception& ex) {
+        SetLogCallback("", nullptr);
         ReportExceptionAndExit(ex);
     }
     catch (...) {
+        SetLogCallback("", nullptr);
         FO_UNKNOWN_EXCEPTION();
     }
 }

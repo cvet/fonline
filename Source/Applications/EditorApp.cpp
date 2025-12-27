@@ -36,7 +36,6 @@
 #include "Application.h"
 #include "Editor.h"
 #include "Settings.h"
-#include "Version-Include.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"

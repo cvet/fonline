@@ -50,7 +50,7 @@ FO_BEGIN_NAMESPACE();
 
 FO_DECLARE_EXCEPTION(MapViewLoadException);
 
-class FOClient;
+class ClientEngine;
 class ItemHexView;
 class CritterHexView;
 
@@ -140,7 +140,7 @@ public:
         vector<uint16> ControlSteps {};
     };
 
-    MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
+    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -205,7 +205,7 @@ public:
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
     auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
-    auto GetCritters() const -> span<const refcount_ptr<CritterHexView>> { return _critters; }
+    auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
@@ -224,9 +224,9 @@ public:
     auto GetItemOnHex(mpos hex) -> ItemHexView*;
     auto GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*;
     auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
-    auto GetItems() const -> span<const refcount_ptr<ItemHexView>> { return _items; }
+    auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
     auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
-    auto GetItemsOnHex(mpos hex) const -> span<const raw_ptr<ItemHexView>>;
+    auto GetItemsOnHex(mpos hex) const -> const_span<raw_ptr<ItemHexView>>;
     void RefreshItem(ItemHexView* item, bool deferred = false);
     void DefferedRefreshItems();
     void MoveItem(ItemHexView* item, mpos hex);

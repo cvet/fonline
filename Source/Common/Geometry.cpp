@@ -781,7 +781,7 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
     return hexes;
 }
 
-void GeometryHelper::ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
+void GeometryHelper::ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 

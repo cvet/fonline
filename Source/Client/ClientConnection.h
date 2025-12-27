@@ -80,8 +80,8 @@ public:
     void Process();
     void Disconnect();
 
-    NetInBuffer& InBuf {_netIn};
-    NetOutBuffer& OutBuf {_netOut};
+    raw_ptr<NetInBuffer> InBuf {&_netIn};
+    raw_ptr<NetOutBuffer> OutBuf {&_netOut};
 
 private:
     void ProcessConnection();

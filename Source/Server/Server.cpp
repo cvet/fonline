@@ -35,20 +35,15 @@
 #include "AnyData.h"
 #include "Application.h"
 #include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE();
 
-extern void Server_RegisterData(EngineData*);
-extern void InitServerEngine(FOServer*);
+extern void InitServerEngine(ServerEngine*);
 
-#if FO_ANGELSCRIPT_SCRIPTING
-extern void Init_AngelScript_ServerScriptSystem(BaseEngine*);
-#endif
-
-static auto GetServerResources(GlobalSettings& settings) -> FileSystem
+auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -57,8 +52,8 @@ static auto GetServerResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-FOServer::FOServer(GlobalSettings& settings) :
-    BaseEngine(settings, GetServerResources(settings), PropertiesRelationType::ServerRelative, [this] { Server_RegisterData(this); }),
+ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
+    BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -68,7 +63,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     WriteLog("Start server");
 
-    _starter.SetExceptionHandler([this](const std::exception& ex) {
+    _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
         ignore_unused(ex);
 
         _startingError = true;
@@ -78,14 +73,14 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Health file
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
             const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extract_file_name().erase_file_extension().str() : FO_DEV_NAME);
 
-            const auto write_health_file = [health_file_name](string_view text) {
+            const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
                 if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
                     return health_file.Write(text);
                 }
@@ -95,11 +90,11 @@ FOServer::FOServer(GlobalSettings& settings) :
             };
 
             if (write_health_file("Starting...")) {
-                _mainWorker.AddJob([this, write_health_file] {
+                _mainWorker.AddJob([this, write_health_file]() FO_DEFERRED {
                     FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
 
                     if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file, &settings_ = Settings] {
+                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file, &settings_ = Settings]() FO_DEFERRED {
                             FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
 
                             string buf;
@@ -124,41 +119,40 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Script system
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
 
         WriteLog("Initialize script system");
 
-        ScriptSys.MapEngineEntityType<Player>(Player::ENTITY_TYPE_NAME);
-        ScriptSys.MapEngineEntityType<Item>(Item::ENTITY_TYPE_NAME);
-        ScriptSys.MapEngineEntityType<Critter>(Critter::ENTITY_TYPE_NAME);
-        ScriptSys.MapEngineEntityType<Map>(Map::ENTITY_TYPE_NAME);
-        ScriptSys.MapEngineEntityType<Location>(Location::ENTITY_TYPE_NAME);
+        MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
+        MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
+        MapEngineType<StaticItem>(GetBaseType("StaticItem"));
+        MapEngineType<Critter>(GetBaseType(Critter::ENTITY_TYPE_NAME));
+        MapEngineType<Map>(GetBaseType(Map::ENTITY_TYPE_NAME));
+        MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
 
-#if FO_ANGELSCRIPT_SCRIPTING
-        Init_AngelScript_ServerScriptSystem(this);
-#endif
+        InitSubsystems(this);
 
         return std::nullopt;
     });
 
     // Network
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
         WriteLog("Start networking");
 
-        if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 
 #if FO_HAVE_ASIO
-        if (auto conn_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 #endif
 #if FO_HAVE_WEB_SOCKETS
-        if (auto conn_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) { OnNewConnection(std::move(net_connection)); })) {
+        if (auto conn_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
         }
 #endif
@@ -167,7 +161,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Data base
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
         DbStorage = ConnectToDataBase(Settings, Settings.DbStorage);
@@ -179,14 +173,14 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Engine data
-    _starter.AddJob([this] {
-        FO_STACK_TRACE_ENTRY_NAMED("InitEngineDataJob");
+    _starter.AddJob([this]() FO_DEFERRED {
+        FO_STACK_TRACE_ENTRY_NAMED("InitMetadataJob");
 
-        WriteLog("Setup engine data");
+        WriteLog("Setup engine");
 
         // Properties that saving to database
-        for (const auto& entity_info : GetEntityTypesInfo() | std::views::values) {
-            const auto& registrator = entity_info.PropRegistrator;
+        for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+            const auto& registrator = type_desc.PropRegistrator;
 
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
@@ -198,7 +192,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                     continue;
                 }
 
-                prop->AddPostSetter([this](Entity* entity, const Property* prop_) { OnSaveEntityValue(entity, prop_); });
+                prop->AddPostSetter([this](Entity* entity, const Property* prop_) FO_DEFERRED { OnSaveEntityValue(entity, prop_); });
             }
         }
 
@@ -219,19 +213,19 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
             };
 
-            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendGlobalValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendPlayerValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendItemValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCritterValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendMapValue(entity, prop); });
+            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendLocationValue(entity, prop); });
 
-            for (const auto& entity_info : GetEntityTypesInfo() | std::views::values) {
-                if (entity_info.Exported) {
+            for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+                if (type_desc.Exported) {
                     continue;
                 }
 
-                set_send_callbacks(entity_info.PropRegistrator.get(), [this](Entity* entity, const Property* prop) { OnSendCustomEntityValue(entity, prop); });
+                set_send_callbacks(type_desc.PropRegistrator.get(), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCustomEntityValue(entity, prop); });
             }
         }
 
@@ -246,26 +240,26 @@ FOServer::FOServer(GlobalSettings& settings) :
                 prop->AddPostSetter(std::move(callback));
             };
 
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::InSneakMode_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::SneakCoefficient_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLook(entity, prop); });
-            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::AlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemMultihexLines(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::InSneakMode_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::SneakCoefficient_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
+            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) FO_DEFERRED { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::AlwaysView_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemMultihexLines(entity, prop); });
         }
 
         return std::nullopt;
     });
 
     // Protos
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitProtosJob");
 
         WriteLog("Load protos data");
@@ -279,7 +273,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Maps
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitMapsJob");
 
         WriteLog("Load maps data");
@@ -290,7 +284,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Resource packs for client
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
         if (IsPackaged()) {
@@ -331,7 +325,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Game logic
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
 
         WriteLog("Start game logic");
@@ -358,7 +352,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             InitServerEngine(this);
 
-            ScriptSys.InitModules();
+            InitModules();
 
             if (!OnInit.Fire()) {
                 throw ServerInitException("Initialization script failed");
@@ -414,7 +408,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 
     // Done, fill regular jobs
-    _starter.AddJob([this] {
+    _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitDoneJob");
 
         WriteLog("Start server complete!");
@@ -428,7 +422,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _stats.ServerStartTime = nanotime::now();
 
         // Sync point
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("SyncPointJob");
 
             SyncPoint();
@@ -437,7 +431,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Advance time
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
 
             FrameAdvance();
@@ -446,16 +440,16 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Script subsystems update
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
 
-            ScriptSys.Process();
+            ProcessScriptEvents();
 
             return std::chrono::milliseconds {0};
         });
 
         // Process unlogined players
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
             {
@@ -470,12 +464,12 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
             }
 
-            for (auto& player : copy_hold_ref(_unloginedPlayers)) {
+            for (auto* player : copy_hold_ref(_unloginedPlayers)) {
                 auto* connection = player->GetConnection();
 
                 try {
                     ProcessConnection(connection);
-                    ProcessUnloginedPlayer(player.get());
+                    ProcessUnloginedPlayer(player);
                 }
                 catch (const UnknownMessageException&) {
                     WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -488,9 +482,6 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
-                catch (...) {
-                    FO_UNKNOWN_EXCEPTION();
-                }
             }
 
             _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayers().size();
@@ -500,7 +491,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Process players
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("PlayersJob");
 
             for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
@@ -519,16 +510,13 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
-                catch (...) {
-                    FO_UNKNOWN_EXCEPTION();
-                }
             }
 
             return std::chrono::milliseconds {0};
         });
 
         // Process critters
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("CrittersJob");
 
             for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
@@ -542,16 +530,13 @@ FOServer::FOServer(GlobalSettings& settings) :
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
-                catch (...) {
-                    FO_UNKNOWN_EXCEPTION();
-                }
             }
 
             return std::chrono::milliseconds {0};
         });
 
         // Time events
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
 
             TimeEventMngr.ProcessTimeEvents();
@@ -560,7 +545,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Commit data to storage
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
 
             DbStorage.CommitChanges(false);
@@ -569,7 +554,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Clients log
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
 
             DispatchLogToClients();
@@ -578,7 +563,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Loop stats
-        _mainWorker.AddJob([this] {
+        _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("LoopJob");
 
             _loopBalancer.EndLoop();
@@ -626,83 +611,76 @@ FOServer::FOServer(GlobalSettings& settings) :
     });
 }
 
-FOServer::~FOServer()
+ServerEngine::~ServerEngine()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void ServerEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        WriteLog("Stop server");
+    WriteLog("Stop server");
 
-        _willFinishDispatcher();
+    OnFinish.Fire();
+    _willFinishDispatcher();
 
-        // Finish logic
-        _starter.Clear();
-        _mainWorker.Clear();
-        _healthWriter.Clear();
+    // Logging clients
+    SetLogCallback("LogToClients", nullptr);
+    _logClients.clear();
 
-        if (_started) {
-            _mainWorker.AddJob([this] {
-                OnFinish.Fire();
-                EntityMngr.DestroyInnerEntities(this);
-                EntityMngr.DestroyAllEntities();
-                DbStorage.CommitChanges(true);
-
-                return std::nullopt;
-            });
-
-            _mainWorker.Wait();
-        }
-
-        _started = false;
-
-        // Shutdown servers
-        for (auto& conn_server : _connectionServers) {
-            conn_server->Shutdown();
-        }
-        _connectionServers.clear();
-
-        // Logging clients
-        SetLogCallback("LogToClients", nullptr);
-        _logClients.clear();
-
-        // Logined players
-        for (auto& player : copy(EntityMngr.GetPlayers()) | std::views::values) {
-            player->GetConnection()->HardDisconnect();
-        }
-
-        // Unlogined players
-        for (auto& player : _unloginedPlayers) {
-            player->GetConnection()->HardDisconnect();
-            player->MarkAsDestroyed();
-        }
-        _unloginedPlayers.clear();
-
-        // New connections
-        {
-            std::scoped_lock locker(_newConnectionsLocker);
-
-            for (auto& connection : _newConnections) {
-                connection->Disconnect();
-            }
-            _newConnections.clear();
-        }
-
-        // Done
-        WriteLog("Server stopped!");
-
-        _didFinishDispatcher();
+    // Logined players
+    for (auto& player : copy(EntityMngr.GetPlayers()) | std::views::values) {
+        player->GetConnection()->HardDisconnect();
     }
-    catch (const std::exception& ex) {
-        WriteLog("Server stopped with error!");
 
-        ReportExceptionAndContinue(ex);
+    // Unlogined players
+    for (auto& player : _unloginedPlayers) {
+        player->GetConnection()->HardDisconnect();
+        player->MarkAsDestroyed();
     }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
+
+    _unloginedPlayers.clear();
+
+    // New connections
+    {
+        std::scoped_lock locker(_newConnectionsLocker);
+
+        for (auto& connection : _newConnections) {
+            connection->Disconnect();
+        }
+
+        _newConnections.clear();
     }
+
+    // Shutdown servers
+    for (auto& conn_server : _connectionServers) {
+        conn_server->Shutdown();
+    }
+
+    _connectionServers.clear();
+
+    // Finish logic
+    _starter.Clear();
+    _mainWorker.Clear();
+    _healthWriter.Clear();
+
+    TimeEventMngr.ClearTimeEvents();
+    ShutdownBackends();
+
+    EntityMngr.DestroyInnerEntities(this);
+    EntityMngr.DestroyAllEntities();
+    DbStorage.CommitChanges(true);
+
+    // Done
+    WriteLog("Server stopped!");
+    _started = false;
+    _didFinishDispatcher();
+
+    FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
-auto FOServer::Lock(optional<timespan> max_wait_time) -> bool
+auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -731,7 +709,7 @@ auto FOServer::Lock(optional<timespan> max_wait_time) -> bool
     return true;
 }
 
-void FOServer::Unlock()
+void ServerEngine::Unlock()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -747,7 +725,7 @@ void FOServer::Unlock()
     }
 }
 
-void FOServer::SyncPoint()
+void ServerEngine::SyncPoint()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -768,7 +746,7 @@ void FOServer::SyncPoint()
     }
 }
 
-void FOServer::DrawGui(string_view server_name)
+void ServerEngine::DrawGui(string_view server_name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -799,7 +777,7 @@ void FOServer::DrawGui(string_view server_name)
                 Lock(std::nullopt);
             }
 
-            auto unlocker = ScopeCallback([this]() noexcept { safe_call([this] { Unlock(); }); });
+            auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
             // Info
             ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
@@ -825,7 +803,7 @@ void FOServer::DrawGui(string_view server_name)
 
             // Profiler
             if (ImGui::TreeNode("Profiler")) {
-                buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+                buf = "WIP..........................."; // GetProfilerStatistics();
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -835,7 +813,7 @@ void FOServer::DrawGui(string_view server_name)
     ImGui::End();
 }
 
-auto FOServer::GetHealthInfo() const -> string
+auto ServerEngine::GetHealthInfo() const -> string
 {
     string buf;
     buf.reserve(2048);
@@ -861,7 +839,7 @@ auto FOServer::GetHealthInfo() const -> string
     return buf;
 }
 
-auto FOServer::GetIngamePlayersStatistics() -> string
+auto ServerEngine::GetIngamePlayersStatistics() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -883,7 +861,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     return result;
 }
 
-auto FOServer::GetLocationAndMapsStatistics() -> string
+auto ServerEngine::GetLocationAndMapsStatistics() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -909,7 +887,7 @@ auto FOServer::GetLocationAndMapsStatistics() -> string
     return result;
 }
 
-void FOServer::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
+void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -923,7 +901,7 @@ void FOServer::OnNewConnection(shared_ptr<NetworkServerConnection> net_connectio
     _newConnections.emplace_back(net_connection);
 }
 
-void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
+void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -991,7 +969,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     }
 }
 
-void FOServer::ProcessPlayer(Player* player)
+void ServerEngine::ProcessPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1065,7 +1043,7 @@ void FOServer::ProcessPlayer(Player* player)
     }
 }
 
-void FOServer::ProcessConnection(ServerConnection* connection)
+void ServerEngine::ProcessConnection(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1100,12 +1078,38 @@ void FOServer::ProcessConnection(ServerConnection* connection)
     }
 }
 
-void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player)
+void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    Player* player = nullptr;
+    auto* cr = dynamic_cast<Critter*>(caller);
+
+    if (cr != nullptr) {
+        player = cr->GetPlayer();
+    }
+    else {
+        player = dynamic_cast<Player*>(caller);
+        FO_RUNTIME_ASSERT(player);
+    }
+
+    if (player == nullptr) {
+        return;
+    }
+
+    auto out_buf = player->GetConnection()->WriteMsg(NetMessage::RemoteCall);
+
+    out_buf->Write<hstring>(name);
+    out_buf->Write<int32>(numeric_cast<int32>(data.size()));
+    out_buf->Push(data);
+}
+
+void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
     SetLogCallback("Process_Command", logcb);
-    auto remove_log_callback = ScopeCallback([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
+    auto remove_log_callback = scope_exit([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
 
     const auto cmd = buf.Read<uint8>();
     auto* player_cr = player->GetControlledCritter();
@@ -1137,7 +1141,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
             result = GetLocationAndMapsStatistics();
             break;
         case 3:
-            // result = ScriptSys.GetDeferredCallsStatistics();
+            // result = GetDeferredCallsStatistics();
             break;
         case 4:
             result = "WIP";
@@ -1151,7 +1155,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
         result += str;
 
-        for (const auto& line : strex(result).split('\n')) {
+        for (string_view line : strvex(result).split('\n')) {
             logcb(line);
         }
     } break;
@@ -1321,27 +1325,27 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         const auto param1 = ResolveGenericValue(param1_str, &failed);
         const auto param2 = ResolveGenericValue(param2_str, &failed);
 
-        if (ScriptSys.CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
-            ScriptSys.CallFunc<void, Player*, int32>(Hashes.ToHashedString(func_name), player, param0) || //
-            ScriptSys.CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
-            ScriptSys.CallFunc<void, Player*, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1) || //
-            ScriptSys.CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, Player*, int32, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
-            ScriptSys.CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
-            ScriptSys.CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
-            ScriptSys.CallFunc<void, Critter*, int32>(Hashes.ToHashedString(func_name), player_cr, param0) || //
-            ScriptSys.CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
-            ScriptSys.CallFunc<void, Critter*, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
-            ScriptSys.CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, Critter*, int32, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
-            ScriptSys.CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
-            ScriptSys.CallFunc<void>(Hashes.ToHashedString(func_name)) || //
-            ScriptSys.CallFunc<void, int32>(Hashes.ToHashedString(func_name), param0) || //
-            ScriptSys.CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
-            ScriptSys.CallFunc<void, int32, int32>(Hashes.ToHashedString(func_name), param0, param1) || //
-            ScriptSys.CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
-            ScriptSys.CallFunc<void, int32, int32, int32>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
-            ScriptSys.CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
+        if (CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
+            CallFunc<void, Player*, int32>(Hashes.ToHashedString(func_name), player, param0) || //
+            CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
+            CallFunc<void, Player*, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1) || //
+            CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
+            CallFunc<void, Player*, int32, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
+            CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
+            CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
+            CallFunc<void, Critter*, int32>(Hashes.ToHashedString(func_name), player_cr, param0) || //
+            CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
+            CallFunc<void, Critter*, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
+            CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
+            CallFunc<void, Critter*, int32, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
+            CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
+            CallFunc<void>(Hashes.ToHashedString(func_name)) || //
+            CallFunc<void, int32>(Hashes.ToHashedString(func_name), param0) || //
+            CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
+            CallFunc<void, int32, int32>(Hashes.ToHashedString(func_name), param0, param1) || //
+            CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
+            CallFunc<void, int32, int32, int32>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
+            CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
         else {
@@ -1394,7 +1398,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
         }
 
         if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", [this](string_view str) { LogToClients(str); });
+            SetLogCallback("LogToClients", [this](string_view str) FO_DEFERRED { LogToClients(str); });
         }
     } break;
     default:
@@ -1403,7 +1407,7 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
     }
 }
 
-void FOServer::LogToClients(string_view str)
+void ServerEngine::LogToClients(string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1415,7 +1419,7 @@ void FOServer::LogToClients(string_view str)
     }
 }
 
-void FOServer::DispatchLogToClients()
+void ServerEngine::DispatchLogToClients()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1442,7 +1446,7 @@ void FOServer::DispatchLogToClients()
     _logLines.clear();
 }
 
-auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
+auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1470,7 +1474,7 @@ auto FOServer::CreateCritter(hstring pid, bool for_player) -> Critter*
     return cr.get();
 }
 
-auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
+auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1519,7 +1523,7 @@ auto FOServer::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     return cr;
 }
 
-void FOServer::UnloadCritter(Critter* cr)
+void ServerEngine::UnloadCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1553,7 +1557,7 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     if (!cr->AttachedCritters.empty()) {
-        for (auto& attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+        for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
             attached_cr->DetachFromCritter();
         }
     }
@@ -1563,7 +1567,7 @@ void FOServer::UnloadCritter(Critter* cr)
     EntityMngr.UnregisterCritter(cr);
 }
 
-void FOServer::UnloadCritterInnerEntities(Critter* cr)
+void ServerEngine::UnloadCritterInnerEntities(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1619,7 +1623,7 @@ void FOServer::UnloadCritterInnerEntities(Critter* cr)
     }
 }
 
-void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
+void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1650,7 +1654,7 @@ void FOServer::SwitchPlayerCritter(Player* player, Critter* cr)
     OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
 }
 
-void FOServer::DestroyUnloadedCritter(ident_t cr_id)
+void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1665,7 +1669,7 @@ void FOServer::DestroyUnloadedCritter(ident_t cr_id)
     DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
 }
 
-void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
+void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     cr->Send_TimeSync();
 
@@ -1743,14 +1747,14 @@ void FOServer::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     cr->Send_PlaceToGameComplete();
 }
 
-void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
+void ServerEngine::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (map->IsTriggerStaticItemOnHex(from_hex)) {
         for (auto& item : map->GetTriggerStaticItemsOnHex(from_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc(cr, item.get(), false, dir)) {
+                if (!item->TriggerScriptFunc.Call(cr, item.get(), false, dir)) {
                     // Nop
                 }
 
@@ -1770,7 +1774,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
     if (map->IsTriggerStaticItemOnHex(to_hex)) {
         for (auto& item : map->GetTriggerStaticItemsOnHex(to_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc(cr, item.get(), true, dir)) {
+                if (!item->TriggerScriptFunc.Call(cr, item.get(), true, dir)) {
                     // Nop
                 }
 
@@ -1816,7 +1820,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, 
     }
 }
 
-void FOServer::Process_Handshake(ServerConnection* connection)
+void ServerEngine::Process_Handshake(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1864,7 +1868,7 @@ void FOServer::Process_Handshake(ServerConnection* connection)
     connection->WasHandshake = true;
 }
 
-void FOServer::Process_Ping(ServerConnection* connection)
+void ServerEngine::Process_Ping(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1887,7 +1891,7 @@ void FOServer::Process_Ping(ServerConnection* connection)
     }
 }
 
-void FOServer::Process_UpdateFile(ServerConnection* connection)
+void ServerEngine::Process_UpdateFile(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1909,7 +1913,7 @@ void FOServer::Process_UpdateFile(ServerConnection* connection)
     Process_UpdateFileData(connection);
 }
 
-void FOServer::Process_UpdateFileData(ServerConnection* connection)
+void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1939,7 +1943,7 @@ void FOServer::Process_UpdateFileData(ServerConnection* connection)
     out_buf->Push(&update_file_data[offset], update_portion);
 }
 
-void FOServer::Process_Register(Player* unlogined_player)
+void ServerEngine::Process_Register(Player* unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2029,7 +2033,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     connection->WriteMsg(NetMessage::RegisterSuccess);
 }
 
-void FOServer::Process_Login(Player* unlogined_player)
+void ServerEngine::Process_Login(Player* unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2218,7 +2222,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     }
 }
 
-void FOServer::Process_Move(Player* player)
+void ServerEngine::Process_Move(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2353,7 +2357,7 @@ void FOServer::Process_Move(Player* player)
     }
 }
 
-void FOServer::Process_StopMove(Player* player)
+void ServerEngine::Process_StopMove(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2403,7 +2407,7 @@ void FOServer::Process_StopMove(Player* player)
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
-void FOServer::Process_Dir(Player* player)
+void ServerEngine::Process_Dir(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2440,7 +2444,7 @@ void FOServer::Process_Dir(Player* player)
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
-void FOServer::Process_Property(Player* player)
+void ServerEngine::Process_Property(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2606,14 +2610,14 @@ void FOServer::Process_Property(Player* player)
 
     {
         player->SetIgnoreSendEntityProperty(entity, prop);
-        auto revert_send_ignore = ScopeCallback([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
+        auto revert_send_ignore = scope_exit([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
 
         // Todo: verify property data from client
         entity->SetValueFromData(prop, prop_data);
     }
 }
 
-void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2664,7 +2668,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2677,7 +2681,7 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2689,7 +2693,7 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2706,7 +2710,7 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2753,7 +2757,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2767,7 +2771,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2783,7 +2787,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
+void ServerEngine::OnSendCustomEntityValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2797,7 +2801,7 @@ void FOServer::OnSendCustomEntityValue(Entity* entity, const Property* prop)
     });
 }
 
-void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
+void ServerEngine::OnSetCritterLook(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2812,7 +2816,7 @@ void FOServer::OnSetCritterLook(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
+void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2820,7 +2824,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *static_cast<const uint32*>(new_value);
+    const auto new_count = *cast_from_void<const uint32*>(new_value);
     FO_RUNTIME_ASSERT(item);
 
     if (!item->GetStackable() && new_count != 1) {
@@ -2831,7 +2835,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
+void ServerEngine::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2866,7 +2870,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
+void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2885,7 +2889,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSetItemMultihexLines(Entity* entity, const Property* prop)
+void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2905,7 +2909,7 @@ void FOServer::OnSetItemMultihexLines(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::ProcessCritterMoving(Critter* cr)
+void ServerEngine::ProcessCritterMoving(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3068,7 +3072,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     }
 }
 
-void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
+void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3257,7 +3261,7 @@ void FOServer::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     }
 }
 
-void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
+void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3336,7 +3340,7 @@ void FOServer::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
-void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
+void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3370,21 +3374,30 @@ void FOServer::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
     cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
 }
 
-void FOServer::Process_RemoteCall(Player* player)
+void ServerEngine::Process_RemoteCall(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto* connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
-    const auto rpc_num = in_buf->Read<uint32>();
+    const auto remote_call_name = in_buf->Read<hstring>(Hashes);
+    const auto remote_call_data_size = in_buf->Read<int32>();
+
+    if (remote_call_data_size < 0) {
+        throw GenericException("Invalid data size", remote_call_data_size);
+    }
+
+    vector<uint8> remote_call_data;
+    remote_call_data.resize(remote_call_data_size);
+    in_buf->Pop(remote_call_data.data(), remote_call_data_size);
 
     in_buf.Unlock();
 
-    ScriptSys.HandleRemoteCall(rpc_num, player);
+    HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> Item*
+auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3416,7 +3429,7 @@ auto FOServer::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Pro
     return item;
 }
 
-auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
+auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
 {
     FO_STACK_TRACE_ENTRY();
 

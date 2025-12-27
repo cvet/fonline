@@ -47,12 +47,17 @@ FO_DECLARE_EXCEPTION(ModelBakerException);
 class ModelBaker final : public BaseBaker
 {
 public:
-    explicit ModelBaker(BakerData& data);
+    static constexpr string_view_nt NAME = "Model";
+
+    explicit ModelBaker(shared_ptr<BakingContext> ctx);
     ModelBaker(const ModelBaker&) = delete;
     ModelBaker(ModelBaker&&) noexcept = delete;
     auto operator=(const ModelBaker&) = delete;
     auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker() override;
+
+    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
+    [[nodiscard]] auto GetOrder() const -> int32 override { return 4; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 

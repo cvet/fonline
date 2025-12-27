@@ -48,7 +48,7 @@ class EntityManager final
 {
 public:
     EntityManager() = delete;
-    explicit EntityManager(FOServer* engine);
+    explicit EntityManager(ServerEngine* engine);
     EntityManager(const EntityManager&) = delete;
     EntityManager(EntityManager&&) noexcept = delete;
     auto operator=(const EntityManager&) = delete;
@@ -139,7 +139,7 @@ private:
     void RegisterEntity(ServerEntity* entity);
     void UnregisterEntity(ServerEntity* entity, bool delete_from_db);
 
-    raw_ptr<FOServer> _engine;
+    raw_ptr<ServerEngine> _engine;
 
     unordered_map<ident_t, raw_ptr<Player>> _allPlayers {};
     unordered_map<ident_t, raw_ptr<Location>> _allLocations {};

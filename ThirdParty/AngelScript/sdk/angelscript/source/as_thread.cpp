@@ -46,6 +46,7 @@ BEGIN_AS_NAMESPACE
 
 // Singleton
 static asCThreadManager *threadManager = 0;
+thread_local asCThreadLocalData threadLocalData; // (FOnline Patch)
 
 //======================================================================
 
@@ -231,6 +232,8 @@ int asCThreadManager::CleanupLocalData()
 	if( threadManager == 0 )
 		return 0;
 
+	asCThreadLocalData* tld = nullptr; // (FOnline Patch)
+
 #ifndef AS_NO_THREADS
 #if defined AS_POSIX_THREADS
 	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
@@ -280,6 +283,8 @@ asCThreadLocalData *asCThreadManager::GetLocalData()
 	if( threadManager == 0 )
 		return 0;
 
+	asCThreadLocalData* tld = &threadLocalData; // (FOnline Patch)
+
 #ifndef AS_NO_THREADS
 #if defined AS_POSIX_THREADS
 	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
@@ -322,7 +327,7 @@ asCThreadLocalData::~asCThreadLocalData()
 }
 
 //=========================================================================
-
+#ifndef AS_CXX_THREADS // (FOnline Patch)
 #ifndef AS_NO_THREADS
 asCThreadCriticalSection::asCThreadCriticalSection()
 {
@@ -461,7 +466,7 @@ void asCThreadReadWriteLock::ReleaseShared()
 }
 
 #endif
-
+#endif // (FOnline Patch)
 //========================================================================
 
 END_AS_NAMESPACE

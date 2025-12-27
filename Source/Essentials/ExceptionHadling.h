@@ -95,15 +95,16 @@ public:
         _name {name}
     {
         try {
-            _message = _name;
-            _message.append(": ");
-            _message.append(message);
+            _extendedMessage = _name;
+            _extendedMessage.append(": ");
+            _extendedMessage.append(message);
+            _message = message;
 
-            const vector<string> params = {string(std::format("{}", std::forward<Args>(args)))...};
+            _params = {string(std::format("{}", std::forward<Args>(args)))...};
 
-            for (const auto& param : params) {
-                _message.append("\n- ");
-                _message.append(param);
+            for (const auto& param : _params) {
+                _extendedMessage.append("\n- ");
+                _extendedMessage.append(param);
             }
         }
         catch (...) {
@@ -124,6 +125,8 @@ public:
     {
         try {
             _message = other._message;
+            _extendedMessage = other._extendedMessage;
+            _params = other._params;
         }
         catch (...) {
             // Do nothing
@@ -132,20 +135,19 @@ public:
         _stackTrace = other._stackTrace;
     }
 
-    BaseEngineException(BaseEngineException&& other) noexcept :
-        std::exception(other),
-        _name {other._name}
-    {
-        _message = std::move(other._message);
-        _stackTrace = other._stackTrace;
-    }
+    BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_message.empty() ? _message.c_str() : _name; }
-    [[nodiscard]] auto StackTrace() const noexcept -> const StackTraceData& { return _stackTrace; }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name; }
+    [[nodiscard]] auto name() const noexcept -> const char* { return _name; }
+    [[nodiscard]] auto message() const noexcept -> const string& { return _message; }
+    [[nodiscard]] auto params() const noexcept -> const vector<string>& { return _params; }
+    [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
     const char* _name;
     string _message {};
+    string _extendedMessage {};
+    vector<string> _params {};
     StackTraceData _stackTrace {};
 };
 

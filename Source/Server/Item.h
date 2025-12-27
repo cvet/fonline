@@ -44,15 +44,14 @@ FO_BEGIN_NAMESPACE();
 
 class Item;
 class Critter;
-using StaticItem = Item;
 
-class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
+class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
 
 public:
     Item() = delete;
-    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
+    Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
@@ -65,7 +64,7 @@ public:
     [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<Item*>;
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
-    [[nodiscard]] auto GetAllInnerItems() -> const vector<Item*>&;
+    [[nodiscard]] auto GetAllInnerItems() -> span<Item*>;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
@@ -87,6 +86,11 @@ public:
 private:
     unique_ptr<vector<Item*>> _innerItems {};
     unique_ptr<vector<mpos>> _multihexEntries {};
+};
+
+class StaticItem final : public Item
+{
+    using Item::Item;
 };
 
 FO_END_NAMESPACE();

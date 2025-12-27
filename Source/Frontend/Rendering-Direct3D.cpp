@@ -285,7 +285,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
             throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
         }
 
-        auto factory_release = ScopeCallback([&factory]() noexcept { factory->Release(); });
+        auto factory_release = scope_exit([&factory]() noexcept { factory->Release(); });
 
         DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
         swap_chain_desc.BufferCount = 2;
@@ -561,14 +561,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             FO_RUNTIME_ASSERT(!vertex_shader_content.empty());
 
             ID3DBlob* vertex_shader_blob = nullptr;
-            ScopeCallback vertex_shader_blob_release {[&vertex_shader_blob]() noexcept {
+            scope_exit vertex_shader_blob_release {[&vertex_shader_blob]() noexcept {
                 if (vertex_shader_blob != nullptr) {
                     vertex_shader_blob->Release();
                 }
             }};
 
             ID3DBlob* error_blob = nullptr;
-            ScopeCallback error_blob_release {[&error_blob]() noexcept {
+            scope_exit error_blob_release {[&error_blob]() noexcept {
                 if (error_blob != nullptr) {
                     error_blob->Release();
                 }
@@ -635,14 +635,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             FO_RUNTIME_ASSERT(!pixel_shader_content.empty());
 
             ID3DBlob* pixel_shader_blob = nullptr;
-            ScopeCallback vertex_shader_blob_release {[&pixel_shader_blob]() noexcept {
+            scope_exit vertex_shader_blob_release {[&pixel_shader_blob]() noexcept {
                 if (pixel_shader_blob != nullptr) {
                     pixel_shader_blob->Release();
                 }
             }};
 
             ID3DBlob* error_blob = nullptr;
-            ScopeCallback error_blob_release {[&error_blob]() noexcept {
+            scope_exit error_blob_release {[&error_blob]() noexcept {
                 if (error_blob != nullptr) {
                     error_blob->Release();
                 }

@@ -1234,6 +1234,13 @@
 #endif
 
 
+#if defined(AS_WINDOWS_THREADS) || defined(AS_POSIX_THREADS) // (FOnline Patch)
+	#undef AS_WINDOWS_THREADS
+	#undef AS_POSIX_THREADS
+	#define AS_CXX_THREADS
+	#include <mutex>
+	#include <shared_mutex>
+#endif
 
 //
 // Internal defines (do not change these)

@@ -1192,6 +1192,10 @@ int asCContext::Execute()
 		return asCONTEXT_NOT_PREPARED;
 	}
 
+	// (FOnline Patch)
+	if (m_status != asEXECUTION_SUSPENDED && BeginScriptCall)
+		BeginScriptCall(this, m_currentFunction, (size_t)m_currentFunction);
+
 	m_status = asEXECUTION_ACTIVE;
 
 	asCThreadLocalData *tld = asPushActiveContext((asIScriptContext *)this);
@@ -1303,16 +1307,8 @@ int asCContext::Execute()
 	if( m_engine->ep.autoGarbageCollect )
 		m_engine->gc.GetStatistics(&gcPreObjects, 0, 0, 0, 0);
 
-	// (FOnline Patch)
-	if (Ext2.BeginScriptCall)
-		Ext2.BeginScriptCall(this, m_currentFunction, (size_t)m_currentFunction);
-
 	while( m_status == asEXECUTION_ACTIVE )
 		ExecuteNext();
-
-	// (FOnline Patch)
-	if (Ext2.EndScriptCall)
-		Ext2.EndScriptCall(this);
 
 	if( m_lineCallback )
 	{
@@ -1346,6 +1342,10 @@ int asCContext::Execute()
 	asASSERT(tld && tld->activeContexts[tld->activeContexts.GetLength()-1] == this);
 	if( tld )
 		tld->activeContexts.PopLast();
+
+	// (FOnline Patch)
+	if (m_status == asEXECUTION_FINISHED && EndScriptCall)
+		EndScriptCall(this);
 
 	if( m_status == asEXECUTION_FINISHED )
 	{
@@ -1706,8 +1706,8 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 	asASSERT( func->scriptData );
 
 	// (FOnline Patch)
-	if (Ext2.BeginScriptCall)
-		Ext2.BeginScriptCall(this, func, (size_t)m_regs.programPointer);
+	if (BeginScriptCall)
+		BeginScriptCall(this, func, (size_t)m_regs.programPointer);
 
 	// Push the framepointer, function id and programCounter on the stack
 	PushCallState();
@@ -1969,10 +1969,6 @@ void asCContext::ExecuteNext()
 	// Return to the caller, and remove the arguments from the stack
 	case asBC_RET:
 		{
-			// (FOnline Patch)
-			if (Ext2.EndScriptCall)
-				Ext2.EndScriptCall(this);
-
 			// Return if this was the first function, or a nested execution
 			if( m_callStack.GetLength() == 0 ||
 				m_callStack[m_callStack.GetLength() - CALLSTACK_FRAME_SIZE] == 0 )
@@ -1980,6 +1976,10 @@ void asCContext::ExecuteNext()
 				m_status = asEXECUTION_FINISHED;
 				return;
 			}
+
+			// (FOnline Patch)
+			if (EndScriptCall)
+				EndScriptCall(this);
 
 			asWORD w = asBC_WORDARG0(l_bc);
 
@@ -4387,7 +4387,23 @@ void asCContext::ExecuteNext()
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
-				void *ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
+				void* ptr = 0;
+#ifdef AS_NO_EXCEPTIONS // (FOnline Patch)
+				ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
+#else
+				try
+				{
+					ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
+				}
+				catch (const std::exception& ex)
+				{
+					SetException(ex.what());
+				}
+				catch (...)
+				{
+					SetException(TXT_EXCEPTION_CAUGHT);
+				}
+#endif
 				m_callingSystemFunction = 0;
 				*(asPWORD*)&m_regs.valueRegister = (asPWORD)ptr;
 			}
