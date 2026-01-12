@@ -1120,9 +1120,9 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
                 engine->AssignScriptObject(*d, *s, sub_type);
             }
         }
-        else {
-            MemCopy(GetBuffer(), src.GetBuffer(), numeric_cast<size_t>(count * _elementSize));
-        }
+    }
+    else {
+        MemCopy(GetBuffer(), src.GetBuffer(), numeric_cast<size_t>(count * _elementSize));
     }
 }
 
