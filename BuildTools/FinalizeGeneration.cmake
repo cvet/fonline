@@ -348,10 +348,7 @@ set(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imgui_widgets.cpp"
     "${FO_DEAR_IMGUI_DIR}/imstb_rectpack.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
-    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h")
+    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h")
 include_directories("${FO_DEAR_IMGUI_DIR}")
 include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(imgui STATIC EXCLUDE_FROM_ALL ${FO_IMGUI_SOURCE})
@@ -658,6 +655,9 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
