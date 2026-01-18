@@ -157,7 +157,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   Text FindText(string name)
 //   TextInput FindTextInput(string name)
 //   Button FindButton(string name)
-//   Object Find(string name, bool deepFind = true)
+//   Object Find(string name, bool deepFind = true, int skip = 0)
+//   int Count(string name, bool deepCount = true)
 //   Object GetChild(int index)
 // Panel : Object
 //   Sprite::Sprite BackgroundImage
@@ -381,6 +382,7 @@ class Object
     Object[] _Children;
     Grid _Grid;
     int _CellIndex;
+    bool _Highlighted;
 
     // Callbacks
     void OnConstruct()
@@ -504,6 +506,7 @@ class Object
     {
         _ActiveSelf = true;
         _Name = reflection::typeof<Object>(this).nameWithoutNamespace;
+        _Highlighted = false;
 
         if (_Parent != null) {
             _Parent._Children.removeAt(_Parent._Children.findByRef(this));
@@ -531,6 +534,7 @@ class Object
     {
         _Parent = null;
         _Children = array<Object>();
+        _Highlighted = false;
     }
 
     void _Init()
@@ -1004,22 +1008,51 @@ class Object
         return cast<Button>(Find(name));
     }
 
-    Object Find(string name, bool deepFind = true)
+    Object Find(string name, bool deepFind = true, int skip = 0)
+    {
+        return _Find(name, deepFind, skip);
+    }
+
+    Object _Find(const string& name, bool deepFind, int& skip)
     {
         for (int i = 0; i < _Children.length(); i++) {
             Object child = _Children[i];
             if (!child._Name.isEmpty() && child._Name == name) {
-                return child;
+                if (skip <= 0) {
+                    return child;
+                }
+                else {
+                    skip--;
+                }
             }
-
             if (deepFind) {
-                Object obj = child.Find(name);
+                Object obj = child._Find(name, deepFind, skip);
                 if (obj != null) {
                     return obj;
                 }
             }
         }
         return null;
+    }
+
+    int Count(string name, bool deepCount = true)
+    {
+        int result = 0;
+        _Count(name, deepCount, result);
+        return result;
+    }
+
+    void _Count(const string& name, bool deepCount, int& result)
+    {
+        for (int i = 0; i < _Children.length(); i++) {
+            Object child = _Children[i];
+            if (!child._Name.isEmpty() && child._Name == name) {
+                result++;
+            }
+            if (deepCount) {
+                child._Count(name, deepCount, result);
+            }
+        }
     }
 
     Object GetChild(int index)
@@ -3257,7 +3290,7 @@ void HideAllScreens()
 
 Screen GetScreen(GuiScreen screenNum)
 {
-    Screen firstMultiinstanceScreen = null;
+    Screen lastMultiinstanceScreen = null;
 
     for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
@@ -3267,12 +3300,12 @@ Screen GetScreen(GuiScreen screenNum)
                 return screen;
             }
             else {
-                firstMultiinstanceScreen = screen;
+                lastMultiinstanceScreen = screen;
             }
         }
     }
 
-    return firstMultiinstanceScreen;
+    return lastMultiinstanceScreen;
 }
 
 Screen GetActiveScreen()
@@ -3991,6 +4024,81 @@ int GetScreenCount(GuiScreen screenNum)
     }
 
     return count;
+}
+
+void Highlight(GuiScreen screenNum, string objName, timespan duration = Time::Seconds(5), int skip = 0, bool all = false)
+{
+    if (all) {
+        Screen screen = GetScreen(screenNum);
+        int count = screen != null ? screen.Count(objName) : 0;
+
+        for (int i = 0; i < count; i++) {
+            Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, i});
+        }
+    }
+    else {
+        Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, skip});
+    }
+}
+
+void HighlightProcess(any[] data)
+{
+    GuiScreen screenNum = GuiScreen(int(data[0]));
+    string objName = data[1];
+    timespan duration = Time::Milliseconds(data[2]);
+    int skip = data[3];
+    Screen screen = GetScreen(screenNum);
+    Object obj = screen != null ? screen.Find(objName, skip : skip) : null;
+    Panel panel = cast<Panel>(obj);
+    Text text = cast<Text>(obj);
+
+    if (panel == null && text == null) {
+        return;
+    }
+    if (obj._Highlighted) {
+        return;
+    }
+
+    obj._Highlighted = true;
+
+    Sprite::Sprite panelSpr = panel != null ? panel.BackgroundImage : null;
+    ucolor panelColor = panelSpr != null ? panelSpr.Color : ZERO_UCOLOR;
+    ucolor textColor = text != null ? text.TextColor : ZERO_UCOLOR;
+    nanotime startTime = Game.FrameTime;
+
+    while (true) {
+        timespan elapsedTime = Game.FrameTime - startTime;
+
+        if (elapsedTime > duration) {
+            break;
+        }
+
+        float intensity = Math::RoundToInt(elapsedTime.milliseconds % 1000) / 500.0;
+        intensity = intensity < 1.0 ? intensity : 2.0 - intensity;
+
+        ucolor color = panelSpr != null ? panelColor : textColor;
+        color.red = color.red + Math::RoundToInt(float(255 - color.red) * intensity);
+        color.green = color.green + Math::RoundToInt(float(255 - color.green) * intensity);
+        color.blue = color.blue + Math::RoundToInt(float(255 - color.blue) * intensity);
+
+        if (panelSpr != null) {
+            panelSpr.Color = color;
+        }
+        else if (text != null) {
+            text.SetTextColor(color);
+        }
+
+        Yield(10);
+    }
+
+    if (panelSpr != null) {
+        panelSpr.Color = panelColor;
+    }
+    else if (text != null) {
+        text.SetTextColor(textColor);
+    }
+
+    obj._Highlighted = false;
 }
 
 #endif
