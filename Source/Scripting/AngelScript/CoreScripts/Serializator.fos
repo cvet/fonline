@@ -444,7 +444,7 @@ class Serializator
     Serializator Set(const ident[] values)
     {
         int valuesLen = values.length();
-        int len = 4 + valuesLen;
+        int len = 4 + valuesLen * 8;
         GrowBuffer(curPos + len);
         Set(valuesLen);
         for (int i = 0; i < valuesLen; i++) {
@@ -462,10 +462,10 @@ class Serializator
         if (curPos + 8 > dataSize) {
             return this;
         }
-        value |= dataArray[curPos++] << 56;
-        value |= dataArray[curPos++] << 48;
-        value |= dataArray[curPos++] << 40;
-        value |= dataArray[curPos++] << 32;
+        value |= int64(dataArray[curPos++]) << 56;
+        value |= int64(dataArray[curPos++]) << 48;
+        value |= int64(dataArray[curPos++]) << 40;
+        value |= int64(dataArray[curPos++]) << 32;
         value |= dataArray[curPos++] << 24;
         value |= dataArray[curPos++] << 16;
         value |= dataArray[curPos++] << 8;
@@ -513,10 +513,10 @@ class Serializator
         if (curPos + 8 > dataSize) {
             return this;
         }
-        value |= dataArray[curPos++] << 56;
-        value |= dataArray[curPos++] << 48;
-        value |= dataArray[curPos++] << 40;
-        value |= dataArray[curPos++] << 32;
+        value |= uint64(dataArray[curPos++]) << 56;
+        value |= uint64(dataArray[curPos++]) << 48;
+        value |= uint64(dataArray[curPos++]) << 40;
+        value |= uint64(dataArray[curPos++]) << 32;
         value |= dataArray[curPos++] << 24;
         value |= dataArray[curPos++] << 16;
         value |= dataArray[curPos++] << 8;
