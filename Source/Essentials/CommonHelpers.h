@@ -98,6 +98,9 @@ template<typename T>
 class ref_hold_vector
 {
 public:
+    static_assert(std::is_pointer_v<T>);
+    static_assert(!std::is_const_v<T>);
+
     explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
     explicit ref_hold_vector(vector<T>&& vec) noexcept :
         _vec {std::move(vec)}
@@ -116,12 +119,12 @@ public:
 
     ~ref_hold_vector()
     {
-        for (auto&& ref : _vec) {
+        for (T ref : _vec) {
             ref->Release();
         }
     }
 
-    void add(const T& ref)
+    void add(T ref)
     {
         FO_RUNTIME_ASSERT(ref);
         ref->AddRef();
@@ -133,16 +136,7 @@ private:
 };
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(const vector<T>& value) -> ref_hold_vector<T>
-{
-    auto ref_vec = ref_hold_vector<T>(value.size());
-    for (auto&& ref : value) {
-        ref_vec.add(ref);
-    }
-    return ref_vec;
-}
-
-template<typename T>
+    requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<T>
 {
     auto ref_vec = ref_hold_vector<T>(std::move(value));
@@ -152,28 +146,31 @@ template<typename T>
     return ref_vec;
 }
 
-template<typename T, typename U>
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<U>
+template<typename T>
+    requires(std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<T>
 {
-    auto ref_vec = ref_hold_vector<U>(value.size());
-    for (auto&& ref : value | std::views::values) {
+    auto ref_vec = ref_hold_vector<T>(std::move(value));
+    for (auto&& ref : value) {
         ref_vec.add(ref);
     }
     return ref_vec;
 }
 
-template<typename T, typename U>
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, raw_ptr<U>>& value) -> ref_hold_vector<U*>
+template<typename T>
+    requires(!std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<typename T::element_type*>
 {
-    auto ref_vec = ref_hold_vector<U*>(value.size());
-    for (auto&& ref : value | std::views::values) {
+    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    for (auto&& ref : value) {
         ref_vec.add(ref.get());
     }
     return ref_vec;
 }
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<T>
+    requires(std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<T>
 {
     auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
@@ -183,34 +180,34 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<raw_ptr<T>>& value) -> ref_hold_vector<T*>
+    requires(!std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<typename T::element_type*>
 {
-    static_assert(!std::is_const_v<T>);
-    auto ref_vec = ref_hold_vector<T*>(value.size());
+    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
     for (auto&& ref : value) {
         ref_vec.add(ref.get());
     }
     return ref_vec;
 }
 
-template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(span<raw_ptr<T>>&& value) -> ref_hold_vector<T*> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+template<typename T, typename U>
+    requires(!std::is_pointer_v<U>)
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<typename U::element_type*>
 {
-    static_assert(!std::is_const_v<T>);
-    auto ref_vec = ref_hold_vector<T*>(value.size());
-    for (auto&& ref : value) {
+    auto ref_vec = ref_hold_vector<typename U::element_type*>(value.size());
+    for (auto&& ref : value | std::views::values) {
         ref_vec.add(ref.get());
     }
     return ref_vec;
 }
 
 template<typename T>
-[[nodiscard]] constexpr auto copy_hold_ref(span<refcount_ptr<T>>&& value) -> ref_hold_vector<T*> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+    requires(!std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<typename T::element_type*>
 {
-    static_assert(!std::is_const_v<T>);
-    auto ref_vec = ref_hold_vector<T*>(value.size());
+    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref.get_no_const());
     }
     return ref_vec;
 }

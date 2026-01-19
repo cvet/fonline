@@ -741,7 +741,7 @@ FO_SCRIPT_API void Server_Critter_DetachFromCritter(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 {
-    for (auto& cr : copy_hold_ref(self->AttachedCritters)) {
+    for (auto* cr : copy_hold_ref(self->AttachedCritters)) {
         cr->DetachFromCritter();
     }
 

@@ -285,7 +285,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
                 FO_RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
 
                 const auto loc_map_index = map->GetLocMapIndex();
-                auto& loc_maps = loc->GetMaps();
+                auto loc_maps = loc->GetRawMaps();
 
                 if (loc_map_index >= numeric_cast<int32>(loc_maps.size())) {
                     loc_maps.resize(loc_map_index + 1);
@@ -729,9 +729,9 @@ void EntityManager::CallInit(Location* loc, bool first_time)
     }
 
     if (!loc->IsDestroyed()) {
-        for (auto& map : copy_hold_ref(loc->GetMaps())) {
+        for (auto* map : copy_hold_ref(loc->GetMaps())) {
             if (!map->IsDestroyed()) {
-                CallInit(map.get(), first_time);
+                CallInit(map, first_time);
             }
         }
     }

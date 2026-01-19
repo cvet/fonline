@@ -45,6 +45,8 @@ class raw_ptr
     friend class raw_ptr;
 
 public:
+    using element_type = T;
+
     FO_FORCE_INLINE constexpr raw_ptr() noexcept :
         _ptr(nullptr)
     {
@@ -236,6 +238,8 @@ class unique_ptr
     friend class unique_ptr;
 
 public:
+    using element_type = T;
+
     FO_FORCE_INLINE constexpr unique_ptr() noexcept :
         _ptr(nullptr)
     {
@@ -342,6 +346,8 @@ class refcount_ptr final
     friend class refcount_ptr;
 
 public:
+    using element_type = T;
+
     struct adopt_tag
     {
     } static constexpr adopt {};

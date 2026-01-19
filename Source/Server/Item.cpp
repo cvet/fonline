@@ -105,7 +105,7 @@ auto Item::HasInnerItems() const noexcept -> bool
     return _innerItems && !_innerItems->empty();
 }
 
-auto Item::GetAllInnerItems() -> const vector<Item*>&
+auto Item::GetAllInnerItems() -> span<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 

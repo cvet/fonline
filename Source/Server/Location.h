@@ -58,7 +58,8 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation* { return static_cast<const ProtoLocation*>(_proto.get()); }
     [[nodiscard]] auto GetMaps() const noexcept -> const vector<refcount_ptr<Map>>& { return _locMaps; }
-    [[nodiscard]] auto GetMaps() noexcept -> vector<refcount_ptr<Map>>& { return _locMaps; }
+    [[nodiscard]] auto GetMaps() noexcept -> span<refcount_ptr<Map>> { return _locMaps; }
+    [[nodiscard]] auto GetRawMaps() noexcept -> auto& { return _locMaps; }
     [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _locMaps.size(); }
     [[nodiscard]] auto GetMapByIndex(int32 index) noexcept -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;

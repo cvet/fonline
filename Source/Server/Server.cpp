@@ -470,12 +470,12 @@ FOServer::FOServer(GlobalSettings& settings) :
                 }
             }
 
-            for (auto& player : copy_hold_ref(_unloginedPlayers)) {
+            for (auto* player : copy_hold_ref(_unloginedPlayers)) {
                 auto* connection = player->GetConnection();
 
                 try {
                     ProcessConnection(connection);
-                    ProcessUnloginedPlayer(player.get());
+                    ProcessUnloginedPlayer(player);
                 }
                 catch (const UnknownMessageException&) {
                     WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -1553,7 +1553,7 @@ void FOServer::UnloadCritter(Critter* cr)
     }
 
     if (!cr->AttachedCritters.empty()) {
-        for (auto& attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+        for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
             attached_cr->DetachFromCritter();
         }
     }

@@ -236,7 +236,7 @@ void CritterManager::DestroyCritter(Critter* cr)
                 }
 
                 if (!cr->AttachedCritters.empty()) {
-                    for (auto& attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+                    for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
                         attached_cr->DetachFromCritter();
                     }
                 }

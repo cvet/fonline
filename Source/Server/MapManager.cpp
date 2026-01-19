@@ -415,8 +415,8 @@ auto MapManager::CreateLocation(hstring proto_id, span<const hstring> map_pids, 
         GenerateMapContent(map.get());
     }
 
-    for (auto& map : copy_hold_ref(loc->GetMaps())) {
-        _engine->EntityMngr.CallInit(map.get(), true);
+    for (auto* map : copy_hold_ref(loc->GetMaps())) {
+        _engine->EntityMngr.CallInit(map, true);
     }
 
     if (loc->IsDestroyed()) {
@@ -533,9 +533,9 @@ void MapManager::DestroyLocation(Location* loc)
         _engine->OnMapFinish.Fire(map.get());
     }
 
-    for (auto& map : copy_hold_ref(loc->GetMaps())) {
-        loc->RemoveMap(map.get());
-        DestroyMapInternal(map.get());
+    for (auto* map : copy_hold_ref(loc->GetMaps())) {
+        loc->RemoveMap(map);
+        DestroyMapInternal(map);
     }
 
     for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {

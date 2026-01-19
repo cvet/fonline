@@ -190,16 +190,16 @@ void TimeEventManager::ProcessTimeEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& entity : copy_hold_ref(_timeEventEntities)) {
+    for (auto* entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
-            RemoveEntityTimeEventPolling(entity.get());
+            RemoveEntityTimeEventPolling(entity);
             continue;
         }
 
-        ProcessEntityTimeEvents(entity.get());
+        ProcessEntityTimeEvents(entity);
 
         if (entity->IsDestroyed() || !entity->HasTimeEvents()) {
-            RemoveEntityTimeEventPolling(entity.get());
+            RemoveEntityTimeEventPolling(entity);
         }
     }
 }

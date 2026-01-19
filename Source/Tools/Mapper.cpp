@@ -2439,8 +2439,8 @@ void FOMapper::SelectDelete()
         return;
     }
 
-    for (auto& entity : copy_hold_ref(SelectedEntities)) {
-        DeleteEntity(entity.get());
+    for (auto* entity : copy_hold_ref(SelectedEntities)) {
+        DeleteEntity(entity);
     }
 
     SelectClear();
