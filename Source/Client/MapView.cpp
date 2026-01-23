@@ -170,9 +170,12 @@ void MapView::EnableMapperMode()
 
 void MapView::LoadFromFile(string_view map_name, const string& str)
 {
+    FO_STACK_TRACE_ENTRY();
+
     FO_RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
+    auto reset_loading = ScopeCallback([&]() noexcept { _mapLoading = false; });
     auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
@@ -317,7 +320,7 @@ void MapView::LoadStaticData()
             const auto next_hex = _mapSize.from_raw_pos(next_raw_hex);
             const auto& field = _hexField->GetCellForReading(next_hex);
 
-            if (field.RoofNum != 0 || field.HasRoof) {
+            if (field.RoofNum != 0 || !field.HasRoof) {
                 continue;
             }
 
@@ -1965,9 +1968,10 @@ void MapView::SetHiddenRoof(mpos hex)
     const auto corrected_hx = hex.x - hex.x % _engine->Settings.MapTileStep;
     const auto corrected_hy = hex.y - hex.y % _engine->Settings.MapTileStep;
     const auto corrected_hex = _mapSize.from_raw_pos(corrected_hx, corrected_hy);
+    const auto roof_num = _hexField->GetCellForReading(corrected_hex).RoofNum;
 
-    if (_hiddenRoofNum != _hexField->GetCellForReading(corrected_hex).RoofNum) {
-        _hiddenRoofNum = _hexField->GetCellForReading(corrected_hex).RoofNum;
+    if (_hiddenRoofNum != roof_num) {
+        _hiddenRoofNum = roof_num;
         RebuildMap();
     }
 }
