@@ -105,6 +105,9 @@ public:
     explicit ref_hold_vector(vector<T>&& vec) noexcept :
         _vec {std::move(vec)}
     {
+        for (T ref : _vec) {
+            ref->AddRef();
+        }
     }
 
     ref_hold_vector(const ref_hold_vector&) = delete;
@@ -140,9 +143,6 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<T>
 {
     auto ref_vec = ref_hold_vector<T>(std::move(value));
-    for (auto&& ref : value) {
-        ref_vec.add(ref);
-    }
     return ref_vec;
 }
 
