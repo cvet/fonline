@@ -615,11 +615,11 @@ auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
     items.reserve(numeric_cast<size_t>(hexes_around) * 2);
 
     for (int32 i = 0; i < hexes_around; i++) {
-        if (mpos next_hex = hex; GeometryHelper::MoveHexAroundAway(next_hex, i, _mapSize)) {
-            const auto& field = _hexField->GetCellForReading(next_hex);
+        if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(hex_around);
 
             if (!field.Items.empty()) {
-                auto& field2 = _hexField->GetCellForWriting(hex);
+                auto& field2 = _hexField->GetCellForWriting(hex_around);
 
                 for (auto& item : field2.Items) {
                     vec_safe_add_unique_value(items, item.get());
