@@ -16,11 +16,7 @@
 
 #pragma once
 
-#include "BasicCore.h"
-FO_BEGIN_NAMESPACE();
-class RenderTexture;
-FO_END_NAMESPACE();
-#define ImTextureID FO_NAMESPACE RenderTexture*
+#define ImTextureID void*
 #define ImTextureID_Invalid nullptr
 
 //---- Define assertion handler. Defaults to calling assert().

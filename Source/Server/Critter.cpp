@@ -297,12 +297,14 @@ void Critter::ClearVisibleEnitites()
 
     while (!_visibleCrWhoSeeMe.empty()) {
         auto* cr = _visibleCrWhoSeeMe.front().get();
+        FO_RUNTIME_ASSERT(cr);
         const auto del_ok = RemoveVisibleCritter(cr);
         FO_RUNTIME_ASSERT(del_ok);
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
         auto* cr = _visibleCr.front().get();
+        FO_RUNTIME_ASSERT(cr);
         const auto del_ok2 = cr->RemoveVisibleCritter(this);
         FO_RUNTIME_ASSERT(del_ok2);
     }
@@ -435,6 +437,7 @@ auto Critter::AddVisibleCritter(Critter* cr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(cr);
     FO_RUNTIME_ASSERT(GetMapId());
     FO_RUNTIME_ASSERT(cr != this);
     FO_RUNTIME_ASSERT(cr->GetId() != GetId());
@@ -459,6 +462,7 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(cr);
     FO_RUNTIME_ASSERT(GetMapId());
     FO_RUNTIME_ASSERT(cr != this);
     FO_RUNTIME_ASSERT(cr->GetId() != GetId());

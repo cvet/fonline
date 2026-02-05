@@ -927,11 +927,13 @@ void Application::EndFrame()
                     const auto update_pos = ipos32(im_tex->UpdateRect.x, im_tex->UpdateRect.y);
                     const auto update_size = isize32(im_tex->UpdateRect.w, im_tex->UpdateRect.h);
                     const auto* update_data = static_cast<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
-                    im_tex->GetTexID()->UpdateTextureRegion(update_pos, update_size, update_data, true);
+                    auto* tex = static_cast<RenderTexture*>(im_tex->GetTexID());
+                    tex->UpdateTextureRegion(update_pos, update_size, update_data, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
                 else if (im_tex->Status == ImTextureStatus_WantDestroy) {
-                    const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), im_tex->GetTexID());
+                    auto* tex = static_cast<RenderTexture*>(im_tex->GetTexID());
+                    const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), tex);
                     FO_RUNTIME_ASSERT(it != _imguiTextures.end());
                     _imguiTextures.erase(it);
                     im_tex->SetTexID(ImTextureID_Invalid);
@@ -986,7 +988,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, pcmd->TexRef.GetTexID());
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TexRef.GetTexID()));
                     ActiveRenderer->DisableScissor();
                 }
             }
