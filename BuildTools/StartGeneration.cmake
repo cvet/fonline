@@ -295,6 +295,7 @@ if(WIN32)
 	# Todo: debug /RTCc /sdl _ALLOW_RTCc_IN_STL release /GS-
 	add_compile_options_C_CXX(/permissive-)
 	add_compile_options_C_CXX(/Zc:__cplusplus)
+	add_compile_options_C_CXX(/Zc:preprocessor)
 	add_compile_options_C_CXX($<${expr_DebugBuild}:/RTC1>)
 	add_compile_options_C_CXX($<${expr_DebugBuild}:/GS>)
 	add_compile_options_C_CXX($<$<OR:${expr_DebugBuild},$<CONFIG:RelWithDebInfo>>:/JMC>)

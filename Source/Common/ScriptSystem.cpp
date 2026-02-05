@@ -117,7 +117,7 @@ void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
     std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<std::type_index> arg_types, std::type_index ret_type) const noexcept -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -128,11 +128,11 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<std::type
     if (func->Args.size() != arg_types.size()) {
         return false;
     }
-    if ((func->Ret.Kind != ComplexTypeKind::None) != (ret_type != typeid(void))) {
+    if ((func->Ret.Kind != ComplexTypeKind::None) != (ret_type != ArgMapTypeIndex<void>())) {
         return false;
     }
 
-    const auto check_type = [this](const ComplexTypeDesc& left, const std::type_index& right) -> bool {
+    const auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
         const auto it = _engineTypes.find(right);
         FO_RUNTIME_VERIFY(it != _engineTypes.end(), false);
         return left == it->second;

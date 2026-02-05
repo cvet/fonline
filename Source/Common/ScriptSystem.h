@@ -481,7 +481,7 @@ public:
     [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
     {
         const auto range = _globalFuncMap.equal_range(func_name);
-        const array<std::type_index, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>())) {
@@ -492,12 +492,12 @@ public:
         return {};
     }
 
-    [[nodiscard]] auto FindFunc(hstring func_name, const_span<std::type_index> arg_types) noexcept -> ScriptFuncDesc*
+    [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*
     {
         const auto range = _globalFuncMap.equal_range(func_name);
 
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second.get(), arg_types, typeid(void))) {
+            if (ValidateArgs(it->second.get(), arg_types, ArgMapTypeIndex<void>())) {
                 return it->second.get();
             }
         }
@@ -509,7 +509,7 @@ public:
     [[nodiscard]] auto CheckFunc(hstring func_name) const noexcept -> bool
     {
         const auto range = _globalFuncMap.equal_range(func_name);
-        const array<std::type_index, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>())) {
@@ -542,7 +542,7 @@ public:
         return func && func.Call(args...);
     }
 
-    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc* func, const_span<std::type_index> arg_types, std::type_index ret_type) const noexcept -> bool;
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
     void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
@@ -554,33 +554,33 @@ public:
     {
         using raw_t = std::remove_cvref_t<T>;
 
-        _engineTypes.emplace(typeid(raw_t), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type});
-        _engineTypes.emplace(typeid(raw_t*), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true});
+        _engineTypes.emplace(typeid(raw_t).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type});
+        _engineTypes.emplace(typeid(raw_t*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true});
 
         // Skip vector of bool due to temporary address of indexed element
         if constexpr (!std::is_same_v<T, bool>) {
-            _engineTypes.emplace(typeid(vector<raw_t>), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type});
-            _engineTypes.emplace(typeid(vector<raw_t>*), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true});
+            _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type});
+            _engineTypes.emplace(typeid(vector<raw_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true});
         }
     }
 
 private:
     template<typename T>
-    static constexpr auto ArgMapTypeIndex() -> std::type_index
+    static constexpr auto ArgMapTypeIndex() -> size_t
     {
         using raw_t = std::remove_cvref_t<std::remove_pointer_t<T>>;
 
         if constexpr (std::is_lvalue_reference_v<T>) {
-            return std::type_index(typeid(raw_t*));
+            return typeid(raw_t*).hash_code();
         }
         else {
-            return std::type_index(typeid(raw_t));
+            return typeid(raw_t).hash_code();
         }
     }
 
     vector<unique_ptr<ScriptSystemBackend>> _backends {};
     vector<function<void()>> _loopCallbacks {};
-    unordered_map<std::type_index, ComplexTypeDesc> _engineTypes {};
+    unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
     vector<pair<ScriptFunc<void>, int32>> _initFunc {};
 };

@@ -315,8 +315,18 @@ concept has_member = std::is_member_function_pointer_v<decltype(Member)> && requ
     { (t.*Member)(std::declval<Args>()...) } -> std::convertible_to<Ret>;
 };
 
+template<typename Test, template<typename...> typename Ref>
+struct is_specialization : std::false_type
+{
+};
+
+template<template<typename...> typename Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+
 template<typename T, template<typename...> typename Ref>
-concept specialization_of = requires { []<typename... Args>(Ref<Args...>*) { }(static_cast<T*>(nullptr)); };
+concept specialization_of = is_specialization<T, Ref>::value;
 
 template<typename From, typename To>
 concept convertible_without_narrowing = requires(From&& x) {

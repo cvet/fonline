@@ -44,7 +44,7 @@ static auto FractionF(float32 v) -> float32
     FO_NO_STACK_TRACE_ENTRY();
 
     float32 int_part;
-    return std::modff(v, &int_part);
+    return std::modf(v, &int_part);
 }
 
 static auto CloseTo(float32 a, float32 b, float32 epsilon) -> bool

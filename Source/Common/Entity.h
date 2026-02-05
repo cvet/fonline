@@ -68,7 +68,7 @@ FO_BEGIN_NAMESPACE();
     static uint16 prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
-    EntityEventWrapper<#event_name, __VA_ARGS__> event_name \
+    EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
     { \
         this \
     }
