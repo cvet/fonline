@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE();
 
 class Item;
 class Critter;
+class StaticItem;
 
 class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {

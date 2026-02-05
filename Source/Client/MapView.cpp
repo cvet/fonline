@@ -175,7 +175,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     FO_RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
-    auto reset_loading = ScopeCallback([&]() noexcept { _mapLoading = false; });
+    auto reset_loading = scope_exit([&]() noexcept { _mapLoading = false; });
     auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
