@@ -39,7 +39,11 @@ FO_BEGIN_NAMESPACE
 
 static constexpr uint32 STACK_TRACE_MAX_SIZE = 63;
 
+#if FO_TRACY
+using SourceLocationData = tracy::SourceLocationData;
+#else
 struct SourceLocationData;
+#endif
 
 struct StackTraceData
 {
@@ -59,8 +63,6 @@ namespace details
 
 // Profiling & stack trace obtaining
 #if FO_TRACY
-using SourceLocationData = tracy::SourceLocationData;
-
 #if !FO_NO_MANUAL_STACK_TRACE
 #define FO_STACK_TRACE_ENTRY() \
     ZoneScoped; \

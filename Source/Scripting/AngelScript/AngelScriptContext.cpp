@@ -215,7 +215,9 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
                 PushStackTrace(loc);
 
 #if FO_TRACY
-                const auto tracy_srcloc = ___tracy_alloc_srcloc(loc->SrcLoc.line, loc->FileBuf.data(), loc->FileBufLen, loc->FuncBuf.data(), loc->FuncBufLen, 0);
+                const auto loc_func = string_view(loc->function);
+                const auto loc_file = string_view(loc->file);
+                const auto tracy_srcloc = ___tracy_alloc_srcloc(loc->line, loc_file.data(), loc_file.length(), loc_func.data(), loc_func.length(), 0);
                 const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
                 ctx_ext->TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
