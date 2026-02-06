@@ -2,14 +2,14 @@
 
 BEGIN_AS_NAMESPACE
 
-#define WRAP_FN(name) (AS_NAMESPACE_QUALIFIER gw::id(name).f<name /* avoid operator- bug */>())
-#define WRAP_MFN(ClassType, name) (AS_NAMESPACE_QUALIFIER gw::id(&ClassType::name).f<&ClassType::name /* avoid operator- bug */>())
-#define WRAP_OBJ_FIRST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).of<name /* avoid operator- bug */>())
-#define WRAP_OBJ_LAST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).ol<name /* avoid operator- bug */>())
-#define WRAP_FN_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
-#define WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(ClassType::*) Parameters>::f<&ClassType::name /**/>))
-#define WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjFirst<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
-#define WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjLast<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
+#define WRAP_FN(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template f<name /* avoid operator- bug */>())
+#define WRAP_MFN(ClassType, name) (AS_NAMESPACE_QUALIFIER gw::id(&ClassType::name).template f<&ClassType::name /* avoid operator- bug */>())
+#define WRAP_OBJ_FIRST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template of<name /* avoid operator- bug */>())
+#define WRAP_OBJ_LAST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template ol<name /* avoid operator- bug */>())
+#define WRAP_FN_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
+#define WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(ClassType::*) Parameters>::template f<&ClassType::name /**/>))
+#define WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjFirst<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
+#define WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjLast<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
 #define WRAP_CON(ClassType, Parameters) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Constructor<ClassType Parameters>::f))
 #define WRAP_DES(ClassType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::destroy<ClassType>))
 

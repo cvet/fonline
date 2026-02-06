@@ -493,42 +493,6 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
     list(APPEND FO_COMMON_LIBS AngelScriptPreprocessor)
     DisableLibWarnings(AngelScriptPreprocessor)
-
-    # AngelScript engine specific
-    set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
-    add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
-    target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
-    target_link_libraries(AngelScriptScripting AngelScriptCore AngelScriptPreprocessor)
-    list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
 endif()
 
 # Mono scripting
@@ -1026,6 +990,45 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
+if(FO_ANGELSCRIPT_SCRIPTING)
+    # AngelScript engine specific
+    set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
+    add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
+    target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
+    target_link_libraries(AngelScriptScripting AngelScriptCore AngelScriptPreprocessor)
+    list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
+endif()
+
 if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ AppHeadless")
     add_library(AppHeadless STATIC EXCLUDE_FROM_ALL
@@ -1055,8 +1058,12 @@ if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
+
+    if(FO_ANGELSCRIPT_SCRIPTING)
+        target_link_libraries(CommonLib AngelScriptScripting)
+    endif()
 endif()
 
 if(FO_BUILD_CLIENT_LIB)
