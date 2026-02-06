@@ -161,16 +161,16 @@
 #if FO_USE_NAMESPACE
 #define FO_NAMESPACE_NAME fo
 #define FO_NAMESPACE FO_NAMESPACE_NAME::
-#define FO_BEGIN_NAMESPACE() \
+#define FO_BEGIN_NAMESPACE \
     namespace FO_NAMESPACE_NAME \
     {
-#define FO_END_NAMESPACE() }
+#define FO_END_NAMESPACE }
 #define FO_USING_NAMESPACE() using namespace FO_NAMESPACE_NAME
 #else
 #define FO_NAMESPACE_NAME
 #define FO_NAMESPACE
-#define FO_BEGIN_NAMESPACE()
-#define FO_END_NAMESPACE()
+#define FO_BEGIN_NAMESPACE
+#define FO_END_NAMESPACE
 #define FO_USING_NAMESPACE()
 #endif
 
@@ -449,7 +449,7 @@ FO_BEGIN_NAMESPACE
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
     FO_END_NAMESPACE \
@@ -460,7 +460,7 @@ FO_BEGIN_NAMESPACE
         } \
         return istr; \
     } \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_HASHER(type) \
     FO_END_NAMESPACE \
@@ -474,7 +474,7 @@ FO_BEGIN_NAMESPACE
             return detail::wyhash::hash(&v, sizeof(v)); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_HASHER_EXT(type, ...) \
     FO_END_NAMESPACE \
@@ -487,7 +487,7 @@ FO_BEGIN_NAMESPACE
             return detail::wyhash::hash(__VA_ARGS__); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 // Math constants
 constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32>;
