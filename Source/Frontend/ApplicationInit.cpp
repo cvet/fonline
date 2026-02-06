@@ -38,7 +38,7 @@
 #include "FileSystem.h"
 #include "Version-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 raw_ptr<Application> App;
 
@@ -323,7 +323,7 @@ static void SetupSignals()
 }
 
 #if FO_WEB
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
@@ -335,7 +335,7 @@ extern "C"
         FO_NAMESPACE App->Input.SetClipboardText(text);
     }
 }
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 #endif
 
 static void SetupWebClipboard()
@@ -363,4 +363,4 @@ static void SetupWebClipboard()
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

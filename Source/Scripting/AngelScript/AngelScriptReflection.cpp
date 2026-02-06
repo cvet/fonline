@@ -39,7 +39,7 @@
 #include <as_scriptengine.h>
 // ReSharper disable CppRedundantQualifier
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto TryCastToEnumType(const AngelScript::asITypeInfo* ti) -> const AngelScript::asCEnumType*
 {
@@ -613,4 +613,4 @@ void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

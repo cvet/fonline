@@ -33,7 +33,7 @@
 
 #include "NetworkServer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
     _settings {settings}
@@ -153,4 +153,4 @@ auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings) -> sh
     return SafeAlloc::MakeShared<DummyNetConnection>(settings);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

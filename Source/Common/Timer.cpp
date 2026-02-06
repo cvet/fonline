@@ -33,7 +33,7 @@
 
 #include "Timer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 GameTimer::GameTimer(TimerSettings& settings) :
     _settings {&settings}
@@ -97,4 +97,4 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
     return _syncTimeBase + (_frameTime - _syncTimeSet);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

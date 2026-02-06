@@ -40,13 +40,13 @@
 
 FO_USING_NAMESPACE();
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
 extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
 extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
 
 unordered_set<string> CompilerPassedMessages;
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)

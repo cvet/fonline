@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename TCell, pos_type TPos, size_type TSize>
 class TwoDimensionalGrid
@@ -222,4 +222,4 @@ private:
     const TCell _emptyCell {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

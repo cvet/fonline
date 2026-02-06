@@ -35,7 +35,7 @@
 
 #include "theora/theoradec.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct VideoClip::Impl
 {
@@ -445,4 +445,4 @@ int32 VideoClip::DecodePacket()
     return rv;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -38,7 +38,7 @@
 #include "Properties.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView HasTimeEvents
@@ -257,4 +257,4 @@ public:
     }
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

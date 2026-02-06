@@ -38,7 +38,7 @@
 #include "EntityProtos.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ProtoManagerException);
 
@@ -93,4 +93,4 @@ private:
     const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

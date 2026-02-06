@@ -36,7 +36,7 @@
 #include "EngineBase.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ScriptSystem::ScriptSystem()
 {
@@ -207,4 +207,4 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, st
     return prop;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

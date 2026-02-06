@@ -35,7 +35,7 @@
 #include "EngineBase.h"
 #include "ScriptSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 const timespan TimeEventManager::MIN_REPEAT_TIME = timespan(std::chrono::milliseconds {1});
 
@@ -313,4 +313,4 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     return !not_found && call_result;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

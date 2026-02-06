@@ -34,7 +34,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct Platform
 {
@@ -76,4 +76,4 @@ struct Platform
     static auto IsShiftDown() noexcept -> bool;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

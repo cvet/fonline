@@ -39,7 +39,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class PlayerView final : public ClientEntity, public PlayerProperties
 {
@@ -56,4 +56,4 @@ private:
     void OnDestroySelf() override;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

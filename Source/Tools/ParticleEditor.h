@@ -37,7 +37,7 @@
 
 #include "Editor.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ParticleEditor final : public EditorAssetView
 {
@@ -58,4 +58,4 @@ private:
     bool _autoReplay {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

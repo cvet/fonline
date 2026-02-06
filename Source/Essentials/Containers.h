@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "MemorySystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Basic types with safe allocator
 using string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
@@ -76,7 +76,7 @@ template<typename T>
 concept is_map_collection = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
 
 // String formatter
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE string>
 {
@@ -84,10 +84,10 @@ struct FO_HASH_NAMESPACE hash<FO_NAMESPACE string>
     using is_avalanching = void;
     auto operator()(FO_NAMESPACE string_view str) const noexcept -> uint64_t { return hash<FO_NAMESPACE string_view> {}(str); }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Vector formatter
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE is_vector_collection<T>)
 struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
@@ -116,6 +116,6 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
         return formatter<FO_NAMESPACE string_view>::format(result, ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

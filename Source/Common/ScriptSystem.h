@@ -37,7 +37,7 @@
 
 #include "Entity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ScriptSystemException);
 FO_DECLARE_EXCEPTION(ScriptException);
@@ -421,4 +421,4 @@ public:
     }
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -63,7 +63,7 @@
 #endif
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ CodeGen Global
 
@@ -248,4 +248,4 @@ void AngelScript_MapperCompiler_RegisterData(EngineData* engine)
 
 #endif
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

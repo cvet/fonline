@@ -39,7 +39,7 @@
 
 #include "png.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 [[nodiscard]] static auto PngLoad(const uint8* data, int32& result_width, int32& result_height) -> vector<uint8>;
 [[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, int32& result_height) -> vector<uint8>;
@@ -2464,4 +2464,4 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
     return result;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

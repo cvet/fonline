@@ -33,9 +33,9 @@
 
 #include "StrongType.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 using test_strong_type = strong_type<int32, struct test_strong_type_, strong_type_bool_test_tag, strong_type_arithmetics_tag>;
 static_assert(is_strong_type<test_strong_type>);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

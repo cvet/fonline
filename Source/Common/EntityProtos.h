@@ -39,7 +39,7 @@
 #include "EntityProperties.h"
 #include "Properties.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ProtoEntity : public Entity
 {
@@ -111,4 +111,4 @@ public:
     ProtoCustomEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

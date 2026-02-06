@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void CreateGlobalData();
 extern void DeleteGlobalData();
@@ -70,4 +70,4 @@ extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 extern int32 GlobalDataCallbacksCount;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

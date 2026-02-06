@@ -34,7 +34,7 @@
 #include "AngelScriptMath.h"
 #include "AngelScriptWrappedCall.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32 v) -> float32
 {
@@ -118,4 +118,4 @@ void RegisterAngelScriptMath(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

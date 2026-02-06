@@ -37,8 +37,8 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void RegisterAngelScriptMath(AngelScript::asIScriptEngine* engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -38,7 +38,7 @@
 #include "EntityProtos.h"
 #include "ScriptSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ProtoBaker::ProtoBaker(BakerData& data) :
     BaseBaker(data)
@@ -340,4 +340,4 @@ auto ProtoBaker::BakeProtoFiles(const EngineData* engine, const ScriptSystem* sc
     return final_data;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

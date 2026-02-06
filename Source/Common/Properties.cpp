@@ -34,7 +34,7 @@
 #include "Properties.h"
 #include "PropertiesSerializator.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto PropertyRawData::GetPtr() noexcept -> void*
 {
@@ -1711,4 +1711,4 @@ void PropertyRegistrator::RegisterProperty(const span<const string_view>& flags)
     _registeredProperties.emplace_back(std::move(prop));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

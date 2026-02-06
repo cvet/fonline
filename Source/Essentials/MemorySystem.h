@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "SmartPointers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #if !FO_HAVE_RPMALLOC
 static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= alignof(std::max_align_t));
@@ -227,4 +227,4 @@ extern void MemMove(void* dest, const void* src, size_t size) noexcept;
 extern void MemFill(void* ptr, int32 value, size_t size) noexcept;
 extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

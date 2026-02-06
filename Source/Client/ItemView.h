@@ -39,7 +39,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ItemView : public ClientEntity, public EntityWithProto, public ItemProperties
 {
@@ -67,4 +67,4 @@ protected:
     vector<refcount_ptr<ItemView>> _innerItems {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

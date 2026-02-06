@@ -37,7 +37,7 @@
 #include "Containers.h"
 #include "StrongType.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Game time
 using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
@@ -262,7 +262,7 @@ private:
 };
 static_assert(is_strong_type<synctime>);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_NAMESPACE string_view>
 {
@@ -303,9 +303,9 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE string_view>
 {
@@ -320,9 +320,9 @@ struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE s
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE timespan> : formatter<FO_NAMESPACE steady_time_point::duration>
 {
@@ -332,9 +332,9 @@ struct std::formatter<FO_NAMESPACE timespan> : formatter<FO_NAMESPACE steady_tim
         return formatter<FO_NAMESPACE steady_time_point::duration>::format(value.value(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE nanotime> : formatter<FO_NAMESPACE steady_time_point>
 {
@@ -344,9 +344,9 @@ struct std::formatter<FO_NAMESPACE nanotime> : formatter<FO_NAMESPACE steady_tim
         return formatter<FO_NAMESPACE steady_time_point>::format(value.value(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
 {
@@ -356,7 +356,7 @@ struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
         return formatter<FO_NAMESPACE timespan>::format(value.duration_value(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Time measuring
 class [[nodiscard]] TimeMeter
@@ -373,4 +373,4 @@ private:
     nanotime _startTime;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

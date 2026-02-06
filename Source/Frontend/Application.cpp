@@ -43,7 +43,7 @@
 
 #include "WinApi-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 
@@ -1981,4 +1981,4 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
     return ImGuiKey_None;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

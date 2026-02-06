@@ -44,7 +44,7 @@
 #include "TimeEventManager.h"
 #include "Timer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataRegistrationException);
 
@@ -129,4 +129,4 @@ protected:
     ~BaseEngine() override = default;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

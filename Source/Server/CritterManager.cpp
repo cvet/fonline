@@ -39,7 +39,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 CritterManager::CritterManager(FOServer* engine) :
     _engine {engine}
@@ -349,4 +349,4 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
     return nullptr;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -39,7 +39,7 @@
 #include "PropertiesSerializator.h"
 #include "Version-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void Server_RegisterData(EngineData*);
 extern void InitServerEngine(FOServer*);
@@ -3426,4 +3426,4 @@ auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
     return ident_t {(1u << 31u) | hash_value};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

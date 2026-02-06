@@ -39,7 +39,7 @@
 #include "ScriptSystem.h"
 #include "Version-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(BaseEngine* engine)
@@ -698,4 +698,4 @@ FO_SCRIPT_API int32 Common_Game_ResolveGenericValue(BaseEngine* engine, string_v
     return engine->ResolveGenericValue(str);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

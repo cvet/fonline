@@ -41,7 +41,7 @@
 #include "TimeRelated.h"
 #include "WorkThread.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -159,4 +159,4 @@ void WriteLogMessage(LogType type, string_view message) noexcept
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

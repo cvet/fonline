@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "ExceptionHadling.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Data serialization helpers
 FO_DECLARE_EXCEPTION(DataReadingException);
@@ -142,4 +142,4 @@ private:
     raw_ptr<vector<uint8>> _dataBuf;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

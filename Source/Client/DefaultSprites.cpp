@@ -34,7 +34,7 @@
 #include "DefaultSprites.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 AtlasSprite::AtlasSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
@@ -544,4 +544,4 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     return atlas_spr;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

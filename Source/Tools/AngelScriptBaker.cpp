@@ -37,7 +37,7 @@
 
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern vector<uint8> Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&);
 extern vector<uint8> Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&);
@@ -136,6 +136,6 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

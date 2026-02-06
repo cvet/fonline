@@ -34,7 +34,7 @@
 #include "TextPack.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void TextPack::AddStr(TextPackKey num, string_view str)
 {
@@ -462,4 +462,4 @@ void LanguagePack::LoadFromResources(FileSystem& resources)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

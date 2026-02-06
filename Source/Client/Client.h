@@ -62,7 +62,7 @@
 #include "TextPack.h"
 #include "VideoClip.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EngineDataNotFoundException);
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
@@ -409,4 +409,4 @@ protected:
     vector<tuple<string, bool>> _videoQueue {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

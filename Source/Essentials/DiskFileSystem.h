@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 enum class DiskFileSeek : uint8
 {
@@ -101,4 +101,4 @@ public:
     static auto TouchFile(string_view path) -> bool;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -34,7 +34,7 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptWrappedCall.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 constexpr AngelScript::asPWORD AS_TYPE_ARRAY_CACHE = 1000;
 
@@ -1613,4 +1613,4 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

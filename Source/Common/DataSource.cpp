@@ -36,7 +36,7 @@
 
 #include "minizip/unzip.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
 {
@@ -1288,4 +1288,4 @@ auto FilesList::GetFileNames(string_view dir, bool recursive, string_view ext) c
     return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

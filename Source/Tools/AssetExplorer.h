@@ -37,7 +37,7 @@
 
 #include "Editor.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class AssetExplorer final : public EditorView
 {
@@ -55,4 +55,4 @@ private:
     void DrawSection(const string& section_name, string_view file_ext);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

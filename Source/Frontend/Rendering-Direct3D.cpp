@@ -43,7 +43,7 @@
 
 #include "WinApiUndef-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Direct3D_Texture final : public RenderTexture
 {
@@ -1452,6 +1452,6 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

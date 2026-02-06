@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
 
@@ -103,4 +103,4 @@ struct StackTraceScopeEntry
     auto operator=(StackTraceScopeEntry&&) noexcept -> StackTraceScopeEntry& = delete;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

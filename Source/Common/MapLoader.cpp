@@ -34,7 +34,7 @@
 #include "MapLoader.h"
 #include "ConfigFile.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Todo: restore supporting of the map old text format
 
@@ -145,4 +145,4 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -45,7 +45,7 @@
 #include "Settings.h"
 #include "VisualParticles.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
@@ -451,6 +451,6 @@ private:
     vector<raw_ptr<ModelBone>> _allDrawBones {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

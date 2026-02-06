@@ -38,7 +38,7 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)
@@ -698,4 +698,4 @@ auto BaseSettings::GetResourcePacks() const -> span<const ResourcePackInfo>
     return _resourcePacks;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

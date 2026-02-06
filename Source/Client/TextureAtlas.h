@@ -39,7 +39,7 @@
 #include "RenderTarget.h"
 #include "Rendering.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 enum class AtlasType : uint8
 {
@@ -115,4 +115,4 @@ private:
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

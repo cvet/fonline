@@ -37,7 +37,7 @@
 
 #if FO_ENABLE_3D
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ModelAnimation final
 {
@@ -204,6 +204,6 @@ void ModelAnimationController::FindSrtValue(float32 time, float32 duration, bool
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

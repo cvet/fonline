@@ -38,7 +38,7 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ProtoTextBakerException);
 
@@ -59,4 +59,4 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

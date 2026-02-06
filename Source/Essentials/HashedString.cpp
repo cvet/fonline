@@ -33,7 +33,7 @@
 
 #include "HashedString.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 hstring::entry hstring::_zeroEntry;
 
@@ -242,4 +242,4 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
     return h;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

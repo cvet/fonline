@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "ExceptionHadling.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Float comparator
 template<typename T>
@@ -357,4 +357,4 @@ constexpr auto iterate_range(const T& value) noexcept
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

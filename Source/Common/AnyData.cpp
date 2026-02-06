@@ -33,7 +33,7 @@
 
 #include "AnyData.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto AnyData::Value::operator==(const Value& other) const -> bool
 {
@@ -496,4 +496,4 @@ auto StringEscaping::DecodeString(string_view str) -> string
     return result;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

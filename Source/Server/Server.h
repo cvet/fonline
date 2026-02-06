@@ -53,7 +53,7 @@
 #include "ServerConnection.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ServerInitException);
 
@@ -278,4 +278,4 @@ private:
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

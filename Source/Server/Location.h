@@ -39,7 +39,7 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Map;
 class Location;
@@ -80,4 +80,4 @@ private:
     vector<refcount_ptr<Map>> _locMaps {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

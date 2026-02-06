@@ -38,7 +38,7 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
@@ -112,4 +112,4 @@ public:
     [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

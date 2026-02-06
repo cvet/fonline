@@ -34,7 +34,7 @@
 #include "SpriteManager.h"
 #include "DefaultSprites.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {&spr_mngr},
@@ -2572,4 +2572,4 @@ auto SpriteManager::HaveLetter(int32 num_font, uint32 letter) const -> bool
     return font->Letters.count(letter) != 0;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

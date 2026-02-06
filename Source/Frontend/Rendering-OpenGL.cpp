@@ -55,7 +55,7 @@
 #endif
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #if FO_MAC && !FO_OPENGL_ES
 #undef glGenVertexArrays
@@ -1251,6 +1251,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

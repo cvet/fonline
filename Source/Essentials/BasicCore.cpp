@@ -39,7 +39,7 @@
 #include <unistd.h>
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static bool RunInDebugger = false;
 static std::once_flag RunInDebuggerOnce;
@@ -164,4 +164,4 @@ extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
     return buf;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

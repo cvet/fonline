@@ -33,7 +33,7 @@
 
 #include "ParticleSprites.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ParticleSprite::ParticleSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, ParticleSpriteFactory* factory, unique_ptr<ParticleSystem>&& particle) :
     AtlasSprite(spr_mngr, size, offset, atlas, atlas_node, atlas_rect, {}),
@@ -228,4 +228,4 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     _sprMngr->GetRtMngr().PopRenderTarget();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

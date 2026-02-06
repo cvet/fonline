@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 {
@@ -3119,6 +3119,6 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
     return effect;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

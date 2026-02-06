@@ -36,7 +36,7 @@
 #include "Geometry.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
@@ -760,4 +760,4 @@ FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(Critter* self)
     return self->GetOfflineTime();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -34,7 +34,7 @@
 #include "ItemView.h"
 #include "Client.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -121,4 +121,4 @@ void ItemView::DestroyInnerItem(ItemView* item)
     item->DestroySelf();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

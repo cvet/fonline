@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "WinApi-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
@@ -1137,4 +1137,4 @@ FO_SCRIPT_API int32 Server_Game_SystemCall(FOServer* server, string_view command
     });
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

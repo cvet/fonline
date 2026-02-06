@@ -53,7 +53,7 @@
 #define SD_BOTH SHUT_RDWR
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Proxy types
 constexpr auto PROXY_SOCKS4 = 1;
@@ -535,4 +535,4 @@ auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

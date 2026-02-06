@@ -37,7 +37,7 @@
 #include "SafeArithmetics.h"
 #include "StrongType.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 concept pos_type = requires(T t) {
@@ -115,7 +115,7 @@ struct ucolor
 static_assert(is_strong_type<ucolor>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
 {
@@ -127,7 +127,7 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Position types
 template<std::integral T>
@@ -657,4 +657,4 @@ static_assert(sizeof(frect32) == 16 && std::is_standard_layout_v<frect32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect32, value.x >> value.y >> value.width >> value.height);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

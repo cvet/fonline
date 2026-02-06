@@ -88,7 +88,7 @@ using namespace AngelScript;
 // Reset garbage from WinApi
 #include "WinApiUndef-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr size_t SCRIPT_BACKEND_INDEX = 1;
 
@@ -238,7 +238,7 @@ struct AngelscriptAllocator
 #define GET_CONTEXT_EXT(ctx) *static_cast<asCContext*>(ctx)->Ext
 #define GET_CONTEXT_EXT2(ctx) static_cast<asCContext*>(ctx)->Ext2
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 struct ASContextExtendedData
 {
     bool ExecutionActive {};
@@ -251,7 +251,7 @@ struct ASContextExtendedData
     FO_NAMESPACE vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func, size_t program_pos);
 static void AngelScriptEndCall(asIScriptContext* ctx);
@@ -4885,4 +4885,4 @@ auto FO_CONCAT(Init_, SCRIPT_BACKEND_CLASS)(const vector<File>& script_files) ->
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

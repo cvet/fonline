@@ -38,7 +38,7 @@
 #include "ParticleSprites.h"
 #include "Version-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void Client_RegisterData(EngineData*, const vector<uint8>&);
 extern void InitClientEngine(FOClient*);
@@ -2844,4 +2844,4 @@ void FOClient::ProcessVideo()
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

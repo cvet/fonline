@@ -39,7 +39,7 @@
 #include "Rendering.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(AppInitException);
 
@@ -445,4 +445,4 @@ private:
 extern raw_ptr<Application> App;
 extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -40,7 +40,7 @@
 #include "ScriptSystem.h"
 #include "ServerEntity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Item;
 class Critter;
@@ -89,4 +89,4 @@ private:
     unique_ptr<vector<mpos>> _multihexEntries {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

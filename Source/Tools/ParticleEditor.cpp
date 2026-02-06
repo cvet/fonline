@@ -38,7 +38,7 @@
 
 #include "SPARK.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct ParticleEditor::Impl
 {
@@ -1357,4 +1357,4 @@ void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const funct
 #undef DRAW_SPK_COMBO_COMBO_COMBO
 #undef DRAW_SPK_INTERPOLATOR_FIELD
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

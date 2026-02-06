@@ -49,7 +49,7 @@ FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class DataBaseImpl
 {
@@ -1466,4 +1466,4 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
     throw DataBaseException("Wrong storage options", connection_info);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

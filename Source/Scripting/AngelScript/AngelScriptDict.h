@@ -39,7 +39,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ScriptDictException);
 
@@ -114,4 +114,4 @@ private:
 
 void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
     _props {registrator}
@@ -416,4 +416,4 @@ void EntityEventBase::UnsubscribeAll() noexcept
     _callbacks = nullptr;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

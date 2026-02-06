@@ -38,7 +38,7 @@
 #include "Application.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 TEST_CASE("GeometryHelper")
 {
@@ -126,4 +126,4 @@ TEST_CASE("GeometryHelper")
     CHECK(count == 3);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

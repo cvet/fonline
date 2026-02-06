@@ -35,7 +35,7 @@
 #include "Application.h"
 #include "ImGuiStuff.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 AssetExplorer::AssetExplorer(FOEditor& editor) :
     EditorView("Asset Explorer", editor)
@@ -101,4 +101,4 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

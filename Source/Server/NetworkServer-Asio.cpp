@@ -39,7 +39,7 @@
 #define ASIO_NO_DEPRECATED 1
 #include "asio.hpp"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class NetworkServerConnection_Asio final : public NetworkServerConnection
 {
@@ -287,6 +287,6 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     AcceptNext();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

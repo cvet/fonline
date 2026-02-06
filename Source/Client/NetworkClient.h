@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetworkClientException);
 
@@ -80,4 +80,4 @@ private:
     vector<uint8> _incomeBuf {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

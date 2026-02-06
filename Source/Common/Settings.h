@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(SettingsException);
 
@@ -114,4 +114,4 @@ private:
     string _empty {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 TEST_CASE("GenericUtils")
 {
@@ -117,4 +117,4 @@ TEST_CASE("GenericUtils")
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

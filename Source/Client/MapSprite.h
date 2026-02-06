@@ -37,7 +37,7 @@
 
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
 
@@ -238,4 +238,4 @@ struct MapSpriteHolder
 };
 static_assert(std::is_standard_layout_v<MapSpriteHolder>);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

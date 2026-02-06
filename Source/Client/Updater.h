@@ -41,7 +41,7 @@
 #include "Settings.h"
 #include "SpriteManager.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Updater final
 {
@@ -95,4 +95,4 @@ private:
     size_t _bytesRealReceivedCheckpoint {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

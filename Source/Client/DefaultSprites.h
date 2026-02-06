@@ -38,7 +38,7 @@
 #include "Rendering.h"
 #include "SpriteManager.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class AtlasSprite : public Sprite
 {
@@ -149,4 +149,4 @@ private:
     vector<ucolor> _borderBuf {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

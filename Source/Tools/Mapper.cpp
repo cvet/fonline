@@ -36,7 +36,7 @@
 #include "Baker.h"
 #include "ParticleSprites.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void Mapper_RegisterData(EngineData*);
 
@@ -3732,4 +3732,4 @@ auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcoun
     return {};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

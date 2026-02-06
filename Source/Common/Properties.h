@@ -38,7 +38,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertyRegistrationException);
 FO_DECLARE_EXCEPTION(PropertiesException);
@@ -932,4 +932,4 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

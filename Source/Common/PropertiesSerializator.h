@@ -38,7 +38,7 @@
 #include "AnyData.h"
 #include "Properties.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertySerializationException);
 
@@ -55,4 +55,4 @@ public:
     static void LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(span<const uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -63,7 +63,7 @@ extern "C" void ufbx_free(void* ptr, size_t old_size)
     allocator.deallocate(static_cast<uint8*>(ptr), old_size);
 }
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct BakerMeshData
 {
@@ -663,6 +663,6 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
     return result;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

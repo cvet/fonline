@@ -33,7 +33,7 @@
 
 #include "EngineBase.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 EngineData::EngineData(PropertiesRelationType props_relation, const EngineDataRegistrator& registrator)
 {
@@ -547,4 +547,4 @@ void BaseEngine::FrameAdvance()
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

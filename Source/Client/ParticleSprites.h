@@ -40,7 +40,7 @@
 #include "DefaultSprites.h"
 #include "SpriteManager.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ParticleSpriteFactory;
 
@@ -101,4 +101,4 @@ private:
     vector<raw_ptr<RenderTarget>> _rtIntermediate {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

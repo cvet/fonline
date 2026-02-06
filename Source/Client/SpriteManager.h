@@ -48,7 +48,7 @@
 #include "TextureAtlas.h"
 #include "VisualParticles.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Font flags
 // Todo: convert FT_ font flags to enum
@@ -354,4 +354,4 @@ private:
     mutable FontFormatInfo _fontFormatInfoBuf {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

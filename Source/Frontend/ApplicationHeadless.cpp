@@ -33,7 +33,7 @@
 
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr int32 MAX_ATLAS_WIDTH_ = 1024;
 static constexpr int32 MAX_ATLAS_HEIGHT_ = 1024;
@@ -565,4 +565,4 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

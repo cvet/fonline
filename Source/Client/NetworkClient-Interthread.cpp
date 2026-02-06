@@ -33,7 +33,7 @@
 
 #include "NetworkClient.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
@@ -150,4 +150,4 @@ void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

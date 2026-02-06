@@ -38,7 +38,7 @@
 #include "Geometry.h"
 #include "NetCommand.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(FOClient* client)
@@ -1536,4 +1536,4 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(FOClient* client, bool enabled)
     }*/
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

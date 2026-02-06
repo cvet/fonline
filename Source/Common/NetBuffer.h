@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetBufferException);
 FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
@@ -190,4 +190,4 @@ private:
     size_t _bufReadPos {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

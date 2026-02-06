@@ -38,7 +38,7 @@
 #include "CritterView.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetName(CritterView* self, string_view name)
@@ -585,4 +585,4 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
     old_item->MarkAsDestroyed();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

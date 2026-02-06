@@ -34,7 +34,7 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptWrappedCall.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr AngelScript::asPWORD AS_TYPE_DICT_CACHE = 1010;
 
@@ -1082,4 +1082,4 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine)
     FO_RUNTIME_ASSERT(r >= 0);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

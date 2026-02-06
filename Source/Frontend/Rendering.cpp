@@ -34,7 +34,7 @@
 #include "Rendering.h"
 #include "ConfigFile.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
@@ -335,4 +335,4 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return true;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

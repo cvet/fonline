@@ -38,7 +38,7 @@
 #include "ProtoManager.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ItemManager::ItemManager(FOServer* engine) :
     _engine {engine}
@@ -401,4 +401,4 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, int32 count)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

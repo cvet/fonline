@@ -35,7 +35,7 @@
 #include "Application.h"
 #include "Version-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
@@ -225,7 +225,7 @@ auto GenericUtils::ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 void emscripten_sleep(unsigned int ms)
 {
@@ -234,8 +234,8 @@ void emscripten_sleep(unsigned int ms)
     FO_UNREACHABLE_PLACE();
 }
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #endif
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

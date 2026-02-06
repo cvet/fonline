@@ -49,7 +49,7 @@
 
 #include "WinApiUndef-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct ExceptHandlingData
 {
@@ -69,14 +69,14 @@ struct ExceptHandlingData
 };
 FO_GLOBAL_DATA(ExceptHandlingData, ExceptionHandling);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 extern void SetCrashStackTrace() noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_NAMESPACE ExceptionHandling->CrashStackTrace = FO_NAMESPACE GetStackTrace();
 }
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class BackwardOStreamBuffer : public std::streambuf
 {
@@ -128,14 +128,14 @@ private:
 static BackwardOStreamBuffer CrashStreamBuf;
 static auto CrashStream = std::ostream(&CrashStreamBuf); // Passed to Printer::print in backward.hpp
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::print in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return FO_NAMESPACE CrashStream;
 }
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto InsertCatchedMark(const string& st) -> string
 {
@@ -342,4 +342,4 @@ extern auto FormatStackTrace(const StackTraceData& st) -> string
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -33,7 +33,7 @@
 
 #include "ConfigFile.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
 extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
@@ -396,4 +396,4 @@ auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
     return it_key->second;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -36,7 +36,7 @@
 #include "EngineBase.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ProtoManager::ProtoManager(EngineData& engine) :
     _engine {&engine},
@@ -326,4 +326,4 @@ auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const u
     return it_type->second;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

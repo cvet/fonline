@@ -37,7 +37,7 @@
 #include "MapSprite.h"
 #include "MapView.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 HexView::HexView(MapView* map) :
     _map {map}
@@ -250,4 +250,4 @@ void HexView::SetSpriteVisiblity(bool enabled)
     RefreshSprite();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -39,7 +39,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct ScriptArrayTypeData;
 
@@ -133,4 +133,4 @@ private:
 
 void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

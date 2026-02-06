@@ -37,7 +37,7 @@
 #include "Containers.h"
 #include "StackTrace.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Engine exception handling
 using ExceptionCallback = function<void(string_view message, string_view traceback, bool fatal_error)>;
@@ -188,4 +188,4 @@ FO_DECLARE_EXCEPTION(NotImplementedException);
 FO_DECLARE_EXCEPTION(InvalidCallException);
 FO_DECLARE_EXCEPTION(InvalidOperationException);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
