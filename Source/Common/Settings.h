@@ -63,6 +63,12 @@ struct SubConfigInfo
 struct BaseSettings
 {
 public:
+    BaseSettings() = default;
+    BaseSettings(const BaseSettings&) = delete;
+    BaseSettings(BaseSettings&&) noexcept = default;
+    auto operator=(const BaseSettings&) -> BaseSettings& = delete;
+    auto operator=(BaseSettings&&) noexcept -> BaseSettings& = delete;
+
     [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
@@ -76,7 +82,12 @@ protected:
 
 #define SETTING_GROUP(name, ...) \
     struct name : __VA_ARGS__ \
-    {
+    { \
+        name() = default; \
+        name(const name&) = delete; \
+        name(name&&) noexcept = default; \
+        auto operator=(const name&) -> name& = delete; \
+        auto operator=(name&&) noexcept -> name& = delete
 #define SETTING_GROUP_END() }
 #define FIXED_SETTING(type, name, ...) const type name = {}
 #define VARIABLE_SETTING(type, name, ...) type name = {}
@@ -86,10 +97,10 @@ struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual 
 {
 public:
     explicit GlobalSettings(bool baking_mode);
-    GlobalSettings(const GlobalSettings&) = default;
+    GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;
-    auto operator=(const GlobalSettings&) = delete;
-    auto operator=(GlobalSettings&&) noexcept = delete;
+    auto operator=(const GlobalSettings&) -> GlobalSettings& = delete;
+    auto operator=(GlobalSettings&&) noexcept -> GlobalSettings& = delete;
     ~GlobalSettings() = default;
 
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
