@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 enum class ConfigFileOption : uint8
 {
@@ -77,4 +77,4 @@ private:
     string _emptyStr {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

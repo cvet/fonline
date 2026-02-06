@@ -35,7 +35,7 @@
 
 #if FO_ENABLE_3D
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ModelSprite::ModelSprite(SpriteManager& spr_mngr, ModelSpriteFactory* factory, unique_ptr<ModelInstance>&& model, AtlasType atlas_type) :
     AtlasSprite(spr_mngr, {}, {}, {}, {}, {}, {}),
@@ -257,6 +257,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     _sprMngr->GetRtMngr().PopRenderTarget();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

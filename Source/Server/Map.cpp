@@ -39,7 +39,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -943,4 +943,4 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     return false;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

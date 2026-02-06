@@ -38,7 +38,7 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptHelpers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr AngelScript::asPWORD AS_TYPE_DICT_CACHE = 1010;
 
@@ -1088,6 +1088,6 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASEREFS, "void f(int&in)", FO_SCRIPT_METHOD(ScriptDict, ReleaseAllHandles), FO_SCRIPT_METHOD_CONV));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

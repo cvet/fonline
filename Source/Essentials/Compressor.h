@@ -37,7 +37,7 @@
 #include "Containers.h"
 #include "ExceptionHadling.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(CompressionException);
 FO_DECLARE_EXCEPTION(DecompressException);
@@ -88,4 +88,4 @@ private:
     unique_ptr<Impl> _impl;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

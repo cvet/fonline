@@ -38,7 +38,7 @@
 #include "NetBuffer.h"
 #include "NetworkServer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ServerConnection final
 {
@@ -127,4 +127,4 @@ private:
     bool _gracefulDisconnected {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -35,7 +35,7 @@
 #include "GlobalData.h"
 #include "WinApi-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -103,4 +103,4 @@ extern auto GetLogLocker() noexcept -> std::recursive_mutex&
     return BaseLogging->LogLocker;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

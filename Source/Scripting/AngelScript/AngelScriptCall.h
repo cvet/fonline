@@ -41,7 +41,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct ScriptDataAccessor final : DataAccessor
 {
@@ -64,6 +64,6 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*;
 void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const function<void(FuncCallData&)>& callback);
 void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

@@ -33,7 +33,7 @@
 
 #include "EngineBase.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct EngineBaseData
 {
@@ -987,4 +987,4 @@ void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint
     it->second(name, caller, data);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

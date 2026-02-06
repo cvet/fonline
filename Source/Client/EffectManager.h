@@ -40,7 +40,7 @@
 #include "Settings.h"
 #include "Timer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectManagerException);
 
@@ -113,4 +113,4 @@ private:
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

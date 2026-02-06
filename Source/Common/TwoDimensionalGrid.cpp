@@ -33,7 +33,7 @@
 
 #include "TwoDimensionalGrid.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 [[maybe_unused]] static void TestSpecializations()
 {
@@ -43,4 +43,4 @@ FO_BEGIN_NAMESPACE();
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

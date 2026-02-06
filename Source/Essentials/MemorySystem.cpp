@@ -36,7 +36,7 @@
 #include "GlobalData.h"
 #include "StackTrace.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct MemorySystemData
 {
@@ -54,7 +54,7 @@ static std::atomic_size_t BackupMemoryChunksCount;
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #if FO_TRACY
 #include "client/tracy_rpmalloc.hpp"
@@ -291,7 +291,7 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
 }
 
 #undef CRTDECL
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #endif
 
@@ -439,4 +439,4 @@ extern void ReportAndExit(string_view message) noexcept
     ExitApp(false);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

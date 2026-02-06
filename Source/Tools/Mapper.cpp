@@ -36,7 +36,7 @@
 #include "MetadataRegistration.h"
 #include "ParticleSprites.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
@@ -3709,4 +3709,4 @@ auto MapperEngine::GetEntityInnerItems(ClientEntity* entity) const -> vector<ref
     return {};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -33,7 +33,7 @@
 
 #include "NetworkClient.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 NetworkClientConnection::NetworkClientConnection(ClientNetworkSettings& settings) :
     _settings {&settings}
@@ -120,4 +120,4 @@ void NetworkClientConnection::Disconnect() noexcept
     DisconnectImpl();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

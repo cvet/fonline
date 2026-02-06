@@ -38,7 +38,7 @@
 #include "Geometry.h"
 #include "MapSprite.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class MapView;
 
@@ -118,4 +118,4 @@ private:
     nanotime _finishingTime {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

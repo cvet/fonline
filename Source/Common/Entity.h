@@ -39,7 +39,7 @@
 #include "ScriptSystem.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportEntity Game ServerEngine ClientEngine Global
 ///@ ExportEntity Player Player PlayerView HasTimeEvents
@@ -308,4 +308,4 @@ public:
     virtual ~EntityManagerApi() = default;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -37,7 +37,7 @@
 #include "DefaultSprites.h"
 #include "NetCommand.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto* StrCheckUpdates = "Check updates";
 static auto* StrConnectToServer = "Connect to the server";
@@ -366,4 +366,4 @@ void Updater::GetNextFile()
     _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

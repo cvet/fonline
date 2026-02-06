@@ -34,7 +34,7 @@
 #include "NetCommand.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct CmdDef
 {
@@ -289,4 +289,4 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     return true;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

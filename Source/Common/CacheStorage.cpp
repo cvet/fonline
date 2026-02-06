@@ -37,7 +37,7 @@
 #include "unqlite.h"
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class CacheStorageImpl
 {
@@ -490,4 +490,4 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data
 }
 #endif
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

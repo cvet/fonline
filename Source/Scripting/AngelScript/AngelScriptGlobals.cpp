@@ -40,7 +40,7 @@
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<size_t... I>
 [[noreturn]] static void ThrowWithArgs(string_view message, const vector<string>& obj_infos, std::index_sequence<I...> /*unused*/)
@@ -471,6 +471,6 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

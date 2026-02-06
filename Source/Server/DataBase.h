@@ -38,7 +38,7 @@
 #include "AnyData.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataBaseException);
 
@@ -80,4 +80,4 @@ private:
 
 extern auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

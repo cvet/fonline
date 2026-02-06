@@ -51,7 +51,7 @@ namespace SPK
     }
 }
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ParticleSystem;
 
@@ -127,4 +127,4 @@ private:
     nanotime _lastDrawTime {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

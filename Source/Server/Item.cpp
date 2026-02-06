@@ -36,7 +36,7 @@
 #include "ItemManager.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -231,4 +231,4 @@ void Item::SetMultihexEntries(vector<mpos> entries)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

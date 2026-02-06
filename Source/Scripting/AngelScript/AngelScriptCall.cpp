@@ -41,7 +41,7 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto ScriptDataAccessor::GetArraySize(void* data) const -> size_t
 {
@@ -587,6 +587,6 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

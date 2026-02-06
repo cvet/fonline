@@ -37,7 +37,7 @@
 #include "Geometry.h"
 #include "MapSprite.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
@@ -697,4 +697,4 @@ FO_SCRIPT_API void Client_Map_SetHiddenRoof(MapView* self, mpos hex)
     self->SetHiddenRoof(hex);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

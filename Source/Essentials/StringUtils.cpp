@@ -37,7 +37,7 @@
 #include "UcsTables-Include.h"
 #include "WinApi-Include.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct StrGlobalData
 {
@@ -1605,4 +1605,4 @@ auto utf8::Upper(uint32 ucs) noexcept -> uint32
     return Utf8->UpperTable[ucs];
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

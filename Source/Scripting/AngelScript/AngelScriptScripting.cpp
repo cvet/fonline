@@ -42,7 +42,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct AngelScriptAllocator
 {
@@ -101,6 +101,6 @@ auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, functio
     return result;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

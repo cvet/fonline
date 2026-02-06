@@ -35,7 +35,7 @@
 
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
@@ -55,4 +55,4 @@ FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
     return self->GetControlledCritter();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

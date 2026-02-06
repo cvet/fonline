@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Todo: make hex position customizable, to allow to add third Z coordinate
 ///@ ExportValueType mpos mpos Layout = int16-x+int16-y
@@ -154,4 +154,4 @@ private:
     raw_ptr<GeometrySettings> _settings;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

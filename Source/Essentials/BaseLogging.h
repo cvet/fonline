@@ -35,10 +35,10 @@
 
 #include "BasicCore.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void LogToFile(string_view path);
 extern void WriteBaseLog(string_view message) noexcept;
 extern auto GetLogLocker() noexcept -> std::recursive_mutex&;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

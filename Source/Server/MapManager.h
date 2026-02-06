@@ -41,7 +41,7 @@
 #include "Location.h"
 #include "Map.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapManagerException);
 
@@ -160,4 +160,4 @@ private:
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

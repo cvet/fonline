@@ -36,7 +36,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Todo: refactor code to use strvex over strex where it possible
 class strvex
@@ -280,7 +280,7 @@ namespace utf8
     auto Upper(uint32 ucs) noexcept -> uint32;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 template<>
 struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>

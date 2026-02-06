@@ -39,7 +39,7 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class FOEditor;
 
@@ -118,4 +118,4 @@ private:
     vector<unique_ptr<EditorView>> _views {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

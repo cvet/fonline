@@ -43,7 +43,7 @@
 #include "ServerEntity.h"
 #include "TwoDimensionalGrid.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Item;
 class StaticItem;
@@ -175,4 +175,4 @@ private:
     raw_ptr<Location> _mapLocation {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

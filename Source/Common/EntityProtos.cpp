@@ -33,7 +33,7 @@
 
 #include "EntityProtos.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
@@ -95,4 +95,4 @@ ProtoCustomEntity::ProtoCustomEntity(hstring proto_id, const PropertyRegistrator
     FO_STACK_TRACE_ENTRY();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -49,7 +49,7 @@
 #include "AngelScriptWrappedCall-Include.h"
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #define FO_AS_VERIFY(expr) \
     as_result = expr; \
@@ -106,6 +106,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string;
 auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

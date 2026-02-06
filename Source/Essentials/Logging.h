@@ -37,7 +37,7 @@
 #include "BasicCore.h"
 #include "StringUtils.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 using LogFunc = function<void(string_view)>;
 
@@ -73,4 +73,4 @@ inline void WriteLog(string_view str) noexcept
 extern void SetLogCallback(string_view key, LogFunc callback);
 extern void LogDisableTags();
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

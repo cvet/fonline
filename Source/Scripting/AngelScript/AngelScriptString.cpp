@@ -38,7 +38,7 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptHelpers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto StringFactory(AngelScript::asUINT length, const char* s) -> string
 {
@@ -878,6 +878,6 @@ void RegisterAngelScriptStringAnyExtensions(AngelScript::asIScriptEngine* as_eng
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(const any &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_AddAnyR), FO_SCRIPT_FUNC_THIS_CONV));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

@@ -38,7 +38,7 @@
 #include "Geometry.h"
 #include "NetCommand.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod Getter
 FO_SCRIPT_API MapView* Client_Game_CurMap(ClientEngine* client)
@@ -1560,4 +1560,4 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ClientEngine* client, bool enab
     }*/
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

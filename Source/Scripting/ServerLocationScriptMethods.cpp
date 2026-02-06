@@ -35,7 +35,7 @@
 
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Map*, bool> initFunc)
@@ -114,4 +114,4 @@ FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

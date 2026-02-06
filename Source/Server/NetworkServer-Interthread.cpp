@@ -33,7 +33,7 @@
 
 #include "NetworkServer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class NetworkServerConnection_Interthread : public NetworkServerConnection
 {
@@ -143,4 +143,4 @@ void InterthreadServer::Shutdown()
     InterthreadListeners.erase(_virtualPort);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

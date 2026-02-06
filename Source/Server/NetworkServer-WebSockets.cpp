@@ -51,7 +51,7 @@ using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<bool Secured>
 class NetworkServerConnection_WebSockets final : public NetworkServerConnection
@@ -321,6 +321,6 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
     return ctx;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

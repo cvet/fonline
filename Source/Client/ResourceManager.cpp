@@ -36,7 +36,7 @@
 #include "DataSource.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr uint32 ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint32 ANIM_FLAG_LAST_FRAME = 0x02;
@@ -599,4 +599,4 @@ auto ResourceManager::GetSoundNames() const -> const map<string, string>&
     return _soundNames;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

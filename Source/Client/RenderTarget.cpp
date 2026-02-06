@@ -33,7 +33,7 @@
 
 #include "RenderTarget.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
@@ -267,4 +267,4 @@ void RenderTargetManager::DumpTextures() const
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

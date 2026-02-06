@@ -33,7 +33,7 @@
 
 #include "EffectManager.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
     _settings {&settings},
@@ -161,4 +161,4 @@ void EffectManager::LoadDefaultEffects()
 
 #undef LOAD_DEFAULT_EFFECT
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

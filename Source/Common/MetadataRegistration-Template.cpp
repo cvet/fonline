@@ -55,7 +55,7 @@
 ///@ CodeGen Includes
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ CodeGen Global
 
@@ -113,4 +113,4 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
 #undef MAPPER_REGISTRATION
 #undef STUB_MODE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

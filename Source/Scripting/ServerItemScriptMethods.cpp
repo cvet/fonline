@@ -36,7 +36,7 @@
 #include "Geometry.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
@@ -235,4 +235,4 @@ FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
     return cr;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

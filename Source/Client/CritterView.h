@@ -39,7 +39,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ItemView;
 
@@ -79,4 +79,4 @@ protected:
     vector<refcount_ptr<ItemView>> _invItems {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

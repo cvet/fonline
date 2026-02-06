@@ -39,7 +39,7 @@
 #include "ResourceManager.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
     CritterView(map->GetEngine(), id, proto, props),
@@ -790,4 +790,4 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
     return false;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

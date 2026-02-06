@@ -47,8 +47,8 @@
 
 #include "EntityProperties.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ CodeGen Body
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

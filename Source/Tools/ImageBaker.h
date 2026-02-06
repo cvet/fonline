@@ -39,7 +39,7 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ImageBakerException);
 
@@ -113,4 +113,4 @@ private:
     unordered_map<string, LoadFunc> _fileLoaders {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

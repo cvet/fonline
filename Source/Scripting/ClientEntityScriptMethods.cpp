@@ -36,7 +36,7 @@
 #include "Client.h"
 #include "ScriptSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod TimeEventRelated
 FO_SCRIPT_API uint32 Client_Entity_StartTimeEvent(ClientEntity* self, timespan delay, ScriptFunc<void, ScriptSelfEntity*> func)
@@ -170,4 +170,4 @@ FO_SCRIPT_API void Client_Entity_SetTimeEventData(ClientEntity* self, uint32 id,
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, {}, id, {}, to_vector(data));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

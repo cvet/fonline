@@ -33,8 +33,8 @@
 
 #include "ExtendedTypes.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 const ucolor ucolor::clear;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

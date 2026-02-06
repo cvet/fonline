@@ -53,7 +53,7 @@
 #include "Settings.h"
 #include "TextBaker.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 namespace BakerStub
 {
@@ -722,4 +722,4 @@ BakerMapperEngine::BakerMapperEngine(const FileSystem& resources) :
     FO_STACK_TRACE_ENTRY();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -34,7 +34,7 @@
 #include "PlayerView.h"
 #include "Client.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 PlayerView::PlayerView(ClientEngine* engine, ident_t id, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
@@ -48,4 +48,4 @@ void PlayerView::OnDestroySelf()
     FO_STACK_TRACE_ENTRY();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

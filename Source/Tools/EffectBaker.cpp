@@ -45,7 +45,7 @@
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -402,4 +402,4 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

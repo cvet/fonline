@@ -36,7 +36,7 @@
 #include "LineTracer.h"
 #include "MapLoader.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr int32 MAX_LIGHT_INTEN = 10000;
 static constexpr int32 MAX_LIGHT_HEX = 200;
@@ -4220,4 +4220,4 @@ auto MapView::GetColorDay(const vector<int32>& day_time, const vector<uint8>& co
     return ucolor {result[0], result[1], result[2], 255};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

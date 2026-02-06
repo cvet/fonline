@@ -34,7 +34,7 @@
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -957,4 +957,4 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
     ctx.ResultTags["Setting"] = std::move(result_tag_migration_rule);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

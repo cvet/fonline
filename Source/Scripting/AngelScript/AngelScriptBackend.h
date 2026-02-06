@@ -44,7 +44,7 @@
 
 class ScriptArray;
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class AngelScriptBackend : public ScriptSystemBackend
 {
@@ -84,6 +84,6 @@ private:
     vector<function<void()>> _cleanupCallbacks {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

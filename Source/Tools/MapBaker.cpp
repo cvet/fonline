@@ -37,7 +37,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 MapBaker::MapBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -261,4 +261,4 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

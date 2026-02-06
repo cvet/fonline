@@ -33,7 +33,7 @@
 
 #include "ConfigBaker.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern auto GetServerSettings() -> unordered_set<string>;
 extern auto GetClientSettings() -> unordered_set<string>;
@@ -170,4 +170,4 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

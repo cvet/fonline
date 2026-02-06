@@ -37,7 +37,7 @@
 #include "MapSprite.h"
 #include "MapView.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
     ItemView(map->GetEngine(), id, proto, props),
@@ -305,4 +305,4 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -37,7 +37,7 @@
 
 #include "zlib.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto Compressor::CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t
 {
@@ -227,4 +227,4 @@ void StreamDecompressor::Reset() noexcept
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

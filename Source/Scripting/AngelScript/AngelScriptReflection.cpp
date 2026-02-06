@@ -44,7 +44,7 @@
 
 #include "WinApiUndef-Include.h" // Remove garbage from includes above
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto TryCastToEnumType(const AngelScript::asITypeInfo* ti) -> const AngelScript::asCEnumType*
 {
@@ -600,6 +600,6 @@ void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

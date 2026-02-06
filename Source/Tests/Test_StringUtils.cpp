@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 TEST_CASE("StringUtils")
 {
@@ -297,4 +297,4 @@ TEST_CASE("StringUtils")
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

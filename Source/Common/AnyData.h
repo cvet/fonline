@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class AnyData final
 {
@@ -189,4 +189,4 @@ public:
     [[nodiscard]] static auto DecodeString(string_view str) -> string;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

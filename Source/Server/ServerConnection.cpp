@@ -34,7 +34,7 @@
 #include "ServerConnection.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
     _owner {owner},
@@ -219,4 +219,4 @@ void ServerConnection::GracefulDisconnect()
     WriteMsg(NetMessage::Disconnect);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

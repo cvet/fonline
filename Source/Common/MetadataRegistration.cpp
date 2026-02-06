@@ -33,7 +33,7 @@
 
 #include "MetadataRegistration.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bin)
 {
@@ -236,4 +236,4 @@ auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

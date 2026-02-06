@@ -37,7 +37,7 @@
 
 #include "AngelScriptHelpers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32 v) -> float32
 {
@@ -99,6 +99,6 @@ void RegisterAngelScriptMath(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

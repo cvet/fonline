@@ -35,7 +35,7 @@
 
 #if FO_ENABLE_3D
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 {
@@ -477,6 +477,6 @@ void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32 fac
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

@@ -34,7 +34,7 @@
 #include "RawCopyBaker.h"
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 RawCopyBaker::RawCopyBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -99,4 +99,4 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

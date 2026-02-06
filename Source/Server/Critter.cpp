@@ -40,7 +40,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -937,4 +937,4 @@ void Critter::Send_Attachments(const Critter* from_cr)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

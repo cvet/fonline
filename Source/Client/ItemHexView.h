@@ -40,7 +40,7 @@
 #include "ItemView.h"
 #include "SpriteManager.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ItemHexView final : public ItemView, public HexView
 {
@@ -97,4 +97,4 @@ private:
     unique_ptr<vector<mpos>> _multihexEntries {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

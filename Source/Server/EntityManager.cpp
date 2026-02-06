@@ -39,7 +39,7 @@
 #include "ProtoManager.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 EntityManager::EntityManager(ServerEngine* engine) :
     _engine {engine},
@@ -1339,4 +1339,4 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
     find_players_recursively(entity, EntityHolderEntrySync::PublicSync);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

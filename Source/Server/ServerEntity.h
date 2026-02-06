@@ -38,7 +38,7 @@
 #include "Entity.h"
 #include "EntityProtos.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ServerEngine;
 
@@ -97,4 +97,4 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

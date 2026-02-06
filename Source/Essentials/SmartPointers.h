@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Todo: make sure in debug mode ptr is not dangling
 template<typename T>
@@ -220,14 +220,14 @@ inline auto ptr_hash(const void* p) noexcept -> size_t
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE raw_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE raw_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 class unique_ptr
@@ -330,14 +330,14 @@ private:
 static_assert(sizeof(unique_ptr<int32>) == sizeof(int32*));
 static_assert(std::is_standard_layout_v<unique_ptr<int32>>);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE unique_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE unique_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 class refcount_ptr final
@@ -502,14 +502,14 @@ private:
 };
 static_assert(std::is_standard_layout_v<refcount_ptr<int32>>);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE refcount_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE refcount_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 class propagate_const
@@ -661,14 +661,14 @@ using unique_arr_ptr = propagate_const<std::unique_ptr<T[]>>;
 template<typename T>
 using unique_del_ptr = propagate_const<std::unique_ptr<T, function<void(T*)>>>;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
 struct FO_HASH_NAMESPACE hash<FO_NAMESPACE propagate_const<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE propagate_const<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Template helpers
 template<typename T>
@@ -677,4 +677,4 @@ concept refcountable = requires(T t) {
     t.Release();
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

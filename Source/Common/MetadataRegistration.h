@@ -37,7 +37,7 @@
 
 #include "EngineBase.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MetadataNotFoundException);
 
@@ -50,4 +50,4 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
 void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bin);
 auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<uint8>;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

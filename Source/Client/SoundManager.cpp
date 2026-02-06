@@ -39,7 +39,7 @@
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct SoundManager::Sound
 {
@@ -633,4 +633,4 @@ void SoundManager::StopMusic()
     App->Audio.UnlockDevice();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

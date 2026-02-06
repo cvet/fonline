@@ -37,7 +37,7 @@
 #include "ImGuiStuff.h"
 #include "ParticleEditor.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 EditorView::EditorView(string_view view_name, FOEditor& editor) :
     _viewName {view_name},
@@ -217,4 +217,4 @@ void FOEditor::MainLoop()
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -50,7 +50,7 @@
 
 #include <preprocessor.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
 {
@@ -502,6 +502,6 @@ void AngelScriptBackend::AddCleanupCallback(function<void()> callback)
     _cleanupCallbacks.emplace_back(std::move(callback));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

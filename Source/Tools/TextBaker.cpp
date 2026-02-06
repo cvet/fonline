@@ -35,7 +35,7 @@
 #include "ConfigFile.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -153,4 +153,4 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

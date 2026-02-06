@@ -59,7 +59,7 @@
 #include "SpriteManager.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapperException);
 
@@ -361,4 +361,4 @@ public:
     uint8 SelectAlpha {100};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

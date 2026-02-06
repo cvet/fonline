@@ -38,7 +38,7 @@
 #include "NetCommand.h"
 #include "ParticleSprites.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void InitClientEngine(ClientEngine*);
 
@@ -2823,4 +2823,4 @@ void ClientEngine::ProcessVideo()
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

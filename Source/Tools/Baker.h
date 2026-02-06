@@ -40,7 +40,7 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
@@ -166,4 +166,4 @@ public:
     explicit BakerMapperEngine(const FileSystem& resources);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

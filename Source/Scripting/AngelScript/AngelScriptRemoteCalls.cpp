@@ -41,7 +41,7 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
 {
@@ -325,6 +325,6 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

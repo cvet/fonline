@@ -41,7 +41,7 @@
 #include "AngelScriptDict.h"
 #include "EngineBase.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32 line, int32 result)
 {
@@ -1163,6 +1163,6 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
     return hash_resolver.ToHashedString(func_name);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

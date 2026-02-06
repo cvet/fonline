@@ -41,7 +41,7 @@
 #include "StackTrace.h"
 #include "StringUtils.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Noexcept wrappers
 template<typename T, typename... Args>
@@ -331,4 +331,4 @@ template<std::ranges::range T>
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

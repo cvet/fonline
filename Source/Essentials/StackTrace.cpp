@@ -34,7 +34,7 @@
 #include "StackTrace.h"
 #include "BaseLogging.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void PushStackTrace(const SourceLocationData* loc) noexcept
 {
@@ -119,4 +119,4 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
     WriteBaseLog("\n");
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

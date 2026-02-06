@@ -38,7 +38,7 @@
 #include "AngelScriptScripting.h"
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 AngelScriptBaker::AngelScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -148,6 +148,6 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

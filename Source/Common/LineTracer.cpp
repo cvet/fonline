@@ -33,7 +33,7 @@
 
 #include "LineTracer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset, msize map_size)
 {
@@ -209,4 +209,4 @@ void LineTracer::GetNextSquare(mpos& pos)
     pos = _mapSize.clamp_pos(iround<int32>(std::floor(_x)), iround<int32>(std::floor(_y)));
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

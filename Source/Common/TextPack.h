@@ -37,7 +37,7 @@
 
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(LanguagePackException);
 
@@ -116,4 +116,4 @@ private:
     TextPack _emptyPack {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

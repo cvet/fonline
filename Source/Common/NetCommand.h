@@ -37,7 +37,7 @@
 
 #include "NetBuffer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Commands
 static constexpr auto CMD_EXIT = 1;
@@ -60,4 +60,4 @@ using LogCallback = function<void(string_view)>;
 
 extern auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& hash_resolver) -> bool;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

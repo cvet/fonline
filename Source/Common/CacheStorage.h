@@ -38,7 +38,7 @@
 
 #include "Common.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class CacheStorageImpl;
 
@@ -64,4 +64,4 @@ private:
     unique_ptr<CacheStorageImpl> _impl;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

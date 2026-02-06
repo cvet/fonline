@@ -34,7 +34,7 @@
 #include "TextureAtlas.h"
 #include "Application.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static constexpr int32 ATLAS_SPRITES_PADDING = 1;
 
@@ -276,4 +276,4 @@ void TextureAtlasManager::DumpAtlases() const
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

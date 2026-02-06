@@ -33,7 +33,7 @@
 
 #include "PropertiesSerializator.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
@@ -840,4 +840,4 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

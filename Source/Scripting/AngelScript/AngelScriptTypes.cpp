@@ -42,7 +42,7 @@
 #include "EngineBase.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 template<typename T>
 static void Type_Construct(T* self)
@@ -941,6 +941,6 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

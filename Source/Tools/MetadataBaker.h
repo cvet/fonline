@@ -40,7 +40,7 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MetadataBakerException);
 
@@ -90,6 +90,6 @@ private:
     void ParseMigrationRule(TagsParsingContext& ctx) const;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

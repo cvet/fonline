@@ -36,7 +36,7 @@
 #include "Client.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsVisible(ItemView* self)
@@ -213,4 +213,4 @@ FO_SCRIPT_API void Client_Item_Finish(ItemView* self)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

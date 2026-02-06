@@ -55,7 +55,7 @@
 #include <android/log.h>
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #if FO_WINDOWS
 template<typename T>
@@ -231,4 +231,4 @@ auto Platform::IsShiftDown() noexcept -> bool
 #endif
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

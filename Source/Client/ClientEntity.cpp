@@ -34,7 +34,7 @@
 #include "ClientEntity.h"
 #include "Client.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
     Entity(registrator, props),
@@ -99,4 +99,4 @@ void CustomEntityView::OnDestroySelf()
     FO_STACK_TRACE_ENTRY();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

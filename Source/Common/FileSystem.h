@@ -37,7 +37,7 @@
 
 #include "DataSource.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(FileSystemExeption);
 
@@ -186,4 +186,4 @@ private:
     vector<unique_ptr<DataSource>> _dataSources {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

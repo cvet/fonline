@@ -40,7 +40,7 @@
 #include "Baker.h"
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ModelBakerException);
 
@@ -65,6 +65,6 @@ private:
     auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

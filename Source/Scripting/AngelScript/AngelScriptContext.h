@@ -42,7 +42,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class AngelScriptContextManager final
 {
@@ -73,6 +73,6 @@ private:
     bool _nonConstHelper {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

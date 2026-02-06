@@ -41,7 +41,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ScriptArray;
 struct ScriptDictTypeData;
@@ -117,6 +117,6 @@ private:
 
 void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

@@ -41,7 +41,7 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ScriptReflectionException);
 
@@ -98,6 +98,6 @@ public:
 
 void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

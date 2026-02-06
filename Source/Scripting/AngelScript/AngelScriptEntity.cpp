@@ -43,7 +43,7 @@
 #include "EngineBase.h"
 #include "Entity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static void Entity_AddRef(const Entity* self)
 {
@@ -1112,6 +1112,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

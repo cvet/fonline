@@ -40,7 +40,7 @@
 #include "Geometry.h"
 #include "ServerEntity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class Player;
 class MapManager;
@@ -244,4 +244,4 @@ private:
     shared_ptr<vector<raw_ptr<Critter>>> _globalMapGroup {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

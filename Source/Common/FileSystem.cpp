@@ -33,7 +33,7 @@
 
 #include "FileSystem.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const DataSource* ds) :
     _isLoaded {true},
@@ -629,4 +629,4 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
     return {};
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

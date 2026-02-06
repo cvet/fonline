@@ -33,7 +33,7 @@
 
 #include "ServerEntity.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
@@ -50,4 +50,4 @@ void ServerEntity::SetId(ident_t id) noexcept
     _id = id;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

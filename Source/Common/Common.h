@@ -64,7 +64,7 @@
 #include "CommonHelpers.h"
 // clang-format on
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 #include "Version-Include.h"
 
@@ -92,7 +92,7 @@ public:
     }
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
 {
@@ -102,13 +102,13 @@ struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
         return formatter<FO_NAMESPACE string_view>::format(static_cast<const FO_NAMESPACE string&>(value), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // 3d math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 #include "assimp/types.h"
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 using vec3 = aiVector3t<float32>;
 using dvec3 = aiVector3t<float64>;
 using mat44 = aiMatrix4x4t<float32>;
@@ -124,7 +124,7 @@ FO_DECLARE_EXCEPTION(NotEnabled3DException);
 template<typename T>
 concept some_atomic = specialization_of<T, std::atomic>;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_atomic<T>)
 struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
@@ -135,7 +135,7 @@ struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLI
         return formatter<decltype(std::declval<T>().load())>::format(value.load(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Event system
 class EventUnsubscriberCallback final
@@ -966,6 +966,6 @@ public:
     virtual ~AnimationResolver() = default;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif // FO_PRECOMPILED_HEADER_GUARD

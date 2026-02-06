@@ -37,7 +37,7 @@
 #include "StackTrace.h"
 #include "StringUtils.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 static auto MakeFileSystemPath(string_view path) -> std::filesystem::path
 {
@@ -455,4 +455,4 @@ auto DiskFileSystem::TouchFile(string_view path) -> bool
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

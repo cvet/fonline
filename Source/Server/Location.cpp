@@ -36,7 +36,7 @@
 #include "Map.h"
 #include "Server.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -125,4 +125,4 @@ void Location::RemoveMap(Map* map)
     map->SetLocation(nullptr);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

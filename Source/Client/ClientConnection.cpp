@@ -34,7 +34,7 @@
 #include "ClientConnection.h"
 #include "NetCommand.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
     _settings {&settings},
@@ -349,4 +349,4 @@ void ClientConnection::Net_OnPing()
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

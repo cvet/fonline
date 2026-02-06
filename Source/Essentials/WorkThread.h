@@ -37,7 +37,7 @@
 #include "Containers.h"
 #include "TimeRelated.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 extern void SetThisThreadName(const string& name) noexcept;
 extern auto GetThisThreadName() noexcept -> const string&;
@@ -80,4 +80,4 @@ private:
     bool _finish {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

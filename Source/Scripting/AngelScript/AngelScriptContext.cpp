@@ -44,7 +44,7 @@
 
 #include "WinApiUndef-Include.h" // Remove garbage from includes above
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct AngelScriptContextExtendedData
 {
@@ -486,6 +486,6 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

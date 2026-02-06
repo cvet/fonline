@@ -46,7 +46,7 @@
 #include "SpriteManager.h"
 #include "TwoDimensionalGrid.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -415,4 +415,4 @@ private:
     vector<refcount_ptr<SpritePattern>> _spritePatterns {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

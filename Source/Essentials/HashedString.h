@@ -37,7 +37,7 @@
 #include "Containers.h"
 #include "ExceptionHadling.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Hashing
 struct hstring
@@ -81,7 +81,7 @@ static_assert(sizeof(hstring::hash_t) == 4);
 static_assert(std::is_standard_layout_v<hstring>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<>
 struct std::formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view>
 {
@@ -91,7 +91,7 @@ struct std::formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view
         return formatter<FO_NAMESPACE string_view>::format(value.as_str(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Hashing
 FO_DECLARE_EXCEPTION(HashResolveException);
@@ -127,4 +127,4 @@ public:
     [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) noexcept -> uint64;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 Player::Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
@@ -633,4 +633,4 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
     out_buf.Write(cr->Moving.EndHexOffset);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

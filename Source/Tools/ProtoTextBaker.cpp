@@ -38,7 +38,7 @@
 #include "EntityProtos.h"
 #include "TextPack.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
@@ -287,4 +287,4 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

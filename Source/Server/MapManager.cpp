@@ -40,7 +40,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 MapManager::MapManager(ServerEngine* engine) :
     _engine {engine}
@@ -1805,4 +1805,4 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

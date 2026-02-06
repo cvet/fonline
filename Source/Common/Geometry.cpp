@@ -33,7 +33,7 @@
 
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 GeometryHelper::GeometryHelper(GeometrySettings& settings) :
     _settings {&settings}
@@ -809,4 +809,4 @@ void GeometryHelper::ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, 
     }
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

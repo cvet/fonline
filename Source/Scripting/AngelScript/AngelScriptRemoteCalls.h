@@ -39,13 +39,13 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class EngineMetadata;
 
 void RegisterAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
 void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

@@ -33,7 +33,7 @@
 
 #include "NetBuffer.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 NetBuffer::NetBuffer(size_t buf_len)
 {
@@ -437,4 +437,4 @@ auto NetInBuffer::NeedProcess() -> bool
     return _bufReadPos + msg_len <= _bufEndPos;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

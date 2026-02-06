@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct strong_type_bool_test_tag
 {
@@ -117,7 +117,7 @@ concept some_strong_type = requires {
     sizeof(T) == sizeof(typename T::underlying_type);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_strong_type<T>)
 struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert-dcl58-cpp)
@@ -128,9 +128,9 @@ struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert
         return formatter<typename T::underlying_type>::format(value.underlying_value(), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_strong_type<T>)
 inline auto operator>>(std::istream& istr, T& value) -> std::istream&
@@ -146,9 +146,9 @@ inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 
     return istr;
 }
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_strong_type<T>)
 struct FO_HASH_NAMESPACE hash<T>
@@ -165,6 +165,6 @@ struct FO_HASH_NAMESPACE hash<T>
         }
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

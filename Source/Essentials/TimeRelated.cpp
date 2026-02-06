@@ -35,7 +35,7 @@
 #include "ExceptionHadling.h"
 #include "GlobalData.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 const timespan timespan::zero;
 const nanotime nanotime::zero;
@@ -119,4 +119,4 @@ auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minu
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

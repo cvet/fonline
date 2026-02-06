@@ -161,20 +161,20 @@
 #if FO_USE_NAMESPACE
 #define FO_NAMESPACE_NAME fo
 #define FO_NAMESPACE FO_NAMESPACE_NAME::
-#define FO_BEGIN_NAMESPACE() \
+#define FO_BEGIN_NAMESPACE \
     namespace FO_NAMESPACE_NAME \
     {
-#define FO_END_NAMESPACE() }
+#define FO_END_NAMESPACE }
 #define FO_USING_NAMESPACE() using namespace FO_NAMESPACE_NAME
 #else
 #define FO_NAMESPACE_NAME
 #define FO_NAMESPACE
-#define FO_BEGIN_NAMESPACE()
-#define FO_END_NAMESPACE()
+#define FO_BEGIN_NAMESPACE
+#define FO_END_NAMESPACE
 #define FO_USING_NAMESPACE()
 #endif
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Base types
 using int8 = std::int8_t;
@@ -232,7 +232,7 @@ public:
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(std::is_same_v<T, FO_NAMESPACE string_view_nt>)
 struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
@@ -243,7 +243,7 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
         return formatter<FO_NAMESPACE string_view>::format(static_cast<FO_NAMESPACE string_view>(value), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // String for using in templates
 template<size_t N>
@@ -504,7 +504,7 @@ constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
 
 // Enum formatter
 // Todo: improve named enums
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 template<typename T>
     requires(std::is_enum_v<T>)
 struct std::formatter<T> : formatter<std::underlying_type_t<T>> // NOLINT(cert-dcl58-cpp)
@@ -515,11 +515,11 @@ struct std::formatter<T> : formatter<std::underlying_type_t<T>> // NOLINT(cert-d
         return formatter<std::underlying_type_t<T>>::format(static_cast<std::underlying_type_t<T>>(value), ctx);
     }
 };
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 // Formatters
 #define FO_DECLARE_TYPE_FORMATTER(type, ...) \
-    FO_END_NAMESPACE(); \
+    FO_END_NAMESPACE \
     template<> \
     struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
     { \
@@ -531,10 +531,10 @@ FO_BEGIN_NAMESPACE();
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
-    FO_END_NAMESPACE(); \
+    FO_END_NAMESPACE \
     inline auto operator>>(std::istream& istr, type& value)->std::istream& \
     { \
         if (!(istr >> __VA_ARGS__)) { \
@@ -542,10 +542,10 @@ FO_BEGIN_NAMESPACE();
         } \
         return istr; \
     } \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_HASHER(type) \
-    FO_END_NAMESPACE(); \
+    FO_END_NAMESPACE \
     template<> \
     struct FO_HASH_NAMESPACE hash<type> \
     { \
@@ -556,10 +556,10 @@ FO_BEGIN_NAMESPACE();
             return detail::wyhash::hash(&v, sizeof(v)); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_HASHER_EXT(type, ...) \
-    FO_END_NAMESPACE(); \
+    FO_END_NAMESPACE \
     template<> \
     struct FO_HASH_NAMESPACE hash<type> \
     { \
@@ -569,7 +569,7 @@ FO_BEGIN_NAMESPACE();
             return detail::wyhash::hash(__VA_ARGS__); \
         } \
     }; \
-    FO_BEGIN_NAMESPACE()
+    FO_BEGIN_NAMESPACE
 
 // Math constants
 constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32>;
@@ -577,4 +577,4 @@ constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32> * 2.0f;
 constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32>;
 constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32> / 180.0f;
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

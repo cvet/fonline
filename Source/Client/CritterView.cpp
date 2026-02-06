@@ -35,7 +35,7 @@
 #include "Client.h"
 #include "ItemView.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 CritterView::CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
@@ -184,4 +184,4 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     return true;
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

@@ -40,7 +40,7 @@
 #include "Item.h"
 #include "Map.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class ServerEngine;
 class ProtoManager;
@@ -78,4 +78,4 @@ private:
     raw_ptr<ServerEngine> _engine;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

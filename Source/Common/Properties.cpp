@@ -34,7 +34,7 @@
 #include "Properties.h"
 #include "PropertiesSerializator.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 auto PropertyRawData::GetPtr() noexcept -> void*
 {
@@ -1676,4 +1676,4 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     return _registeredProperties.back().get();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

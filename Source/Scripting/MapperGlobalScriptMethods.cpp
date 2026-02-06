@@ -37,7 +37,7 @@
 #include "Geometry.h"
 #include "Mapper.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, mpos hex)
@@ -458,4 +458,4 @@ FO_SCRIPT_API void Mapper_Game_AddMessage(MapperEngine* mapper, string_view mess
     mapper->AddMess(message);
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

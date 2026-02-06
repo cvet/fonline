@@ -41,11 +41,11 @@
 
 #include <angelscript.h>
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine);
 void RegisterAngelScriptStringAnyExtensions(AngelScript::asIScriptEngine* as_engine);
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
 
 #endif

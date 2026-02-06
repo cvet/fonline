@@ -43,7 +43,7 @@ namespace glslang
     class TIntermediate;
 }
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectBakerException);
 
@@ -69,4 +69,4 @@ private:
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate) const;
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

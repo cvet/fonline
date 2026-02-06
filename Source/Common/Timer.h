@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(TimeNotSyncException);
 
@@ -75,4 +75,4 @@ private:
     int32 _fpsMeasureCounter {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

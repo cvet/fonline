@@ -37,7 +37,7 @@
 
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class LineTracer final
 {
@@ -68,4 +68,4 @@ private:
     float32 _dy {};
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

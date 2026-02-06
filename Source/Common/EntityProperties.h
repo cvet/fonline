@@ -38,7 +38,7 @@
 #include "Entity.h"
 #include "Geometry.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 class GameProperties : public EntityProperties
 {
@@ -378,4 +378,4 @@ public:
     FO_ENTITY_PROPERTY(vector<ident_t>, MapIds);
 };
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE

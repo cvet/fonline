@@ -36,7 +36,7 @@
 
 #include "SPARK.h"
 
-FO_BEGIN_NAMESPACE();
+FO_BEGIN_NAMESPACE
 
 struct ParticleManager::Impl
 {
@@ -310,4 +310,4 @@ void ParticleSystem::Draw()
     _impl->System->renderParticles();
 }
 
-FO_END_NAMESPACE();
+FO_END_NAMESPACE
