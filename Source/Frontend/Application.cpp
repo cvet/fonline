@@ -438,6 +438,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendPlatformName = "fonline";
         io.WantSaveIniSettings = false;
         io.IniFilename = nullptr;
+        io.ConfigErrorRecoveryEnableAssert = false;
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
