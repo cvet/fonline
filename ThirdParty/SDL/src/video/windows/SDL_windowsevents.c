@@ -1032,7 +1032,7 @@ void WIN_CheckKeyboardAndMouseHotplug(SDL_VideoDevice *_this, bool initial_check
     old_keyboards = SDL_GetKeyboards(&old_keyboard_count);
     old_mice = SDL_GetMice(&old_mouse_count);
 
-    bool hid_loaded = WIN_LoadHIDDLL();
+    bool hid_loaded = false; // WIN_LoadHIDDLL(); // (FOnline Patch) https://github.com/libsdl-org/SDL/issues/12913
     for (UINT i = 0; i < raw_device_count; i++) {
         RID_DEVICE_INFO rdi;
         char devName[MAX_PATH] = { 0 };
