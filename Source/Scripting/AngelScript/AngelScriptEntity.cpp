@@ -411,7 +411,7 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
     const auto* entities = *cast_from_void<ScriptArray**>(gen->GetAddressOfArg(0));
 
     for (int32 i = 0; i < entities->GetSize(); i++) {
-        auto* entity = cast_from_void<Entity*>(entities->At(i));
+        auto* entity = *cast_from_void<Entity**>(entities->At(i));
 
         if (entity != nullptr) {
             entity_mngr->DestroyEntity(entity);
@@ -939,8 +939,8 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
             if (backend->HasEntityMngr() && !desc.Exported) {
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@+ Get{}(ident id)", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetEntity), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy{}({}@+ {})", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyOne), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy{}s({}@[]@+ {}s)", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy({}@+ {})", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyOne), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy({}@[]@+ {}s)", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
             }
 
             if (desc.HasAbstract) {
