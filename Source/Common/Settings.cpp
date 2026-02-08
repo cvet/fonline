@@ -164,6 +164,8 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("CommandLine");
         _appliedSettings.emplace("CommandLineArgs");
         _appliedSettings.emplace("GitBranch");
+        _appliedSettings.emplace("GitCommit");
+        _appliedSettings.emplace("CompatibilityVersion");
         _appliedSettings.emplace("WebBuild");
         _appliedSettings.emplace("WindowsBuild");
         _appliedSettings.emplace("LinuxBuild");
@@ -383,6 +385,8 @@ void GlobalSettings::ApplyAutoSettings()
     }
 
     const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
+    const_cast<string&>(GitCommit) = FO_BUILD_HASH;
+    const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)

@@ -78,7 +78,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
-            const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extract_file_name().erase_file_extension().str() : FO_DEV_NAME);
+            const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extract_file_name().erase_file_extension().str() : string_view(FO_DEV_NAME));
 
             const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
                 if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
@@ -1827,8 +1827,8 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
-    const auto comp_version = in_buf->Read<uint32>();
-    const auto outdated = comp_version != 0 && comp_version != numeric_cast<uint32>(FO_COMPATIBILITY_VERSION);
+    const auto comp_version = in_buf->Read<string>();
+    const auto outdated = comp_version != Settings.CompatibilityVersion;
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint32>();
@@ -1866,6 +1866,13 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     }
 
     connection->WasHandshake = true;
+
+    if (outdated) {
+        WriteLog("Connected client {} has outdated compatibility version {}", connection->GetHost(), comp_version);
+    }
+    else {
+        WriteLog("Connected client {}", connection->GetHost());
+    }
 }
 
 void ServerEngine::Process_Ping(ServerConnection* connection)

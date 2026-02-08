@@ -1016,7 +1016,7 @@ public:
         }
 
         mongoc_uri_destroy(mongo_uri);
-        mongoc_client_set_appname(client, FO_DEV_NAME);
+        mongoc_client_set_appname(client, FO_DEV_NAME.c_str());
 
         auto* database = mongoc_client_get_database(client, string(db_name).c_str());
 

@@ -99,7 +99,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
-    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
+    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME.c_str());
     SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 

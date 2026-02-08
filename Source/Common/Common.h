@@ -66,6 +66,9 @@
 
 FO_BEGIN_NAMESPACE
 
+// Force change of compatability version
+///@ MigrationRule Version 0 0 2
+
 #include "Version-Include.h"
 
 extern auto IsPackaged() -> bool;

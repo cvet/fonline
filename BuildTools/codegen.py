@@ -8,6 +8,8 @@ import argparse
 import time
 import uuid
 import subprocess
+import hashlib
+from collections.abc import Mapping, Iterable
 
 startTime = time.time()
 
@@ -88,9 +90,6 @@ def getHash(input, seed=0):
         return str(h)
     else:
         return str(-((h ^ 0xFFFFFFFF) + 1))
-
-def getHashUint(input, seed=0):
-    return str(int(getHash(input, seed)) & 0xFFFFFFFF)
 
 assert getHash('abcd') == '646393889'
 assert getHash('abcde') == '1594468574'
@@ -770,7 +769,7 @@ def parseTags():
             
             try:
                 ruleArgs = tokenize(tagInfo, anySymbols=[2, 3])
-                assert len(ruleArgs) and ruleArgs[0] in ['Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
+                assert len(ruleArgs) and ruleArgs[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
                 assert len(ruleArgs) == 4, 'Invalid migration rule args'
                 assert not len([t for t in codeGenTags['MigrationRule'] if t[0][0:3] == ruleArgs[0:3]]), 'Migration rule already added'
                 assert ruleArgs[2] != ruleArgs[3], 'Migration rule same last args'
@@ -863,6 +862,26 @@ def parseTags():
 parseTags()
 checkErrors()
 tagsMetas = {} # Cleanup memory
+
+# Generate compatability version
+def hashRecursive(data, hasher=None, algorithm='sha256'):
+    if hasher is None:
+        hasher = hashlib.new(algorithm)
+    if isinstance(data, Mapping):
+        for key in sorted(data.keys()):
+            hasher.update(str(key).encode('utf-8'))
+            hashRecursive(data[key], hasher, algorithm)
+    elif isinstance(data, Iterable) and not isinstance(data, str):
+        for i, item in enumerate(data):
+            hasher.update(str(i).encode('utf-8'))
+            hashRecursive(item, hasher, algorithm)
+    elif data is None:
+        hasher.update(b'None')
+    else:
+        hasher.update(str(data).encode('utf-8'))
+    return hasher
+compatablityHasher = hashRecursive(codeGenTags)
+compatablityVersion = compatablityHasher.hexdigest()[:16]
 
 # Generate API
 files = {}
@@ -2142,16 +2161,16 @@ checkErrors()
 
 # Version info
 createFile('Version-Include.h', args.genoutput)
-writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
-writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
-writeFile('static constexpr auto FO_NICE_NAME = "' + args.nicename + '";')
-writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHashUint(args.buildhash) + 'u;')
+writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
+writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
+writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
+writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
 
 try:
     branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
-    writeFile('static constexpr auto FO_GIT_BRANCH = "' + branch + '";')
+    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "' + branch + '";')
 except:
-    writeFile('static constexpr auto FO_GIT_BRANCH = "";')
+    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "";')
 
 # Actual writing of generated files
 try:

@@ -80,7 +80,8 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     // Load settings
     auto settings = LoadSettings(argc, argv);
-    WriteLog("Version {}", settings.GameVersion);
+    WriteLog("Version: {}", settings.GameVersion);
+    WriteLog("Compatability version: {}", settings.CompatibilityVersion);
 
     // Prebake resources
     if (!IsPackaged() && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {
