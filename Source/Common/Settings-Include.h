@@ -80,7 +80,7 @@ FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets ar
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, DisableZlibCompression, false); // If true, Zlib compression is disabled
 FIXED_SETTING(int32, ArtificalLags, 0); // Artificial lags in milliseconds
-FIXED_SETTING(string, CompatibilityVersion); // Compatability version (read only)
+FIXED_SETTING(string, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING_GROUP_END();
 

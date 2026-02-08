@@ -141,6 +141,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
+        WriteLog("Compatibility version: {}", App->Settings.CompatibilityVersion);
 
 #if FO_IOS
         MainEntry(nullptr);

@@ -62,6 +62,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Start server");
+    WriteLog("Compatibility version: {}", settings.CompatibilityVersion);
 
     _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
         ignore_unused(ex);
