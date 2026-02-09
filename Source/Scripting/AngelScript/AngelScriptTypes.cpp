@@ -924,21 +924,21 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
         const char* name = type.Name.c_str();
         const auto& ref_type = *type.RefType;
 
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ref_type.Methods[0]))); // NOLINT(readability-container-data-pointer)
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ref_type.Methods[1])));
-
-        if (ref_type.Methods.size() >= 3 && ref_type.Methods[2].Name == "__Factory") {
-            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(RefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ref_type.Methods[2])));
-        }
-
         for (const auto& method : ref_type.Methods) {
-            if (strvex(method.Name).starts_with("__")) {
-                continue;
+            if (method.Name == "__AddRef") {
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
             }
-
-            const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-            const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), getset, method.Name, MakeScriptArgsName(method.Args));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+            else if (method.Name == "__Release") {
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+            }
+            else if (method.Name == "__Factory") {
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(RefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ref_type.Methods[2])));
+            }
+            else if (!strvex(method.Name).starts_with("__")) {
+                const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
+                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), getset, method.Name, MakeScriptArgsName(method.Args));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+            }
         }
     };
 

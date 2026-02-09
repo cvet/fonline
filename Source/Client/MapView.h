@@ -59,10 +59,11 @@ static constexpr uint8 LIGHT_GLOBAL = 0x40;
 static constexpr uint8 LIGHT_INVERSE = 0x80;
 static constexpr uint32 LIGHT_DISABLE_DIR_MASK = 0x3F;
 
-///@ ExportRefType Client
-struct SpritePattern
+///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
+class SpritePattern : public RefCounted
 {
-    FO_SCRIPTABLE_OBJECT_BEGIN();
+public:
+    void Finish();
 
     bool Finished {};
     ipos32 EveryHex {1, 1};
@@ -70,14 +71,8 @@ struct SpritePattern
     bool CheckTileProperty {};
     ItemProperty TileProperty {};
     int32 ExpectedTilePropertyValue {};
-
-    void Finish();
-
-    FO_SCRIPTABLE_OBJECT_END();
-
-    unique_ptr<vector<shared_ptr<Sprite>>> Sprites {};
+    vector<shared_ptr<Sprite>> Sprites {};
 };
-static_assert(std::is_standard_layout_v<SpritePattern>);
 
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {

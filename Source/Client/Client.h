@@ -66,19 +66,14 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
-///@ ExportRefType Client Export = Stopped
-struct VideoPlayback
+///@ ExportRefType Client RefCounted Export = Stopped
+class VideoPlayback : public RefCounted
 {
-    FO_SCRIPTABLE_OBJECT_BEGIN();
-
-    bool Stopped {};
-
-    FO_SCRIPTABLE_OBJECT_END();
-
+public:
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
+    bool Stopped {};
 };
-static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
 enum class EffectType : uint32

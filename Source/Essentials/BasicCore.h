@@ -437,7 +437,8 @@ public:
 
     void Release() const noexcept
     {
-        if (_refCounter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
+            std::atomic_thread_fence(std::memory_order_acquire);
             delete this;
         }
     }
@@ -445,24 +446,6 @@ public:
 private:
     mutable std::atomic_int _refCounter {1};
 };
-
-// Scriptable object class decorator (public fields for standart layout compatibility)
-#define FO_SCRIPTABLE_OBJECT_BEGIN() \
-    void AddRef() const /*noexcept*/ \
-    { \
-        ++RefCounter; \
-    } \
-    void Release() const /*noexcept*/ \
-    { \
-        if (--RefCounter == 0) { \
-            delete this; \
-        } \
-    } \
-    mutable std::atomic_int RefCounter {1}
-#define FO_SCRIPTABLE_OBJECT_END() \
-    bool _nonConstHelper \
-    { \
-    }
 
 // Bit operation helpers
 template<typename T>

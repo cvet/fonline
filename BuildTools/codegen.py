@@ -562,16 +562,24 @@ def parseTags():
                 
                 assert tagContext[1].startswith('{')
                 
-                scriptableLines = False
                 fields = []
                 methods = []
-                for line in tagContext[2:]:
-                    line = line.lstrip()
-                    if 'FO_SCRIPTABLE_OBJECT_BEGIN' in line:
-                        scriptableLines = True
-                    elif 'FO_SCRIPTABLE_OBJECT_END' in line:
-                        scriptableLines = False
-                    elif scriptableLines:
+                
+                def findIndex(lst, value, start=0):
+                    try:
+                        return lst.index(value, start)
+                    except ValueError:
+                        return -1
+                
+                exportKey = findIndex(exportFlags, 'Export')
+                if exportKey != -1:
+                    assert exportFlags[exportKey+1] == '='
+                    exportTokens = exportFlags[exportKey+2:]
+                    exportTokens = [e for e in exportTokens if e != ',']
+                    assert exportTokens
+                    
+                    for line in tagContext[2:]:
+                        line = line.lstrip()
                         commPos = line.find('//')
                         if commPos != -1:
                             line = line[:commPos]
@@ -580,18 +588,21 @@ def parseTags():
                         
                         lTok = tokenize(line)
                         assert len(lTok) >= 2
+                        valueTok = findIndex(lTok, '{')
+                        funcTok = findIndex(lTok, '(')
                         
-                        if lTok[0] not in ['void', 'auto']:
-                            if lTok[0] == 'vector':
-                                fields.append((engineTypeToMetaType(lTok[0] + lTok[1] + lTok[2] + lTok[3]), lTok[4], []))
-                            else:
-                                fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
-                        else:
+                        if valueTok != -1 and lTok[valueTok-1] in exportTokens:
+                            fields.append((engineTypeToMetaType(''.join(lTok[:valueTok-1])), lTok[valueTok-1], []))
+                            exportTokens.remove(lTok[valueTok-1])
+                        elif funcTok != -1 and lTok[funcTok-1] in exportTokens:
                             if lTok[0] == 'auto':
-                                end = lTok[1].find(';')
-                                offs =  lTok[end::-1].index('>') - 1
-                                ret = ''.join(lTok[end-offs:end])
+                                end1 = lTok.index(')', funcTok)
+                                assert lTok[end1+1] == '-'
+                                assert lTok[end1+2] == '>'
+                                end2 = lTok.index(';', end1+2)
+                                ret = ''.join(lTok[end1+3:end2])
                             else:
+                                assert lTok[0] == 'void'
                                 ret = 'void'
                             
                             funcBegin = line.index('(')
@@ -606,7 +617,10 @@ def parseTags():
                                 argName = arg[sep + 1:]
                                 resultArgs.append((argType, argName))
                             
-                            methods.append((lTok[1], engineTypeToMetaType(ret), resultArgs, []))
+                            methods.append((lTok[funcTok-1], engineTypeToMetaType(ret), resultArgs, []))
+                            exportTokens.remove(lTok[funcTok-1])
+                    
+                    assert not exportTokens, 'Exports not found ' + str(exportTokens)
                 
                 codeGenTags['ExportRefType'].append((target, refTypeName, fields, methods, exportFlags, comment))
                 
@@ -1166,25 +1180,24 @@ def genMetadataRegistration(target, isStub):
     for eo in codeGenTags['ExportRefType']:
         targ, refTypeName, fields, methods, flags, _ = eo
         if targ in allowedTargets:
-            hasFactory = 'HasFactory' in flags
             registerLines.append('meta->RegisterRefType("' + refTypeName + '");')
     registerLines.append('')
     
     for eo in codeGenTags['ExportRefType']:
         targ, refTypeName, fields, methods, flags, _ = eo
         if targ in allowedTargets:
-            hasFactory = 'HasFactory' in flags
             registerLines.append('meta->RegisterRefTypeMethods("' + refTypeName + '", {')
-            def writeRefCall(name, call):
-                registerLines.append('    MethodDesc{ .Name = "' + name + '", ' +
-                        '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if isStub else ''))
-                if not isStub:
-                        registerLines.append('        struct Wrapped { ' + call + ' };')
-                        registerLines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                        registerLines.append('    } },')
-            writeRefCall('__AddRef', 'static void Call(' + refTypeName + '* self) { self->AddRef(); }')
-            writeRefCall('__Release', 'static void Call(' + refTypeName + '* self) { self->Release(); }')
-            if hasFactory:
+            if 'RefCounted' in flags:
+                def writeRefCall(name, call):
+                    registerLines.append('    MethodDesc{ .Name = "' + name + '", ' +
+                            '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if isStub else ''))
+                    if not isStub:
+                            registerLines.append('        struct Wrapped { ' + call + ' };')
+                            registerLines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
+                            registerLines.append('    } },')
+                writeRefCall('__AddRef', 'static void Call(' + refTypeName + '* self) { self->AddRef(); }')
+                writeRefCall('__Release', 'static void Call(' + refTypeName + '* self) { self->Release(); }')
+            if 'HasFactory' in flags:
                 registerLines.append('    MethodDesc{ .Name = "__Factory", ' +
                         '.Ret = resolve_type("' + refTypeName + '"), .Call = [](FuncCallData& call) {' +
                         (' ignore_unused(call); } },' if isStub else ''))

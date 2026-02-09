@@ -60,10 +60,11 @@ void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    const auto old = _refCounter.fetch_sub(1, std::memory_order_release);
     FO_STRONG_ASSERT(old > 0);
 
     if (old == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete this;
     }
 }
