@@ -321,8 +321,12 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
         else if (target_type_name.starts_with("Static")) {
             valid_cast = !entity->GetId();
         }
+        else if (target_type_name.starts_with("Abstract")) {
+            valid_cast = true;
+        }
         else {
-            valid_cast = target_type_name.starts_with("Abstract") || target_type_name == entity_type_name.as_str();
+            FO_RUNTIME_ASSERT(target_type_name == entity_type_name.as_str());
+            valid_cast = dynamic_cast<ProtoEntity*>(entity) == nullptr && !!entity->GetId();
         }
     }
 
