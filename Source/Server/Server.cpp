@@ -623,8 +623,16 @@ void ServerEngine::Shutdown()
 
     WriteLog("Stop server");
 
-    OnFinish.Fire();
     _willFinishDispatcher();
+    _starter.Clear();
+    _mainWorker.Clear();
+    _healthWriter.Clear();
+    OnFinish.Fire();
+    TimeEventMngr.ClearTimeEvents();
+    ShutdownBackends();
+    EntityMngr.DestroyInnerEntities(this);
+    EntityMngr.DestroyAllEntities();
+    DbStorage.CommitChanges(true);
 
     // Logging clients
     SetLogCallback("LogToClients", nullptr);
@@ -660,18 +668,6 @@ void ServerEngine::Shutdown()
     }
 
     _connectionServers.clear();
-
-    // Finish logic
-    _starter.Clear();
-    _mainWorker.Clear();
-    _healthWriter.Clear();
-
-    TimeEventMngr.ClearTimeEvents();
-    ShutdownBackends();
-
-    EntityMngr.DestroyInnerEntities(this);
-    EntityMngr.DestroyAllEntities();
-    DbStorage.CommitChanges(true);
 
     // Done
     WriteLog("Server stopped!");
