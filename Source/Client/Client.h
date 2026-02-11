@@ -67,7 +67,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted
+class VideoPlayback : public RefCounted<VideoPlayback>
 {
 public:
     unique_ptr<VideoClip> Clip {};

@@ -60,7 +60,7 @@ static constexpr uint8 LIGHT_INVERSE = 0x80;
 static constexpr uint32 LIGHT_DISABLE_DIR_MASK = 0x3F;
 
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
-class SpritePattern : public RefCounted
+class SpritePattern : public RefCounted<SpritePattern>
 {
 public:
     void Finish();

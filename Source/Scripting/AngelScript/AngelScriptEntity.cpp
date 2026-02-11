@@ -695,7 +695,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
             // Will be run from the scheduler
             ignore_unused(has_value_ref);
             ignore_unused(prop_data);
-            return_ctx.reset();
+            return_ctx.release();
         }
     });
 }

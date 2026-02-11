@@ -201,7 +201,7 @@ private:
 };
 
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, ContourColor, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
-class MapSpriteHolder : public RefCounted
+class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
     MapSpriteHolder() = default;
@@ -209,7 +209,7 @@ public:
     MapSpriteHolder(MapSpriteHolder&&) noexcept = delete;
     auto operator=(const MapSpriteHolder&) = delete;
     auto operator=(MapSpriteHolder&&) noexcept = delete;
-    ~MapSpriteHolder() override;
+    ~MapSpriteHolder();
 
     void StopDraw();
 

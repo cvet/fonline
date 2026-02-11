@@ -394,16 +394,16 @@ public:
 
     ~scope_exit() noexcept
     {
-        if (!_reset) {
+        if (!_released) {
             _callback();
         }
     }
 
-    void reset() { _reset = true; }
+    void release() { _released = true; }
 
 private:
     T _callback;
-    bool _reset {};
+    bool _released {};
 };
 
 // Stack unwind detector
@@ -423,6 +423,7 @@ private:
 };
 
 // Refcount base class
+template<typename T>
 class RefCounted
 {
 public:
@@ -431,7 +432,7 @@ public:
     RefCounted(RefCounted&&) noexcept = delete;
     auto operator=(const RefCounted&) = delete;
     auto operator=(RefCounted&&) noexcept = delete;
-    virtual ~RefCounted() = default;
+    ~RefCounted() = default;
 
     void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
 
@@ -439,7 +440,8 @@ public:
     {
         if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
-            delete this;
+            const auto* ptr = static_cast<const T*>(this);
+            delete ptr;
         }
     }
 
