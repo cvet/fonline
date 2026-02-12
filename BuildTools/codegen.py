@@ -1328,26 +1328,25 @@ def genMetadataRegistration(target, isStub):
     registerLines.append('')
     
     # Migration rules
-    if target in ['Server', 'Mapper'] and not isStub:
-        registerLines.append('// Migration rules')
-        registerLines.append('const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };')
-        registerLines.append('')
-        registerLines.append('meta->RegisterMigrationRules({')
-        for arg0 in sorted(set(ruleTag[0][0] for ruleTag in codeGenTags['MigrationRule'])):
-            registerLines.append('    {')
-            registerLines.append('        to_hstring("' + arg0 + '"), {')
-            for arg1 in sorted(set(ruleTag[0][1] for ruleTag in codeGenTags['MigrationRule'] if ruleTag[0][0] == arg0)):
-                registerLines.append('            {')
-                registerLines.append('                to_hstring("' + arg1 + '"), {')
-                for ruleTag in codeGenTags['MigrationRule']:
-                    if ruleTag[0][0] == arg0 and ruleTag[0][1] == arg1:
-                        registerLines.append('                    {to_hstring("' + ruleTag[0][2] + '"), to_hstring("' + ruleTag[0][3] + '")},')
-                registerLines.append('                },')
-                registerLines.append('            },')
-            registerLines.append('        },')
-            registerLines.append('    },')
-        registerLines.append('});')
-        registerLines.append('')
+    registerLines.append('// Migration rules')
+    registerLines.append('const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };')
+    registerLines.append('')
+    registerLines.append('meta->RegisterMigrationRules({')
+    for arg0 in sorted(set(ruleTag[0][0] for ruleTag in codeGenTags['MigrationRule'])):
+        registerLines.append('    {')
+        registerLines.append('        to_hstring("' + arg0 + '"), {')
+        for arg1 in sorted(set(ruleTag[0][1] for ruleTag in codeGenTags['MigrationRule'] if ruleTag[0][0] == arg0)):
+            registerLines.append('            {')
+            registerLines.append('                to_hstring("' + arg1 + '"), {')
+            for ruleTag in codeGenTags['MigrationRule']:
+                if ruleTag[0][0] == arg0 and ruleTag[0][1] == arg1:
+                    registerLines.append('                    {to_hstring("' + ruleTag[0][2] + '"), to_hstring("' + ruleTag[0][3] + '")},')
+            registerLines.append('                },')
+            registerLines.append('            },')
+        registerLines.append('        },')
+        registerLines.append('    },')
+    registerLines.append('});')
+    registerLines.append('')
     
     includeLines = []
     for commonheader in args.commonheader:

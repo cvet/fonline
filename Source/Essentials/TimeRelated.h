@@ -362,19 +362,17 @@ FO_BEGIN_NAMESPACE
 class [[nodiscard]] TimeMeter
 {
 public:
-    TimeMeter() noexcept :
-        _startTime {nanotime::now()}
-    {
-    }
+    TimeMeter() noexcept;
 
-    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return nanotime::now() - _startTime; }
+    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return _paused ? _pausedDuration : nanotime::now() - _startTime; }
 
-    void Pause() noexcept { _pausedDuration = GetDuration(); }
-    void Resume() noexcept { _startTime = nanotime::now() - _pausedDuration; }
+    void Pause() noexcept;
+    void Resume() noexcept;
 
 private:
     nanotime _startTime;
     timespan _pausedDuration {};
+    bool _paused {};
 };
 
 FO_END_NAMESPACE

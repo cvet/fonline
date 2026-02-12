@@ -240,7 +240,7 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     unordered_map<int32, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
-        FO_RUNTIME_ASSERT(key != "None" || value == 0);
+        FO_RUNTIME_ASSERT_STR(key != "None" || value == 0, strex("Wrong enum {}", name));
         FO_RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev.emplace(value, key);
         string full_key = strex("{}::{}", name, key);
