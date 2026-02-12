@@ -32,146 +32,158 @@
 //
 
 #include "ScriptSystem.h"
+#include "AngelScriptScripting.h"
 #include "Application.h"
 #include "EngineBase.h"
+#include "FileSystem.h"
 #include "Geometry.h"
 
 FO_BEGIN_NAMESPACE
 
-ScriptSystem::ScriptSystem()
+void ScriptSystem::InitSubsystems(BaseEngine* engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _engineToScriptType.emplace(typeid(void).name(), SafeAlloc::MakeShared<ScriptTypeInfo>("void", nullptr));
-    MapEnginePlainType<bool>("bool");
-    MapEnginePlainType<int8>("int8");
-    MapEnginePlainType<int16>("int16");
-    MapEnginePlainType<int32>("int32");
-    MapEnginePlainType<int64>("int64");
-    MapEnginePlainType<uint8>("uint8");
-    MapEnginePlainType<uint16>("uint16");
-    MapEnginePlainType<uint32>("uint32");
-    MapEnginePlainType<uint64>("uint64");
-    MapEnginePlainType<float32>("float32");
-    MapEnginePlainType<float64>("float64");
-    MapEnginePlainType<ident_t>("ident");
-    MapEnginePlainType<timespan>("timespan");
-    MapEnginePlainType<nanotime>("nanotime");
-    MapEnginePlainType<synctime>("synctime");
-    MapEnginePlainType<ucolor>("ucolor");
-    MapEnginePlainType<isize32>("isize32");
-    MapEnginePlainType<ipos32>("ipos32");
-    MapEnginePlainType<irect32>("irect32");
-    MapEnginePlainType<ipos16>("ipos16");
-    MapEnginePlainType<ipos8>("ipos8");
-    MapEnginePlainType<fsize32>("fsize32");
-    MapEnginePlainType<fpos32>("fpos32");
-    MapEnginePlainType<frect32>("frect32");
-    MapEnginePlainType<mpos>("mpos");
-    MapEnginePlainType<msize>("msize");
-    MapEngineObjectType<string>("string");
-    MapEngineObjectType<hstring>("hstring");
-    MapEngineObjectType<any_t>("any");
-    MapEngineEntityType<Entity>("Entity");
+    InitSubsystems(engine, engine->Resources);
 }
 
-void ScriptSystem::RegisterBackend(size_t index, shared_ptr<ScriptSystemBackend> backend)
+void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resources)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MapEngineType<bool>(meta->GetBaseType("bool"));
+    MapEngineType<int8>(meta->GetBaseType("int8"));
+    MapEngineType<int16>(meta->GetBaseType("int16"));
+    MapEngineType<int32>(meta->GetBaseType("int32"));
+    MapEngineType<int64>(meta->GetBaseType("int64"));
+    MapEngineType<uint8>(meta->GetBaseType("uint8"));
+    MapEngineType<uint16>(meta->GetBaseType("uint16"));
+    MapEngineType<uint32>(meta->GetBaseType("uint32"));
+    MapEngineType<uint64>(meta->GetBaseType("uint64"));
+    MapEngineType<float32>(meta->GetBaseType("float32"));
+    MapEngineType<float64>(meta->GetBaseType("float64"));
+    MapEngineType<ident_t>(meta->GetBaseType("ident"));
+    MapEngineType<timespan>(meta->GetBaseType("timespan"));
+    MapEngineType<nanotime>(meta->GetBaseType("nanotime"));
+    MapEngineType<synctime>(meta->GetBaseType("synctime"));
+    MapEngineType<ucolor>(meta->GetBaseType("ucolor"));
+    MapEngineType<isize32>(meta->GetBaseType("isize"));
+    MapEngineType<ipos32>(meta->GetBaseType("ipos"));
+    MapEngineType<irect32>(meta->GetBaseType("irect"));
+    MapEngineType<ipos16>(meta->GetBaseType("ipos16"));
+    MapEngineType<ipos8>(meta->GetBaseType("ipos8"));
+    MapEngineType<fsize32>(meta->GetBaseType("fsize"));
+    MapEngineType<fpos32>(meta->GetBaseType("fpos"));
+    MapEngineType<frect32>(meta->GetBaseType("frect"));
+    MapEngineType<mpos>(meta->GetBaseType("mpos"));
+    MapEngineType<msize>(meta->GetBaseType("msize"));
+    MapEngineType<string>(meta->GetBaseType("string"));
+    MapEngineType<hstring>(meta->GetBaseType("hstring"));
+    MapEngineType<any_t>(meta->GetBaseType("any"));
+    MapEngineType<Entity>(meta->GetBaseType("Entity"));
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(meta, resources);
+#endif
+
+    ignore_unused(resources);
+}
+
+void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend)
 {
     FO_STACK_TRACE_ENTRY();
 
     _backends.resize(index + 1);
     FO_RUNTIME_ASSERT(!_backends[index]);
-
     _backends[index] = std::move(backend);
 }
 
-auto ScriptSystem::ResolveEngineType(std::type_index ti) const -> shared_ptr<ScriptTypeInfo>
+void ScriptSystem::ShutdownBackends()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _engineToScriptType.find(ti.name());
-
-    if (it == _engineToScriptType.end()) {
-        throw GenericException("Invalid script type", ti.name());
-    }
-
-    return it->second;
+    _loopCallbacks.clear();
+    _engineTypes.clear();
+    _globalFuncMap.clear();
+    _initFunc.clear();
+    _backends.clear();
 }
 
-void ScriptSystem::AddInitFunc(ScriptFuncDesc* func, int32 priority)
+void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _initFunc.emplace_back(func, priority);
+    _initFunc.emplace_back(std::move(func), priority);
     std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<std::type_index> args_type, std::type_index ret_type) const noexcept -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!func_desc.CallSupported) {
+    if (!func->Call) {
         return false;
     }
 
-    if (func_desc.ArgsType.size() != args_type.size()) {
+    if (func->Args.size() != arg_types.size()) {
+        return false;
+    }
+    if ((func->Ret.Kind != ComplexTypeKind::None) != (ret_type != ArgMapTypeIndex<void>())) {
         return false;
     }
 
-    const auto check_type = [this](const shared_ptr<ScriptTypeInfo>& left, const std::type_index& right) -> bool {
-        const auto it = _engineToScriptType.find(right.name());
-        FO_RUNTIME_VERIFY(it != _engineToScriptType.end(), false);
-        return it->second == left;
+    const auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
+        const auto it = _engineTypes.find(right);
+        FO_RUNTIME_VERIFY(it != _engineTypes.end(), false);
+        return left == it->second;
     };
 
-    if (!check_type(func_desc.RetType, ret_type)) {
+    if (func->Ret.Kind != ComplexTypeKind::None && !check_type(func->Ret, ret_type)) {
         return false;
     }
 
-    size_t index = 0;
-
-    for (const auto& arg_type : args_type) {
-        if (!check_type(func_desc.ArgsType[index], arg_type)) {
+    for (size_t i = 0; i < arg_types.size(); i++) {
+        if (!check_type(func->Args[i].Type, arg_types[i])) {
             return false;
         }
-
-        ++index;
     }
 
     return true;
+}
+
+void ScriptSystem::AddLoopCallback(function<void()> callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(callback);
+
+    _loopCallbacks.emplace_back(std::move(callback));
+}
+
+void ScriptSystem::AddGlobalScriptFunc(ScriptFuncDesc* func)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(func);
+    FO_RUNTIME_ASSERT(func->Name);
+
+    _globalFuncMap.emplace(func->Name, func);
 }
 
 void ScriptSystem::InitModules()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    for (const auto& func : _initFunc | std::views::keys) {
-        if (!func->Call({}, nullptr)) {
+    for (auto& func : _initFunc | std::views::keys) {
+        if (!func.Call()) {
             throw ScriptSystemException("Module initialization failed");
         }
     }
 }
 
-void ScriptSystem::HandleRemoteCall(uint32 rpc_num, Entity* entity)
+void ScriptSystem::ProcessScriptEvents()
 {
     FO_STACK_TRACE_ENTRY();
-
-    const auto it = _rpcReceivers.find(rpc_num);
-
-    if (it == _rpcReceivers.end()) {
-        throw ScriptException("Invalid remote call", rpc_num);
-    }
-
-    it->second(entity);
-}
-
-void ScriptSystem::Process()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& callback : _loopCallbacks) {
         try {
@@ -179,9 +191,6 @@ void ScriptSystem::Process()
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 }

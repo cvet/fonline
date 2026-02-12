@@ -12897,7 +12897,7 @@ void asCCompiler::ConvertToTempVariable(asCExprContext *ctx)
 void asCCompiler::ConvertToVariable(asCExprContext *ctx)
 {
 	// We should never get here while the context is still an unprocessed property accessor
-	asASSERT(ctx->property_get == 0 && ctx->property_set == 0);
+	//asASSERT(ctx->property_get == 0 && ctx->property_set == 0); // (FOnline Patch) Assert in debug mode
 
 	int offset;
 	if( !ctx->type.isVariable &&

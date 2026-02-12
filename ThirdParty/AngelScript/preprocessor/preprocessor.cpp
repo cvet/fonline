@@ -66,7 +66,7 @@ public:
 
         std::vector< Entry > lines;
 
-        Entry& Search( unsigned int linenumber );
+        const Entry& Search( unsigned int linenumber ) const;
         void   AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset );
         void   Store( std::vector< unsigned char >& data );
         void   Restore( const std::vector< unsigned char >& data );
@@ -221,7 +221,7 @@ public:
 /* Line number translator                                               */
 /************************************************************************/
 
-Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::Search( unsigned int line_number )
+const Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::Search( unsigned int line_number ) const
 {
     for( size_t i = 1; i < lines.size(); ++i )
     {
@@ -1244,13 +1244,13 @@ unsigned int Preprocessor::ResolveOriginalLine( Context* ctx, unsigned int line_
     return ctx->LNT ? line_number - ctx->LNT->Search( line_number ).Offset : 0;
 }
 
-const std::string& Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
+const std::string& Preprocessor::ResolveOriginalFile( unsigned int line_number, const LineNumberTranslator* lnt )
 {
     static std::string error = "ERROR";
     return lnt ? lnt->Search( line_number ).File : error;
 }
 
-unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt )
+unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, const LineNumberTranslator* lnt )
 {
     return lnt ? line_number - lnt->Search( line_number ).Offset : 0;
 }

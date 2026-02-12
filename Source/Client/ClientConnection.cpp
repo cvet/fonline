@@ -33,7 +33,6 @@
 
 #include "ClientConnection.h"
 #include "NetCommand.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -44,26 +43,26 @@ ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _connectCallback = [](auto&&) { };
-    _disconnectCallback = [] { };
+    _connectCallback = [](auto&&) FO_DEFERRED { };
+    _disconnectCallback = []() FO_DEFERRED { };
 
-    AddMessageHandler(NetMessage::Disconnect, [this] { Disconnect(); });
-    AddMessageHandler(NetMessage::Ping, [this] { Net_OnPing(); });
-    AddMessageHandler(NetMessage::HandshakeAnswer, [this] { Net_OnHandshakeAnswer(); });
+    AddMessageHandler(NetMessage::Disconnect, [this]() FO_DEFERRED { Disconnect(); });
+    AddMessageHandler(NetMessage::Ping, [this]() FO_DEFERRED { Net_OnPing(); });
+    AddMessageHandler(NetMessage::HandshakeAnswer, [this]() FO_DEFERRED { Net_OnHandshakeAnswer(); });
 }
 
 void ClientConnection::SetConnectHandler(ConnectCallback handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _connectCallback = handler ? std::move(handler) : [](auto&&) { };
+    _connectCallback = handler ? std::move(handler) : [](auto&&) FO_DEFERRED { };
 }
 
 void ClientConnection::SetDisconnectHandler(DisconnectCallback handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _disconnectCallback = handler ? std::move(handler) : [] { };
+    _disconnectCallback = handler ? std::move(handler) : []() FO_DEFERRED { };
 }
 
 void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler)
@@ -307,11 +306,10 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto comp_version = numeric_cast<uint32>(_settings->BypassCompatibilityCheck ? 0 : FO_COMPATIBILITY_VERSION);
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
     _netOut.StartMsg(NetMessage::Handshake);
-    _netOut.Write(comp_version);
+    _netOut.Write(_settings->CompatibilityVersion);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 

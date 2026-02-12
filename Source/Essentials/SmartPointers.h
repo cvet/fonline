@@ -457,6 +457,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
@@ -670,7 +672,7 @@ FO_BEGIN_NAMESPACE
 
 // Template helpers
 template<typename T>
-concept is_refcounted = requires(T t) {
+concept refcountable = requires(T t) {
     t.AddRef();
     t.Release();
 };

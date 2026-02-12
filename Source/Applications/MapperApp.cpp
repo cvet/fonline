@@ -34,9 +34,9 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "Baker.h"
 #include "Mapper.h"
 #include "Settings.h"
-#include "Version-Include.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"
@@ -46,9 +46,11 @@ FO_USING_NAMESPACE();
 
 struct MapperAppData
 {
-    refcount_ptr<FOMapper> Mapper {};
+    refcount_ptr<MapperEngine> Mapper {};
 };
 FO_GLOBAL_DATA(MapperAppData, Data);
+
+static auto GetMapperResources(GlobalSettings& settings) -> FileSystem;
 
 static void MapperEntry([[maybe_unused]] void* data)
 {
@@ -66,7 +68,7 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                Data->Mapper = SafeAlloc::MakeRefCounted<FOMapper>(App->Settings, &App->MainWindow);
+                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -127,7 +129,10 @@ int main(int argc, char** argv) // Handled by SDL
         }
 #endif
 
-        Data->Mapper.reset();
+        if (Data->Mapper) {
+            Data->Mapper->Shutdown();
+            Data->Mapper.reset();
+        }
 
         ExitApp(true);
     }
@@ -136,5 +141,22 @@ int main(int argc, char** argv) // Handled by SDL
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsPackaged()) {
+        FileSystem resources;
+        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+        return resources;
+    }
+    else {
+        FileSystem resources;
+        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings));
+        return resources;
     }
 }

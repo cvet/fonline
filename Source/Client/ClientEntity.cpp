@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
     Entity(registrator, props),
     _engine {engine},
     _id {id}

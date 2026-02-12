@@ -35,14 +35,15 @@
 
 #include "Common.h"
 
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "ScriptSystem.h"
 
 #include <angelscript.h>
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ScriptDictException);
-
+class ScriptArray;
 struct ScriptDictTypeData;
 
 class ScriptDict
@@ -53,7 +54,7 @@ public:
     struct ScriptDictComparator
     {
         explicit ScriptDictComparator(ScriptDict* owner);
-        auto operator()(const void* a, const void* b) const -> bool;
+        auto operator()(void* a, void* b) const -> bool;
         raw_ptr<ScriptDict> Owner;
     };
 
@@ -80,6 +81,8 @@ public:
     auto GetDefault(void* key, void* def_val) -> void*;
     auto GetKey(int32 index) -> void*;
     auto GetValue(int32 index) -> void*;
+    auto GetKeys() const -> ScriptArray*;
+    auto GetValues() const -> ScriptArray*;
     auto Exists(void* key) const -> bool;
 
     void Set(void* key, void* value);
@@ -112,6 +115,8 @@ private:
     mutable bool _gcFlag {};
 };
 
-void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine);
+void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine);
 
 FO_END_NAMESPACE
+
+#endif

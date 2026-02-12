@@ -46,7 +46,7 @@
 FO_BEGIN_NAMESPACE
 
 class Item;
-using StaticItem = Item;
+class StaticItem;
 class Critter;
 class Map;
 class Location;
@@ -63,9 +63,9 @@ struct StaticMap
 
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> HexField {};
     vector<pair<ident_t, refcount_ptr<Critter>>> CritterBillets {};
-    vector<pair<ident_t, refcount_ptr<Item>>> ItemBillets {};
-    vector<pair<ident_t, raw_ptr<Item>>> HexItemBillets {};
-    vector<pair<ident_t, raw_ptr<Item>>> ChildItemBillets {};
+    vector<pair<ident_t, refcount_ptr<StaticItem>>> ItemBillets {};
+    vector<pair<ident_t, raw_ptr<StaticItem>>> HexItemBillets {};
+    vector<pair<ident_t, raw_ptr<StaticItem>>> ChildItemBillets {};
     vector<raw_ptr<StaticItem>> StaticItems {};
     unordered_map<ident_t, raw_ptr<StaticItem>> StaticItemsById {};
 };
@@ -74,7 +74,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 {
 public:
     Map() = delete;
-    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props = nullptr) noexcept;
+    Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props = nullptr) noexcept;
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;

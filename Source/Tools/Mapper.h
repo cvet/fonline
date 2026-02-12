@@ -63,7 +63,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapperException);
 
-class FOMapper final : public FOClient
+class MapperEngine final : public ClientEngine
 {
     friend class MapperScriptSystem;
 
@@ -137,13 +137,13 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    explicit FOMapper(GlobalSettings& settings, AppWindow* window);
+    explicit MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window);
 
-    FOMapper(const FOMapper&) = delete;
-    FOMapper(FOMapper&&) noexcept = delete;
-    auto operator=(const FOMapper&) = delete;
-    auto operator=(FOMapper&&) noexcept = delete;
-    ~FOMapper() override = default;
+    MapperEngine(const MapperEngine&) = delete;
+    MapperEngine(MapperEngine&&) noexcept = delete;
+    auto operator=(const MapperEngine&) = delete;
+    auto operator=(MapperEngine&&) noexcept = delete;
+    ~MapperEngine() override = default;
 
     void InitIface();
     auto IfaceLoadRect(irect32& rect, string_view name) const -> bool;

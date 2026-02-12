@@ -54,7 +54,7 @@ public:
     [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8> = 0;
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
-    virtual void SetData(string_view entry_name, span<const uint8> data) = 0;
+    virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -74,7 +74,7 @@ public:
 
     auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, span<const uint8> data) override;
+    void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -100,7 +100,7 @@ public:
 
     auto InitCacheStorage() -> bool;
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, span<const uint8> data) override;
+    void SetData(string_view entry_name, const_span<uint8> data) override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -154,7 +154,7 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
     _impl->SetString(entry_name, str);
 }
 
-void CacheStorage::SetData(string_view entry_name, span<const uint8> data)
+void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,7 +271,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void FileCacheStorage::SetData(string_view entry_name, span<const uint8> data)
+void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -328,7 +328,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
             return false;
         }
 
-        _db = unique_del_ptr<unqlite> {db, [](unqlite* del_db) { unqlite_close(del_db); }};
+        _db = unique_del_ptr<unqlite> {db, [](unqlite* del_db) FO_DEFERRED { unqlite_close(del_db); }};
     }
 
     return true;
@@ -467,7 +467,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void UnqliteCacheStorage::SetData(string_view entry_name, span<const uint8> data)
+void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 

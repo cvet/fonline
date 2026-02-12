@@ -39,8 +39,8 @@
 
 FO_BEGIN_NAMESPACE
 
-MapBaker::MapBaker(BakerData& data) :
-    BaseBaker(data)
+MapBaker::MapBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -58,15 +58,15 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     vector<File> filtered_files;
 
     const auto check_file = [&](const FileHeader& file_header) -> bool {
-        const bool server_side = _bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
-        const bool client_side = _bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
+        const bool server_side = _context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
+        const bool client_side = _context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
 
         if (server_side || client_side) {
             if (!server_side) {
-                (void)_bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
+                (void)_context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
             }
             if (!client_side) {
-                (void)_bakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
+                (void)_context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
             }
         }
 
@@ -80,7 +80,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             if (ext != "fomap") {
                 continue;
             }
-            if (_bakeChecker && !check_file(file_header)) {
+            if (_context->BakeChecker && !check_file(file_header)) {
                 continue;
             }
 
@@ -97,7 +97,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         if (!file) {
             return;
         }
-        if (_bakeChecker && !check_file(file)) {
+        if (_context->BakeChecker && !check_file(file)) {
             return;
         }
 
@@ -109,15 +109,15 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     }
 
     // Load protos
-    auto server_engine = BakerEngine(PropertiesRelationType::ServerRelative);
-    auto client_engine = BakerEngine(PropertiesRelationType::ClientRelative);
+    auto server_engine = BakerServerEngine(*_context->BakedFiles);
+    auto client_engine = BakerClientEngine(*_context->BakedFiles);
     auto server_proto_mngr = ProtoManager(server_engine);
     auto client_proto_mngr = ProtoManager(client_engine);
-    const auto server_script_sys = BakerScriptSystem(server_engine, *_bakedFiles);
+    server_engine.InitSubsystems(&server_engine, *_context->BakedFiles);
 
     vector<std::future<void>> proto_loadings;
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&] { server_proto_mngr.LoadFromResources(*_bakedFiles); }));
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&] { client_proto_mngr.LoadFromResources(*_bakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_proto_mngr.LoadFromResources(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_proto_mngr.LoadFromResources(*_context->BakedFiles); }));
 
     for (auto& proto_loading : proto_loadings) {
         proto_loading.get();
@@ -153,7 +153,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 
-                errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
+                errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_cr_count++;
                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -166,7 +166,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 
-                errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_script_sys);
+                errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_item_count++;
                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -214,7 +214,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32>(map_item_count);
             final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
-            _writeData(strex("{}.fomap-bin-server", map_name), map_data);
+            _context->WriteData(strex("{}.fomap-bin-server", map_name), map_data);
         }
 
         // Client side
@@ -233,7 +233,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             final_writer.Write<uint32>(map_client_item_count);
             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
-            _writeData(strex("{}.fomap-bin-client", map_name), map_data);
+            _context->WriteData(strex("{}.fomap-bin-client", map_name), map_data);
         }
     };
 
@@ -241,7 +241,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     vector<std::future<void>> file_bakings;
 
     for (const auto& file : filtered_files) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] { bake_map(file); }));
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { bake_map(file); }));
     }
 
     size_t errors = 0;
@@ -253,9 +253,6 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         catch (const std::exception& ex) {
             WriteLog("Map baking error: {}", ex.what());
             errors++;
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 

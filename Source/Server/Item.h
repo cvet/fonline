@@ -44,15 +44,15 @@ FO_BEGIN_NAMESPACE
 
 class Item;
 class Critter;
-using StaticItem = Item;
+class StaticItem;
 
-class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
+class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
 
 public:
     Item() = delete;
-    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
+    Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
@@ -87,6 +87,11 @@ public:
 private:
     unique_ptr<vector<Item*>> _innerItems {};
     unique_ptr<vector<mpos>> _multihexEntries {};
+};
+
+class StaticItem final : public Item
+{
+    using Item::Item;
 };
 
 FO_END_NAMESPACE

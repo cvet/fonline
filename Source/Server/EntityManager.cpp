@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-EntityManager::EntityManager(FOServer* engine) :
+EntityManager::EntityManager(ServerEngine* engine) :
     _engine {engine},
     _playerTypeName {engine->Hashes.ToHashedString(Player::ENTITY_TYPE_NAME)},
     _locationTypeName {engine->Hashes.ToHashedString(Location::ENTITY_TYPE_NAME)},
@@ -580,9 +580,9 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
+        const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
 
-        for (const auto& entry : holder_type_info.HolderEntries | std::views::keys) {
+        for (const auto& entry : holder_type.HolderEntries | std::views::keys) {
             LoadInnerEntitiesEntry(holder, entry, is_error);
         }
     }
@@ -613,8 +613,8 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
             holder_id = holder_with_id->GetId();
         }
 
-        const auto& holder_type_info = _engine->GetEntityTypeInfo(holder->GetTypeName());
-        const auto inner_entity_type_name = std::get<0>(holder_type_info.HolderEntries.at(entry));
+        const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
+        const auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
             auto* custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
@@ -725,7 +725,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
     _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine.get(), loc, loc->GetInitScript(), first_time);
     }
 
     if (!loc->IsDestroyed()) {
@@ -754,7 +754,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
     _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine.get(), map, map->GetInitScript(), first_time);
     }
 
     if (!map->IsDestroyed()) {
@@ -791,7 +791,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
     _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine.get(), cr, cr->GetInitScript(), first_time);
     }
 
     if (!cr->IsDestroyed()) {
@@ -820,7 +820,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), first_time);
+        ScriptHelpers::CallInitScript(_engine.get(), item, item->GetInitScript(), first_time);
     }
 
     if (!item->IsDestroyed() && item->HasInnerItems()) {
@@ -1069,9 +1069,9 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(holder);
-    FO_RUNTIME_ASSERT(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.count(entry));
+    FO_RUNTIME_ASSERT(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry));
 
-    const hstring type_name = std::get<0>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
+    const hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     auto* entity = CreateCustomEntity(type_name, pid);
     FO_RUNTIME_ASSERT(entity);
@@ -1104,8 +1104,9 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
+    FO_RUNTIME_ASSERT(!_engine->GetEntityType(type_name).Exported);
 
-    const bool has_protos = _engine->GetEntityTypeInfo(type_name).HasProtos;
+    const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
@@ -1157,7 +1158,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             return nullptr;
         }
 
-        const bool has_protos = _engine->GetEntityTypeInfo(type_name).HasProtos;
+        const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
         const ProtoEntity* proto = nullptr;
 
         if (has_protos) {
@@ -1265,24 +1266,24 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
         }
     };
 
-    function<void(Entity*, EntityHolderEntryAccess)> find_players_recursively;
+    function<void(Entity*, EntityHolderEntrySync)> find_players_recursively;
 
-    find_players_recursively = [this, &find_players_recursively, &view_callback](Entity* holder, EntityHolderEntryAccess derived_access) {
+    find_players_recursively = [this, &find_players_recursively, &view_callback](Entity* holder, EntityHolderEntrySync derived_sync) {
         if (const auto* custom_entity = dynamic_cast<CustomEntity*>(holder); custom_entity != nullptr) {
             if (Entity* custom_entity_holder = GetEntity(custom_entity->GetCustomHolderId()); custom_entity_holder != nullptr) {
-                const auto custom_entity_holder_type_info = _engine->GetEntityTypeInfo(custom_entity_holder->GetTypeName());
+                const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
                 const auto entry = custom_entity->GetCustomHolderEntry();
-                const auto entry_access = std::get<1>(custom_entity_holder_type_info.HolderEntries.at(entry));
+                const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 
-                if (entry_access == EntityHolderEntryAccess::Protected || entry_access == EntityHolderEntryAccess::Public) {
-                    find_players_recursively(custom_entity_holder, std::min(entry_access, derived_access));
+                if (entry_sync == EntityHolderEntrySync::OwnerSync || entry_sync == EntityHolderEntrySync::PublicSync) {
+                    find_players_recursively(custom_entity_holder, std::min(entry_sync, derived_sync));
                 }
             }
         }
         else if (auto* cr = dynamic_cast<Critter*>(holder)) {
             view_callback(cr->GetPlayer(), true);
 
-            if (derived_access == EntityHolderEntryAccess::Public) {
+            if (derived_sync == EntityHolderEntrySync::PublicSync) {
                 for (auto* another_cr : cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any)) {
                     view_callback(another_cr->GetPlayer(), false);
                 }
@@ -1291,14 +1292,14 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
         else if (auto* player = dynamic_cast<Player*>(holder)) {
             view_callback(player, true);
         }
-        else if (const auto* game = dynamic_cast<FOServer*>(holder); game != nullptr) {
+        else if (const auto* game = dynamic_cast<ServerEngine*>(holder); game != nullptr) {
             for (auto& game_player : GetPlayers() | std::views::values) {
                 view_callback(game_player.get(), false);
             }
         }
         else if (auto* loc = dynamic_cast<Location*>(holder); loc != nullptr) {
             for (auto& loc_map : loc->GetMaps()) {
-                find_players_recursively(loc_map.get(), derived_access);
+                find_players_recursively(loc_map.get(), derived_sync);
             }
         }
         else if (auto* map = dynamic_cast<Map*>(holder)) {
@@ -1310,11 +1311,11 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
                 if (auto* item_cr = GetCritter(item->GetCritterId()); item_cr != nullptr) {
-                    find_players_recursively(item_cr, derived_access);
+                    find_players_recursively(item_cr, derived_sync);
                 }
             } break;
             case ItemOwnership::MapHex: {
-                if (derived_access == EntityHolderEntryAccess::Public) {
+                if (derived_sync == EntityHolderEntrySync::PublicSync) {
                     if (auto* item_map = GetMap(item->GetMapId()); item_map != nullptr) {
                         for (auto& map_cr : item_map->GetPlayerCritters()) {
                             if (map_cr->IsSeeItem(item->GetId())) {
@@ -1326,7 +1327,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             } break;
             case ItemOwnership::ItemContainer: {
                 if (auto* item_cont = GetItem(item->GetContainerId()); item_cont != nullptr) {
-                    find_players_recursively(item_cont, derived_access);
+                    find_players_recursively(item_cont, derived_sync);
                 }
             } break;
             default:
@@ -1335,7 +1336,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
         }
     };
 
-    find_players_recursively(entity, EntityHolderEntryAccess::Public);
+    find_players_recursively(entity, EntityHolderEntrySync::PublicSync);
 }
 
 FO_END_NAMESPACE

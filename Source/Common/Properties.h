@@ -40,20 +40,12 @@
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(PropertyRegistrationException);
 FO_DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
 class Property;
 class PropertyRegistrator;
 class Properties;
-
-enum class PropertiesRelationType : uint8
-{
-    BothRelative,
-    ServerRelative,
-    ClientRelative,
-};
 
 class PropertyRawData
 {
@@ -128,14 +120,14 @@ public:
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16 { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
-    [[nodiscard]] auto GetBaseTypeInfo() const noexcept -> const BaseTypeInfo& { return _baseType; }
-    [[nodiscard]] auto GetBaseTypeName() const noexcept -> const string& { return _baseType.TypeName; }
+    [[nodiscard]] auto GetBaseType() const noexcept -> const BaseTypeDesc& { return _baseType; }
+    [[nodiscard]] auto GetBaseTypeName() const noexcept -> const string& { return _baseType.Name; }
     [[nodiscard]] auto GetBaseSize() const noexcept -> size_t { return _baseType.Size; }
     [[nodiscard]] auto IsBaseTypeSimpleStruct() const noexcept -> bool { return _baseType.IsSimpleStruct; }
     [[nodiscard]] auto IsBaseTypeComplexStruct() const noexcept -> bool { return _baseType.IsComplexStruct; }
     [[nodiscard]] auto IsBaseTypeStruct() const noexcept -> bool { return _baseType.IsSimpleStruct || _baseType.IsComplexStruct; }
-    [[nodiscard]] auto GetBaseTypeLayout() const noexcept { return _baseType.StructLayout; }
-    [[nodiscard]] auto GetStructFirstType() const noexcept -> const BaseTypeInfo& { return _baseType.StructLayout->front().second; }
+    [[nodiscard]] auto GetBaseTypeLayout() const noexcept -> const StructLayoutDesc& { return *_baseType.StructLayout; }
+    [[nodiscard]] auto GetStructFirstType() const noexcept -> const BaseTypeDesc& { return _baseType.StructLayout->Fields.front().Type; }
     [[nodiscard]] auto IsBaseTypePrimitive() const noexcept -> bool { return _baseType.IsPrimitive; }
     [[nodiscard]] auto IsBaseTypeInt() const noexcept -> bool { return _baseType.IsInt; }
     [[nodiscard]] auto IsBaseTypeSignedInt() const noexcept -> bool { return _baseType.IsSignedInt; }
@@ -151,7 +143,7 @@ public:
     [[nodiscard]] auto IsBaseTypeSingleFloat() const noexcept -> bool { return _baseType.IsSingleFloat; }
     [[nodiscard]] auto IsBaseTypeDoubleFloat() const noexcept -> bool { return _baseType.IsDoubleFloat; }
     [[nodiscard]] auto IsBaseTypeBool() const noexcept -> bool { return _baseType.IsBool; }
-    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHash; }
+    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }
@@ -166,9 +158,9 @@ public:
     [[nodiscard]] auto IsDictKeyHash() const noexcept -> bool { return _isDictKeyHash; }
     [[nodiscard]] auto IsDictKeyEnum() const noexcept -> bool { return _isDictKeyEnum; }
     [[nodiscard]] auto IsDictKeyString() const noexcept -> bool { return _isDictKeyString; }
-    [[nodiscard]] auto GetDictKeyTypeInfo() const noexcept -> const BaseTypeInfo& { return _dictKeyType; }
-    [[nodiscard]] auto GetDictKeySize() const noexcept -> size_t { return _dictKeyType.Size; }
-    [[nodiscard]] auto GetDictKeyTypeName() const noexcept -> const string& { return _dictKeyType.TypeName; }
+    [[nodiscard]] auto GetDictKeyType() const noexcept -> const BaseTypeDesc& { return _dictKeyType; }
+    [[nodiscard]] auto GetDictKeyTypeSize() const noexcept -> size_t { return _dictKeyType.Size; }
+    [[nodiscard]] auto GetDictKeyTypeName() const noexcept -> const string& { return _dictKeyType.Name; }
     [[nodiscard]] auto GetViewTypeName() const noexcept -> const string& { return _viewTypeName; }
 
     [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
@@ -210,7 +202,7 @@ private:
     hstring _component {};
     string _scriptFuncType {};
 
-    BaseTypeInfo _baseType {};
+    BaseTypeDesc _baseType {};
 
     bool _isPlainData {};
     bool _isResourceHash {};
@@ -227,7 +219,7 @@ private:
     bool _isDictKeyHash {};
     bool _isDictKeyEnum {};
     bool _isDictKeyString {};
-    BaseTypeInfo _dictKeyType {};
+    BaseTypeDesc _dictKeyType {};
 
     string _viewTypeName {};
 
@@ -302,7 +294,7 @@ public:
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
         requires(std::same_as<T, hstring>)
@@ -311,14 +303,14 @@ public:
         requires(std::same_as<T, string> || std::same_as<T, any_t>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
-        requires(is_vector_collection<T>)
+        requires(vector_collection<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T;
     template<typename T>
-        requires(is_map_collection<T>)
+        requires(map_collection<T>)
     [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T;
     template<typename T>
         requires(std::same_as<T, hstring>)
@@ -327,14 +319,14 @@ public:
         requires(std::same_as<T, string> || std::same_as<T, any_t>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> string_view;
     template<typename T>
-        requires(is_vector_collection<T>)
+        requires(vector_collection<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const noexcept -> T;
     template<typename T>
-        requires(is_map_collection<T>)
+        requires(map_collection<T>)
     [[nodiscard]] auto GetValueFast(const Property* prop) const -> T = delete;
 
     template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     void SetValue(const Property* prop, T new_value);
     template<typename T>
         requires(std::same_as<T, hstring>)
@@ -367,7 +359,7 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view type_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver);
+    PropertyRegistrator(string_view type_name, EngineSideKind side, HashResolver& hash_resolver, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
@@ -376,7 +368,7 @@ public:
 
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
-    [[nodiscard]] auto GetRelation() const noexcept -> PropertiesRelationType { return _relation; }
+    [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
     [[nodiscard]] auto GetPropertyByIndex(int32 property_index) const noexcept -> const Property*;
@@ -390,13 +382,13 @@ public:
     [[nodiscard]] auto GetNameResolver() const noexcept -> NameResolver* { return _nameResolver.get(); }
 
     void RegisterComponent(string_view name);
-    void RegisterProperty(const initializer_list<string_view>& flags) { RegisterProperty({flags.begin(), flags.end()}); }
-    void RegisterProperty(const span<const string_view>& flags);
+    auto RegisterProperty(const initializer_list<string_view>& tokens) -> const Property* { return RegisterProperty({tokens.begin(), tokens.end()}); }
+    auto RegisterProperty(const span<const string_view>& tokens) -> const Property*;
 
 private:
     const hstring _typeName;
     const hstring _typeNamePlural;
-    const PropertiesRelationType _relation;
+    const EngineSideKind _side;
     const hstring _propMigrationRuleName;
     const hstring _componentMigrationRuleName;
     mutable raw_ptr<HashResolver> _hashResolver;
@@ -421,7 +413,7 @@ private:
 };
 
 template<typename T>
-    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -508,7 +500,7 @@ auto Properties::GetValue(const Property* prop) const -> T
 }
 
 template<typename T>
-    requires(is_vector_collection<T>)
+    requires(vector_collection<T>)
 auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -579,7 +571,7 @@ auto Properties::GetValue(const Property* prop) const -> T
 }
 
 template<typename T>
-    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -629,7 +621,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> string_vie
 }
 
 template<typename T>
-    requires(is_vector_collection<T>)
+    requires(vector_collection<T>)
 auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -692,7 +684,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 }
 
 template<typename T>
-    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || is_valid_property_plain_type<T> || is_strong_type<T>)
+    requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 void Properties::SetValue(const Property* prop, T new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();

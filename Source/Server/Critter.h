@@ -71,7 +71,7 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 {
 public:
     Critter() = delete;
-    Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr) noexcept;
+    Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr) noexcept;
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -79,6 +79,7 @@ public:
     ~Critter() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
+    [[nodiscard]] auto HasPlayer() const noexcept -> bool { return !!_player; }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player.get(); }
     [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player.get(); }
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
@@ -156,7 +157,7 @@ public:
     void Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
-    void Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param);
+    void Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
 
     ///@ ExportEvent

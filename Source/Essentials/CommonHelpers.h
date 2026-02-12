@@ -294,7 +294,12 @@ template<std::ranges::range T, typename U>
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_exists(T&& cont, const U& value) noexcept -> bool // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    return std::ranges::find(cont, value) != cont.end();
+    for (auto it = cont.begin(); it != cont.end(); ++it) {
+        if (*it == value) {
+            return true;
+        }
+    }
+    return false;
 }
 
 template<std::ranges::range T, typename U>
@@ -308,7 +313,7 @@ template<std::ranges::range T, typename U>
 }
 
 template<std::ranges::range T>
-auto to_vector(T&& cont) -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
+[[nodiscard]] constexpr auto to_vector(T&& cont) -> vector<std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     if constexpr (std::same_as<std::remove_cvref_t<T>, vector<std::ranges::range_value_t<T>>>) {
         if (std::is_rvalue_reference_v<T>) {

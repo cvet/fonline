@@ -46,65 +46,94 @@
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(DataRegistrationException);
-
-class EngineData : public NameResolver
+class EngineMetadata : public NameResolver
 {
 public:
-    using EngineDataRegistrator = function<void()>;
+    using MeatdataRegistrator = function<void()>;
 
-    explicit EngineData(PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
-    EngineData(const EngineData&) = delete;
-    EngineData(EngineData&&) noexcept = delete;
-    auto operator=(const EngineData&) = delete;
-    auto operator=(EngineData&&) noexcept = delete;
-    ~EngineData() override = default;
+    explicit EngineMetadata(const MeatdataRegistrator& registrator);
+    EngineMetadata(const EngineMetadata&) = delete;
+    EngineMetadata(EngineMetadata&&) noexcept = delete;
+    auto operator=(const EngineMetadata&) = delete;
+    auto operator=(EngineMetadata&&) noexcept = delete;
+    ~EngineMetadata() override = default;
 
-    [[nodiscard]] auto GetPropertiesRelation() const noexcept -> PropertiesRelationType { return _propsRelation; }
+    [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
-    [[nodiscard]] auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo override;
-    [[nodiscard]] auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool override;
-    [[nodiscard]] auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool override;
+    [[nodiscard]] auto IsValidBaseType(string_view type_str) const noexcept -> bool;
+    [[nodiscard]] auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& override;
+    [[nodiscard]] auto GetBaseTypes() const -> const auto& { return _baseTypes; }
+    [[nodiscard]] auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc override;
+    [[nodiscard]] auto ResolveComplexType(span<const string_view> tokens) const -> pair<ComplexTypeDesc, size_t>;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
-    [[nodiscard]] auto GetEntityTypeInfo(hstring type_name) const -> const EntityTypeInfo&;
-    [[nodiscard]] auto GetEntityTypesInfo() const noexcept -> const unordered_map<hstring, EntityTypeInfo>&;
+    [[nodiscard]] auto IsValidEntityType(string_view type_name) const noexcept -> bool;
+    [[nodiscard]] auto GetEntityType(hstring type_name) const -> const EntityTypeDesc&;
+    [[nodiscard]] auto GetEntityTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
     [[nodiscard]] auto GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
+    [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> auto& { return _outboundRemoteCalls; }
+    [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> auto& { return _inboundRemoteCalls; }
+    [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
+    [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
 
-    void RegisterPropertiesRelation(PropertiesRelationType props_relation);
-    auto RegisterEntityType(string_view type_name, bool exported, bool has_protos) -> PropertyRegistrator*;
-    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntryAccess access);
-    void RegisterEnumGroup(string_view name, BaseTypeInfo underlying_type, unordered_map<string, int32>&& key_values);
-    void RegisterValueType(string_view name, size_t size, BaseTypeInfo::StructLayoutInfo&& layout);
+    void RegisterSide(EngineSideKind side);
+    auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;
+    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync);
+    void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32>&& key_values);
+    void RegisterEnumEntry(string_view name, string_view entry_name, int32 entry_value);
+    void RegisterValueType(string_view name);
+    void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
+    void RegisterRefType(string_view name);
+    void RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods);
+    void RegisterRefTypeMethod(string_view name, MethodDesc&& method);
+    void RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods);
+    void RegisterEntityMethod(string_view entity_name, MethodDesc&& method);
+    void RegisterEntityEvents(string_view entity_name, vector<EntityEventDesc>&& events);
+    void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
+    void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
+    void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
-    void FinalizeDataRegistration();
+    void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void FinalizeRegistration();
 
     mutable HashStorage Hashes;
 
 private:
-    PropertiesRelationType _propsRelation {};
+    void RegisterBaseType(string_view type_str);
+
+    EngineSideKind _side {};
     bool _registrationFinalized {};
-    unordered_map<hstring, EntityTypeInfo> _entityTypesInfo {};
+    map<hstring, EntityTypeDesc> _entityTypes {};
+    unordered_map<string, raw_ptr<EntityTypeDesc>> _entityRelatives {};
+    unordered_map<string_view, raw_ptr<EntityTypeDesc>> _entityTypesByStr {};
+    unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, unordered_map<string, int32>> _enums {};
     unordered_map<string, unordered_map<int32, string>> _enumsRev {};
-    unordered_map<string, int32> _enumsFull {};
-    unordered_map<string, BaseTypeInfo> _enumTypes {};
-    unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
-    unordered_map<string, tuple<size_t, BaseTypeInfo::StructLayoutInfo>> _valueTypes {};
+    unordered_map<string, int32> _enumsFullName {};
+    unordered_map<string, raw_ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
+    unordered_map<string, StructLayoutDesc> _structLayouts {};
+    unordered_map<string, RefTypeDesc> _refTypes {};
+    unordered_map<string, BaseTypeDesc> _baseTypes {};
+    unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
+    unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
+    unordered_map<string, raw_ptr<const BaseTypeDesc>> _gameSettings {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
 
-class BaseEngine : public EngineData, public Entity, public GameProperties
+class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
+    using RemoteCallHandler = function<void(hstring, Entity*, span<uint8>)>;
+
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
     auto operator=(const BaseEngine&) = delete;
@@ -113,20 +142,30 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
 
+    virtual void Shutdown() { }
     void FrameAdvance();
+
+    void SendRemoteCall(hstring name, Entity* caller, const_span<uint8> data);
+    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
+    void VerifyBindedRemoteCalls() const noexcept(false);
 
     GlobalSettings& Settings;
     FileSystem Resources;
     GeometryHelper Geometry;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
-    ScriptSystem ScriptSys {};
     TimeEventManager TimeEventMngr;
     unique_del_ptr<uint8> UserData {};
 
 protected:
-    explicit BaseEngine(GlobalSettings& settings, FileSystem&& resources, PropertiesRelationType props_relation, const EngineDataRegistrator& registrator);
+    explicit BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator);
     ~BaseEngine() override = default;
+
+    virtual void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) { ignore_unused(name, caller, data); } // Managed by derived class
+    void HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8> data); // Called by derived class
+
+private:
+    unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
 };
 
 FO_END_NAMESPACE

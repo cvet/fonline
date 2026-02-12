@@ -43,7 +43,8 @@ FIXED_SETTING(string, CommandLine); // Command line used to start the game (read
 FIXED_SETTING(vector<string>, CommandLineArgs); // Command line arguments used to start the game (read only)
 FIXED_SETTING(string, GameName, "FOnline"); // Game name, used in logs and window title
 FIXED_SETTING(string, GameVersion, "0.0.0"); // Game version, used in logs and window title
-FIXED_SETTING(string, GitBranch, ""); // Git branch name (if present)
+FIXED_SETTING(string, GitBranch); // Git branch name (if present)
+FIXED_SETTING(string, GitCommit); // Git commit hash (if present)
 FIXED_SETTING(string, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(int32, ScriptOverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
 FIXED_SETTING(bool, DebugBuild); // If true, debug build is used, otherwise release build (read only)
@@ -79,6 +80,8 @@ FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets ar
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, DisableZlibCompression, false); // If true, Zlib compression is disabled
 FIXED_SETTING(int32, ArtificalLags, 0); // Artificial lags in milliseconds
+FIXED_SETTING(string, CompatibilityVersion); // Compatibility version (read only)
+FIXED_SETTING(string, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -100,7 +103,6 @@ VARIABLE_SETTING(string, ProxyUser, ""); // Proxy username
 VARIABLE_SETTING(string, ProxyPass, ""); // Proxy password
 VARIABLE_SETTING(int32, Ping); // Network ping (read only)
 VARIABLE_SETTING(bool, DebugNet, false); // If true, network debugging is enabled
-FIXED_SETTING(bool, BypassCompatibilityCheck, false); // If true, compatibility check is bypassed
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -207,7 +209,6 @@ FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
 FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
-FIXED_SETTING(int32, EmbeddedBufSize, 1000000); // Embedded resources buffer size, need for preserve data in executable
 FIXED_SETTING(int32, ZipCompressLevel, 1); // Zip deflate level (0-9)
 SETTING_GROUP_END();
 
@@ -298,6 +299,7 @@ SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual BakingSettings, vi
 FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start
+FIXED_SETTING(int32, MaxServerLogLines, 1000); // Maximum server log lines in UI
 FIXED_SETTING(int32, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
 FIXED_SETTING(int32, LoopsPerSecondCap, 1000); // Loops per second cap
 FIXED_SETTING(int32, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds

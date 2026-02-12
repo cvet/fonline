@@ -371,7 +371,7 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32 normalizedTime, CallbackFunc<CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32 normalizedTime, ScriptFunc<void, CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -381,13 +381,16 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
 
 #if FO_ENABLE_3D
     if (hex_cr->IsModel()) {
-        hex_cr->GetModel()->AnimationCallbacks.push_back({stateAnim, actionAnim, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
-                                                              if (!self->IsDestroyed()) {
-                                                                  const auto func_name = static_cast<hstring>(animCallback);
-                                                                  const auto result = self->GetEngine()->ScriptSys.CallFunc<void, CritterView*>(func_name, self);
-                                                                  ignore_unused(result);
-                                                              }
-                                                          }});
+        ModelAnimationCallback anim_callback;
+        anim_callback.StateAnim = stateAnim;
+        anim_callback.ActionAnim = actionAnim;
+        anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
+        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, CritterView*>>(std::move(animCallback))]() mutable FO_DEFERRED {
+            if (!self->IsDestroyed()) {
+                animCallback->Call(self);
+            }
+        };
+        hex_cr->GetModel()->AnimationCallbacks.emplace_back(std::move(anim_callback));
     }
     else
 #endif

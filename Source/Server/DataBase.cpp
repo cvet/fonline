@@ -32,7 +32,6 @@
 //
 
 #include "DataBase.h"
-#include "Version-Include.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_JSON
@@ -457,7 +456,7 @@ void DataBaseImpl::CommitChanges()
     _newRecords.clear();
     _deletedRecords.clear();
 
-    _commitThread.AddJob([this, job_data_ = job_data] {
+    _commitThread.AddJob([this, job_data_ = job_data]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("CommitJob");
 
         for (auto&& [key, value] : job_data_->RecordChanges) {
@@ -778,7 +777,7 @@ public:
                 [](const void* output, unsigned output_len, void* user_data) {
                     static_assert(sizeof(ident_t) == sizeof(int64));
                     FO_RUNTIME_ASSERT(output_len == sizeof(int64));
-                    *static_cast<int64*>(user_data) = *static_cast<const int64*>(output);
+                    *cast_from_void<int64*>(user_data) = *cast_from_void<const int64*>(output);
                     return UNQLITE_OK;
                 },
                 &id);
@@ -820,11 +819,11 @@ protected:
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
 
-                if (!bson_init_static(&bson, static_cast<const uint8*>(output), output_len)) {
+                if (!bson_init_static(&bson, cast_from_void<const uint8*>(output), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
-                auto& doc2 = *static_cast<AnyData::Document*>(user_data);
+                auto& doc2 = *cast_from_void<AnyData::Document*>(user_data);
                 BsonToDocument(&bson, doc2);
 
                 return UNQLITE_OK;
@@ -1017,7 +1016,7 @@ public:
         }
 
         mongoc_uri_destroy(mongo_uri);
-        mongoc_client_set_appname(client, FO_DEV_NAME);
+        mongoc_client_set_appname(client, FO_DEV_NAME.c_str());
 
         auto* database = mongoc_client_get_database(client, string(db_name).c_str());
 
@@ -1440,7 +1439,7 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto options = strex(connection_info).split(' '); !options.empty()) {
+    if (const auto options = strvex(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
 #if FO_HAVE_JSON

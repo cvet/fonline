@@ -200,9 +200,10 @@ private:
     bool _needSort {};
 };
 
-///@ ExportRefType Client HasFactory
-struct MapSpriteHolder
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, ContourColor, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
+class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
+public:
     MapSpriteHolder() = default;
     MapSpriteHolder(const MapSpriteHolder&) = delete;
     MapSpriteHolder(MapSpriteHolder&&) noexcept = delete;
@@ -210,7 +211,7 @@ struct MapSpriteHolder
     auto operator=(MapSpriteHolder&&) noexcept = delete;
     ~MapSpriteHolder();
 
-    FO_SCRIPTABLE_OBJECT_BEGIN();
+    void StopDraw();
 
     bool Valid {};
     uint32 SprId {};
@@ -229,13 +230,7 @@ struct MapSpriteHolder
     ipos32 TweakOffset {};
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
-
-    void StopDraw();
-
-    FO_SCRIPTABLE_OBJECT_END();
-
     raw_ptr<MapSprite> MSpr {};
 };
-static_assert(std::is_standard_layout_v<MapSpriteHolder>);
 
 FO_END_NAMESPACE

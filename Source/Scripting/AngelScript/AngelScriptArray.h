@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "ScriptSystem.h"
 
 #include <angelscript.h>
@@ -72,8 +74,7 @@ public:
     auto IsEmpty() const -> bool { return _buffer.empty(); }
     void Reserve(int32 max_elements);
     void Resize(int32 num_elements);
-    auto At(int32 index) -> void*;
-    auto At(int32 index) const -> const void*;
+    auto At(int32 index) const -> void*;
     void SetValue(int32 index, void* value);
     void InsertAt(int32 index, void* value);
     void InsertAt(int32 index, const ScriptArray& other);
@@ -91,8 +92,8 @@ public:
     auto Find(int32 start_at, void* value) const -> int32;
     auto FindByRef(void* ref) const -> int32;
     auto FindByRef(int32 start_at, void* ref) const -> int32;
-    auto GetBuffer() -> void* { return _buffer.data(); }
-    auto GetBuffer() const -> const void* { return _buffer.data(); }
+    auto GetBuffer() -> void* { return cast_to_void(_buffer.data()); }
+    auto GetBuffer() const -> void* { return cast_to_void(_buffer.data()); }
 
     auto GetRefCount() const -> int32;
     void SetFlag() const;
@@ -108,7 +109,7 @@ private:
     ~ScriptArray();
 
     auto GetArrayItemPointer(int32 index) -> void*;
-    auto GetArrayItemPointer(int32 index) const -> const void*;
+    auto GetArrayItemPointer(int32 index) const -> void*;
     auto GetDataPointer(void* buf) const -> void*;
     void Copy(void* dst, void* src) const;
     void PrecacheSubTypeData();
@@ -119,8 +120,8 @@ private:
     void CopyBuffer(const ScriptArray& src);
     void Construct(int32 start, int32 end);
     void Destruct(int32 start, int32 end);
-    auto Equals(const void* a, const void* b, AngelScript::asIScriptContext* ctx) const -> bool;
-    auto Less(const void* a, const void* b, bool asc, AngelScript::asIScriptContext* ctx) const -> bool;
+    auto Equals(void* a, void* b, AngelScript::asIScriptContext* ctx) const -> bool;
+    auto Less(void* a, void* b, bool asc, AngelScript::asIScriptContext* ctx) const -> bool;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32 _subTypeId;
@@ -131,6 +132,8 @@ private:
     mutable bool _gcFlag {};
 };
 
-void RegisterAngelScriptArray(AngelScript::asIScriptEngine* engine);
+void RegisterAngelScriptArray(AngelScript::asIScriptEngine* as_engine);
 
 FO_END_NAMESPACE
+
+#endif

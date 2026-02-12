@@ -57,12 +57,19 @@ using multimap = std::multimap<K, V, Cmp, SafeAllocator<pair<const K, V>>>;
 template<typename K, typename Cmp = std::less<>>
 using set = std::set<K, Cmp, SafeAllocator<K>>;
 
+#if FO_DEBUG
+template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
+using unordered_map = std::unordered_map<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
+template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
+using unordered_set = std::unordered_set<K, H, std::equal_to<>, SafeAllocator<K>>;
+#else
 template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
-using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
 template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
 using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, SafeAllocator<K>>;
+#endif
+template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
+using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
 
 template<typename T, unsigned InlineCapacity>
 using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
@@ -71,9 +78,9 @@ using vector = std::vector<T, SafeAllocator<T>>;
 
 // Template helpers
 template<typename T>
-concept is_vector_collection = is_specialization<T, std::vector>::value || has_member<T, &T::inlined> /*small_vector test*/;
+concept vector_collection = specialization_of<T, std::vector> || has_member<T, &T::inlined> /*small_vector test*/;
 template<typename T>
-concept is_map_collection = is_specialization<T, std::map>::value || is_specialization<T, std::unordered_map>::value || is_specialization<T, ankerl::unordered_dense::segmented_map>::value;
+concept map_collection = specialization_of<T, std::map> || specialization_of<T, std::unordered_map> || specialization_of<T, ankerl::unordered_dense::segmented_map>;
 
 // String formatter
 FO_END_NAMESPACE
@@ -89,7 +96,7 @@ FO_BEGIN_NAMESPACE
 // Vector formatter
 FO_END_NAMESPACE
 template<typename T>
-    requires(FO_NAMESPACE is_vector_collection<T>)
+    requires(FO_NAMESPACE vector_collection<T>)
 struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>

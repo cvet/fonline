@@ -35,13 +35,6 @@
 
 FO_USING_NAMESPACE();
 
-void ImGuiRaiseAssert(const char* message)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    throw ImGuiAssertationException(message);
-}
-
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();

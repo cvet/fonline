@@ -34,6 +34,7 @@
 #include "Baker.h"
 #include "AngelScriptBaker.h"
 #include "Application.h"
+#include "ConfigBaker.h"
 #include "ConfigFile.h"
 #include "EffectBaker.h"
 #include "EngineBase.h"
@@ -41,6 +42,8 @@
 #include "ImageBaker.h"
 #include "MapBaker.h"
 #include "MapLoader.h"
+#include "MetadataBaker.h"
+#include "MetadataRegistration.h"
 #include "ModelBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
@@ -49,57 +52,86 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "TextBaker.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE
 
-extern auto GetServerSettings() -> unordered_set<string>;
-extern auto GetClientSettings() -> unordered_set<string>;
+namespace BakerStub
+{
+    class Item
+    {
+    };
+    class StaticItem
+    {
+    };
+    class Critter
+    {
+    };
+    class Map
+    {
+    };
+    class Location
+    {
+    };
+}
 
-extern void Baker_RegisterData(EngineData*);
-extern auto Baker_GetRestoreInfo() -> vector<uint8>;
+extern void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>);
 
-extern void SetupBakersHook(vector<unique_ptr<BaseBaker>>&, BakerData&);
-
-#if FO_ANGELSCRIPT_SCRIPTING
-extern void Init_AngelScriptCompiler_ServerScriptSystem_Validation(EngineData*, ScriptSystem&, const FileSystem&);
-#endif
-
-BaseBaker::BaseBaker(BakerData& data) :
-    _settings {data.Settings},
-    _resPackName {data.PackName},
-    _bakeChecker {data.BakeChecker},
-    _writeData {data.WriteData},
-    _bakedFiles {data.BakedFiles}
+BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx) :
+    _context {std::move(ctx)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_writeData);
+    FO_RUNTIME_ASSERT(_context);
+    FO_RUNTIME_ASSERT(_context->WriteData);
 }
 
-auto BaseBaker::SetupBakers(const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>
+auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    auto baker_data = BakerData {.Settings = &settings, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files};
+    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &settings, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
 
-    bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(baker_data));
-    bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(baker_data));
+    if (vec_exists(request_bakers, MetadataBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ConfigBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ConfigBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, RawCopyBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<RawCopyBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ImageBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, EffectBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ProtoBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, MapBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<MapBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, TextBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<TextBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ProtoTextBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(ctx));
+    }
 #if FO_ENABLE_3D
-    bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(baker_data));
+    if (vec_exists(request_bakers, ModelBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(ctx));
+    }
 #endif
 #if FO_ANGELSCRIPT_SCRIPTING
-    bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(baker_data));
+    if (vec_exists(request_bakers, AngelScriptBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<AngelScriptBaker>(ctx));
+    }
 #endif
 
-    SetupBakersHook(bakers, baker_data);
+    SetupBakersHook(request_bakers, bakers, std::move(ctx));
 
     return bakers;
 }
@@ -157,284 +189,204 @@ void MasterBaker::BakeAllInternal()
 
     FileSystem baking_output;
 
-    // Configs
+    // Resource packs
+    struct PackBakeContext
     {
-        WriteLog("Bake configs");
+        string PackName {};
+        string OutputDir {};
+        FileSystem InputFiles {};
+        FileCollection FilteredFiles {};
+        vector<unique_ptr<BaseBaker>> Bakers {};
+        std::atomic_int BakedFiles {};
+        unordered_set<string> BakedFilePaths {};
+        bool FirstBake {};
+        bool OutputAdded {};
+        TimeMeter BakingTime {};
+        bool Done {};
+    };
 
-        const auto make_configs_ok = DiskFileSystem::MakeDirTree(make_output_path("Configs"));
-        FO_RUNTIME_ASSERT(make_configs_ok);
-
-        int32 baked_configs = 0;
-        int32 settings_errors = 0;
-
-        const auto bake_config = [&](string_view sub_config) {
-            FO_RUNTIME_ASSERT(_settings->GetAppliedConfigs().size() == 1);
-            const string config_path = _settings->GetAppliedConfigs().front();
-            const string config_name = strex(config_path).extract_file_name();
-            const string config_dir = strex(config_path).extract_dir();
-
-            auto maincfg = GlobalSettings(true);
-            maincfg.ApplyConfigAtPath(config_name, config_dir);
-
-            if (!sub_config.empty()) {
-                maincfg.ApplySubConfigSection(sub_config);
-            }
-
-            const auto config_settings = maincfg.Save();
-
-            auto server_settings = GetServerSettings();
-            auto client_settings = GetClientSettings();
-
-            string server_config_content;
-            server_config_content.reserve(0x4000);
-            string client_config_content;
-            client_config_content.reserve(0x4000);
-
-            for (auto&& [key, value] : config_settings) {
-                const auto is_server_setting = server_settings.count(key) != 0;
-                const auto is_client_setting = client_settings.count(key) != 0;
-                const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                const auto shortened_value = strex(value).is_explicit_bool() ? (strex(value).to_bool() ? "1" : "0") : value;
-
-                if (!skip_write) {
-                    server_config_content += strex("{}={}\n", key, shortened_value);
-                }
-
-                if (is_server_setting) {
-                    server_settings.erase(key);
-                }
-
-                if (is_client_setting) {
-                    if (!skip_write) {
-                        client_config_content += strex("{}={}\n", key, shortened_value);
-                    }
-
-                    client_settings.erase(key);
-                }
-
-                if (!is_server_setting && !is_client_setting) {
-                    WriteLog("Unknown setting {} = {}", key, value);
-                    settings_errors++;
-                }
-            }
-
-            for (const auto& key : server_settings) {
-                WriteLog("Uninitialized server setting {}", key);
-                settings_errors++;
-            }
-            for (const auto& key : client_settings) {
-                WriteLog("Uninitialized client setting {}", key);
-                settings_errors++;
-            }
-
-            const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
-                const string cfg_path = make_output_path(strex("Configs/{}{}.fomain-bin", cfg_name1, cfg_name2));
-
-                if (!DiskFileSystem::CompareFileContent(cfg_path, {reinterpret_cast<const uint8*>(cfg_content.data()), cfg_content.size()})) {
-                    const auto config_write_ok = DiskFileSystem::WriteFile(cfg_path, cfg_content);
-                    FO_RUNTIME_ASSERT(config_write_ok);
-                    baked_configs++;
-                }
-            };
-
-            write_config(!sub_config.empty() ? "Server_" : "Server", sub_config, server_config_content);
-            write_config(!sub_config.empty() ? "Client_" : "Client", sub_config, client_config_content);
-        };
-
-        bake_config("");
-
-        for (const auto& sub_config : _settings->GetSubConfigs()) {
-            bake_config(sub_config.Name);
-
-            if (settings_errors != 0) {
-                WriteLog("Main config error{}", settings_errors != 1 ? "s" : "");
-                ExitApp(false);
-            }
-        }
-
-        if (baked_configs != 0) {
-            force_baking = true;
-        }
-
-        WriteLog("Baking of configs complete, baked {} file{}", baked_configs, baked_configs != 1 ? "s" : "");
-    }
-
-    // Engine data
-    {
-        WriteLog("Bake engine data");
-
-        const auto make_engine_data_ok = DiskFileSystem::MakeDirTree(make_output_path("EngineData"));
-        FO_RUNTIME_ASSERT(make_engine_data_ok);
-
-        bool engine_data_baked = false;
-        const auto engine_data_bin = BakerEngine::GetRestoreInfo();
-
-        const auto engine_data_path = make_output_path("EngineData/EngineData.fobin");
-        const auto core_engine_data_path = make_output_path("Core/EngineData.fobin");
-
-        const auto delete_core_engine_data_ok = DiskFileSystem::DeleteFile(core_engine_data_path);
-        FO_RUNTIME_ASSERT(delete_core_engine_data_ok);
-
-        if (!DiskFileSystem::CompareFileContent(engine_data_path, engine_data_bin)) {
-            const auto engine_data_write_ok = DiskFileSystem::WriteFile(engine_data_path, engine_data_bin);
-            FO_RUNTIME_ASSERT(engine_data_write_ok);
-            engine_data_baked = true;
-        }
-
-        baking_output.AddDirSource(make_output_path("EngineData"));
-
-        if (engine_data_baked) {
-            force_baking = true;
-        }
-
-        WriteLog("Baking of engine data complete, baked {} file{}", engine_data_baked ? 1 : 0, engine_data_baked ? "" : "s");
-    }
-
-    {
-        std::atomic_bool res_baked = false;
-
-        // Resource packs
-        const auto bake_resource_pack = [ // clang-format off
+    const auto prepare_bake_pack = [ // clang-format off
             &settings = std::as_const(_settings),
             &baking_output_ = std::as_const(baking_output),
-            &force_baking, &res_baked // clang-format on
-        ](const ResourcePackInfo& res_pack, const string& output_dir) {
-            const TimeMeter pack_baking_time;
+            &force_baking // clang-format on
+    ](const ResourcePackInfo& res_pack, const string& output_dir) -> unique_ptr<PackBakeContext> {
+        auto pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
 
-            const auto& pack_name = res_pack.Name;
-            const auto& input_dir = res_pack.InputDir;
-            const auto& input_file = res_pack.InputFile;
+        pack_bake_context->PackName = res_pack.Name;
+        pack_bake_context->OutputDir = output_dir;
 
-            FileSystem input_files;
-
-            for (const auto& dir : input_dir) {
-                input_files.AddDirSource(dir, res_pack.RecursiveInput);
-            }
-            for (const auto& path : input_file) {
-                const auto dir = strex(path).extract_dir().str();
-                const auto pack = strex(path).extract_file_name().erase_file_extension().str();
-                input_files.AddCustomSource(DataSource::MountPack(dir, pack, false));
-            }
-
-            const auto filtered_files = input_files.GetAllFiles();
-
-            const auto make_res_output_ok = DiskFileSystem::MakeDirTree(output_dir);
-            FO_RUNTIME_ASSERT(make_res_output_ok);
-
-            // Bake files
-            std::atomic_int baked_files = 0;
-            unordered_set<string> actual_resource_names;
-
-            const auto exclude_all_ext = [](string_view path) -> string {
-                size_t pos = path.rfind('/');
-                pos = path.find('.', pos != string::npos ? pos : 0);
-                return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
-            };
-
-            const auto bake_checker = [&](string_view path, uint64 write_time) -> bool {
-                actual_resource_names.emplace(exclude_all_ext(path));
-
-                if (!force_baking) {
-                    return write_time > DiskFileSystem::GetWriteTime(strex(output_dir).combine_path(path));
-                }
-                else {
-                    return true;
-                }
-            };
-
-            const auto write_data = [&](string_view path, span<const uint8> baked_data) {
-                const auto res_path = strex(output_dir).combine_path(path).str();
-
-                if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
-                    const auto res_file_write_ok = DiskFileSystem::WriteFile(res_path, baked_data);
-                    FO_RUNTIME_ASSERT_STR(res_file_write_ok, strex("Unable to write file '{}'", res_path));
-                    ++baked_files;
-                }
-                else {
-                    const auto res_file_touch_ok = DiskFileSystem::TouchFile(res_path);
-                    FO_RUNTIME_ASSERT(res_file_touch_ok);
-                }
-            };
-
-            auto bakers = BaseBaker::SetupBakers(res_pack.Name, *settings, bake_checker, write_data, &baking_output_);
-
-            for (auto& baker : bakers) {
-                baker->BakeFiles(filtered_files);
-            }
-
-            // Delete outdated
-            DiskFileSystem::IterateDir(output_dir, true, [&](string_view path, size_t size, uint64 write_time) {
-                ignore_unused(size, write_time);
-
-                if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-                    DiskFileSystem::DeleteFile(strex(output_dir).combine_path(path));
-                    WriteLog("Delete outdated file {}", path);
-                }
-            });
-
-            if (baked_files != 0) {
-                res_baked = true;
-            }
-
-            WriteLog("Baking of {} complete in {}, baked {} file{}", pack_name, pack_baking_time.GetDuration(), baked_files, baked_files != 1 ? "s" : "");
-        };
-
-        size_t errors = 0;
-        size_t baked_packs = 0;
-        int32 bake_order = 0;
-        const auto& res_packs = _settings->GetResourcePacks();
-
-        while (true) {
-            vector<std::future<void>> res_bakings;
-            vector<string> res_baking_outputs;
-
-            for (const auto& res_pack : res_packs) {
-                if (res_pack.BakeOrder == bake_order) {
-                    WriteLog("Bake {}", res_pack.Name);
-                    const auto res_baking_output = make_output_path(res_pack.Name);
-                    const auto async_mode = _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
-                    auto res_baking = std::async(async_mode, [&, res_baking_output] { bake_resource_pack(res_pack, res_baking_output); });
-                    res_bakings.emplace_back(std::move(res_baking));
-                    res_baking_outputs.emplace_back(res_baking_output);
-                }
-            }
-
-            for (auto& res_baking : res_bakings) {
-                try {
-                    res_baking.get();
-                    baked_packs++;
-                }
-                catch (const std::exception& ex) {
-                    WriteLog("Resource pack baking error: {}", ex.what());
-                    errors++;
-                }
-                catch (...) {
-                    FO_UNKNOWN_EXCEPTION();
-                }
-            }
-
-            if (errors != 0) {
-                throw ResourceBakingException("Baking resource packs failed");
-            }
-
-            for (const auto& res_baking_output : res_baking_outputs) {
-                baking_output.AddDirSource(res_baking_output, true);
-            }
-
-            if (res_baked) {
-                force_baking = true;
-            }
-            if (baked_packs == res_packs.size()) {
-                break;
-            }
-
-            bake_order++;
+        for (const auto& input_dir : res_pack.InputDirs) {
+            pack_bake_context->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
+        }
+        for (const auto& input_file : res_pack.InputFiles) {
+            const auto dir = strex(input_file).extract_dir().str();
+            const auto pack = strex(input_file).extract_file_name().erase_file_extension().str();
+            pack_bake_context->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
-        // Copy engine data to Core pack
-        const auto copy_engine_data_ok = DiskFileSystem::CopyFile(make_output_path("EngineData/EngineData.fobin"), make_output_path("Core/EngineData.fobin"));
-        FO_RUNTIME_ASSERT(copy_engine_data_ok);
+        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
+
+        const auto bake_checker = [context = pack_bake_context.get(), &force_baking](string_view path, uint64 write_time) -> bool {
+            context->BakedFilePaths.emplace(path);
+
+            if (!force_baking) {
+                const auto file_write_time = DiskFileSystem::GetWriteTime(strex(context->OutputDir).combine_path(path));
+                return write_time > file_write_time;
+            }
+            else {
+                return true;
+            }
+        };
+
+        const auto write_data = [context = pack_bake_context.get()](string_view path, span<const uint8> baked_data) {
+            const auto res_path = strex(context->OutputDir).combine_path(path).str();
+
+            if (!DiskFileSystem::CompareFileContent(res_path, baked_data)) {
+                const auto res_file_write_ok = DiskFileSystem::WriteFile(res_path, baked_data);
+                FO_RUNTIME_ASSERT_STR(res_file_write_ok, strex("Unable to write file '{}'", res_path));
+                ++context->BakedFiles;
+            }
+            else {
+                const auto res_file_touch_ok = DiskFileSystem::TouchFile(res_path);
+                FO_RUNTIME_ASSERT(res_file_touch_ok);
+            }
+        };
+
+        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *settings, bake_checker, write_data, &baking_output_);
+
+        pack_bake_context->BakingTime.Pause();
+        return pack_bake_context;
+    };
+
+    const auto bake_pack = [](PackBakeContext* bake_context, int32 bake_order) {
+        for (auto& baker : bake_context->Bakers) {
+            if (baker->GetOrder() == bake_order) {
+                if (!bake_context->FirstBake) {
+                    WriteLog("Bake {}", bake_context->PackName);
+                    bake_context->FirstBake = true;
+
+                    bake_context->BakingTime.Resume();
+                    const auto make_res_output_ok = DiskFileSystem::MakeDirTree(bake_context->OutputDir);
+                    FO_RUNTIME_ASSERT(make_res_output_ok);
+                    bake_context->BakingTime.Pause();
+                }
+
+                bake_context->BakingTime.Resume();
+                baker->BakeFiles(bake_context->FilteredFiles);
+                bake_context->BakingTime.Pause();
+            }
+        }
+
+        // Check if it's last iteration for this pack
+        if (bake_context->FirstBake && !bake_context->Done) {
+            const auto it = std::ranges::max_element(bake_context->Bakers, {}, [](auto&& baker) { return baker->GetOrder(); });
+            FO_RUNTIME_ASSERT(it != bake_context->Bakers.end());
+            const auto max_order = (*it)->GetOrder();
+
+            if (bake_order == max_order) {
+                WriteLog("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
+                    bake_context->BakingTime.GetDuration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
+                bake_context->Done = true;
+            }
+        }
+    };
+
+    size_t errors = 0;
+    const auto& res_packs = _settings->GetResourcePacks();
+    const auto async_mode = _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
+
+    // Prepare bake contexts
+    vector<unique_ptr<PackBakeContext>> pack_bake_contexts;
+
+    {
+        vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
+
+        for (const auto& res_pack : res_packs) {
+            prepare_res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { return prepare_bake_pack(res_pack, make_output_path(res_pack.Name)); }));
+        }
+
+        for (auto& prepare_res_baking : prepare_res_bakings) {
+            try {
+                auto pack_bake_context = prepare_res_baking.get();
+                pack_bake_contexts.emplace_back(std::move(pack_bake_context));
+            }
+            catch (const std::exception& ex) {
+                WriteLog("Resource pack prepare for baking error: {}", ex.what());
+                errors++;
+            }
+        }
+
+        if (errors != 0) {
+            throw ResourceBakingException("Baking resource packs failed");
+        }
     }
+
+    // Run bake contexts
+    int32 bake_order = -10;
+
+    while (true) {
+        vector<std::future<void>> res_bakings;
+
+        for (auto& bake_context : pack_bake_contexts) {
+            if (!bake_context->Done) {
+                res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { bake_pack(bake_context.get(), bake_order); }));
+            }
+        }
+
+        for (auto& res_baking : res_bakings) {
+            try {
+                res_baking.get();
+            }
+            catch (const std::exception& ex) {
+                WriteLog("Resource pack baking error: {}", ex.what());
+                errors++;
+            }
+        }
+
+        if (errors != 0) {
+            throw ResourceBakingException("Baking resource packs failed");
+        }
+
+        for (auto& bake_context : pack_bake_contexts) {
+            if (!bake_context->OutputAdded && bake_context->FirstBake) {
+                baking_output.AddDirSource(bake_context->OutputDir, true);
+                bake_context->OutputAdded = true;
+            }
+            if (bake_context->BakedFiles != 0) {
+                force_baking = true;
+            }
+        }
+
+        if (std::ranges::all_of(pack_bake_contexts, [](auto&& context) { return context->Done; })) {
+            break;
+        }
+
+        bake_order++;
+    }
+
+    // Delete outdated files
+    const auto exclude_all_ext = [](string_view path) -> string {
+        size_t pos = path.rfind('/');
+        pos = path.find('.', pos != string::npos ? pos : 0);
+        return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
+    };
+
+    unordered_set<string> actual_resource_names;
+
+    for (auto& bake_context : pack_bake_contexts) {
+        for (const auto& res_name : bake_context->BakedFilePaths) {
+            actual_resource_names.emplace(exclude_all_ext(strex(bake_context->PackName).combine_path(res_name)));
+        }
+    }
+
+    DiskFileSystem::IterateDir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64 write_time) {
+        ignore_unused(size, write_time);
+
+        if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
+            DiskFileSystem::DeleteFile(strex(_settings->BakeOutput).combine_path(path));
+            WriteLog("Delete outdated file {}", path);
+        }
+    });
 
     // Finalize
     WriteLog("Time {}", backing_time.GetDuration());
@@ -444,26 +396,20 @@ void MasterBaker::BakeAllInternal()
     FO_RUNTIME_ASSERT(build_hash_write_ok);
 }
 
-class Item;
-using StaticItem = Item;
-class Critter;
-class Map;
-class Location;
-
 auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
     static unordered_map<string, function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
-        {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Item*, bool>(func_name); }},
-        {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, Critter*, StaticItem*, Item*, any_t>(func_name); }},
-        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-        {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Critter*, bool>(func_name); }},
-        {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Map*, bool>(func_name); }},
-        {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, Location*, bool>(func_name); }},
+        {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); }},
+        {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); }},
+        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); }},
+        {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); }},
+        {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); }},
+        {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); }},
     };
 
-    FO_RUNTIME_ASSERT(_bakedFiles);
+    FO_RUNTIME_ASSERT(_context->BakedFiles);
 
     size_t errors = 0;
 
@@ -476,7 +422,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             if (prop->IsPlainData()) {
                 const auto res_name = props.GetValue<hstring>(prop);
 
-                if (res_name && !_bakedFiles->IsFileExists(res_name)) {
+                if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
                     WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
                 }
@@ -489,7 +435,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                 const auto res_names = props.GetValue<vector<hstring>>(prop);
 
                 for (const auto res_name : res_names) {
-                    if (res_name && !_bakedFiles->IsFileExists(res_name)) {
+                    if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
                         WriteLog("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
                     }
@@ -540,12 +486,12 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
         res_entry.Name = res_pack.Name;
         const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64 write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
         const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8> data) { WriteData(res_pack_name, path, data); };
-        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
+        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
-        for (const auto& dir : res_pack.InputDir) {
+        for (const auto& dir : res_pack.InputDirs) {
             res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
         }
-        for (const auto& path : res_pack.InputFile) {
+        for (const auto& path : res_pack.InputFiles) {
             const auto dir = strex(path).extract_dir().str();
             const auto pack = strex(path).extract_file_name().erase_file_extension().str();
             res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir, pack, false));
@@ -567,9 +513,11 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
     };
 
     for (size_t i = 0; i < _inputResources.size(); i++) {
+        const auto& res_pack = res_packs[res_packs.size() - 1 - i];
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
+        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources);
 
-        for (auto& baker : BaseBaker::SetupBakers(res_entry.Name, *_settings, check_file, write_file, &_outputResources)) {
+        for (auto& baker : bakers) {
             baker->BakeFiles(res_entry.InputFiles);
         }
     }
@@ -637,7 +585,7 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_tim
             auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
             const auto bake_file_read_ok = output_file.Read(buf.get(), size);
             FO_RUNTIME_ASSERT(bake_file_read_ok);
-            *data = unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+            *data = unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
         }
     };
 
@@ -750,28 +698,28 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
     return result;
 }
 
-BakerEngine::BakerEngine(PropertiesRelationType props_relation) :
-    EngineData(props_relation, [this] { Baker_RegisterData(this); })
+BakerServerEngine::BakerServerEngine(const FileSystem& resources) :
+    EngineMetadata([&] { RegisterServerStubMetadata(this, &resources); })
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MapEngineType<BakerStub::Item>(EngineMetadata::GetBaseType("Item"));
+    MapEngineType<BakerStub::StaticItem>(EngineMetadata::GetBaseType("StaticItem"));
+    MapEngineType<BakerStub::Critter>(EngineMetadata::GetBaseType("Critter"));
+    MapEngineType<BakerStub::Map>(EngineMetadata::GetBaseType("Map"));
+    MapEngineType<BakerStub::Location>(EngineMetadata::GetBaseType("Location"));
+}
+
+BakerClientEngine::BakerClientEngine(const FileSystem& resources) :
+    EngineMetadata([&] { RegisterClientStubMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto BakerEngine::GetRestoreInfo() -> vector<uint8>
+BakerMapperEngine::BakerMapperEngine(const FileSystem& resources) :
+    EngineMetadata([&] { RegisterMapperStubMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
-
-    return Baker_GetRestoreInfo();
-}
-
-BakerScriptSystem::BakerScriptSystem(BakerEngine& engine, const FileSystem& resources)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(engine.GetPropertiesRelation() == PropertiesRelationType::ServerRelative);
-
-#if FO_ANGELSCRIPT_SCRIPTING
-    Init_AngelScriptCompiler_ServerScriptSystem_Validation(&engine, *this, resources);
-#endif
 }
 
 FO_END_NAMESPACE

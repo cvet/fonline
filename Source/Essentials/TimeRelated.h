@@ -114,7 +114,7 @@ public:
 private:
     int64 _value {};
 };
-static_assert(is_strong_type<timespan>);
+static_assert(some_strong_type<timespan>);
 
 struct time_desc_t
 {
@@ -193,14 +193,14 @@ public:
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
-    static auto now() -> nanotime { return nanotime(steady_time_point::clock::now()); }
+    static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
 
     static const nanotime zero;
 
 private:
     int64 _value {};
 };
-static_assert(is_strong_type<nanotime>);
+static_assert(some_strong_type<nanotime>);
 
 ///@ ExportValueType synctime synctime Layout = int64-value
 class synctime
@@ -260,7 +260,7 @@ public:
 private:
     int64 _value {};
 };
-static_assert(is_strong_type<synctime>);
+static_assert(some_strong_type<synctime>);
 
 FO_END_NAMESPACE
 template<>
@@ -362,15 +362,17 @@ FO_BEGIN_NAMESPACE
 class [[nodiscard]] TimeMeter
 {
 public:
-    TimeMeter() noexcept :
-        _startTime {nanotime::now()}
-    {
-    }
+    TimeMeter() noexcept;
 
-    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return nanotime::now() - _startTime; }
+    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return _paused ? _pausedDuration : nanotime::now() - _startTime; }
+
+    void Pause() noexcept;
+    void Resume() noexcept;
 
 private:
     nanotime _startTime;
+    timespan _pausedDuration {};
+    bool _paused {};
 };
 
 FO_END_NAMESPACE

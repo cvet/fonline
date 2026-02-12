@@ -34,7 +34,6 @@
 #include "Application.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
-#include "Version-Include.h"
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_audio.h"
@@ -100,7 +99,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
-    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME);
+    SDL_SetHint(SDL_HINT_APP_ID, FO_DEV_NAME.c_str());
     SDL_SetHint(SDL_HINT_APP_NAME, Settings.GameName.c_str());
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
@@ -252,7 +251,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
             AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
             AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
 
-            const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32 additional_amount, int32 total_amount) {
+            const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32 additional_amount, int32 total_amount) FO_DEFERRED {
                 ignore_unused(userdata);
                 ignore_unused(total_amount);
 
@@ -439,6 +438,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendPlatformName = "fonline";
         io.WantSaveIniSettings = false;
         io.IniFilename = nullptr;
+        io.ConfigErrorRecoveryEnableAssert = false;
 
         const string sdl_backend = SDL_GetCurrentVideoDriver();
         vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
@@ -457,8 +457,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* { return App->Input.GetClipboardText().c_str(); };
-        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) { App->Input.SetClipboardText(text); };
+        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return App->Input.GetClipboardText().c_str(); };
+        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { App->Input.SetClipboardText(text); };
         platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
@@ -1565,7 +1565,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
-        const auto cleanup = ScopeCallback([&]() noexcept {
+        const auto cleanup = scope_exit([&]() noexcept {
             if (renderer != nullptr) {
                 SDL_DestroyRenderer(renderer);
             }
@@ -1630,7 +1630,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
-        const auto cleanup = ScopeCallback([&]() noexcept {
+        const auto cleanup = scope_exit([&]() noexcept {
             if (renderer != nullptr) {
                 SDL_DestroyRenderer(renderer);
             }

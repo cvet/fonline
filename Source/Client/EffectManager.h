@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectManagerException);
 
-class FOServer;
+class ServerEngine;
 
 struct EffectCollection
 {

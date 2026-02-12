@@ -33,20 +33,16 @@
 
 #include "Common.h"
 
+#if FO_ANGELSCRIPT_SCRIPTING
+
+#include "AngelScriptBaker.h"
 #include "Application.h"
 #include "FileSystem.h"
+#include "MetadataBaker.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 
 FO_USING_NAMESPACE();
-
-FO_BEGIN_NAMESPACE
-extern auto Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&) -> vector<uint8>;
-extern auto Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&) -> vector<uint8>;
-extern auto Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&) -> vector<uint8>;
-
-unordered_set<string> CompilerPassedMessages;
-FO_END_NAMESPACE
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -61,91 +57,88 @@ int main(int argc, char** argv)
 
         FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 
-        bool something_failed = false;
+        WriteLog("Prepare metadata");
+        FileSystem metadata_files;
 
         for (const auto& res_pack : App->Settings.GetResourcePacks()) {
-            FileSystem res_files;
-
-            for (const auto& dir : res_pack.InputDir) {
-                res_files.AddDirSource(dir, res_pack.RecursiveInput);
-            }
-
-            auto script_files_collection = res_files.FilterFiles("fos");
-
-            if (script_files_collection.GetFilesCount() == 0) {
+            if (!vec_exists(res_pack.Bakers, MetadataBaker::NAME)) {
                 continue;
             }
 
-            vector<File> script_files;
+            FileSystem res_files;
 
-            for (const auto& file_header : script_files_collection) {
-                script_files.emplace_back(File::Load(file_header));
+            for (const auto& dir : res_pack.InputDirs) {
+                res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            bool server_failed = false;
-            bool client_failed = false;
-            bool mapper_failed = false;
-
-            const auto write_file = [&](span<const uint8> data, string_view ext) {
-                const string path = strex("{}/{}.{}", res_pack.Name, res_pack.Name, ext);
-                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(path), true);
+            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
+                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path), true);
                 FO_RUNTIME_ASSERT(file);
                 const auto write_ok = file.Write(data);
                 FO_RUNTIME_ASSERT(write_ok);
             };
 
-            WriteLog("Compile server scripts");
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
-                auto data = Init_AngelScriptCompiler_ServerScriptSystem(script_files);
-                write_file(data, "fos-bin-server");
+                metadata_baker.BakeFiles(res_files.GetAllFiles(), "");
+                metadata_files.AddDirSource(strex(App->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
-            catch (const std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
+            catch (const MetadataBakerException& ex) {
+                const auto& params = ex.params();
+
+                if (params.size() >= 2 && !params.front().empty()) {
+                    WriteLog("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
+                }
+                else {
+                    WriteLog("{}", ex.what());
                 }
 
-                server_failed = true;
-            }
-
-            WriteLog("Compile client scripts");
-
-            try {
-                auto data = Init_AngelScriptCompiler_ClientScriptSystem(script_files);
-                write_file(data, "fos-bin-client");
+                WriteLog("Metadata preparing failed!");
+                ExitApp(false);
             }
             catch (const std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
-                }
-
-                client_failed = true;
-            }
-
-            WriteLog("Compile mapper scripts");
-
-            try {
-                auto data = Init_AngelScriptCompiler_MapperScriptSystem(script_files);
-                write_file(data, "fos-bin-mapper");
-            }
-            catch (const std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
-                }
-
-                mapper_failed = true;
-            }
-
-            WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
-            WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
-            WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
-
-            if (server_failed || client_failed || mapper_failed) {
-                something_failed = true;
+                WriteLog("{}", ex.what());
+                WriteLog("Metadata preparing failed!");
+                ExitApp(false);
             }
         }
 
-        ExitApp(!something_failed);
+        WriteLog("Compile scripts");
+
+        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+            if (!vec_exists(res_pack.Bakers, AngelScriptBaker::NAME)) {
+                continue;
+            }
+
+            FileSystem res_files;
+
+            for (const auto& dir : res_pack.InputDirs) {
+                res_files.AddDirSource(dir, res_pack.RecursiveInput);
+            }
+
+            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
+                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path), true);
+                FO_RUNTIME_ASSERT(file);
+                const auto write_ok = file.Write(data);
+                FO_RUNTIME_ASSERT(write_ok);
+            };
+
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});
+            auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
+
+            try {
+                scripts_baker.BakeFiles(res_files.GetAllFiles(), "");
+            }
+            catch (const std::exception&) {
+                WriteLog("Scripts compilation failed!");
+                ExitApp(false);
+            }
+        }
+
+        WriteLog("Scripts compilation succeeded!");
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -154,3 +147,5 @@ int main(int argc, char** argv)
         FO_UNKNOWN_EXCEPTION();
     }
 }
+
+#endif

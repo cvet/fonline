@@ -749,7 +749,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
             const auto& entry = *it;
             string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
-            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", const_cast<float32*>(&entry.y0));
                 ImGui::InputFloat("End", const_cast<float32*>(&entry.y1));
 
@@ -806,7 +806,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             const auto& entry = *it;
             string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
 
-            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int32 c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
                 const_cast<unsigned char&>(entry.y0.r) = numeric_cast<unsigned char>(c1[0]);
@@ -1285,7 +1285,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 
             const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
 
-            if (ImGui::TreeNodeEx(strex("{}", static_cast<const void*>(obj.get())).c_str(), 0, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(obj.get())).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }

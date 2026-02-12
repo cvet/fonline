@@ -42,12 +42,12 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ProtoManagerException);
 
-class EngineData;
+class EngineMetadata;
 
 class ProtoManager final
 {
 public:
-    explicit ProtoManager(EngineData& engine);
+    explicit ProtoManager(EngineMetadata& meta);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
@@ -79,7 +79,7 @@ public:
 private:
     auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;
 
-    raw_ptr<EngineData> _engine;
+    raw_ptr<EngineMetadata> _meta;
     const hstring _migrationRuleName;
     const hstring _itemTypeName;
     const hstring _crTypeName;

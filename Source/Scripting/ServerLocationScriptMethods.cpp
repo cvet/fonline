@@ -38,19 +38,23 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Map*, bool> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
-        throw ScriptException("Call init failed", initFunc);
+    if (initFunc.IsDelegate()) {
+        throw ScriptException("Init function must not be a delegate");
     }
 
-    self->SetInitScript(initFunc);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
+        throw ScriptException("Call init failed", initFunc.GetName().first);
+    }
+
+    self->SetInitScript(initFunc.GetName().first);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 

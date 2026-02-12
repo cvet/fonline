@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE
 
-Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
+Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())

@@ -215,6 +215,9 @@ using std::string_view;
 using std::tuple;
 using std::variant;
 
+template<typename T>
+using const_span = span<const T>;
+
 // String view for null terminated string
 class string_view_nt : public string_view
 {
@@ -242,13 +245,14 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
 };
 FO_BEGIN_NAMESPACE
 
-// String for use in templates
+// String for using in templates
 template<size_t N>
 struct fixed_string
 {
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    constexpr fixed_string(char const (&s)[N]) { std::copy_n(s, N, data); }
-    constexpr auto operator<=>(fixed_string const&) const = default;
+    constexpr fixed_string(const char (&s)[N]) noexcept { std::copy_n(s, N, data); }
+    constexpr auto operator<=>(const fixed_string&) const noexcept = default;
+    constexpr auto c_str() const noexcept -> const char* { return data; }
     char data[N] {};
 };
 
@@ -321,31 +325,85 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
 };
 
+template<typename T, template<typename...> typename Ref>
+concept specialization_of = is_specialization<T, Ref>::value;
+
 template<typename From, typename To>
-concept is_convertible_without_narrowing = requires(From&& x) {
+concept convertible_without_narrowing = requires(From&& x) {
     { std::type_identity_t<To[]> {std::forward<From>(x)} } -> std::same_as<To[1]>;
 };
 
-// End of scope callback
 template<typename T>
-class [[nodiscard]] ScopeCallback
+inline constexpr bool always_false_v = false;
+
+namespace details
+{
+    template<typename T>
+    struct remove_all_pointers
+    {
+        using type = T;
+    };
+
+    template<typename T>
+    struct remove_all_pointers<T*>
+    {
+        using type = typename remove_all_pointers<std::remove_cv_t<T>>::type;
+    };
+}
+
+template<typename T>
+using remove_all_pointers_t = typename details::remove_all_pointers<T>::type;
+
+template<typename T>
+    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>>)
+inline constexpr auto cast_to_void(const T ptr) -> void*
+{
+    return const_cast<void*>(static_cast<const void*>(ptr));
+}
+
+template<typename T, typename U>
+    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
+inline constexpr auto cast_from_void(U ptr) -> T
+{
+    return static_cast<T>(ptr);
+}
+
+template<typename T, std::integral U>
+    requires(std::is_pointer_v<T> && std::is_void_v<remove_all_pointers_t<T>>)
+inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
+{
+    return cast_to_void(cast_from_void<uint8*>(ptr) + offset);
+}
+
+// End of scope callback
+template<std::invocable T>
+class [[nodiscard]] scope_exit
 {
     static_assert(std::is_nothrow_invocable_v<T>);
 
 public:
-    explicit ScopeCallback(T callback) noexcept :
+    explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
     {
     }
 
-    ScopeCallback(const ScopeCallback& other) = delete;
-    ScopeCallback(ScopeCallback&& other) noexcept = default;
-    auto operator=(const ScopeCallback& other) = delete;
-    auto operator=(ScopeCallback&& other) noexcept = delete;
-    ~ScopeCallback() { _callback(); }
+    scope_exit(const scope_exit& other) = delete;
+    scope_exit(scope_exit&& other) noexcept = default;
+    auto operator=(const scope_exit& other) = delete;
+    auto operator=(scope_exit&& other) noexcept = delete;
+
+    ~scope_exit() noexcept
+    {
+        if (!_released) {
+            _callback();
+        }
+    }
+
+    void release() { _released = true; }
 
 private:
     T _callback;
+    bool _released {};
 };
 
 // Stack unwind detector
@@ -364,23 +422,32 @@ private:
     decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
 };
 
-// Scriptable object class decorator
-#define FO_SCRIPTABLE_OBJECT_BEGIN() \
-    void AddRef() const /*noexcept*/ \
-    { \
-        ++RefCounter; \
-    } \
-    void Release() const /*noexcept*/ \
-    { \
-        if (--RefCounter == 0) { \
-            delete this; \
-        } \
-    } \
-    mutable std::atomic_int RefCounter {1}
-#define FO_SCRIPTABLE_OBJECT_END() \
-    bool _nonConstHelper \
-    { \
+// Refcount base class
+template<typename T>
+class RefCounted
+{
+public:
+    RefCounted() noexcept = default;
+    RefCounted(const RefCounted&) = delete;
+    RefCounted(RefCounted&&) noexcept = delete;
+    auto operator=(const RefCounted&) = delete;
+    auto operator=(RefCounted&&) noexcept = delete;
+    ~RefCounted() = default;
+
+    void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
+
+    void Release() const noexcept
+    {
+        if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
+            std::atomic_thread_fence(std::memory_order_acquire);
+            const auto* ptr = static_cast<const T*>(this);
+            delete ptr;
+        }
     }
+
+private:
+    mutable std::atomic_int _refCounter {1};
+};
 
 // Bit operation helpers
 template<typename T>

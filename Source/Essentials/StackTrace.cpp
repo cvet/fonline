@@ -36,20 +36,16 @@
 
 FO_BEGIN_NAMESPACE
 
-static thread_local StackTraceData StackTrace;
-
-extern void PushStackTrace(const SourceLocationData& loc) noexcept
+extern void PushStackTrace(const SourceLocationData* loc) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    auto& st = StackTrace;
-
-    if (st.CallsCount < STACK_TRACE_MAX_SIZE) {
-        st.CallTree[st.CallsCount] = &loc;
-    }
-
-    st.CallsCount++;
+    auto& st = details::StackTrace;
+    const auto cc = st.CallsCount;
+    const uint32 idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
+    st.CallTree[idx] = loc;
+    st.CallsCount = cc + 1;
 #endif
 }
 
@@ -58,11 +54,7 @@ extern void PopStackTrace() noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    auto& st = StackTrace;
-
-    if (st.CallsCount > 0) {
-        st.CallsCount--;
-    }
+    details::StackTrace.CallsCount--;
 #endif
 }
 
@@ -70,15 +62,15 @@ auto GetStackTrace() noexcept -> const StackTraceData&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return StackTrace;
+    return details::StackTrace;
 }
 
-extern auto GetStackTraceEntry(size_t deep) noexcept -> const SourceLocationData*
+extern auto GetStackTraceEntry(uint32 deep) noexcept -> const SourceLocationData*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    const auto& st = StackTrace;
+    const auto& st = details::StackTrace;
 
     if (deep < st.CallsCount && st.CallsCount - 1 - deep < STACK_TRACE_MAX_SIZE) {
         return st.CallTree[st.CallsCount - 1 - deep];
@@ -101,7 +93,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
     char itoa_buf[64] = {};
 
-    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
+    for (uint32 i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
         const auto& entry = st.CallTree[i - 1];
         string_view file_name = entry->file;
 

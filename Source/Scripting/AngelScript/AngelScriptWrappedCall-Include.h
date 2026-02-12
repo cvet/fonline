@@ -1,80 +1,17 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
-// FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-#pragma once
-
-#include "Common.h"
-
-#include <angelscript.h>
-
-#ifdef AS_MAX_PORTABILITY
-#define SCRIPT_GENERIC(name) asFUNCTION(name)
-#define SCRIPT_FUNC(name) WRAP_FN(name)
-#define SCRIPT_FUNC_EXT(name, params, ret) WRAP_FN_PR(name, params, ret)
-#define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
-#define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
-#define SCRIPT_METHOD_EXT(type, name, params, ret) WRAP_MFN_PR(type, name, params, ret)
-#define SCRIPT_GENERIC_CONV AngelScript::asCALL_GENERIC
-#define SCRIPT_FUNC_CONV AngelScript::asCALL_GENERIC
-#define SCRIPT_FUNC_THIS_CONV AngelScript::asCALL_GENERIC
-#define SCRIPT_METHOD_CONV AngelScript::asCALL_GENERIC
-#else
-#define SCRIPT_GENERIC(name) asFUNCTION(name)
-#define SCRIPT_FUNC(name) AngelScript::asFUNCTION(name)
-#define SCRIPT_FUNC_EXT(name, params, ret) AngelScript::asFUNCTIONPR(name, params, ret)
-#define SCRIPT_FUNC_THIS(name) AngelScript::asFUNCTION(name)
-#define SCRIPT_METHOD(type, name) AngelScript::asMETHOD(type, name)
-#define SCRIPT_METHOD_EXT(type, name, params, ret) AngelScript::asMETHODPR(type, name, params, ret)
-#define SCRIPT_GENERIC_CONV AngelScript::asCALL_GENERIC
-#define SCRIPT_FUNC_CONV AngelScript::asCALL_CDECL
-#define SCRIPT_FUNC_THIS_CONV AngelScript::asCALL_CDECL_OBJFIRST
-#define SCRIPT_METHOD_CONV AngelScript::asCALL_THISCALL
-#endif
-
 // Generated in AngelScript autowrapper add-on
 
-#define WRAP_FN(name) (AS_NAMESPACE_QUALIFIER gw::id(name).f<name /* avoid operator- bug */>())
-#define WRAP_MFN(ClassType, name) (AS_NAMESPACE_QUALIFIER gw::id(&ClassType::name).f<&ClassType::name /* avoid operator- bug */>())
-#define WRAP_OBJ_FIRST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).of<name /* avoid operator- bug */>())
-#define WRAP_OBJ_LAST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).ol<name /* avoid operator- bug */>())
-#define WRAP_FN_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
-#define WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(ClassType::*) Parameters>::f<&ClassType::name /**/>))
-#define WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjFirst<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
-#define WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjLast<ReturnType(*) Parameters>::f<name /* avoid operator- bug */>))
+BEGIN_AS_NAMESPACE
+
+#define WRAP_FN(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template f<name /* avoid operator- bug */>())
+#define WRAP_MFN(ClassType, name) (AS_NAMESPACE_QUALIFIER gw::id(&ClassType::name).template f<&ClassType::name /* avoid operator- bug */>())
+#define WRAP_OBJ_FIRST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template of<name /* avoid operator- bug */>())
+#define WRAP_OBJ_LAST(name) (AS_NAMESPACE_QUALIFIER gw::id(name).template ol<name /* avoid operator- bug */>())
+#define WRAP_FN_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
+#define WRAP_MFN_PR(ClassType, name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Wrapper<ReturnType(ClassType::*) Parameters>::template f<&ClassType::name /**/>))
+#define WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjFirst<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
+#define WRAP_OBJ_LAST_PR(name, Parameters, ReturnType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::ObjLast<ReturnType(*) Parameters>::template f<name /* avoid operator- bug */>))
 #define WRAP_CON(ClassType, Parameters) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::Constructor<ClassType Parameters>::f))
 #define WRAP_DES(ClassType) AngelScript::asFUNCTION((AS_NAMESPACE_QUALIFIER gw::destroy<ClassType>))
-
-BEGIN_AS_NAMESPACE
 
 namespace gw
 {

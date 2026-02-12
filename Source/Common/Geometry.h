@@ -148,7 +148,7 @@ public:
     static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;
     static auto MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool;
     static void MoveHexAroundAwayUnsafe(ipos32& hex, int32 index);
-    static void ForEachMultihexLines(span<const uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
+    static void ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 
 private:
     raw_ptr<GeometrySettings> _settings;

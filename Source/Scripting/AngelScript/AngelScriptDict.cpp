@@ -32,7 +32,11 @@
 //
 
 #include "AngelScriptDict.h"
-#include "AngelScriptWrappedCall.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
+#include "AngelScriptArray.h"
+#include "AngelScriptHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -48,9 +52,9 @@ struct ScriptDictTypeData
 
 static void CleanupTypeInfoDictCache(AngelScript::asITypeInfo* type)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    const auto* cache = static_cast<ScriptDictTypeData*>(type->GetUserData(AS_TYPE_DICT_CACHE));
+    const auto* cache = cast_from_void<ScriptDictTypeData*>(type->GetUserData(AS_TYPE_DICT_CACHE));
     delete cache;
     type->SetUserData(nullptr, AS_TYPE_DICT_CACHE);
 }
@@ -58,38 +62,38 @@ static void CleanupTypeInfoDictCache(AngelScript::asITypeInfo* type)
 static auto CreateObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index) -> void*;
 static auto CopyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index, void* value) -> void*;
 static void DestroyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index, void* value);
-static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool;
-static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool;
-static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool;
+static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool;
+static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool;
+static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool;
 
 ScriptDict::ScriptDictComparator::ScriptDictComparator(ScriptDict* owner) :
     Owner {owner}
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 }
 
-auto ScriptDict::ScriptDictComparator::operator()(const void* a, const void* b) const -> bool
+auto ScriptDict::ScriptDictComparator::operator()(void* a, void* b) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return Less(Owner->_keyTypeId, Owner->_keyTypeData.get(), Owner->_typeInfo->GetEngine(), a, b);
 }
 
 auto ScriptDict::Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeRefCounted<ScriptDict>(ti).release_ownership();
 }
 
 auto ScriptDict::Create(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeRefCounted<ScriptDict>(ti, init_list).release_ownership();
 }
 
-static auto CScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 sub_type_index, bool& dont_garbage_collect) -> bool
+static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 sub_type_index, bool& dont_garbage_collect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -157,11 +161,11 @@ static auto CScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 
     return true;
 }
 
-static auto CScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
+static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return CScriptDict_TemplateCallbackExt(ti, 0, dont_garbage_collect) && CScriptDict_TemplateCallbackExt(ti, 1, dont_garbage_collect);
+    return ScriptDict_TemplateCallbackExt(ti, 0, dont_garbage_collect) && ScriptDict_TemplateCallbackExt(ti, 1, dont_garbage_collect);
 }
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
@@ -172,7 +176,7 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
         _typeInfo->GetEngine()->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
@@ -187,10 +191,10 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto* engine = ti->GetEngine();
-    auto* buffer = static_cast<AngelScript::asBYTE*>(init_list);
+    auto* buffer = cast_from_void<AngelScript::asBYTE*>(init_list);
     auto length = *reinterpret_cast<AngelScript::asUINT*>(buffer);
     buffer += sizeof(AngelScript::asUINT);
 
@@ -259,7 +263,7 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
         _typeInfo->GetEngine()->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
@@ -272,7 +276,7 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
 
 auto ScriptDict::operator=(const ScriptDict& other) -> ScriptDict&
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (other._typeInfo != _typeInfo) {
         throw ScriptException("Different types on dict assignment");
@@ -291,29 +295,29 @@ auto ScriptDict::operator=(const ScriptDict& other) -> ScriptDict&
 
 ScriptDict::~ScriptDict()
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     Clear();
 }
 
 auto ScriptDict::PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti) const -> ScriptDictTypeData*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if ((type_id & ~AngelScript::asTYPEID_MASK_SEQNBR) == 0) {
         return nullptr;
     }
 
-    auto* sub_type_data = static_cast<ScriptDictTypeData*>(ti->GetUserData(AS_TYPE_DICT_CACHE));
+    auto* sub_type_data = cast_from_void<ScriptDictTypeData*>(ti->GetUserData(AS_TYPE_DICT_CACHE));
 
     if (sub_type_data != nullptr) {
         return sub_type_data;
     }
 
     AngelScript::asAcquireExclusiveLock();
-    auto release_lock = ScopeCallback([]() noexcept { AngelScript::asReleaseExclusiveLock(); });
+    auto release_lock = scope_exit([]() noexcept { AngelScript::asReleaseExclusiveLock(); });
 
-    sub_type_data = static_cast<ScriptDictTypeData*>(ti->GetUserData(AS_TYPE_DICT_CACHE));
+    sub_type_data = cast_from_void<ScriptDictTypeData*>(ti->GetUserData(AS_TYPE_DICT_CACHE));
 
     if (sub_type_data != nullptr) {
         return sub_type_data;
@@ -400,7 +404,7 @@ auto ScriptDict::PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti
         sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 
-    ti->SetUserData(sub_type_data, AS_TYPE_DICT_CACHE);
+    ti->SetUserData(cast_to_void(sub_type_data), AS_TYPE_DICT_CACHE);
     return sub_type_data;
 }
 
@@ -420,38 +424,38 @@ auto ScriptDict::GetSize() const -> int32
 
 void ScriptDict::Set(void* key, void* value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
     if (it == _data.end()) {
-        key = CopyObject(_typeInfo.get(), 0, key);
-        value = CopyObject(_typeInfo.get(), 1, value);
-        _data.emplace(key, value);
+        void* key_copy = CopyObject(_typeInfo.get(), 0, key);
+        void* value_copy = CopyObject(_typeInfo.get(), 1, value);
+        _data.emplace(key_copy, value_copy);
     }
     else {
         DestroyObject(_typeInfo.get(), 1, it->second);
-        value = CopyObject(_typeInfo.get(), 1, value);
-        it->second = value;
+        void* value_copy = CopyObject(_typeInfo.get(), 1, value);
+        it->second = value_copy;
     }
 }
 
 void ScriptDict::SetIfNotExist(void* key, void* value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
     if (it == _data.end()) {
-        key = CopyObject(_typeInfo.get(), 0, key);
-        value = CopyObject(_typeInfo.get(), 1, value);
-        _data.emplace(key, value);
+        void* key_copy = CopyObject(_typeInfo.get(), 0, key);
+        void* value_copy = CopyObject(_typeInfo.get(), 1, value);
+        _data.emplace(key_copy, value_copy);
     }
 }
 
 auto ScriptDict::Remove(void* key) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
@@ -467,7 +471,7 @@ auto ScriptDict::Remove(void* key) -> bool
 
 auto ScriptDict::RemoveValues(void* value) -> int32
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     int32 result = 0;
 
@@ -488,7 +492,7 @@ auto ScriptDict::RemoveValues(void* value) -> int32
 
 void ScriptDict::Clear()
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     for (const auto& kv : _data) {
         DestroyObject(_typeInfo.get(), 0, kv.first);
@@ -500,7 +504,7 @@ void ScriptDict::Clear()
 
 auto ScriptDict::Get(void* key) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
@@ -513,7 +517,7 @@ auto ScriptDict::Get(void* key) -> void*
 
 void* ScriptDict::GetOrCreate(void* key)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
@@ -529,7 +533,7 @@ void* ScriptDict::GetOrCreate(void* key)
 
 auto ScriptDict::GetDefault(void* key, void* def_val) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto it = _data.find(key);
 
@@ -542,7 +546,7 @@ auto ScriptDict::GetDefault(void* key, void* def_val) -> void*
 
 auto ScriptDict::GetKey(int32 index) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (index < 0 || index >= numeric_cast<int32>(_data.size())) {
         throw ScriptException("Index out of bounds");
@@ -559,7 +563,7 @@ auto ScriptDict::GetKey(int32 index) -> void*
 
 auto ScriptDict::GetValue(int32 index) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (index < 0 || index >= numeric_cast<int32>(_data.size())) {
         throw ScriptException("Index out of bounds");
@@ -574,16 +578,50 @@ auto ScriptDict::GetValue(int32 index) -> void*
     return it->second;
 }
 
+auto ScriptDict::GetKeys() const -> ScriptArray*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(0)->GetName());
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    auto* arr = ScriptArray::Create(arr_type);
+
+    arr->Reserve(GetSize());
+
+    for (auto* key : _data | std::views::keys) {
+        arr->InsertLast(key);
+    }
+
+    return arr;
+}
+
+auto ScriptDict::GetValues() const -> ScriptArray*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(1)->GetName());
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    auto* arr = ScriptArray::Create(arr_type);
+
+    arr->Reserve(GetSize());
+
+    for (auto* value : _data | std::views::values) {
+        arr->InsertLast(value);
+    }
+
+    return arr;
+}
+
 auto ScriptDict::Exists(void* key) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return _data.count(key) != 0;
 }
 
 auto ScriptDict::operator==(const ScriptDict& other) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (&other == this) {
         return true;
@@ -655,7 +693,7 @@ bool ScriptDict::GetFlag() const
 
 void ScriptDict::EnumReferences(AngelScript::asIScriptEngine* engine) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const bool keys_handle = (_keyTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0;
     const bool values_handle = (_valueTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0;
@@ -674,7 +712,7 @@ void ScriptDict::EnumReferences(AngelScript::asIScriptEngine* engine) const
 
 void ScriptDict::ReleaseAllHandles(AngelScript::asIScriptEngine* engine)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ignore_unused(engine);
     Clear();
@@ -682,7 +720,7 @@ void ScriptDict::ReleaseAllHandles(AngelScript::asIScriptEngine* engine)
 
 static auto CreateObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     const auto* sub_type = obj_type->GetSubType(sub_type_index);
@@ -708,7 +746,7 @@ static auto CreateObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_inde
 
 static auto CopyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index, void* value) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     const auto* sub_type = obj_type->GetSubType(sub_type_index);
@@ -738,16 +776,16 @@ static auto CopyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index,
         }
     }
     else if (sub_type_id == AngelScript::asTYPEID_BOOL || sub_type_id == AngelScript::asTYPEID_INT8 || sub_type_id == AngelScript::asTYPEID_UINT8) {
-        *static_cast<char*>(ptr) = *static_cast<char*>(value);
+        *cast_from_void<char*>(ptr) = *cast_from_void<const char*>(value);
     }
     else if (sub_type_id == AngelScript::asTYPEID_INT16 || sub_type_id == AngelScript::asTYPEID_UINT16) {
-        *static_cast<int16*>(ptr) = *static_cast<int16*>(value);
+        *cast_from_void<int16*>(ptr) = *cast_from_void<const int16*>(value);
     }
     else if (sub_type_id == AngelScript::asTYPEID_INT32 || sub_type_id == AngelScript::asTYPEID_UINT32 || sub_type_id == AngelScript::asTYPEID_FLOAT || sub_type_id > AngelScript::asTYPEID_DOUBLE) { // enums have a type id larger than doubles
-        *static_cast<int32*>(ptr) = *static_cast<int32*>(value);
+        *cast_from_void<int32*>(ptr) = *cast_from_void<const int32*>(value);
     }
     else if (sub_type_id == AngelScript::asTYPEID_INT64 || sub_type_id == AngelScript::asTYPEID_UINT64 || sub_type_id == AngelScript::asTYPEID_DOUBLE) {
-        *static_cast<int64*>(ptr) = *static_cast<int64*>(value);
+        *cast_from_void<int64*>(ptr) = *cast_from_void<const int64*>(value);
     }
 
     return ptr;
@@ -755,7 +793,7 @@ static auto CopyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index,
 
 static void DestroyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index, void* value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     auto* engine = obj_type->GetEngine();
@@ -768,11 +806,11 @@ static void DestroyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_ind
             engine->ReleaseScriptObject(*static_cast<void**>(value), engine->GetTypeInfoById(sub_type_id));
         }
 
-        delete[] static_cast<uint8*>(value);
+        delete[] cast_from_void<const uint8*>(value);
     }
 }
 
-static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool
+static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool
 {
     if (type_data != nullptr) {
         if (type_data->CmpFunc == nullptr) {
@@ -790,9 +828,9 @@ static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript
     return Compare(true, type_id, type_data, engine, a, b);
 }
 
-static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool
+static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (type_data != nullptr) {
         if (type_data->CmpFunc == nullptr && type_data->EqFunc == nullptr) {
@@ -810,9 +848,9 @@ static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScri
     return Compare(false, type_id, type_data, engine, a, b);
 }
 
-static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, const void* a, const void* b) -> bool
+static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         if (check_less) {
@@ -875,17 +913,17 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
     else {
         if (!check_less) {
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-                if (*static_cast<void* const*>(a) == *static_cast<void* const*>(b)) {
+                if (*static_cast<void**>(a) == *static_cast<void**>(b)) {
                     return true;
                 }
             }
         }
         else {
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-                if (*static_cast<void* const*>(a) == nullptr) {
+                if (*static_cast<void**>(a) == nullptr) {
                     return true;
                 }
-                if (*static_cast<void* const*>(b) == nullptr) {
+                if (*static_cast<void**>(b) == nullptr) {
                     return false;
                 }
             }
@@ -895,10 +933,10 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
         FO_RUNTIME_ASSERT(ctx);
         FO_RUNTIME_ASSERT(ctx->GetEngine() == engine);
 
-        int32 r = ctx->PushState();
-        FO_RUNTIME_ASSERT(r >= 0);
+        int32 as_result = 0;
+        FO_AS_VERIFY(ctx->PushState());
 
-        auto release_ctx = ScopeCallback([&]() noexcept {
+        auto release_ctx = scope_exit([&]() noexcept {
             safe_call([&] {
                 const auto state = ctx->GetState();
                 ctx->PopState();
@@ -910,25 +948,20 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
         });
 
         if (!check_less && type_data->EqFunc != nullptr) {
-            r = ctx->Prepare(type_data->EqFunc.get_no_const());
-            FO_RUNTIME_ASSERT(r >= 0);
+            FO_AS_VERIFY(ctx->Prepare(type_data->EqFunc.get_no_const()));
 
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-                r = ctx->SetObject(*static_cast<void* const*>(a));
-                FO_RUNTIME_ASSERT(r >= 0);
-                r = ctx->SetArgObject(0, *static_cast<void* const*>(b));
-                FO_RUNTIME_ASSERT(r >= 0);
+                FO_AS_VERIFY(ctx->SetObject(*static_cast<void**>(a)));
+                FO_AS_VERIFY(ctx->SetArgObject(0, *static_cast<void**>(b)));
             }
             else {
-                r = ctx->SetObject(const_cast<void**>(static_cast<void* const*>(a))); // NOLINT(bugprone-multi-level-implicit-pointer-conversion)
-                FO_RUNTIME_ASSERT(r >= 0);
-                r = ctx->SetArgObject(0, const_cast<void**>(static_cast<void* const*>(b))); // NOLINT(bugprone-multi-level-implicit-pointer-conversion)
-                FO_RUNTIME_ASSERT(r >= 0);
+                FO_AS_VERIFY(ctx->SetObject(a));
+                FO_AS_VERIFY(ctx->SetArgObject(0, b));
             }
 
-            r = ctx->Execute();
+            FO_AS_VERIFY(ctx->Execute());
 
-            if (r == AngelScript::asEXECUTION_FINISHED) {
+            if (as_result == AngelScript::asEXECUTION_FINISHED) {
                 return ctx->GetReturnByte() != 0;
             }
 
@@ -936,25 +969,20 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
         }
 
         if (type_data->CmpFunc != nullptr) {
-            r = ctx->Prepare(type_data->CmpFunc.get_no_const());
-            FO_RUNTIME_ASSERT(r >= 0);
+            FO_AS_VERIFY(ctx->Prepare(type_data->CmpFunc.get_no_const()));
 
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-                r = ctx->SetObject(*static_cast<void* const*>(a));
-                FO_RUNTIME_ASSERT(r >= 0);
-                r = ctx->SetArgObject(0, *static_cast<void* const*>(b));
-                FO_RUNTIME_ASSERT(r >= 0);
+                FO_AS_VERIFY(ctx->SetObject(*static_cast<void**>(a)));
+                FO_AS_VERIFY(ctx->SetArgObject(0, *static_cast<void**>(b)));
             }
             else {
-                r = ctx->SetObject(const_cast<void**>(static_cast<void* const*>(a))); // NOLINT(bugprone-multi-level-implicit-pointer-conversion)
-                FO_RUNTIME_ASSERT(r >= 0);
-                r = ctx->SetArgObject(0, const_cast<void**>(static_cast<void* const*>(b))); // NOLINT(bugprone-multi-level-implicit-pointer-conversion)
-                FO_RUNTIME_ASSERT(r >= 0);
+                FO_AS_VERIFY(ctx->SetObject(a));
+                FO_AS_VERIFY(ctx->SetArgObject(0, b));
             }
 
-            r = ctx->Execute();
+            FO_AS_VERIFY(ctx->Execute());
 
-            if (r == AngelScript::asEXECUTION_FINISHED) {
+            if (as_result == AngelScript::asEXECUTION_FINISHED) {
                 if (check_less) {
                     return static_cast<int32>(ctx->GetReturnDWord()) < 0;
                 }
@@ -970,23 +998,23 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
     return false;
 }
 
-static auto CScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
+static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return ScriptDict::Create(ti);
 }
 
-static auto CScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
+static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     return ScriptDict::Create(ti, init_list);
 }
 
 static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* other) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
         throw ScriptException("Dict is null");
@@ -999,7 +1027,7 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
 
 static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     ScriptDict* clone = ScriptDict::Create(const_cast<AngelScript::asITypeInfo*>(dict.GetDictObjectType()));
     *clone = dict;
@@ -1008,7 +1036,7 @@ static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
 
 static auto ScriptDict_Equals(const ScriptDict& dict, const ScriptDict* other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
         throw ScriptException("Dict is null");
@@ -1017,69 +1045,49 @@ static auto ScriptDict_Equals(const ScriptDict& dict, const ScriptDict* other) -
     return dict == *other;
 }
 
-void RegisterAngelScriptDict(AngelScript::asIScriptEngine* engine)
+void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    engine->SetTypeInfoUserDataCleanupCallback(CleanupTypeInfoDictCache, AS_TYPE_DICT_CACHE);
+    as_engine->SetTypeInfoUserDataCleanupCallback(CleanupTypeInfoDictCache, AS_TYPE_DICT_CACHE);
 
-    int32 r = engine->RegisterObjectType("dict<class T1, class T2>", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_GC | AngelScript::asOBJ_TEMPLATE);
-    FO_RUNTIME_ASSERT(r >= 0);
+    int32 as_result = 0;
+    FO_AS_VERIFY(as_engine->RegisterObjectType("dict<class T1, class T2>", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_GC | AngelScript::asOBJ_TEMPLATE));
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", SCRIPT_FUNC(CScriptDict_TemplateCallback), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", FO_SCRIPT_FUNC(ScriptDict_TemplateCallback), FO_SCRIPT_FUNC_CONV));
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", SCRIPT_FUNC(CScriptDict_Create), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC(ScriptDict_Factory), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", SCRIPT_FUNC(CScriptDict_CreateList), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", FO_SCRIPT_FUNC(ScriptDict_Create), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in, const dict<T1,T2>@+)", FO_SCRIPT_FUNC(ScriptDict_Factory), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", FO_SCRIPT_FUNC(ScriptDict_CreateList), FO_SCRIPT_FUNC_CONV));
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(ScriptDict, AddRef), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(ScriptDict, Release), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptDict, AddRef), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_METHOD(ScriptDict, Release), FO_SCRIPT_METHOD_CONV));
 
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in)", SCRIPT_METHOD(ScriptDict, GetOrCreate), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in)", SCRIPT_METHOD(ScriptDict, Set), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in, const T2&in)", SCRIPT_METHOD(ScriptDict, SetIfNotExist), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", SCRIPT_METHOD(ScriptDict, Remove), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", SCRIPT_METHOD(ScriptDict, GetSize), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", SCRIPT_METHOD(ScriptDict, Clear), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in) const", SCRIPT_METHOD(ScriptDict, Get), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", SCRIPT_METHOD(ScriptDict, GetDefault), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", SCRIPT_METHOD(ScriptDict, GetKey), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", SCRIPT_METHOD(ScriptDict, GetValue), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", SCRIPT_METHOD(ScriptDict, Exists), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", SCRIPT_METHOD(ScriptDict, IsEmpty), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", SCRIPT_FUNC_THIS(ScriptDict_Clone), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool equals(const dict<T1,T2>@+) const", SCRIPT_FUNC_THIS(ScriptDict_Equals), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in key)", FO_SCRIPT_METHOD(ScriptDict, GetOrCreate), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in key)", FO_SCRIPT_METHOD(ScriptDict, Set), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in key, const T2&in defVal)", FO_SCRIPT_METHOD(ScriptDict, SetIfNotExist), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in key)", FO_SCRIPT_METHOD(ScriptDict, Remove), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "int32 removeValues(const T1&in value)", FO_SCRIPT_METHOD(ScriptDict, RemoveValues), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "int length() const", FO_SCRIPT_METHOD(ScriptDict, GetSize), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", FO_SCRIPT_METHOD(ScriptDict, Clear), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Get), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in key, const T2&in defVal) const", FO_SCRIPT_METHOD(ScriptDict, GetDefault), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetKey), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetValue), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T1[]@ getKeys() const", FO_SCRIPT_METHOD(ScriptDict, GetKeys), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T2[]@ getValues() const", FO_SCRIPT_METHOD(ScriptDict, GetValues), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Exists), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", FO_SCRIPT_METHOD(ScriptDict, IsEmpty), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", FO_SCRIPT_FUNC_THIS(ScriptDict_Clone), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool equals(const dict<T1,T2>@+ other) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Equals), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETREFCOUNT, "int f()", SCRIPT_METHOD(ScriptDict, GetRefCount), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_SETGCFLAG, "void f()", SCRIPT_METHOD(ScriptDict, SetFlag), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETGCFLAG, "bool f()", SCRIPT_METHOD(ScriptDict, GetFlag), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_ENUMREFS, "void f(int&in)", SCRIPT_METHOD(ScriptDict, EnumReferences), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASEREFS, "void f(int&in)", SCRIPT_METHOD(ScriptDict, ReleaseAllHandles), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETREFCOUNT, "int f()", FO_SCRIPT_METHOD(ScriptDict, GetRefCount), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_SETGCFLAG, "void f()", FO_SCRIPT_METHOD(ScriptDict, SetFlag), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETGCFLAG, "bool f()", FO_SCRIPT_METHOD(ScriptDict, GetFlag), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_ENUMREFS, "void f(int&in)", FO_SCRIPT_METHOD(ScriptDict, EnumReferences), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASEREFS, "void f(int&in)", FO_SCRIPT_METHOD(ScriptDict, ReleaseAllHandles), FO_SCRIPT_METHOD_CONV));
 }
 
 FO_END_NAMESPACE
+
+#endif

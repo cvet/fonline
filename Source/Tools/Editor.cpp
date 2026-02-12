@@ -140,7 +140,7 @@ FOEditor::FOEditor(GlobalSettings& settings) :
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& res_pack : Settings.GetResourcePacks()) {
-        for (const auto& dir : res_pack.InputDir) {
+        for (const auto& dir : res_pack.InputDirs) {
             RawResources.AddDirSource(dir, res_pack.RecursiveInput, true);
         }
     }
@@ -213,9 +213,6 @@ void FOEditor::MainLoop()
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 }

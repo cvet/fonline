@@ -35,7 +35,6 @@
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE
@@ -69,11 +68,11 @@ static void SetEntry(T& entry, string_view value, bool append)
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
     }
-    else if constexpr (is_strong_type<T>) {
+    else if constexpr (some_strong_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
-    else if constexpr (is_valid_property_plain_type<T>) {
+    else if constexpr (some_property_plain_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
         istringstream istr(any_value.AsString());
         istr >> entry;
@@ -165,6 +164,8 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("CommandLine");
         _appliedSettings.emplace("CommandLineArgs");
         _appliedSettings.emplace("GitBranch");
+        _appliedSettings.emplace("GitCommit");
+        _appliedSettings.emplace("CompatibilityVersion");
         _appliedSettings.emplace("WebBuild");
         _appliedSettings.emplace("WindowsBuild");
         _appliedSettings.emplace("LinuxBuild");
@@ -384,6 +385,8 @@ void GlobalSettings::ApplyAutoSettings()
     }
 
     const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
+    const_cast<string&>(GitCommit) = FO_BUILD_HASH;
+    const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
@@ -402,18 +405,20 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
     }
 }
 
-auto GlobalSettings::GetCustomSetting(string_view name) const -> const string&
+auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto it = _customSettings.find(name);
 
-    if (it != _customSettings.end()) {
-        return it->second;
+    if (it == _customSettings.end()) {
+        throw SettingsException("Setting not found", name);
     }
 
-    return _empty;
+    return it->second;
 }
 
-void GlobalSettings::SetCustomSetting(string_view name, string value)
+void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -512,7 +517,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     switch (const_hash(setting_name.c_str())) {
 #include "Settings-Include.h"
     default:
-        _customSettings[setting_name] = setting_value;
+        _customSettings[setting_name] = any_t(setting_value);
         break;
     }
 
@@ -543,35 +548,32 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         }
 
         if (auto server_only = get_map_value("ServerOnly"); !server_only.empty()) {
-            pack_info.ServerOnly = strex(server_only).to_bool();
+            pack_info.ServerOnly = strvex(server_only).to_bool();
         }
         if (auto client_only = get_map_value("ClientOnly"); !client_only.empty()) {
-            pack_info.ClientOnly = strex(client_only).to_bool();
+            pack_info.ClientOnly = strvex(client_only).to_bool();
         }
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
-            pack_info.MapperOnly = strex(mapper_only).to_bool();
+            pack_info.MapperOnly = strvex(mapper_only).to_bool();
         }
         if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
-        if (auto inpurt_dir = get_map_value("InputDir"); !inpurt_dir.empty()) {
-            for (auto& dir : strex(inpurt_dir).split(' ')) {
-                dir = strex(config_dir).combine_path(dir);
-                pack_info.InputDir.emplace_back(std::move(dir));
+        if (auto inpurt_dirs = get_map_value("InputDirs"); !inpurt_dirs.empty()) {
+            for (auto& inpurt_dir : strex(inpurt_dirs).split(' ')) {
+                inpurt_dir = strex(config_dir).combine_path(inpurt_dir);
+                pack_info.InputDirs.emplace_back(std::move(inpurt_dir));
             }
         }
-        if (auto input_file = get_map_value("InputFile"); !input_file.empty()) {
-            for (auto& fname : strex(input_file).split(' ')) {
-                fname = strex(config_dir).combine_path(fname);
-                pack_info.InputFile.emplace_back(std::move(fname));
+        if (auto input_files = get_map_value("InputFiles"); !input_files.empty()) {
+            for (auto& path : strex(input_files).split(' ')) {
+                path = strex(config_dir).combine_path(path);
+                pack_info.InputFiles.emplace_back(std::move(path));
             }
         }
         if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strex(recursive_input).to_bool();
-        }
-        if (auto bake_order = get_map_value("BakeOrder"); !bake_order.empty()) {
-            pack_info.BakeOrder = strex(bake_order).to_int32();
+            pack_info.RecursiveInput = strvex(recursive_input).to_bool();
         }
 
         if (pack_info.ServerOnly) {
@@ -586,6 +588,12 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         else {
             const_cast<vector<string>&>(ServerResourceEntries).emplace_back(pack_info.Name);
             const_cast<vector<string>&>(ClientResourceEntries).emplace_back(pack_info.Name);
+        }
+
+        if (auto bakers = get_map_value("Bakers"); !bakers.empty()) {
+            for (auto& baker : strex(bakers).split(' ')) {
+                pack_info.Bakers.emplace_back(std::move(baker));
+            }
         }
 
         _resourcePacks.emplace_back(std::move(pack_info));
@@ -687,7 +695,7 @@ void GlobalSettings::Draw(bool editable)
 #include "Settings-Include.h"
 }
 
-auto BaseSettings::GetResourcePacks() const -> span<const ResourcePackInfo>
+auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
 {
     FO_STACK_TRACE_ENTRY();
 

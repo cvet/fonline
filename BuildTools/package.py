@@ -54,7 +54,6 @@ outputPath = os.path.realpath(args.output if args.output else os.getcwd()).rstri
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 serverResDir = fomain.mainSection().getStr('ServerResources')
 clientResDir = fomain.mainSection().getStr('ClientResources')
-embeddedBufSize = fomain.mainSection().getInt('EmbeddedBufSize')
 zipCompressLevel = fomain.mainSection().getInt('ZipCompressLevel')
 
 curPath = os.path.dirname(sys.argv[0])
@@ -126,7 +125,7 @@ def makeTar(name, path, mode):
 	os.chdir(dir)
 	tar.close()
 
-def build():
+def package():
 	# Pack resorces
 	if 'NoRes' not in packArgs:
 		bakeOutput = fomain.mainSection().getStr('BakeOutput')
@@ -193,18 +192,28 @@ def build():
 							zip.write(file, os.path.relpath(file, os.path.join(bakingPath, packName)))
 	
 		# Evaluate config
-		configName = ('Server_' if args.target != 'Client' else 'Client_') + args.config
+		configName = (args.config if args.config else '(Root)') + '.fomain-' + ('server' if args.target != 'client' else 'client')
 		log('Config', configName)
 		
-		assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName + '.fomain-bin')), 'Config file not found'
-		with open(os.path.join(bakingPath, 'Configs', configName + '.fomain-bin'), 'r', encoding='utf-8-sig') as f:		
+		assert os.path.isfile(os.path.join(bakingPath, 'Configs', configName)), 'Config file not found'
+		with open(os.path.join(bakingPath, 'Configs', configName), 'r', encoding='utf-8-sig') as f:		
 			configData = str.encode(f.read())
 		
 		log('Embedded data length', len(embeddedData))
 		log('Embedded config length', len(configData))
 	
 	def patchEmbedded(filePath):
-		patchData(filePath, bytearray([(i + 42) % 200 for i in range(embeddedBufSize)]), embeddedData, embeddedBufSize)
+		with open(filePath, 'rb') as f:
+			file = f.read()
+		mark = bytearray([(i + 42) % 200 for i in range(10000)])
+		pos = file.find(mark)
+		assert pos != -1, 'Space for embedded data not found'
+		embeddedCapacity = 0
+		while file[pos:pos+5000] == bytearray([(i + 42) % 200 for i in range(embeddedCapacity, embeddedCapacity + 5000)]):
+			embeddedCapacity += 5000
+			pos += 5000
+		assert embeddedCapacity >= 10000, embeddedCapacity
+		patchData(filePath, bytearray([(i + 42) % 200 for i in range(embeddedCapacity)]), embeddedData, embeddedCapacity)
 	
 	def patchConfig(filePath, additionalConfigData=None):
 		resultData = configData + (str.encode('\n' + additionalConfigData) if additionalConfigData else b'')
@@ -485,7 +494,7 @@ try:
 		os.remove(targetOutputPath + '.zip')
 	os.makedirs(targetOutputPath)
 	
-	build()
+	package()
 	
 	log('Complete!')
 	

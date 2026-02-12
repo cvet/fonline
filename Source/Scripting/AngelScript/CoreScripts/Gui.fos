@@ -708,7 +708,7 @@ class Object
 
     Object FindMouseHit()
     {
-        return FindHit(Settings.MousePos);
+        return FindHit(Game.MousePos);
     }
 
     Object FindHit(ipos pos)
@@ -732,7 +732,7 @@ class Object
 
     bool IsMouseHit()
     {
-        return IsHit(Settings.MousePos);
+        return IsHit(Game.MousePos);
     }
 
     bool IsHit(ipos pos)
@@ -802,7 +802,7 @@ class Object
     {
         _IsPressed = true;
         _PressedButton = button;
-        _PressedPos = Settings.MousePos;
+        _PressedPos = Game.MousePos;
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MouseButton::Left) {
@@ -2168,8 +2168,8 @@ class Screen : Panel
             Object pressedObj = _FindPressed(this);
             if (pressedObj != null && pressedObj._PressedButton == MouseButton::Left && pressedObj._IsCatchable()) {
                 ipos lastPos = _AbsolutePos;
-                ipos newPos = _AbsolutePos + (Settings.MousePos - pressedObj._PressedPos);
-                pressedObj._PressedPos = Settings.MousePos;
+                ipos newPos = _AbsolutePos + (Game.MousePos - pressedObj._PressedPos);
+                pressedObj._PressedPos = Game.MousePos;
 
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
@@ -2524,7 +2524,7 @@ class MessageBox : Text
         _MessageTexts = array<string>();
         _MessageTypes = array<MessageBoxType>();
         _MessageTimes = array<string>();
-        _DisplayedMessages = array<MessageBoxType>();
+        _DisplayedMessages = array<MessageBoxType> = {MessageBoxType::All};
         _IsNotCatchable = true;
 
         _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
@@ -2561,8 +2561,8 @@ class MessageBox : Text
         Text::_Draw(callCallback);
 
         if (_IsHovered) {
-            Sprite::Sprite spr = Settings.MousePos.y < _AbsolutePos.y + _Size.height / 2 ? _ScrollUp : _ScrollDown;
-            spr.Draw(ipos(Settings.MousePos.x - spr.Size.width / 2, Settings.MousePos.y - spr.Size.height / 2));
+            Sprite::Sprite spr = Game.MousePos.y < _AbsolutePos.y + _Size.height / 2 ? _ScrollUp : _ScrollDown;
+            spr.Draw(ipos(Game.MousePos.x - spr.Size.width / 2, Game.MousePos.y - spr.Size.height / 2));
         }
     }
 
@@ -2615,7 +2615,7 @@ class MessageBox : Text
     void _MousePressed(MouseButton button) override
     {
         if (button == MouseButton::Left || button == MouseButton::WheelUp || button == MouseButton::WheelDown) {
-            if (button == MouseButton::WheelUp || (button == MouseButton::Left && Settings.MousePos.y < _AbsolutePos.y + _Size.height / 2)) {
+            if (button == MouseButton::WheelUp || (button == MouseButton::Left && Game.MousePos.y < _AbsolutePos.y + _Size.height / 2)) {
                 if (_InvertMessages && _Scroll > 0) {
                     _Scroll--;
                 }
@@ -2623,7 +2623,7 @@ class MessageBox : Text
                     _Scroll++;
                 }
             }
-            else if (button == MouseButton::WheelDown || (button == MouseButton::Left && Settings.MousePos.y >= _AbsolutePos.y + _Size.height / 2)) {
+            else if (button == MouseButton::WheelDown || (button == MouseButton::Left && Game.MousePos.y >= _AbsolutePos.y + _Size.height / 2)) {
                 if (_InvertMessages && _Scroll < _MaxScroll) {
                     _Scroll++;
                 }
@@ -2660,7 +2660,7 @@ class MessageBox : Text
         _MessageTimes.insertLast(messageTime);
 
         // Generate mess box
-        if (_DisplayedMessages.find(type) != -1) {
+        if (_DisplayedMessages.find(type) != -1 || _DisplayedMessages.find(MessageBoxType::All) != -1) {
             if (_Scroll > 0 && _IsHovered) {
                 _Scroll++;
             }
@@ -2697,7 +2697,7 @@ class MessageBox : Text
             string messageTime = _MessageTimes[i];
 
             // Skip if not need to display
-            if (_DisplayedMessages.find(messageType) == -1) {
+            if (_DisplayedMessages.find(messageType) == -1 && _DisplayedMessages.find(MessageBoxType::All) == -1) {
                 continue;
             }
 
@@ -3577,7 +3577,7 @@ void EngineCallback_DrawCursor()
         ipos pos;
         isize size;
         draggedObject.GetWholeSize(pos, size);
-        draggedObject.Draw(ipos(Settings.MousePos.x - size.width / 2, Settings.MousePos.y - size.height / 2));
+        draggedObject.Draw(ipos(Game.MousePos.x - size.width / 2, Game.MousePos.y - size.height / 2));
         return;
     }
 

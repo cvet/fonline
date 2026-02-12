@@ -40,6 +40,7 @@ endif()
 StatusMessage("+ SDL")
 set(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "Forced by FOnline" FORCE)
+set(SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY} CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_SDL_DIR}" EXCLUDE_FROM_ALL)
 include_directories("${FO_SDL_DIR}/include")
 list(APPEND FO_RENDER_LIBS SDL3-static SDL_uclibc)
@@ -349,9 +350,7 @@ set(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imstb_rectpack.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h")
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h")
 include_directories("${FO_DEAR_IMGUI_DIR}")
 include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(imgui STATIC EXCLUDE_FROM_ALL ${FO_IMGUI_SOURCE})
@@ -476,7 +475,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
     add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
     target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
-    target_compile_definitions(AngelScriptCore PUBLIC WIP_16BYTE_ALIGN)
+    target_compile_definitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
     target_compile_definitions(AngelScriptCore PUBLIC $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
     target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include")
     target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
@@ -491,25 +490,6 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
     list(APPEND FO_COMMON_LIBS AngelScriptPreprocessor)
     DisableLibWarnings(AngelScriptPreprocessor)
-
-    # AngelScript engine specific
-    set(FO_ANGELSCRIPT_EXT_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
-    add_library(AngelScript STATIC EXCLUDE_FROM_ALL
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptArray.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptArray.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptDict.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptDict.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptMath.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptMath.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptString.cpp"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptString.h" 
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptWrappedCall.h"
-        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptWrappedCall.cpp")
-    target_include_directories(AngelScript PUBLIC "${FO_ANGELSCRIPT_EXT_DIR}")
-    target_link_libraries(AngelScript AngelScriptCore AngelScriptPreprocessor)
-    list(APPEND FO_CORE_LIBS_GROUP AngelScript)
 endif()
 
 # Mono scripting
@@ -617,6 +597,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.h"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
+    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.h"
     "${FO_ENGINE_ROOT}/Source/Common/EngineBase.cpp"
@@ -658,6 +640,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
@@ -774,17 +758,11 @@ list(APPEND FO_CLIENT_BASE_SOURCE
 
 list(APPEND FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp")
 
 list(APPEND FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp")
 
 list(APPEND FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
@@ -807,22 +785,23 @@ list(APPEND FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp")
 
 list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/MetadataBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.h"
@@ -833,24 +812,9 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp")
-
-if(FO_ANGELSCRIPT_SCRIPTING)
-    list(APPEND FO_ASCOMPILER_SOURCE
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp")
-
-    list(APPEND FO_ASCOMPILER_SOURCE
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
-
-    list(APPEND FO_ASCOMPILER_SOURCE
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
-
-    list(APPEND FO_BAKER_SOURCE
-        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp")
-endif()
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
 
 if(MSVC)
     list(APPEND FO_COMMON_SOURCE
@@ -868,7 +832,7 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/EntityProperties.h"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/DataRegistration-Template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
@@ -881,9 +845,6 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
-    "${FO_ENGINE_ROOT}/Source/Scripting/AngelScriptScripting-Template.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/MonoScripting-Template.cpp"
-    "${FO_ENGINE_ROOT}/Source/Scripting/NativeScripting-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerPlayerScriptMethods.cpp"
@@ -916,6 +877,7 @@ list(APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
+list(APPEND FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
 
 if(FO_NATIVE_SCRIPTING)
     list(APPEND FO_CODEGEN_COMMAND_ARGS -native)
@@ -989,27 +951,13 @@ list(APPEND FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
 
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 
@@ -1041,6 +989,45 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
+if(FO_ANGELSCRIPT_SCRIPTING)
+    # AngelScript engine specific
+    set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptHelpers.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptMath.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptReflection.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptRemoteCalls.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptScripting.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
+    add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
+    target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
+    target_link_libraries(AngelScriptScripting AngelScriptCore AngelScriptPreprocessor)
+    list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
+endif()
+
 if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ AppHeadless")
     add_library(AppHeadless STATIC EXCLUDE_FROM_ALL
@@ -1070,8 +1057,12 @@ if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScript>)
+    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
+
+    if(FO_ANGELSCRIPT_SCRIPTING)
+        target_link_libraries(CommonLib AngelScriptScripting)
+    endif()
 endif()
 
 if(FO_BUILD_CLIENT_LIB)
@@ -1090,14 +1081,6 @@ if(FO_BUILD_SERVER_LIB)
     list(APPEND FO_CORE_LIBS_GROUP ServerLib)
 endif()
 
-if(FO_BUILD_ASCOMPILER_LIB)
-    StatusMessage("+ ASCompilerLib")
-    add_library(ASCompilerLib STATIC EXCLUDE_FROM_ALL ${FO_ASCOMPILER_SOURCE})
-    add_dependencies(ASCompilerLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(ASCompilerLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP ASCompilerLib)
-endif()
-
 if(FO_BUILD_MAPPER_LIB)
     StatusMessage("+ MapperLib")
     add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
@@ -1111,7 +1094,6 @@ if(FO_BUILD_BAKER_LIB)
     add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
     add_dependencies(BakerLib ${FO_GEN_DEPENDENCIES})
     target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
-    target_link_libraries(BakerLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:ASCompilerLib>)
     list(APPEND FO_CORE_LIBS_GROUP BakerLib)
 endif()
 
@@ -1218,7 +1200,7 @@ if(FO_BUILD_ASCOMPILER)
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_ASCOMPILER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ASCompiler")
     set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_ASCompiler "AppHeadless" "ASCompilerLib")
+    target_link_libraries(${FO_DEV_NAME}_ASCompiler "AppHeadless" "BakerLib")
     WriteBuildHash(${FO_DEV_NAME}_ASCompiler)
 endif()
 
@@ -1267,11 +1249,6 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp")
         target_link_libraries(${target} "ClientLib" "ServerLib")
-
-        if(FO_ANGELSCRIPT_SCRIPTING)
-            target_link_libraries(${target} "ASCompilerLib")
-        endif()
-
         target_link_libraries(${target} "AppHeadless")
 
         add_custom_target(Run${name}

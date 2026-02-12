@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
+CritterView::CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())

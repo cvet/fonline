@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapManagerException);
 
-class FOServer;
+class ServerEngine;
 class ProtoManager;
 class EntityManager;
 class ItemManager;
@@ -120,7 +120,7 @@ class MapManager final
 {
 public:
     MapManager() = delete;
-    explicit MapManager(FOServer* engine);
+    explicit MapManager(ServerEngine* engine);
     MapManager(const MapManager&) = delete;
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
@@ -134,7 +134,7 @@ public:
     [[nodiscard]] auto TracePath(TracePathInput& input) const -> TracePathOutput;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, span<const hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
     void DestroyLocation(Location* loc);
     auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void DestroyMap(Map* map);
@@ -156,7 +156,7 @@ private:
     void DestroyMapContent(Map* map);
     void DestroyMapInternal(Map* map);
 
-    raw_ptr<FOServer> _engine;
+    raw_ptr<ServerEngine> _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
 };
 

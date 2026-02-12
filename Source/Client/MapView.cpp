@@ -47,12 +47,12 @@ void SpritePattern::Finish()
     FO_STACK_TRACE_ENTRY();
 
     if (!Finished) {
-        Sprites.reset();
+        Sprites.clear();
         Finished = true;
     }
 }
 
-MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
+MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef())
@@ -106,7 +106,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     InitView();
     RecacheScrollBlocks();
 
-    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
+    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 MapView::~MapView()
@@ -175,7 +175,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     FO_RUNTIME_ASSERT(_mapperMode);
 
     _mapLoading = true;
-    auto reset_loading = ScopeCallback([&]() noexcept { _mapLoading = false; });
+    auto reset_loading = scope_exit([&]() noexcept { _mapLoading = false; });
     auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
@@ -274,7 +274,7 @@ void MapView::LoadStaticData()
     // Read static items
     {
         _mapLoading = true;
-        auto reset_loading = ScopeCallback([this]() noexcept { _mapLoading = false; });
+        auto reset_loading = scope_exit([this]() noexcept { _mapLoading = false; });
 
         const auto items_count = reader.Read<uint32>();
 
@@ -936,8 +936,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
 
     auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
 
-    pattern->Sprites = SafeAlloc::MakeUnique<vector<shared_ptr<Sprite>>>();
-    pattern->Sprites->emplace_back(std::move(spr));
+    pattern->Sprites.emplace_back(std::move(spr));
 
     for (size_t i = 1; i < count; i++) {
         auto next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
@@ -945,7 +944,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> SpritePattern*
         next_spr->Prewarm();
         next_spr->PlayDefault();
 
-        pattern->Sprites->emplace_back(std::move(next_spr));
+        pattern->Sprites.emplace_back(std::move(next_spr));
     }
 
     _spritePatterns.emplace_back(pattern);
@@ -1217,7 +1216,7 @@ void MapView::ShowHex(const ViewField& vf)
                 continue;
             }
 
-            const auto* spr = pattern->Sprites->at((hex.y * (pattern->Sprites->size() / 5) + hex.x) % pattern->Sprites->size()).get();
+            const auto* spr = pattern->Sprites.at((hex.y * (pattern->Sprites.size() / 5) + hex.x) % pattern->Sprites.size()).get();
             auto* mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
                 {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
                 spr, nullptr, nullptr, nullptr, nullptr, nullptr);

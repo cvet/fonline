@@ -119,4 +119,26 @@ auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minu
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }
 
+TimeMeter::TimeMeter() noexcept :
+    _startTime {nanotime::now()}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void TimeMeter::Pause() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _pausedDuration = GetDuration();
+    _paused = true;
+}
+
+void TimeMeter::Resume() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _startTime = nanotime::now() - _pausedDuration;
+    _paused = false;
+}
+
 FO_END_NAMESPACE

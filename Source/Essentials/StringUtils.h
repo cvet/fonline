@@ -38,7 +38,78 @@
 
 FO_BEGIN_NAMESPACE
 
-class strex final
+// Todo: refactor code to use strvex over strex where it possible
+class strvex
+{
+public:
+    constexpr strvex() noexcept = default;
+
+    constexpr explicit strvex(const char* s) noexcept :
+        _sv {s}
+    {
+    }
+
+    constexpr explicit strvex(string_view s) noexcept :
+        _sv {s}
+    {
+    }
+
+    strvex(const strvex&) = delete;
+    strvex(strvex&&) noexcept = delete;
+    auto operator=(const strvex&) -> strvex& = delete;
+    auto operator=(strvex&&) noexcept -> strvex& = delete;
+    constexpr ~strvex() = default;
+
+    // ReSharper disable once CppNonExplicitConversionOperator
+    constexpr operator string_view() const noexcept { return _sv; }
+
+    constexpr auto operator==(const strvex& other) const noexcept -> bool { return _sv == other._sv; }
+    constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
+
+    [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
+
+    [[nodiscard]] auto length() const noexcept -> size_t;
+    [[nodiscard]] auto empty() const noexcept -> bool;
+    [[nodiscard]] auto compare_ignore_case(string_view other) const noexcept -> bool;
+    [[nodiscard]] auto compare_ignore_case_utf8(string_view other) const noexcept -> bool;
+    [[nodiscard]] auto starts_with(char r) const noexcept -> bool;
+    [[nodiscard]] auto starts_with(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto ends_with(char r) const noexcept -> bool;
+    [[nodiscard]] auto ends_with(string_view r) const noexcept -> bool;
+    [[nodiscard]] auto is_valid_utf8() const noexcept -> bool;
+    [[nodiscard]] auto length_utf8() const noexcept -> size_t;
+
+    [[nodiscard]] auto is_number() const noexcept -> bool;
+    [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
+    [[nodiscard]] auto to_int32() const noexcept -> int32;
+    [[nodiscard]] auto to_uint32() const noexcept -> uint32;
+    [[nodiscard]] auto to_int64() const noexcept -> int64;
+    [[nodiscard]] auto to_float32() const noexcept -> float32;
+    [[nodiscard]] auto to_float64() const noexcept -> float64;
+    [[nodiscard]] auto to_bool() const noexcept -> bool;
+
+    [[nodiscard]] auto split(char delimiter) const noexcept -> vector<string_view>;
+    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32>;
+    [[nodiscard]] auto tokenize() const noexcept -> vector<string_view>;
+
+    auto substring_until(char separator) noexcept -> strvex&;
+    auto substring_until(string_view separator) noexcept -> strvex&;
+    auto substring_after(char separator) noexcept -> strvex&;
+    auto substring_after(string_view separator) noexcept -> strvex&;
+    auto trim() noexcept -> strvex&;
+    auto trim(string_view chars) noexcept -> strvex&;
+    auto ltrim(string_view chars) noexcept -> strvex&;
+    auto rtrim(string_view chars) noexcept -> strvex&;
+
+    auto extract_file_name() noexcept -> strvex&;
+    auto erase_file_extension() noexcept -> strvex&; // Erase extension with dot
+
+protected:
+    string_view _sv {};
+};
+static_assert(!std::is_polymorphic_v<strvex>);
+
+class strex : protected strvex
 {
 public:
     static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
@@ -53,30 +124,33 @@ public:
     constexpr strex() noexcept = default;
 
     constexpr explicit strex(const char* s) noexcept :
-        _sv {s}
+        strvex(s)
     {
     }
 
     constexpr explicit strex(string_view s) noexcept :
-        _sv {s}
+        strvex(s)
     {
     }
 
     constexpr explicit strex(string&& s) noexcept :
-        _s {std::move(s)},
-        _sv {_s}
+        strvex(),
+        _s {std::move(s)}
     {
+        _sv = _s;
     }
 
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
-        _s {std::format(std::move(format), std::forward<Args>(args)...)},
-        _sv {_s}
+        strvex(),
+        _s {std::format(std::move(format), std::forward<Args>(args)...)}
     {
+        _sv = _s;
     }
 
     template<typename... Args>
-    explicit strex(safe_format_tag /*tag*/, std::format_string<Args...>&& format, Args&&... args) noexcept
+    explicit strex(safe_format_tag /*tag*/, std::format_string<Args...>&& format, Args&&... args) noexcept :
+        strvex()
     {
         try {
             _s = std::format(std::move(format), std::forward<Args>(args)...);
@@ -100,9 +174,10 @@ public:
 
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))},
-        _sv {_s}
+        strvex(),
+        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))}
     {
+        _sv = _s;
     }
 
     strex(const strex&) = delete;
@@ -122,30 +197,31 @@ public:
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;
-    [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
+    [[nodiscard]] auto strv() const noexcept -> string_view { return strvex::strv(); }
 
-    [[nodiscard]] auto length() const noexcept -> size_t;
-    [[nodiscard]] auto empty() const noexcept -> bool;
-    [[nodiscard]] auto compare_ignore_case(string_view other) const noexcept -> bool;
-    [[nodiscard]] auto compare_ignore_case_utf8(string_view other) const -> bool;
-    [[nodiscard]] auto starts_with(char r) const noexcept -> bool;
-    [[nodiscard]] auto starts_with(string_view r) const noexcept -> bool;
-    [[nodiscard]] auto ends_with(char r) const noexcept -> bool;
-    [[nodiscard]] auto ends_with(string_view r) const noexcept -> bool;
-    [[nodiscard]] auto is_valid_utf8() const noexcept -> bool;
-    [[nodiscard]] auto length_utf8() const noexcept -> size_t;
+    [[nodiscard]] auto length() const noexcept -> size_t { return strvex::length(); }
+    [[nodiscard]] auto empty() const noexcept -> bool { return strvex::empty(); }
+    [[nodiscard]] auto compare_ignore_case(string_view other) const noexcept -> bool { return strvex::compare_ignore_case(other); }
+    [[nodiscard]] auto compare_ignore_case_utf8(string_view other) const noexcept -> bool { return strvex::compare_ignore_case_utf8(other); }
+    [[nodiscard]] auto starts_with(char r) const noexcept -> bool { return strvex::starts_with(r); }
+    [[nodiscard]] auto starts_with(string_view r) const noexcept -> bool { return strvex::starts_with(r); }
+    [[nodiscard]] auto ends_with(char r) const noexcept -> bool { return strvex::ends_with(r); }
+    [[nodiscard]] auto ends_with(string_view r) const noexcept -> bool { return strvex::ends_with(r); }
+    [[nodiscard]] auto is_valid_utf8() const noexcept -> bool { return strvex::is_valid_utf8(); }
+    [[nodiscard]] auto length_utf8() const noexcept -> size_t { return strvex::length_utf8(); }
 
-    [[nodiscard]] auto is_number() const noexcept -> bool;
-    [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
-    [[nodiscard]] auto to_int32() const noexcept -> int32;
-    [[nodiscard]] auto to_uint32() const noexcept -> uint32;
-    [[nodiscard]] auto to_int64() const noexcept -> int64;
-    [[nodiscard]] auto to_float32() const noexcept -> float32;
-    [[nodiscard]] auto to_float64() const noexcept -> float64;
-    [[nodiscard]] auto to_bool() const noexcept -> bool;
+    [[nodiscard]] auto is_number() const noexcept -> bool { return strvex::is_number(); }
+    [[nodiscard]] auto is_explicit_bool() const noexcept -> bool { return strvex::is_explicit_bool(); }
+    [[nodiscard]] auto to_int32() const noexcept -> int32 { return strvex::to_int32(); }
+    [[nodiscard]] auto to_uint32() const noexcept -> uint32 { return strvex::to_uint32(); }
+    [[nodiscard]] auto to_int64() const noexcept -> int64 { return strvex::to_int64(); }
+    [[nodiscard]] auto to_float32() const noexcept -> float32 { return strvex::to_float32(); }
+    [[nodiscard]] auto to_float64() const noexcept -> float64 { return strvex::to_float64(); }
+    [[nodiscard]] auto to_bool() const noexcept -> bool { return strvex::to_bool(); }
 
-    [[nodiscard]] auto split(char delimiter) const -> vector<string>;
-    [[nodiscard]] auto split_to_int32(char delimiter) const -> vector<int32>;
+    [[nodiscard]] auto split(char delimiter) const noexcept -> vector<string>;
+    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32> { return strvex::split_to_int32(delimiter); }
+    [[nodiscard]] auto tokenize() const noexcept -> vector<string>;
 
     auto substring_until(char separator) noexcept -> strex&;
     auto substring_until(string_view separator) noexcept -> strex&;
@@ -166,6 +242,8 @@ public:
     auto upper() -> strex&;
     auto upper_utf8() -> strex&;
     auto assignVolatile(const volatile char* str, size_t len) -> strex&;
+    auto join(const_span<string_view> parts) -> strex&;
+    auto join(const_span<string> parts) -> strex&;
 
     auto format_path() -> strex&;
     auto extract_dir() -> strex&;
@@ -187,7 +265,6 @@ private:
     void own_storage() noexcept;
 
     string _s {};
-    string_view _sv {};
 };
 static_assert(!std::is_polymorphic_v<strex>);
 

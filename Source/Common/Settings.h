@@ -44,13 +44,13 @@ class ConfigFile;
 struct ResourcePackInfo
 {
     string Name {};
-    vector<string> InputDir {};
-    vector<string> InputFile {};
+    vector<string> InputDirs {};
+    vector<string> InputFiles {};
     bool RecursiveInput {};
     bool ServerOnly {};
     bool ClientOnly {};
     bool MapperOnly {};
-    int32 BakeOrder {};
+    vector<string> Bakers {};
 };
 
 struct SubConfigInfo
@@ -63,9 +63,15 @@ struct SubConfigInfo
 struct BaseSettings
 {
 public:
-    [[nodiscard]] auto GetResourcePacks() const -> span<const ResourcePackInfo>;
-    [[nodiscard]] auto GetSubConfigs() const noexcept -> span<const SubConfigInfo> { return _subConfigs; }
-    [[nodiscard]] auto GetAppliedConfigs() const -> span<const string> { return _appliedConfigs; }
+    BaseSettings() = default;
+    BaseSettings(const BaseSettings&) = delete;
+    BaseSettings(BaseSettings&&) noexcept = default;
+    auto operator=(const BaseSettings&) -> BaseSettings& = delete;
+    auto operator=(BaseSettings&&) noexcept -> BaseSettings& = delete;
+
+    [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
+    [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
+    [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
 
 protected:
     vector<ResourcePackInfo> _resourcePacks {};
@@ -76,7 +82,12 @@ protected:
 
 #define SETTING_GROUP(name, ...) \
     struct name : __VA_ARGS__ \
-    {
+    { \
+        name() = default; \
+        name(const name&) = delete; \
+        name(name&&) noexcept = default; \
+        auto operator=(const name&) -> name& = delete; \
+        auto operator=(name&&) noexcept -> name& = delete
 #define SETTING_GROUP_END() }
 #define FIXED_SETTING(type, name, ...) const type name = {}
 #define VARIABLE_SETTING(type, name, ...) type name = {}
@@ -86,13 +97,13 @@ struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual 
 {
 public:
     explicit GlobalSettings(bool baking_mode);
-    GlobalSettings(const GlobalSettings&) = default;
+    GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;
-    auto operator=(const GlobalSettings&) = delete;
-    auto operator=(GlobalSettings&&) noexcept = delete;
+    auto operator=(const GlobalSettings&) -> GlobalSettings& = delete;
+    auto operator=(GlobalSettings&&) noexcept -> GlobalSettings& = delete;
     ~GlobalSettings() = default;
 
-    [[nodiscard]] auto GetCustomSetting(string_view name) const -> const string&;
+    [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
     [[nodiscard]] auto Save() const -> map<string, string>;
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
@@ -101,7 +112,7 @@ public:
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
     void ApplyAutoSettings();
-    void SetCustomSetting(string_view name, string value);
+    void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
 
 private:
@@ -110,8 +121,7 @@ private:
     void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
 
     bool _bakingMode;
-    unordered_map<string, string> _customSettings {};
-    string _empty {};
+    unordered_map<string, any_t> _customSettings {};
 };
 
 FO_END_NAMESPACE

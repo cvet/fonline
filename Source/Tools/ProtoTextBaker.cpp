@@ -40,8 +40,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ProtoTextBaker::ProtoTextBaker(BakerData& data) :
-    BaseBaker(data)
+ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -65,9 +65,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
-        const auto it = std::ranges::find(_settings->ProtoFileExtensions, ext);
+        const auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
 
-        if (it == _settings->ProtoFileExtensions.end()) {
+        if (it == _context->Settings->ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -80,15 +80,15 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 
     // Process files
-    if (_bakeChecker) {
+    if (_context->BakeChecker) {
         bool check_result = false;
 
-        for (const auto& lang_name : _settings->BakeLanguages) {
-            check_result |= _bakeChecker(strex("{}.Protos.{}.fotxt-bin", _resPackName, lang_name), max_write_time);
-            check_result |= _bakeChecker(strex("{}.Items.{}.fotxt-bin", _resPackName, lang_name), max_write_time);
-            check_result |= _bakeChecker(strex("{}.Critters.{}.fotxt-bin", _resPackName, lang_name), max_write_time);
-            check_result |= _bakeChecker(strex("{}.Maps.{}.fotxt-bin", _resPackName, lang_name), max_write_time);
-            check_result |= _bakeChecker(strex("{}.Locations.{}.fotxt-bin", _resPackName, lang_name), max_write_time);
+        for (const auto& lang_name : _context->Settings->BakeLanguages) {
+            check_result |= _context->BakeChecker(strex("{}.Protos.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
+            check_result |= _context->BakeChecker(strex("{}.Items.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
+            check_result |= _context->BakeChecker(strex("{}.Critters.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
+            check_result |= _context->BakeChecker(strex("{}.Maps.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
+            check_result |= _context->BakeChecker(strex("{}.Locations.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
         }
 
         if (!check_result) {
@@ -96,7 +96,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    const auto engine = BakerEngine(PropertiesRelationType::ServerRelative);
+    const auto engine = BakerServerEngine(*_context->BakedFiles);
     const auto proto_rule_name = engine.Hashes.ToHashedString("Proto");
 
     // Collect data
@@ -128,7 +128,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 throw ProtoTextBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!engine.IsValidEntityType(type_name) || !engine.GetEntityTypeInfo(type_name).HasProtos) {
+            if (!engine.IsValidEntityType(type_name) || !engine.GetEntityType(type_name).HasProtos) {
                 throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
             }
 
@@ -194,8 +194,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            FO_RUNTIME_ASSERT(!_settings->BakeLanguages.empty());
-            const string& default_lang = _settings->BakeLanguages.front();
+            FO_RUNTIME_ASSERT(!_context->Settings->BakeLanguages.empty());
+            const string& default_lang = _context->Settings->BakeLanguages.front();
 
             all_proto_texts[type_name][pid] = {};
 
@@ -229,7 +229,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     size_t errors = 0;
     vector<pair<string, map<string, TextPack>>> lang_packs;
 
-    for (const auto& lang : _settings->BakeLanguages) {
+    for (const auto& lang : _context->Settings->BakeLanguages) {
         auto empty_lang_pack = map<string, TextPack>();
         empty_lang_pack["Items"] = {};
         empty_lang_pack["Critters"] = {};
@@ -239,8 +239,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         lang_packs.emplace_back(lang, std::move(empty_lang_pack));
     }
 
-    const auto fill_proto_texts = [&](hstring type_name, TextPackName pack_name) {
-        for (auto&& [pid, proto_texts] : all_proto_texts[type_name]) {
+    const auto fill_proto_texts = [&](hstring entity_name, TextPackName pack_name) {
+        for (auto&& [pid, proto_texts] : all_proto_texts[entity_name]) {
             for (const auto& proto_text : proto_texts) {
                 const auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
@@ -267,13 +267,13 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     fill_proto_texts(engine.Hashes.ToHashedString("Map"), TextPackName::Maps);
     fill_proto_texts(engine.Hashes.ToHashedString("Location"), TextPackName::Locations);
 
-    for (auto&& [type_name, entity_info] : engine.GetEntityTypesInfo()) {
-        if (!entity_info.Exported && entity_info.HasProtos) {
+    for (auto&& [type_name, type_desc] : engine.GetEntityTypes()) {
+        if (!type_desc.Exported && type_desc.HasProtos) {
             fill_proto_texts(type_name, TextPackName::Protos);
         }
     }
 
-    TextPack::FixPacks(_settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
 
     if (errors != 0) {
         throw ProtoTextBakerException("Errors during proto texts parsing");
@@ -282,7 +282,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     // Save packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _writeData(strex("{}.{}.{}.fotxt-bin", _resPackName, pack_name, lang_name), text_pack.GetBinaryData());
+            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->PackName, pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }

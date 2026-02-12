@@ -46,7 +46,7 @@ public:
     ~NetworkClientConnection_Interthread() override = default;
 
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(span<const uint8> buf) -> size_t override;
+    auto SendDataImpl(const_span<uint8> buf) -> size_t override;
     auto ReceiveDataImpl(vector<uint8>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
@@ -73,7 +73,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
 
     const auto port = numeric_cast<uint16>(_settings->ServerPort);
 
-    _interthreadSend = InterthreadListeners[port]([this](span<const uint8> buf) {
+    _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) FO_DEFERRED {
         if (!buf.empty()) {
             auto locker = std::unique_lock {_interthreadReceivedLocker};
 
@@ -104,7 +104,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
     return for_write ? true : !_interthreadReceived.empty();
 }
 
-auto NetworkClientConnection_Interthread::SendDataImpl(span<const uint8> buf) -> size_t
+auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 

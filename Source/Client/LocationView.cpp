@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
+LocationView::LocationView(ClientEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())

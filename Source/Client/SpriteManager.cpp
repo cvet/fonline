@@ -64,7 +64,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _window {window},
     _resources {&resources},
     _gameTimer {&game_time},
-    _rtMngr(settings, window, [this] { Flush(); }),
+    _rtMngr(settings, window, [this]() FO_DEFERRED { Flush(); }),
     _atlasMngr(settings, _rtMngr),
     _effectMngr {&effect_mngr},
     _hashResolver {&hash_resolver}
@@ -96,7 +96,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 #endif
     _rtContours = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
 
-    _eventUnsubscriber += App->OnLowMemory += [this] { CleanupSpriteCache(); };
+    _eventUnsubscriber += App->OnLowMemory += [this]() FO_DEFERRED { CleanupSpriteCache(); };
 }
 
 SpriteManager::~SpriteManager()

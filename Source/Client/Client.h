@@ -64,22 +64,16 @@
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(EngineDataNotFoundException);
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
-///@ ExportRefType Client
-struct VideoPlayback
+///@ ExportRefType Client RefCounted Export = Stopped
+class VideoPlayback : public RefCounted<VideoPlayback>
 {
-    FO_SCRIPTABLE_OBJECT_BEGIN();
-
-    bool Stopped {};
-
-    FO_SCRIPTABLE_OBJECT_END();
-
+public:
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
+    bool Stopped {};
 };
-static_assert(std::is_standard_layout_v<VideoPlayback>);
 
 ///@ ExportEnum
 enum class EffectType : uint32
@@ -112,20 +106,22 @@ constexpr int32 INIT_NET_REASON_REG = 2;
 constexpr int32 INIT_NET_REASON_LOAD = 3;
 constexpr int32 INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public BaseEngine, public AnimationResolver
+auto GetClientResources(GlobalSettings& settings) -> FileSystem;
+
+class ClientEngine : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
 
 public:
-    explicit FOClient(GlobalSettings& settings, AppWindow* window); // For client
-    explicit FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator); // For mapper
-    FOClient(const FOClient&) = delete;
-    FOClient(FOClient&&) noexcept = delete;
-    auto operator=(const FOClient&) = delete;
-    auto operator=(FOClient&&) noexcept = delete;
-    ~FOClient() override;
+    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window); // For client
+    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window, const MeatdataRegistrator& mapper_registrator); // For mapper
+    ClientEngine(const ClientEngine&) = delete;
+    ClientEngine(ClientEngine&&) noexcept = delete;
+    auto operator=(const ClientEngine&) = delete;
+    auto operator=(ClientEngine&&) noexcept = delete;
+    ~ClientEngine() override;
 
-    [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
+    [[nodiscard]] auto GetEngine() -> ClientEngine* { return this; }
 
     [[nodiscard]] auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
@@ -144,6 +140,8 @@ public:
     [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
     [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
     [[nodiscard]] auto GetCurMap() noexcept -> MapView* { return _curMap.get(); }
+
+    void Shutdown() override;
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -299,6 +297,8 @@ protected:
     void UnloadMap();
     void LmapPrepareMap();
 
+    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
+
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
@@ -385,6 +385,7 @@ protected:
     vector<vector<uint8>> _tempPropertiesData {};
     vector<vector<uint8>> _tempPropertiesDataExt {};
     vector<vector<uint8>> _tempPropertiesDataCustomEntity {};
+    vector<uint8> _remoteCallData {};
 
     uint32 _ifaceAnimCounter {};
     unordered_map<uint32, unique_ptr<IfaceAnim>> _ifaceAnimations {};
