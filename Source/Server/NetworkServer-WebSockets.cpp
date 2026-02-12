@@ -140,10 +140,10 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
         _connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true));
     }
 
-    _connection->set_message_handler([this](auto&&, auto&& msg) { OnMessage(msg); });
-    _connection->set_fail_handler([this](auto&& hdl) { OnFail(hdl); });
-    _connection->set_close_handler([this](auto&& hdl) { OnClose(hdl); });
-    _connection->set_http_handler([this](auto&& hdl) { OnHttp(hdl); });
+    _connection->set_message_handler([this](auto&&, auto&& msg) FO_DEFERRED { OnMessage(msg); });
+    _connection->set_fail_handler([this](auto&& hdl) FO_DEFERRED { OnFail(hdl); });
+    _connection->set_close_handler([this](auto&& hdl) FO_DEFERRED { OnClose(hdl); });
+    _connection->set_http_handler([this](auto&& hdl) FO_DEFERRED { OnHttp(hdl); });
 }
 
 template<bool Secured>
@@ -157,9 +157,6 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
     }
 }
 
@@ -253,11 +250,11 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler([this](auto&& hdl) { OnOpen(hdl); });
-    _server.set_validate_handler([this](auto&& hdl) { return OnValidate(hdl); });
+    _server.set_open_handler([this](auto&& hdl) FO_DEFERRED { OnOpen(hdl); });
+    _server.set_validate_handler([this](auto&& hdl) FO_DEFERRED { return OnValidate(hdl); });
 
     if constexpr (Secured) {
-        _server.set_tls_init_handler([this](auto&& hdl) { return OnTlsInit(hdl); });
+        _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
     _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort + 1));
@@ -287,9 +284,6 @@ void NetworkServer_WebSockets<Secured>::Run()
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 }

@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-RawCopyBaker::RawCopyBaker(BakerData& data) :
-    BaseBaker(data)
+RawCopyBaker::RawCopyBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -57,12 +57,12 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
     if (target_path.empty()) {
         for (const auto& file_header : files) {
             const string ext = strex(file_header.GetPath()).get_file_extension();
-            const auto it = std::ranges::find(_settings->RawCopyFileExtensions, ext);
+            const auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
 
-            if (it == _settings->RawCopyFileExtensions.end()) {
+            if (it == _context->Settings->RawCopyFileExtensions.end()) {
                 continue;
             }
-            if (_bakeChecker && !_bakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+            if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
                 continue;
             }
 
@@ -71,9 +71,9 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
     }
     else {
         const string ext = strex(target_path).get_file_extension();
-        const auto it = std::ranges::find(_settings->RawCopyFileExtensions, ext);
+        const auto it = std::ranges::find(_context->Settings->RawCopyFileExtensions, ext);
 
-        if (it == _settings->RawCopyFileExtensions.end()) {
+        if (it == _context->Settings->RawCopyFileExtensions.end()) {
             return;
         }
 
@@ -82,7 +82,7 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
         if (!file) {
             return;
         }
-        if (_bakeChecker && !_bakeChecker(file.GetPath(), file.GetWriteTime())) {
+        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), file.GetWriteTime())) {
             return;
         }
 
@@ -95,7 +95,7 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
 
     // Process files
     for (const auto& file : filtered_files) {
-        _writeData(file.GetPath(), file.GetData());
+        _context->WriteData(file.GetPath(), file.GetData());
     }
 }
 

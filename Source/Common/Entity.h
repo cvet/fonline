@@ -36,11 +36,12 @@
 #include "Common.h"
 
 #include "Properties.h"
+#include "ScriptSystem.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE
 
-///@ ExportEntity Game FOServer FOClient Global
+///@ ExportEntity Game ServerEngine ClientEngine Global
 ///@ ExportEntity Player Player PlayerView HasTimeEvents
 ///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents
 ///@ ExportEntity Map Map MapView HasProtos HasTimeEvents
@@ -67,9 +68,9 @@ FO_BEGIN_NAMESPACE
     static uint16 prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
-    EntityEvent<__VA_ARGS__> event_name \
+    EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
     { \
-        this, #event_name \
+        this \
     }
 
 class EntityProperties
@@ -86,27 +87,46 @@ protected:
     raw_ptr<Properties> _propsRef;
 };
 
-enum class EntityHolderEntryAccess : uint8
+enum class EntityHolderEntrySync : uint8
 {
-    Private,
-    Protected,
-    Public,
+    NoSync,
+    OwnerSync,
+    PublicSync,
 };
 
-struct EntityTypeInfo
+struct EntityEventDesc
 {
-    raw_ptr<const PropertyRegistrator> PropRegistrator {};
+    string Name {};
+    vector<ArgDesc> Args {};
     bool Exported {};
+    bool Deferred {};
+};
+
+struct EntityTypeDesc
+{
+    struct HolderEntryDesc
+    {
+        hstring TargetType {};
+        EntityHolderEntrySync Sync {};
+    };
+
+    bool Exported {};
+    bool IsGlobal {};
     bool HasProtos {};
-    unordered_map<hstring, tuple<hstring, EntityHolderEntryAccess>> HolderEntries {}; // Target type, access
+    bool HasStatics {};
+    bool HasAbstract {};
+    raw_ptr<PropertyRegistrator> PropRegistrator {};
+    unordered_map<hstring, HolderEntryDesc> HolderEntries {};
+    vector<MethodDesc> Methods {};
+    vector<EntityEventDesc> Events {};
 };
 
 class Entity
 {
-    friend class EntityEventBase;
+    friend class EntityEvent;
 
 public:
-    using EventCallback = function<bool(const initializer_list<void*>&)>;
+    using EventCallback = function<bool(FuncCallData&)>;
 
     ///@ ExportEnum
     enum class EventExceptionPolicy : uint8
@@ -129,7 +149,7 @@ public:
     struct EventCallbackData
     {
         EventCallback Callback {};
-        raw_ptr<const void> SubscribtionPtr {};
+        uintptr_t SubscriptionPtr {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal};
         bool OneShot {}; // Todo: improve entity event OneShot
@@ -138,8 +158,12 @@ public:
 
     struct TimeEventData
     {
+        using FuncType = variant<ScriptFunc<void>, ScriptFunc<void, any_t>, ScriptFunc<void, vector<any_t>>, // All possible variants for time events
+            ScriptFunc<void, ScriptSelfEntity*>, ScriptFunc<void, ScriptSelfEntity*, any_t>, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>;
+
         uint32 Id {};
-        hstring FuncName {};
+        FuncType Func {};
+        ScriptFuncName FuncName {};
         nanotime FireTime {};
         timespan RepeatDuration {};
         vector<any_t> Data {};
@@ -152,6 +176,7 @@ public:
     auto operator=(Entity&&) noexcept = delete;
 
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
+    [[nodiscard]] virtual auto GetId() const noexcept -> ident_t { return {}; }
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
@@ -168,6 +193,7 @@ public:
     [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*;
+    [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
     [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
@@ -179,9 +205,9 @@ public:
     void SetValueAsAny(const Property* prop, const any_t& value);
     void SetValueAsAny(int32 prop_index, const any_t& value);
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
-    void UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept;
+    void UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAllEvent(string_view event_name) noexcept;
-    auto FireEvent(string_view event_name, const initializer_list<void*>& args) noexcept -> bool;
+    auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool;
     void AddInnerEntity(hstring entry, Entity* entity);
     void RemoveInnerEntity(hstring entry, Entity* entity);
     void ClearInnerEntities();
@@ -197,14 +223,15 @@ protected:
     virtual ~Entity() = default;
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
+    auto GetRefCount() const noexcept -> int32 { return _refCounter.load(); }
 
     bool _nonConstHelper {};
 
 private:
     auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
     void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
-    void UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept;
-    auto FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool;
+    void UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept;
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool;
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
@@ -215,46 +242,70 @@ private:
     mutable std::atomic_int _refCounter {1};
 };
 
-class EntityEventBase
+class EntityEvent
 {
 public:
     void Subscribe(Entity::EventCallbackData&& callback);
-    void Unsubscribe(const void* subscription_ptr) noexcept;
+    void Unsubscribe(uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAll() noexcept;
 
 protected:
-    EntityEventBase(Entity* entity, const char* callback_name) noexcept;
+    EntityEvent(Entity* entity, const char* callback_name) noexcept;
+    auto FireEvent(FuncCallData& call) noexcept -> bool;
+    auto CheckCallbacks() -> bool;
 
-    [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const noexcept -> bool
-    {
-        FO_STRONG_ASSERT(_callbacks);
-
-        return _entity->FireEvent(*_callbacks, args_list);
-    }
-
-    Entity* _entity;
-    const char* _callbackName;
-    vector<Entity::EventCallbackData>* _callbacks {};
+    raw_ptr<Entity> _entity;
+    string_view _callbackName;
+    raw_ptr<vector<Entity::EventCallbackData>> _callbacks {};
 };
 
-template<typename... Args>
-class EntityEvent final : public EntityEventBase
+template<fixed_string Name, typename... Args>
+class EntityEventWrapper final : public EntityEvent
 {
 public:
-    EntityEvent(Entity* entity, const char* callback_name) noexcept :
-        EntityEventBase(entity, callback_name)
+    explicit EntityEventWrapper(Entity* entity) noexcept :
+        EntityEvent(entity, Name.c_str())
     {
     }
 
     auto Fire(Args... args) noexcept -> bool
     {
-        if (_callbacks == nullptr) {
+        FO_STACK_TRACE_ENTRY_NAMED(Name.c_str());
+
+        if (!CheckCallbacks()) {
             return true;
         }
 
-        const initializer_list<void*> args_list = {static_cast<void*>(&args)...};
-        return FireEx(args_list);
+        if (_entity->IsGlobal()) {
+            array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
+            size_t storage_index = 0;
+            array<void*, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+
+            FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+            call.ArgsData = args_data;
+            return FireEvent(call);
+        }
+        else {
+            array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
+            size_t storage_index = 0;
+            void* first_arg = cast_to_void(_entity.get());
+            array<void*, sizeof...(Args) + 1> args_data {&first_arg, ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+
+            FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+            call.ArgsData = args_data;
+            return FireEvent(call);
+        }
     }
+};
+
+class EntityManagerApi
+{
+public:
+    virtual auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* = 0;
+    virtual auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* = 0;
+    virtual auto GetCustomEntity(hstring type_name, ident_t id) -> Entity* = 0;
+    virtual void DestroyEntity(Entity* entity) = 0;
+    virtual ~EntityManagerApi() = default;
 };
 
 FO_END_NAMESPACE

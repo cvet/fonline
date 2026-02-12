@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-Player::Player(FOServer* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props) noexcept :
+Player::Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props),
     PlayerProperties(GetInitRef()),
     _connection {std::move(connection)}
@@ -457,7 +457,7 @@ void Player::Send_PlaceToGameComplete()
     _connection->WriteMsg(NetMessage::PlaceToGameComplete);
 }
 
-void Player::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
+void Player::Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -503,11 +503,11 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
     out_buf->Write(entity->GetId());
 
     if (const auto* entity_with_proto = dynamic_cast<CustomEntityWithProto*>(entity); entity_with_proto != nullptr) {
-        FO_RUNTIME_ASSERT(_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        FO_RUNTIME_ASSERT(_engine->GetEntityType(entity->GetTypeName()).HasProtos);
         out_buf->Write(entity_with_proto->GetProtoId());
     }
     else {
-        FO_RUNTIME_ASSERT(!_engine->GetEntityTypeInfo(entity->GetTypeName()).HasProtos);
+        FO_RUNTIME_ASSERT(!_engine->GetEntityType(entity->GetTypeName()).HasProtos);
         out_buf->Write(hstring());
     }
 
@@ -557,19 +557,30 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
     }
 
     const auto& entries_entities = holder->GetInnerEntities();
+    uint16 entries_count = 0;
 
-    out_buf.Write(numeric_cast<uint16>(entries_entities.size()));
+    for (const auto& entry : entries_entities | std::views::keys) {
+        const auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
+
+        if (entry_sync == EntityHolderEntrySync::PublicSync || (entry_sync == EntityHolderEntrySync::OwnerSync && owned)) {
+            entries_count++;
+        }
+    }
+
+    out_buf.Write(entries_count);
+
+    if (entries_count == 0) {
+        return;
+    }
 
     for (auto&& [entry, entities] : entries_entities) {
-        out_buf.Write(entry);
+        const auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
 
-        const auto entry_access = std::get<1>(_engine->GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
-
-        if (entry_access == EntityHolderEntryAccess::Private || (entry_access == EntityHolderEntryAccess::Protected && !owned)) {
-            out_buf.Write(numeric_cast<uint32>(0));
+        if (entry_sync == EntityHolderEntrySync::NoSync || (entry_sync == EntityHolderEntrySync::OwnerSync && !owned)) {
             continue;
         }
 
+        out_buf.Write(entry);
         out_buf.Write(numeric_cast<uint32>(entities.size()));
 
         for (const auto& entity : entities) {

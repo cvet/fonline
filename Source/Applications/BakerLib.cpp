@@ -35,7 +35,6 @@
 
 #include "Baker.h"
 #include "Logging.h"
-#include "Version-Include.h"
 
 FO_USING_NAMESPACE();
 
@@ -46,7 +45,7 @@ FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
     CreateGlobalData();
     LogToFile(strex("{}_BakerLib.log", FO_DEV_NAME));
 
-    auto& settings = *static_cast<BakingSettings*>(baking_settings);
+    auto& settings = *cast_from_void<BakingSettings*>(baking_settings);
     auto baker = MasterBaker(settings);
 
     if (!baker.BakeAll()) {

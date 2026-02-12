@@ -44,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-class FOServer;
+class ServerEngine;
 class ProtoManager;
 class EntityManager;
 class MapManager;
@@ -54,7 +54,7 @@ class CritterManager final
 {
 public:
     CritterManager() = delete;
-    explicit CritterManager(FOServer* engine);
+    explicit CritterManager(ServerEngine* engine);
     CritterManager(const CritterManager&) = delete;
     CritterManager(CritterManager&&) noexcept = delete;
     auto operator=(const CritterManager&) = delete;
@@ -73,7 +73,7 @@ public:
     void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
 
 private:
-    raw_ptr<FOServer> _engine;
+    raw_ptr<ServerEngine> _engine;
 };
 
 FO_END_NAMESPACE

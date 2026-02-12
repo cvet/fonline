@@ -170,7 +170,7 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
         string traceback;
 
         if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->StackTrace()));
+            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->stack_trace()));
         }
         else {
             traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
@@ -198,7 +198,7 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
         string traceback;
 
         if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->StackTrace()));
+            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->stack_trace()));
         }
         else {
             traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
@@ -338,7 +338,7 @@ extern auto FormatStackTrace(const StackTraceData& st) -> string
     return string(st_str);
 
 #else
-    return GetRealStackTrace();
+    return string();
 #endif
 }
 

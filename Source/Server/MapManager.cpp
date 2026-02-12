@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-MapManager::MapManager(FOServer* engine) :
+MapManager::MapManager(ServerEngine* engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
@@ -60,7 +60,7 @@ void MapManager::LoadFromResources()
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
         constexpr std::launch async_flags = std::launch::async | std::launch::deferred;
-        static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() {
+        static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() FO_DEFERRED {
             auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
@@ -150,7 +150,7 @@ void MapManager::LoadFromResources()
                         reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
 
-                        auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, item_proto, &item_props);
+                        auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine.get(), ident_t {}, item_proto, &item_props);
                         static_map->ItemBillets.emplace_back(item_id, item);
 
                         // Checks
@@ -162,7 +162,7 @@ void MapManager::LoadFromResources()
 
                         // Bind scripts
                         if (const auto static_script = item->GetStaticScript()) {
-                            item->StaticScriptFunc = _engine->ScriptSys.FindFunc<bool, Critter*, StaticItem*, Item*, any_t>(static_script);
+                            item->StaticScriptFunc = _engine->FindFunc<bool, Critter*, StaticItem*, Item*, any_t>(static_script);
 
                             if (!item->StaticScriptFunc) {
                                 throw MapManagerException("Can't bind static item function", map_proto->GetName(), static_script);
@@ -170,7 +170,7 @@ void MapManager::LoadFromResources()
                         }
 
                         if (const auto trigger_script = item->GetTriggerScript()) {
-                            item->TriggerScriptFunc = _engine->ScriptSys.FindFunc<void, Critter*, StaticItem*, bool, uint8>(trigger_script);
+                            item->TriggerScriptFunc = _engine->FindFunc<void, Critter*, StaticItem*, bool, uint8>(trigger_script);
 
                             if (!item->TriggerScriptFunc) {
                                 throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), trigger_script);
@@ -183,20 +183,20 @@ void MapManager::LoadFromResources()
                             static_map->StaticItems.emplace_back(item.get());
                             static_map->StaticItemsById.emplace(item_id, item.get());
 
-                            const auto add_item_to_field = [item = item.get()](StaticMap::Field& static_field) {
-                                if (!vec_exists(static_field.StaticItems, item)) {
+                            const auto add_item_to_field = [item_ = item.get()](StaticMap::Field& static_field) {
+                                if (!vec_exists(static_field.StaticItems, item_)) {
                                     static_field.StaticItems.reserve(static_field.StaticItems.size() + 1);
-                                    static_field.StaticItems.emplace_back(item);
+                                    static_field.StaticItems.emplace_back(item_);
 
-                                    if (item->GetIsTrigger() || item->GetIsTrap()) {
+                                    if (item_->GetIsTrigger() || item_->GetIsTrap()) {
                                         static_field.TriggerItems.reserve(static_field.TriggerItems.size() + 1);
-                                        static_field.TriggerItems.emplace_back(item);
+                                        static_field.TriggerItems.emplace_back(item_);
                                     }
 
-                                    if (!item->GetNoBlock()) {
+                                    if (!item_->GetNoBlock()) {
                                         static_field.MoveBlocked = true;
                                     }
-                                    if (!item->GetShootThru()) {
+                                    if (!item_->GetShootThru()) {
                                         static_field.ShootBlocked = true;
                                         static_field.MoveBlocked = true;
                                     }
@@ -397,7 +397,7 @@ void MapManager::DestroyMapContent(Map* map)
     }
 }
 
-auto MapManager::CreateLocation(hstring proto_id, span<const hstring> map_pids, const Properties* props) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, const Properties* props) -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1182,7 +1182,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
     }
 
     cr->LockMapTransfers++;
-    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
     const auto prev_map_id = cr->GetMapId();
     auto* prev_map = prev_map_id ? _engine->EntityMngr.GetMap(prev_map_id) : nullptr;
@@ -1322,7 +1322,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
     FO_STACK_TRACE_ENTRY();
 
     cr->LockMapTransfers++;
-    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
@@ -1380,7 +1380,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     FO_STACK_TRACE_ENTRY();
 
     cr->LockMapTransfers++;
-    auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());

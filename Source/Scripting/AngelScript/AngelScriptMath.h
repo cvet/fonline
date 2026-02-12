@@ -35,10 +35,14 @@
 
 #include "Common.h"
 
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include <angelscript.h>
 
 FO_BEGIN_NAMESPACE
 
-void RegisterAngelScriptMath(AngelScript::asIScriptEngine* engine);
+void RegisterAngelScriptMath(AngelScript::asIScriptEngine* as_engine);
 
 FO_END_NAMESPACE
+
+#endif

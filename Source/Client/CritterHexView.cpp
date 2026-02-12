@@ -399,7 +399,7 @@ void CritterHexView::RefreshModel()
 
             _model = _modelSpr->GetModel();
             _model->AnimationCallbacks = std::move(animCallbacks);
-            _model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) {
+            _model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) FO_DEFERRED {
                 // Callback from 3d
                 _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
             });

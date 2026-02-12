@@ -45,7 +45,7 @@ public:
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
 
-    void Receive(span<const uint8> buf);
+    void Receive(const_span<uint8> buf);
 
 private:
     void DispatchImpl() override;
@@ -85,7 +85,7 @@ NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ServerN
     FO_STACK_TRACE_ENTRY();
 }
 
-void NetworkServerConnection_Interthread::Receive(span<const uint8> buf)
+void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -128,10 +128,10 @@ InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnect
         throw NetworkServerException("Port is busy", _virtualPort);
     }
 
-    InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
+    InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
         auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
         callback_(conn);
-        return [conn_ = conn](span<const uint8> buf) mutable { conn_->Receive(buf); };
+        return [conn_ = conn](const_span<uint8> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });
 }
 

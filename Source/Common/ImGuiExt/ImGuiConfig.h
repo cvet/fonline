@@ -21,11 +21,11 @@
 
 //---- Define assertion handler. Defaults to calling assert().
 // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
-[[noreturn]] extern void ImGuiRaiseAssert(const char* message);
+#include <stdexcept>
 #define IM_ASSERT(_EXPR) \
     do { \
         if (!(_EXPR)) { \
-            ImGuiRaiseAssert(#_EXPR); \
+            throw std::runtime_error("ImGui: " #_EXPR); \
         } \
     } while (false)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts

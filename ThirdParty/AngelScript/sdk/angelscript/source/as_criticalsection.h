@@ -71,7 +71,35 @@ inline bool tryEnter() { return true; }
 #define ACQUIRESHARED(x)           x.AcquireShared()
 #define RELEASESHARED(x)           x.ReleaseShared()
 
-#ifdef AS_POSIX_THREADS
+#ifdef AS_CXX_THREADS // (FOnline Patch)
+
+class asCThreadCriticalSection
+{
+public:
+	void Enter() { mutex.lock(); }
+	void Leave() { mutex.unlock(); }
+	bool TryEnter() { return mutex.try_lock(); }
+
+protected:
+	std::mutex mutex {};
+};
+
+class asCThreadReadWriteLock
+{
+public:
+	void AcquireExclusive() { mutex.lock(); }
+	void ReleaseExclusive() { mutex.unlock(); }
+	bool TryAcquireExclusive() { return mutex.try_lock(); }
+
+	void AcquireShared() { mutex.lock_shared(); }
+	void ReleaseShared() { mutex.unlock_shared(); }
+	bool TryAcquireShared() { return mutex.try_lock_shared(); }
+
+protected:
+	std::shared_mutex mutex {};
+};
+
+#elif defined(AS_POSIX_THREADS) // (FOnline Patch)
 
 END_AS_NAMESPACE
 #include <pthread.h>

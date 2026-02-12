@@ -71,7 +71,7 @@ class FixedDropMenu : Gui::IDropMenu
     void Draw()
     {
         if (ShowButtons.length() > 0) {
-            ipos pos = Settings.MousePos + ipos(20, 20); // Todo: rework to actual cursor size
+            ipos pos = Game.MousePos + ipos(20, 20); // Todo: rework to actual cursor size
             int activeIndex = PressedOffsetY / ButtonHeight;
             activeIndex = Math::Clamp(activeIndex, 0, ShowButtons.length() - 1);
             for (int i = 0; i < ShowButtons.length(); i++) {
@@ -124,7 +124,7 @@ class FixedDropMenu : Gui::IDropMenu
         if (Pressed) {
             if (offset != ZERO_IPOS) {
                 PressedOffsetY += offset.y;
-                Game.SetMousePos(Settings.MousePos - offset);
+                Game.SetMousePos(Game.MousePos - offset);
             }
             return true;
         }
@@ -144,8 +144,8 @@ class FixedDropMenu : Gui::IDropMenu
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
                 }
             }
-            else if (CurMap != null && (screen == null || !screen.IsModal)) {
-                Entity entity = CurMap.GetEntityAtScreenPos(Settings.MousePos);
+            else if (Game.CurMap != null && (screen == null || !screen.IsModal)) {
+                Entity entity = Game.CurMap.GetEntityAtScreenPos(Game.MousePos);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null)) {
                     SelectedEntity = entity;
                 }

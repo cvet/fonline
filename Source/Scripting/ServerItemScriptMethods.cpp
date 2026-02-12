@@ -39,19 +39,23 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
+FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
-        throw ScriptException("Call init failed", initFunc);
+    if (initFunc.IsDelegate()) {
+        throw ScriptException("Init function must not be a delegate");
     }
 
-    self->SetInitScript(initFunc);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
+        throw ScriptException("Call init failed", initFunc.GetName().first);
+    }
+
+    self->SetInitScript(initFunc.GetName().first);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 

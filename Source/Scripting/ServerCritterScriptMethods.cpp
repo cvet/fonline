@@ -39,19 +39,23 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
+FO_SCRIPT_API void Server_Critter_SetupScript(Critter* self, ScriptFunc<void, Critter*, bool> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
-        throw ScriptException("Call init failed", initFunc);
+    if (initFunc.IsDelegate()) {
+        throw ScriptException("Init function must not be a delegate");
     }
 
-    self->SetInitScript(initFunc);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
+        throw ScriptException("Call init failed", initFunc.GetName().first);
+    }
+
+    self->SetInitScript(initFunc.GetName().first);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 
@@ -167,7 +171,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, readonly_vector<Critter*> group)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -605,13 +609,13 @@ FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, const vector<Item*>& items)
+FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items)
 {
     self->Send_SomeItems(items, false, false, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, const vector<Item*>& items, bool owned, bool withInnerEntities, any_t contextParam)
+FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned, bool withInnerEntities, any_t contextParam)
 {
     self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }

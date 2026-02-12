@@ -88,10 +88,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
-    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) { Net_OnConnect(result); });
-    _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
-    _conn.AddMessageHandler(NetMessage::UpdateFileData, [this] { Net_OnUpdateFileData(); });
+    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
+    _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
+    _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
     // Connect
     AddText(StrConnectToServer);
@@ -228,14 +228,14 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32>();
 
     vector<uint8> data;
     data.resize(data_size);
-    _conn.InBuf.Pop(data.data(), data_size);
+    _conn.InBuf->Pop(data.data(), data_size);
 
-    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    const auto time = _conn.InBuf.Read<synctime>();
+    _conn.InBuf->ReadPropsData(_globalsPropertiesData);
+    const auto time = _conn.InBuf->Read<synctime>();
 
     _gameTime.SetSynchronizedTime(time);
 
@@ -298,10 +298,10 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = numeric_cast<size_t>(_conn.InBuf.Read<int32>());
+    const auto data_size = numeric_cast<size_t>(_conn.InBuf->Read<int32>());
 
     _updateFileBuf.resize(data_size);
-    _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
+    _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     auto& update_file = _filesToUpdate.front();
 
@@ -316,8 +316,8 @@ void Updater::Net_OnUpdateFileData()
     update_file.RemaningSize -= data_size;
 
     if (update_file.RemaningSize > 0u) {
-        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFileData);
-        _conn.OutBuf.EndMsg();
+        _conn.OutBuf->StartMsg(NetMessage::GetUpdateFileData);
+        _conn.OutBuf->EndMsg();
         _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
     else {
@@ -351,9 +351,9 @@ void Updater::GetNextFile()
     if (!_filesToUpdate.empty()) {
         const auto& next_update_file = _filesToUpdate.front();
 
-        _conn.OutBuf.StartMsg(NetMessage::GetUpdateFile);
-        _conn.OutBuf.Write(next_update_file.Index);
-        _conn.OutBuf.EndMsg();
+        _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
+        _conn.OutBuf->Write(next_update_file.Index);
+        _conn.OutBuf->EndMsg();
 
         DiskFileSystem::DeleteFile(make_write_path(strex("~{}", next_update_file.Name)));
         _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(make_write_path(strex("~{}", next_update_file.Name)), true));

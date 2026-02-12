@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 class LocationView final : public ClientEntity, public EntityWithProto, public LocationProperties
 {
 public:
-    LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr);
+    LocationView(ClientEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr);
     LocationView(const LocationView&) = delete;
     LocationView(LocationView&&) noexcept = delete;
     auto operator=(const LocationView&) = delete;

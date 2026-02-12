@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-class FOClient;
+class ClientEngine;
 
 class ClientEntity : public Entity
 {
@@ -52,20 +52,20 @@ public:
     auto operator=(ClientEntity&&) noexcept = delete;
     ~ClientEntity() override = default;
 
-    [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() const noexcept -> const FOClient* { return _engine.get(); }
-    [[nodiscard]] auto GetEngine() noexcept -> FOClient* { return _engine.get(); }
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }
+    [[nodiscard]] auto GetEngine() const noexcept -> const ClientEngine* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> ClientEngine* { return _engine.get(); }
 
     void SetId(ident_t id, bool register_entity);
     void DestroySelf();
 
 protected:
-    ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
+    ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
 
     virtual void OnDestroySelf() = 0;
 
-    raw_ptr<FOClient> _engine;
+    raw_ptr<ClientEngine> _engine;
     string _name {};
 
 private:
@@ -76,7 +76,7 @@ private:
 class CustomEntityView : public ClientEntity, public EntityProperties
 {
 public:
-    CustomEntityView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+    CustomEntityView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
         ClientEntity(engine, id, registrator, props),
         EntityProperties(GetInitRef())
     {
@@ -88,7 +88,7 @@ public:
 class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProto
 {
 public:
-    CustomEntityWithProtoView(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) :
+    CustomEntityWithProtoView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) :
         CustomEntityView(engine, id, registrator, &proto->GetProperties()),
         EntityWithProto(proto)
     {

@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-Critter::Critter(FOServer* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
+Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
@@ -919,7 +919,7 @@ void Critter::Send_PlaceToGameComplete()
     }
 }
 
-void Critter::Send_SomeItems(const vector<Item*>& items, bool owned, bool with_inner_entities, const any_t& context_param)
+void Critter::Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-class FOServer;
+class ServerEngine;
 
 class ServerEntity : public Entity
 {
@@ -54,17 +54,17 @@ public:
     auto operator=(ServerEntity&&) noexcept = delete;
     ~ServerEntity() override = default;
 
-    [[nodiscard]] auto GetId() const noexcept -> ident_t { return _id; }
-    [[nodiscard]] auto GetEngine() const noexcept -> const FOServer* { return _engine.get(); }
-    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { return _engine.get(); }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }
+    [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return _engine.get(); }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
 
 protected:
-    ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
+    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
 
-    raw_ptr<FOServer> _engine;
+    raw_ptr<ServerEngine> _engine;
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager
@@ -76,7 +76,7 @@ private:
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
+    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
         ServerEntity(engine, id, registrator, props),
         EntityProperties(GetInitRef())
     {
@@ -88,7 +88,7 @@ public:
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
-    CustomEntityWithProto(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
+    CustomEntityWithProto(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
         CustomEntity(engine, id, registrator, &proto->GetProperties()),
         EntityWithProto(proto)
     {

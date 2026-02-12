@@ -57,7 +57,7 @@ public:
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8>;
 
     void SetString(string_view entry_name, string_view str);
-    void SetData(string_view entry_name, span<const uint8> data);
+    void SetData(string_view entry_name, const_span<uint8> data);
     void RemoveEntry(string_view entry_name);
 
 private:

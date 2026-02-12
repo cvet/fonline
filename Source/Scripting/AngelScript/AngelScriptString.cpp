@@ -32,8 +32,11 @@
 //
 
 #include "AngelScriptString.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "AngelScriptArray.h"
-#include "AngelScriptWrappedCall.h"
+#include "AngelScriptHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -670,9 +673,11 @@ static auto ScriptString_TrimEnd(const string& str, const string& chars) -> stri
     FO_NO_STACK_TRACE_ENTRY();
 
     const size_t last = str.find_last_not_of(chars);
+
     if (last == string::npos) {
         return str;
     }
+
     return str.substr(0, last + 1);
 }
 
@@ -682,9 +687,8 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
 
     const auto* ctx = AngelScript::asGetActiveContext();
     FO_RUNTIME_ASSERT(ctx);
-
-    const auto* engine = ctx->GetEngine();
-    auto* array = ScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("string[]")));
+    auto* as_engine = ctx->GetEngine();
+    auto* array = CreateScriptArray(as_engine, "string[]");
 
     size_t pos = 0;
     size_t prev = 0;
@@ -693,7 +697,7 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     while ((pos = str.find(delim, prev)) != string::npos) {
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
-            static_cast<string*>(array->At(count))->assign(&str[prev], pos - prev);
+            cast_from_void<string*>(array->At(count))->assign(&str[prev], pos - prev);
             count++;
         }
 
@@ -702,7 +706,7 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
 
     if (str.size() - prev > 0 || !remove_empty_entries) {
         array->Resize(array->GetSize() + 1);
-        static_cast<string*>(array->At(count))->assign(&str[prev]);
+        cast_from_void<string*>(array->At(count))->assign(&str[prev]);
     }
 
     return array;
@@ -730,7 +734,7 @@ static auto ScriptString_Join(const string& str, const ScriptArray* array) -> st
         size_t capacity = size * str.size();
 
         for (int32 i = 0; i < size; i++) {
-            const string& entry = *static_cast<const string*>(array->At(i));
+            const string& entry = *cast_from_void<const string*>(array->At(i));
             capacity += entry.length();
         }
 
@@ -738,11 +742,11 @@ static auto ScriptString_Join(const string& str, const ScriptArray* array) -> st
         result.reserve(capacity);
 
         for (int32 i = 0; i < size - 1; i++) {
-            result += *static_cast<const string*>(array->At(i));
+            result += *cast_from_void<const string*>(array->At(i));
             result += str;
         }
 
-        result += *static_cast<const string*>(array->At(size - 1));
+        result += *cast_from_void<const string*>(array->At(size - 1));
     }
 
     return result;
@@ -778,163 +782,102 @@ static auto ScriptString_AddAnyR(const string& str, const any_t& other) -> strin
     return other + str;
 }
 
-void RegisterAngelScriptString(AngelScript::asIScriptEngine* engine)
+void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 r = 0;
+    int32 as_result = 0;
 
-    r = engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>());
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>()));
+    FO_AS_VERIFY(as_engine->RegisterStringFactory("string", FO_SCRIPT_FUNC(StringFactory), FO_SCRIPT_FUNC_CONV));
 
-    r = engine->RegisterStringFactory("string", SCRIPT_FUNC(StringFactory), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(ConstructString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f(const string &in)", FO_SCRIPT_FUNC_THIS(CopyConstructString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_DESTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(DestructString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(const string &in)", FO_SCRIPT_FUNC_THIS(AssignStringToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(const string &in)", FO_SCRIPT_FUNC_THIS(AddAssignStringToString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(ConstructString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_FUNC_THIS(CopyConstructString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(DestructString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAssign(const string &in)", SCRIPT_FUNC_THIS(AssignStringToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(const string &in)", SCRIPT_FUNC_THIS(AddAssignStringToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool opEquals(const string &in) const", FO_SCRIPT_FUNC_THIS(StringEquals), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", FO_SCRIPT_FUNC_THIS(StringCmp), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", FO_SCRIPT_FUNC_THIS(AddStringToString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(StringEquals), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", SCRIPT_FUNC_THIS(StringCmp), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", SCRIPT_FUNC_THIS(AddStringToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(double)", FO_SCRIPT_FUNC_THIS(AssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(double)", FO_SCRIPT_FUNC_THIS(AddAssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(double) const", FO_SCRIPT_FUNC_THIS(AddStringDouble), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(double) const", FO_SCRIPT_FUNC_THIS(AddDoubleString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "bool isEmpty() const", SCRIPT_FUNC_THIS(StringIsEmpty), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(float)", FO_SCRIPT_FUNC_THIS(AssignFloatToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(float)", FO_SCRIPT_FUNC_THIS(AddAssignFloatToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(float) const", FO_SCRIPT_FUNC_THIS(AddStringFloat), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(float) const", FO_SCRIPT_FUNC_THIS(AddFloatString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string &opAssign(double)", SCRIPT_FUNC_THIS(AssignDoubleToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(double)", SCRIPT_FUNC_THIS(AddAssignDoubleToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(double) const", SCRIPT_FUNC_THIS(AddStringDouble), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(double) const", SCRIPT_FUNC_THIS(AddDoubleString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(int64)", FO_SCRIPT_FUNC_THIS(AssignInt64ToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(int64)", FO_SCRIPT_FUNC_THIS(AddAssignInt64ToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(int64) const", FO_SCRIPT_FUNC_THIS(AddStringInt64), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(int64) const", FO_SCRIPT_FUNC_THIS(AddInt64String), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string &opAssign(float)", SCRIPT_FUNC_THIS(AssignFloatToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(float)", SCRIPT_FUNC_THIS(AddAssignFloatToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(float) const", SCRIPT_FUNC_THIS(AddStringFloat), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(float) const", SCRIPT_FUNC_THIS(AddFloatString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(uint64)", FO_SCRIPT_FUNC_THIS(AssignUInt64ToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(uint64)", FO_SCRIPT_FUNC_THIS(AddAssignUInt64ToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(uint64) const", FO_SCRIPT_FUNC_THIS(AddStringUInt64), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(uint64) const", FO_SCRIPT_FUNC_THIS(AddUInt64String), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string &opAssign(int64)", SCRIPT_FUNC_THIS(AssignInt64ToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(int64)", SCRIPT_FUNC_THIS(AddAssignInt64ToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(int64) const", SCRIPT_FUNC_THIS(AddStringInt64), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(int64) const", SCRIPT_FUNC_THIS(AddInt64String), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(bool)", FO_SCRIPT_FUNC_THIS(AssignBoolToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", FO_SCRIPT_FUNC_THIS(AddAssignBoolToString), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(bool) const", FO_SCRIPT_FUNC_THIS(AddStringBool), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(bool) const", FO_SCRIPT_FUNC_THIS(AddBoolString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string &opAssign(uint64)", SCRIPT_FUNC_THIS(AssignUInt64ToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(uint64)", SCRIPT_FUNC_THIS(AddAssignUInt64ToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(uint64) const", SCRIPT_FUNC_THIS(AddStringUInt64), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(uint64) const", SCRIPT_FUNC_THIS(AddUInt64String), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "void clear()", FO_SCRIPT_FUNC_THIS(ScriptString_Clear), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string &opAssign(bool)", SCRIPT_FUNC_THIS(AssignBoolToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", SCRIPT_FUNC_THIS(AddAssignBoolToString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(bool) const", SCRIPT_FUNC_THIS(AddStringBool), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(bool) const", SCRIPT_FUNC_THIS(AddBoolString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool isEmpty() const", FO_SCRIPT_FUNC_THIS(StringIsEmpty), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int length() const", FO_SCRIPT_FUNC_THIS(ScriptString_Length), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int rawLength() const", FO_SCRIPT_FUNC_THIS(ScriptString_RawLength), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "void rawResize(int)", FO_SCRIPT_FUNC_THIS(ScriptString_RawResize), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "uint8 rawGet(int) const", FO_SCRIPT_FUNC_THIS(ScriptString_RawGet), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "void rawSet(int, uint8)", FO_SCRIPT_FUNC_THIS(ScriptString_RawSet), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "void clear()", SCRIPT_FUNC_THIS(ScriptString_Clear), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int length() const", SCRIPT_FUNC_THIS(ScriptString_Length), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int rawLength() const", SCRIPT_FUNC_THIS(ScriptString_RawLength), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "void rawResize(int)", SCRIPT_FUNC_THIS(ScriptString_RawResize), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "uint8 rawGet(int) const", SCRIPT_FUNC_THIS(ScriptString_RawGet), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "void rawSet(int, uint8)", SCRIPT_FUNC_THIS(ScriptString_RawSet), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string replace(const string &in, const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_Replace), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string substr(int start = 0, int count = -1) const", FO_SCRIPT_FUNC_THIS(ScriptString_SubString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string replace(const string &in, const string &in) const", SCRIPT_FUNC_THIS(ScriptString_Replace), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string substr(int start = 0, int count = -1) const", SCRIPT_FUNC_THIS(ScriptString_SubString), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int find(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstOf), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, int start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstNotOf), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", SCRIPT_FUNC_THIS(ScriptString_FindLast), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findLastOf(const string &in, int start = -1) const", SCRIPT_FUNC_THIS(ScriptString_FindLastOf), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findLastNotOf(const string &in, int start = -1) const", SCRIPT_FUNC_THIS(ScriptString_FindLastNotOf), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int find(const string &in, int start = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindFirst), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, int start = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindFirstOf), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, int start = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindFirstNotOf), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindLast), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int findLastOf(const string &in, int start = -1) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindLastOf), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int findLastNotOf(const string &in, int start = -1) const", FO_SCRIPT_FUNC_THIS(ScriptString_FindLastNotOf), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string get_opIndex(int) const", SCRIPT_FUNC_THIS(ScriptString_GetAt), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "void set_opIndex(int, const string &in)", SCRIPT_FUNC_THIS(ScriptString_SetAt), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string get_opIndex(int) const", FO_SCRIPT_FUNC_THIS(ScriptString_GetAt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "void set_opIndex(int, const string &in)", FO_SCRIPT_FUNC_THIS(ScriptString_SetAt), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "int toInt(int defaultValue = 0) const", SCRIPT_FUNC_THIS(ScriptString_ToInt), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "float toFloat(float defaultValue = 0) const", SCRIPT_FUNC_THIS(ScriptString_ToFloat), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "bool tryToInt(int& result) const", SCRIPT_FUNC_THIS(ScriptString_TryToInt), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "bool tryToFloat(float& result) const", SCRIPT_FUNC_THIS(ScriptString_TryToFloat), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int toInt(int defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToInt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "float toFloat(float defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToFloat), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToInt(int& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToInt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToFloat(float& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToFloat), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "bool startsWith(const string &in) const", SCRIPT_FUNC_THIS(ScriptString_StartsWith), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "bool endsWith(const string &in) const", SCRIPT_FUNC_THIS(ScriptString_EndsWith), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool startsWith(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_StartsWith), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool endsWith(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_EndsWith), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string lower() const", SCRIPT_FUNC_THIS(ScriptString_Lower), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string upper() const", SCRIPT_FUNC_THIS(ScriptString_Upper), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string lower() const", FO_SCRIPT_FUNC_THIS(ScriptString_Lower), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string upper() const", FO_SCRIPT_FUNC_THIS(ScriptString_Upper), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "string trim(const string &in chars = \" \") const", SCRIPT_FUNC_THIS(ScriptString_Trim), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string trimBegin(const string &in chars = \" \") const", SCRIPT_FUNC_THIS(ScriptString_TrimBegin), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string trimEnd(const string &in chars = \" \") const", SCRIPT_FUNC_THIS(ScriptString_TrimEnd), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trim(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_Trim), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimBegin(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimBegin), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimEnd(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimEnd), FO_SCRIPT_FUNC_THIS_CONV));
 
-    r = engine->RegisterObjectMethod("string", "array<string>@ split(const string &in) const", SCRIPT_FUNC_THIS(ScriptString_Split), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "array<string>@ split(const string &in, bool removeEmptyEntries) const", SCRIPT_FUNC_THIS(ScriptString_SplitExt), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string join(const array<string>@+) const", SCRIPT_FUNC_THIS(ScriptString_Join), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "array<string>@ split(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_Split), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "array<string>@ split(const string &in, bool removeEmptyEntries) const", FO_SCRIPT_FUNC_THIS(ScriptString_SplitExt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string join(const array<string>@+) const", FO_SCRIPT_FUNC_THIS(ScriptString_Join), FO_SCRIPT_FUNC_THIS_CONV));
 }
 
-void RegisterAngelScriptStringAnyExtensions(AngelScript::asIScriptEngine* engine)
+void RegisterAngelScriptStringAnyExtensions(AngelScript::asIScriptEngine* as_engine)
 {
-    int32 r = engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AssignAny), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAny), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "string opAdd_r(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAnyR), SCRIPT_FUNC_THIS_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    int32 as_result = 0;
+
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", FO_SCRIPT_FUNC_THIS(ScriptString_AssignAny), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", FO_SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(const any &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_AddAny), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd_r(const any &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_AddAnyR), FO_SCRIPT_FUNC_THIS_CONV));
 }
 
 FO_END_NAMESPACE
+
+#endif

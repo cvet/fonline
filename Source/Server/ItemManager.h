@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-class FOServer;
+class ServerEngine;
 class ProtoManager;
 class EntityManager;
 class MapManager;
@@ -52,7 +52,7 @@ class ItemManager final
 {
 public:
     ItemManager() = delete;
-    explicit ItemManager(FOServer* engine);
+    explicit ItemManager(ServerEngine* engine);
     ItemManager(const ItemManager&) = delete;
     ItemManager(ItemManager&&) noexcept = delete;
     auto operator=(const ItemManager&) = delete;
@@ -75,7 +75,7 @@ private:
 
     void RemoveItemHolder(Item* item, Entity* holder);
 
-    raw_ptr<FOServer> _engine;
+    raw_ptr<ServerEngine> _engine;
 };
 
 FO_END_NAMESPACE

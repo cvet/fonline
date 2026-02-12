@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemManager::ItemManager(FOServer* engine) :
+ItemManager::ItemManager(ServerEngine* engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();

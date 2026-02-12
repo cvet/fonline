@@ -66,21 +66,33 @@
 
 FO_BEGIN_NAMESPACE
 
+// Force change of compatability version
+///@ MigrationRule Version 0 0 3
+
+#include "Version-Include.h"
+
 extern auto IsPackaged() -> bool;
 extern void ForcePackaged();
 
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_NON_NULL // Pointer annotation
+#define FO_DEFERRED // Lambda annotation
 
 ///@ ExportValueType ident ident_t Layout = int64-value
 using ident_t = strong_type<int64, struct ident_t_, strong_type_bool_test_tag>;
-static_assert(is_strong_type<ident_t>);
+static_assert(some_strong_type<ident_t>);
 
 // Custom any as string
-// Todo: export any_t with ExportType
+// Todo: export any_t with ExportValueType
 class any_t : public string
 {
+public:
+    any_t() = default;
+    explicit any_t(string other) :
+        string(std::move(other))
+    {
+    }
 };
 
 FO_END_NAMESPACE
@@ -113,11 +125,11 @@ FO_DECLARE_EXCEPTION(NotEnabled3DException);
 
 // Atomic formatter
 template<typename T>
-concept is_atomic = is_specialization<T, std::atomic>::value;
+concept some_atomic = specialization_of<T, std::atomic>;
 
 FO_END_NAMESPACE
 template<typename T>
-    requires(FO_NAMESPACE is_atomic<T>)
+    requires(FO_NAMESPACE some_atomic<T>)
 struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
@@ -183,9 +195,6 @@ public:
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
-            catch (...) {
-                FO_UNKNOWN_EXCEPTION();
-            }
         }
     }
 
@@ -219,16 +228,13 @@ public:
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
-            catch (...) {
-                FO_UNKNOWN_EXCEPTION();
-            }
         }
     }
 
     [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
         auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
-        return EventUnsubscriberCallback([this, it]() { _subscriberCallbacks.erase(it); });
+        return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
 private:
@@ -269,13 +275,13 @@ private:
 
 // Valid plain data for properties
 template<typename T>
-concept is_valid_property_plain_type = std::is_standard_layout_v<T> && !is_strong_type<T> && !std::same_as<T, any_t> && //
-    !std::is_arithmetic_v<T> && !std::is_enum_v<T> && !is_vector_collection<T> && !is_map_collection<T> && //
+concept some_property_plain_type = std::is_standard_layout_v<T> && !some_strong_type<T> && !std::same_as<T, any_t> && //
+    !std::is_arithmetic_v<T> && !std::is_enum_v<T> && !vector_collection<T> && !map_collection<T> && //
     std::has_unique_object_representations_v<T> && !std::is_convertible_v<T, string_view>;
-static_assert(!is_valid_property_plain_type<string>);
-static_assert(!is_valid_property_plain_type<string_view>);
-static_assert(!is_valid_property_plain_type<hstring>);
-static_assert(!is_valid_property_plain_type<any_t>);
+static_assert(!some_property_plain_type<string>);
+static_assert(!some_property_plain_type<string_view>);
+static_assert(!some_property_plain_type<hstring>);
+static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
 static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
@@ -427,16 +433,28 @@ enum class NetMessage : uint8
     SendProperty = 121,
 };
 
-struct BaseTypeInfo
+enum class EngineSideKind : uint8
 {
-    using StructLayoutEntry = pair<string, BaseTypeInfo>;
-    using StructLayoutInfo = std::vector<StructLayoutEntry>;
+    ServerSide,
+    ClientSide,
+    MapperSide,
+};
 
-    string TypeName {};
-    bool IsString {};
-    bool IsHash {};
+static constexpr size_t MAX_CALL_ARGS = 16;
+
+struct StructLayoutDesc;
+struct RefTypeDesc;
+
+struct BaseTypeDesc
+{
+    auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
+    string Name {};
+    bool IsObject {}; // entity, string, hstring, any, structs, ref types
+    bool IsEntity {};
+    bool IsGlobalEntity {};
+    bool IsString {}; // string, any
+    bool IsHashedString {};
     bool IsEnum {};
-    bool IsEnumSigned {};
     bool IsPrimitive {}; // IsInt or IsFloat or IsBool
     bool IsInt {};
     bool IsSignedInt {};
@@ -452,26 +470,317 @@ struct BaseTypeInfo
     bool IsSingleFloat {};
     bool IsDoubleFloat {};
     bool IsBool {};
+    bool IsStruct {};
     bool IsSimpleStruct {}; // Layout size is one primitive type
-    bool IsComplexStruct {}; // Layout more than one primitives
-    raw_ptr<const StructLayoutInfo> StructLayout {};
+    bool IsComplexStruct {}; // Layout more than one primitive
+    bool IsRefType {};
+    raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
+    raw_ptr<const StructLayoutDesc> StructLayout {};
+    raw_ptr<const RefTypeDesc> RefType {};
     size_t Size {};
 };
 
+enum class ComplexTypeKind : uint8
+{
+    None = 0,
+    Simple = 1,
+    Array = 2,
+    Dict = 3,
+    DictOfArray = 4,
+    Callback = 5,
+};
+
+struct ComplexTypeDesc
+{
+    explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
+    auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
+    ComplexTypeKind Kind {};
+    BaseTypeDesc BaseType {};
+    optional<BaseTypeDesc> KeyType {};
+    shared_ptr<vector<ComplexTypeDesc>> CallbackArgs {};
+    bool IsMutable {};
+};
+
+struct ArgDesc
+{
+    string Name {};
+    ComplexTypeDesc Type {};
+};
+
+struct FieldDesc
+{
+    string Name {};
+    BaseTypeDesc Type {};
+    size_t Offset {};
+};
+
+struct FuncCallData;
+
+struct MethodDesc
+{
+    using CallType = void (*)(FuncCallData&);
+
+    string Name {};
+    vector<ArgDesc> Args {};
+    ComplexTypeDesc Ret {};
+    CallType Call {};
+    bool Getter {};
+    bool Setter {};
+    bool PassOwnership {};
+};
+
+struct StructLayoutDesc
+{
+    vector<FieldDesc> Fields {};
+    size_t Size {};
+};
+
+struct RefTypeDesc
+{
+    vector<MethodDesc> Methods {};
+};
+
+struct RemoteCallDesc
+{
+    hstring Name {};
+    vector<ArgDesc> Args {};
+    string SubsystemHint {}; // File extension: fos, cs
+};
+
+template<typename Fn>
+void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
+{
+    FO_RUNTIME_ASSERT(p);
+
+    if (type.IsBool) {
+        fn(*cast_from_void<bool*>(p));
+        return;
+    }
+    else if (type.IsInt && type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            fn(*cast_from_void<int8*>(p));
+            return;
+        }
+        case 2: {
+            fn(*cast_from_void<int16*>(p));
+            return;
+        }
+        case 4: {
+            fn(*cast_from_void<int32*>(p));
+            return;
+        }
+        case 8: {
+            fn(*cast_from_void<int64*>(p));
+            return;
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsInt && !type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            fn(*cast_from_void<uint8*>(p));
+            return;
+        }
+        case 2: {
+            fn(*cast_from_void<uint16*>(p));
+            return;
+        }
+        case 4: {
+            fn(*cast_from_void<uint32*>(p));
+            return;
+        }
+        case 8: {
+            fn(*cast_from_void<uint64*>(p));
+            return;
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsFloat) {
+        if (type.IsSingleFloat) {
+            fn(*cast_from_void<float32*>(p));
+            return;
+        }
+        else if (type.IsDoubleFloat) {
+            fn(*cast_from_void<float64*>(p));
+            return;
+        }
+    }
+    else if (type.IsEnum) {
+        VisitBaseTypePrimitive(p, *type.EnumUnderlyingType, fn);
+        return;
+    }
+    else if (type.IsStruct) {
+        for (const auto& field : type.StructLayout->Fields) {
+            VisitBaseTypePrimitive(cast_from_void<uint8*>(p) + field.Offset, field.Type, fn);
+        }
+
+        return;
+    }
+
+    throw GenericException("Type is not visitable", type.Name);
+}
+
+template<typename Fn>
+void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& fn)
+{
+    FO_RUNTIME_ASSERT(p);
+
+    if (type.IsBool) {
+        fn(*cast_from_void<const bool*>(p));
+        return;
+    }
+    else if (type.IsInt && type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            fn(*cast_from_void<const int8*>(p));
+            return;
+        }
+        case 2: {
+            fn(*cast_from_void<const int16*>(p));
+            return;
+        }
+        case 4: {
+            fn(*cast_from_void<const int32*>(p));
+            return;
+        }
+        case 8: {
+            fn(*cast_from_void<const int64*>(p));
+            return;
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsInt && !type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            fn(*cast_from_void<const uint8*>(p));
+            return;
+        }
+        case 2: {
+            fn(*cast_from_void<const uint16*>(p));
+            return;
+        }
+        case 4: {
+            fn(*cast_from_void<const uint32*>(p));
+            return;
+        }
+        case 8: {
+            fn(*cast_from_void<const uint64*>(p));
+            return;
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsFloat) {
+        if (type.IsSingleFloat) {
+            fn(*cast_from_void<const float32*>(p));
+            return;
+        }
+        else if (type.IsDoubleFloat) {
+            fn(*cast_from_void<const float64*>(p));
+            return;
+        }
+    }
+    else if (type.IsEnum) {
+        VisitBaseTypePrimitive(p, *type.EnumUnderlyingType, fn);
+        return;
+    }
+    else if (type.IsStruct) {
+        for (const auto& field : type.StructLayout->Fields) {
+            VisitBaseTypePrimitive(cast_from_void<const uint8*>(p) + field.Offset, field.Type, fn);
+        }
+
+        return;
+    }
+
+    throw GenericException("Type is not visitable", type.Name);
+}
+
+template<typename Fn>
+decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTypeDesc& type, Fn&& fn)
+{
+    FO_RUNTIME_ASSERT(a);
+    FO_RUNTIME_ASSERT(b);
+
+    if (type.IsBool) {
+        return fn(*cast_from_void<const bool*>(a), *cast_from_void<const bool*>(b));
+    }
+    else if (type.IsInt && type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            return fn(*cast_from_void<const int8*>(a), *cast_from_void<const int8*>(b));
+        }
+        case 2: {
+            return fn(*cast_from_void<const int16*>(a), *cast_from_void<const int16*>(b));
+        }
+        case 4: {
+            return fn(*cast_from_void<const int32*>(a), *cast_from_void<const int32*>(b));
+        }
+        case 8: {
+            return fn(*cast_from_void<const int64*>(a), *cast_from_void<const int64*>(b));
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsInt && !type.IsSignedInt) {
+        switch (type.Size) {
+        case 1: {
+            return fn(*cast_from_void<const uint8*>(a), *cast_from_void<const uint8*>(b));
+        }
+        case 2: {
+            return fn(*cast_from_void<const uint16*>(a), *cast_from_void<const uint16*>(b));
+        }
+        case 4: {
+            return fn(*cast_from_void<const uint32*>(a), *cast_from_void<const uint32*>(b));
+        }
+        case 8: {
+            return fn(*cast_from_void<const uint64*>(a), *cast_from_void<const uint64*>(b));
+        }
+        default:
+            break;
+        }
+    }
+    else if (type.IsFloat) {
+        if (type.IsSingleFloat) {
+            return fn(*cast_from_void<const float32*>(a), *cast_from_void<const float32*>(b));
+        }
+        else if (type.IsDoubleFloat) {
+            return fn(*cast_from_void<const float64*>(a), *cast_from_void<const float64*>(b));
+        }
+    }
+    else if (type.IsEnum) {
+        return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
+    }
+    else if (type.IsSimpleStruct) {
+        const auto& field = type.StructLayout->Fields.front();
+        return VisitBaseTypePrimitive(a, b, field.Type, std::forward<Fn>(fn));
+    }
+
+    throw GenericException("Type is not binary visitable", type.Name);
+}
+
+FO_DECLARE_EXCEPTION(TypeResolveException);
 FO_DECLARE_EXCEPTION(EnumResolveException);
 
 class NameResolver
 {
 public:
-    virtual ~NameResolver() = default;
-    [[nodiscard]] virtual auto ResolveBaseType(string_view type_str) const -> BaseTypeInfo = 0;
-    [[nodiscard]] virtual auto GetEnumInfo(string_view enum_name, const BaseTypeInfo** underlying_type) const -> bool = 0;
-    [[nodiscard]] virtual auto GetValueTypeInfo(string_view type_name, size_t& size, const BaseTypeInfo::StructLayoutInfo** layout) const -> bool = 0;
+    [[nodiscard]] virtual auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& = 0;
+    [[nodiscard]] virtual auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
+    virtual ~NameResolver() = default;
 };
 
 class FrameBalancer
@@ -654,10 +963,10 @@ enum class MultihexGenerationType : uint8
 class AnimationResolver
 {
 public:
-    virtual ~AnimationResolver() = default;
     [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool = 0;
+    virtual ~AnimationResolver() = default;
 };
 
 FO_END_NAMESPACE

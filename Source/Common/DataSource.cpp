@@ -422,7 +422,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     }
 
     write_time = DiskFileSystem::GetWriteTime(full_path);
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
@@ -516,7 +516,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     write_time = fe.WriteTime;
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 auto CachedDir::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
@@ -809,7 +809,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     }
 
     write_time = _writeTime;
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 ZipFile::ZipFile(string_view fname)
@@ -830,16 +830,16 @@ ZipFile::ZipFile(string_view fname)
 
     ffunc.zopen_file = [](voidpf opaque, const char*, int32) -> voidpf { return opaque; };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        auto* file = static_cast<DiskFile*>(stream);
+        auto* file = cast_from_void<DiskFile*>(stream);
         return file->Read(buf, size) ? size : 0;
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        auto* file = static_cast<DiskFile*>(stream);
+        auto* file = cast_from_void<DiskFile*>(stream);
         return numeric_cast<long>(file->GetReadPos());
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
-        auto* file = static_cast<DiskFile*>(stream);
+        auto* file = cast_from_void<DiskFile*>(stream);
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Set);
@@ -856,7 +856,7 @@ ZipFile::ZipFile(string_view fname)
         return 0;
     };
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
-        const auto* file = static_cast<DiskFile*>(stream);
+        const auto* file = cast_from_void<DiskFile*>(stream);
         delete file;
         return 0;
     };
@@ -867,7 +867,7 @@ ZipFile::ZipFile(string_view fname)
         return 0;
     };
 
-    ffunc.opaque = p_file.release();
+    ffunc.opaque = cast_to_void(p_file.release());
 
     _zipHandle = unzOpen2(string(_fileName).c_str(), &ffunc);
 
@@ -979,7 +979,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const
 
     write_time = _writeTime;
     size = info.UncompressedSize;
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 EmbeddedFile::EmbeddedFile()
@@ -1014,23 +1014,23 @@ EmbeddedFile::EmbeddedFile()
         mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint32);
         mem_stream->Length = *reinterpret_cast<volatile const uint32*>(EMBEDDED_RESOURCES);
         mem_stream->Pos = 0;
-        return mem_stream;
+        return cast_to_void(mem_stream);
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        auto* mem_stream = static_cast<MemStream*>(stream);
+        auto* mem_stream = cast_from_void<MemStream*>(stream);
         for (size_t i = 0; i < size; i++) {
-            static_cast<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
+            cast_from_void<uint8*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
         }
-        mem_stream->Pos += static_cast<uint32>(size);
+        mem_stream->Pos += numeric_cast<uint32>(size);
         return size;
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        const auto* mem_stream = static_cast<MemStream*>(stream);
+        const auto* mem_stream = cast_from_void<MemStream*>(stream);
         return numeric_cast<long>(mem_stream->Pos);
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
-        auto* mem_stream = static_cast<MemStream*>(stream);
+        auto* mem_stream = cast_from_void<MemStream*>(stream);
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             mem_stream->Pos = numeric_cast<uint32>(offset);
@@ -1047,7 +1047,7 @@ EmbeddedFile::EmbeddedFile()
         return 0;
     };
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
-        const auto* mem_stream = static_cast<MemStream*>(stream);
+        const auto* mem_stream = cast_from_void<MemStream*>(stream);
         delete mem_stream;
         return 0;
     };
@@ -1181,7 +1181,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64& write_time) 
 
     write_time = _writeTime;
     size = info.UncompressedSize;
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 FilesList::FilesList()
@@ -1205,9 +1205,13 @@ FilesList::FilesList()
         throw DataSourceException("Can't read 'FilesTree.txt' in file list assets");
     }
 
-    auto names = strex(str).normalize_line_endings().split('\n');
+    for (string_view name : strvex(str).split('\n')) {
+        name = strvex(name).trim();
 
-    for (auto& name : names) {
+        if (name.empty()) {
+            continue;
+        }
+
         auto file = DiskFileSystem::OpenFile(name, false);
 
         if (!file) {
@@ -1220,7 +1224,7 @@ FilesList::FilesList()
         fe.WriteTime = DiskFileSystem::GetWriteTime(name);
 
         _filesTree.emplace(name, std::move(fe));
-        _filesTreeNames.emplace_back(std::move(name));
+        _filesTreeNames.emplace_back(name);
     }
 }
 
@@ -1278,7 +1282,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     write_time = fe.WriteTime;
-    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) { delete[] p; }};
+    return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
 auto FilesList::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>

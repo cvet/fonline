@@ -33,21 +33,16 @@
 
 #include "Client.h"
 #include "DefaultSprites.h"
+#include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "NetCommand.h"
 #include "ParticleSprites.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE
 
-extern void Client_RegisterData(EngineData*, const vector<uint8>&);
-extern void InitClientEngine(FOClient*);
+extern void InitClientEngine(ClientEngine*);
 
-#if FO_ANGELSCRIPT_SCRIPTING
-extern void Init_AngelScript_ClientScriptSystem(BaseEngine*);
-#endif
-
-static auto GetClientResources(GlobalSettings& settings) -> FileSystem
+auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -56,23 +51,8 @@ static auto GetClientResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-static void InitClientEngineData(EngineData* engine, const GlobalSettings& settings)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FileSystem resources;
-    resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Core");
-
-    if (const auto restore_info = resources.ReadFile("EngineData.fobin")) {
-        Client_RegisterData(engine, restore_info.GetData());
-    }
-    else {
-        throw EngineDataNotFoundException(FO_LINE_STR);
-    }
-}
-
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
-    BaseEngine(settings, GetClientResources(settings), PropertiesRelationType::ClientRelative, [&] { InitClientEngineData(this, settings); }),
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
+    BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
@@ -95,15 +75,15 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
-    ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
+    MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
+    MapEngineType<ItemView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
+    MapEngineType<ItemHexView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
+    MapEngineType<CritterView>(EngineMetadata::GetBaseType(CritterView::ENTITY_TYPE_NAME));
+    MapEngineType<CritterHexView>(EngineMetadata::GetBaseType(CritterView::ENTITY_TYPE_NAME));
+    MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
+    MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-#if FO_ANGELSCRIPT_SCRIPTING
-    Init_AngelScript_ClientScriptSystem(this);
-#endif
+    InitSubsystems(this);
 
     ProtoMngr.LoadFromResources(Resources);
 
@@ -113,40 +93,40 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     // Modules initialization
     InitClientEngine(this);
 
-    ScriptSys.InitModules();
+    InitModules();
 
     OnStart.Fire();
 
     // Connection handlers
-    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) { Net_OnConnect(result); });
-    _conn.SetDisconnectHandler([this] { Net_OnDisconnect(); });
-    _conn.AddMessageHandler(NetMessage::LoginSuccess, [this] { Net_OnLoginSuccess(); });
-    _conn.AddMessageHandler(NetMessage::RegisterSuccess, [this] { Net_OnRegisterSuccess(); });
-    _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this] { Net_OnPlaceToGameComplete(); });
-    _conn.AddMessageHandler(NetMessage::AddCritter, [this] { Net_OnAddCritter(); });
-    _conn.AddMessageHandler(NetMessage::RemoveCritter, [this] { Net_OnRemoveCritter(); });
-    _conn.AddMessageHandler(NetMessage::CritterAction, [this] { Net_OnCritterAction(); });
-    _conn.AddMessageHandler(NetMessage::CritterMoveItem, [this] { Net_OnCritterMoveItem(); });
-    _conn.AddMessageHandler(NetMessage::CritterTeleport, [this] { Net_OnCritterTeleport(); });
-    _conn.AddMessageHandler(NetMessage::CritterMove, [this] { Net_OnCritterMove(); });
-    _conn.AddMessageHandler(NetMessage::CritterMoveSpeed, [this] { Net_OnCritterMoveSpeed(); });
-    _conn.AddMessageHandler(NetMessage::CritterDir, [this] { Net_OnCritterDir(); });
-    _conn.AddMessageHandler(NetMessage::CritterPos, [this] { Net_OnCritterPos(); });
-    _conn.AddMessageHandler(NetMessage::CritterAttachments, [this] { Net_OnCritterAttachments(); });
-    _conn.AddMessageHandler(NetMessage::Property, [this] { Net_OnProperty(); });
-    _conn.AddMessageHandler(NetMessage::InfoMessage, [this] { Net_OnInfoMessage(); });
-    _conn.AddMessageHandler(NetMessage::ChosenAddItem, [this] { Net_OnChosenAddItem(); });
-    _conn.AddMessageHandler(NetMessage::ChosenRemoveItem, [this] { Net_OnChosenRemoveItem(); });
-    _conn.AddMessageHandler(NetMessage::TimeSync, [this] { Net_OnTimeSync(); });
-    _conn.AddMessageHandler(NetMessage::ViewMap, [this] { Net_OnViewMap(); });
-    _conn.AddMessageHandler(NetMessage::LoadMap, [this] { Net_OnLoadMap(); });
-    _conn.AddMessageHandler(NetMessage::SomeItems, [this] { Net_OnSomeItems(); });
-    _conn.AddMessageHandler(NetMessage::RemoteCall, [this] { Net_OnRemoteCall(); });
-    _conn.AddMessageHandler(NetMessage::AddItemOnMap, [this] { Net_OnAddItemOnMap(); });
-    _conn.AddMessageHandler(NetMessage::RemoveItemFromMap, [this] { Net_OnRemoveItemFromMap(); });
-    _conn.AddMessageHandler(NetMessage::InitData, [this] { Net_OnInitData(); });
-    _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this] { Net_OnAddCustomEntity(); });
-    _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this] { Net_OnRemoveCustomEntity(); });
+    _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
+    _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NetMessage::LoginSuccess, [this]() FO_DEFERRED { Net_OnLoginSuccess(); });
+    _conn.AddMessageHandler(NetMessage::RegisterSuccess, [this]() FO_DEFERRED { Net_OnRegisterSuccess(); });
+    _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this]() FO_DEFERRED { Net_OnPlaceToGameComplete(); });
+    _conn.AddMessageHandler(NetMessage::AddCritter, [this]() FO_DEFERRED { Net_OnAddCritter(); });
+    _conn.AddMessageHandler(NetMessage::RemoveCritter, [this]() FO_DEFERRED { Net_OnRemoveCritter(); });
+    _conn.AddMessageHandler(NetMessage::CritterAction, [this]() FO_DEFERRED { Net_OnCritterAction(); });
+    _conn.AddMessageHandler(NetMessage::CritterMoveItem, [this]() FO_DEFERRED { Net_OnCritterMoveItem(); });
+    _conn.AddMessageHandler(NetMessage::CritterTeleport, [this]() FO_DEFERRED { Net_OnCritterTeleport(); });
+    _conn.AddMessageHandler(NetMessage::CritterMove, [this]() FO_DEFERRED { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NetMessage::CritterMoveSpeed, [this]() FO_DEFERRED { Net_OnCritterMoveSpeed(); });
+    _conn.AddMessageHandler(NetMessage::CritterDir, [this]() FO_DEFERRED { Net_OnCritterDir(); });
+    _conn.AddMessageHandler(NetMessage::CritterPos, [this]() FO_DEFERRED { Net_OnCritterPos(); });
+    _conn.AddMessageHandler(NetMessage::CritterAttachments, [this]() FO_DEFERRED { Net_OnCritterAttachments(); });
+    _conn.AddMessageHandler(NetMessage::Property, [this]() FO_DEFERRED { Net_OnProperty(); });
+    _conn.AddMessageHandler(NetMessage::InfoMessage, [this]() FO_DEFERRED { Net_OnInfoMessage(); });
+    _conn.AddMessageHandler(NetMessage::ChosenAddItem, [this]() FO_DEFERRED { Net_OnChosenAddItem(); });
+    _conn.AddMessageHandler(NetMessage::ChosenRemoveItem, [this]() FO_DEFERRED { Net_OnChosenRemoveItem(); });
+    _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
+    _conn.AddMessageHandler(NetMessage::ViewMap, [this]() FO_DEFERRED { Net_OnViewMap(); });
+    _conn.AddMessageHandler(NetMessage::LoadMap, [this]() FO_DEFERRED { Net_OnLoadMap(); });
+    _conn.AddMessageHandler(NetMessage::SomeItems, [this]() FO_DEFERRED { Net_OnSomeItems(); });
+    _conn.AddMessageHandler(NetMessage::RemoteCall, [this]() FO_DEFERRED { Net_OnRemoteCall(); });
+    _conn.AddMessageHandler(NetMessage::AddItemOnMap, [this]() FO_DEFERRED { Net_OnAddItemOnMap(); });
+    _conn.AddMessageHandler(NetMessage::RemoveItemFromMap, [this]() FO_DEFERRED { Net_OnRemoveItemFromMap(); });
+    _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
+    _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this]() FO_DEFERRED { Net_OnAddCustomEntity(); });
+    _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this]() FO_DEFERRED { Net_OnRemoveCustomEntity(); });
 
     // Properties that sending to clients
     {
@@ -162,12 +142,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendLocationValue(entity, prop); });
     }
 
     // Properties with custom behaviours
@@ -177,31 +157,31 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterLookDistance(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemPicMap(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
     }
 
-    _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+    _eventUnsubscriber += window->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& resources, const EngineDataRegistrator& mapper_registrator) :
-    BaseEngine(settings, std::move(resources), PropertiesRelationType::BothRelative, mapper_registrator),
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window, const MeatdataRegistrator& mapper_registrator) :
+    BaseEngine(settings, std::move(resources), mapper_registrator),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
@@ -213,82 +193,88 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, FileSystem&& res
     FO_STACK_TRACE_ENTRY();
 }
 
-FOClient::~FOClient()
+ClientEngine::~ClientEngine()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void ClientEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    safe_call([] { App->Render.SetRenderTarget(nullptr); });
+    TimeEventMngr.ClearTimeEvents();
+    ShutdownBackends();
 
-    safe_call([this] {
-        _conn.SetConnectHandler(nullptr);
-        _conn.SetDisconnectHandler(nullptr);
-        _conn.Disconnect();
-    });
+    App->Render.SetRenderTarget(nullptr);
+
+    _conn.SetConnectHandler(nullptr);
+    _conn.SetDisconnectHandler(nullptr);
+    _conn.Disconnect();
 
     _chosen = nullptr;
 
     if (_curMap) {
-        safe_call([this] { _curMap->DestroySelf(); });
+        _curMap->DestroySelf();
         _curMap = nullptr;
     }
 
     if (_curLocation) {
-        safe_call([this] { _curLocation->DestroySelf(); });
+        _curLocation->DestroySelf();
         _curLocation = nullptr;
     }
 
     if (_curPlayer) {
-        safe_call([this] { _curPlayer->DestroySelf(); });
+        _curPlayer->DestroySelf();
         _curPlayer = nullptr;
     }
 
-    safe_call([this] {
-        for (auto& cr : _globalMapCritters) {
-            cr->DestroySelf();
-        }
-    });
+    for (auto& cr : _globalMapCritters) {
+        cr->DestroySelf();
+    }
 
     _globalMapCritters.clear();
 
-    safe_call([this] { DestroyInnerEntities(); });
+    DestroyInnerEntities();
+
+    FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
-auto FOClient::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
+auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
 }
 
-auto FOClient::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
+auto ClientEngine::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool
+auto ClientEngine::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
 }
 
-auto FOClient::IsConnecting() const noexcept -> bool
+auto ClientEngine::IsConnecting() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnecting();
 }
 
-auto FOClient::IsConnected() const noexcept -> bool
+auto ClientEngine::IsConnected() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return _conn.IsConnected();
 }
 
-auto FOClient::GetChosen() noexcept -> CritterView*
+auto ClientEngine::GetChosen() noexcept -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -299,14 +285,14 @@ auto FOClient::GetChosen() noexcept -> CritterView*
     return _chosen.get();
 }
 
-auto FOClient::GetMapChosen() noexcept -> CritterHexView*
+auto ClientEngine::GetMapChosen() noexcept -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
-auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
+auto ClientEngine::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -314,7 +300,7 @@ auto FOClient::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
     return it != _globalMapCritters.end() ? it->get() : nullptr;
 }
 
-void FOClient::MainLoop()
+void ClientEngine::MainLoop()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -332,7 +318,7 @@ void FOClient::MainLoop()
 
     _conn.Process();
     ProcessInputEvents();
-    ScriptSys.Process();
+    ProcessScriptEvents();
     TimeEventMngr.ProcessTimeEvents();
     OnLoop.Fire();
 
@@ -368,7 +354,7 @@ void FOClient::MainLoop()
     }
 }
 
-void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
+void ClientEngine::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -388,7 +374,7 @@ void FOClient::ScreenFade(timespan time, ucolor from_color, ucolor to_color, boo
     }
 }
 
-void FOClient::ProcessScreenEffectFading()
+void ClientEngine::ProcessScreenEffectFading()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -429,7 +415,7 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
-void FOClient::ScreenQuake(int32 noise, timespan time)
+void ClientEngine::ScreenQuake(int32 noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -442,7 +428,7 @@ void FOClient::ScreenQuake(int32 noise, timespan time)
     _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 }
 
-void FOClient::ProcessScreenEffectQuake()
+void ClientEngine::ProcessScreenEffectQuake()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -470,7 +456,7 @@ void FOClient::ProcessScreenEffectQuake()
     }
 }
 
-void FOClient::ProcessInputEvents()
+void ClientEngine::ProcessInputEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -488,7 +474,7 @@ void FOClient::ProcessInputEvents()
     }
 }
 
-void FOClient::ProcessInputEvent(const InputEvent& ev)
+void ClientEngine::ProcessInputEvent(const InputEvent& ev)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -552,7 +538,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     }
 }
 
-void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
+void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -584,7 +570,7 @@ void FOClient::Net_OnConnect(ClientConnection::ConnectResult result)
     }
 }
 
-void FOClient::Net_OnDisconnect()
+void ClientEngine::Net_OnDisconnect()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -601,52 +587,55 @@ void FOClient::Net_OnDisconnect()
     OnDisconnected.Fire();
 }
 
-void FOClient::Net_SendLogIn()
+void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    ignore_unused(caller);
+
+    _conn.OutBuf->StartMsg(NetMessage::RemoteCall);
+    _conn.OutBuf->Write<hstring>(name);
+    _conn.OutBuf->Write<int32>(numeric_cast<int32>(data.size()));
+    _conn.OutBuf->Push(data);
+    _conn.OutBuf->EndMsg();
+}
+
+void ClientEngine::Net_SendLogIn()
+{
+    FO_STACK_TRACE_ENTRY();
 
     WriteLog("Player login");
 
-    _conn.OutBuf.StartMsg(NetMessage::Login);
-    _conn.OutBuf.Write(_loginName);
-    _conn.OutBuf.Write(_loginPassword);
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->StartMsg(NetMessage::Login);
+    _conn.OutBuf->Write(_loginName);
+    _conn.OutBuf->Write(_loginPassword);
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_SendCreatePlayer()
+void ClientEngine::Net_SendCreatePlayer()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     WriteLog("Player registration");
 
-    _conn.OutBuf.StartMsg(NetMessage::Register);
-    _conn.OutBuf.Write(_loginName);
-    _conn.OutBuf.Write(_loginPassword);
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->StartMsg(NetMessage::Register);
+    _conn.OutBuf->Write(_loginName);
+    _conn.OutBuf->Write(_loginPassword);
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_SendDir(CritterHexView* cr)
+void ClientEngine::Net_SendDir(CritterHexView* cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NetMessage::SendCritterDir);
-    _conn.OutBuf.Write(_curMap->GetId());
-    _conn.OutBuf.Write(cr->GetId());
-    _conn.OutBuf.Write(cr->GetDirAngle());
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->StartMsg(NetMessage::SendCritterDir);
+    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(cr->GetId());
+    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_SendMove(CritterHexView* cr)
+void ClientEngine::Net_SendMove(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
 
@@ -656,52 +645,49 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    _conn.OutBuf.StartMsg(NetMessage::SendCritterMove);
-    _conn.OutBuf.Write(_curMap->GetId());
-    _conn.OutBuf.Write(cr->GetId());
-    _conn.OutBuf.Write(cr->Moving.Speed);
-    _conn.OutBuf.Write(cr->Moving.StartHex);
-    _conn.OutBuf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
+    _conn.OutBuf->StartMsg(NetMessage::SendCritterMove);
+    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(cr->GetId());
+    _conn.OutBuf->Write(cr->Moving.Speed);
+    _conn.OutBuf->Write(cr->Moving.StartHex);
+    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
     for (const auto step : cr->Moving.Steps) {
-        _conn.OutBuf.Write(step);
+        _conn.OutBuf->Write(step);
     }
-    _conn.OutBuf.Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
+    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
     for (const auto control_step : cr->Moving.ControlSteps) {
-        _conn.OutBuf.Write(control_step);
+        _conn.OutBuf->Write(control_step);
     }
-    _conn.OutBuf.Write(cr->Moving.EndHexOffset);
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->Write(cr->Moving.EndHexOffset);
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_SendStopMove(CritterHexView* cr)
+void ClientEngine::Net_SendStopMove(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf.StartMsg(NetMessage::SendStopCritterMove);
-    _conn.OutBuf.Write(_curMap->GetId());
-    _conn.OutBuf.Write(cr->GetId());
-    _conn.OutBuf.Write(cr->GetHex());
-    _conn.OutBuf.Write(cr->GetHexOffset());
-    _conn.OutBuf.Write(cr->GetDirAngle());
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->StartMsg(NetMessage::SendStopCritterMove);
+    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(cr->GetId());
+    _conn.OutBuf->Write(cr->GetHex());
+    _conn.OutBuf->Write(cr->GetHexOffset());
+    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity)
+void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     FO_RUNTIME_ASSERT(entity);
 
     const auto& props = entity->GetProperties();
     props.ValidateForRawData(prop);
     const auto prop_raw_data = props.GetRawData(prop);
 
-    _conn.OutBuf.StartMsg(NetMessage::SendProperty);
-    _conn.OutBuf.Write(numeric_cast<uint32>(prop_raw_data.size()));
-    _conn.OutBuf.Write(type);
+    _conn.OutBuf->StartMsg(NetMessage::SendProperty);
+    _conn.OutBuf->Write(numeric_cast<uint32>(prop_raw_data.size()));
+    _conn.OutBuf->Write(type);
 
     switch (type) {
     case NetProperty::CritterItem: {
@@ -709,45 +695,45 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, const En
         FO_RUNTIME_ASSERT(client_entity);
         const auto* item = dynamic_cast<const ItemView*>(client_entity);
         FO_RUNTIME_ASSERT(item);
-        _conn.OutBuf.Write(item->GetCritterId());
-        _conn.OutBuf.Write(client_entity->GetId());
+        _conn.OutBuf->Write(item->GetCritterId());
+        _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
-        _conn.OutBuf.Write(client_entity->GetId());
+        _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
-        _conn.OutBuf.Write(client_entity->GetId());
+        _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
         FO_RUNTIME_ASSERT(client_entity);
-        _conn.OutBuf.Write(client_entity->GetId());
+        _conn.OutBuf->Write(client_entity->GetId());
     } break;
     default:
         break;
     }
 
-    _conn.OutBuf.Write(prop->GetRegIndex());
-    _conn.OutBuf.Push(prop_raw_data);
-    _conn.OutBuf.EndMsg();
+    _conn.OutBuf->Write(prop->GetRegIndex());
+    _conn.OutBuf->Push(prop_raw_data);
+    _conn.OutBuf->EndMsg();
 }
 
-void FOClient::Net_OnInitData()
+void ClientEngine::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32>();
 
     vector<uint8> data;
     data.resize(data_size);
-    _conn.InBuf.Pop(data.data(), data_size);
+    _conn.InBuf->Pop(data.data(), data_size);
 
-    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    const auto time = _conn.InBuf.Read<synctime>();
+    _conn.InBuf->ReadPropsData(_globalsPropertiesData);
+    const auto time = _conn.InBuf->Read<synctime>();
 
     RestoreData(_globalsPropertiesData);
     GameTime.SetSynchronizedTime(time);
@@ -789,7 +775,7 @@ void FOClient::Net_OnInitData()
     }
 }
 
-void FOClient::Net_OnRegisterSuccess()
+void ClientEngine::Net_OnRegisterSuccess()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -798,15 +784,15 @@ void FOClient::Net_OnRegisterSuccess()
     OnRegistrationSuccess.Fire();
 }
 
-void FOClient::Net_OnLoginSuccess()
+void ClientEngine::Net_OnLoginSuccess()
 {
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Authentication success");
 
-    const auto player_id = _conn.InBuf.Read<ident_t>();
-    _conn.InBuf.ReadPropsData(_globalsPropertiesData);
-    _conn.InBuf.ReadPropsData(_playerPropertiesData);
+    const auto player_id = _conn.InBuf->Read<ident_t>();
+    _conn.InBuf->ReadPropsData(_globalsPropertiesData);
+    _conn.InBuf->ReadPropsData(_playerPropertiesData);
 
     RestoreData(_globalsPropertiesData);
 
@@ -821,20 +807,20 @@ void FOClient::Net_OnLoginSuccess()
     OnLoginSuccess.Fire();
 }
 
-void FOClient::Net_OnAddCritter()
+void ClientEngine::Net_OnAddCritter()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto hex_offset = _conn.InBuf.Read<ipos16>();
-    const auto dir_angle = _conn.InBuf.Read<int16>();
-    const auto cond = _conn.InBuf.Read<CritterCondition>();
-    const auto is_controlled_by_player = _conn.InBuf.Read<bool>();
-    const auto is_player_offline = _conn.InBuf.Read<bool>();
-    const auto is_chosen = _conn.InBuf.Read<bool>();
-    _conn.InBuf.ReadPropsData(_tempPropertiesData);
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+    const auto hex = _conn.InBuf->Read<mpos>();
+    const auto hex_offset = _conn.InBuf->Read<ipos16>();
+    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto cond = _conn.InBuf->Read<CritterCondition>();
+    const auto is_controlled_by_player = _conn.InBuf->Read<bool>();
+    const auto is_player_offline = _conn.InBuf->Read<bool>();
+    const auto is_chosen = _conn.InBuf->Read<bool>();
+    _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     refcount_ptr<CritterView> cr;
     CritterHexView* hex_cr;
@@ -875,13 +861,13 @@ void FOClient::Net_OnAddCritter()
     cr->SetIsPlayerOffline(is_player_offline);
 
     // Initial items
-    const auto items_count = _conn.InBuf.Read<uint32>();
+    const auto items_count = _conn.InBuf->Read<uint32>();
 
     for (uint32 i = 0; i < items_count; i++) {
-        const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-        const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        const auto item_id = _conn.InBuf->Read<ident_t>();
+        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+        _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
@@ -890,14 +876,14 @@ void FOClient::Net_OnAddCritter()
     }
 
     // Initial attachment
-    const auto is_attached = _conn.InBuf.Read<bool>();
+    const auto is_attached = _conn.InBuf->Read<bool>();
 
-    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    const auto attached_critters_count = _conn.InBuf->Read<uint16>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
     for (uint16 i = 0; i < attached_critters_count; i++) {
-        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+        attached_critters[i] = _conn.InBuf->Read<ident_t>();
     }
 
     cr->SetIsAttached(is_attached);
@@ -919,7 +905,7 @@ void FOClient::Net_OnAddCritter()
     }
 
     // Initial moving
-    const auto is_moving = _conn.InBuf.Read<bool>();
+    const auto is_moving = _conn.InBuf->Read<bool>();
 
     if (is_moving) {
         ReceiveCritterMoving(hex_cr);
@@ -955,11 +941,11 @@ void FOClient::Net_OnAddCritter()
     OnCritterIn.Fire(cr.get());
 }
 
-void FOClient::Net_OnRemoveCritter()
+void ClientEngine::Net_OnRemoveCritter()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
 
     if (_curMap) {
         auto* cr = _curMap->GetCritter(cr_id);
@@ -998,24 +984,22 @@ void FOClient::Net_OnRemoveCritter()
     }
 }
 
-void FOClient::Net_OnInfoMessage()
+void ClientEngine::Net_OnInfoMessage()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto info_message = _conn.InBuf.Read<EngineInfoMessage>();
-    const auto extra_text = _conn.InBuf.Read<string>();
+    const auto info_message = _conn.InBuf->Read<EngineInfoMessage>();
+    const auto extra_text = _conn.InBuf->Read<string>();
 
     OnInfoMessage.Fire(info_message, extra_text);
 }
 
-void FOClient::Net_OnCritterDir()
+void ClientEngine::Net_OnCritterDir()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto dir_angle = _conn.InBuf.Read<int16>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto dir_angle = _conn.InBuf->Read<int16>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1034,13 +1018,11 @@ void FOClient::Net_OnCritterDir()
     }
 }
 
-void FOClient::Net_OnCritterMove()
+void ClientEngine::Net_OnCritterMove()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
     auto* cr = _curMap->GetCritter(cr_id);
 
     ReceiveCritterMoving(cr);
@@ -1050,14 +1032,12 @@ void FOClient::Net_OnCritterMove()
     }
 }
 
-void FOClient::Net_OnCritterMoveSpeed()
+void ClientEngine::Net_OnCritterMoveSpeed()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto speed = _conn.InBuf.Read<uint16>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto speed = _conn.InBuf->Read<uint16>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1088,21 +1068,21 @@ void FOClient::Net_OnCritterMoveSpeed()
     cr->RefreshView();
 }
 
-void FOClient::Net_OnCritterAction()
+void ClientEngine::Net_OnCritterAction()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto action = _conn.InBuf.Read<CritterAction>();
-    const auto action_ext = _conn.InBuf.Read<int32>();
-    const auto is_context_item = _conn.InBuf.Read<bool>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto action = _conn.InBuf->Read<CritterAction>();
+    const auto action_ext = _conn.InBuf->Read<int32>();
+    const auto is_context_item = _conn.InBuf->Read<bool>();
 
     refcount_ptr<ItemView> context_item;
 
     if (is_context_item) {
-        const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        const auto item_id = _conn.InBuf->Read<ident_t>();
+        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1129,22 +1109,22 @@ void FOClient::Net_OnCritterAction()
     }
 }
 
-void FOClient::Net_OnCritterMoveItem()
+void ClientEngine::Net_OnCritterMoveItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto action = _conn.InBuf.Read<CritterAction>();
-    const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
-    const auto is_moved_item = _conn.InBuf.Read<bool>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto action = _conn.InBuf->Read<CritterAction>();
+    const auto prev_slot = _conn.InBuf->Read<CritterItemSlot>();
+    const auto cur_slot = _conn.InBuf->Read<CritterItemSlot>();
+    const auto is_moved_item = _conn.InBuf->Read<bool>();
 
     refcount_ptr<ItemView> moved_item;
 
     if (is_moved_item) {
-        const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        const auto item_id = _conn.InBuf->Read<ident_t>();
+        const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+        _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
         moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1166,13 +1146,13 @@ void FOClient::Net_OnCritterMoveItem()
         BreakIntoDebugger();
 
         // Skip rest data
-        const auto items_count = _conn.InBuf.Read<uint32>();
+        const auto items_count = _conn.InBuf->Read<uint32>();
 
         for (uint32 i = 0; i < items_count; i++) {
-            (void)_conn.InBuf.Read<ident_t>();
-            (void)_conn.InBuf.Read<hstring>(Hashes);
-            (void)_conn.InBuf.Read<CritterItemSlot>();
-            _conn.InBuf.ReadPropsData(_tempPropertiesData);
+            (void)_conn.InBuf->Read<ident_t>();
+            (void)_conn.InBuf->Read<hstring>(Hashes);
+            (void)_conn.InBuf->Read<CritterItemSlot>();
+            _conn.InBuf->ReadPropsData(_tempPropertiesData);
             ReceiveCustomEntities(nullptr);
         }
 
@@ -1180,7 +1160,7 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     // Todo: refactor critters inventory updating
-    const auto items_count = _conn.InBuf.Read<uint32>();
+    const auto items_count = _conn.InBuf->Read<uint32>();
 
     if (items_count != 0) {
         FO_RUNTIME_ASSERT(!cr->GetIsChosen());
@@ -1188,10 +1168,10 @@ void FOClient::Net_OnCritterMoveItem()
         cr->DeleteAllInvItems();
 
         for (uint32 i = 0; i < items_count; i++) {
-            const auto item_id = _conn.InBuf.Read<ident_t>();
-            const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-            const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-            _conn.InBuf.ReadPropsData(_tempPropertiesData);
+            const auto item_id = _conn.InBuf->Read<ident_t>();
+            const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+            const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+            _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
             const auto* proto = ProtoMngr.GetProtoItem(item_pid);
             auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
@@ -1219,14 +1199,12 @@ void FOClient::Net_OnCritterMoveItem()
     }
 }
 
-void FOClient::Net_OnCritterTeleport()
+void ClientEngine::Net_OnCritterTeleport()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto to_hex = _conn.InBuf.Read<mpos>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto to_hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1246,16 +1224,14 @@ void FOClient::Net_OnCritterTeleport()
     }
 }
 
-void FOClient::Net_OnCritterPos()
+void ClientEngine::Net_OnCritterPos()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto hex_offset = _conn.InBuf.Read<ipos16>();
-    const auto dir_angle = _conn.InBuf.Read<int16>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto hex = _conn.InBuf->Read<mpos>();
+    const auto hex_offset = _conn.InBuf->Read<ipos16>();
+    const auto dir_angle = _conn.InBuf->Read<int16>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1292,20 +1268,20 @@ void FOClient::Net_OnCritterPos()
     }
 }
 
-void FOClient::Net_OnCritterAttachments()
+void ClientEngine::Net_OnCritterAttachments()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto is_attached = _conn.InBuf.Read<bool>();
-    const auto attach_master = _conn.InBuf.Read<ident_t>();
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto is_attached = _conn.InBuf->Read<bool>();
+    const auto attach_master = _conn.InBuf->Read<ident_t>();
 
-    const auto attached_critters_count = _conn.InBuf.Read<uint16>();
+    const auto attached_critters_count = _conn.InBuf->Read<uint16>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
     for (uint16 i = 0; i < attached_critters_count; i++) {
-        attached_critters[i] = _conn.InBuf.Read<ident_t>();
+        attached_critters[i] = _conn.InBuf->Read<ident_t>();
     }
 
     if (_curMap) {
@@ -1351,14 +1327,14 @@ void FOClient::Net_OnCritterAttachments()
     }
 }
 
-void FOClient::Net_OnChosenAddItem()
+void ClientEngine::Net_OnChosenAddItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto item_slot = _conn.InBuf.Read<CritterItemSlot>();
-    _conn.InBuf.ReadPropsData(_tempPropertiesData);
+    const auto item_id = _conn.InBuf->Read<ident_t>();
+    const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+    const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
+    _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     auto* chosen = GetChosen();
 
@@ -1393,11 +1369,11 @@ void FOClient::Net_OnChosenAddItem()
     OnItemInvIn.Fire(item);
 }
 
-void FOClient::Net_OnChosenRemoveItem()
+void ClientEngine::Net_OnChosenRemoveItem()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto item_id = _conn.InBuf->Read<ident_t>();
 
     auto* chosen = GetChosen();
 
@@ -1428,14 +1404,14 @@ void FOClient::Net_OnChosenRemoveItem()
     }
 }
 
-void FOClient::Net_OnAddItemOnMap()
+void ClientEngine::Net_OnAddItemOnMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex = _conn.InBuf.Read<mpos>();
-    const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto item_pid = _conn.InBuf.Read<hstring>(Hashes);
-    _conn.InBuf.ReadPropsData(_tempPropertiesData);
+    const auto hex = _conn.InBuf->Read<mpos>();
+    const auto item_id = _conn.InBuf->Read<ident_t>();
+    const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
+    _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1458,11 +1434,11 @@ void FOClient::Net_OnAddItemOnMap()
     OnItemMapIn.Fire(item);
 }
 
-void FOClient::Net_OnRemoveItemFromMap()
+void ClientEngine::Net_OnRemoveItemFromMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto item_id = _conn.InBuf->Read<ident_t>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1483,7 +1459,7 @@ void FOClient::Net_OnRemoveItemFromMap()
     }
 }
 
-void FOClient::Net_OnPlaceToGameComplete()
+void ClientEngine::Net_OnPlaceToGameComplete()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1505,12 +1481,12 @@ void FOClient::Net_OnPlaceToGameComplete()
     WriteLog("Map loaded");
 }
 
-void FOClient::Net_OnProperty()
+void ClientEngine::Net_OnProperty()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf.Read<uint32>();
-    const auto type = _conn.InBuf.Read<NetProperty>();
+    const auto data_size = _conn.InBuf->Read<uint32>();
+    const auto type = _conn.InBuf->Read<NetProperty>();
 
     ident_t cr_id;
     ident_t item_id;
@@ -1518,29 +1494,29 @@ void FOClient::Net_OnProperty()
 
     switch (type) {
     case NetProperty::CritterItem:
-        cr_id = _conn.InBuf.Read<ident_t>();
-        item_id = _conn.InBuf.Read<ident_t>();
+        cr_id = _conn.InBuf->Read<ident_t>();
+        item_id = _conn.InBuf->Read<ident_t>();
         break;
     case NetProperty::Critter:
-        cr_id = _conn.InBuf.Read<ident_t>();
+        cr_id = _conn.InBuf->Read<ident_t>();
         break;
     case NetProperty::MapItem:
-        item_id = _conn.InBuf.Read<ident_t>();
+        item_id = _conn.InBuf->Read<ident_t>();
         break;
     case NetProperty::ChosenItem:
-        item_id = _conn.InBuf.Read<ident_t>();
+        item_id = _conn.InBuf->Read<ident_t>();
         break;
     case NetProperty::CustomEntity:
-        entity_id = _conn.InBuf.Read<ident_t>();
+        entity_id = _conn.InBuf->Read<ident_t>();
         break;
     default:
         break;
     }
 
-    const auto property_index = _conn.InBuf.Read<uint16>();
+    const auto property_index = _conn.InBuf->Read<uint16>();
 
     PropertyRawData prop_data;
-    _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
+    _conn.InBuf->Pop(prop_data.Alloc(data_size), data_size);
 
     Entity* entity = nullptr;
 
@@ -1604,7 +1580,7 @@ void FOClient::Net_OnProperty()
         _sendIgnoreEntity = entity;
         _sendIgnoreProperty = prop;
 
-        auto revert_send_ignore = ScopeCallback([this]() noexcept {
+        auto revert_send_ignore = scope_exit([this]() noexcept {
             _sendIgnoreEntity = nullptr;
             _sendIgnoreProperty = nullptr;
         });
@@ -1625,31 +1601,31 @@ void FOClient::Net_OnProperty()
     }
 }
 
-void FOClient::Net_OnTimeSync()
+void ClientEngine::Net_OnTimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto time = _conn.InBuf.Read<synctime>();
+    const auto time = _conn.InBuf->Read<synctime>();
 
     GameTime.SetSynchronizedTime(time);
     SetSynchronizedTime(time);
 }
 
-void FOClient::Net_OnLoadMap()
+void ClientEngine::Net_OnLoadMap()
 {
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Change map");
 
-    const auto loc_id = _conn.InBuf.Read<ident_t>();
-    const auto map_id = _conn.InBuf.Read<ident_t>();
-    const auto loc_pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto map_pid = _conn.InBuf.Read<hstring>(Hashes);
-    const auto map_index_in_loc = _conn.InBuf.Read<int32>();
+    const auto loc_id = _conn.InBuf->Read<ident_t>();
+    const auto map_id = _conn.InBuf->Read<ident_t>();
+    const auto loc_pid = _conn.InBuf->Read<hstring>(Hashes);
+    const auto map_pid = _conn.InBuf->Read<hstring>(Hashes);
+    const auto map_index_in_loc = _conn.InBuf->Read<int32>();
 
     if (map_pid) {
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
-        _conn.InBuf.ReadPropsData(_tempPropertiesDataExt);
+        _conn.InBuf->ReadPropsData(_tempPropertiesData);
+        _conn.InBuf->ReadPropsData(_tempPropertiesDataExt);
     }
 
     UnloadMap();
@@ -1679,20 +1655,20 @@ void FOClient::Net_OnLoadMap()
     OnMapLoad.Fire();
 }
 
-void FOClient::Net_OnSomeItems()
+void ClientEngine::Net_OnSomeItems()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto context_param = any_t {_conn.InBuf.Read<string>()};
-    const auto items_count = _conn.InBuf.Read<uint32>();
+    const auto context_param = any_t(_conn.InBuf->Read<string>());
+    const auto items_count = _conn.InBuf->Read<uint32>();
 
     vector<refcount_ptr<ItemView>> items;
     items.reserve(items_count);
 
     for (uint32 i = 0; i < items_count; i++) {
-        const auto item_id = _conn.InBuf.Read<ident_t>();
-        const auto pid = _conn.InBuf.Read<hstring>(Hashes);
-        _conn.InBuf.ReadPropsData(_tempPropertiesData);
+        const auto item_id = _conn.InBuf->Read<ident_t>();
+        const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+        _conn.InBuf->ReadPropsData(_tempPropertiesData);
         FO_RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
@@ -1708,11 +1684,11 @@ void FOClient::Net_OnSomeItems()
     OnReceiveItems.Fire(items2, context_param);
 }
 
-void FOClient::Net_OnViewMap()
+void ClientEngine::Net_OnViewMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex = _conn.InBuf.Read<mpos>();
+    const auto hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1722,26 +1698,28 @@ void FOClient::Net_OnViewMap()
     OnMapView.Fire(hex);
 }
 
-void FOClient::Net_OnRemoteCall()
+void ClientEngine::Net_OnRemoteCall()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    const auto remote_call_name = _conn.InBuf->Read<hstring>(Hashes);
+    const auto data_size = _conn.InBuf->Read<int32>();
 
-    const auto rpc_num = _conn.InBuf.Read<uint32>();
+    _remoteCallData.resize(data_size);
+    _conn.InBuf->Pop(_remoteCallData.data(), data_size);
 
-    ScriptSys.HandleRemoteCall(rpc_num, _curPlayer.get());
+    HandleInboundRemoteCall(remote_call_name, nullptr, _remoteCallData);
 }
 
-void FOClient::Net_OnAddCustomEntity()
+void ClientEngine::Net_OnAddCustomEntity()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto holder_id = _conn.InBuf.Read<ident_t>();
-    const auto holder_entry = _conn.InBuf.Read<hstring>(Hashes);
-    const auto id = _conn.InBuf.Read<ident_t>();
-    const auto pid = _conn.InBuf.Read<hstring>(Hashes);
-    _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
+    const auto holder_id = _conn.InBuf->Read<ident_t>();
+    const auto holder_entry = _conn.InBuf->Read<hstring>(Hashes);
+    const auto id = _conn.InBuf->Read<ident_t>();
+    const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+    _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
     Entity* holder;
 
@@ -1762,11 +1740,11 @@ void FOClient::Net_OnAddCustomEntity()
     OnCustomEntityIn.Fire(entity);
 }
 
-void FOClient::Net_OnRemoveCustomEntity()
+void ClientEngine::Net_OnRemoveCustomEntity()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto id = _conn.InBuf.Read<ident_t>();
+    const auto id = _conn.InBuf->Read<ident_t>();
 
     auto* entity = GetEntity(id);
 
@@ -1804,24 +1782,24 @@ void FOClient::Net_OnRemoveCustomEntity()
     custom_entity->DestroySelf();
 }
 
-void FOClient::ReceiveCustomEntities(Entity* holder)
+void ClientEngine::ReceiveCustomEntities(Entity* holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entries_count = _conn.InBuf.Read<uint16>();
+    const auto entries_count = _conn.InBuf->Read<uint16>();
 
     if (entries_count == 0) {
         return;
     }
 
     for (uint16 i = 0; i < entries_count; i++) {
-        const auto entry = _conn.InBuf.Read<hstring>(Hashes);
-        const auto entities_count = _conn.InBuf.Read<uint32>();
+        const auto entry = _conn.InBuf->Read<hstring>(Hashes);
+        const auto entities_count = _conn.InBuf->Read<uint32>();
 
         for (uint32 j = 0; j < entities_count; j++) {
-            const auto id = _conn.InBuf.Read<ident_t>();
-            const auto pid = _conn.InBuf.Read<hstring>(Hashes);
-            _conn.InBuf.ReadPropsData(_tempPropertiesDataCustomEntity);
+            const auto id = _conn.InBuf->Read<ident_t>();
+            const auto pid = _conn.InBuf->Read<hstring>(Hashes);
+            _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder != nullptr) {
                 auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
@@ -1835,15 +1813,15 @@ void FOClient::ReceiveCustomEntities(Entity* holder)
     }
 }
 
-auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
+auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto type_name = std::get<0>(GetEntityTypeInfo(holder->GetTypeName()).HolderEntries.at(entry));
+    const auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     FO_RUNTIME_ASSERT(IsValidEntityType(type_name));
 
-    const bool has_protos = GetEntityTypeInfo(type_name).HasProtos;
+    const bool has_protos = GetEntityType(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
@@ -1882,32 +1860,32 @@ auto FOClient::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id,
     return entity.get();
 }
 
-void FOClient::ReceiveCritterMoving(CritterHexView* cr)
+void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    const auto whole_time = _conn.InBuf->Read<uint32>();
+    const auto offset_time = _conn.InBuf->Read<uint32>();
+    const auto speed = _conn.InBuf->Read<uint16>();
+    const auto start_hex = _conn.InBuf->Read<mpos>();
 
-    const auto whole_time = _conn.InBuf.Read<uint32>();
-    const auto offset_time = _conn.InBuf.Read<uint32>();
-    const auto speed = _conn.InBuf.Read<uint16>();
-    const auto start_hex = _conn.InBuf.Read<mpos>();
-
-    const auto steps_count = _conn.InBuf.Read<uint16>();
+    const auto steps_count = _conn.InBuf->Read<uint16>();
     vector<uint8> steps;
     steps.resize(steps_count);
+
     for (uint16 i = 0; i < steps_count; i++) {
-        steps[i] = _conn.InBuf.Read<uint8>();
+        steps[i] = _conn.InBuf->Read<uint8>();
     }
 
-    const auto control_steps_count = _conn.InBuf.Read<uint16>();
+    const auto control_steps_count = _conn.InBuf->Read<uint16>();
     vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
+
     for (uint16 i = 0; i < control_steps_count; i++) {
-        control_steps[i] = _conn.InBuf.Read<uint16>();
+        control_steps[i] = _conn.InBuf->Read<uint16>();
     }
 
-    const auto end_hex_offset = _conn.InBuf.Read<ipos16>();
+    const auto end_hex_offset = _conn.InBuf->Read<ipos16>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1946,6 +1924,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
 
         FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
             const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], _curMap->GetSize());
             FO_RUNTIME_ASSERT(move_ok);
@@ -1982,7 +1961,7 @@ void FOClient::ReceiveCritterMoving(CritterHexView* cr)
     FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 }
 
-auto FOClient::GetEntity(ident_t id) -> ClientEntity*
+auto ClientEngine::GetEntity(ident_t id) -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1991,7 +1970,7 @@ auto FOClient::GetEntity(ident_t id) -> ClientEntity*
     return it != _allEntities.end() ? it->second.get() : nullptr;
 }
 
-void FOClient::RegisterEntity(ClientEntity* entity)
+void ClientEngine::RegisterEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2001,7 +1980,7 @@ void FOClient::RegisterEntity(ClientEntity* entity)
     _allEntities[entity->GetId()] = entity;
 }
 
-void FOClient::UnregisterEntity(ClientEntity* entity)
+void ClientEngine::UnregisterEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2011,7 +1990,7 @@ void FOClient::UnregisterEntity(ClientEntity* entity)
     _allEntities.erase(entity->GetId());
 }
 
-auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
+auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2045,7 +2024,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
     return _ifaceAnimCounter;
 }
 
-void FOClient::AnimFree(uint32 anim_id)
+void ClientEngine::AnimFree(uint32 anim_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2059,7 +2038,7 @@ void FOClient::AnimFree(uint32 anim_id)
     }
 }
 
-auto FOClient::AnimGetSpr(uint32 anim_id) -> Sprite*
+auto ClientEngine::AnimGetSpr(uint32 anim_id) -> Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2074,7 +2053,7 @@ auto FOClient::AnimGetSpr(uint32 anim_id) -> Sprite*
     return nullptr;
 }
 
-void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2092,7 +2071,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2109,7 +2088,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
     Net_SendProperty(NetProperty::Player, prop, _curPlayer.get());
 }
 
-void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2131,7 +2110,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2167,7 +2146,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendMapValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2185,7 +2164,7 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2203,7 +2182,7 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2216,7 +2195,7 @@ void FOClient::OnSetCritterLookDistance(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2237,7 +2216,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2250,7 +2229,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2263,7 +2242,7 @@ void FOClient::OnSetCritterHideSprite(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2299,7 +2278,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2324,7 +2303,7 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2337,7 +2316,7 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2351,7 +2330,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2364,7 +2343,7 @@ void FOClient::OnSetItemHideSprite(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::ChangeLanguage(string_view lang_name)
+void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2375,7 +2354,7 @@ void FOClient::ChangeLanguage(string_view lang_name)
     Settings.Language = lang_name;
 }
 
-void FOClient::UnloadMap()
+void ClientEngine::UnloadMap()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2404,7 +2383,7 @@ void FOClient::UnloadMap()
     _mapLoaded = false;
 }
 
-void FOClient::LmapPrepareMap()
+void ClientEngine::LmapPrepareMap()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2484,7 +2463,7 @@ void FOClient::LmapPrepareMap()
     _lmapPrepareNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {1000};
 }
 
-void FOClient::CleanupSpriteCache()
+void ClientEngine::CleanupSpriteCache()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2492,7 +2471,7 @@ void FOClient::CleanupSpriteCache()
     SprMngr.CleanupSpriteCache();
 }
 
-void FOClient::DestroyInnerEntities()
+void ClientEngine::DestroyInnerEntities()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2510,7 +2489,7 @@ void FOClient::DestroyInnerEntities()
     }
 }
 
-auto FOClient::CustomCall(string_view command, string_view separator) -> string
+auto ClientEngine::CustomCall(string_view command, string_view separator) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2613,7 +2592,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     return "";
 }
 
-void FOClient::Connect(string_view login, string_view password, int32 reason)
+void ClientEngine::Connect(string_view login, string_view password, int32 reason)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2637,7 +2616,7 @@ void FOClient::Connect(string_view login, string_view password, int32 reason)
     }
 }
 
-void FOClient::Disconnect()
+void ClientEngine::Disconnect()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2645,7 +2624,7 @@ void FOClient::Disconnect()
     _conn.Disconnect();
 }
 
-void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed)
+void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2763,7 +2742,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, in
     }
 }
 
-void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
+void ClientEngine::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2781,7 +2760,7 @@ void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_an
     }
 }
 
-void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueue)
+void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool enqueue)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2819,7 +2798,7 @@ void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueu
     }
 }
 
-void FOClient::ProcessVideo()
+void ClientEngine::ProcessVideo()
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -35,18 +35,13 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptScripting.h"
 #include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
-extern vector<uint8> Init_AngelScriptCompiler_ServerScriptSystem(const vector<File>&);
-extern vector<uint8> Init_AngelScriptCompiler_ClientScriptSystem(const vector<File>&);
-extern vector<uint8> Init_AngelScriptCompiler_MapperScriptSystem(const vector<File>&);
-
-unordered_set<string> CompilerPassedMessages;
-
-AngelScriptBaker::AngelScriptBaker(BakerData& data) :
-    BaseBaker(data)
+AngelScriptBaker::AngelScriptBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -83,9 +78,9 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         return;
     }
 
-    const bool bake_server = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-server", max_write_time);
-    const bool bake_client = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-client", max_write_time);
-    const bool bake_mapper = !_bakeChecker || _bakeChecker(_resPackName + ".fos-bin-mapper", max_write_time);
+    const bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-server", max_write_time);
+    const bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-client", max_write_time);
+    const bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fos-bin-mapper", max_write_time);
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
@@ -93,23 +88,39 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 
     // Process files
     vector<std::future<void>> file_bakings;
+    unordered_set<string> messages;
+    std::mutex messages_locker;
+
+    const auto message_callback = [&](string_view message) {
+        std::scoped_lock lock(messages_locker);
+
+        if (messages.contains(message)) {
+            return;
+        }
+
+        messages.emplace(message);
+        WriteLog(message);
+    };
 
     if (bake_server) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_ServerScriptSystem(filtered_files);
-            _writeData(_resPackName + ".fos-bin-server", data);
+            auto engine = BakerServerEngine(*_context->BakedFiles);
+            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            _context->WriteData(_context->PackName + ".fos-bin-server", data);
         }));
     }
     if (bake_client) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_ClientScriptSystem(filtered_files);
-            _writeData(_resPackName + ".fos-bin-client", data);
+            auto engine = BakerClientEngine(*_context->BakedFiles);
+            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            _context->WriteData(_context->PackName + ".fos-bin-client", data);
         }));
     }
     if (bake_mapper) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
-            auto data = Init_AngelScriptCompiler_MapperScriptSystem(filtered_files);
-            _writeData(_resPackName + ".fos-bin-mapper", data);
+            auto engine = BakerMapperEngine(*_context->BakedFiles);
+            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            _context->WriteData(_context->PackName + ".fos-bin-mapper", data);
         }));
     }
 
@@ -123,11 +134,12 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
             errors++;
         }
         catch (const std::exception& ex) {
-            WriteLog("AngelScript baking error: {}", ex.what());
+            if (_context->ForceSyncMode.value_or(false)) {
+                throw;
+            }
+
+            WriteLog("AngelScript error: {}", ex.what());
             errors++;
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 

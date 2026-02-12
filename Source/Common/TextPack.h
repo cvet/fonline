@@ -83,7 +83,7 @@ public:
     void FixStr(const TextPack& base_pack);
     void Clear();
 
-    static void FixPacks(span<const string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
+    static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 
 private:
     multimap<TextPackKey, string> _strData {};

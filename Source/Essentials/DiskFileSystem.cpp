@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeFileSystemPath(string_view path) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return std::u8string(path.begin(), path.end());
 }
@@ -76,7 +76,7 @@ DiskFile::DiskFile(string_view path, bool write, bool write_through)
 
 DiskFile::operator bool() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return !!_file;
 }
@@ -142,7 +142,7 @@ auto DiskFile::Write(string_view str) -> bool
     return Write(str.data(), str.length());
 }
 
-auto DiskFile::Write(span<const uint8> data) -> bool
+auto DiskFile::Write(const_span<uint8> data) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,7 +271,7 @@ auto DiskFileSystem::WriteFile(string_view path, string_view content) -> bool
     return false;
 }
 
-auto DiskFileSystem::WriteFile(string_view path, span<const uint8> content) -> bool
+auto DiskFileSystem::WriteFile(string_view path, const_span<uint8> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -407,7 +407,7 @@ void DiskFileSystem::IterateDir(string_view dir, bool recursive, FileVisitor vis
     RecursiveDirLook(dir, "", recursive, visitor);
 }
 
-auto DiskFileSystem::CompareFileContent(string_view path, span<const uint8> buf) -> bool
+auto DiskFileSystem::CompareFileContent(string_view path, const_span<uint8> buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -436,13 +436,23 @@ auto DiskFileSystem::TouchFile(string_view path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto file = std::ofstream(MakeFileSystemPath(path), std::ios::app);
+    const auto fs_path = MakeFileSystemPath(path);
 
-    if (!file || !file.write("", 0)) {
+    std::error_code ec;
+    const bool exists = std::filesystem::exists(fs_path, ec);
+
+    if (ec) {
         return false;
     }
 
-    return true;
+    if (exists) {
+        std::filesystem::last_write_time(fs_path, std::filesystem::file_time_type::clock::now(), ec);
+        return !ec;
+    }
+    else {
+        const std::ofstream new_file {fs_path};
+        return !!new_file;
+    }
 }
 
 FO_END_NAMESPACE

@@ -110,7 +110,7 @@ public:
     SafeAlloc() = delete;
 
     template<typename T, typename... Args>
-        requires(!is_refcounted<T>)
+        requires(!refcountable<T>)
     static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
     {
         auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
@@ -131,14 +131,14 @@ public:
     }
 
     template<typename T, typename... Args>
-        requires(!is_refcounted<T>)
+        requires(!refcountable<T>)
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
         return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
-        requires(is_refcounted<T>)
+        requires(refcountable<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
         auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
@@ -159,7 +159,7 @@ public:
     }
 
     template<typename T, typename... Args>
-        requires(!is_refcounted<T>)
+        requires(!refcountable<T>)
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
         try {
@@ -184,7 +184,7 @@ public:
     }
 
     template<typename T>
-        requires(!is_refcounted<T>)
+        requires(!refcountable<T>)
     static auto MakeRawArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
@@ -210,7 +210,7 @@ public:
     }
 
     template<typename T>
-        requires(!is_refcounted<T>)
+        requires(!refcountable<T>)
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
         return unique_arr_ptr<T>(MakeRawArr<T>(count));
@@ -222,9 +222,33 @@ extern auto MemMalloc(size_t size) noexcept -> void*;
 extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
 extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
 extern void MemFree(void* ptr) noexcept;
-extern void MemCopy(void* dest, const void* src, size_t size) noexcept;
-extern void MemMove(void* dest, const void* src, size_t size) noexcept;
-extern void MemFill(void* ptr, int32 value, size_t size) noexcept;
-extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool;
+
+inline void MemCopy(void* dest, const void* src, size_t size) noexcept
+{
+    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
+    // So check size first
+    if (size != 0) {
+        std::memcpy(dest, src, size);
+    }
+}
+
+inline void MemMove(void* dest, const void* src, size_t size) noexcept
+{
+    if (size != 0) {
+        std::memmove(dest, src, size);
+    }
+}
+
+inline void MemFill(void* ptr, int32 value, size_t size) noexcept
+{
+    if (size != 0) {
+        std::memset(ptr, value, size);
+    }
+}
+
+inline auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
+{
+    return size == 0 || std::memcmp(ptr1, ptr2, size) == 0;
+}
 
 FO_END_NAMESPACE

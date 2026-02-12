@@ -38,13 +38,13 @@
 
 FO_BEGIN_NAMESPACE
 
-ProtoManager::ProtoManager(EngineData& engine) :
-    _engine {&engine},
-    _migrationRuleName {_engine->Hashes.ToHashedString("Proto")},
-    _itemTypeName {_engine->Hashes.ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
-    _crTypeName {_engine->Hashes.ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
-    _mapTypeName {_engine->Hashes.ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
-    _locTypeName {_engine->Hashes.ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
+ProtoManager::ProtoManager(EngineMetadata& meta) :
+    _meta {&meta},
+    _migrationRuleName {_meta->Hashes.ToHashedString("Proto")},
+    _itemTypeName {_meta->Hashes.ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
+    _crTypeName {_meta->Hashes.ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
+    _mapTypeName {_meta->Hashes.ToHashedString(ProtoMap::ENTITY_TYPE_NAME)},
+    _locTypeName {_meta->Hashes.ToHashedString(ProtoLocation::ENTITY_TYPE_NAME)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -54,7 +54,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
     FO_STACK_TRACE_ENTRY();
 
     const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
-        const auto* registrator = _engine->GetPropertyRegistrator(type_name);
+        const auto* registrator = _meta->GetPropertyRegistrator(type_name);
         FO_RUNTIME_ASSERT(registrator);
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
@@ -96,15 +96,15 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     string protos_ext;
 
-    switch (_engine->GetPropertiesRelation()) {
-    case PropertiesRelationType::BothRelative:
-        protos_ext = "fopro-bin-mapper";
-        break;
-    case PropertiesRelationType::ServerRelative:
+    switch (_meta->GetSide()) {
+    case EngineSideKind::ServerSide:
         protos_ext = "fopro-bin-server";
         break;
-    case PropertiesRelationType::ClientRelative:
+    case EngineSideKind::ClientSide:
         protos_ext = "fopro-bin-client";
+        break;
+    case EngineSideKind::MapperSide:
+        protos_ext = "fopro-bin-mapper";
         break;
     }
 
@@ -123,7 +123,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                 const auto str_len = reader.Read<uint32>();
                 str.resize(str_len);
                 reader.ReadPtr(str.data(), str.length());
-                const auto hstr = _engine->Hashes.ToHashedString(str);
+                const auto hstr = _meta->Hashes.ToHashedString(str);
                 ignore_unused(hstr);
             }
         }
@@ -138,14 +138,14 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
                 const auto type_name_len = reader.Read<uint16>();
                 const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
-                const auto type_name = _engine->Hashes.ToHashedString(type_name_str);
+                const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
-                FO_RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
+                FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name));
 
                 for (uint32 j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16>();
                     const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
-                    const auto proto_id = _engine->Hashes.ToHashedString(proto_name);
+                    const auto proto_id = _meta->Hashes.ToHashedString(proto_name);
 
                     auto* proto = CreateProto(type_name, proto_id, nullptr);
 
@@ -154,7 +154,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                     for (uint16 k = 0; k < components_count; k++) {
                         const auto component_name_len = reader.Read<uint16>();
                         const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
-                        const auto component_name_hashed = _engine->Hashes.ToHashedString(component_name);
+                        const auto component_name_hashed = _meta->Hashes.ToHashedString(component_name);
 
                         proto->EnableComponent(component_name_hashed);
                     }
@@ -175,7 +175,7 @@ auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept(false) -> const
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
         return it->second.get();
@@ -188,7 +188,7 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept(false) -> co
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
         return it->second.get();
@@ -201,7 +201,7 @@ auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept(false) -> const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
         return it->second.get();
@@ -214,7 +214,7 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept(false) -> c
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
         return it->second.get();
@@ -227,7 +227,7 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noe
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
 
     const auto it_type = _protos.find(type_name);
 
@@ -246,7 +246,7 @@ auto ProtoManager::GetProtoItemSafe(hstring proto_id) const noexcept -> const Pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
         return it->second.get();
@@ -259,7 +259,7 @@ auto ProtoManager::GetProtoCritterSafe(hstring proto_id) const noexcept -> const
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
         return it->second.get();
@@ -272,7 +272,7 @@ auto ProtoManager::GetProtoMapSafe(hstring proto_id) const noexcept -> const Pro
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
         return it->second.get();
@@ -285,7 +285,7 @@ auto ProtoManager::GetProtoLocationSafe(hstring proto_id) const noexcept -> cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
         return it->second.get();
@@ -298,7 +298,7 @@ auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    proto_id = _engine->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
+    proto_id = _meta->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
 
     const auto it_type = _protos.find(type_name);
 

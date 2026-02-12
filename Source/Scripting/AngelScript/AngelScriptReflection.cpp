@@ -32,12 +32,17 @@
 //
 
 #include "AngelScriptReflection.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "AngelScriptArray.h"
-#include "AngelScriptWrappedCall.h"
+#include "AngelScriptHelpers.h"
 
 #include <as_datatype.h>
 #include <as_scriptengine.h>
 // ReSharper disable CppRedundantQualifier
+
+#include "WinApiUndef-Include.h" // Remove garbage from includes above
 
 FO_BEGIN_NAMESPACE
 
@@ -272,7 +277,8 @@ auto ScriptType::GetEnumNames() const -> ScriptArray*
 
     if (enum_type != nullptr) {
         for (int32 i = 0; i < numeric_cast<int32>(enum_type->enumValues.GetLength()); i++) {
-            result->InsertLast(enum_type->enumValues[i]->name.AddressOf());
+            const string name = enum_type->enumValues[i]->name.AddressOf();
+            result->InsertLast(cast_to_void(&name));
         }
     }
 
@@ -291,7 +297,7 @@ auto ScriptType::GetEnumValues() const -> ScriptArray*
 
     if (enum_type != nullptr) {
         for (int32 i = 0; i < numeric_cast<int32>(enum_type->enumValues.GetLength()); i++) {
-            result->InsertLast(&enum_type->enumValues[i]->value);
+            result->InsertLast(cast_to_void(&enum_type->enumValues[i]->value));
         }
     }
 
@@ -341,7 +347,7 @@ void ScriptType::InstantiateCopy(void* in, int32 in_type_id, void* out, int32 ou
     }
 
     in = *static_cast<void**>(in);
-    const auto* in_obj = static_cast<AngelScript::asIScriptObject*>(in);
+    const auto* in_obj = cast_from_void<AngelScript::asIScriptObject*>(in);
 
     if (in_obj->GetObjectType() != _typeInfo) {
         throw ScriptException("Invalid 'copyFrom' argument, incompatible types");
@@ -379,7 +385,8 @@ static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* ot, void* ref) -> Scr
     }
 
     ref = *static_cast<void**>(ref);
-    return SafeAlloc::MakeRefCounted<ScriptTypeOf>(static_cast<AngelScript::asIScriptObject*>(ref)->GetObjectType()).release_ownership();
+    const auto* ref_obj = cast_from_void<AngelScript::asIScriptObject*>(ref);
+    return SafeAlloc::MakeRefCounted<ScriptTypeOf>(ref_obj->GetObjectType()).release_ownership();
 }
 
 ScriptTypeOf::ScriptTypeOf(AngelScript::asITypeInfo* ti) :
@@ -406,8 +413,8 @@ static auto GetAngelScriptLoadedModules() -> ScriptArray*
     auto* modules = ScriptArray::Create(engine->GetTypeInfoByDecl("string[]"));
 
     for (int32 i = 0; i < numeric_cast<int32>(engine->GetModuleCount()); i++) {
-        string name = engine->GetModuleByIndex(i)->GetName();
-        modules->InsertLast(&name);
+        const string name = engine->GetModuleByIndex(i)->GetName();
+        modules->InsertLast(cast_to_void(&name));
     }
 
     return modules;
@@ -468,9 +475,7 @@ static auto GetEnumsInternal(bool global, const char* module_name) -> ScriptArra
         }
 
         auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
-        void* ptype = type.get();
-        void* pptype = &ptype;
-        enums->InsertLast(pptype);
+        enums->InsertLast(cast_to_void(type.get_pp()));
     }
 
     return enums;
@@ -490,7 +495,7 @@ static auto GetEnums() -> ScriptArray*
     return GetEnumsInternal(false, nullptr);
 }
 
-static auto GetEnumsModule(string module_name) -> ScriptArray* // NOLINT(performance-unnecessary-value-param)
+static auto GetEnumsModule(string module_name) -> ScriptArray*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -513,15 +518,15 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
         int32 line = ctx->GetLineNumber(i, &column);
 
         if (func != nullptr) {
-            string name = func->GetModuleName();
-            modules->InsertLast(&name);
+            const string name = func->GetModuleName();
+            modules->InsertLast(cast_to_void(&name));
 
             const bool include_ns = include_namespace && func->GetNamespace()[0] != 0;
-            string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
-            names->InsertLast(&decl);
+            const string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
+            names->InsertLast(cast_to_void(&decl));
 
-            lines->InsertLast(&line);
-            columns->InsertLast(&column);
+            lines->InsertLast(cast_to_void(&line));
+            columns->InsertLast(cast_to_void(&column));
 
             count++;
         }
@@ -534,83 +539,67 @@ static void RegisterTypeMethod(AngelScript::asIScriptEngine* engine, const char*
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 r = engine->RegisterObjectMethod("type", declaration, func_pointer, SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("typeof<T>", declaration, func_pointer, SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    int32 as_result = 0;
+    FO_AS_VERIFY(engine->RegisterObjectMethod("type", declaration, func_pointer, FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(engine->RegisterObjectMethod("typeof<T>", declaration, func_pointer, FO_SCRIPT_METHOD_CONV));
 }
 
-void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* engine)
+void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 r = engine->SetDefaultNamespace("reflection");
-    FO_RUNTIME_ASSERT(r >= 0);
+    int32 as_result = 0;
+    FO_AS_VERIFY(as_engine->SetDefaultNamespace("reflection"));
 
-    r = engine->RegisterObjectType("type", sizeof(ScriptType), AngelScript::asOBJ_REF);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(ScriptType, AddRef), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(ScriptType, Release), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectType("type", sizeof(ScriptType), AngelScript::asOBJ_REF));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptType, AddRef), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_METHOD(ScriptType, Release), FO_SCRIPT_METHOD_CONV));
 
-    r = engine->RegisterObjectType("typeof<class T>", sizeof(ScriptTypeOf), AngelScript::asOBJ_REF | AngelScript::asOBJ_TEMPLATE);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", SCRIPT_FUNC(ScriptTypeOfTemplateCallback), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_FACTORY, "typeof<T>@ f(int&in)", SCRIPT_FUNC(ScriptTypeOfFactory), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_FACTORY, "typeof<T>@ f(int&in, const T&in)", SCRIPT_FUNC(ScriptTypeOfFactory2), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(ScriptTypeOf, AddRef), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(ScriptTypeOf, Release), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("typeof<T>", "type@ opImplConv()", SCRIPT_METHOD(ScriptTypeOf, ConvertToType), SCRIPT_METHOD_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterObjectType("typeof<class T>", sizeof(ScriptTypeOf), AngelScript::asOBJ_REF | AngelScript::asOBJ_TEMPLATE));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", FO_SCRIPT_FUNC(ScriptTypeOfTemplateCallback), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_FACTORY, "typeof<T>@ f(int&in)", FO_SCRIPT_FUNC(ScriptTypeOfFactory), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_FACTORY, "typeof<T>@ f(int&in, const T&in)", FO_SCRIPT_FUNC(ScriptTypeOfFactory2), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptTypeOf, AddRef), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("typeof<T>", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_METHOD(ScriptTypeOf, Release), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("typeof<T>", "type@ opImplConv()", FO_SCRIPT_METHOD(ScriptTypeOf, ConvertToType), FO_SCRIPT_METHOD_CONV));
 
-    RegisterTypeMethod(engine, "string get_name() const", SCRIPT_METHOD(ScriptType, GetName));
-    RegisterTypeMethod(engine, "string get_nameWithoutNamespace() const", SCRIPT_METHOD(ScriptType, GetNameWithoutNamespace));
-    RegisterTypeMethod(engine, "string get_namespace() const", SCRIPT_METHOD(ScriptType, GetNamespace));
-    RegisterTypeMethod(engine, "string get_module() const", SCRIPT_METHOD(ScriptType, GetModule));
-    RegisterTypeMethod(engine, "int get_size() const", SCRIPT_METHOD(ScriptType, GetSize));
-    RegisterTypeMethod(engine, "bool get_isGlobal() const", SCRIPT_METHOD(ScriptType, IsGlobal));
-    RegisterTypeMethod(engine, "bool get_isClass() const", SCRIPT_METHOD(ScriptType, IsClass));
-    RegisterTypeMethod(engine, "bool get_isInterface() const", SCRIPT_METHOD(ScriptType, IsInterface));
-    RegisterTypeMethod(engine, "bool get_isEnum() const", SCRIPT_METHOD(ScriptType, IsEnum));
-    RegisterTypeMethod(engine, "bool get_isFunction() const", SCRIPT_METHOD(ScriptType, IsFunction));
-    RegisterTypeMethod(engine, "bool get_isShared() const", SCRIPT_METHOD(ScriptType, IsShared));
-    RegisterTypeMethod(engine, "type@ get_baseType() const", SCRIPT_METHOD(ScriptType, GetBaseType));
-    RegisterTypeMethod(engine, "int get_interfaceCount() const", SCRIPT_METHOD(ScriptType, GetInterfaceCount));
-    RegisterTypeMethod(engine, "type@ getInterface(int index) const", SCRIPT_METHOD(ScriptType, GetInterface));
-    RegisterTypeMethod(engine, "bool implements(const type@+ other) const", SCRIPT_METHOD(ScriptType, Implements));
-    RegisterTypeMethod(engine, "bool opEquals(const type@+ other) const", SCRIPT_METHOD(ScriptType, Equals));
-    RegisterTypeMethod(engine, "bool derivesFrom(const type@+ other) const", SCRIPT_METHOD(ScriptType, DerivesFrom));
-    RegisterTypeMethod(engine, "void instantiate(?&out instance) const", SCRIPT_METHOD(ScriptType, Instantiate));
-    RegisterTypeMethod(engine, "void instantiate(?&in copyFrom, ?&out instance) const", SCRIPT_METHOD(ScriptType, InstantiateCopy));
-    RegisterTypeMethod(engine, "int get_methodsCount() const", SCRIPT_METHOD(ScriptType, GetMethodsCount));
-    RegisterTypeMethod(engine, "string getMethodDeclaration(int index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", SCRIPT_METHOD(ScriptType, GetMethodDeclaration));
-    RegisterTypeMethod(engine, "int get_propertiesCount() const", SCRIPT_METHOD(ScriptType, GetPropertiesCount));
-    RegisterTypeMethod(engine, "string getPropertyDeclaration(int index, bool includeNamespace = false) const", SCRIPT_METHOD(ScriptType, GetPropertyDeclaration));
-    RegisterTypeMethod(engine, "int get_enumLength() const", SCRIPT_METHOD(ScriptType, GetEnumLength));
-    RegisterTypeMethod(engine, "string[]@ get_enumNames() const", SCRIPT_METHOD(ScriptType, GetEnumNames));
-    RegisterTypeMethod(engine, "int[]@ get_enumValues() const", SCRIPT_METHOD(ScriptType, GetEnumValues));
+    RegisterTypeMethod(as_engine, "string get_name() const", FO_SCRIPT_METHOD(ScriptType, GetName));
+    RegisterTypeMethod(as_engine, "string get_nameWithoutNamespace() const", FO_SCRIPT_METHOD(ScriptType, GetNameWithoutNamespace));
+    RegisterTypeMethod(as_engine, "string get_namespace() const", FO_SCRIPT_METHOD(ScriptType, GetNamespace));
+    RegisterTypeMethod(as_engine, "string get_module() const", FO_SCRIPT_METHOD(ScriptType, GetModule));
+    RegisterTypeMethod(as_engine, "int get_size() const", FO_SCRIPT_METHOD(ScriptType, GetSize));
+    RegisterTypeMethod(as_engine, "bool get_isGlobal() const", FO_SCRIPT_METHOD(ScriptType, IsGlobal));
+    RegisterTypeMethod(as_engine, "bool get_isClass() const", FO_SCRIPT_METHOD(ScriptType, IsClass));
+    RegisterTypeMethod(as_engine, "bool get_isInterface() const", FO_SCRIPT_METHOD(ScriptType, IsInterface));
+    RegisterTypeMethod(as_engine, "bool get_isEnum() const", FO_SCRIPT_METHOD(ScriptType, IsEnum));
+    RegisterTypeMethod(as_engine, "bool get_isFunction() const", FO_SCRIPT_METHOD(ScriptType, IsFunction));
+    RegisterTypeMethod(as_engine, "bool get_isShared() const", FO_SCRIPT_METHOD(ScriptType, IsShared));
+    RegisterTypeMethod(as_engine, "type@ get_baseType() const", FO_SCRIPT_METHOD(ScriptType, GetBaseType));
+    RegisterTypeMethod(as_engine, "int get_interfaceCount() const", FO_SCRIPT_METHOD(ScriptType, GetInterfaceCount));
+    RegisterTypeMethod(as_engine, "type@ getInterface(int index) const", FO_SCRIPT_METHOD(ScriptType, GetInterface));
+    RegisterTypeMethod(as_engine, "bool implements(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, Implements));
+    RegisterTypeMethod(as_engine, "bool opEquals(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, Equals));
+    RegisterTypeMethod(as_engine, "bool derivesFrom(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, DerivesFrom));
+    RegisterTypeMethod(as_engine, "void instantiate(?&out instance) const", FO_SCRIPT_METHOD(ScriptType, Instantiate));
+    RegisterTypeMethod(as_engine, "void instantiate(?&in copyFrom, ?&out instance) const", FO_SCRIPT_METHOD(ScriptType, InstantiateCopy));
+    RegisterTypeMethod(as_engine, "int get_methodsCount() const", FO_SCRIPT_METHOD(ScriptType, GetMethodsCount));
+    RegisterTypeMethod(as_engine, "string getMethodDeclaration(int index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", FO_SCRIPT_METHOD(ScriptType, GetMethodDeclaration));
+    RegisterTypeMethod(as_engine, "int get_propertiesCount() const", FO_SCRIPT_METHOD(ScriptType, GetPropertiesCount));
+    RegisterTypeMethod(as_engine, "string getPropertyDeclaration(int index, bool includeNamespace = false) const", FO_SCRIPT_METHOD(ScriptType, GetPropertyDeclaration));
+    RegisterTypeMethod(as_engine, "int get_enumLength() const", FO_SCRIPT_METHOD(ScriptType, GetEnumLength));
+    RegisterTypeMethod(as_engine, "string[]@ get_enumNames() const", FO_SCRIPT_METHOD(ScriptType, GetEnumNames));
+    RegisterTypeMethod(as_engine, "int[]@ get_enumValues() const", FO_SCRIPT_METHOD(ScriptType, GetEnumValues));
 
-    r = engine->RegisterGlobalFunction("string[]@ getLoadedModules()", SCRIPT_FUNC(GetAngelScriptLoadedModules), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterGlobalFunction("string getCurrentModule()", SCRIPT_FUNC(GetCurrentModule), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterGlobalFunction("type@[]@ getGlobalEnums()", SCRIPT_FUNC(GetGlobalEnums), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterGlobalFunction("type@[]@ getEnums()", SCRIPT_FUNC(GetEnums), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterGlobalFunction("type@[]@ getEnums(string moduleName)", SCRIPT_FUNC(GetEnumsModule), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterGlobalFunction("int getCallstack(string[]& modules, string[]& names, int[]& lines, int[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", SCRIPT_FUNC(GetCallstack), SCRIPT_FUNC_CONV);
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string[]@ getLoadedModules()", FO_SCRIPT_FUNC(GetAngelScriptLoadedModules), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string getCurrentModule()", FO_SCRIPT_FUNC(GetCurrentModule), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getGlobalEnums()", FO_SCRIPT_FUNC(GetGlobalEnums), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getEnums()", FO_SCRIPT_FUNC(GetEnums), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getEnums(string moduleName)", FO_SCRIPT_FUNC(GetEnumsModule), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int getCallstack(string[]& modules, string[]& names, int[]& lines, int[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", FO_SCRIPT_FUNC(GetCallstack), FO_SCRIPT_FUNC_CONV));
 
-    r = engine->SetDefaultNamespace("");
-    FO_RUNTIME_ASSERT(r >= 0);
+    FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 }
 
 FO_END_NAMESPACE
+
+#endif

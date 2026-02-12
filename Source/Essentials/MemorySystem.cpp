@@ -365,46 +365,6 @@ extern void MemFree(void* ptr) noexcept
 #endif
 }
 
-extern void MemCopy(void* dest, const void* src, size_t size) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
-    // So check size first
-    if (size != 0) {
-        std::memcpy(dest, src, size);
-    }
-}
-
-void MemMove(void* dest, const void* src, size_t size) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (size != 0) {
-        std::memmove(dest, src, size);
-    }
-}
-
-extern void MemFill(void* ptr, int32 value, size_t size) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (size != 0) {
-        std::memset(ptr, value, size);
-    }
-}
-
-extern auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (size != 0) {
-        return std::memcmp(ptr1, ptr2, size) == 0;
-    }
-
-    return true;
-}
-
 extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();

@@ -33,36 +33,13 @@
 
 #include "Mapper.h"
 #include "3dStuff.h"
-#include "Baker.h"
+#include "MetadataRegistration.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
 
-extern void Mapper_RegisterData(EngineData*);
-
-#if FO_ANGELSCRIPT_SCRIPTING
-extern void Init_AngelScript_MapperScriptSystem(BaseEngine*);
-#endif
-
-static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (IsPackaged()) {
-        FileSystem resources;
-        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
-        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
-        return resources;
-    }
-    else {
-        FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings));
-        return resources;
-    }
-}
-
-FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOClient(settings, window, GetMapperResources(settings), [this] { Mapper_RegisterData(this); })
+MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
+    ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -71,7 +48,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     MapsFileSys.AddDirSource("", false, true, true);
 
     for (const auto& res_pack : settings.GetResourcePacks()) {
-        for (const auto& dir : res_pack.InputDir) {
+        for (const auto& dir : res_pack.InputDirs) {
             MapsFileSys.AddDirSource(dir, false, true, true);
         }
     }
@@ -87,15 +64,15 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
-    ScriptSys.MapEngineEntityType<PlayerView>(PlayerView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<ItemView, ItemHexView>(ItemView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<CritterView, CritterHexView>(CritterView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<MapView>(MapView::ENTITY_TYPE_NAME);
-    ScriptSys.MapEngineEntityType<LocationView>(LocationView::ENTITY_TYPE_NAME);
+    MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
+    MapEngineType<ItemView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
+    MapEngineType<ItemHexView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
+    MapEngineType<CritterView>(EngineMetadata::GetBaseType(CritterView::ENTITY_TYPE_NAME));
+    MapEngineType<CritterHexView>(EngineMetadata::GetBaseType(CritterView::ENTITY_TYPE_NAME));
+    MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
+    MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-#if FO_ANGELSCRIPT_SCRIPTING
-    Init_AngelScript_MapperScriptSystem(this);
-#endif
+    InitSubsystems(this);
 
     ProtoMngr.LoadFromResources(Resources);
 
@@ -169,7 +146,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     TabsName[INT_MODE_LIST] = "Maps";
 
     // Start script
-    ScriptSys.InitModules();
+    InitModules();
     OnStart.Fire();
 
     if (!Settings.StartMap.empty()) {
@@ -208,7 +185,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
 }
 
-void FOMapper::InitIface()
+void MapperEngine::InitIface()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -323,7 +300,7 @@ void FOMapper::InitIface()
     WriteLog("Init interface complete");
 }
 
-auto FOMapper::IfaceLoadRect(irect32& rect, string_view name) const -> bool
+auto MapperEngine::IfaceLoadRect(irect32& rect, string_view name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -346,7 +323,7 @@ auto FOMapper::IfaceLoadRect(irect32& rect, string_view name) const -> bool
     return true;
 }
 
-auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
+auto MapperEngine::GetIfaceSpr(hstring fname) -> Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -363,7 +340,7 @@ auto FOMapper::GetIfaceSpr(hstring fname) -> Sprite*
     return IfaceSpr.emplace(fname, std::move(spr)).first->second.get();
 }
 
-void FOMapper::ProcessMapperInput()
+void MapperEngine::ProcessMapperInput()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -752,7 +729,7 @@ void FOMapper::ProcessMapperInput()
     }
 }
 
-void FOMapper::ChangeZoom(float32 new_zoom)
+void MapperEngine::ChangeZoom(float32 new_zoom)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -768,7 +745,7 @@ void FOMapper::ChangeZoom(float32 new_zoom)
     _curMap->ChangeZoom(new_zoom, {mouse_x_factor, mouse_y_factor});
 }
 
-void FOMapper::MapperMainLoop()
+void MapperEngine::MapperMainLoop()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -806,7 +783,7 @@ void FOMapper::MapperMainLoop()
     }
 }
 
-void FOMapper::IntDraw()
+void MapperEngine::IntDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1106,7 +1083,7 @@ void FOMapper::IntDraw()
     }
 }
 
-void FOMapper::ObjDraw()
+void MapperEngine::ObjDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1178,7 +1155,7 @@ void FOMapper::ObjDraw()
     }
 }
 
-void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, irect32& r)
+void MapperEngine::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, irect32& r)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1212,7 +1189,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
     r.y += DRAW_NEXT_HEIGHT;
 }
 
-void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
+void MapperEngine::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1257,7 +1234,7 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
     }
 }
 
-void FOMapper::ObjKeyDownApply(Entity* entity)
+void MapperEngine::ObjKeyDownApply(Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1310,7 +1287,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
     }
 }
 
-void FOMapper::SelectEntityProp(int32 line)
+void MapperEngine::SelectEntityProp(int32 line)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1332,7 +1309,7 @@ void FOMapper::SelectEntityProp(int32 line)
     }
 }
 
-auto FOMapper::GetInspectorEntity() -> ClientEntity*
+auto MapperEngine::GetInspectorEntity() -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1358,7 +1335,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
     return entity;
 }
 
-void FOMapper::IntLMouseDown()
+void MapperEngine::IntLMouseDown()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1799,7 +1776,7 @@ void FOMapper::IntLMouseDown()
     IntHold = INT_BUTTON;
 }
 
-void FOMapper::IntLMouseUp()
+void MapperEngine::IntLMouseUp()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1894,7 +1871,7 @@ void FOMapper::IntLMouseUp()
     IntHold = INT_NONE;
 }
 
-void FOMapper::IntMouseMove()
+void MapperEngine::IntMouseMove()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1958,7 +1935,7 @@ void FOMapper::IntMouseMove()
     }
 }
 
-auto FOMapper::GetTabIndex() const -> int32
+auto MapperEngine::GetTabIndex() const -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1968,7 +1945,7 @@ auto FOMapper::GetTabIndex() const -> int32
     return TabIndex[IntMode];
 }
 
-void FOMapper::SetTabIndex(int32 index)
+void MapperEngine::SetTabIndex(int32 index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1978,7 +1955,7 @@ void FOMapper::SetTabIndex(int32 index)
     TabIndex[IntMode] = index;
 }
 
-void FOMapper::RefreshCurProtos()
+void MapperEngine::RefreshCurProtos()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2024,7 +2001,7 @@ void FOMapper::RefreshCurProtos()
     }
 }
 
-void FOMapper::IntSetMode(int32 mode)
+void MapperEngine::IntSetMode(int32 mode)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2095,7 +2072,7 @@ void FOMapper::IntSetMode(int32 mode)
     }
 }
 
-void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
+void MapperEngine::MoveEntity(ClientEntity* entity, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2115,7 +2092,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, mpos hex)
     }
 }
 
-void FOMapper::DeleteEntity(ClientEntity* entity)
+void MapperEngine::DeleteEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2133,7 +2110,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
     }
 }
 
-void FOMapper::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip_refresh)
+void MapperEngine::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip_refresh)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2170,7 +2147,7 @@ void FOMapper::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip_ref
     }
 }
 
-void FOMapper::SelectAll()
+void MapperEngine::SelectAll()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2199,7 +2176,7 @@ void FOMapper::SelectAll()
     _curMap->RebuildMap();
 }
 
-void FOMapper::SelectRemove(ClientEntity* entity, bool skip_refresh)
+void MapperEngine::SelectRemove(ClientEntity* entity, bool skip_refresh)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2255,7 +2232,7 @@ void FOMapper::SelectRemove(ClientEntity* entity, bool skip_refresh)
     }
 }
 
-void FOMapper::SelectClear()
+void MapperEngine::SelectClear()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2266,7 +2243,7 @@ void FOMapper::SelectClear()
     _curMap->DefferedRefreshItems();
 }
 
-auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool
+auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2431,7 +2408,7 @@ auto FOMapper::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& 
     return true;
 }
 
-void FOMapper::SelectDelete()
+void MapperEngine::SelectDelete()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2449,7 +2426,7 @@ void FOMapper::SelectDelete()
     SetCurMode(CUR_MODE_DEFAULT);
 }
 
-auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
+auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2475,7 +2452,7 @@ auto FOMapper::CreateCritter(hstring pid, mpos hex) -> CritterView*
     return cr;
 }
 
-auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
+auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2525,7 +2502,7 @@ auto FOMapper::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     return item;
 }
 
-auto FOMapper::CloneEntity(Entity* entity) -> Entity*
+auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2555,7 +2532,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     return nullptr;
 }
 
-void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
+void MapperEngine::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2566,7 +2543,7 @@ void FOMapper::CloneInnerItems(ItemView* to_item, const ItemView* from_item)
     }
 }
 
-auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
+auto MapperEngine::MergeItemsToMultihexMeshes(MapView* map) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2621,7 +2598,7 @@ auto FOMapper::MergeItemsToMultihexMeshes(MapView* map) -> size_t
     return merges;
 }
 
-auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*
+auto MapperEngine::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2707,7 +2684,7 @@ auto FOMapper::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool 
     return nullptr;
 }
 
-void FOMapper::MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item)
+void MapperEngine::MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2739,7 +2716,7 @@ void FOMapper::MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, I
     map->DestroyItem(source_item);
 }
 
-void FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const
+void MapperEngine::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2779,7 +2756,7 @@ void FOMapper::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item,
     }
 }
 
-auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool
+auto MapperEngine::CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2807,7 +2784,7 @@ auto FOMapper::CompareMultihexItemForMerge(const ItemHexView* source_item, const
     return false;
 }
 
-auto FOMapper::BreakItemsMultihexMeshes(MapView* map) -> size_t
+auto MapperEngine::BreakItemsMultihexMeshes(MapView* map) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2835,7 +2812,7 @@ auto FOMapper::BreakItemsMultihexMeshes(MapView* map) -> size_t
     return breaks;
 }
 
-auto FOMapper::TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*
+auto MapperEngine::TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2892,7 +2869,7 @@ auto FOMapper::TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpo
     }
 }
 
-void FOMapper::BufferCopy()
+void MapperEngine::BufferCopy()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2934,7 +2911,7 @@ void FOMapper::BufferCopy()
     }
 }
 
-void FOMapper::BufferCut()
+void MapperEngine::BufferCut()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2946,7 +2923,7 @@ void FOMapper::BufferCut()
     SelectDelete();
 }
 
-void FOMapper::BufferPaste()
+void MapperEngine::BufferPaste()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2997,14 +2974,14 @@ void FOMapper::BufferPaste()
     }
 }
 
-void FOMapper::DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
+void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
     SprMngr.DrawText({rect.x, rect.y, rect.width, rect.height}, str, flags, color, num_font);
 }
 
-void FOMapper::CurDraw()
+void MapperEngine::CurDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3087,7 +3064,7 @@ void FOMapper::CurDraw()
     }
 }
 
-void FOMapper::CurRMouseUp()
+void MapperEngine::CurRMouseUp()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3109,7 +3086,7 @@ void FOMapper::CurRMouseUp()
     }
 }
 
-void FOMapper::CurMMouseDown()
+void MapperEngine::CurMMouseDown()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3132,7 +3109,7 @@ void FOMapper::CurMMouseDown()
     }
 }
 
-void FOMapper::SetCurMode(int cur_mode)
+void MapperEngine::SetCurMode(int cur_mode)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3151,28 +3128,28 @@ void FOMapper::SetCurMode(int cur_mode)
     }
 }
 
-auto FOMapper::IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool
+auto MapperEngine::IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return Settings.MousePos.x >= rect.x + ax && Settings.MousePos.y >= rect.y + ay && Settings.MousePos.x < rect.x + rect.width + ax && Settings.MousePos.y < rect.y + rect.height + ay;
 }
 
-auto FOMapper::IsCurInRect(const irect32& rect) const -> bool
+auto MapperEngine::IsCurInRect(const irect32& rect) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return Settings.MousePos.x >= rect.x && Settings.MousePos.y >= rect.y && Settings.MousePos.x < rect.x + rect.width && Settings.MousePos.y < rect.y + rect.height;
 }
 
-auto FOMapper::IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32 ax, int32 ay) const -> bool
+auto MapperEngine::IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32 ax, int32 ay) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.x - ax, Settings.MousePos.y - rect.y - ay});
 }
 
-auto FOMapper::IsCurInInterface() const -> bool
+auto MapperEngine::IsCurInInterface() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3188,7 +3165,7 @@ auto FOMapper::IsCurInInterface() const -> bool
     return false;
 }
 
-auto FOMapper::GetCurHex(mpos& hex, bool ignore_interface) -> bool
+auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3203,7 +3180,7 @@ auto FOMapper::GetCurHex(mpos& hex, bool ignore_interface) -> bool
     return _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
 }
 
-void FOMapper::ConsoleDraw()
+void MapperEngine::ConsoleDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3216,7 +3193,7 @@ void FOMapper::ConsoleDraw()
     }
 }
 
-void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
+void MapperEngine::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3302,7 +3279,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
     }
 }
 
-void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
+void MapperEngine::ConsoleKeyUp(KeyCode /*key*/)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3310,7 +3287,7 @@ void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
     ConsoleLastKeyText = "";
 }
 
-void FOMapper::ConsoleProcess()
+void MapperEngine::ConsoleProcess()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3325,7 +3302,7 @@ void FOMapper::ConsoleProcess()
     }
 }
 
-void FOMapper::ParseCommand(string_view command)
+void MapperEngine::ParseCommand(string_view command)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3379,7 +3356,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        auto func = ScriptSys.FindFunc<string, string>(Hashes.ToHashedString(func_name));
+        auto func = FindFunc<string, string>(Hashes.ToHashedString(func_name));
 
         if (!func) {
             AddMess("Function not found");
@@ -3388,7 +3365,7 @@ void FOMapper::ParseCommand(string_view command)
 
         string str = strex(command).substring_after(' ').trim();
 
-        if (!func(str)) {
+        if (!func.Call(str)) {
             AddMess("Script execution fail");
             return;
         }
@@ -3516,7 +3493,7 @@ void FOMapper::ParseCommand(string_view command)
     }
 }
 
-auto FOMapper::LoadMap(string_view map_name) -> MapView*
+auto MapperEngine::LoadMap(string_view map_name) -> MapView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3560,7 +3537,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     return LoadedMaps.back().get();
 }
 
-void FOMapper::ShowMap(MapView* map)
+void MapperEngine::ShowMap(MapView* map)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3579,7 +3556,7 @@ void FOMapper::ShowMap(MapView* map)
     }
 }
 
-void FOMapper::SaveMap(MapView* map, string_view custom_name)
+void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3620,7 +3597,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     OnEditMapSave.Fire(map);
 }
 
-void FOMapper::UnloadMap(MapView* map)
+void MapperEngine::UnloadMap(MapView* map)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3638,7 +3615,7 @@ void FOMapper::UnloadMap(MapView* map)
     LoadedMaps.erase(it);
 }
 
-void FOMapper::ResizeMap(MapView* map, int32 width, int32 height)
+void MapperEngine::ResizeMap(MapView* map, int32 width, int32 height)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3655,7 +3632,7 @@ void FOMapper::ResizeMap(MapView* map, int32 width, int32 height)
     }
 }
 
-void FOMapper::AddMess(string_view message_text)
+void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3693,7 +3670,7 @@ void FOMapper::AddMess(string_view message_text)
     }
 }
 
-void FOMapper::MessBoxDraw()
+void MapperEngine::MessBoxDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3707,7 +3684,7 @@ void FOMapper::MessBoxDraw()
     DrawStr(irect32(IntWWork.x + IntX, IntWWork.y + IntY, IntWWork.width, IntWWork.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
-void FOMapper::DrawIfaceLayer(int32 layer)
+void MapperEngine::DrawIfaceLayer(int32 layer)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3718,7 +3695,7 @@ void FOMapper::DrawIfaceLayer(int32 layer)
     SpritesCanDraw = false;
 }
 
-auto FOMapper::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>
+auto MapperEngine::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>
 {
     FO_STACK_TRACE_ENTRY();
 

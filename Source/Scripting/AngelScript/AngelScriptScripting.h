@@ -31,6 +31,20 @@
 // SOFTWARE.
 //
 
-// Based on AngelScript add-on autowrapper
+#pragma once
 
-#include "AngelScriptWrappedCall.h"
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
+#include "EngineBase.h"
+#include "ScriptSystem.h"
+
+FO_BEGIN_NAMESPACE
+
+void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources);
+auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8>;
+
+FO_END_NAMESPACE
+
+#endif

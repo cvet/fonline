@@ -35,9 +35,9 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "MetadataRegistration.h"
 #include "Settings.h"
 #include "Updater.h"
-#include "Version-Include.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"
@@ -47,7 +47,7 @@ FO_USING_NAMESPACE();
 
 struct ClientAppData
 {
-    refcount_ptr<FOClient> Client {};
+    refcount_ptr<ClientEngine> Client {};
     bool ResourcesSynced {};
     unique_ptr<Updater> ResourceUpdater {};
 };
@@ -92,7 +92,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = SafeAlloc::MakeRefCounted<FOClient>(App->Settings, &App->MainWindow);
+                Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -105,9 +105,10 @@ static void MainEntry([[maybe_unused]] void* data)
         }
         catch (const ResourcesOutdatedException&) {
             Data->ResourcesSynced = false;
+            Data->Client->Shutdown();
             Data->Client.reset();
         }
-        catch (const EngineDataNotFoundException& ex) {
+        catch (const MetadataNotFoundException& ex) {
             ReportExceptionAndExit(ex);
         }
         catch (const std::exception& ex) {
@@ -115,6 +116,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
             // Recreate client on unhandled error
             if (App->Settings.RecreateClientOnError) {
+                Data->Client->Shutdown();
                 Data->Client.reset();
             }
         }
@@ -139,6 +141,7 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
+        WriteLog("Compatibility version: {}", App->Settings.CompatibilityVersion);
 
 #if FO_IOS
         MainEntry(nullptr);
@@ -166,7 +169,11 @@ int main(int argc, char** argv) // Handled by SDL
         WriteLog("Exit from game");
 
         Data->ResourceUpdater.reset();
-        Data->Client.reset();
+
+        if (Data->Client) {
+            Data->Client->Shutdown();
+            Data->Client.reset();
+        }
 
         ExitApp(true);
     }

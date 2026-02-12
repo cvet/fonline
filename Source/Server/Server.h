@@ -57,20 +57,22 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ServerInitException);
 
-class FOServer final : public BaseEngine
+auto GetServerResources(GlobalSettings& settings) -> FileSystem;
+
+class ServerEngine final : public BaseEngine, public EntityManagerApi
 {
     friend class ServerScriptSystem;
 
 public:
-    explicit FOServer(GlobalSettings& settings);
+    explicit ServerEngine(GlobalSettings& settings, FileSystem&& resources);
 
-    FOServer(const FOServer&) = delete;
-    FOServer(FOServer&&) noexcept = delete;
-    auto operator=(const FOServer&) = delete;
-    auto operator=(FOServer&&) noexcept = delete;
-    ~FOServer() override;
+    ServerEngine(const ServerEngine&) = delete;
+    ServerEngine(ServerEngine&&) noexcept = delete;
+    auto operator=(const ServerEngine&) = delete;
+    auto operator=(ServerEngine&&) noexcept = delete;
+    ~ServerEngine() override;
 
-    [[nodiscard]] auto GetEngine() noexcept -> FOServer* { return this; }
+    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return this; }
 
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
@@ -79,6 +81,13 @@ public:
     [[nodiscard]] auto GetLocationAndMapsStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
+
+    void Shutdown() override;
+
+    auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
+    auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* override { return EntityMngr.CreateCustomEntity(type_name, pid); }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> Entity* override { return EntityMngr.GetCustomEntity(type_name, id); }
+    void DestroyEntity(Entity* entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
@@ -213,6 +222,7 @@ private:
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ServerConnection* connection);
+    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
 
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);

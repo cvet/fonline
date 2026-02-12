@@ -36,7 +36,6 @@
 #include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
-#include "Version-Include.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -72,7 +71,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     // Tracy
 #if FO_TRACY
-    TracySetProgramName(FO_NICE_NAME);
+    TracySetProgramName(FO_NICE_NAME.c_str());
 #endif
 
     // Logging
@@ -81,10 +80,11 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
 
     // Load settings
     auto settings = LoadSettings(argc, argv);
-    WriteLog("Version {}", settings.GameVersion);
+    WriteLog("Version: {}", settings.GameVersion);
 
     // Prebake resources
     if (!IsPackaged() && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {
+        WriteLog("Prebake resources");
         PrebakeResources(settings);
     }
 
@@ -92,7 +92,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     App = SafeAlloc::MakeRaw<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
-    SetBadAllocCallback([] { App->RequestQuit(); });
+    SetBadAllocCallback([]() FO_DEFERRED { App->RequestQuit(); });
 
     // Request quit on interrupt signals
     SetupSignals();
@@ -108,7 +108,7 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetExceptionCallback([show_message_on_exception](string_view message, string_view traceback, bool fatal_error) {
+    SetExceptionCallback([show_message_on_exception](string_view message, string_view traceback, bool fatal_error) FO_DEFERRED {
         WriteLog(LogType::Error, "{}\n{}", message, traceback);
 
         if (fatal_error) {
@@ -272,7 +272,7 @@ static void PrebakeResources(BakingSettings& settings)
     auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
 
     void* baker_dll = nullptr;
-    auto unload_baker_dll = ScopeCallback([&]() noexcept { Platform::UnloadModule(baker_dll); });
+    auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
 
     const auto lib_name = strex("{}_BakerLib", FO_DEV_NAME);
 

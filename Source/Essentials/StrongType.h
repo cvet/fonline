@@ -110,7 +110,7 @@ private:
 };
 
 template<typename T>
-concept is_strong_type = requires {
+concept some_strong_type = requires {
     typename T::underlying_type;
     std::has_unique_object_representations_v<T>;
     std::is_standard_layout_v<T>;
@@ -119,7 +119,7 @@ concept is_strong_type = requires {
 
 FO_END_NAMESPACE
 template<typename T>
-    requires(FO_NAMESPACE is_strong_type<T>)
+    requires(FO_NAMESPACE some_strong_type<T>)
 struct std::formatter<T> : formatter<typename T::underlying_type> // NOLINT(cert-dcl58-cpp)
 {
     template<typename FormatContext>
@@ -132,7 +132,7 @@ FO_BEGIN_NAMESPACE
 
 FO_END_NAMESPACE
 template<typename T>
-    requires(FO_NAMESPACE is_strong_type<T>)
+    requires(FO_NAMESPACE some_strong_type<T>)
 inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 {
     typename T::underlying_type uv;
@@ -150,7 +150,7 @@ FO_BEGIN_NAMESPACE
 
 FO_END_NAMESPACE
 template<typename T>
-    requires(FO_NAMESPACE is_strong_type<T>)
+    requires(FO_NAMESPACE some_strong_type<T>)
 struct FO_HASH_NAMESPACE hash<T>
 {
     using is_avalanching = void;

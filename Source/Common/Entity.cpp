@@ -60,17 +60,31 @@ void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    const auto old = _refCounter.fetch_sub(1, std::memory_order_release);
     FO_STRONG_ASSERT(old > 0);
 
     if (old == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete this;
     }
 }
 
+auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_events) {
+        if (const auto it = _events->find(event_name); it != _events->end() && !it->second.empty()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     make_if_not_exists(_events);
 
@@ -88,7 +102,7 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
 
-void Entity::UnsubscribeEvent(string_view event_name, const void* subscription_ptr) noexcept
+void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -110,13 +124,13 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
     }
 }
 
-auto Entity::FireEvent(string_view event_name, const initializer_list<void*>& args) noexcept -> bool
+auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
-            return FireEvent(it->second, args);
+            return FireEvent(it->second, call);
         }
     }
 
@@ -145,18 +159,18 @@ void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackD
     });
 }
 
-void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, const void* subscription_ptr) noexcept
+void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks.end()) {
+    if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks.end()) {
         callbacks.erase(it);
     }
 }
 
-auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_list<void*>& args) noexcept -> bool
+auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -171,7 +185,7 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
         const auto ex_policy = cb.ExPolicy;
 
         try {
-            if (!cb.Callback(args)) {
+            if (!cb.Callback(call)) {
                 return false;
             }
         }
@@ -187,9 +201,6 @@ auto Entity::FireEvent(vector<EventCallbackData>& callbacks, const initializer_l
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
                 return false;
             }
-        }
-        catch (...) {
-            FO_UNKNOWN_EXCEPTION();
         }
     }
 
@@ -374,14 +385,38 @@ auto Entity::HasTimeEvents() const noexcept -> bool
     return _timeEvents && !_timeEvents->empty();
 }
 
-EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) noexcept :
+EntityEvent::EntityEvent(Entity* entity, const char* callback_name) noexcept :
     _entity {entity},
     _callbackName {callback_name}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 }
 
-void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
+auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_callbacks);
+    return _entity->FireEvent(*_callbacks, call);
+}
+
+auto EntityEvent::CheckCallbacks() -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_callbacks) {
+        return !_callbacks->empty();
+    }
+
+    if (_entity->HasEventCallbacks(_callbackName)) {
+        _callbacks = &_entity->GetEventCallbacks(_callbackName);
+        return true;
+    }
+
+    return false;
+}
+
+void EntityEvent::Subscribe(Entity::EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -392,8 +427,7 @@ void EntityEventBase::Subscribe(Entity::EventCallbackData&& callback)
     _entity->SubscribeEvent(*_callbacks, std::move(callback));
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
-void EntityEventBase::Unsubscribe(const void* subscription_ptr) noexcept
+void EntityEvent::Unsubscribe(uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -404,7 +438,7 @@ void EntityEventBase::Unsubscribe(const void* subscription_ptr) noexcept
     _entity->UnsubscribeEvent(*_callbacks, subscription_ptr);
 }
 
-void EntityEventBase::UnsubscribeAll() noexcept
+void EntityEvent::UnsubscribeAll() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

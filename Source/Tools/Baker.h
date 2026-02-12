@@ -48,40 +48,40 @@ class Properties;
 class ScriptSystem;
 
 using BakeCheckerCallback = function<bool(string_view, uint64)>;
-using AsyncWriteDataCallback = function<void(string_view, span<const uint8>)>;
+using AsyncWriteDataCallback = function<void(string_view, const_span<uint8>)>;
 
-struct BakerData
+struct BakingContext
 {
     raw_ptr<const BakingSettings> Settings {};
     string PackName {};
     BakeCheckerCallback BakeChecker {};
     AsyncWriteDataCallback WriteData {};
     raw_ptr<const FileSystem> BakedFiles {};
+    optional<bool> ForceSyncMode {};
 };
 
 class BaseBaker
 {
 public:
-    explicit BaseBaker(BakerData& data);
+    explicit BaseBaker(shared_ptr<BakingContext> ctx);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = delete;
     auto operator=(const BaseBaker&) = delete;
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
-    [[nodiscard]] static auto SetupBakers(const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>;
+    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
+    [[nodiscard]] virtual auto GetOrder() const -> int32 = 0;
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
 
+    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>;
+
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred; }
+    [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? std::launch::deferred : std::launch::async | std::launch::deferred; }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t;
 
-    raw_ptr<const BakingSettings> _settings;
-    string _resPackName;
-    BakeCheckerCallback _bakeChecker;
-    AsyncWriteDataCallback _writeData;
-    raw_ptr<const FileSystem> _bakedFiles;
+    shared_ptr<BakingContext> _context;
 };
 
 class MasterBaker final
@@ -142,17 +142,28 @@ private:
     bool _nonConstHelper {};
 };
 
-class BakerEngine : public EngineData
+class BakerServerEngine : public EngineMetadata, public ScriptSystem, public EntityManagerApi
 {
 public:
-    explicit BakerEngine(PropertiesRelationType props_relation);
-    static auto GetRestoreInfo() -> vector<uint8>;
+    explicit BakerServerEngine(const FileSystem& resources);
+
+    // Entity API stub
+    auto CreateCustomInnerEntity(Entity* /*holder*/, hstring /*entry*/, hstring /*pid*/) -> Entity* override { return nullptr; }
+    auto CreateCustomEntity(hstring /*type_name*/, hstring /*pid*/) -> Entity* override { return nullptr; }
+    auto GetCustomEntity(hstring /*type_name*/, ident_t /*id*/) -> Entity* override { return nullptr; }
+    void DestroyEntity(Entity* /*entity*/) override { }
 };
 
-class BakerScriptSystem final : public ScriptSystem
+class BakerClientEngine : public EngineMetadata
 {
 public:
-    explicit BakerScriptSystem(BakerEngine& engine, const FileSystem& resources);
+    explicit BakerClientEngine(const FileSystem& resources);
+};
+
+class BakerMapperEngine : public EngineMetadata
+{
+public:
+    explicit BakerMapperEngine(const FileSystem& resources);
 };
 
 FO_END_NAMESPACE

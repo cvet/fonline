@@ -112,7 +112,7 @@ struct ucolor
 
     static const ucolor clear;
 };
-static_assert(is_strong_type<ucolor>);
+static_assert(some_strong_type<ucolor>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE ucolor, v.underlying_value());
 
 FO_END_NAMESPACE

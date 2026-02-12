@@ -190,7 +190,7 @@ auto File::GetReader() const -> FileReader
     return FileReader({_fileBuf.get(), _fileSize});
 }
 
-FileReader::FileReader(span<const uint8> buf) :
+FileReader::FileReader(const_span<uint8> buf) :
     _buf {buf}
 {
     FO_STACK_TRACE_ENTRY();

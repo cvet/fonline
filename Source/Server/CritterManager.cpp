@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-CritterManager::CritterManager(FOServer* engine) :
+CritterManager::CritterManager(ServerEngine* engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
@@ -211,7 +211,7 @@ void CritterManager::DestroyCritter(Critter* cr)
     // Tear off from environment
     {
         cr->LockMapTransfers++;
-        auto restore_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
+        auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
         for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             try {

@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
+ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
     Entity(registrator, props),
     _engine {engine},
     _id {id}

@@ -39,19 +39,23 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_SetupScript(Map* self, InitFunc<Map*> initFunc)
+FO_SCRIPT_API void Server_Map_SetupScript(Map* self, ScriptFunc<void, Map*, bool> initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
-        throw ScriptException("Call init failed", initFunc);
+    if (initFunc.IsDelegate()) {
+        throw ScriptException("Init function must not be a delegate");
     }
 
-    self->SetInitScript(initFunc);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
+        throw ScriptException("Call init failed", initFunc.GetName().first);
+    }
+
+    self->SetInitScript(initFunc.GetName().first);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_SetupScriptEx(Map* self, hstring initFunc)
 {
-    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+    if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
     }
 
@@ -79,7 +83,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count, const map<ItemProperty, int32>& props)
+FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count, readonly_map<ItemProperty, int32> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -917,7 +921,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, int32>& props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, readonly_map<CritterProperty, int32> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -934,7 +938,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, const map<CritterProperty, any_t>& props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, readonly_map<CritterProperty, any_t> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");

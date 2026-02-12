@@ -42,24 +42,29 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ProtoBakerException);
 
-class EngineData;
+class EngineMetadata;
 class ScriptSystem;
 class ProtoEntity;
 
 class ProtoBaker final : public BaseBaker
 {
 public:
-    explicit ProtoBaker(BakerData& data);
+    static constexpr string_view_nt NAME = "Proto";
+
+    explicit ProtoBaker(shared_ptr<BakingContext> ctx);
     ProtoBaker(const ProtoBaker&) = delete;
     ProtoBaker(ProtoBaker&&) noexcept = delete;
     auto operator=(const ProtoBaker&) = delete;
     auto operator=(ProtoBaker&&) noexcept = delete;
     ~ProtoBaker() override;
 
+    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
+    [[nodiscard]] auto GetOrder() const -> int32 override { return 5; }
+
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    auto BakeProtoFiles(const EngineData* engine, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>;
+    auto BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>;
 };
 
 FO_END_NAMESPACE

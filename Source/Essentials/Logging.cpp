@@ -54,7 +54,7 @@ struct LoggingData
         MainThreadId = std::this_thread::get_id();
     }
 
-    map<string, LogFunc> LogFunctions {};
+    vector<pair<string, LogFunc>> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
     bool TagsDisabled {};
@@ -68,11 +68,10 @@ void SetLogCallback(string_view key, LogFunc callback)
     std::scoped_lock locker(GetLogLocker());
 
     if (!key.empty()) {
+        std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
+
         if (callback) {
-            Logging->LogFunctions.emplace(key, std::move(callback));
-        }
-        else {
-            Logging->LogFunctions.erase(string(key));
+            Logging->LogFunctions.emplace_back(key, std::move(callback));
         }
     }
     else {
@@ -122,7 +121,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             }
 
             Logging->LogFunctionsInProcess = true;
-            auto reset_in_process = ScopeCallback([]() noexcept { Logging->LogFunctionsInProcess = false; });
+            auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
             for (const auto& func : Logging->LogFunctions | std::views::values) {
                 func(result);

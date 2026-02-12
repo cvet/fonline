@@ -35,19 +35,20 @@
 
 #include "Common.h"
 
-#include "ScriptSystem.h"
-#include "Timer.h"
+#include "Entity.h"
 
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(TimeEventException);
+
+class BaseEngine;
 
 class TimeEventManager
 {
 public:
     static const timespan MIN_REPEAT_TIME;
 
-    explicit TimeEventManager(GameTimer& game_time, ScriptSystem& script_sys);
+    explicit TimeEventManager(BaseEngine& engine);
     TimeEventManager(const TimeEventManager&) = delete;
     TimeEventManager(TimeEventManager&&) noexcept = delete;
     auto operator=(const TimeEventManager&) = delete;
@@ -55,12 +56,13 @@ public:
     ~TimeEventManager() = default;
 
     [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity.get(), _curTimeEvent.get()}; }
-    [[nodiscard]] auto CountTimeEvent(Entity* entity, hstring func_name, uint32 id) const -> size_t;
+    [[nodiscard]] auto CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id) const -> size_t;
 
-    auto StartTimeEvent(Entity* entity, hstring func_name, timespan delay, timespan repeat, vector<any_t> data) -> uint32;
-    void ModifyTimeEvent(Entity* entity, hstring func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data);
-    void StopTimeEvent(Entity* entity, hstring func_name, uint32 id);
+    auto StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32;
+    void ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data);
+    void StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id);
     void ProcessTimeEvents();
+    void ClearTimeEvents();
 
 private:
     void AddEntityTimeEventPolling(Entity* entity);
@@ -68,8 +70,7 @@ private:
     void ProcessEntityTimeEvents(Entity* entity);
     auto FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> bool;
 
-    raw_ptr<GameTimer> _gameTime;
-    raw_ptr<ScriptSystem> _scriptSys;
+    raw_ptr<BaseEngine> _engine;
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     raw_ptr<Entity> _curTimeEventEntity {};
     raw_ptr<const Entity::TimeEventData> _curTimeEvent {};

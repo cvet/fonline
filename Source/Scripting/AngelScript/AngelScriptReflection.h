@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "ScriptSystem.h"
 
 #include <angelscript.h>
@@ -94,6 +96,8 @@ public:
     auto ConvertToType() -> ScriptType*;
 };
 
-void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* engine);
+void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine);
 
 FO_END_NAMESPACE
+
+#endif

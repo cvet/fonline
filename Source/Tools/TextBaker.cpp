@@ -37,12 +37,12 @@
 
 FO_BEGIN_NAMESPACE
 
-TextBaker::TextBaker(BakerData& data) :
-    BaseBaker(data)
+TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_settings->BakeLanguages.empty()) {
+    if (_context->Settings->BakeLanguages.empty()) {
         throw TextBakerException("No bake languages specified");
     }
 }
@@ -75,7 +75,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
-        if (_bakeChecker && !_bakeChecker(strex("{}.{}.{}.fotxt-bin", _resPackName, text_pack_name, lang_name), file_header.GetWriteTime())) {
+        if (_context->BakeChecker && !_context->BakeChecker(strex("{}.{}.{}.fotxt-bin", _context->PackName, text_pack_name, lang_name), file_header.GetWriteTime())) {
             continue;
         }
 
@@ -87,7 +87,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     }
 
     // Find languages
-    const auto& default_lang = _settings->BakeLanguages.front();
+    const auto& default_lang = _context->Settings->BakeLanguages.front();
     set<string> languages;
     set<string> all_languages;
 
@@ -97,7 +97,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
-            if (std::ranges::find(_settings->BakeLanguages, lang_name) == _settings->BakeLanguages.end()) {
+            if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
                 WriteLog(LogType::Warning, "Unsupported language: {}. Skip", lang_name);
             }
             else {
@@ -143,12 +143,12 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
     }
 
-    TextPack::FixPacks(_settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
 
     // Save parsed packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _writeData(strex("{}.{}.{}.fotxt-bin", _resPackName, pack_name, lang_name), text_pack.GetBinaryData());
+            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->PackName, pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }
