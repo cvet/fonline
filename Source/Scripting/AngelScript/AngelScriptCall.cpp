@@ -386,7 +386,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
 
             if (arg_type.Kind == ComplexTypeKind::Simple) {
                 if (arg_type.IsMutable) {
-                    FO_AS_VERIFY(ctx->SetArgAddress(i, arg_data));
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, *static_cast<void**>(arg_data)));
                 }
                 else if (base_type.IsEntity || base_type.IsRefType) {
                     FO_AS_VERIFY(ctx->SetArgObject(i, *static_cast<void**>(arg_data)));

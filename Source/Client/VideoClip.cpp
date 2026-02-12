@@ -332,9 +332,9 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             const float32 cb = numeric_cast<float32>(cy) + 1.722f * numeric_cast<float32>(cu - 127);
 
             auto* data = reinterpret_cast<uint8*>(_impl->RenderedTextureData.data()) + (y * w * 4 + x * 4);
-            data[0] = iround<uint8>(cr);
-            data[1] = iround<uint8>(cg);
-            data[2] = iround<uint8>(cb);
+            data[0] = iround<uint8>(std::clamp(cr, 0.0f, 255.0f));
+            data[1] = iround<uint8>(std::clamp(cg, 0.0f, 255.0f));
+            data[2] = iround<uint8>(std::clamp(cb, 0.0f, 255.0f));
             data[3] = 0xFF;
         }
     }

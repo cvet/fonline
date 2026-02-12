@@ -800,7 +800,7 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
         next_hexes.erase(next_hexes.begin(), next_hexes.begin() + static_cast<ptrdiff_t>(next_hexes_round));
 
         // Add gag hex after some distance
-        if (!gag_hexes.empty()) {
+        if (!gag_hexes.empty() && !next_hexes.empty()) {
             const auto last_index = grid_at(next_hexes.back());
             const auto& gag_hex = gag_hexes.front();
             const auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
