@@ -43,71 +43,91 @@
     "eslint": "^8.12.0",
     "events": "^3.3.0",
     "glob": "^7.2.0",
-    "mocha": "^9.2.2",
+    "mocha": "^11.3.0",
     "path-browserify": "^1.0.1",
     "rimraf": "^3.0.2",
     "typescript": "^4.6.3",
     "url": "^0.11.0",
-    "vsce": "^2.7.0"
+    "vsce": "^2.15.0"
   },
   "main": "./dist/extension.js",
   "browser": "./dist/web-extension.js",
   "activationEvents": [
-    "onDebugResolve:mock",
-    "onDebugDynamicConfigurations:mock",
-    "onCommand:extension.mock-debug.getProgramName"
+    "onDebugResolve:fos",
+    "onDebugDynamicConfigurations:fos",
+    "onCommand:extension.fos-debug.getProgramName"
   ],
   "workspaceTrust": {
     "request": "never"
   },
   "contributes": {
+    "languages": [
+      {
+        "id": "fos",
+        "aliases": [
+          "FOnline AngelScript",
+          "fos"
+        ],
+        "extensions": [
+          ".fos"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "fos",
+        "scopeName": "source.angelscript",
+        "path": "./sublime-angelscript/AngelScript.tmLanguage"
+      }
+    ],
     "menus": {
       "editor/title/run": [
         {
-          "command": "extension.mock-debug.runEditorContents",
+          "command": "extension.fos-debug.runEditorContents",
           "when": "resourceLangId == markdown",
           "group": "navigation@1"
         },
         {
-          "command": "extension.mock-debug.debugEditorContents",
+          "command": "extension.fos-debug.debugEditorContents",
           "when": "resourceLangId == markdown",
           "group": "navigation@2"
         }
       ],
       "commandPalette": [
         {
-          "command": "extension.mock-debug.debugEditorContents",
+          "command": "extension.fos-debug.debugEditorContents",
           "when": "resourceLangId == markdown"
         },
         {
-          "command": "extension.mock-debug.runEditorContents",
+          "command": "extension.fos-debug.runEditorContents",
           "when": "resourceLangId == markdown"
         }
       ],
       "debug/variables/context": [
         {
-          "command": "extension.mock-debug.toggleFormatting",
-          "when": "debugType == 'mock' && debugProtocolVariableMenuContext == 'simple'"
+          "command": "extension.fos-debug.toggleFormatting",
+          "when": "debugType == 'fos' && debugProtocolVariableMenuContext == 'simple'"
         }
       ]
     },
     "commands": [
       {
-        "command": "extension.mock-debug.debugEditorContents",
+        "command": "extension.fos-debug.debugEditorContents",
         "title": "Debug File",
-        "category": "Mock Debug",
+        "category": "FOS Debug",
         "enablement": "!inDebugMode",
         "icon": "$(debug-alt)"
       },
       {
-        "command": "extension.mock-debug.runEditorContents",
+        "command": "extension.fos-debug.runEditorContents",
         "title": "Run File",
-        "category": "Mock Debug",
+        "category": "FOS Debug",
         "enablement": "!inDebugMode",
         "icon": "$(play)"
       },
       {
-        "command": "extension.mock-debug.toggleFormatting",
+        "command": "extension.fos-debug.toggleFormatting",
         "title": "Toggle between decimal and hex formatting"
       }
     ],
@@ -118,11 +138,11 @@
     ],
     "debuggers": [
       {
-        "type": "mock",
+        "type": "fos",
         "languages": [
           "markdown"
         ],
-        "label": "Mock Debug",
+        "label": "FOS Debug",
         "program": "./out/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
@@ -201,7 +221,7 @@
         },
         "initialConfigurations": [
           {
-            "type": "mock",
+            "type": "fos",
             "request": "launch",
             "name": "Ask for file name",
             "program": "${workspaceFolder}/${command:AskForProgramName}",
@@ -210,10 +230,10 @@
         ],
         "configurationSnippets": [
           {
-            "label": "Mock Debug: Launch",
+            "label": "FOS Debug: Launch",
             "description": "A new configuration for 'debugging' a user selected markdown file.",
             "body": {
-              "type": "mock",
+              "type": "fos",
               "request": "launch",
               "name": "Ask for file name",
               "program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
@@ -222,7 +242,7 @@
           }
         ],
         "variables": {
-          "AskForProgramName": "extension.mock-debug.getProgramName"
+          "AskForProgramName": "extension.fos-debug.getProgramName"
         }
       }
     ]

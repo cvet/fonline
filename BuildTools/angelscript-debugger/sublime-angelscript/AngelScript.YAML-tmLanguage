@@ -1,0 +1,250 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+comment: Made by Wronex and maintained by Codecat
+name: AngelScript
+scopeName: source.angelscript
+fileTypes:
+- as
+uuid: 69E25C06-FA48-4207-BF35-11353888A8F6
+
+patterns:
+- name: comment.line.double-slash.angelscript
+  match: (//).*$\n?
+  captures:
+    '1': {name: punctuation.definition.comment.angelscript}
+
+- name: comment.block.angelscript
+  begin: /\*
+  end: \*/
+  captures:
+    '0': {name: punctuation.definition.comment.angelscript}
+
+- name: string.quoted.double.angelscript
+  begin: '"""'
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin.angelscript}
+  end: '"""'
+  endCaptures:
+    '0': {name: punctuation.definition.string.end.angelscript}
+
+- name: string.quoted.double.angelscript
+  begin: '"'
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin.angelscript}
+  end: '"'
+  endCaptures:
+    '0': {name: punctuation.definition.string.end.angelscript}
+  patterns:
+  - name: constant.character.escape.angelscript
+    match: \\.
+
+- name: string.quoted.single.angelscript
+  begin: ''''
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin.angelscript}
+  end: ''''
+  endCaptures:
+    '0': {name: punctuation.definition.string.end.angelscript}
+  patterns:
+  - match: \\.
+    name: constant.character.escape.angelscript
+
+- name: keyword.operator.logical.angelscript
+  match: (~|!|&&|\|\|)
+
+# Control keywords
+- name: keyword.control.angelscript
+  match: \b(for|foreach|in|break|continue|while|do|return|if|else|case|switch|namespace|try|catch)\b
+
+# Explicit cast
+- match: \b(cast)(<)([A-Za-z_][A-Za-z_0-9]*)(>)
+  captures:
+    '1': {name: keyword.other.angelscript}
+    '2': {name: punctuation.definition.generic.begin.angelscript}
+    '3': {name: storage.type.angelscript}
+    '4': {name: punctuation.definition.generic.end.angelscript}
+
+# Variable definition
+- match: |-
+    (?x:
+      ^\s*
+      ([A-Za-z_][A-Za-z_0-9]*)
+      \s+
+      ([A-Za-z_][A-Za-z_0-9]*)
+      \s*[=;]
+    )
+  captures:
+    '1': {name: storage.type.angelscript}
+    '2': {name: variable.other.angelscript}
+
+# Templated variable definition
+- match: |-
+    (?x:
+      ^\s*
+      ([A-Za-z_][A-Za-z_0-9]*)
+      <(?:
+        (.*?)
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+      )>
+      \s+
+      ([A-Za-z_][A-Za-z_0-9]*)
+      \s*[=;]
+    )
+  captures:
+    '1': {name: storage.type.angelscript}
+    '2': {name: storage.type.angelscript}
+    '3': {name: storage.type.angelscript}
+    '4': {name: storage.type.angelscript}
+    '5': {name: storage.type.angelscript}
+    '6': {name: storage.type.angelscript}
+    '7': {name: variable.other.angelscript}
+
+# Function definition
+- match: ^\s*([A-Za-z_][A-Za-z_0-9]*)\s+([A-Za-z_][A-Za-z_0-9]*)\(
+  captures:
+    '1': {name: storage.type.angelscript}
+    '2': {name: meta.function entity.name.function.angelscript}
+
+# Handle dereference
+- match: (@)([A-Za-z_][A-Za-z_0-9]*)\b
+  captures:
+    '1': {name: keyword.other.angelscript}
+    '2': {name: variable.other.angelscript}
+
+# Variable assignment
+- match: \b([A-Za-z_][A-Za-z_0-9]*)\s*([-+/*%]?=)
+  captures:
+    '1': {name: variable.other.angelscript}
+    '2': {name: keyword.operator.assignment.angelscript}
+
+# Namespaces
+- match: \b([a-zA-Z_][a-zA-Z_0-9]*)(::)
+  captures:
+    '1': {name: entity.name.namespace}
+    '2': {name: keyword.operator.symbolic.angelscript}
+
+# Operators
+- name: keyword.operator.assignment.angelscript
+  match: '[=]'
+
+- name: keyword.operator.arithmetic.angelscript
+  match: '[%*+\-/]'
+
+- name: keyword.operator.bitwise.angelscript
+  match: '[|&><]'
+
+- name: keyword.operator.symbolic.angelscript
+  match: '[!@?:]'
+
+- name: keyword.other.angelscript
+  match: \b(is)\b
+
+- name: keyword.operator.logical.angelscript
+  match: \b(or|and|xor|not)\b
+
+- name: storage.modifier.angelscript
+  match: \b(get|in|inout|out|override|explicit|set|private|public|protected|const|default|final|shared|external|mixin|abstract|property)\b
+
+- name: storage.type.angelscript
+  match: \b(enum|void|bool|typedef|funcdef|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|string|ref|array|double|float|auto|dictionary)\b
+
+- match: '([A-Za-z_][A-Za-z_0-9]*)(@)\s+([A-Za-z_][A-Za-z_0-9]*)'
+  captures:
+    '1': {name: storage.type.angelscript}
+    '2': {name: keyword.other.angelscript}
+    '3': {name: variable.other.angelscript}
+
+- match: '([A-Za-z_][A-Za-z_0-9]*)(@)'
+  captures:
+    '1': {name: storage.type.angelscript}
+    '2': {name: keyword.other.angelscript}
+
+- name: constant.language.angelscript
+  match: \b(null|true|false)\b
+
+- name: variable.language.angelscript
+  match: \b(this|super)\b
+
+- name: keyword.control.import.angelscript
+  match: \b(import|from)\b
+
+- name: constant.numeric.angelscript
+  match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f)?\b
+
+- name: meta.preprocessor keyword.control.import.angelscript
+  match: ^\s*\#([a-zA-Z_0-9]*)?
+
+- name: meta.metadata.angelscript
+  match: ^\s*\[(.*)\]\s*?
+  captures:
+    '1': {name: markup.heading.angelscript}
+
+- name: variable.other.dot-access.angelscript
+  match: \.[a-zA-Z_][a-zA-Z_0-9]*\b(?!\s*[<\(])
+
+- name: meta.class.angelscript
+  match: |-
+    (?x:
+      \b(class|interface)
+      \s+([a-zA-Z_0-9]*)
+      (?:
+        \s*:\s*([a-zA-Z_0-9]*)
+        (?:\s*,\s*([a-zA-Z_0-9]*))?
+        (?:\s*,\s*([a-zA-Z_0-9]*))?
+        (?:\s*,\s*([a-zA-Z_0-9]*))?
+        (?:\s*,\s*([a-zA-Z_0-9]*))?
+      )?
+    )
+  captures:
+    '1': {name: storage.type.class.angelscript}
+    '2': {name: entity.name.type.class.angelscript}
+    '3': {name: entity.other.inherited-class.angelscript}
+    '4': {name: entity.other.inherited-class.angelscript}
+    '5': {name: entity.other.inherited-class.angelscript}
+    '6': {name: entity.other.inherited-class.angelscript}
+    '7': {name: entity.other.inherited-class.angelscript}
+
+# Function call
+- match: |-
+    (?x:
+      (?:\b|\.)
+      ([a-zA-Z_][a-zA-Z_0-9]*)
+      \b(?:\s*\()
+    )
+  captures:
+    '1': {name: meta.function-call.angelscript variable.function.angelscript}
+
+# Templated function call
+- match: |-
+    (?x:
+      (?:\b|\.)
+      ([a-zA-Z_][a-zA-Z_0-9]*)
+      <(?:
+        (.*?)
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+        (?:,\s*(.*?))?
+      )>\(
+    )
+  captures:
+    '1': {name: meta.function-call.angelscript variable.function.angelscript}
+    '2': {name: storage.type.angelscript}
+    '3': {name: storage.type.angelscript}
+    '4': {name: storage.type.angelscript}
+    '5': {name: storage.type.angelscript}
+    '6': {name: storage.type.angelscript}
+
+# Uppercase constants
+- name: constant.other.angelscript
+  match: \b([A-Z][A-Z0-9_]+)\b
+
+firstLineMatch: -\*- C\+\+ -\*-
+foldingStartMarker: |-
+  (?x)
+   /\*\*(?!\*)
+  |^(?![^{]*?//|[^{]*?/\*(?!.*?\*/.*?\{)).*?\{\s*($|//|/\*(?!.*?\*/.*\S))
+foldingStopMarker: (?<!\*)\*\*/|^\s*\}
+keyEquivalent: ^~C
