@@ -51,8 +51,15 @@ static VkPhysicalDevice PhysicalDevice {};
 static VkDevice Device {};
 static VkQueue GraphicsQueue {};
 static VkSurfaceKHR Surface {};
+static uint32_t GraphicsFamilyIndex {};
+static VkSwapchainKHR Swapchain {};
+static vector<VkImage> SwapchainImages;
+static VkFormat SwapchainFormat {};
+static VkExtent2D SwapchainExtent {};
 static irect32 ViewPort {};
 static unique_ptr<RenderTexture> DummyTexture {};
+
+static void RecreateSwapchain(isize32 size);
 
 class Vulkan_Texture final : public RenderTexture
 {
@@ -313,15 +320,99 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     }
 
     vkGetDeviceQueue(Device, graphics_family.value(), 0, &GraphicsQueue);
+    GraphicsFamilyIndex = graphics_family.value();
 
     ViewPort = irect32 {{0, 0}, {0, 0}};
+
+    // Initialize swapchain for current window size0
+    int w;
+    int h;
+    SDL_GetWindowSizeInPixels(SdlWindow.get(), &w, &h);
+    RecreateSwapchain({w, h});
+
     DummyTexture = CreateTexture({1, 1}, false, false);
+}
+
+static void RecreateSwapchain(isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Swapchain != nullptr) {
+        vkDeviceWaitIdle(Device);
+        vkDestroySwapchainKHR(Device, Swapchain, nullptr);
+        Swapchain = VK_NULL_HANDLE;
+        SwapchainImages.clear();
+    }
+
+    VkExtent2D ext {};
+
+    if (size.width > 0 && size.height > 0) {
+        ext.width = numeric_cast<uint32_t>(size.width);
+        ext.height = numeric_cast<uint32_t>(size.height);
+    }
+    else {
+        int w;
+        int h;
+        SDL_GetWindowSizeInPixels(SdlWindow.get(), &w, &h);
+        ext.width = static_cast<uint32_t>(w);
+        ext.height = static_cast<uint32_t>(h);
+    }
+
+    SwapchainExtent = ext;
+
+    VkSurfaceCapabilitiesKHR caps {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(PhysicalDevice, Surface, &caps);
+
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
+        imageCount = caps.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR sci {};
+    sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    sci.surface = Surface;
+    sci.minImageCount = imageCount;
+    sci.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    sci.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    sci.imageExtent = SwapchainExtent;
+    sci.imageArrayLayers = 1;
+    sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    sci.preTransform = caps.currentTransform;
+    sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    sci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    sci.clipped = VK_TRUE;
+    sci.oldSwapchain = VK_NULL_HANDLE;
+
+    vkCreateSwapchainKHR(Device, &sci, nullptr, &Swapchain);
+    vkGetSwapchainImagesKHR(Device, Swapchain, &imageCount, nullptr);
+    SwapchainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(Device, Swapchain, &imageCount, SwapchainImages.data());
+    SwapchainFormat = sci.imageFormat;
 }
 
 void Vulkan_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
-    // not implemented
+
+    if (Swapchain == nullptr) {
+        return;
+    }
+
+    uint32_t img_idx = 0;
+    VkResult result = vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &img_idx);
+
+    if (result != VK_SUCCESS) {
+        return;
+    }
+
+    VkPresentInfoKHR info {};
+    info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    info.swapchainCount = 1;
+    info.pSwapchains = &Swapchain;
+    info.pImageIndices = &img_idx;
+    result = vkQueuePresentKHR(GraphicsQueue, &info);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 }
 
 void Vulkan_Renderer::SetRenderTarget(RenderTexture* /*tex*/)
@@ -353,6 +444,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     ViewPort = irect32 {{0, 0}, size};
+    RecreateSwapchain(size);
 }
 
 FO_END_NAMESPACE
