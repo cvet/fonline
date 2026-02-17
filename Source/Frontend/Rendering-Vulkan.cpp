@@ -70,66 +70,29 @@ static VkPipeline GraphicsPipeline {};
 static VkCommandBuffer StagingCommandBuffer {};
 static vector<tuple<VkBuffer, VkDeviceMemory>> StagingBuffers;
 static VkCommandBuffer CurrentCommandBuffer {}; // Current frame's recording command buffer
+static VkDescriptorSetLayout TextureDescriptorSetLayout {};
+static VkDescriptorPool DescriptorPool {};
+static VkSampler TextureSampler {};
 
 static void RecreateSwapchain(isize32 size);
 static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
+static void AllocateImage(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 
 class Vulkan_Texture final : public RenderTexture
 {
 public:
-    Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth) :
-        RenderTexture(size, linear_filtered, with_depth),
-        _pixels(size.square())
-    {
-        FO_STACK_TRACE_ENTRY();
-    }
+    Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth);
+    ~Vulkan_Texture() override;
 
-    ~Vulkan_Texture() override = default;
+    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override;
 
-        const auto idx = numeric_cast<size_t>(pos.y) * Size.width + numeric_cast<size_t>(pos.x);
-        return idx < _pixels.size() ? _pixels[idx] : ucolor::clear;
-    }
-
-    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        vector<ucolor> result;
-        result.reserve(size.square());
-
-        for (int32 y = 0; y < size.height; y++) {
-            for (int32 x = 0; x < size.width; x++) {
-                result.emplace_back(GetTexturePixel({pos.x + x, pos.y + y}));
-            }
-        }
-
-        return result;
-    }
-
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ignore_unused(use_dest_pitch);
-
-        for (int32 y = 0; y < size.height; y++) {
-            for (int32 x = 0; x < size.width; x++) {
-                const auto dst_idx = (numeric_cast<size_t>(pos.y + y) * Size.width) + numeric_cast<size_t>(pos.x + x);
-                const auto src_idx = numeric_cast<size_t>(y) * size.width + numeric_cast<size_t>(x);
-
-                if (dst_idx < _pixels.size()) {
-                    _pixels[dst_idx] = data[src_idx];
-                }
-            }
-        }
-    }
-
-private:
-    vector<ucolor> _pixels;
+    VkImage TextureImage {};
+    VkImageView TextureImageView {};
+    VkDeviceMemory TextureImageMemory {};
+    VkDescriptorSet DescriptorSet {};
 };
 
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
@@ -222,9 +185,283 @@ Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
     }
 }
 
+Vulkan_Texture::~Vulkan_Texture()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Device == nullptr) {
+        return;
+    }
+
+    if (TextureImageView != nullptr) {
+        vkDestroyImageView(Device, TextureImageView, nullptr);
+        TextureImageView = VK_NULL_HANDLE;
+    }
+
+    if (TextureImage != nullptr) {
+        vkDestroyImage(Device, TextureImage, nullptr);
+        TextureImage = VK_NULL_HANDLE;
+    }
+
+    if (TextureImageMemory != nullptr) {
+        vkFreeMemory(Device, TextureImageMemory, nullptr);
+        TextureImageMemory = VK_NULL_HANDLE;
+    }
+}
+
+auto Vulkan_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto region = GetTextureRegion(pos, {1, 1});
+    return !region.empty() ? region[0] : ucolor::clear;
+}
+
+auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(Device);
+    FO_RUNTIME_ASSERT(TextureImage);
+
+    VkResult vk_result = VK_SUCCESS;
+    vector<ucolor> tex_region;
+    const VkDeviceSize region_size = size.square() * sizeof(ucolor);
+
+    // Create staging buffer for reading from GPU
+    VkBuffer staging_buf {};
+    VkDeviceMemory staging_mem {};
+    AllocateBuffer(region_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, staging_buf, staging_mem);
+
+    // Begin staging command buffer to record copy
+    VkCommandBufferBeginInfo begin_info {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vk_result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Transition image from SHADER_READ_ONLY to TRANSFER_SRC
+    VkImageMemoryBarrier img_barrier {};
+    img_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    img_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    img_barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    img_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    img_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    img_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    img_barrier.image = TextureImage;
+    img_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    img_barrier.subresourceRange.baseMipLevel = 0;
+    img_barrier.subresourceRange.levelCount = 1;
+    img_barrier.subresourceRange.baseArrayLayer = 0;
+    img_barrier.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(StagingCommandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+
+    // Copy region from GPU to staging buffer
+    VkBufferImageCopy region {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {numeric_cast<int32_t>(pos.x), numeric_cast<int32_t>(pos.y), 0};
+    region.imageExtent = {numeric_cast<uint32_t>(size.width), numeric_cast<uint32_t>(size.height), 1};
+
+    vkCmdCopyImageToBuffer(StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging_buf, 1, &region);
+
+    // Transition image back to SHADER_READ_ONLY
+    img_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    img_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    img_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    img_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    vkCmdPipelineBarrier(StagingCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+
+    vk_result = vkEndCommandBuffer(StagingCommandBuffer);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Submit and wait
+    VkSubmitInfo submit_info {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &StagingCommandBuffer;
+
+    vk_result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+    vk_result = vkQueueWaitIdle(GraphicsQueue);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Read data from staging buffer
+    void* data;
+    vk_result = vkMapMemory(Device, staging_mem, 0, region_size, 0, &data);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+    tex_region.resize(size.square());
+    MemCopy(tex_region.data(), data, region_size);
+    vkUnmapMemory(Device, staging_mem);
+
+    // Cleanup staging buffer
+    vkDestroyBuffer(Device, staging_buf, nullptr);
+    vkFreeMemory(Device, staging_mem, nullptr);
+    return tex_region;
+}
+
+void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(Device);
+    FO_RUNTIME_ASSERT(data);
+    FO_RUNTIME_ASSERT(pos.x >= 0);
+    FO_RUNTIME_ASSERT(pos.y >= 0);
+    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
+    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+
+    // Determine data pitch:
+    // - use_dest_pitch=false: data is tightly packed for the region (size.width stride)
+    // - use_dest_pitch=true: data has the full destination texture pitch (Size.width stride)
+    const size_t row_bytes = numeric_cast<size_t>(size.width) * sizeof(ucolor);
+    const size_t data_stride = use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes;
+    const VkDeviceSize total_data_size = numeric_cast<VkDeviceSize>(size.height) * data_stride;
+
+    // Create staging buffer for texture data
+    VkBuffer staging_buf {};
+    VkDeviceMemory staging_mem {};
+
+    AllocateBuffer(total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buf, staging_mem);
+    StagingBuffers.emplace_back(staging_buf, staging_mem);
+
+    // Copy pixel data to staging buffer
+    void* mapped_data {};
+    VkResult vk_result = vkMapMemory(Device, staging_mem, 0, total_data_size, 0, &mapped_data);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    if (use_dest_pitch) {
+        // Data has full destination texture pitch - copy row by row respecting the stride
+        uint8_t* dst = static_cast<uint8_t*>(mapped_data);
+        const uint8_t* src = reinterpret_cast<const uint8_t*>(data);
+
+        for (int32 y = 0; y < size.height; y++) {
+            MemCopy(dst, src, row_bytes);
+            dst += data_stride;
+            src += data_stride;
+        }
+    }
+    else {
+        // Data is tightly packed for the region - direct copy
+        MemCopy(mapped_data, data, row_bytes * size.height);
+    }
+
+    vkUnmapMemory(Device, staging_mem);
+
+    // Create GPU texture image if needed
+    if (TextureImage == nullptr) {
+        AllocateImage(numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
+
+        // Create image view
+        VkImageViewCreateInfo image_view_ci {};
+        image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        image_view_ci.image = TextureImage;
+        image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        image_view_ci.format = VK_FORMAT_R8G8B8A8_UNORM;
+        image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_view_ci.subresourceRange.baseMipLevel = 0;
+        image_view_ci.subresourceRange.levelCount = 1;
+        image_view_ci.subresourceRange.baseArrayLayer = 0;
+        image_view_ci.subresourceRange.layerCount = 1;
+
+        vk_result = vkCreateImageView(Device, &image_view_ci, nullptr, &TextureImageView);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+        // Allocate descriptor set
+        VkDescriptorSetAllocateInfo alloc_info {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.descriptorPool = DescriptorPool;
+        alloc_info.descriptorSetCount = 1;
+        alloc_info.pSetLayouts = &TextureDescriptorSetLayout;
+
+        vk_result = vkAllocateDescriptorSets(Device, &alloc_info, &DescriptorSet);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+        // Write descriptor set
+        VkDescriptorImageInfo image_info {};
+        image_info.sampler = TextureSampler;
+        image_info.imageView = TextureImageView;
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet write_set {};
+        write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write_set.dstSet = DescriptorSet;
+        write_set.dstBinding = 0;
+        write_set.descriptorCount = 1;
+        write_set.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write_set.pImageInfo = &image_info;
+
+        vkUpdateDescriptorSets(Device, 1, &write_set, 0, nullptr);
+    }
+
+    // Transition image to transfer destination layout
+    VkImageMemoryBarrier img_barrier {};
+    img_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    img_barrier.srcAccessMask = 0;
+    img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    img_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    img_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    img_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    img_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    img_barrier.image = TextureImage;
+    img_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    img_barrier.subresourceRange.baseMipLevel = 0;
+    img_barrier.subresourceRange.levelCount = 1;
+    img_barrier.subresourceRange.baseArrayLayer = 0;
+    img_barrier.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(StagingCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+
+    // Copy staging buffer to image region with position offset
+    VkBufferImageCopy region {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {numeric_cast<int32_t>(pos.x), numeric_cast<int32_t>(pos.y), 0};
+    region.imageExtent = {numeric_cast<uint32_t>(size.width), numeric_cast<uint32_t>(size.height), 1};
+
+    vkCmdCopyBufferToImage(StagingCommandBuffer, staging_buf, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    // Transition image to shader read layout
+    img_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    img_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    img_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    img_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    vkCmdPipelineBarrier(StagingCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+
+    // Submit staging command buffer
+    VkSubmitInfo submit_info {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &StagingCommandBuffer;
+
+    vk_result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+    vk_result = vkQueueWaitIdle(GraphicsQueue);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Reset staging command buffer for next upload
+    vk_result = vkResetCommandBuffer(StagingCommandBuffer, 0);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+}
+
 static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory)
 {
     FO_STACK_TRACE_ENTRY();
+
+    VkResult vk_result = VK_SUCCESS;
 
     VkBufferCreateInfo buffer_ci {};
     buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -232,8 +469,8 @@ static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemory
     buffer_ci.usage = usage;
     buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VkResult result = vkCreateBuffer(Device, &buffer_ci, nullptr, &buffer);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkCreateBuffer(Device, &buffer_ci, nullptr, &buffer);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     VkMemoryRequirements mem_req {};
     vkGetBufferMemoryRequirements(Device, buffer, &mem_req);
@@ -257,22 +494,77 @@ static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemory
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    result = vkAllocateMemory(Device, &alloc_info, nullptr, &memory);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkAllocateMemory(Device, &alloc_info, nullptr, &memory);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
-    result = vkBindBufferMemory(Device, buffer, memory, 0);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkBindBufferMemory(Device, buffer, memory, 0);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+}
+
+static void AllocateImage(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    VkResult vk_result = VK_SUCCESS;
+
+    VkImageCreateInfo image_ci {};
+    image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_ci.imageType = VK_IMAGE_TYPE_2D;
+    image_ci.format = format;
+    image_ci.extent = {width, height, 1};
+    image_ci.mipLevels = 1;
+    image_ci.arrayLayers = 1;
+    image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_ci.usage = usage;
+    image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    vk_result = vkCreateImage(Device, &image_ci, nullptr, &image);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    VkMemoryRequirements mem_req {};
+    vkGetImageMemoryRequirements(Device, image, &mem_req);
+
+    // Find suitable memory type
+    optional<uint32_t> mem_type_idx;
+    VkPhysicalDeviceMemoryProperties mem_properties {};
+    vkGetPhysicalDeviceMemoryProperties(PhysicalDevice, &mem_properties);
+
+    for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+        if ((mem_req.memoryTypeBits & (1 << i)) != 0 && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            mem_type_idx = i;
+            break;
+        }
+    }
+
+    FO_RUNTIME_ASSERT(mem_type_idx.has_value());
+
+    VkMemoryAllocateInfo alloc_info {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = mem_req.size;
+    alloc_info.memoryTypeIndex = mem_type_idx.value();
+
+    vk_result = vkAllocateMemory(Device, &alloc_info, nullptr, &memory);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    vk_result = vkBindImageMemory(Device, image, memory, 0);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+}
+
+Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth) :
+    RenderTexture(size, linear_filtered, with_depth)
+{
+    FO_STACK_TRACE_ENTRY();
 }
 
 void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Device == nullptr) {
-        return;
-    }
+    FO_RUNTIME_ASSERT(Device);
 
-    VkResult result;
+    VkResult vk_result = VK_SUCCESS;
     size_t vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D);
     const size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
 
@@ -285,7 +577,6 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 #endif
 
     if (vert_size != 0 && (VertexBuffer == nullptr || StaticDataChanged)) {
-        // Destroy old vertex buffer
         if (VertexBuffer != nullptr) {
             vkDestroyBuffer(Device, VertexBuffer, nullptr);
             VertexBuffer = VK_NULL_HANDLE;
@@ -304,8 +595,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
         // Copy vertex data to staging buffer
         void* data {};
-        result = vkMapMemory(Device, staging_vert_mem, 0, vert_size, 0, &data);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkMapMemory(Device, staging_vert_mem, 0, vert_size, 0, &data);
+        FO_RUNTIME_ASSERT(vk_result);
         MemCopy(data, Vertices.data(), vert_size);
         vkUnmapMemory(Device, staging_vert_mem);
 
@@ -318,27 +609,26 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
         VkCommandBufferBeginInfo begin_info {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
+        FO_RUNTIME_ASSERT(vk_result);
 
         vkCmdCopyBuffer(StagingCommandBuffer, staging_vert_buf, VertexBuffer, 1, &copy_region);
 
-        result = vkEndCommandBuffer(StagingCommandBuffer);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkEndCommandBuffer(StagingCommandBuffer);
+        FO_RUNTIME_ASSERT(vk_result);
 
         VkSubmitInfo submit_info {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &StagingCommandBuffer;
 
-        result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-        FO_RUNTIME_ASSERT(result);
-        result = vkQueueWaitIdle(GraphicsQueue);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+        FO_RUNTIME_ASSERT(vk_result);
+        vk_result = vkQueueWaitIdle(GraphicsQueue);
+        FO_RUNTIME_ASSERT(vk_result);
     }
 
     if (idx_size != 0 && (IndexBuffer == nullptr || StaticDataChanged)) {
-        // Destroy old index buffer
         if (IndexBuffer != nullptr) {
             vkDestroyBuffer(Device, IndexBuffer, nullptr);
             IndexBuffer = VK_NULL_HANDLE;
@@ -356,8 +646,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
         // Copy index data to staging buffer
         void* data {};
-        result = vkMapMemory(Device, staging_idx_mem, 0, idx_size, 0, &data);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkMapMemory(Device, staging_idx_mem, 0, idx_size, 0, &data);
+        FO_RUNTIME_ASSERT(vk_result);
         MemCopy(data, Indices.data(), idx_size);
         vkUnmapMemory(Device, staging_idx_mem);
 
@@ -370,23 +660,23 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
         VkCommandBufferBeginInfo begin_info {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
+        FO_RUNTIME_ASSERT(vk_result);
 
         vkCmdCopyBuffer(StagingCommandBuffer, staging_idx_buf, IndexBuffer, 1, &copy_region);
 
-        result = vkEndCommandBuffer(StagingCommandBuffer);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkEndCommandBuffer(StagingCommandBuffer);
+        FO_RUNTIME_ASSERT(vk_result);
 
         VkSubmitInfo submit_info {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &StagingCommandBuffer;
 
-        result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-        FO_RUNTIME_ASSERT(result);
-        result = vkQueueWaitIdle(GraphicsQueue);
-        FO_RUNTIME_ASSERT(result);
+        vk_result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+        FO_RUNTIME_ASSERT(vk_result);
+        vk_result = vkQueueWaitIdle(GraphicsQueue);
+        FO_RUNTIME_ASSERT(vk_result);
     }
 
     StaticDataChanged = false;
@@ -403,12 +693,36 @@ void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     auto* vk_dbuf = static_cast<Vulkan_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    Vulkan_Texture* main_tex;
+    if (custom_tex != nullptr) {
+        main_tex = static_cast<Vulkan_Texture*>(const_cast<RenderTexture*>(custom_tex)); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-pro-type-const-cast)
+    }
+    else if (ModelTex[0]) {
+        main_tex = static_cast<Vulkan_Texture*>(ModelTex[0].get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    }
+    else if (MainTex) {
+        main_tex = static_cast<Vulkan_Texture*>(const_cast<RenderTexture*>(MainTex.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-pro-type-const-cast)
+    }
+    else {
+        main_tex = static_cast<Vulkan_Texture*>(DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    }
 #else
-    const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    Vulkan_Texture* main_tex;
+    if (custom_tex != nullptr) {
+        main_tex = static_cast<Vulkan_Texture*>(const_cast<RenderTexture*>(custom_tex)); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-pro-type-const-cast)
+    }
+    else if (MainTex) {
+        main_tex = static_cast<Vulkan_Texture*>(const_cast<RenderTexture*>(MainTex.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-pro-type-const-cast)
+    }
+    else {
+        main_tex = static_cast<Vulkan_Texture*>(DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    }
 #endif
 
-    ignore_unused(main_tex);
+    // Upload draw buffer geometry
+    if (vk_dbuf->VertexBuffer == nullptr) {
+        return;
+    }
 
     // Skip if no geometry to render
     if (vk_dbuf->IndCount == 0 && vk_dbuf->VertCount == 0) {
@@ -423,6 +737,11 @@ void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     // Bind vertex buffer
     constexpr VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(CurrentCommandBuffer, 0, 1, &vk_dbuf->VertexBuffer, offsets);
+
+    // Bind texture descriptor set
+    if (main_tex != nullptr && main_tex->DescriptorSet != nullptr) {
+        vkCmdBindDescriptorSets(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout, 0, 1, &main_tex->DescriptorSet, 0, nullptr);
+    }
 
     // Draw indexed or non-indexed
     if (vk_dbuf->IndCount != 0 && vk_dbuf->IndexBuffer != nullptr) {
@@ -504,6 +823,22 @@ Vulkan_Renderer::~Vulkan_Renderer()
         Swapchain = VK_NULL_HANDLE;
     }
 
+    // Destroy descriptor set layout, pool, and sampler
+    if (TextureDescriptorSetLayout != nullptr) {
+        vkDestroyDescriptorSetLayout(Device, TextureDescriptorSetLayout, nullptr);
+        TextureDescriptorSetLayout = VK_NULL_HANDLE;
+    }
+
+    if (DescriptorPool != nullptr) {
+        vkDestroyDescriptorPool(Device, DescriptorPool, nullptr);
+        DescriptorPool = VK_NULL_HANDLE;
+    }
+
+    if (TextureSampler != nullptr) {
+        vkDestroySampler(Device, TextureSampler, nullptr);
+        TextureSampler = VK_NULL_HANDLE;
+    }
+
     if (Device != nullptr) {
         vkDestroyDevice(Device, nullptr);
         Device = VK_NULL_HANDLE;
@@ -524,14 +859,18 @@ Vulkan_Renderer::~Vulkan_Renderer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth);
+    auto tex = SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth);
+
+    return std::move(tex);
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static);
+    auto dbuf = SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static);
+
+    return std::move(dbuf);
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
@@ -617,6 +956,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         throw RenderingException("Failed to query Vulkan extensions from SDL");
     }
 
+    VkResult vk_result = VK_SUCCESS;
+
     VkApplicationInfo app_info {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "FOnline";
@@ -631,10 +972,10 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     create_info.enabledExtensionCount = ext_count;
     create_info.ppEnabledExtensionNames = exts;
 
-    VkResult result = vkCreateInstance(&create_info, nullptr, &Instance);
+    vk_result = vkCreateInstance(&create_info, nullptr, &Instance);
 
-    if (result != VK_SUCCESS) {
-        throw RenderingException("vkCreateInstance failed", result);
+    if (vk_result != VK_SUCCESS) {
+        throw RenderingException("vkCreateInstance failed", vk_result);
     }
 
     if (!SDL_Vulkan_CreateSurface(SdlWindow.get(), Instance, nullptr, &Surface)) {
@@ -643,8 +984,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     // Pick first physical device supporting graphics
     uint32_t gpu_count = 0;
-    result = vkEnumeratePhysicalDevices(Instance, &gpu_count, nullptr);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkEnumeratePhysicalDevices(Instance, &gpu_count, nullptr);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     if (gpu_count == 0) {
         throw RenderingException("No Vulkan physical devices found");
@@ -652,8 +993,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     vector<VkPhysicalDevice> gpus;
     gpus.resize(gpu_count);
-    result = vkEnumeratePhysicalDevices(Instance, &gpu_count, gpus.data());
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkEnumeratePhysicalDevices(Instance, &gpu_count, gpus.data());
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
     PhysicalDevice = gpus.front();
 
     // Find queue family
@@ -667,8 +1008,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     for (uint32_t i = 0; i < qcount; i++) {
         VkBool32 present_support = VK_FALSE;
-        result = vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, i, Surface, &present_support);
-        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+        vk_result = vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, i, Surface, &present_support);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
         if ((qprops[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && present_support != VK_FALSE) {
             graphics_family = i;
@@ -696,8 +1037,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     dci.enabledLayerCount = settings.RenderDebug ? 1 : 0;
     dci.ppEnabledLayerNames = debug_layers;
 
-    result = vkCreateDevice(PhysicalDevice, &dci, nullptr, &Device);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkCreateDevice(PhysicalDevice, &dci, nullptr, &Device);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     vkGetDeviceQueue(Device, graphics_family.value(), 0, &GraphicsQueue);
     GraphicsFamilyIndex = graphics_family.value();
@@ -707,8 +1048,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     cpi.queueFamilyIndex = GraphicsFamilyIndex;
-    result = vkCreateCommandPool(Device, &cpi, nullptr, &CommandPool);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkCreateCommandPool(Device, &cpi, nullptr, &CommandPool);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     ViewPort = irect32 {{0, 0}, {0, 0}};
 
@@ -726,8 +1067,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     cbai.commandBufferCount = 3;
 
     CommandBuffers.resize(3);
-    result = vkAllocateCommandBuffers(Device, &cbai, CommandBuffers.data());
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkAllocateCommandBuffers(Device, &cbai, CommandBuffers.data());
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Create frame fences for synchronization
     FrameFences.resize(3);
@@ -736,8 +1077,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     fci.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start signaled so first frame can proceed
 
     for (auto& fence : FrameFences) {
-        result = vkCreateFence(Device, &fci, nullptr, &fence);
-        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+        vk_result = vkCreateFence(Device, &fci, nullptr, &fence);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
     }
 
     // Allocate staging command buffer for buffer uploads
@@ -747,8 +1088,66 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     staging_cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     staging_cbai.commandBufferCount = 1;
 
-    result = vkAllocateCommandBuffers(Device, &staging_cbai, &StagingCommandBuffer);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkAllocateCommandBuffers(Device, &staging_cbai, &StagingCommandBuffer);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Create descriptor set layout for texture binding
+    VkDescriptorSetLayoutBinding binding {};
+    binding.binding = 0;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.descriptorCount = 1;
+    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layout_ci {};
+    layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_ci.bindingCount = 1;
+    layout_ci.pBindings = &binding;
+
+    vk_result = vkCreateDescriptorSetLayout(Device, &layout_ci, nullptr, &TextureDescriptorSetLayout);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Create descriptor pool for texture descriptor sets (allocate space for many textures)
+    VkDescriptorPoolSize pool_size {};
+    pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    pool_size.descriptorCount = 10000; // Allow many textures
+
+    VkDescriptorPoolCreateInfo pool_ci {};
+    pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_ci.poolSizeCount = 1;
+    pool_ci.pPoolSizes = &pool_size;
+    pool_ci.maxSets = 10000;
+
+    vk_result = vkCreateDescriptorPool(Device, &pool_ci, nullptr, &DescriptorPool);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Create sampler for texture filtering
+    VkSamplerCreateInfo sampler_ci {};
+    sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sampler_ci.magFilter = VK_FILTER_LINEAR;
+    sampler_ci.minFilter = VK_FILTER_LINEAR;
+    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sampler_ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler_ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler_ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler_ci.mipLodBias = 0.0f;
+    sampler_ci.compareEnable = VK_FALSE;
+    sampler_ci.compareOp = VK_COMPARE_OP_ALWAYS;
+    sampler_ci.minLod = 0.0f;
+    sampler_ci.maxLod = 0.0f;
+    sampler_ci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    sampler_ci.unnormalizedCoordinates = VK_FALSE;
+
+    vk_result = vkCreateSampler(Device, &sampler_ci, nullptr, &TextureSampler);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+
+    // Update pipeline layout to include descriptor set layout for textures
+    VkPipelineLayoutCreateInfo pipe_layout_ci {};
+    pipe_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipe_layout_ci.setLayoutCount = 1;
+    pipe_layout_ci.pSetLayouts = &TextureDescriptorSetLayout;
+
+    vk_result = vkCreatePipelineLayout(Device, &pipe_layout_ci, nullptr, &PipelineLayout);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     DummyTexture = CreateTexture({1, 1}, false, false);
 }
@@ -759,6 +1158,8 @@ static void RecreateSwapchain(isize32 size)
 
     FO_RUNTIME_ASSERT(size.width > 0);
     FO_RUNTIME_ASSERT(size.height > 0);
+
+    VkResult vk_result = VK_SUCCESS;
 
     // Destroy old framebuffers and image views
     for (auto* fb : Framebuffers) {
@@ -787,8 +1188,8 @@ static void RecreateSwapchain(isize32 size)
 
     // Create swapchain
     VkSurfaceCapabilitiesKHR caps {};
-    VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(PhysicalDevice, Surface, &caps);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(PhysicalDevice, Surface, &caps);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     uint32_t image_count = caps.minImageCount + 1;
 
@@ -812,13 +1213,13 @@ static void RecreateSwapchain(isize32 size)
     sci.clipped = VK_TRUE;
     sci.oldSwapchain = VK_NULL_HANDLE;
 
-    result = vkCreateSwapchainKHR(Device, &sci, nullptr, &Swapchain);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
-    result = vkGetSwapchainImagesKHR(Device, Swapchain, &image_count, nullptr);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkCreateSwapchainKHR(Device, &sci, nullptr, &Swapchain);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+    vk_result = vkGetSwapchainImagesKHR(Device, Swapchain, &image_count, nullptr);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
     SwapchainImages.resize(image_count);
-    result = vkGetSwapchainImagesKHR(Device, Swapchain, &image_count, SwapchainImages.data());
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkGetSwapchainImagesKHR(Device, Swapchain, &image_count, SwapchainImages.data());
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
     SwapchainFormat = sci.imageFormat;
 
     // Create render pass
@@ -848,8 +1249,8 @@ static void RecreateSwapchain(isize32 size)
     rp_info.subpassCount = 1;
     rp_info.pSubpasses = &subpass;
 
-    result = vkCreateRenderPass(Device, &rp_info, nullptr, &RenderPass);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkCreateRenderPass(Device, &rp_info, nullptr, &RenderPass);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Create framebuffers
     SwapchainImageViews.resize(SwapchainImages.size());
@@ -871,8 +1272,8 @@ static void RecreateSwapchain(isize32 size)
         ivci.subresourceRange.baseArrayLayer = 0;
         ivci.subresourceRange.layerCount = 1;
 
-        result = vkCreateImageView(Device, &ivci, nullptr, &SwapchainImageViews[i]);
-        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+        vk_result = vkCreateImageView(Device, &ivci, nullptr, &SwapchainImageViews[i]);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
         VkFramebufferCreateInfo fci {};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -883,8 +1284,8 @@ static void RecreateSwapchain(isize32 size)
         fci.height = numeric_cast<uint32_t>(size.height);
         fci.layers = 1;
 
-        result = vkCreateFramebuffer(Device, &fci, nullptr, &Framebuffers[i]);
-        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+        vk_result = vkCreateFramebuffer(Device, &fci, nullptr, &Framebuffers[i]);
+        FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
     }
 }
 
@@ -895,9 +1296,11 @@ void Vulkan_Renderer::Present()
     FO_RUNTIME_ASSERT(Swapchain);
     FO_RUNTIME_ASSERT(Device);
 
+    VkResult vk_result = VK_SUCCESS;
+
     uint32_t img_idx = 0;
-    VkResult result = vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &img_idx);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &img_idx);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Use command buffer (rotate through 3 for consistent frame pacing)
     const uint32_t frame_buf_idx = FrameIndex % 3;
@@ -905,20 +1308,20 @@ void Vulkan_Renderer::Present()
     const VkFence frame_fence = FrameFences[frame_buf_idx];
 
     // Wait for the fence to be signaled (frame is done rendering)
-    result = vkWaitForFences(Device, 1, &frame_fence, VK_TRUE, UINT64_MAX);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
-    result = vkResetFences(Device, 1, &frame_fence);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkWaitForFences(Device, 1, &frame_fence, VK_TRUE, UINT64_MAX);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+    vk_result = vkResetFences(Device, 1, &frame_fence);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Reset command buffer
-    result = vkResetCommandBuffer(cmd_buf, 0);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkResetCommandBuffer(cmd_buf, 0);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Begin command buffer
     VkCommandBufferBeginInfo begin_info {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    result = vkBeginCommandBuffer(cmd_buf, &begin_info);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkBeginCommandBuffer(cmd_buf, &begin_info);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Begin render pass
     VkRenderPassBeginInfo rp_begin {};
@@ -942,8 +1345,8 @@ void Vulkan_Renderer::Present()
     CurrentCommandBuffer = VK_NULL_HANDLE;
 
     // End command buffer
-    result = vkEndCommandBuffer(cmd_buf);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkEndCommandBuffer(cmd_buf);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     // Submit to graphics queue with frame fence
     VkSubmitInfo submit_info {};
@@ -951,8 +1354,8 @@ void Vulkan_Renderer::Present()
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &cmd_buf;
 
-    result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, frame_fence);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, frame_fence);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 
     FrameIndex++;
 
@@ -963,8 +1366,8 @@ void Vulkan_Renderer::Present()
     info.pSwapchains = &Swapchain;
     info.pImageIndices = &img_idx;
 
-    result = vkQueuePresentKHR(GraphicsQueue, &info);
-    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    vk_result = vkQueuePresentKHR(GraphicsQueue, &info);
+    FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 }
 
 void Vulkan_Renderer::SetRenderTarget(RenderTexture* /*tex*/)
