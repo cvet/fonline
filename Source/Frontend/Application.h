@@ -301,7 +301,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44;
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);

@@ -322,7 +322,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         ActiveRendererType = RenderType::Vulkan;
-        throw NotImplementedException(FO_LINE_STR);
+        ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 
@@ -341,6 +341,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     if (!ActiveRenderer) {
         ActiveRendererType = RenderType::Vulkan;
+        ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 #if FO_HAVE_OPENGL
@@ -1286,11 +1287,9 @@ auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, f
     return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
-auto AppRender::IsRenderTargetFlipped() -> bool
+auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     return ActiveRenderer->IsRenderTargetFlipped();
 }

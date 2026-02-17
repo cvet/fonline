@@ -32,6 +32,7 @@ DeclareOption(FO_DISABLE_ASIO "Force disable using of Asio" OFF)
 DeclareOption(FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF)
 DeclareOption(FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF)
 DeclareOption(FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 150000)
+DeclareOption(FO_SUPPORT_VULKAN "Add supporting of Vulkan rendering" OFF)
 
 DeclareOption(FO_VERBOSE_BUILD "Verbose build mode" OFF)
 DeclareOption(FO_BUILD_CLIENT "Build Client binaries" OFF)
@@ -514,6 +515,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 
 else()
 	AbortMessage("Unknown OS")
+endif()
+
+# Vulkan support
+if(FO_SUPPORT_VULKAN AND NOT FO_HEADLESS_ONLY)
+	find_package(Vulkan REQUIRED)
+	set(FO_HAVE_VULKAN 1)
+	list(APPEND FO_RENDER_SYSTEM_LIBS ${Vulkan_LIBRARIES})
 endif()
 
 add_compile_definitions(FO_WINDOWS=${FO_WINDOWS} FO_LINUX=${FO_LINUX} FO_MAC=${FO_MAC} FO_ANDROID=${FO_ANDROID} FO_IOS=${FO_IOS} FO_WEB=${FO_WEB})

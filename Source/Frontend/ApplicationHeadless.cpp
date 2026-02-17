@@ -366,11 +366,9 @@ auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, f
     return {};
 }
 
-auto AppRender::IsRenderTargetFlipped() -> bool
+auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     return false;
 }

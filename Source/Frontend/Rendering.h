@@ -393,7 +393,7 @@ public:
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() -> irect32 = 0;
-    [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
+    [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
@@ -412,7 +412,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> irect32 override;
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -435,7 +435,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> irect32 override;
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return true; }
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return true; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -458,7 +458,30 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> irect32 override;
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
+
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Present() override;
+    void SetRenderTarget(RenderTexture* tex) override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(irect32 rect) override;
+    void DisableScissor() override;
+    void OnResizeWindow(isize32 size) override;
+};
+
+#endif
+
+#if FO_HAVE_VULKAN
+
+class Vulkan_Renderer final : public Renderer
+{
+public:
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
+    [[nodiscard]] auto GetViewPort() -> irect32 override;
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;

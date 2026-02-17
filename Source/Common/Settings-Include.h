@@ -160,6 +160,7 @@ VARIABLE_SETTING(bool, NullRenderer, false); // If true, null renderer is used
 VARIABLE_SETTING(bool, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, ForceDirect3D, false); // If true, Direct3D is forced
 VARIABLE_SETTING(bool, ForceMetal, false); // If true, Metal is forced
+VARIABLE_SETTING(bool, ForceVulkan, false); // If true, Vulkan is forced
 VARIABLE_SETTING(bool, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
 VARIABLE_SETTING(bool, RenderDebug, false); // If true, render debugging is enabled
 VARIABLE_SETTING(bool, VSync, false); // If true, vertical synchronization is enabled

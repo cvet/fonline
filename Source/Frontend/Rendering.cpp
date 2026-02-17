@@ -88,7 +88,7 @@ auto Null_Renderer::GetViewPort() -> irect32
     return {};
 }
 
-auto Null_Renderer::IsRenderTargetFlipped() -> bool
+auto Null_Renderer::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
