@@ -56,7 +56,6 @@ static VkSwapchainKHR Swapchain {};
 static vector<VkImage> SwapchainImages;
 static vector<VkImageView> SwapchainImageViews;
 static VkFormat SwapchainFormat {};
-static VkExtent2D SwapchainExtent {};
 static VkRenderPass RenderPass {};
 static vector<VkFramebuffer> Framebuffers;
 static VkCommandPool CommandPool {};
@@ -66,6 +65,8 @@ static irect32 ViewPort {};
 static unique_ptr<RenderTexture> DummyTexture {};
 static VkClearColorValue ClearColor {{0.0f, 0.0f, 0.0f, 1.0f}};
 static uint32_t FrameIndex = 0;
+static VkPipelineLayout PipelineLayout {};
+static VkPipeline GraphicsPipeline {};
 
 static void RecreateSwapchain(isize32 size);
 
@@ -129,6 +130,8 @@ private:
 
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
 {
+    friend class Vulkan_Effect;
+
 public:
     explicit Vulkan_DrawBuffer(bool is_static) :
         RenderDrawBuffer(is_static)
@@ -137,16 +140,24 @@ public:
     }
     ~Vulkan_DrawBuffer() override = default;
 
-    void Upload(EffectUsage /*usage*/, optional<size_t> /*custom_vertices_size*/, optional<size_t> /*custom_indices_size*/) override
+    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
         FO_STACK_TRACE_ENTRY();
 
+        ignore_unused(usage, custom_vertices_size, custom_indices_size);
+
+        // GPU buffer upload will be implemented when we add buffer management
         StaticDataChanged = false;
     }
+
+    // GPU resources for Vulkan rendering
+    // TODO: VkBuffer for vertices and indices with associated device memory
 };
 
 class Vulkan_Effect final : public RenderEffect
 {
+    friend class Vulkan_Renderer;
+
 public:
     Vulkan_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
         RenderEffect(usage, name, loader)
@@ -154,14 +165,61 @@ public:
         FO_STACK_TRACE_ENTRY();
     }
 
-    ~Vulkan_Effect() override = default;
+    ~Vulkan_Effect() override;
 
-    void DrawBuffer(RenderDrawBuffer* /*dbuf*/, size_t /*start_index*/, optional<size_t> /*indices_to_draw*/, const RenderTexture* /*custom_tex*/) override
-    {
-        FO_STACK_TRACE_ENTRY();
-        // no-op
-    }
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override;
+
+    VkShaderModule VertexShaderModule[EFFECT_MAX_PASSES] {};
+    VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
+    // TODO: VkDescriptorSet for each pass for texture and constant buffer bindings
+private:
 };
+
+Vulkan_Effect::~Vulkan_Effect()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Device == nullptr) {
+        return;
+    }
+
+    for (size_t pass = 0; pass < EFFECT_MAX_PASSES; pass++) {
+        if (VertexShaderModule[pass] != nullptr) {
+            vkDestroyShaderModule(Device, VertexShaderModule[pass], nullptr);
+            VertexShaderModule[pass] = VK_NULL_HANDLE;
+        }
+        if (FragmentShaderModule[pass] != nullptr) {
+            vkDestroyShaderModule(Device, FragmentShaderModule[pass], nullptr);
+            FragmentShaderModule[pass] = VK_NULL_HANDLE;
+        }
+    }
+}
+
+void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (dbuf == nullptr || Device == nullptr || GraphicsPipeline == nullptr) {
+        return;
+    }
+
+    const auto* vk_dbuf = static_cast<Vulkan_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+
+#if FO_ENABLE_3D
+    const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+#else
+    const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+#endif
+
+    ignore_unused(vk_dbuf, main_tex, start_index, indices_to_draw);
+
+    // TODO: Implement Vulkan-specific rendering:
+    // 1. Get current command buffer from Present()
+    // 2. Bind vertex/index buffers
+    // 3. Bind textures and constant buffers via descriptor sets
+    // 4. Record vkCmdDraw or vkCmdDrawIndexed commands
+    // 5. Handle different effect usage modes (Sprite, Primitive, Model)
+}
 
 Vulkan_Renderer::~Vulkan_Renderer()
 {
@@ -186,6 +244,17 @@ Vulkan_Renderer::~Vulkan_Renderer()
     if (RenderPass != nullptr) {
         vkDestroyRenderPass(Device, RenderPass, nullptr);
         RenderPass = VK_NULL_HANDLE;
+    }
+
+    // Destroy pipeline and pipeline layout
+    if (GraphicsPipeline != nullptr) {
+        vkDestroyPipeline(Device, GraphicsPipeline, nullptr);
+        GraphicsPipeline = VK_NULL_HANDLE;
+    }
+
+    if (PipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(Device, PipelineLayout, nullptr);
+        PipelineLayout = VK_NULL_HANDLE;
     }
 
     if (CommandPool != nullptr) {
@@ -240,7 +309,45 @@ Vulkan_Renderer::~Vulkan_Renderer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader);
+    auto vk_effect = SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader);
+
+    for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
+        // Load vertex shader SPIR-V
+        {
+            const string vert_fname = strex("{}.fofx-{}-vert-spirv", strex(name).erase_file_extension(), pass + 1);
+            string vert_content = loader(vert_fname);
+            FO_RUNTIME_ASSERT(!vert_content.empty());
+            FO_RUNTIME_ASSERT(vert_content.length() % sizeof(uint32_t) == 0);
+
+            VkShaderModuleCreateInfo module_ci {};
+            module_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            module_ci.codeSize = vert_content.length();
+            module_ci.pCode = reinterpret_cast<const uint32_t*>(vert_content.data());
+
+            if (vkCreateShaderModule(Device, &module_ci, nullptr, &vk_effect->VertexShaderModule[pass]) != VK_SUCCESS) {
+                throw EffectLoadException("Failed to create vertex shader module", vert_fname, vert_content);
+            }
+        }
+
+        // Load fragment shader SPIR-V
+        {
+            const string frag_fname = strex("{}.fofx-{}-frag-spirv", strex(name).erase_file_extension(), pass + 1);
+            string frag_content = loader(frag_fname);
+            FO_RUNTIME_ASSERT(!frag_content.empty());
+            FO_RUNTIME_ASSERT(frag_content.length() % sizeof(uint32_t) == 0);
+
+            VkShaderModuleCreateInfo module_ci {};
+            module_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            module_ci.codeSize = frag_content.length();
+            module_ci.pCode = reinterpret_cast<const uint32_t*>(frag_content.data());
+
+            if (vkCreateShaderModule(Device, &module_ci, nullptr, &vk_effect->FragmentShaderModule[pass]) != VK_SUCCESS) {
+                throw EffectLoadException("Failed to create fragment shader module", frag_fname, frag_content);
+            }
+        }
+    }
+
+    return vk_effect;
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
@@ -356,17 +463,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &dqci;
 
-    if (settings.RenderDebug) {
-        const char* layers[] = {"VK_LAYER_KHRONOS_validation"};
-        dci.enabledLayerCount = 1;
-        dci.ppEnabledLayerNames = layers;
-    }
+    const char* debug_layers[] = {"VK_LAYER_KHRONOS_validation"};
+    dci.enabledLayerCount = settings.RenderDebug ? 1 : 0;
+    dci.ppEnabledLayerNames = debug_layers;
 
     result = vkCreateDevice(PhysicalDevice, &dci, nullptr, &Device);
-
-    if (result != VK_SUCCESS) {
-        throw RenderingException("vkCreateDevice failed");
-    }
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 
     vkGetDeviceQueue(Device, graphics_family.value(), 0, &GraphicsQueue);
     GraphicsFamilyIndex = graphics_family.value();
@@ -376,17 +478,16 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     cpi.queueFamilyIndex = GraphicsFamilyIndex;
-    if (vkCreateCommandPool(Device, &cpi, nullptr, &CommandPool) != VK_SUCCESS) {
-        throw RenderingException("Failed to create command pool");
-    }
+    result = vkCreateCommandPool(Device, &cpi, nullptr, &CommandPool);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 
     ViewPort = irect32 {{0, 0}, {0, 0}};
 
     // Initialize swapchain for current window size
-    int w;
-    int h;
-    SDL_GetWindowSizeInPixels(SdlWindow.get(), &w, &h);
-    RecreateSwapchain({w, h});
+    int width;
+    int height;
+    SDL_GetWindowSizeInPixels(SdlWindow.get(), &width, &height);
+    RecreateSwapchain({width, height});
 
     // Allocate command buffers for rendering (3 for triple-buffering)
     VkCommandBufferAllocateInfo cbai {};
@@ -396,19 +497,18 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     cbai.commandBufferCount = 3;
 
     CommandBuffers.resize(3);
-    if (vkAllocateCommandBuffers(Device, &cbai, CommandBuffers.data()) != VK_SUCCESS) {
-        throw RenderingException("Failed to allocate command buffers");
-    }
+    result = vkAllocateCommandBuffers(Device, &cbai, CommandBuffers.data());
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 
     // Create frame fences for synchronization
     FrameFences.resize(3);
     VkFenceCreateInfo fci {};
     fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fci.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start signaled so first frame can proceed
+
     for (auto& fence : FrameFences) {
-        if (vkCreateFence(Device, &fci, nullptr, &fence) != VK_SUCCESS) {
-            throw RenderingException("Failed to create frame fence");
-        }
+        result = vkCreateFence(Device, &fci, nullptr, &fence);
+        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
     }
 
     DummyTexture = CreateTexture({1, 1}, false, false);
@@ -417,6 +517,9 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 static void RecreateSwapchain(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(size.width > 0);
+    FO_RUNTIME_ASSERT(size.height > 0);
 
     // Destroy old framebuffers and image views
     for (auto* fb : Framebuffers) {
@@ -443,42 +546,24 @@ static void RecreateSwapchain(isize32 size)
         SwapchainImages.clear();
     }
 
-    // Extent
-    VkExtent2D ext {};
-
-    if (size.width > 0 && size.height > 0) {
-        ext.width = numeric_cast<uint32_t>(size.width);
-        ext.height = numeric_cast<uint32_t>(size.height);
-    }
-    else {
-        int w;
-        int h;
-        SDL_GetWindowSizeInPixels(SdlWindow.get(), &w, &h);
-        ext.width = static_cast<uint32_t>(w);
-        ext.height = static_cast<uint32_t>(h);
-    }
-
-    SwapchainExtent = ext;
-
-    // Image count
+    // Create swapchain
     VkSurfaceCapabilitiesKHR caps {};
     VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(PhysicalDevice, Surface, &caps);
     FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 
     uint32_t image_count = caps.minImageCount + 1;
 
-    if (caps.maxImageCount > 0 && image_count > caps.maxImageCount) {
+    if (caps.maxImageCount != 0 && image_count > caps.maxImageCount) {
         image_count = caps.maxImageCount;
     }
 
-    // Create swapchain
     VkSwapchainCreateInfoKHR sci {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     sci.surface = Surface;
     sci.minImageCount = image_count;
     sci.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
     sci.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    sci.imageExtent = SwapchainExtent;
+    sci.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height)};
     sci.imageArrayLayers = 1;
     sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -555,8 +640,8 @@ static void RecreateSwapchain(isize32 size)
         fci.renderPass = RenderPass;
         fci.attachmentCount = 1;
         fci.pAttachments = &SwapchainImageViews[i];
-        fci.width = SwapchainExtent.width;
-        fci.height = SwapchainExtent.height;
+        fci.width = numeric_cast<uint32_t>(size.width);
+        fci.height = numeric_cast<uint32_t>(size.height);
         fci.layers = 1;
 
         result = vkCreateFramebuffer(Device, &fci, nullptr, &Framebuffers[i]);
@@ -568,9 +653,8 @@ void Vulkan_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Swapchain == nullptr || Device == nullptr) {
-        return;
-    }
+    FO_RUNTIME_ASSERT(Swapchain);
+    FO_RUNTIME_ASSERT(Device);
 
     uint32_t img_idx = 0;
     VkResult result = vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &img_idx);
@@ -602,12 +686,14 @@ void Vulkan_Renderer::Present()
     rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rp_begin.renderPass = RenderPass;
     rp_begin.framebuffer = Framebuffers[img_idx];
-    rp_begin.renderArea.offset = {0, 0};
-    rp_begin.renderArea.extent = {numeric_cast<uint32_t>(ViewPort.width), numeric_cast<uint32_t>(ViewPort.height)};
+    rp_begin.renderArea.offset = {.x = 0, .y = 0};
+    rp_begin.renderArea.extent = {.width = numeric_cast<uint32_t>(ViewPort.width), .height = numeric_cast<uint32_t>(ViewPort.height)};
     rp_begin.clearValueCount = 1;
     rp_begin.pClearValues = reinterpret_cast<VkClearValue*>(&ClearColor);
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline);
+    vkCmdDraw(cmd_buf, 3, 1, 0, 0);
     vkCmdEndRenderPass(cmd_buf);
 
     // End command buffer
