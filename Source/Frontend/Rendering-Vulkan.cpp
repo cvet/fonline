@@ -93,6 +93,10 @@ public:
     VkImageView TextureImageView {};
     VkDeviceMemory TextureImageMemory {};
     VkDescriptorSet DescriptorSet {};
+    // Depth buffer (if with_depth=true)
+    VkImage DepthImage {};
+    VkImageView DepthImageView {};
+    VkDeviceMemory DepthImageMemory {};
 };
 
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
@@ -133,7 +137,10 @@ public:
 
     VkShaderModule VertexShaderModule[EFFECT_MAX_PASSES] {};
     VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
-    // TODO: VkDescriptorSet for each pass for texture and constant buffer bindings
+    // Per-pass pipelines and descriptor sets
+    VkPipeline Pipeline[EFFECT_MAX_PASSES] {};
+    VkPipelineLayout PipelineLayout {};
+    VkDescriptorSet DescriptorSet[EFFECT_MAX_PASSES] {};
 };
 
 Vulkan_Effect::~Vulkan_Effect()
@@ -153,6 +160,15 @@ Vulkan_Effect::~Vulkan_Effect()
             vkDestroyShaderModule(Device, FragmentShaderModule[pass], nullptr);
             FragmentShaderModule[pass] = VK_NULL_HANDLE;
         }
+        if (Pipeline[pass] != nullptr) {
+            vkDestroyPipeline(Device, Pipeline[pass], nullptr);
+            Pipeline[pass] = VK_NULL_HANDLE;
+        }
+    }
+
+    if (PipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(Device, PipelineLayout, nullptr);
+        PipelineLayout = VK_NULL_HANDLE;
     }
 }
 
@@ -206,6 +222,21 @@ Vulkan_Texture::~Vulkan_Texture()
     if (TextureImageMemory != nullptr) {
         vkFreeMemory(Device, TextureImageMemory, nullptr);
         TextureImageMemory = VK_NULL_HANDLE;
+    }
+
+    if (DepthImageView != nullptr) {
+        vkDestroyImageView(Device, DepthImageView, nullptr);
+        DepthImageView = VK_NULL_HANDLE;
+    }
+
+    if (DepthImage != nullptr) {
+        vkDestroyImage(Device, DepthImage, nullptr);
+        DepthImage = VK_NULL_HANDLE;
+    }
+
+    if (DepthImageMemory != nullptr) {
+        vkFreeMemory(Device, DepthImageMemory, nullptr);
+        DepthImageMemory = VK_NULL_HANDLE;
     }
 }
 
@@ -399,6 +430,26 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
         write_set.pImageInfo = &image_info;
 
         vkUpdateDescriptorSets(Device, 1, &write_set, 0, nullptr);
+
+        // Create depth buffer if requested
+        if (WithDepth) {
+            AllocateImage(numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DepthImage, DepthImageMemory);
+
+            // Create depth image view
+            VkImageViewCreateInfo depth_view_ci {};
+            depth_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            depth_view_ci.image = DepthImage;
+            depth_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            depth_view_ci.format = VK_FORMAT_D32_SFLOAT;
+            depth_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            depth_view_ci.subresourceRange.baseMipLevel = 0;
+            depth_view_ci.subresourceRange.levelCount = 1;
+            depth_view_ci.subresourceRange.baseArrayLayer = 0;
+            depth_view_ci.subresourceRange.layerCount = 1;
+
+            vk_result = vkCreateImageView(Device, &depth_view_ci, nullptr, &DepthImageView);
+            FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
+        }
     }
 
     // Transition image to transfer destination layout
@@ -738,6 +789,12 @@ void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     constexpr VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(CurrentCommandBuffer, 0, 1, &vk_dbuf->VertexBuffer, offsets);
 
+    // Bind pipeline for current pass (pass 0 by default)
+    constexpr size_t current_pass = 0; // TODO: Support multi-pass rendering
+    if (Pipeline[current_pass] != nullptr) {
+        vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[current_pass]);
+    }
+
     // Bind texture descriptor set
     if (main_tex != nullptr && main_tex->DescriptorSet != nullptr) {
         vkCmdBindDescriptorSets(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout, 0, 1, &main_tex->DescriptorSet, 0, nullptr);
@@ -912,6 +969,118 @@ Vulkan_Renderer::~Vulkan_Renderer()
             if (vkCreateShaderModule(Device, &module_ci, nullptr, &vk_effect->FragmentShaderModule[pass]) != VK_SUCCESS) {
                 throw EffectLoadException("Failed to create fragment shader module", frag_fname, frag_content);
             }
+        }
+    }
+
+    // Create pipeline layout for this effect
+    VkPipelineLayoutCreateInfo layout_ci {};
+    layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout_ci.setLayoutCount = 1;
+    layout_ci.pSetLayouts = &TextureDescriptorSetLayout;
+
+    if (vkCreatePipelineLayout(Device, &layout_ci, nullptr, &vk_effect->PipelineLayout) != VK_SUCCESS) {
+        throw EffectLoadException("Failed to create pipeline layout", strex(name));
+    }
+
+    // Create graphics pipeline for each pass
+    for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
+        if (vk_effect->VertexShaderModule[pass] == nullptr || vk_effect->FragmentShaderModule[pass] == nullptr) {
+            continue;
+        }
+
+        // TODO: Create proper vertex input descriptions based on effect usage
+        VkPipelineVertexInputStateCreateInfo vertex_input_ci {};
+        vertex_input_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertex_input_ci.vertexBindingDescriptionCount = 0;
+        vertex_input_ci.vertexAttributeDescriptionCount = 0;
+
+        VkPipelineInputAssemblyStateCreateInfo input_assembly_ci {};
+        input_assembly_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        input_assembly_ci.primitiveRestartEnable = VK_FALSE;
+
+        VkViewport viewport {};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = 1.0f;
+        viewport.height = 1.0f;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor {};
+        scissor.offset = {0, 0};
+        scissor.extent = {1, 1};
+
+        VkPipelineViewportStateCreateInfo viewport_ci {};
+        viewport_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_ci.viewportCount = 1;
+        viewport_ci.pViewports = &viewport;
+        viewport_ci.scissorCount = 1;
+        viewport_ci.pScissors = &scissor;
+
+        VkPipelineRasterizationStateCreateInfo rasterization_ci {};
+        rasterization_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterization_ci.depthClampEnable = VK_FALSE;
+        rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
+        rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterization_ci.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterization_ci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterization_ci.depthBiasEnable = VK_FALSE;
+        rasterization_ci.lineWidth = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo multisample_ci {};
+        multisample_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisample_ci.sampleShadingEnable = VK_FALSE;
+        multisample_ci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState blend_attachment {};
+        blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        blend_attachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo blend_ci {};
+        blend_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        blend_ci.logicOpEnable = VK_FALSE;
+        blend_ci.attachmentCount = 1;
+        blend_ci.pAttachments = &blend_attachment;
+
+        VkPipelineDepthStencilStateCreateInfo depth_ci {};
+        depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_ci.depthTestEnable = VK_FALSE;
+        depth_ci.depthWriteEnable = VK_FALSE;
+        depth_ci.depthCompareOp = VK_COMPARE_OP_LESS;
+        depth_ci.depthBoundsTestEnable = VK_FALSE;
+        depth_ci.stencilTestEnable = VK_FALSE;
+
+        VkPipelineShaderStageCreateInfo shader_stages[2];
+        shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        shader_stages[0].module = vk_effect->VertexShaderModule[pass];
+        shader_stages[0].pName = "main";
+        shader_stages[0].pNext = nullptr;
+
+        shader_stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        shader_stages[1].module = vk_effect->FragmentShaderModule[pass];
+        shader_stages[1].pName = "main";
+        shader_stages[1].pNext = nullptr;
+
+        VkGraphicsPipelineCreateInfo pipeline_ci {};
+        pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_ci.stageCount = 2;
+        pipeline_ci.pStages = shader_stages;
+        pipeline_ci.pVertexInputState = &vertex_input_ci;
+        pipeline_ci.pInputAssemblyState = &input_assembly_ci;
+        pipeline_ci.pViewportState = &viewport_ci;
+        pipeline_ci.pRasterizationState = &rasterization_ci;
+        pipeline_ci.pMultisampleState = &multisample_ci;
+        pipeline_ci.pDepthStencilState = &depth_ci;
+        pipeline_ci.pColorBlendState = &blend_ci;
+        pipeline_ci.layout = vk_effect->PipelineLayout;
+        pipeline_ci.renderPass = RenderPass;
+        pipeline_ci.subpass = 0;
+
+        if (vkCreateGraphicsPipelines(Device, nullptr, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass]) != VK_SUCCESS) {
+            throw EffectLoadException("Failed to create graphics pipeline", strex(name));
         }
     }
 
