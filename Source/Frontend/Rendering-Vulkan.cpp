@@ -73,6 +73,9 @@ static VkCommandBuffer CurrentCommandBuffer {}; // Current frame's recording com
 static VkDescriptorSetLayout TextureDescriptorSetLayout {};
 static VkDescriptorPool DescriptorPool {};
 static VkSampler TextureSampler {};
+static raw_ptr<RenderTexture> CurrentRenderTarget {}; // Current render target (nullptr = swapchain)
+static irect32 ScissorRect {};
+static bool ScissorEnabled = false;
 
 static void RecreateSwapchain(isize32 size);
 static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
@@ -297,8 +300,8 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {numeric_cast<int32_t>(pos.x), numeric_cast<int32_t>(pos.y), 0};
-    region.imageExtent = {numeric_cast<uint32_t>(size.width), numeric_cast<uint32_t>(size.height), 1};
+    region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
+    region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
 
     vkCmdCopyImageToBuffer(StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging_buf, 1, &region);
 
@@ -479,8 +482,8 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {numeric_cast<int32_t>(pos.x), numeric_cast<int32_t>(pos.y), 0};
-    region.imageExtent = {numeric_cast<uint32_t>(size.width), numeric_cast<uint32_t>(size.height), 1};
+    region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
+    region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
 
     vkCmdCopyBufferToImage(StagingCommandBuffer, staging_buf, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
@@ -562,7 +565,7 @@ static void AllocateImage(uint32_t width, uint32_t height, VkFormat format, VkIm
     image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_ci.imageType = VK_IMAGE_TYPE_2D;
     image_ci.format = format;
-    image_ci.extent = {width, height, 1};
+    image_ci.extent = {.width = width, .height = height, .depth = 1};
     image_ci.mipLevels = 1;
     image_ci.arrayLayers = 1;
     image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -789,29 +792,31 @@ void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     constexpr VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(CurrentCommandBuffer, 0, 1, &vk_dbuf->VertexBuffer, offsets);
 
-    // Bind pipeline for current pass (pass 0 by default)
-    constexpr size_t current_pass = 0; // TODO: Support multi-pass rendering
-    if (Pipeline[current_pass] != nullptr) {
-        vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[current_pass]);
-    }
+    // Process each pass
+    for (size_t pass = 0; pass < _passCount; pass++) {
+        // Bind pipeline for current pass
+        if (Pipeline[pass] != nullptr) {
+            vkCmdBindPipeline(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass]);
+        }
 
-    // Bind texture descriptor set
-    if (main_tex != nullptr && main_tex->DescriptorSet != nullptr) {
-        vkCmdBindDescriptorSets(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout, 0, 1, &main_tex->DescriptorSet, 0, nullptr);
-    }
+        // Bind texture descriptor set using effect's pipeline layout
+        if (main_tex != nullptr && main_tex->DescriptorSet != nullptr && PipelineLayout != nullptr) {
+            vkCmdBindDescriptorSets(CurrentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout, 0, 1, &main_tex->DescriptorSet, 0, nullptr);
+        }
 
-    // Draw indexed or non-indexed
-    if (vk_dbuf->IndCount != 0 && vk_dbuf->IndexBuffer != nullptr) {
-        // Bind index buffer and draw indexed
-        vkCmdBindIndexBuffer(CurrentCommandBuffer, vk_dbuf->IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        // Draw indexed or non-indexed
+        if (vk_dbuf->IndCount != 0 && vk_dbuf->IndexBuffer != nullptr) {
+            // Bind index buffer and draw indexed
+            vkCmdBindIndexBuffer(CurrentCommandBuffer, vk_dbuf->IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-        const size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
-        vkCmdDrawIndexed(CurrentCommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
-    }
-    else if (vk_dbuf->VertCount != 0) {
-        // Draw without indices
-        const size_t num_vertices = vk_dbuf->VertCount;
-        vkCmdDraw(CurrentCommandBuffer, numeric_cast<uint32_t>(num_vertices), 1, numeric_cast<uint32_t>(start_index), 0);
+            const size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
+            vkCmdDrawIndexed(CurrentCommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
+        }
+        else if (vk_dbuf->VertCount != 0) {
+            // Draw without indices
+            const size_t num_vertices = vk_dbuf->VertCount;
+            vkCmdDraw(CurrentCommandBuffer, numeric_cast<uint32_t>(num_vertices), 1, numeric_cast<uint32_t>(start_index), 0);
+        }
     }
 }
 
@@ -988,11 +993,98 @@ Vulkan_Renderer::~Vulkan_Renderer()
             continue;
         }
 
-        // TODO: Create proper vertex input descriptions based on effect usage
+        // Create vertex input descriptions based on effect usage
+        VkVertexInputBindingDescription binding_desc {};
+        binding_desc.binding = 0;
+        binding_desc.stride = 0;
+        binding_desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        VkVertexInputAttributeDescription attr_descs[9] {};
+        size_t attr_count = 0;
+
+#if FO_ENABLE_3D
+        if (usage == EffectUsage::Model) {
+            binding_desc.stride = sizeof(Vertex3D);
+            // Attribute 0: Position (vec3)
+            attr_descs[0].binding = 0;
+            attr_descs[0].location = 0;
+            attr_descs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attr_descs[0].offset = offsetof(Vertex3D, Position);
+            // Attribute 1: Normal (vec3)
+            attr_descs[1].binding = 0;
+            attr_descs[1].location = 1;
+            attr_descs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attr_descs[1].offset = offsetof(Vertex3D, Normal);
+            // Attribute 2: TexCoord (vec2)
+            attr_descs[2].binding = 0;
+            attr_descs[2].location = 2;
+            attr_descs[2].format = VK_FORMAT_R32G32_SFLOAT;
+            attr_descs[2].offset = offsetof(Vertex3D, TexCoord);
+            // Attribute 3: TexCoordBase (vec2)
+            attr_descs[3].binding = 0;
+            attr_descs[3].location = 3;
+            attr_descs[3].format = VK_FORMAT_R32G32_SFLOAT;
+            attr_descs[3].offset = offsetof(Vertex3D, TexCoordBase);
+            // Attribute 4: Tangent (vec3)
+            attr_descs[4].binding = 0;
+            attr_descs[4].location = 4;
+            attr_descs[4].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attr_descs[4].offset = offsetof(Vertex3D, Tangent);
+            // Attribute 5: Bitangent (vec3)
+            attr_descs[5].binding = 0;
+            attr_descs[5].location = 5;
+            attr_descs[5].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attr_descs[5].offset = offsetof(Vertex3D, Bitangent);
+            // Attribute 6: BlendWeights (vec4)
+            attr_descs[6].binding = 0;
+            attr_descs[6].location = 6;
+            attr_descs[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            attr_descs[6].offset = offsetof(Vertex3D, BlendWeights);
+            // Attribute 7: BlendIndices (vec4)
+            attr_descs[7].binding = 0;
+            attr_descs[7].location = 7;
+            attr_descs[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            attr_descs[7].offset = offsetof(Vertex3D, BlendIndices);
+            // Attribute 8: Color (vec4 unorm)
+            attr_descs[8].binding = 0;
+            attr_descs[8].location = 8;
+            attr_descs[8].format = VK_FORMAT_R8G8B8A8_UNORM;
+            attr_descs[8].offset = offsetof(Vertex3D, Color);
+            attr_count = 9;
+        }
+        else
+#endif
+        {
+            binding_desc.stride = sizeof(Vertex2D);
+            // Attribute 0: Position (vec3)
+            attr_descs[0].binding = 0;
+            attr_descs[0].location = 0;
+            attr_descs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attr_descs[0].offset = offsetof(Vertex2D, PosX);
+            // Attribute 1: Color (vec4 unorm)
+            attr_descs[1].binding = 0;
+            attr_descs[1].location = 1;
+            attr_descs[1].format = VK_FORMAT_R8G8B8A8_UNORM;
+            attr_descs[1].offset = offsetof(Vertex2D, Color);
+            // Attribute 2: TexCoord (vec2)
+            attr_descs[2].binding = 0;
+            attr_descs[2].location = 2;
+            attr_descs[2].format = VK_FORMAT_R32G32_SFLOAT;
+            attr_descs[2].offset = offsetof(Vertex2D, TexU);
+            // Attribute 3: EggTexCoord (vec2)
+            attr_descs[3].binding = 0;
+            attr_descs[3].location = 3;
+            attr_descs[3].format = VK_FORMAT_R32G32_SFLOAT;
+            attr_descs[3].offset = offsetof(Vertex2D, EggTexU);
+            attr_count = 4;
+        }
+
         VkPipelineVertexInputStateCreateInfo vertex_input_ci {};
         vertex_input_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_ci.vertexBindingDescriptionCount = 0;
-        vertex_input_ci.vertexAttributeDescriptionCount = 0;
+        vertex_input_ci.vertexBindingDescriptionCount = 1;
+        vertex_input_ci.pVertexBindingDescriptions = &binding_desc;
+        vertex_input_ci.vertexAttributeDescriptionCount = numeric_cast<uint32_t>(attr_count);
+        vertex_input_ci.pVertexAttributeDescriptions = attr_descs;
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly_ci {};
         input_assembly_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -1008,8 +1100,8 @@ Vulkan_Renderer::~Vulkan_Renderer()
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor {};
-        scissor.offset = {0, 0};
-        scissor.extent = {1, 1};
+        scissor.offset = {.x = 0, .y = 0};
+        scissor.extent = {.width = 1, .height = 1};
 
         VkPipelineViewportStateCreateInfo viewport_ci {};
         viewport_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -1506,6 +1598,30 @@ void Vulkan_Renderer::Present()
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline);
 
+    // Set viewport to match the render area
+    VkViewport viewport {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = numeric_cast<float32>(ViewPort.width);
+    viewport.height = numeric_cast<float32>(ViewPort.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(cmd_buf, 0, 1, &viewport);
+
+    // Apply to scissor rectangle if enabled, otherwise use viewport rect
+    if (ScissorEnabled) {
+        VkRect2D scissor_rect {};
+        scissor_rect.offset = {.x = numeric_cast<int32_t>(ScissorRect.x), .y = numeric_cast<int32_t>(ScissorRect.y)};
+        scissor_rect.extent = {.width = numeric_cast<uint32_t>(std::max(1, ScissorRect.width)), .height = numeric_cast<uint32_t>(std::max(1, ScissorRect.height))};
+        vkCmdSetScissor(cmd_buf, 0, 1, &scissor_rect);
+    }
+    else {
+        VkRect2D scissor_rect {};
+        scissor_rect.offset = {.x = 0, .y = 0};
+        scissor_rect.extent = {.width = numeric_cast<uint32_t>(ViewPort.width), .height = numeric_cast<uint32_t>(ViewPort.height)};
+        vkCmdSetScissor(cmd_buf, 0, 1, &scissor_rect);
+    }
+
     // Note: DrawBuffer() calls from game logic will record commands into CurrentCommandBuffer
     // For now, draw a default triangle if no custom draw calls were made
     vkCmdDraw(cmd_buf, 3, 1, 0, 0);
@@ -1539,10 +1655,13 @@ void Vulkan_Renderer::Present()
     FO_RUNTIME_ASSERT(vk_result == VK_SUCCESS);
 }
 
-void Vulkan_Renderer::SetRenderTarget(RenderTexture* /*tex*/)
+void Vulkan_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     FO_STACK_TRACE_ENTRY();
-    // not implemented
+
+    CurrentRenderTarget = tex;
+    // Note: Full implementation would require creating Vulkan framebuffers from texture images
+    // and switching render passes. For now, this stores the target for future use.
 }
 
 void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool /*depth*/, bool /*stencil*/)
@@ -1558,16 +1677,19 @@ void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool /*depth*/, 
     }
 }
 
-void Vulkan_Renderer::EnableScissor(irect32 /*rect*/)
+void Vulkan_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
-    // not implemented
+
+    ScissorRect = rect;
+    ScissorEnabled = true;
 }
 
 void Vulkan_Renderer::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
-    // not implemented
+
+    ScissorEnabled = false;
 }
 
 void Vulkan_Renderer::OnResizeWindow(isize32 size)
