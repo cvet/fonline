@@ -39,23 +39,77 @@
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
+#include "SDL3/SDL_vulkan.h"
 #include <vulkan/vulkan.h>
 
 FO_BEGIN_NAMESPACE
+
+static raw_ptr<GlobalSettings> Settings {};
+static raw_ptr<SDL_Window> SdlWindow {};
+static VkInstance Instance {};
+static VkPhysicalDevice PhysicalDevice {};
+static VkDevice Device {};
+static VkQueue GraphicsQueue {};
+static VkSurfaceKHR Surface {};
+static irect32 ViewPort {};
+static unique_ptr<RenderTexture> DummyTexture {};
 
 class Vulkan_Texture final : public RenderTexture
 {
 public:
     Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth) :
-        RenderTexture(size, linear_filtered, with_depth)
+        RenderTexture(size, linear_filtered, with_depth),
+        _pixels(size.square())
     {
+        FO_STACK_TRACE_ENTRY();
     }
 
     ~Vulkan_Texture() override = default;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 /*pos*/) const -> ucolor override { throw NotImplementedException(FO_LINE_STR); }
-    [[nodiscard]] auto GetTextureRegion(ipos32 /*pos*/, isize32 /*size*/) const -> vector<ucolor> override { throw NotImplementedException(FO_LINE_STR); }
-    void UpdateTextureRegion(ipos32 /*pos*/, isize32 /*size*/, const ucolor* /*data*/, bool /*use_dest_pitch*/) override { throw NotImplementedException(FO_LINE_STR); }
+    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const auto idx = numeric_cast<size_t>(pos.y) * Size.width + numeric_cast<size_t>(pos.x);
+        return idx < _pixels.size() ? _pixels[idx] : ucolor::clear;
+    }
+
+    [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<ucolor> result;
+        result.reserve(size.square());
+
+        for (int32 y = 0; y < size.height; y++) {
+            for (int32 x = 0; x < size.width; x++) {
+                result.emplace_back(GetTexturePixel({pos.x + x, pos.y + y}));
+            }
+        }
+
+        return result;
+    }
+
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        ignore_unused(use_dest_pitch);
+
+        for (int32 y = 0; y < size.height; y++) {
+            for (int32 x = 0; x < size.width; x++) {
+                const auto dst_idx = (numeric_cast<size_t>(pos.y + y) * Size.width) + numeric_cast<size_t>(pos.x + x);
+                const auto src_idx = numeric_cast<size_t>(y) * size.width + numeric_cast<size_t>(x);
+
+                if (dst_idx < _pixels.size()) {
+                    _pixels[dst_idx] = data[src_idx];
+                }
+            }
+        }
+    }
+
+private:
+    vector<ucolor> _pixels;
 };
 
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
@@ -64,10 +118,16 @@ public:
     explicit Vulkan_DrawBuffer(bool is_static) :
         RenderDrawBuffer(is_static)
     {
+        FO_STACK_TRACE_ENTRY();
     }
     ~Vulkan_DrawBuffer() override = default;
 
-    void Upload(EffectUsage /*usage*/, optional<size_t> /*custom_vertices_size*/, optional<size_t> /*custom_indices_size*/) override { throw NotImplementedException(FO_LINE_STR); }
+    void Upload(EffectUsage /*usage*/, optional<size_t> /*custom_vertices_size*/, optional<size_t> /*custom_indices_size*/) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        StaticDataChanged = false;
+    }
 };
 
 class Vulkan_Effect final : public RenderEffect
@@ -76,71 +136,223 @@ public:
     Vulkan_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
         RenderEffect(usage, name, loader)
     {
+        FO_STACK_TRACE_ENTRY();
     }
 
     ~Vulkan_Effect() override = default;
 
-    void DrawBuffer(RenderDrawBuffer* /*dbuf*/, size_t /*start_index*/, optional<size_t> /*indices_to_draw*/, const RenderTexture* /*custom_tex*/) override { throw NotImplementedException(FO_LINE_STR); }
+    void DrawBuffer(RenderDrawBuffer* /*dbuf*/, size_t /*start_index*/, optional<size_t> /*indices_to_draw*/, const RenderTexture* /*custom_tex*/) override
+    {
+        FO_STACK_TRACE_ENTRY();
+        // no-op
+    }
 };
+
+Vulkan_Renderer::~Vulkan_Renderer()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Device != nullptr) {
+        vkDestroyDevice(Device, nullptr);
+        Device = VK_NULL_HANDLE;
+    }
+    if (Surface != nullptr && Instance != nullptr) {
+        vkDestroySurfaceKHR(Instance, Surface, nullptr);
+        Surface = VK_NULL_HANDLE;
+    }
+    if (Instance != nullptr) {
+        vkDestroyInstance(Instance, nullptr);
+        Instance = VK_NULL_HANDLE;
+    }
+}
 
 [[nodiscard]] auto Vulkan_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth);
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static);
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader);
 }
 
 [[nodiscard]] auto Vulkan_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    mat44 m {};
+    m[0][0] = 2.0f / (right - left);
+    m[1][1] = 2.0f / (top - bottom);
+    m[2][2] = -2.0f / (farp - nearp);
+    m[3][0] = -(right + left) / (right - left);
+    m[3][1] = -(top + bottom) / (top - bottom);
+    m[3][2] = -(farp + nearp) / (farp - nearp);
+    m[3][3] = 1.0f;
+    return m;
 }
 
 [[nodiscard]] auto Vulkan_Renderer::GetViewPort() -> irect32
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    return ViewPort;
 }
 
-void Vulkan_Renderer::Init(GlobalSettings& /*settings*/, WindowInternalHandle* /*window*/)
+void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    WriteLog("Used Vulkan rendering (minimal stub)");
+
+    Settings = &settings;
+    SdlWindow = static_cast<SDL_Window*>(window);
+
+    Uint32 ext_count = 0;
+    const char* const* exts = SDL_Vulkan_GetInstanceExtensions(&ext_count);
+
+    if (exts == nullptr) {
+        throw RenderingException("Failed to query Vulkan extensions from SDL");
+    }
+
+    VkApplicationInfo app_info {};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "FOnline";
+    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.pEngineName = "FOnline Engine";
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.apiVersion = VK_API_VERSION_1_0;
+
+    VkInstanceCreateInfo create_info {};
+    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_info.pApplicationInfo = &app_info;
+    create_info.enabledExtensionCount = ext_count;
+    create_info.ppEnabledExtensionNames = exts;
+
+    VkResult result = vkCreateInstance(&create_info, nullptr, &Instance);
+
+    if (result != VK_SUCCESS) {
+        throw RenderingException("vkCreateInstance failed", result);
+    }
+
+    if (!SDL_Vulkan_CreateSurface(SdlWindow.get(), Instance, nullptr, &Surface)) {
+        throw RenderingException("SDL_Vulkan_CreateSurface failed");
+    }
+
+    // Pick first physical device supporting graphics
+    uint32_t gpu_count = 0;
+    result = vkEnumeratePhysicalDevices(Instance, &gpu_count, nullptr);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+
+    if (gpu_count == 0) {
+        throw RenderingException("No Vulkan physical devices found");
+    }
+
+    vector<VkPhysicalDevice> gpus;
+    gpus.resize(gpu_count);
+    result = vkEnumeratePhysicalDevices(Instance, &gpu_count, gpus.data());
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+    PhysicalDevice = gpus.front();
+
+    // Find queue family
+    uint32_t qcount;
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &qcount, nullptr);
+    vector<VkQueueFamilyProperties> qprops(qcount);
+    qprops.resize(qcount);
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &qcount, qprops.data());
+
+    optional<uint32_t> graphics_family;
+
+    for (uint32_t i = 0; i < qcount; i++) {
+        VkBool32 present_support = VK_FALSE;
+        result = vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, i, Surface, &present_support);
+        FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+
+        if ((qprops[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && present_support != VK_FALSE) {
+            graphics_family = i;
+            break;
+        }
+    }
+
+    if (!graphics_family.has_value()) {
+        throw RenderingException("No suitable Vulkan queue family");
+    }
+
+    constexpr float queue_priority = 1.0f;
+    VkDeviceQueueCreateInfo dqci {};
+    dqci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    dqci.queueFamilyIndex = graphics_family.value();
+    dqci.queueCount = 1;
+    dqci.pQueuePriorities = &queue_priority;
+
+    VkDeviceCreateInfo dci {};
+    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos = &dqci;
+
+    if (settings.RenderDebug) {
+        const char* layers[] = {"VK_LAYER_KHRONOS_validation"};
+        dci.enabledLayerCount = 1;
+        dci.ppEnabledLayerNames = layers;
+    }
+
+    result = vkCreateDevice(PhysicalDevice, &dci, nullptr, &Device);
+
+    if (result != VK_SUCCESS) {
+        throw RenderingException("vkCreateDevice failed");
+    }
+
+    vkGetDeviceQueue(Device, graphics_family.value(), 0, &GraphicsQueue);
+
+    ViewPort = irect32 {{0, 0}, {0, 0}};
+    DummyTexture = CreateTexture({1, 1}, false, false);
 }
 
 void Vulkan_Renderer::Present()
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+    // not implemented
 }
 
 void Vulkan_Renderer::SetRenderTarget(RenderTexture* /*tex*/)
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+    // not implemented
 }
 
 void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> /*color*/, bool /*depth*/, bool /*stencil*/)
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+    // not implemented
 }
 
 void Vulkan_Renderer::EnableScissor(irect32 /*rect*/)
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+    // not implemented
 }
 
 void Vulkan_Renderer::DisableScissor()
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+    // not implemented
 }
 
-void Vulkan_Renderer::OnResizeWindow(isize32 /*size*/)
+void Vulkan_Renderer::OnResizeWindow(isize32 size)
 {
-    throw NotImplementedException(FO_LINE_STR);
+    FO_STACK_TRACE_ENTRY();
+
+    ViewPort = irect32 {{0, 0}, size};
 }
 
 FO_END_NAMESPACE
