@@ -67,8 +67,12 @@ static VkClearColorValue ClearColor {{0.0f, 0.0f, 0.0f, 1.0f}};
 static uint32_t FrameIndex = 0;
 static VkPipelineLayout PipelineLayout {};
 static VkPipeline GraphicsPipeline {};
+static VkCommandBuffer StagingCommandBuffer {};
+static vector<tuple<VkBuffer, VkDeviceMemory>> StagingBuffers;
+static VkCommandBuffer CurrentCommandBuffer {}; // Current frame's recording command buffer
 
 static void RecreateSwapchain(isize32 size);
+static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
 
 class Vulkan_Texture final : public RenderTexture
 {
@@ -131,6 +135,7 @@ private:
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
 {
     friend class Vulkan_Effect;
+    friend class Vulkan_Renderer;
 
 public:
     explicit Vulkan_DrawBuffer(bool is_static) :
@@ -138,20 +143,14 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
     }
-    ~Vulkan_DrawBuffer() override = default;
+    ~Vulkan_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
 
-        ignore_unused(usage, custom_vertices_size, custom_indices_size);
-
-        // GPU buffer upload will be implemented when we add buffer management
-        StaticDataChanged = false;
-    }
-
-    // GPU resources for Vulkan rendering
-    // TODO: VkBuffer for vertices and indices with associated device memory
+    VkBuffer VertexBuffer {};
+    VkDeviceMemory VertexBufferMemory {};
+    VkBuffer IndexBuffer {};
+    VkDeviceMemory IndexBufferMemory {};
 };
 
 class Vulkan_Effect final : public RenderEffect
@@ -172,7 +171,6 @@ public:
     VkShaderModule VertexShaderModule[EFFECT_MAX_PASSES] {};
     VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
     // TODO: VkDescriptorSet for each pass for texture and constant buffer bindings
-private:
 };
 
 Vulkan_Effect::~Vulkan_Effect()
@@ -195,15 +193,214 @@ Vulkan_Effect::~Vulkan_Effect()
     }
 }
 
+Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Device == nullptr) {
+        return;
+    }
+
+    if (VertexBuffer != nullptr) {
+        vkDestroyBuffer(Device, VertexBuffer, nullptr);
+        VertexBuffer = VK_NULL_HANDLE;
+    }
+
+    if (VertexBufferMemory != nullptr) {
+        vkFreeMemory(Device, VertexBufferMemory, nullptr);
+        VertexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    if (IndexBuffer != nullptr) {
+        vkDestroyBuffer(Device, IndexBuffer, nullptr);
+        IndexBuffer = VK_NULL_HANDLE;
+    }
+
+    if (IndexBufferMemory != nullptr) {
+        vkFreeMemory(Device, IndexBufferMemory, nullptr);
+        IndexBufferMemory = VK_NULL_HANDLE;
+    }
+}
+
+static void AllocateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    VkBufferCreateInfo buffer_ci {};
+    buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_ci.size = size;
+    buffer_ci.usage = usage;
+    buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkResult result = vkCreateBuffer(Device, &buffer_ci, nullptr, &buffer);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+
+    VkMemoryRequirements mem_req {};
+    vkGetBufferMemoryRequirements(Device, buffer, &mem_req);
+
+    // Find suitable memory type
+    optional<uint32_t> mem_type_idx;
+    VkPhysicalDeviceMemoryProperties mem_properties {};
+    vkGetPhysicalDeviceMemoryProperties(PhysicalDevice, &mem_properties);
+
+    for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+        if ((mem_req.memoryTypeBits & (1 << i)) != 0 && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            mem_type_idx = i;
+            break;
+        }
+    }
+
+    FO_RUNTIME_ASSERT(mem_type_idx.has_value());
+
+    VkMemoryAllocateInfo alloc_info {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = mem_req.size;
+    alloc_info.memoryTypeIndex = mem_type_idx.value();
+
+    result = vkAllocateMemory(Device, &alloc_info, nullptr, &memory);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+
+    result = vkBindBufferMemory(Device, buffer, memory, 0);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+}
+
+void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (Device == nullptr) {
+        return;
+    }
+
+    VkResult result;
+    size_t vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D);
+    const size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
+
+#if FO_ENABLE_3D
+    if (usage == EffectUsage::Model) {
+        vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex3D);
+    }
+#else
+    ignore_unused(usage);
+#endif
+
+    if (vert_size != 0 && (VertexBuffer == nullptr || StaticDataChanged)) {
+        // Destroy old vertex buffer
+        if (VertexBuffer != nullptr) {
+            vkDestroyBuffer(Device, VertexBuffer, nullptr);
+            VertexBuffer = VK_NULL_HANDLE;
+        }
+        if (VertexBufferMemory != nullptr) {
+            vkFreeMemory(Device, VertexBufferMemory, nullptr);
+            VertexBufferMemory = VK_NULL_HANDLE;
+        }
+
+        // Create staging buffer for vertex data
+        VkBuffer staging_vert_buf {};
+        VkDeviceMemory staging_vert_mem {};
+
+        AllocateBuffer(vert_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_vert_buf, staging_vert_mem);
+        StagingBuffers.emplace_back(staging_vert_buf, staging_vert_mem);
+
+        // Copy vertex data to staging buffer
+        void* data {};
+        result = vkMapMemory(Device, staging_vert_mem, 0, vert_size, 0, &data);
+        FO_RUNTIME_ASSERT(result);
+        MemCopy(data, Vertices.data(), vert_size);
+        vkUnmapMemory(Device, staging_vert_mem);
+
+        // Create GPU-local vertex buffer
+        AllocateBuffer(vert_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VertexBuffer, VertexBufferMemory);
+
+        // Copy from staging to GPU-local
+        VkBufferCopy copy_region {};
+        copy_region.size = vert_size;
+
+        VkCommandBufferBeginInfo begin_info {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
+        FO_RUNTIME_ASSERT(result);
+
+        vkCmdCopyBuffer(StagingCommandBuffer, staging_vert_buf, VertexBuffer, 1, &copy_region);
+
+        result = vkEndCommandBuffer(StagingCommandBuffer);
+        FO_RUNTIME_ASSERT(result);
+
+        VkSubmitInfo submit_info {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &StagingCommandBuffer;
+
+        result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+        FO_RUNTIME_ASSERT(result);
+        result = vkQueueWaitIdle(GraphicsQueue);
+        FO_RUNTIME_ASSERT(result);
+    }
+
+    if (idx_size != 0 && (IndexBuffer == nullptr || StaticDataChanged)) {
+        // Destroy old index buffer
+        if (IndexBuffer != nullptr) {
+            vkDestroyBuffer(Device, IndexBuffer, nullptr);
+            IndexBuffer = VK_NULL_HANDLE;
+        }
+        if (IndexBufferMemory != nullptr) {
+            vkFreeMemory(Device, IndexBufferMemory, nullptr);
+            IndexBufferMemory = VK_NULL_HANDLE;
+        }
+
+        // Create staging buffer for index data
+        VkBuffer staging_idx_buf {};
+        VkDeviceMemory staging_idx_mem {};
+        AllocateBuffer(idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
+        StagingBuffers.emplace_back(staging_idx_buf, staging_idx_mem);
+
+        // Copy index data to staging buffer
+        void* data {};
+        result = vkMapMemory(Device, staging_idx_mem, 0, idx_size, 0, &data);
+        FO_RUNTIME_ASSERT(result);
+        MemCopy(data, Indices.data(), idx_size);
+        vkUnmapMemory(Device, staging_idx_mem);
+
+        // Create GPU-local index buffer
+        AllocateBuffer(idx_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, IndexBuffer, IndexBufferMemory);
+
+        // Copy from staging to GPU-local
+        VkBufferCopy copy_region {};
+        copy_region.size = idx_size;
+
+        VkCommandBufferBeginInfo begin_info {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        result = vkBeginCommandBuffer(StagingCommandBuffer, &begin_info);
+        FO_RUNTIME_ASSERT(result);
+
+        vkCmdCopyBuffer(StagingCommandBuffer, staging_idx_buf, IndexBuffer, 1, &copy_region);
+
+        result = vkEndCommandBuffer(StagingCommandBuffer);
+        FO_RUNTIME_ASSERT(result);
+
+        VkSubmitInfo submit_info {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &StagingCommandBuffer;
+
+        result = vkQueueSubmit(GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+        FO_RUNTIME_ASSERT(result);
+        result = vkQueueWaitIdle(GraphicsQueue);
+        FO_RUNTIME_ASSERT(result);
+    }
+
+    StaticDataChanged = false;
+}
+
 void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (dbuf == nullptr || Device == nullptr || GraphicsPipeline == nullptr) {
+    if (dbuf == nullptr || Device == nullptr || CurrentCommandBuffer == nullptr) {
         return;
     }
 
-    const auto* vk_dbuf = static_cast<Vulkan_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+    auto* vk_dbuf = static_cast<Vulkan_DrawBuffer*>(dbuf); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 
 #if FO_ENABLE_3D
     const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] ? ModelTex[0].get() : (MainTex ? MainTex.get() : DummyTexture.get()))); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
@@ -211,14 +408,35 @@ void Vulkan_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     const auto* main_tex = static_cast<const Vulkan_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex ? MainTex.get() : DummyTexture.get())); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
 #endif
 
-    ignore_unused(vk_dbuf, main_tex, start_index, indices_to_draw);
+    ignore_unused(main_tex);
 
-    // TODO: Implement Vulkan-specific rendering:
-    // 1. Get current command buffer from Present()
-    // 2. Bind vertex/index buffers
-    // 3. Bind textures and constant buffers via descriptor sets
-    // 4. Record vkCmdDraw or vkCmdDrawIndexed commands
-    // 5. Handle different effect usage modes (Sprite, Primitive, Model)
+    // Skip if no geometry to render
+    if (vk_dbuf->IndCount == 0 && vk_dbuf->VertCount == 0) {
+        return;
+    }
+
+    // Ensure buffers are uploaded to GPU
+    if (vk_dbuf->VertexBuffer == nullptr) {
+        return;
+    }
+
+    // Bind vertex buffer
+    constexpr VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(CurrentCommandBuffer, 0, 1, &vk_dbuf->VertexBuffer, offsets);
+
+    // Draw indexed or non-indexed
+    if (vk_dbuf->IndCount != 0 && vk_dbuf->IndexBuffer != nullptr) {
+        // Bind index buffer and draw indexed
+        vkCmdBindIndexBuffer(CurrentCommandBuffer, vk_dbuf->IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+        const size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
+        vkCmdDrawIndexed(CurrentCommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
+    }
+    else if (vk_dbuf->VertCount != 0) {
+        // Draw without indices
+        const size_t num_vertices = vk_dbuf->VertCount;
+        vkCmdDraw(CurrentCommandBuffer, numeric_cast<uint32_t>(num_vertices), 1, numeric_cast<uint32_t>(start_index), 0);
+    }
 }
 
 Vulkan_Renderer::~Vulkan_Renderer()
@@ -228,6 +446,17 @@ Vulkan_Renderer::~Vulkan_Renderer()
     if (Device != nullptr) {
         vkDeviceWaitIdle(Device);
     }
+
+    // Destroy staging buffers
+    for (const auto& [buf, mem] : StagingBuffers) {
+        if (buf != nullptr) {
+            vkDestroyBuffer(Device, buf, nullptr);
+        }
+        if (mem != nullptr) {
+            vkFreeMemory(Device, mem, nullptr);
+        }
+    }
+    StagingBuffers.clear();
 
     for (auto* fb : Framebuffers) {
         vkDestroyFramebuffer(Device, fb, nullptr);
@@ -511,6 +740,16 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         FO_RUNTIME_ASSERT(result == VK_SUCCESS);
     }
 
+    // Allocate staging command buffer for buffer uploads
+    VkCommandBufferAllocateInfo staging_cbai {};
+    staging_cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    staging_cbai.commandPool = CommandPool;
+    staging_cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    staging_cbai.commandBufferCount = 1;
+
+    result = vkAllocateCommandBuffers(Device, &staging_cbai, &StagingCommandBuffer);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
+
     DummyTexture = CreateTexture({1, 1}, false, false);
 }
 
@@ -691,13 +930,20 @@ void Vulkan_Renderer::Present()
     rp_begin.clearValueCount = 1;
     rp_begin.pClearValues = reinterpret_cast<VkClearValue*>(&ClearColor);
 
+    CurrentCommandBuffer = cmd_buf; // Set current buffer for DrawBuffer calls
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline);
+
+    // Note: DrawBuffer() calls from game logic will record commands into CurrentCommandBuffer
+    // For now, draw a default triangle if no custom draw calls were made
     vkCmdDraw(cmd_buf, 3, 1, 0, 0);
+
     vkCmdEndRenderPass(cmd_buf);
+    CurrentCommandBuffer = VK_NULL_HANDLE;
 
     // End command buffer
-    vkEndCommandBuffer(cmd_buf);
+    result = vkEndCommandBuffer(cmd_buf);
+    FO_RUNTIME_ASSERT(result == VK_SUCCESS);
 
     // Submit to graphics queue with frame fence
     VkSubmitInfo submit_info {};
@@ -756,7 +1002,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ViewPort = irect32 {{0, 0}, size};
+    ViewPort = irect32 {{0, 0}, {std::max(size.width, 1), std::max(size.height, 1)}};
     RecreateSwapchain(size);
 }
 
