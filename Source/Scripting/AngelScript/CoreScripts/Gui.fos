@@ -119,6 +119,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   bool IsNotHittable
 //   bool IsNotCatchable
 //   bool CheckTransparentOnHit
+//   bool FocusGroup
 //   bool IsFocused
 //   bool IsPressed
 //   bool IsHovered
@@ -143,6 +144,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetNotHittable(bool enabled)
 //   void SetNotCatchable(bool enabled)
 //   void SetCheckTransparentOnHit(bool enabled)
+//   void SetFocusGroup(bool enabled)
 //   Object FindMouseHit()
 //   Object FindHit(ipos pos)
 //   bool IsMouseHit()
@@ -321,6 +323,10 @@ class Object
     {
         return _CheckTransparentOnHit;
     }
+    bool get_FocusGroup() final
+    {
+        return _FocusGroup;
+    }
     bool get_IsFocused() final
     {
         return _IsFocused;
@@ -372,6 +378,7 @@ class Object
     bool _IsNotHittable;
     bool _IsNotCatchable;
     bool _CheckTransparentOnHit;
+    bool _FocusGroup;
     bool _DeferredMousePressed;
     bool _IsFocused;
     bool _IsPressed;
@@ -1229,6 +1236,11 @@ class Object
     void SetCheckTransparentOnHit(bool enabled)
     {
         _CheckTransparentOnHit = enabled;
+    }
+
+    void SetFocusGroup(bool enabled)
+    {
+        _FocusGroup = enabled;
     }
 
     void SetDeferredMousePressed(bool enabled)
@@ -3170,7 +3182,7 @@ dict<GuiScreen, CreateScreenFunc> ScreenCreators = {};
 Screen[] Screens = {};
 Screen CursorScreen;
 
-Object FocusedObject;
+Object[] FocusedObjects = {};
 Object PressedObject;
 nanotime PressedObjectRepeatTime;
 Object LastPressedObject;
@@ -3353,27 +3365,57 @@ Screen[] GetActiveScreens()
     return result;
 }
 
-Object GetFocusedObject()
+Object[] GetFocusedObjects()
 {
-    if (FocusedObject != null && !FocusedObject.Active) {
-        auto obj = FocusedObject;
-        FocusedObject = null;
-        obj._Unfocus();
+    for (int i = FocusedObjects.length() - 1; i >= 0; i--) {
+        if (!FocusedObjects[i].Active) {
+            FocusedObjects[i]._Unfocus();
+            FocusedObjects.removeAt(i);
+        }
     }
-    return FocusedObject;
+
+    return FocusedObjects.clone();
 }
 
 void SetFocusedObject(Object obj)
 {
-    if (FocusedObject != null) {
-        auto fobj = FocusedObject;
-        FocusedObject = null;
-        fobj._Unfocus();
+    // Unfocus current
+    Object[] objects = GetFocusedObjects();
+    FocusedObjects.clear();
+
+    for (int i = 0; i < objects.length(); i++) {
+        objects[i]._Unfocus();
     }
 
-    if (obj != null && obj.Active) {
-        FocusedObject = obj;
-        FocusedObject._Focus();
+    // Focus new
+    if (obj != null) {
+        Object groupObj = obj.Parent;
+
+        while (groupObj != null) {
+            if (groupObj.FocusGroup) {
+                break;
+            }
+
+            groupObj = groupObj.Parent;
+        }
+
+        if (groupObj != null) {
+            AddFocusRecursively(groupObj);
+        }
+        else {
+            obj._Focus();
+            FocusedObjects.insertLast(obj);
+        }
+    }
+}
+
+void AddFocusRecursively(Object obj)
+{
+    obj._Focus();
+    FocusedObjects.insertLast(obj);
+
+    for (int i = 0; i < obj._Children.length(); i++) {
+        AddFocusRecursively(obj._Children[i]);
     }
 }
 
@@ -3423,23 +3465,23 @@ void NextTextInput()
         return;
     }
 
-    GetFocusedObject(); // Refresh state
-    TextInput curTextInput = cast<TextInput>(FocusedObject);
+    TextInput curTextInput = null;
+    Object[] objects = GetFocusedObjects();
+
+    for (int i = 0; i < objects.length() && curTextInput == null; i++) {
+        curTextInput = cast<TextInput>(objects[i]);
+    }
+
     FindNextTextInputSkipObj = curTextInput;
     TextInput textInput = FindNextTextInput(screen);
     FindNextTextInputSkipObj = null;
+
     if (textInput == null && curTextInput != null) {
         textInput = FindNextTextInput(screen);
     }
 
     if (textInput != null && textInput !is curTextInput) {
-        if (FocusedObject != null) {
-            auto obj = FocusedObject;
-            FocusedObject = null;
-            obj._Unfocus();
-        }
-        FocusedObject = textInput;
-        FocusedObject._Focus();
+        SetFocusedObject(textInput);
     }
 }
 
@@ -3594,11 +3636,8 @@ void EngineCallback_DrawCursor()
 
 void EngineCallback_MouseDown(MouseButton button)
 {
-    // Unfocus current object
-    if (button == MouseButton::Left && FocusedObject != null) {
-        auto obj = FocusedObject;
-        FocusedObject = null;
-        obj._Unfocus();
+    if (button == MouseButton::Left && !FocusedObjects.isEmpty()) {
+        SetFocusedObject(null);
     }
 
     // Release mouse from current object
@@ -3633,8 +3672,7 @@ void EngineCallback_MouseDown(MouseButton button)
 
         // Handle focused object
         if (button == MouseButton::Left) {
-            FocusedObject = hitObj;
-            FocusedObject._Focus();
+            SetFocusedObject(hitObj);
         }
         return;
     }
@@ -3765,9 +3803,11 @@ void EngineCallback_KeyDown(KeyCode key, string text)
     // Focused object input
     if (CurConsole == null || !CurConsole.Active) {
         Screen screen = GetActiveScreen();
-        GetFocusedObject(); // Refresh state
-        if (FocusedObject != null && FocusedObject !is screen) {
-            FocusedObject.Input(key, text);
+        Object[] objects = GetFocusedObjects();
+        for (int i = 0; i < objects.length(); i++) {
+            if (objects[i] !is screen) {
+                objects[i].Input(key, text);
+            }
         }
     }
 }
@@ -3784,11 +3824,9 @@ void EngineCallback_InputLost()
         HoveredObject = null;
         obj._Unhover();
     }
-    if (FocusedObject != null) {
-        auto obj = FocusedObject;
-        FocusedObject = null;
-        obj._Unfocus();
-    }
+
+    SetFocusedObject(null);
+
     if (PressedObject != null) {
         auto obj = PressedObject;
         PressedObject = null;
@@ -3934,11 +3972,9 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         HoveredObject = null;
         obj._Unhover();
     }
-    if (FocusedObject != null) {
-        auto obj = FocusedObject;
-        FocusedObject = null;
-        obj._Unfocus();
-    }
+
+    SetFocusedObject(null);
+
     if (PressedObject != null) {
         auto obj = PressedObject;
         PressedObject = null;
@@ -3954,10 +3990,11 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         }
 
         // Focus and hover new elements
-        FocusedObject = FindNextTextInput(screen);
-        if (FocusedObject != null) {
-            FocusedObject._Focus();
+        TextInput textInput = FindNextTextInput(screen);
+        if (textInput != null) {
+            SetFocusedObject(textInput);
         }
+
         HoveredObject = screen.FindMouseHit();
         if (HoveredObject != null) {
             HoveredObject._Hover();
