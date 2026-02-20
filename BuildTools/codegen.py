@@ -879,20 +879,23 @@ tagsMetas = {} # Cleanup memory
 
 # Generate compatability version
 def hashRecursive(data, hasher=None, algorithm='sha256'):
+    def update(s):
+        s = s.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
+        hasher.update(s.encode('utf-8'))
     if hasher is None:
         hasher = hashlib.new(algorithm)
     if isinstance(data, Mapping):
         for key in sorted(data.keys()):
-            hasher.update(str(key).encode('utf-8'))
+            update(str(key))
             hashRecursive(data[key], hasher, algorithm)
     elif isinstance(data, Iterable) and not isinstance(data, str):
         for i, item in enumerate(data):
-            hasher.update(str(i).encode('utf-8'))
+            update(str(i))
             hashRecursive(item, hasher, algorithm)
     elif data is None:
-        hasher.update(b'None')
+        update('None')
     else:
-        hasher.update(str(data).encode('utf-8'))
+        update(str(data))
     return hasher
 compatablityHasher = hashRecursive(codeGenTags)
 compatablityVersion = compatablityHasher.hexdigest()[:16]
