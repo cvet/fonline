@@ -2177,6 +2177,7 @@ writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash +
 writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
 writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
+print('[CodeGen]', 'Compatability version: ' + compatablityVersion)
 
 try:
     branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
