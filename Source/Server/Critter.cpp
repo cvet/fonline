@@ -182,10 +182,7 @@ void Critter::AttachToCritter(Critter* cr)
         SendAndBroadcast_Moving();
     }
 
-    const auto it = std::ranges::find(cr->AttachedCritters, this);
-    FO_RUNTIME_ASSERT(it == cr->AttachedCritters.end());
-    cr->AttachedCritters.emplace_back(this);
-
+    vec_add_unique_value(cr->AttachedCritters, this);
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -203,10 +200,7 @@ void Critter::DetachFromCritter()
     auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    const auto it = std::ranges::find(cr->AttachedCritters, this);
-    FO_RUNTIME_ASSERT(it != cr->AttachedCritters.end());
-    cr->AttachedCritters.erase(it);
-
+    vec_remove_unique_value(cr->AttachedCritters, this);
     SetIsAttached(false);
     SetAttachMaster({});
 

@@ -466,6 +466,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 	{
 		m_exceptionLine           = -1;
 		m_exceptionFunction       = 0;
+		m_stdException            = nullptr; // (FOnline Patch)
 		m_doAbort                 = false;
 		m_doSuspend               = false;
 		m_regs.doProcessSuspend   = m_lineCallback;
@@ -541,6 +542,7 @@ int asCContext::Unprepare()
 	m_initialFunction = 0;
 	m_currentFunction = 0;
 	m_exceptionFunction = 0;
+	m_stdException = nullptr; // (FOnline Patch)
 	m_regs.programPointer = 0;
 
 	// Reset status
@@ -4544,6 +4546,7 @@ void asCContext::SetInternalException(const char *descr)
 
 	m_exceptionString       = descr;
 	m_exceptionFunction     = m_currentFunction->id;
+	m_stdException          = std::current_exception(); // (FOnline Patch)
 
 	if( m_currentFunction->scriptData )
 	{
@@ -5066,6 +5069,12 @@ const char *asCContext::GetExceptionString()
 	if( GetState() != asEXECUTION_EXCEPTION ) return 0;
 
 	return m_exceptionString.AddressOf();
+}
+
+// interface
+std::exception_ptr& asCContext::GetStdException() // (FOnline Patch)
+{
+	return m_stdException;
 }
 
 // interface

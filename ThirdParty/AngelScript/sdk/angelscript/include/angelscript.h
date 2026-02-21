@@ -952,6 +952,7 @@ public:
 	virtual int                GetExceptionLineNumber(int *column = 0, const char **sectionName = 0) = 0;
 	virtual asIScriptFunction *GetExceptionFunction() = 0;
 	virtual const char *       GetExceptionString() = 0;
+	virtual std::exception_ptr& GetStdException() = 0; // (FOnline Patch)
 	virtual int                SetExceptionCallback(asSFuncPtr callback, void *obj, int callConv) = 0;
 	virtual void               ClearExceptionCallback() = 0;
 

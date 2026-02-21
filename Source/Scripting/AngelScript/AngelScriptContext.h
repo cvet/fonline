@@ -69,7 +69,6 @@ private:
     timespan _overrunTimeout;
     vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts {};
-    StackTraceData _exceptionStackTrace {};
     bool _nonConstHelper {};
 };
 
