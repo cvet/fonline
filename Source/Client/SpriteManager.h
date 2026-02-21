@@ -183,6 +183,7 @@ public:
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
+    [[nodiscard]] auto CheckHitTest(int32 value) const -> bool { return value > _settings->SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool;

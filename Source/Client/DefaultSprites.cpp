@@ -529,7 +529,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
         hit_test_data.resize(numeric_cast<size_t>(size.width) * size.height);
 
         for (size_t i = 0, j = numeric_cast<size_t>(size.width) * size.height; i < j; i++) {
-            hit_test_data[i] = data[i].comp.a > 127;
+            hit_test_data[i] = _sprMngr->CheckHitTest(numeric_cast<int32>(data[i].comp.a));
         }
     }
 

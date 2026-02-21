@@ -188,6 +188,7 @@ FIXED_SETTING(bool, RecreateClientOnError, false); // If true, client is recreat
 FIXED_SETTING(string, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
 FIXED_SETTING(string, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect for ImGui
 FIXED_SETTING(int32, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
+FIXED_SETTING(int32, SpriteHitValue, 127); // If alpha is greather then hit test is passed
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

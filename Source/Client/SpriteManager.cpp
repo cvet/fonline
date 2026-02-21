@@ -1079,7 +1079,7 @@ auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
     }
 
     const auto egg_color = _eggData.at(oy * size.width + ox);
-    return egg_color.comp.a < 127;
+    return !CheckHitTest(numeric_cast<int32>(egg_color.comp.a));
 }
 
 void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const irect32* draw_area, RenderEffect* custom_effect)
