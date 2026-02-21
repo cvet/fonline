@@ -43,6 +43,7 @@
 #ifndef _MSC_VER
 #include <stdint.h>
 #endif
+#include <exception> // (FOnline Patch)
 
 #ifdef AS_USE_NAMESPACE
  #define BEGIN_AS_NAMESPACE namespace AngelScript {
