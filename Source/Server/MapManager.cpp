@@ -419,7 +419,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
         _engine->EntityMngr.CallInit(map, true);
     }
 
-    if (loc->IsDestroyed()) {
+    if (!loc->IsDestroyed()) {
         _engine->EntityMngr.CallInit(loc.get(), true);
     }
 
@@ -1259,9 +1259,17 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
         }
 
         RemoveCritterFromMap(cr, prev_map);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
         AddCritterToMap(cr, map, start_hex, dir, global_cr_id);
 
         if (cr->IsDestroyed()) {
+            return;
+        }
+        if (map->IsDestroyed()) {
             return;
         }
 
@@ -1321,6 +1329,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
     cr->LockMapTransfers++;
     auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
@@ -1379,16 +1388,22 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
     cr->LockMapTransfers++;
     auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
-
         _engine->OnMapCritterOut.Fire(map, cr);
+        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
         for (auto* other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
             other->OnCritterDisappeared.Fire(cr);
+            FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+            FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
         }
 
         cr->ClearVisibleEnitites();
@@ -1402,13 +1417,14 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
     }
     else {
+        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(!cr->GetMapId());
-        auto& cr_group = cr->GetRawGlobalMapGroup();
-
         _engine->OnGlobalMapCritterOut.Fire(cr);
+        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+        FO_RUNTIME_ASSERT(!cr->GetMapId());
 
         cr->SetGlobalMapTripId({});
-
+        auto& cr_group = cr->GetRawGlobalMapGroup();
         vec_remove_unique_value(*cr_group, cr);
 
         for (auto& group_cr : *cr_group) {

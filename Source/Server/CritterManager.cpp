@@ -182,8 +182,13 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, final_dir, ident_t {});
 
-    _engine->EntityMngr.CallInit(cr.get(), true);
-    _engine->MapMngr.ProcessVisibleItems(cr.get());
+    if (!cr->IsDestroyed()) {
+        _engine->EntityMngr.CallInit(cr.get(), true);
+
+        if (!cr->IsDestroyed()) {
+            _engine->MapMngr.ProcessVisibleItems(cr.get());
+        }
+    }
 
     if (cr->IsDestroyed()) {
         throw GenericException("Critter destroyed during init");
@@ -215,16 +220,6 @@ void CritterManager::DestroyCritter(Critter* cr)
 
         for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
             try {
-                if (cr->GetMapId()) {
-                    auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
-                    FO_RUNTIME_ASSERT(map);
-                    _engine->MapMngr.RemoveCritterFromMap(cr, map);
-                }
-                else {
-                    FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
-                    _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
-                }
-
                 DestroyInventory(cr);
 
                 if (cr->HasInnerEntities()) {
@@ -239,6 +234,16 @@ void CritterManager::DestroyCritter(Critter* cr)
                     for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
                         attached_cr->DetachFromCritter();
                     }
+                }
+
+                if (cr->GetMapId()) {
+                    auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
+                    FO_RUNTIME_ASSERT(map);
+                    _engine->MapMngr.RemoveCritterFromMap(cr, map);
+                }
+                else {
+                    FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+                    _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
                 }
             }
             catch (const std::exception& ex) {
