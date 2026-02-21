@@ -324,6 +324,24 @@ def tokenize(text, anySymbols=[]):
     curTok = flushTok()
     return result
 
+def hashRecursive(hasher, data):
+    def update(s):
+        s = s.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
+        hasher.update(s.encode('utf-8'))
+    if isinstance(data, Mapping):
+        for key in sorted(data.keys()):
+            update(str(key))
+            hashRecursive(hasher, data[key])
+    elif isinstance(data, Iterable) and not isinstance(data, str):
+        for i, item in enumerate(data):
+            update(str(i))
+            hashRecursive(hasher, item)
+    elif data is None:
+        update('None')
+    else:
+        update(str(data))
+compatablityHasher = hashlib.new('sha256')
+
 def parseTags():
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64',
@@ -457,6 +475,8 @@ def parseTags():
                         keyValues.append((l[:sep].rstrip(), l[sep + 1:].lstrip().rstrip(','), []))
                 
                 codeGenTags['ExportEnum'].append((grname, utype, keyValues, exportFlags, comment))
+                hashRecursive(compatablityHasher, (grname, utype, keyValues, exportFlags))
+                
                 assert grname not in validTypes, 'Enum already in valid types'
                 validTypes.add(grname)
                 assert grname not in engineEnums, 'Enum already in engine enums'
@@ -482,6 +502,8 @@ def parseTags():
                 assert exportFlags[exportFlags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
                 
                 codeGenTags['ExportValueType'].append((name, ntype, exportFlags, comment))
+                hashRecursive(compatablityHasher, (name, ntype, exportFlags))
+                
                 assert name not in validTypes, 'Type already in valid types'
                 validTypes.add(name)
                 assert name not in customTypes, 'Type already in custom types'
@@ -504,7 +526,8 @@ def parseTags():
                 exportFlags = exportFlags[3:]
                 
                 codeGenTags['ExportEntity'].append((name, serverClassName, clientClassName, exportFlags, comment))
-
+                hashRecursive(compatablityHasher, (name, serverClassName, clientClassName, exportFlags))
+                
                 assert name not in validTypes           
                 validTypes.add(name)
                 assert name not in gameEntities
@@ -623,6 +646,7 @@ def parseTags():
                     assert not exportTokens, 'Exports not found ' + str(exportTokens)
                 
                 codeGenTags['ExportRefType'].append((target, refTypeName, fields, methods, exportFlags, comment))
+                hashRecursive(compatablityHasher, (target, refTypeName, fields, methods, exportFlags))
                 
                 validTypes.add(refTypeName)
                 refTypes.add(refTypeName)
@@ -661,6 +685,7 @@ def parseTags():
                 
                 for entity in entities:
                     codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
+                    hashRecursive(compatablityHasher, (entity, access, ptype, name, exportFlags))
                 
             except Exception as ex:
                 showError('Invalid tag ExportProperty', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
@@ -696,6 +721,7 @@ def parseTags():
                     resultArgs.append((argType, argName))
                 
                 codeGenTags['ExportMethod'].append((target, entity, name, ret, resultArgs, exportFlags, comment))
+                hashRecursive(compatablityHasher, (target, entity, name, ret, resultArgs, exportFlags))
                 
             except Exception as ex:
                 showError('Invalid tag ExportMethod', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
@@ -734,6 +760,7 @@ def parseTags():
                             eventArgs.append((argType, argName))
                 
                 codeGenTags['ExportEvent'].append((target, entity, eventName, eventArgs, exportFlags, comment))
+                hashRecursive(compatablityHasher, (target, entity, eventName, eventArgs, exportFlags))
             
             except Exception as ex:
                 showError('Invalid tag ExportEvent', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
@@ -760,8 +787,10 @@ def parseTags():
                     assert settType in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + settType
                     settArgs = [t.strip().strip('"') for t in l[l.find('(') + 1:l.find(')')].split(',')]
                     settings.append(('fix' if settType == 'FIXED_SETTING' else 'var', engineTypeToMetaType(settArgs[0]), settArgs[1], settArgs[2:], settComment))
+                    hashRecursive(compatablityHasher, settings[-1][0:-1])
                 
                 codeGenTags['ExportSettings'].append((grName, target, settings, exportFlags, comment))
+                hashRecursive(compatablityHasher, (grName, target, exportFlags))
                 
             except Exception as ex:
                 showError('Invalid tag ExportSettings', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
@@ -774,6 +803,7 @@ def parseTags():
                 assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
+                hashRecursive(compatablityHasher, name)
             
             except Exception as ex:
                 showError('Invalid tag EngineHook', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -789,6 +819,7 @@ def parseTags():
                 assert ruleArgs[2] != ruleArgs[3], 'Migration rule same last args'
                 
                 codeGenTags['MigrationRule'].append((ruleArgs, comment))
+                hashRecursive(compatablityHasher, ruleArgs)
             
             except Exception as ex:
                 showError('Invalid tag MigrationRule', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -815,6 +846,7 @@ def parseTags():
                 assert len(flags) >= 1, 'Invalid CodeGen entry'
                 
                 codeGenTags['CodeGen'].append((templateType, absPath, flags[0], lineIndex, tagContext, flags[1:], comment))
+                hashRecursive(compatablityHasher, (templateType, flags[0], lineIndex, flags[1:]))
             
             except Exception as ex:
                 showError('Invalid tag CodeGen', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -835,6 +867,7 @@ def parseTags():
             for kv in keyValues:
                 if kv[1] is None:
                     kv[1] = findNextValue(keyValues)
+                    hashRecursive(compatablityHasher, kv[1])
         
         # Generate entity properties enums
         for entity in gameEntities:
@@ -847,6 +880,7 @@ def parseTags():
                     keyValues.append([name, str(index), []])
                     index += 1
             codeGenTags['ExportEnum'].append([entity + 'Property', 'uint16', keyValues, [], []])
+            hashRecursive(compatablityHasher, (entity + 'Property', 'uint16', keyValues))
         
         # Check for zero key entry in enums
         for e in codeGenTags['ExportEnum']:
@@ -876,29 +910,6 @@ def parseTags():
 parseTags()
 checkErrors()
 tagsMetas = {} # Cleanup memory
-
-# Generate compatability version
-def hashRecursive(data, hasher=None, algorithm='sha256'):
-    def update(s):
-        s = s.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
-        hasher.update(s.encode('utf-8'))
-    if hasher is None:
-        hasher = hashlib.new(algorithm)
-    if isinstance(data, Mapping):
-        for key in sorted(data.keys()):
-            update(str(key))
-            hashRecursive(data[key], hasher, algorithm)
-    elif isinstance(data, Iterable) and not isinstance(data, str):
-        for i, item in enumerate(data):
-            update(str(i))
-            hashRecursive(item, hasher, algorithm)
-    elif data is None:
-        update('None')
-    else:
-        update(str(data))
-    return hasher
-compatablityHasher = hashRecursive(codeGenTags)
-compatablityVersion = compatablityHasher.hexdigest()[:16]
 
 # Generate API
 files = {}
@@ -2179,6 +2190,8 @@ createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
+
+compatablityVersion = compatablityHasher.hexdigest()[:16]
 writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
 print('[CodeGen]', 'Compatability version: ' + compatablityVersion)
 
