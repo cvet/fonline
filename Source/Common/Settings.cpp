@@ -412,7 +412,7 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
     const auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
-        throw SettingsException("Setting not found", name);
+        return _emptySetting;
     }
 
     return it->second;

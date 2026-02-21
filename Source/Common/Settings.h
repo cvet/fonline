@@ -122,6 +122,7 @@ private:
 
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};
+    any_t _emptySetting {};
 };
 
 FO_END_NAMESPACE
