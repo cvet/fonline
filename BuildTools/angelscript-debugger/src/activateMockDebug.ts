@@ -15,38 +15,7 @@ import { FileAccessor } from './mockRuntime';
 export function activateMockDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('extension.mock-debug.runEditorContents', (resource: vscode.Uri) => {
-			let targetResource = resource;
-			if (!targetResource && vscode.window.activeTextEditor) {
-				targetResource = vscode.window.activeTextEditor.document.uri;
-			}
-			if (targetResource) {
-				vscode.debug.startDebugging(undefined, {
-					type: 'mock',
-					name: 'Run File',
-					request: 'launch',
-					program: targetResource.fsPath
-				},
-					{ noDebug: true }
-				);
-			}
-		}),
-		vscode.commands.registerCommand('extension.mock-debug.debugEditorContents', (resource: vscode.Uri) => {
-			let targetResource = resource;
-			if (!targetResource && vscode.window.activeTextEditor) {
-				targetResource = vscode.window.activeTextEditor.document.uri;
-			}
-			if (targetResource) {
-				vscode.debug.startDebugging(undefined, {
-					type: 'mock',
-					name: 'Debug File',
-					request: 'launch',
-					program: targetResource.fsPath,
-					stopOnEntry: true
-				});
-			}
-		}),
-		vscode.commands.registerCommand('extension.mock-debug.toggleFormatting', (variable) => {
+		vscode.commands.registerCommand('extension.fos-debug.toggleFormatting', (variable) => {
 			const ds = vscode.debug.activeDebugSession;
 			if (ds) {
 				ds.customRequest('toggleFormatting');
@@ -54,7 +23,7 @@ export function activateMockDebug(context: vscode.ExtensionContext, factory?: vs
 		})
 	);
 
-	context.subscriptions.push(vscode.commands.registerCommand('extension.mock-debug.getProgramName', config => {
+	context.subscriptions.push(vscode.commands.registerCommand('extension.fos-debug.getProgramName', config => {
 		return vscode.window.showInputBox({
 			placeHolder: "Please enter the name of a markdown file in the workspace folder",
 			value: "readme.md"

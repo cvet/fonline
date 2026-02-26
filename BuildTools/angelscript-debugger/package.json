@@ -82,28 +82,6 @@
       }
     ],
     "menus": {
-      "editor/title/run": [
-        {
-          "command": "extension.fos-debug.runEditorContents",
-          "when": "resourceLangId == markdown",
-          "group": "navigation@1"
-        },
-        {
-          "command": "extension.fos-debug.debugEditorContents",
-          "when": "resourceLangId == markdown",
-          "group": "navigation@2"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "extension.fos-debug.debugEditorContents",
-          "when": "resourceLangId == markdown"
-        },
-        {
-          "command": "extension.fos-debug.runEditorContents",
-          "when": "resourceLangId == markdown"
-        }
-      ],
       "debug/variables/context": [
         {
           "command": "extension.fos-debug.toggleFormatting",
@@ -113,39 +91,37 @@
     },
     "commands": [
       {
-        "command": "extension.fos-debug.debugEditorContents",
-        "title": "Debug File",
-        "category": "FOS Debug",
-        "enablement": "!inDebugMode",
-        "icon": "$(debug-alt)"
-      },
-      {
-        "command": "extension.fos-debug.runEditorContents",
-        "title": "Run File",
-        "category": "FOS Debug",
-        "enablement": "!inDebugMode",
-        "icon": "$(play)"
-      },
-      {
         "command": "extension.fos-debug.toggleFormatting",
         "title": "Toggle between decimal and hex formatting"
       }
     ],
     "breakpoints": [
       {
-        "language": "markdown"
+        "language": "fos"
       }
     ],
     "debuggers": [
       {
         "type": "fos",
         "languages": [
-          "markdown"
+          "fos"
         ],
-        "label": "FOS Debug",
+        "label": "FOS Debugger",
         "program": "./out/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
+          "attach": {
+            "required": [
+              "processId"
+            ],
+            "properties": {
+              "processId": {
+                "type": "string",
+                "description": "Process id.",
+                "default": "${workspaceFolder}/${command:AskForProgramName}"
+              }
+            }
+          },
           "launch": {
             "required": [
               "program"
@@ -153,68 +129,8 @@
             "properties": {
               "program": {
                 "type": "string",
-                "description": "Absolute path to a text file.",
+                "description": "Path to server or client executable.",
                 "default": "${workspaceFolder}/${command:AskForProgramName}"
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after launch.",
-                "default": true
-              },
-              "trace": {
-                "type": "boolean",
-                "description": "Enable logging of the Debug Adapter Protocol.",
-                "default": true
-              },
-              "compileError": {
-                "type": "string",
-                "description": "Simulates a compile error in 'launch' request.",
-                "enum": [
-                  "default",
-                  "show",
-                  "hide"
-                ],
-                "enumDescriptions": [
-                  "default: show fake compile error to user",
-                  "show fake compile error to user",
-                  "do not show fake compile error to user"
-                ]
-              }
-            }
-          },
-          "attach": {
-            "required": [
-              "program"
-            ],
-            "properties": {
-              "program": {
-                "type": "string",
-                "description": "Absolute path to a text file.",
-                "default": "${workspaceFolder}/${command:AskForProgramName}"
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after attach.",
-                "default": true
-              },
-              "trace": {
-                "type": "boolean",
-                "description": "Enable logging of the Debug Adapter Protocol.",
-                "default": true
-              },
-              "compileError": {
-                "type": "string",
-                "description": "Simulates a compile error in 'attach' request.",
-                "enum": [
-                  "default",
-                  "show",
-                  "hide"
-                ],
-                "enumDescriptions": [
-                  "default: show fake compile error to user",
-                  "show fake compile error to user",
-                  "do not show fake compile error to user"
-                ]
               }
             }
           }
@@ -222,23 +138,15 @@
         "initialConfigurations": [
           {
             "type": "fos",
-            "request": "launch",
-            "name": "Ask for file name",
-            "program": "${workspaceFolder}/${command:AskForProgramName}",
-            "stopOnEntry": true
-          }
-        ],
-        "configurationSnippets": [
+            "request": "attach",
+            "name": "Attach",
+            "processId": "${workspaceFolder}/${command:AskForProgramName}"
+          },
           {
-            "label": "FOS Debug: Launch",
-            "description": "A new configuration for 'debugging' a user selected markdown file.",
-            "body": {
-              "type": "fos",
-              "request": "launch",
-              "name": "Ask for file name",
-              "program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
-              "stopOnEntry": true
-            }
+            "type": "fos",
+            "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceFolder}/${command:AskForProgramName}"
           }
         ],
         "variables": {
