@@ -377,6 +377,19 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     FO_RUNTIME_ASSERT(func_desc);
     FO_RUNTIME_ASSERT(func_desc->Call);
 
+    // Check for destroyed entity
+    for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {
+        const auto& arg_type = func_desc->Args[i].Type;
+
+        if (arg_type.Kind == ComplexTypeKind::Simple && arg_type.BaseType.IsEntity) {
+            const auto* entity = cast_from_void<Entity*>(*static_cast<void**>(call.ArgsData[i]));
+
+            if (entity != nullptr && entity->IsDestroyed()) {
+                return;
+            }
+        }
+    }
+
     if (call.Accessor && call.Accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX) {
         // Direct call AS to AS
         for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {

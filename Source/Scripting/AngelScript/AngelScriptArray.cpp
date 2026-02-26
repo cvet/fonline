@@ -637,7 +637,7 @@ auto ScriptArray::Equals(void* a, void* b, AngelScript::asIScriptContext* ctx) c
             }
         }
 
-        if (_subTypeData->EqFunc != nullptr) {
+        if (_subTypeData->EqFunc) {
             FO_AS_VERIFY(ctx->Prepare(_subTypeData->EqFunc.get_no_const()));
 
             if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -658,7 +658,7 @@ auto ScriptArray::Equals(void* a, void* b, AngelScript::asIScriptContext* ctx) c
             return false;
         }
 
-        if (_subTypeData->CmpFunc != nullptr) {
+        if (_subTypeData->CmpFunc) {
             FO_AS_VERIFY(ctx->Prepare(_subTypeData->CmpFunc.get_no_const()));
 
             if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -731,7 +731,7 @@ auto ScriptArray::Less(void* a, void* b, bool asc, AngelScript::asIScriptContext
             }
         }
 
-        if (_subTypeData->CmpFunc != nullptr) {
+        if (_subTypeData->CmpFunc) {
             FO_AS_VERIFY(ctx->Prepare(_subTypeData->CmpFunc.get_no_const()));
 
             if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -783,7 +783,7 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
     }
 
     if (_subTypeData) {
-        if (_subTypeData->CmpFunc == nullptr && _subTypeData->EqFunc == nullptr) {
+        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc) {
             const auto* sub_type = _typeInfo->GetEngine()->GetTypeInfoById(_subTypeId);
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -876,7 +876,7 @@ auto ScriptArray::Find(int32 start_at, void* value) const -> int32
     FO_STACK_TRACE_ENTRY();
 
     if (_subTypeData) {
-        if (_subTypeData->CmpFunc == nullptr && _subTypeData->EqFunc == nullptr) {
+        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc) {
             const auto* sub_type = _typeInfo->GetEngine()->GetTypeInfoById(_subTypeId);
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -991,7 +991,7 @@ void ScriptArray::Sort(int32 start_at, int32 count, bool asc)
     FO_STACK_TRACE_ENTRY();
 
     if (_subTypeData) {
-        if (_subTypeData->CmpFunc == nullptr) {
+        if (!_subTypeData->CmpFunc) {
             const auto* sub_type = _typeInfo->GetEngine()->GetTypeInfoById(_subTypeId);
 
             if (_subTypeData->CmpFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -1175,8 +1175,8 @@ void ScriptArray::PrecacheSubTypeData()
                 }
 
                 if (is_cmp) {
-                    if (_subTypeData->CmpFunc != nullptr || _subTypeData->CmpFuncReturnCode != 0) {
-                        _subTypeData->CmpFunc = nullptr;
+                    if (_subTypeData->CmpFunc || _subTypeData->CmpFuncReturnCode != AngelScript::asSUCCESS) {
+                        _subTypeData->CmpFunc.reset();
                         _subTypeData->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
@@ -1184,8 +1184,8 @@ void ScriptArray::PrecacheSubTypeData()
                     }
                 }
                 else if (is_eq) {
-                    if (_subTypeData->EqFunc != nullptr || _subTypeData->EqFuncReturnCode != 0) {
-                        _subTypeData->EqFunc = nullptr;
+                    if (_subTypeData->EqFunc || _subTypeData->EqFuncReturnCode != AngelScript::asSUCCESS) {
+                        _subTypeData->EqFunc.reset();
                         _subTypeData->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
@@ -1196,10 +1196,10 @@ void ScriptArray::PrecacheSubTypeData()
         }
     }
 
-    if (_subTypeData->EqFunc == nullptr && _subTypeData->EqFuncReturnCode == 0) {
+    if (!_subTypeData->EqFunc && _subTypeData->EqFuncReturnCode == AngelScript::asSUCCESS) {
         _subTypeData->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
-    if (_subTypeData->CmpFunc == nullptr && _subTypeData->CmpFuncReturnCode == 0) {
+    if (!_subTypeData->CmpFunc && _subTypeData->CmpFuncReturnCode == AngelScript::asSUCCESS) {
         _subTypeData->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 

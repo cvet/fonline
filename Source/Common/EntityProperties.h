@@ -81,17 +81,11 @@ public:
     }
 
     ///@ ExportProperty Server
+    FO_ENTITY_PROPERTY(bool, Logined);
+    ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(ident_t, ControlledCritterId);
-
-    // Todo: exclude player properties from engine:
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(ident_t, LastControlledCritterId);
-    ///@ ExportProperty Server Persistent
-    FO_ENTITY_PROPERTY(vector<string>, ConnectionHost);
-    ///@ ExportProperty Server Persistent
-    FO_ENTITY_PROPERTY(vector<uint16>, ConnectionPort);
-    ///@ ExportProperty Server Mutable Persistent
-    FO_ENTITY_PROPERTY(string, Password);
 };
 
 class ItemProperties : public EntityProperties

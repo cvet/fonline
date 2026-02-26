@@ -55,7 +55,7 @@ class asCContext : public asIScriptContext
 {
 public:
 	// (FOnline Patch)
-	using BeginScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*, size_t);
+	using BeginScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*);
 	using EndScriptCallFuncType = void(*)(asIScriptContext*) noexcept;
 	BeginScriptCallFuncType BeginScriptCall{};
 	EndScriptCallFuncType EndScriptCall{};
@@ -109,6 +109,7 @@ public:
 	int                GetExceptionLineNumber(int *column, const char **sectionName);
 	asIScriptFunction *GetExceptionFunction();
 	const char *       GetExceptionString();
+	std::exception_ptr& GetStdException(); // (FOnline Patch)
 	int                SetExceptionCallback(asSFuncPtr callback, void *obj, int callConv);
 	void               ClearExceptionCallback();
 
@@ -192,6 +193,7 @@ public:
 	bool      m_needToCleanupArgs;
 	bool      m_inExceptionHandler;
 	asCString m_exceptionString;
+	std::exception_ptr m_stdException; // (FOnline Patch)
 	int       m_exceptionFunction;
 	int       m_exceptionSectionIdx;
 	int       m_exceptionLine;

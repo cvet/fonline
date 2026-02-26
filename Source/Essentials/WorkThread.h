@@ -63,6 +63,8 @@ public:
     void AddJob(timespan delay, Job job);
     void Clear();
     void Wait() const;
+    void Pause();
+    void Resume();
 
 private:
     void AddJobInternal(timespan delay, Job job, bool no_notify);
@@ -73,6 +75,7 @@ private:
     std::thread _thread {};
     vector<pair<nanotime, Job>> _jobs {};
     bool _jobActive {};
+    bool _paused {};
     mutable std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
     mutable std::condition_variable _doneSignal {};

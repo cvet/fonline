@@ -376,8 +376,8 @@ auto ScriptDict::PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti
                 }
 
                 if (is_cmp) {
-                    if (sub_type_data->CmpFunc != nullptr || sub_type_data->CmpFuncReturnCode != 0) {
-                        sub_type_data->CmpFunc = nullptr;
+                    if (sub_type_data->CmpFunc || sub_type_data->CmpFuncReturnCode != AngelScript::asSUCCESS) {
+                        sub_type_data->CmpFunc.reset();
                         sub_type_data->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
@@ -385,8 +385,8 @@ auto ScriptDict::PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti
                     }
                 }
                 else if (is_eq) {
-                    if (sub_type_data->EqFunc != nullptr || sub_type_data->EqFuncReturnCode != 0) {
-                        sub_type_data->EqFunc = nullptr;
+                    if (sub_type_data->EqFunc || sub_type_data->EqFuncReturnCode != AngelScript::asSUCCESS) {
+                        sub_type_data->EqFunc.reset();
                         sub_type_data->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
@@ -397,10 +397,10 @@ auto ScriptDict::PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti
         }
     }
 
-    if (sub_type_data->EqFunc == nullptr && sub_type_data->EqFuncReturnCode == 0) {
+    if (!sub_type_data->EqFunc && sub_type_data->EqFuncReturnCode == AngelScript::asSUCCESS) {
         sub_type_data->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
-    if (sub_type_data->CmpFunc == nullptr && sub_type_data->CmpFuncReturnCode == 0) {
+    if (!sub_type_data->CmpFunc && sub_type_data->CmpFuncReturnCode == AngelScript::asSUCCESS) {
         sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 
@@ -813,7 +813,7 @@ static void DestroyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_ind
 static auto Less(int32 type_id, const ScriptDictTypeData* type_data, AngelScript::asIScriptEngine* engine, void* a, void* b) -> bool
 {
     if (type_data != nullptr) {
-        if (type_data->CmpFunc == nullptr) {
+        if (!type_data->CmpFunc) {
             const auto* sub_type = engine->GetTypeInfoById(type_id);
 
             if (type_data->CmpFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -833,7 +833,7 @@ static auto Equals(int32 type_id, const ScriptDictTypeData* type_data, AngelScri
     FO_STACK_TRACE_ENTRY();
 
     if (type_data != nullptr) {
-        if (type_data->CmpFunc == nullptr && type_data->EqFunc == nullptr) {
+        if (!type_data->CmpFunc && !type_data->EqFunc) {
             const auto* sub_type = engine->GetTypeInfoById(type_id);
 
             if (type_data->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -947,7 +947,7 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
             });
         });
 
-        if (!check_less && type_data->EqFunc != nullptr) {
+        if (!check_less && type_data->EqFunc) {
             FO_AS_VERIFY(ctx->Prepare(type_data->EqFunc.get_no_const()));
 
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -968,7 +968,7 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
             return false;
         }
 
-        if (type_data->CmpFunc != nullptr) {
+        if (type_data->CmpFunc) {
             FO_AS_VERIFY(ctx->Prepare(type_data->CmpFunc.get_no_const()));
 
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {

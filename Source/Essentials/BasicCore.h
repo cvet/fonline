@@ -375,7 +375,23 @@ inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
     return cast_to_void(cast_from_void<uint8*>(ptr) + offset);
 }
 
-// End of scope callback
+// Stack unwind detector
+class stack_unwind_detector
+{
+public:
+    stack_unwind_detector() = default;
+    stack_unwind_detector(const stack_unwind_detector&) = delete;
+    stack_unwind_detector(stack_unwind_detector&&) noexcept = default;
+    auto operator=(const stack_unwind_detector&) = delete;
+    auto operator=(stack_unwind_detector&&) noexcept = delete;
+    ~stack_unwind_detector() = default;
+    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+
+private:
+    decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
+};
+
+// End of scope callbacks
 template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
@@ -406,20 +422,64 @@ private:
     bool _released {};
 };
 
-// Stack unwind detector
-class StackUnwindDetector
+template<std::invocable T>
+class [[nodiscard]] scope_success
 {
 public:
-    StackUnwindDetector() = default;
-    StackUnwindDetector(const StackUnwindDetector&) = delete;
-    StackUnwindDetector(StackUnwindDetector&&) noexcept = default;
-    auto operator=(const StackUnwindDetector&) = delete;
-    auto operator=(StackUnwindDetector&&) noexcept = delete;
-    ~StackUnwindDetector() = default;
-    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+    explicit scope_success(T callback) noexcept :
+        _callback {std::move(callback)}
+    {
+    }
+
+    scope_success(const scope_success& other) = delete;
+    scope_success(scope_success&& other) noexcept = default;
+    auto operator=(const scope_success& other) = delete;
+    auto operator=(scope_success&& other) noexcept = delete;
+
+    ~scope_success()
+    {
+        if (!_released && !_stackUnwind) {
+            _callback();
+        }
+    }
+
+    void release() { _released = true; }
 
 private:
-    decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
+    T _callback;
+    stack_unwind_detector _stackUnwind {};
+    bool _released {};
+};
+
+template<std::invocable T>
+class [[nodiscard]] scope_fail
+{
+    static_assert(std::is_nothrow_invocable_v<T>);
+
+public:
+    explicit scope_fail(T callback) noexcept :
+        _callback {std::move(callback)}
+    {
+    }
+
+    scope_fail(const scope_fail& other) = delete;
+    scope_fail(scope_fail&& other) noexcept = default;
+    auto operator=(const scope_fail& other) = delete;
+    auto operator=(scope_fail&& other) noexcept = delete;
+
+    ~scope_fail() noexcept
+    {
+        if (!_released && _stackUnwind) {
+            _callback();
+        }
+    }
+
+    void release() { _released = true; }
+
+private:
+    T _callback;
+    stack_unwind_detector _stackUnwind {};
+    bool _released {};
 };
 
 // Refcount base class

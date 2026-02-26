@@ -1501,21 +1501,9 @@ FO_SCRIPT_API void Client_Game_FlashUnfocusedWindow(ClientEngine* client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Login(ClientEngine* client, string_view login, string_view password)
-{
-    client->Connect(login, password, INIT_NET_REASON_LOGIN);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Register(ClientEngine* client, string_view login, string_view password)
-{
-    client->Connect(login, password, INIT_NET_REASON_REG);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Connect(ClientEngine* client)
 {
-    client->Connect("", "", INIT_NET_REASON_CUSTOM);
+    client->Connect();
 }
 
 ///@ ExportMethod

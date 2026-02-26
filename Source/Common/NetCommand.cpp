@@ -102,15 +102,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_GAMEINFO: {
-        auto type = 0;
-        if (!(args_str >> type)) {
-            logcb("Invalid arguments. Example: gameinfo type");
-            break;
-        }
-
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.Write(type);
         buf.EndMsg();
     } break;
     case CMD_CRITID: {

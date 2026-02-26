@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "AnyData.h"
-#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -46,7 +45,7 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;
+    friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
 
 public:
     using Collection = unordered_map<ident_t, AnyData::Document>;
@@ -71,6 +70,7 @@ public:
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges(bool wait_commit_complete);
     void ClearChanges() noexcept;
+    void DrawGui();
 
 private:
     explicit DataBase(DataBaseImpl* impl);
@@ -78,6 +78,6 @@ private:
     unique_ptr<DataBaseImpl> _impl;
 };
 
-extern auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;
+extern auto ConnectToDataBase(string_view connection_info) -> DataBase;
 
 FO_END_NAMESPACE

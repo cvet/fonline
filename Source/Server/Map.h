@@ -135,6 +135,7 @@ public:
     void AddCritterToField(Critter* cr);
     void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(mpos hex);
+    void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

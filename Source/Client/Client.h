@@ -99,13 +99,6 @@ enum class EffectType : uint32
     Offscreen = 0x40000000,
 };
 
-// Connection reason
-constexpr int32 INIT_NET_REASON_NONE = 0;
-constexpr int32 INIT_NET_REASON_LOGIN = 1;
-constexpr int32 INIT_NET_REASON_REG = 2;
-constexpr int32 INIT_NET_REASON_LOAD = 3;
-constexpr int32 INIT_NET_REASON_CUSTOM = 4;
-
 auto GetClientResources(GlobalSettings& settings) -> FileSystem;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
@@ -153,8 +146,9 @@ public:
     void AnimFree(uint32 anim_id);
     auto AnimGetSpr(uint32 anim_id) -> Sprite*;
 
-    void Connect(string_view login, string_view password, int32 reason);
+    void Connect();
     void Disconnect();
+
     void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
@@ -177,8 +171,6 @@ public:
     FO_ENTITY_EVENT(OnConnected);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnDisconnected);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRegistrationSuccess);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoginSuccess);
     ///@ ExportEvent
@@ -299,8 +291,6 @@ protected:
 
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
 
-    void Net_SendLogIn();
-    void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
@@ -309,7 +299,6 @@ protected:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
-    void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
@@ -358,11 +347,9 @@ protected:
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
     ClientConnection _conn;
+    bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
     LanguagePack _curLang {};
-
-    string _loginName {};
-    string _loginPassword {};
 
     unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
@@ -374,8 +361,6 @@ protected:
     hstring _curMapLocPid {};
     int32 _curMapIndexInLoc {};
     bool _mapLoaded {};
-
-    int32 _initNetReason {INIT_NET_REASON_NONE};
 
     nullable_raw_ptr<const Entity> _sendIgnoreEntity {};
     nullable_raw_ptr<const Property> _sendIgnoreProperty {};

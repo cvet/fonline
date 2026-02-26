@@ -1078,7 +1078,7 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, ui
     auto from_hex = hex;
 
     if (GeometryHelper::MoveHexByDir(from_hex, GeometryHelper::ReverseDir(dir), self->GetSize())) {
-        self->GetEngine()->VerifyTrigger(self, cr, from_hex, hex, dir);
+        self->VerifyTrigger(cr, from_hex, hex, dir);
     }
 }
 
