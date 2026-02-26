@@ -1,0 +1,47 @@
+# Unit Tests
+
+This directory contains unit tests for deterministic engine/common functionality.
+
+## Framework and target
+
+- Framework: Catch2 (`catch_amalgamated.hpp`)
+- Test executable target: `LF_UnitTests`
+- Run target: `RunUnitTests`
+- Test entrypoint: `Engine/Source/Applications/TestingApp.cpp`
+
+## Current test suites
+
+- `Test_AnyData.cpp` — serialization/parsing and container value behavior
+- `Test_CommonHelpers.cpp` — helper utilities and container helpers
+- `Test_Compressor.cpp` — compression/decompression roundtrips and invalid input handling
+- `Test_Containers.cpp` — container helpers, concepts, formatter/hash checks
+- `Test_DataSerialization.cpp` — binary reader/writer and pointer/bounds behavior
+- `Test_ExtendedTypes.cpp` — value types (`ipos`, `isize`, `irect`, float variants)
+- `Test_GenericUtils.cpp` — hashing, random baseline checks, lerp/float helpers
+- `Test_Geometry.cpp` — distance/direction/angle and traversal helpers
+- `Test_HashedString.cpp` — hash resolve behavior and failure paths
+- `Test_SafeArithmetics.cpp` — casting, clamping, arithmetic safety helpers
+- `Test_StringUtils.cpp` — string conversions/parsing and text helpers
+- `Test_StrongType.cpp` — strong type operators, formatting, streaming, hashing
+- `Test_TimeRelated.cpp` — timespan/timepoint conversions and formatting
+
+## Running tests
+
+From a configured build directory:
+
+```bash
+cmake --build . --config RelWithDebInfo --target RunUnitTests
+```
+
+Or build and run explicitly:
+
+```bash
+cmake --build . --config RelWithDebInfo --target LF_UnitTests
+./Binaries/Tests-Windows-win64/LF_UnitTests.exe
+```
+
+## Notes
+
+- Keep tests deterministic and platform-stable.
+- Avoid network, filesystem, and timing-sensitive behavior in unit suites unless mocked.
+- New test sources must be added to `FO_TESTS_SOURCE` in `Engine/BuildTools/FinalizeGeneration.cmake`.
