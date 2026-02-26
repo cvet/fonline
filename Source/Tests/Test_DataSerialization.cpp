@@ -104,6 +104,63 @@ TEST_CASE("DataSerialization")
         CHECK(buf.back() == 11);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
+
+    SECTION("ZeroSizePointers")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+
+        writer.Write<uint8>(static_cast<uint8>(77));
+        writer.WritePtr<uint8>(nullptr, 0);
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.Read<uint8>() == 77);
+        CHECK(reader.ReadPtr<uint8>(0) == nullptr);
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("ReadPtrToBuffer")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+
+        const array<uint8, 4> source = {9, 8, 7, 6};
+        writer.WritePtr(source.data(), source.size());
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        array<uint8, 4> target = {0, 0, 0, 0};
+        reader.ReadPtr(target.data(), target.size());
+
+        CHECK(target == source);
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("MutableDataReaderBounds")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint8>(static_cast<uint8>(5));
+
+        MutableDataReader reader {span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.Read<uint8>() == 5);
+        CHECK_THROWS_AS(reader.Read<uint8>(), DataReadingException);
+    }
+
+    SECTION("MutableZeroSizePointers")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint16>(static_cast<uint16>(0x1234));
+
+        MutableDataReader reader {span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.Read<uint16>() == static_cast<uint16>(0x1234));
+        CHECK(reader.ReadPtr<uint8>(0) == nullptr);
+
+        array<uint8, 2> temp = {1, 2};
+        reader.ReadPtr(temp.data(), 0);
+        CHECK(temp == array<uint8, 2> {1, 2});
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
 }
 
 FO_END_NAMESPACE

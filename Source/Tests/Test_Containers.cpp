@@ -37,71 +37,39 @@
 
 FO_BEGIN_NAMESPACE
 
-using test_meter = strong_type<int32, struct test_meter_tag, strong_type_bool_test_tag, strong_type_arithmetics_tag>;
-using test_id = strong_type<uint32, struct test_id_tag>;
-static_assert(some_strong_type<test_meter>);
-static_assert(some_strong_type<test_id>);
-
-TEST_CASE("StrongType")
+TEST_CASE("Containers")
 {
-    SECTION("ComparisonsAndBool")
+    SECTION("Concepts")
     {
-        const test_meter a {10};
-        const test_meter b {20};
-
-        CHECK(a < b);
-        CHECK(a <= b);
-        CHECK(b > a);
-        CHECK(b >= a);
-        CHECK(static_cast<bool>(a));
-        CHECK_FALSE(static_cast<bool>(test_meter {}));
+        STATIC_REQUIRE(vector_collection<vector<int32>>);
+        STATIC_REQUIRE(map_collection<map<int32, int32>>);
     }
 
-    SECTION("Arithmetics")
+    SECTION("StringHash")
     {
-        const test_meter a {10};
-        const test_meter b {4};
-
-        CHECK((a + b).underlying_value() == 14);
-        CHECK((a - b).underlying_value() == 6);
-        CHECK((a * b).underlying_value() == 40);
-        CHECK((a / b).underlying_value() == 2);
-        CHECK((a % b).underlying_value() == 2);
+        FO_HASH_NAMESPACE hash<string> hasher;
+        CHECK(hasher(string {"hash-me"}) == hasher(string_view {"hash-me"}));
     }
 
-    SECTION("UnderlyingValue")
+    SECTION("VectorFormatterInt")
     {
-        test_meter value {7};
-        value.underlying_value() = 11;
-        CHECK(value.underlying_value() == 11);
+        const vector<int32> values = {1, 2, 3};
+        const auto text = std::format("{}", values);
+        CHECK(text == "1 2 3");
     }
 
-    SECTION("Hashing")
+    SECTION("VectorFormatterString")
     {
-        unordered_set<test_id> values;
-        values.emplace(test_id {42});
-        values.emplace(test_id {42});
-        values.emplace(test_id {100});
-
-        CHECK(values.size() == 2);
-        CHECK(values.count(test_id {42}) == 1);
-        CHECK(values.count(test_id {100}) == 1);
+        const vector<string> values = {"one", "two", "three"};
+        const auto text = std::format("{}", values);
+        CHECK(text == "one two three");
     }
 
-    SECTION("Formatting")
+    SECTION("VectorFormatterBool")
     {
-        const test_meter value {123};
-        CHECK(std::format("{}", value) == "123");
-    }
-
-    SECTION("StreamExtraction")
-    {
-        std::istringstream input {"77"};
-        test_meter value {};
-
-        input >> value;
-
-        CHECK(value.underlying_value() == 77);
+        const vector<bool> values = {true, false, true};
+        const auto text = std::format("{}", values);
+        CHECK(text == "True False True");
     }
 }
 

@@ -87,6 +87,33 @@ TEST_CASE("HashedString")
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(unresolved));
     }
+
+    SECTION("ResolveHashThrows")
+    {
+        HashStorage storage;
+
+        const auto hs = storage.ToHashedString("known");
+        CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
+        CHECK_THROWS_AS(storage.ResolveHash(Hashing::MurmurHash2("unknown", 7)), HashResolveException);
+    }
+
+    SECTION("ResolveHashNoThrowNullFailed")
+    {
+        HashStorage storage;
+
+        const auto unresolved = storage.ResolveHash(Hashing::MurmurHash2("missing", 7), nullptr);
+        CHECK_FALSE(static_cast<bool>(unresolved));
+    }
+
+    SECTION("EmptyStringToHashedString")
+    {
+        HashStorage storage;
+
+        const auto hs = storage.ToHashedString("");
+        CHECK_FALSE(static_cast<bool>(hs));
+        CHECK(hs.as_hash() == 0);
+        CHECK(hs.as_str().empty());
+    }
 }
 
 FO_END_NAMESPACE

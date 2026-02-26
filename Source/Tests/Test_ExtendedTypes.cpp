@@ -37,71 +37,60 @@
 
 FO_BEGIN_NAMESPACE
 
-using test_meter = strong_type<int32, struct test_meter_tag, strong_type_bool_test_tag, strong_type_arithmetics_tag>;
-using test_id = strong_type<uint32, struct test_id_tag>;
-static_assert(some_strong_type<test_meter>);
-static_assert(some_strong_type<test_id>);
-
-TEST_CASE("StrongType")
+TEST_CASE("ExtendedTypes")
 {
-    SECTION("ComparisonsAndBool")
+    SECTION("UColor")
     {
-        const test_meter a {10};
-        const test_meter b {20};
+        const ucolor c1 {1, 2, 3, 4};
+        CHECK(c1.comp.r == 1);
+        CHECK(c1.comp.g == 2);
+        CHECK(c1.comp.b == 3);
+        CHECK(c1.comp.a == 4);
 
-        CHECK(a < b);
-        CHECK(a <= b);
-        CHECK(b > a);
-        CHECK(b >= a);
-        CHECK(static_cast<bool>(a));
-        CHECK_FALSE(static_cast<bool>(test_meter {}));
+        const ucolor c2 {1, 2, 3, 4};
+        const ucolor c3 {2, 2, 3, 4};
+        CHECK(c1 == c2);
+        CHECK((c1 < c3 || c3 < c1));
     }
 
-    SECTION("Arithmetics")
+    SECTION("IPosISize")
     {
-        const test_meter a {10};
-        const test_meter b {4};
+        ipos32 p {10, 20};
+        p += ipos32 {1, 2};
+        CHECK(p == ipos32 {11, 22});
 
-        CHECK((a + b).underlying_value() == 14);
-        CHECK((a - b).underlying_value() == 6);
-        CHECK((a * b).underlying_value() == 40);
-        CHECK((a / b).underlying_value() == 2);
-        CHECK((a % b).underlying_value() == 2);
+        CHECK((p - ipos32 {1, 2}) == ipos32 {10, 20});
+        CHECK((p + 3) == ipos32 {14, 25});
+
+        const isize32 sz {5, 6};
+        CHECK(sz.square() == 30);
+        CHECK(sz.is_valid_pos(0, 0));
+        CHECK(sz.is_valid_pos(4, 5));
+        CHECK_FALSE(sz.is_valid_pos(5, 0));
+        CHECK_FALSE(sz.is_valid_pos(-1, 0));
     }
 
-    SECTION("UnderlyingValue")
+    SECTION("IRect")
     {
-        test_meter value {7};
-        value.underlying_value() = 11;
-        CHECK(value.underlying_value() == 11);
+        const irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
+        CHECK(r.pos() == ipos32 {3, 4});
+        CHECK(r.size() == isize32 {10, 20});
+        CHECK_FALSE(r.is_zero());
+        CHECK(irect32 {}.is_zero());
     }
 
-    SECTION("Hashing")
+    SECTION("FPosFSizeFRect")
     {
-        unordered_set<test_id> values;
-        values.emplace(test_id {42});
-        values.emplace(test_id {42});
-        values.emplace(test_id {100});
+        const fpos32 p1 {3.0f, 4.0f};
+        CHECK(is_float_equal(p1.dist(), 5.0f));
+        CHECK(p1.round<int32>() == ipos32 {3, 4});
 
-        CHECK(values.size() == 2);
-        CHECK(values.count(test_id {42}) == 1);
-        CHECK(values.count(test_id {100}) == 1);
-    }
+        const fsize32 s1 {2.5f, 4.0f};
+        CHECK(is_float_equal(s1.square(), 10.0f));
 
-    SECTION("Formatting")
-    {
-        const test_meter value {123};
-        CHECK(std::format("{}", value) == "123");
-    }
-
-    SECTION("StreamExtraction")
-    {
-        std::istringstream input {"77"};
-        test_meter value {};
-
-        input >> value;
-
-        CHECK(value.underlying_value() == 77);
+        const frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
+        CHECK(fr.pos() == fpos32 {1.0f, 2.0f});
+        CHECK(fr.size() == fsize32 {3.0f, 4.0f});
     }
 }
 

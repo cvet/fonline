@@ -187,6 +187,34 @@ TEST_CASE("AnyData")
         CHECK(AnyData::ValueToString(dict.Copy()) == "key1 \"\\\"one 1\\\" \\\"two 2\\\" \\\" three 3 \\\"\" key2 \"1 2 3\"");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, true, AnyData::ValueType::String).AsDict());
     }
+
+    SECTION("ArrayCopyIsDeep")
+    {
+        AnyData::Dict nested;
+        nested.Emplace("k", numeric_cast<int64>(42));
+
+        AnyData::Array original;
+        original.EmplaceBack(std::move(nested));
+
+        auto copied = original.Copy();
+
+        auto mutable_nested_copy = copied[0].AsDict().Copy();
+        mutable_nested_copy.Assign("k", numeric_cast<int64>(100));
+
+        CHECK(original[0].AsDict()["k"].AsInt64() == 42);
+        CHECK(mutable_nested_copy["k"].AsInt64() == 100);
+    }
+
+    SECTION("EmptyContainersParsing")
+    {
+        const auto parsed_arr_value = AnyData::ParseValue("", false, true, AnyData::ValueType::String);
+        const auto parsed_dict_value = AnyData::ParseValue("", true, false, AnyData::ValueType::Int64);
+        const auto& parsed_arr = parsed_arr_value.AsArray();
+        const auto& parsed_dict = parsed_dict_value.AsDict();
+
+        CHECK(parsed_arr.Empty());
+        CHECK(parsed_dict.Empty());
+    }
 }
 
 FO_END_NAMESPACE

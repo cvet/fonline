@@ -50,6 +50,10 @@ TEST_CASE("SafeArithmetics")
         CHECK(numeric_cast<int32>(uint16 {123}) == 123);
         CHECK(clamp_to<uint8>(int32 {-1}) == 0);
         CHECK(clamp_to<uint8>(int32 {300}) == 255);
+        CHECK(clamp_to<int8>(int32 {127}) == 127);
+        CHECK(clamp_to<int8>(int32 {128}) == std::numeric_limits<int8>::max());
+        CHECK(clamp_to<int8>(int32 {-129}) == std::numeric_limits<int8>::min());
+        CHECK(numeric_cast<int64>(uint32 {4294967295u}) == 4294967295ll);
 
         CHECK_THROWS_AS((numeric_cast<int8>(int32 {128})), OverflowException);
         CHECK_THROWS_AS((numeric_cast<uint8>(int32 {-1})), OverflowException);
@@ -60,6 +64,8 @@ TEST_CASE("SafeArithmetics")
         CHECK(checked_div<int32>(10, 2) == 5);
         CHECK_THROWS_AS((checked_div<int32>(10, 0)), DivisionByZeroException);
         CHECK_THROWS_AS((checked_div<float32>(1.0f, 0.0f)), DivisionByZeroException);
+        CHECK_THROWS_AS((checked_div<float32>(1.0f, std::numeric_limits<float32>::epsilon() * 0.5f)), DivisionByZeroException);
+        CHECK(checked_div<float32>(1.0f, std::numeric_limits<float32>::epsilon() * 2.0f) > 0.0f);
     }
 
     SECTION("Lerp")
@@ -67,6 +73,9 @@ TEST_CASE("SafeArithmetics")
         CHECK(lerp(10.0f, 20.0f, 0.5f) == 15.0f);
         CHECK(lerp(10, 20, 0.5f) == 15);
         CHECK(lerp(20u, 10u, 0.5f) == 15u);
+        CHECK(lerp(5, 7, 0.24f) == 5);
+        CHECK(lerp(5, 7, 0.26f) == 6);
+        CHECK(lerp(5, 7, 0.76f) == 7);
         CHECK(lerp(20u, 10u, -1.0f) == 20u);
         CHECK(lerp(20u, 10u, 2.0f) == 10u);
     }
@@ -78,6 +87,23 @@ TEST_CASE("SafeArithmetics")
             sum += i;
         }
         CHECK(sum == 10);
+
+        const vector<int32> values = {4, 5, 6};
+        size_t idx_sum = 0;
+        for (const auto i : iterate_range(values)) {
+            idx_sum += i;
+        }
+        CHECK(idx_sum == 3);
+    }
+
+    SECTION("IRoundAndConstCast")
+    {
+        CHECK(iround<int32>(1.4f) == 1);
+        CHECK(iround<int32>(1.6f) == 2);
+        CHECK(iround<int32>(-1.6f) == -2);
+
+        constexpr int32 casted = const_numeric_cast<int32>(uint16 {42});
+        STATIC_REQUIRE(casted == 42);
     }
 }
 
