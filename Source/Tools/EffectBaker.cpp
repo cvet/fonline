@@ -212,9 +212,10 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         glslang::TShader vert(EShLangVertex);
-        vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientNone, shader_version);
-        vert.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-        vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientVulkan, shader_version);
+        vert.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+        vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+        vert.setShiftBindingForSet(glslang::EResUbo, 0, 0);
         const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), vertex_pass_content.c_str()};
         vert.setStrings(vertext_strings, 6);
         // vert.setAutoMapBindings(true); // Todo: enable auto map bindings
@@ -223,9 +224,10 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         glslang::TShader frag(EShLangFragment);
-        frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientNone, shader_version);
-        frag.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-        frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientVulkan, shader_version);
+        frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+        frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+        frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
         const char* fragment_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), fragment_pass_content.c_str()};
         frag.setStrings(fragment_strings, 6);
         // frag.setAutoMapBindings(true);
