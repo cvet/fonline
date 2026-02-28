@@ -60,7 +60,7 @@ public:
         raw_ptr<ServerConnection> _owner;
         raw_ptr<NetOutBuffer> _outBuf;
         optional<NetMessage> _msg;
-        StackUnwindDetector _isStackUnwinding {};
+        stack_unwind_detector _isStackUnwinding {};
     };
 
     class InBufAccessor

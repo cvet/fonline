@@ -38,6 +38,18 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
+FO_SCRIPT_API string Server_Player_GetHost(Player* self)
+{
+    return string(self->GetConnection()->GetHost());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32 Server_Player_GetPort(Player* self)
+{
+    return numeric_cast<int32>(self->GetConnection()->GetPort());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 {
     self->GetConnection()->GracefulDisconnect();

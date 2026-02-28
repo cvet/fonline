@@ -101,7 +101,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::LoginSuccess, [this]() FO_DEFERRED { Net_OnLoginSuccess(); });
-    _conn.AddMessageHandler(NetMessage::RegisterSuccess, [this]() FO_DEFERRED { Net_OnRegisterSuccess(); });
     _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this]() FO_DEFERRED { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NetMessage::AddCritter, [this]() FO_DEFERRED { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NetMessage::RemoveCritter, [this]() FO_DEFERRED { Net_OnRemoveCritter(); });
@@ -311,7 +310,7 @@ void ClientEngine::MainLoop()
 #endif
 
     // Network
-    if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting() && !_conn.IsConnected()) {
+    if (_connectionRequest && !_conn.IsConnecting() && !_conn.IsConnected()) {
         OnConnecting.Fire();
         _conn.Connect();
     }
@@ -543,23 +542,8 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
     FO_STACK_TRACE_ENTRY();
 
     if (result == ClientConnection::ConnectResult::Success) {
-        // After connect things
-        if (_initNetReason == INIT_NET_REASON_LOGIN) {
-            Net_SendLogIn();
-        }
-        else if (_initNetReason == INIT_NET_REASON_REG) {
-            Net_SendCreatePlayer();
-        }
-        else if (_initNetReason == INIT_NET_REASON_LOAD) {
-            // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
-        }
-        else if (_initNetReason != INIT_NET_REASON_CUSTOM) {
-            FO_UNREACHABLE_PLACE();
-        }
-
         FO_RUNTIME_ASSERT(!_curPlayer);
         _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
-
         OnConnected.Fire();
     }
     else if (result == ClientConnection::ConnectResult::Outdated) {
@@ -583,7 +567,7 @@ void ClientEngine::Net_OnDisconnect()
 
     DestroyInnerEntities();
 
-    _initNetReason = INIT_NET_REASON_NONE;
+    _connectionRequest = false;
     OnDisconnected.Fire();
 }
 
@@ -597,30 +581,6 @@ void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     _conn.OutBuf->Write<hstring>(name);
     _conn.OutBuf->Write<int32>(numeric_cast<int32>(data.size()));
     _conn.OutBuf->Push(data);
-    _conn.OutBuf->EndMsg();
-}
-
-void ClientEngine::Net_SendLogIn()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Player login");
-
-    _conn.OutBuf->StartMsg(NetMessage::Login);
-    _conn.OutBuf->Write(_loginName);
-    _conn.OutBuf->Write(_loginPassword);
-    _conn.OutBuf->EndMsg();
-}
-
-void ClientEngine::Net_SendCreatePlayer()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Player registration");
-
-    _conn.OutBuf->StartMsg(NetMessage::Register);
-    _conn.OutBuf->Write(_loginName);
-    _conn.OutBuf->Write(_loginPassword);
     _conn.OutBuf->EndMsg();
 }
 
@@ -773,15 +733,6 @@ void ClientEngine::Net_OnInitData()
 
         reader.VerifyEnd();
     }
-}
-
-void ClientEngine::Net_OnRegisterSuccess()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Registration success");
-
-    OnRegistrationSuccess.Fire();
 }
 
 void ClientEngine::Net_OnLoginSuccess()
@@ -2592,35 +2543,18 @@ auto ClientEngine::CustomCall(string_view command, string_view separator) -> str
     return "";
 }
 
-void ClientEngine::Connect(string_view login, string_view password, int32 reason)
+void ClientEngine::Connect()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_REG || reason == INIT_NET_REASON_CUSTOM);
-
-    if (reason == _initNetReason) {
-        return;
-    }
-
-    _loginName = login;
-    _loginPassword = password;
-    _initNetReason = reason;
-
-    if (_conn.IsConnected()) {
-        if (_initNetReason == INIT_NET_REASON_LOGIN) {
-            Net_SendLogIn();
-        }
-        else if (_initNetReason == INIT_NET_REASON_REG) {
-            Net_SendCreatePlayer();
-        }
-    }
+    _connectionRequest = true;
 }
 
 void ClientEngine::Disconnect()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _initNetReason = INIT_NET_REASON_NONE;
+    _connectionRequest = false;
     _conn.Disconnect();
 }
 

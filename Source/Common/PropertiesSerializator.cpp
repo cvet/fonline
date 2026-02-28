@@ -43,7 +43,9 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
     AnyData::Document doc;
 
-    for (const auto& prop : props->GetRegistrator()->GetProperties()) {
+    for (size_t i = 1; i < props->GetRegistrator()->GetPropertiesCount(); i++) {
+        const auto* prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32>(i));
+
         if (prop->IsDisabled()) {
             continue;
         }
@@ -51,19 +53,19 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             continue;
         }
 
-        props->ValidateForRawData(prop.get());
+        props->ValidateForRawData(prop);
 
         // Skip same as in base or zero values
         if (base != nullptr) {
-            const auto base_raw_data = base->GetRawData(prop.get());
-            const auto raw_data = props->GetRawData(prop.get());
+            const auto base_raw_data = base->GetRawData(prop);
+            const auto raw_data = props->GetRawData(prop);
 
             if (raw_data.size() == base_raw_data.size() && MemCompare(raw_data.data(), base_raw_data.data(), raw_data.size())) {
                 continue;
             }
         }
         else {
-            const auto raw_data = props->GetRawData(prop.get());
+            const auto raw_data = props->GetRawData(prop);
 
             if (prop->IsPlainData()) {
                 const auto* pod_data = raw_data.data();
@@ -84,7 +86,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             }
         }
 
-        auto value = SavePropertyToValue(props, prop.get(), hash_resolver, name_resolver);
+        auto value = SavePropertyToValue(props, prop, hash_resolver, name_resolver);
         doc.Emplace(prop->GetName(), std::move(value));
     }
 

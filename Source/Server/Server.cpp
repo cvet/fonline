@@ -165,7 +165,8 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
-        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage);
+        DbStorage = ConnectToDataBase(Settings.DbStorage);
+
         if (!DbStorage) {
             throw ServerInitException("Can't init storage data base", Settings.DbStorage);
         }
@@ -453,24 +454,42 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
+            vector<refcount_ptr<Player>> new_players;
+
             {
                 std::scoped_lock locker(_newConnectionsLocker);
 
-                if (!_newConnections.empty()) {
-                    while (!_newConnections.empty()) {
-                        auto conn = std::move(_newConnections.back());
-                        _newConnections.pop_back();
-                        _unloginedPlayers.emplace_back(SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn)));
-                    }
+                while (!_newConnections.empty()) {
+                    auto conn = std::move(_newConnections.back());
+                    _newConnections.pop_back();
+
+                    auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn));
+                    new_players.emplace_back(std::move(new_player));
                 }
             }
 
-            for (auto* player : copy_hold_ref(_unloginedPlayers)) {
+            vector<refcount_ptr<Player>> unlogined_players;
+
+            {
+                std::scoped_lock locker {_unloginedPlayersLocker};
+
+                if (!new_players.empty()) {
+                    _unloginedPlayers.insert(_unloginedPlayers.end(), new_players.begin(), new_players.end());
+                }
+
+                unlogined_players = _unloginedPlayers;
+            }
+
+            for (auto& player : unlogined_players) {
+                if (player->IsDestroyed()) {
+                    continue;
+                }
+
                 auto* connection = player->GetConnection();
 
                 try {
                     ProcessConnection(connection);
-                    ProcessUnloginedPlayer(player);
+                    ProcessUnloginedPlayer(player.get());
                 }
                 catch (const UnknownMessageException&) {
                     WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -485,7 +504,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 }
             }
 
-            _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayers().size();
+            _stats.CurOnline = unlogined_players.size() + EntityMngr.GetPlayers().size();
             _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
 
             return std::chrono::milliseconds {0};
@@ -549,7 +568,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
 
-            DbStorage.CommitChanges(false);
+            if (DbStorage.GetCommitJobsCount() < numeric_cast<size_t>(Settings.DataBaseMaxCommitJobs)) {
+                DbStorage.CommitChanges(false);
+            }
 
             return std::chrono::milliseconds {Settings.DataBaseCommitPeriod};
         });
@@ -644,16 +665,20 @@ void ServerEngine::Shutdown()
     }
 
     // Unlogined players
-    for (auto& player : _unloginedPlayers) {
-        player->GetConnection()->HardDisconnect();
-        player->MarkAsDestroyed();
-    }
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
 
-    _unloginedPlayers.clear();
+        for (auto& player : _unloginedPlayers) {
+            player->GetConnection()->HardDisconnect();
+            player->MarkAsDestroyed();
+        }
+
+        _unloginedPlayers.clear();
+    }
 
     // New connections
     {
-        std::scoped_lock locker(_newConnectionsLocker);
+        std::scoped_lock locker {_newConnectionsLocker};
 
         for (auto& connection : _newConnections) {
             connection->Disconnect();
@@ -763,6 +788,7 @@ void ServerEngine::DrawGui(string_view server_name)
         else {
             if (Settings.LockMaxWaitTime != 0) {
                 const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+
                 if (!Lock(max_wait_time)) {
                     ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
                     WriteLog("Server hanged (no response more than {})", max_wait_time);
@@ -776,7 +802,6 @@ void ServerEngine::DrawGui(string_view server_name)
 
             auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
-            // Info
             ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
             if (ImGui::TreeNode("Info")) {
                 buf = GetHealthInfo();
@@ -784,24 +809,43 @@ void ServerEngine::DrawGui(string_view server_name)
                 ImGui::TreePop();
             }
 
-            // Players
             if (ImGui::TreeNode("Players")) {
-                buf = GetIngamePlayersStatistics();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+                for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
+                    if (ImGui::TreeNode(strex("{} ({})", player->GetName(), player->GetId()).c_str())) {
+                        const auto* cr = player->GetControlledCritter();
+
+                        ImGui::LabelText("Host:", "%s", strex(" {}", player->GetConnection()->GetHost()).c_str());
+
+                        if (cr != nullptr) {
+                            ImGui::LabelText("Critter:", "%s", strex(" {}", cr->GetName()).c_str());
+                            ImGui::LabelText("Hex:", "%s", strex(" {}", cr->GetHex()).c_str());
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
                 ImGui::TreePop();
             }
 
-            // Locations and maps
-            if (ImGui::TreeNode("Locations and maps")) {
-                buf = GetLocationAndMapsStatistics();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            if (ImGui::TreeNode("Locations")) {
+                for (const auto& loc : EntityMngr.GetLocations() | std::views::values) {
+                    if (ImGui::TreeNode(strex("{} ({})", loc->GetProtoId(), loc->GetId()).c_str())) {
+                        for (const auto& map : loc->GetMaps()) {
+                            if (ImGui::TreeNode(strex("{} ({})", map->GetProtoId(), map->GetId()).c_str())) {
+                                ImGui::TreePop();
+                            }
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
                 ImGui::TreePop();
             }
 
-            // Profiler
-            if (ImGui::TreeNode("Profiler")) {
-                buf = "WIP..........................."; // GetProfilerStatistics();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            if (ImGui::TreeNode("Data base")) {
+                DbStorage.DrawGui();
                 ImGui::TreePop();
             }
         }
@@ -812,9 +856,13 @@ void ServerEngine::DrawGui(string_view server_name)
 
 auto ServerEngine::GetHealthInfo() const -> string
 {
+    FO_STACK_TRACE_ENTRY();
+
     string buf;
     buf.reserve(2048);
 
+    buf += strex("Version: {}\n", Settings.GameVersion);
+    buf += strex("Compatibility version: {}\n", Settings.CompatibilityVersion);
     buf += strex("System time: {}\n", nanotime::now());
     buf += strex("Synchronized time: {}\n", GetSynchronizedTime());
     buf += strex("Server uptime: {}\n", _stats.Uptime);
@@ -831,57 +879,9 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
     buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
     buf += strex("Compress ratio: {}\n", numeric_cast<float64>(_stats.DataReal) / numeric_cast<float64>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-    buf += strex("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
+    buf += strex("DB commit jobs: {}/{}\n", DbStorage.GetCommitJobsCount(), Settings.DataBaseCommitPeriod);
 
     return buf;
-}
-
-auto ServerEngine::GetIngamePlayersStatistics() -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& players = EntityMngr.GetPlayers();
-    const auto conn_count = _unloginedPlayers.size() + players.size();
-
-    string result = strex("Players: {}\nConnections: {}\n", players.size(), conn_count);
-    result += "Name                 Id         Ip              X     Y     Location and map\n";
-
-    for (const auto& player : players | std::views::values) {
-        const auto* cr = player->GetControlledCritter();
-        const auto* map = EntityMngr.GetMap(cr->GetMapId());
-        const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
-
-        const string str_loc = strex("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
-        result += strex("{:<20} {:<10} {:<15} {:<5} {}\n", player->GetName(), player->GetId(), player->GetConnection()->GetHost(), cr->GetHex(), map != nullptr ? str_loc : "Global map");
-    }
-
-    return result;
-}
-
-auto ServerEngine::GetLocationAndMapsStatistics() -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& locations = EntityMngr.GetLocations();
-    const auto& maps = EntityMngr.GetMaps();
-
-    string result = strex("Locations count: {}\n", locations.size());
-    result += strex("Maps count: {}\n", maps.size());
-    result += "Location             Id\n";
-    result += "          Map                 Id          Time Script\n";
-
-    for (const auto& loc : locations | std::views::values) {
-        result += strex("{:<20} {:<10}\n", loc->GetName(), loc->GetId());
-
-        int32 map_index = 0;
-
-        for (const auto& map : loc->GetMaps()) {
-            result += strex("     {:02}) {:<20} {:<9}   {:<4} {}\n", map_index, map->GetName(), map->GetId(), map->GetFixedDayTime(), map->GetInitScript());
-            map_index++;
-        }
-    }
-
-    return result;
 }
 
 void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
@@ -905,9 +905,8 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
-        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
-        _unloginedPlayers.erase(it);
+        std::scoped_lock locker {_unloginedPlayersLocker};
+        vec_remove_unique_value(_unloginedPlayers, unlogined_player);
         unlogined_player->MarkAsDestroyed();
         return;
     }
@@ -943,17 +942,9 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
             case NetMessage::GetUpdateFileData:
                 Process_UpdateFileData(connection);
                 break;
-
             case NetMessage::RemoteCall:
                 Process_RemoteCall(unlogined_player);
                 break;
-            case NetMessage::Register:
-                Process_Register(unlogined_player);
-                break;
-            case NetMessage::Login:
-                Process_Login(unlogined_player); // Maybe invalidated in method call
-                break;
-
             default:
                 throw GenericException("Unexpected unlogined player message", msg);
             }
@@ -1127,34 +1118,10 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
-        const auto info = buf.Read<int32>();
-
-        string result;
-        switch (info) {
-        case 1:
-            result = GetIngamePlayersStatistics();
-            break;
-        case 2:
-            result = GetLocationAndMapsStatistics();
-            break;
-        case 3:
-            // result = GetDeferredCallsStatistics();
-            break;
-        case 4:
-            result = "WIP";
-            break;
-        default:
-            break;
-        }
-
+        std::scoped_lock locker {_unloginedPlayersLocker};
         string str = strex("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
             _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.GetFrameTime(), GameTime.GetFrameTime() - _stats.ServerStartTime);
-
-        result += str;
-
-        for (string_view line : strvex(result).split('\n')) {
-            logcb(line);
-        }
+        logcb(str);
     } break;
     case CMD_CRITID: {
         const auto name = buf.Read<string>();
@@ -1648,7 +1615,9 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     SendCritterInitialInfo(cr, prev_cr);
 
-    OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+    if (prev_cr != nullptr) {
+        OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+    }
 }
 
 void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
@@ -1742,79 +1711,6 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     OnCritterSendInitialInfo.Fire(cr);
 
     cr->Send_PlaceToGameComplete();
-}
-
-void ServerEngine::VerifyTrigger(Map* map, Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (map->IsTriggerStaticItemOnHex(from_hex)) {
-        for (auto& item : map->GetTriggerStaticItemsOnHex(from_hex)) {
-            if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc.Call(cr, item.get(), false, dir)) {
-                    // Nop
-                }
-
-                if (cr->IsDestroyed()) {
-                    return;
-                }
-            }
-
-            OnStaticItemWalk.Fire(item.get(), cr, false, dir);
-
-            if (cr->IsDestroyed()) {
-                return;
-            }
-        }
-    }
-
-    if (map->IsTriggerStaticItemOnHex(to_hex)) {
-        for (auto& item : map->GetTriggerStaticItemsOnHex(to_hex)) {
-            if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc.Call(cr, item.get(), true, dir)) {
-                    // Nop
-                }
-
-                if (cr->IsDestroyed()) {
-                    return;
-                }
-            }
-
-            OnStaticItemWalk.Fire(item.get(), cr, true, dir);
-
-            if (cr->IsDestroyed()) {
-                return;
-            }
-        }
-    }
-
-    if (map->IsTriggerItemOnHex(from_hex)) {
-        for (auto* item : map->GetTriggerItemsOnHex(from_hex)) {
-            if (item->IsDestroyed()) {
-                continue;
-            }
-
-            item->OnCritterWalk.Fire(cr, false, dir);
-
-            if (cr->IsDestroyed()) {
-                return;
-            }
-        }
-    }
-
-    if (map->IsTriggerItemOnHex(to_hex)) {
-        for (auto* item : map->GetTriggerItemsOnHex(to_hex)) {
-            if (item->IsDestroyed()) {
-                continue;
-            }
-
-            item->OnCritterWalk.Fire(cr, true, dir);
-
-            if (cr->IsDestroyed()) {
-                return;
-            }
-        }
-    }
 }
 
 void ServerEngine::Process_Handshake(ServerConnection* connection)
@@ -1947,269 +1843,50 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     out_buf->Push(&update_file_data[offset], update_portion);
 }
 
-void ServerEngine::Process_Register(Player* unlogined_player)
+auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Player*
 {
     FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Register player");
-
-    auto* connection = unlogined_player->GetConnection();
-    auto in_buf = connection->ReadBuf();
-
-    const auto name = in_buf->Read<string>();
-    const auto password = in_buf->Read<string>();
-
-    in_buf.Unlock();
-
-    // Check data
-    if (!strex(name).is_valid_utf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check name length
-    const auto name_len_utf8 = numeric_cast<int32>(strex(name).length_utf8());
-
-    if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check for exist
-    const auto player_id = MakePlayerId(name);
-
-    if (DbStorage.Valid(PlayersCollectionName, player_id)) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetPlayerAlready);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check brute force registration
-    if (Settings.RegistrationTimeout != 0) {
-        const auto host = connection->GetHost();
-        const auto reg_tick = std::chrono::milliseconds {Settings.RegistrationTimeout * 1000};
-
-        if (const auto it = _registrationHistory.find(host); it != _registrationHistory.end()) {
-            auto& last_reg = it->second;
-            const auto tick = GameTime.GetFrameTime();
-
-            if (tick - last_reg < reg_tick) {
-                unlogined_player->Send_InfoMessage(EngineInfoMessage::NetRegistrationIpWait);
-                connection->GracefulDisconnect();
-                return;
-            }
-
-            last_reg = tick;
-        }
-        else {
-            _registrationHistory.emplace(host, GameTime.GetFrameTime());
-        }
-    }
-
-    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name);
-
-    if (!allow) {
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Register
-    auto reg_host = AnyData::Array();
-    reg_host.EmplaceBack(string(connection->GetHost()));
-    auto reg_port = AnyData::Array();
-    reg_port.EmplaceBack(numeric_cast<int64>(connection->GetPort()));
-
-    AnyData::Document player_data;
-    player_data.Emplace("_Name", string(name));
-    player_data.Emplace("Password", string(password));
-    player_data.Emplace("ConnectionHost", std::move(reg_host));
-    player_data.Emplace("ConnectionPort", std::move(reg_port));
-
-    DbStorage.Insert(PlayersCollectionName, player_id, player_data);
-
-    WriteLog("Registered player {} with id {}", name, player_id);
-
-    // Notify
-    unlogined_player->Send_InfoMessage(EngineInfoMessage::NetRegSuccess);
-
-    connection->WriteMsg(NetMessage::RegisterSuccess);
-}
-
-void ServerEngine::Process_Login(Player* unlogined_player)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Login player");
-
-    auto* connection = unlogined_player->GetConnection();
-    auto in_buf = connection->ReadBuf();
-
-    const auto name = in_buf->Read<string>();
-    const auto password = in_buf->Read<string>();
-
-    in_buf.Unlock();
-
-    // If only cache checking than disconnect
-    if (name.empty()) {
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check for null in login/password
-    if (name.find('\0') != string::npos || password.find('\0') != string::npos) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check valid symbols in name
-    if (!strex(name).is_valid_utf8() || name.find('*') != string::npos) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check for name length
-    const auto name_len_utf8 = numeric_cast<int32>(strex(name).length_utf8());
-
-    if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongLogin);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check password
-    const auto player_id = MakePlayerId(name);
-    const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
-
-    if (!player_doc.Contains("Password") || player_doc["Password"].Type() != AnyData::ValueType::String || player_doc["Password"].AsString().length() != password.length() || player_doc["Password"].AsString() != password) {
-        unlogined_player->Send_InfoMessage(EngineInfoMessage::NetLoginPassWrong);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Request script
-    {
-        const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id);
-
-        if (!allow) {
-            connection->GracefulDisconnect();
-            return;
-        }
-    }
 
     // Switch from unlogined to logined
+    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
+        vec_remove_unique_value(_unloginedPlayers, unlogined_player);
+    }
+
+    scope_exit disconnect_on_error {[&]() noexcept { safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); }); }};
+
+    const auto player_id = MakePlayerId(name);
     Player* player = EntityMngr.GetPlayer(player_id);
-    bool player_reconnected;
 
     if (player == nullptr) {
-        player_reconnected = false;
+        player = unlogined_player;
+        auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
-        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
-            unlogined_player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
-            connection->GracefulDisconnect();
-            return;
+        if (player_doc.Empty()) {
+            player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
+            player_doc.Emplace("_Name", string(name));
+            DbStorage.Insert(PlayersCollectionName, player_id, player_doc);
+        }
+        else if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
+            throw GenericException("Invalid player data");
         }
 
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
-        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
-        _unloginedPlayers.erase(it);
-
-        player = unlogined_player;
         EntityMngr.RegisterPlayer(player, player_id);
         player->SetName(name);
-
-        WriteLog("Connected player {}", name);
-
-        OnPlayerInit.Fire(player);
+        player->SetLogined(true);
+        player->Send_LoginSuccess();
+        OnPlayerLogin.Fire(player, nullptr);
     }
     else {
-        player_reconnected = true;
-
         // Kick previous
-        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
-        FO_RUNTIME_ASSERT(it != _unloginedPlayers.end());
-        _unloginedPlayers.erase(it);
-
         player->SwapConnection(unlogined_player);
-
         unlogined_player->GetConnection()->HardDisconnect();
+        player->Send_LoginSuccess();
+        OnPlayerLogin.Fire(player, unlogined_player);
         unlogined_player->MarkAsDestroyed();
 
-        WriteLog("Reconnected player {}", name);
-    }
-
-    // Connection info
-    {
-        const auto host = connection->GetHost();
-        const auto port = connection->GetPort();
-
-        auto conn_host = player->GetConnectionHost();
-        auto conn_port = player->GetConnectionPort();
-        FO_RUNTIME_ASSERT(conn_host.size() == conn_port.size());
-
-        bool ip_found = false;
-
-        for (size_t i = 0; i < conn_host.size(); i++) {
-            if (conn_host[i] == host) {
-                if (i < conn_host.size() - 1) {
-                    conn_host.erase(conn_host.begin() + numeric_cast<ptrdiff_t>(i));
-                    conn_host.emplace_back(host);
-                    player->SetConnectionHost(conn_host);
-                    conn_port.erase(conn_port.begin() + numeric_cast<ptrdiff_t>(i));
-                    conn_port.push_back(port);
-                    player->SetConnectionPort(conn_port);
-                }
-                else if (conn_port.back() != port) {
-                    conn_port.back() = port;
-                    player->SetConnectionPort(conn_port);
-                }
-
-                ip_found = true;
-                break;
-            }
-        }
-
-        if (!ip_found) {
-            conn_host.emplace_back(host);
-            player->SetConnectionHost(conn_host);
-            conn_port.push_back(port);
-            player->SetConnectionPort(conn_port);
-        }
-    }
-
-    // Login success
-    player->Send_LoginSuccess();
-
-    // Attach critter
-    if (!player_reconnected) {
-        const auto cr_id = player->GetLastControlledCritterId();
-
-        // Try find in game
-        if (cr_id) {
-            auto* cr = EntityMngr.GetCritter(cr_id);
-
-            if (cr != nullptr) {
-                FO_RUNTIME_ASSERT(cr->GetControlledByPlayer());
-
-                // Already attached to another player
-                if (cr->GetPlayer() != nullptr) {
-                    player->Send_InfoMessage(EngineInfoMessage::NetPlayerInGame);
-                    connection->GracefulDisconnect();
-                    return;
-                }
-
-                cr->AttachPlayer(player);
-
-                SendCritterInitialInfo(cr, nullptr);
-
-                WriteLog(LogType::Info, "Critter for player found in game");
-            }
-        }
-    }
-    else {
         auto* cr = player->GetControlledCritter();
 
         if (cr != nullptr) {
@@ -2217,13 +1894,8 @@ void ServerEngine::Process_Login(Player* unlogined_player)
         }
     }
 
-    if (OnPlayerEnter.Fire(player)) {
-        player->Send_InfoMessage(EngineInfoMessage::NetLoginOk);
-    }
-    else {
-        player->Send_InfoMessage(EngineInfoMessage::NetWrongData);
-        connection->GracefulDisconnect();
-    }
+    disconnect_on_error.release();
+    return player;
 }
 
 void ServerEngine::Process_Move(Player* player)
@@ -3181,17 +2853,20 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
                     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
-                    VerifyTrigger(map, cr, old_hex, hex2, dir);
+                    map->VerifyTrigger(cr, old_hex, hex2, dir);
+
                     if (!validate_moving(hex2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleCritters(cr);
+
                     if (!validate_moving(hex2)) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
+
                     if (!validate_moving(hex2)) {
                         return;
                     }

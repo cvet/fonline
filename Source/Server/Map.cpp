@@ -943,4 +943,77 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     return false;
 }
 
+void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsTriggerStaticItemOnHex(from_hex)) {
+        for (auto& item : GetTriggerStaticItemsOnHex(from_hex)) {
+            if (item->TriggerScriptFunc) {
+                if (!item->TriggerScriptFunc.Call(cr, item.get(), false, dir)) {
+                    // Nop
+                }
+
+                if (cr->IsDestroyed()) {
+                    return;
+                }
+            }
+
+            _engine->OnStaticItemWalk.Fire(item.get(), cr, false, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
+        }
+    }
+
+    if (IsTriggerStaticItemOnHex(to_hex)) {
+        for (auto& item : GetTriggerStaticItemsOnHex(to_hex)) {
+            if (item->TriggerScriptFunc) {
+                if (!item->TriggerScriptFunc.Call(cr, item.get(), true, dir)) {
+                    // Nop
+                }
+
+                if (cr->IsDestroyed()) {
+                    return;
+                }
+            }
+
+            _engine->OnStaticItemWalk.Fire(item.get(), cr, true, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
+        }
+    }
+
+    if (IsTriggerItemOnHex(from_hex)) {
+        for (auto* item : GetTriggerItemsOnHex(from_hex)) {
+            if (item->IsDestroyed()) {
+                continue;
+            }
+
+            item->OnCritterWalk.Fire(cr, false, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
+        }
+    }
+
+    if (IsTriggerItemOnHex(to_hex)) {
+        for (auto* item : GetTriggerItemsOnHex(to_hex)) {
+            if (item->IsDestroyed()) {
+                continue;
+            }
+
+            item->OnCritterWalk.Fire(cr, true, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
+        }
+    }
+}
+
 FO_END_NAMESPACE

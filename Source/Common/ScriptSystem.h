@@ -291,7 +291,7 @@ public:
                 array<void*, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
                 FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
                 call.ArgsData = args_data;
-                call.RetData = NativeDataProvider::NormalizeArg(&_ret, temp_storage[storage_index]);
+                call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
 
                 try {
                     _func->Call(call);

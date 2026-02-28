@@ -79,7 +79,7 @@ struct AngelScriptStackTraceData
 };
 FO_GLOBAL_DATA(AngelScriptStackTraceData, AngelScriptStackTrace);
 
-static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func, size_t program_pos);
+static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func);
 static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept;
 static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
 
@@ -117,10 +117,13 @@ void AngelScriptContextManager::CreateContext()
     FO_RUNTIME_ASSERT(ctx_impl);
     ctx_impl->BeginScriptCall = AngelScriptBeginCall;
     ctx_impl->EndScriptCall = AngelScriptEndCall;
+#else
+    ignore_unused(AngelScriptBeginCall);
+    ignore_unused(AngelScriptEndCall);
 #endif
 
     int32 as_result = 0;
-    FO_AS_VERIFY(ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &_exceptionStackTrace, AngelScript::asCALL_CDECL));
+    FO_AS_VERIFY(ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), nullptr, AngelScript::asCALL_CDECL));
 }
 
 auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContext*
@@ -276,10 +279,16 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
 
     if (exec_result != AngelScript::asEXECUTION_FINISHED) {
         if (exec_result == AngelScript::asEXECUTION_EXCEPTION) {
-            const string ex_string = ctx->GetExceptionString();
-
             ctx->Abort();
-            throw ScriptCallException(_exceptionStackTrace, ex_string);
+            const auto ex = ctx->GetStdException();
+
+            if (ex) {
+                std::rethrow_exception(ex);
+            }
+            else {
+                const string ex_string = ctx->GetExceptionString();
+                throw ScriptCallException(ex_string);
+            }
         }
 
         if (exec_result == AngelScript::asEXECUTION_ABORTED) {
@@ -357,7 +366,7 @@ void AngelScriptContextManager::ResumeSuspendedContexts(nanotime time)
     }
 }
 
-static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func, size_t program_pos)
+static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -368,11 +377,12 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript
     }
 
     StackTraceEntryStorage* storage = nullptr;
+    const auto func_key = std::bit_cast<size_t>(func);
 
     {
         std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 
-        const auto it = AngelScriptStackTrace->ScriptCallCacheEntries.find(program_pos);
+        const auto it = AngelScriptStackTrace->ScriptCallCacheEntries.find(func_key);
 
         if (it != AngelScriptStackTrace->ScriptCallCacheEntries.end()) {
             storage = &it->second;
@@ -391,7 +401,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript
         {
             std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 
-            storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(program_pos, StackTraceEntryStorage {}).first->second;
+            storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(func_key, StackTraceEntryStorage {}).first->second;
 
             const auto safe_copy = [](auto& to, size_t& len, string_view from) {
                 len = std::min(from.length(), to.size() - 1);
@@ -448,6 +458,14 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    ignore_unused(param);
+
+    auto& ex = ctx->GetStdException();
+
+    if (ex) {
+        return;
+    }
+
     const auto* ex_func = ctx->GetExceptionFunction();
     const auto ex_line = ctx->GetExceptionLineNumber();
 
@@ -457,35 +475,31 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     const auto* func_decl = ex_func->GetDeclaration(true);
 
+    StackTraceEntryStorage* storage = nullptr;
+
     {
-        StackTraceEntryStorage* storage = nullptr;
+        std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
 
-        {
-            std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
+        storage = &AngelScriptStackTrace->ScriptCallExceptionEntries.emplace_back(StackTraceEntryStorage {});
 
-            storage = &AngelScriptStackTrace->ScriptCallExceptionEntries.emplace_back(StackTraceEntryStorage {});
+        const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+            len = std::min(from.length(), to.size() - 1);
+            MemCopy(to.data(), from.data(), len);
+            to[len] = 0;
+        };
 
-            const auto safe_copy = [](auto& to, size_t& len, string_view from) {
-                len = std::min(from.length(), to.size() - 1);
-                MemCopy(to.data(), from.data(), len);
-                to[len] = 0;
-            };
+        safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
+        safe_copy(storage->FileBuf, storage->FileBufLen, ex_orig_file);
 
-            safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
-            safe_copy(storage->FileBuf, storage->FileBufLen, ex_orig_file);
-
-            storage->SrcLoc.name = nullptr;
-            storage->SrcLoc.function = storage->FuncBuf.data();
-            storage->SrcLoc.file = storage->FileBuf.data();
-            storage->SrcLoc.line = ex_orig_line;
-        }
-
-        PushStackTrace(&storage->SrcLoc);
-        auto stack_trace_entry_end = scope_exit([]() noexcept { PopStackTrace(); });
-
-        // Write to _exceptionStackTrace
-        *cast_from_void<StackTraceData*>(param) = GetStackTrace();
+        storage->SrcLoc.name = nullptr;
+        storage->SrcLoc.function = storage->FuncBuf.data();
+        storage->SrcLoc.file = storage->FileBuf.data();
+        storage->SrcLoc.line = ex_orig_line;
     }
+
+    PushStackTrace(&storage->SrcLoc);
+    auto stack_trace_entry_end = scope_exit([]() noexcept { PopStackTrace(); });
+    ex = std::make_exception_ptr(ScriptException(ctx->GetExceptionString()));
 }
 
 FO_END_NAMESPACE

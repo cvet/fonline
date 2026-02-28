@@ -127,7 +127,7 @@ static auto Entity_GetSelfForEvent(Entity* entity) -> Entity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Don't verify entity for destroying
+    // May call on destroyed entity
     return entity;
 }
 
@@ -230,9 +230,9 @@ static void Entity_GetComponent(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(entity);
     const auto& component = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     bool has_component = false;
-    CheckScriptEntityNonDestroyed(entity);
 
     if (const auto* proto_entity = dynamic_cast<const ProtoEntity*>(entity); proto_entity != nullptr) {
         has_component = proto_entity->HasComponent(component);
@@ -429,6 +429,7 @@ static void CustomEntity_Add(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(holder);
     const auto pid = gen->GetArgCount() == 1 ? *cast_from_void<hstring*>(gen->GetAddressOfArg(0)) : hstring();
     auto* backend = GetScriptBackend(gen->GetEngine());
     auto* entity_mngr = backend->GetEntityMngr();
@@ -454,6 +455,7 @@ static void CustomEntity_GetOne(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(holder);
     const auto id = *cast_from_void<ident_t*>(gen->GetAddressOfArg(0));
     auto* entities = holder->GetInnerEntities(entry);
 
@@ -481,6 +483,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(holder);
     auto* entities = holder->GetInnerEntities(entry);
     auto* as_engine = gen->GetEngine();
     const auto* meta = GetEngineMetadata(as_engine);
@@ -756,6 +759,8 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    const auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(entity);
     const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
     FO_RUNTIME_ASSERT(method.Call);
 
@@ -768,6 +773,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonDestroyed(entity);
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
     FO_RUNTIME_ASSERT(func->GetReturnTypeId() == AngelScript::asTYPEID_VOID || func->GetReturnTypeId() == AngelScript::asTYPEID_BOOL);
     const auto& priority = *cast_from_void<Entity::EventPriority*>(gen->GetAddressOfArg(1));
@@ -779,7 +785,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     event_data.Callback = [func_ = refcount_ptr(func)](FuncCallData& call) mutable -> bool FO_DEFERRED {
         const bool event_has_result = func_->GetReturnTypeId() == AngelScript::asTYPEID_BOOL;
-        bool event_result = false;
+        bool event_result = true;
         call.RetData = event_has_result ? cast_to_void(&event_result) : nullptr;
         ScriptFuncCall(func_.get(), call);
         const bool result = !event_has_result || event_result;
@@ -803,6 +809,11 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     const auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
 
+    // May call on destroyed entity
+    if (entity->IsDestroyed()) {
+        return;
+    }
+
     entity->UnsubscribeEvent(event.Name, std::bit_cast<uintptr_t>(func));
 }
 
@@ -812,6 +823,11 @@ static void EntityEvent_UnsubscribeAll(AngelScript::asIScriptGeneric* gen)
 
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+
+    // May call on destroyed entity
+    if (entity->IsDestroyed()) {
+        return;
+    }
 
     entity->UnsubscribeAllEvent(event.Name);
 }
@@ -823,7 +839,8 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
 
-    if (entity->HasEventCallbacks(event.Name)) {
+    // May call on destroyed entity
+    if (!entity->IsDestroyed() && entity->HasEventCallbacks(event.Name)) {
         ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
             const bool result = entity->FireEvent(event.Name, call);
             new (gen->GetAddressOfReturnLocation()) bool(result);

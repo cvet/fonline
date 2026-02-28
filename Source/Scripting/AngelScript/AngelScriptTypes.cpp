@@ -380,11 +380,12 @@ static void Any_ConstructCopy(any_t* self, const any_t& other)
     new (self) any_t(other);
 }
 
-static void Any_Assign(any_t& self, const any_t& other)
+static auto Any_Assign(any_t& self, const any_t& other) -> any_t&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     self = other;
+    return self;
 }
 
 template<typename T>
@@ -725,7 +726,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const float &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float32>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const double &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_DESTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Any_Destruct), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", FO_SCRIPT_FUNC_THIS(Any_Assign), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "any& opAssign(const any &in)", FO_SCRIPT_FUNC_THIS(Any_Assign), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", FO_SCRIPT_FUNC_THIS(Type_Equals<any_t>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<bool>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<int8>), FO_SCRIPT_FUNC_THIS_CONV));

@@ -32,6 +32,7 @@
 //
 
 #include "DataBase.h"
+#include "ImGuiStuff.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_JSON
@@ -53,7 +54,7 @@ FO_BEGIN_NAMESPACE
 class DataBaseImpl
 {
 public:
-    explicit DataBaseImpl(ServerSettings& settings);
+    DataBaseImpl() = default;
     DataBaseImpl(const DataBaseImpl&) = delete;
     DataBaseImpl(DataBaseImpl&&) noexcept = delete;
     auto operator=(const DataBaseImpl&) = delete;
@@ -70,6 +71,9 @@ public:
     void CommitChanges();
     void ClearChanges() noexcept;
     void WaitCommitThread() const;
+    void LockCommitThread();
+    void UnlockCommitThread();
+    virtual void DrawGui() { ImGui::TextUnformatted("No info"); }
 
 protected:
     [[nodiscard]] virtual auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document = 0;
@@ -77,8 +81,6 @@ protected:
     virtual void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, ident_t id) = 0;
     virtual void CommitRecords() = 0;
-
-    ServerSettings& _settings;
 
 private:
     struct CommitJobData
@@ -177,6 +179,16 @@ void DataBase::ClearChanges() noexcept
     FO_STACK_TRACE_ENTRY();
 
     _impl->ClearChanges();
+}
+
+void DataBase::DrawGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _impl->LockCommitThread();
+    auto unlocker = scope_exit([this]() noexcept { safe_call([this] { _impl->UnlockCommitThread(); }); });
+
+    _impl->DrawGui();
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson, char escape_dot)
@@ -341,11 +353,6 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc, char esca
     }
 }
 
-DataBaseImpl::DataBaseImpl(ServerSettings& settings) :
-    _settings {settings}
-{
-}
-
 auto DataBaseImpl::GetCommitJobsCount() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -364,8 +371,6 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
     if (_newRecords.count(collection_name) != 0 && _newRecords.at(collection_name).count(id) != 0) {
         return _recordChanges.at(collection_name).at(id).Copy();
     }
-
-    _commitThread.Wait();
 
     auto doc = GetRecord(collection_name, id);
 
@@ -438,15 +443,6 @@ void DataBaseImpl::CommitChanges()
         return;
     }
 
-    if (_settings.DataBaseMaxCommitJobs != 0) {
-        if (_commitThread.GetJobsCount() > numeric_cast<size_t>(_settings.DataBaseMaxCommitJobs)) {
-            WriteLog("Too many commit jobs to data base, wait for it");
-            const auto wait_time = TimeMeter();
-            _commitThread.Wait();
-            WriteLog("Wait complete in {}", wait_time.GetDuration());
-        }
-    }
-
     auto job_data = SafeAlloc::MakeShared<CommitJobData>();
     job_data->RecordChanges = std::move(_recordChanges);
     job_data->NewRecords = std::move(_newRecords);
@@ -479,7 +475,6 @@ void DataBaseImpl::CommitChanges()
         }
 
         CommitRecords();
-
         return std::nullopt;
     });
 }
@@ -500,19 +495,31 @@ void DataBaseImpl::WaitCommitThread() const
     _commitThread.Wait();
 }
 
+void DataBaseImpl::LockCommitThread()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _commitThread.Pause();
+}
+
+void DataBaseImpl::UnlockCommitThread()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _commitThread.Resume();
+}
+
 #if FO_HAVE_JSON
 class DbJson final : public DataBaseImpl
 {
 public:
-    DbJson() = delete;
     DbJson(const DbJson&) = delete;
     DbJson(DbJson&&) noexcept = delete;
     auto operator=(const DbJson&) = delete;
     auto operator=(DbJson&&) noexcept = delete;
     ~DbJson() override = default;
 
-    DbJson(ServerSettings& settings, string_view storage_dir) :
-        DataBaseImpl(settings),
+    explicit DbJson(string_view storage_dir) :
         _storageDir {storage_dir}
     {
         DiskFileSystem::MakeDirTree(storage_dir);
@@ -708,8 +715,7 @@ public:
     auto operator=(const DbUnQLite&) = delete;
     auto operator=(DbUnQLite&&) noexcept = delete;
 
-    DbUnQLite(ServerSettings& settings, string_view storage_dir) :
-        DataBaseImpl(settings)
+    explicit DbUnQLite(string_view storage_dir)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -989,14 +995,12 @@ class DbMongo final : public DataBaseImpl
 public:
     static constexpr char ESCAPE_DOT = ':';
 
-    DbMongo() = delete;
     DbMongo(const DbMongo&) = delete;
     DbMongo(DbMongo&&) noexcept = delete;
     auto operator=(const DbMongo&) = delete;
     auto operator=(DbMongo&&) noexcept = delete;
 
-    DbMongo(ServerSettings& settings, string_view uri, string_view db_name) :
-        DataBaseImpl(settings)
+    explicit DbMongo(string_view uri, string_view db_name)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1338,11 +1342,7 @@ private:
 class DbMemory final : public DataBaseImpl
 {
 public:
-    explicit DbMemory(ServerSettings& settings) :
-        DataBaseImpl(settings)
-    {
-    }
-
+    DbMemory() = default;
     DbMemory(const DbMemory&) = delete;
     DbMemory(DbMemory&&) noexcept = delete;
     auto operator=(const DbMemory&) = delete;
@@ -1431,11 +1431,38 @@ protected:
         // Nothing
     }
 
+    void DrawGui() override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        if (_collections.empty()) {
+            ImGui::TextUnformatted("No memory collections");
+            return;
+        }
+
+        for (auto&& [collection_name, collection] : _collections) {
+            if (ImGui::TreeNode(strex("{} ({})", collection_name.as_str(), collection.size()).c_str())) {
+                for (auto&& [id, doc] : collection) {
+                    if (ImGui::TreeNode(strex("{} ({} keys)", id, doc.Size()).c_str())) {
+                        for (auto&& [doc_key, doc_value] : doc) {
+                            const auto value_str = AnyData::ValueToString(doc_value);
+                            ImGui::BulletText("%s: %s", doc_key.c_str(), value_str.c_str());
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+        }
+    }
+
 private:
     DataBase::Collections _collections {};
 };
 
-auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase
+auto ConnectToDataBase(string_view connection_info) -> DataBase
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1444,21 +1471,21 @@ auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) ->
 
 #if FO_HAVE_JSON
         if (options.front() == "JSON" && options.size() == 2) {
-            return DataBase(SafeAlloc::MakeRaw<DbJson>(settings, options[1]));
+            return DataBase(SafeAlloc::MakeRaw<DbJson>(options[1]));
         }
 #endif
 #if FO_HAVE_UNQLITE
         if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return DataBase(SafeAlloc::MakeRaw<DbUnQLite>(settings, options[1]));
+            return DataBase(SafeAlloc::MakeRaw<DbUnQLite>(options[1]));
         }
 #endif
 #if FO_HAVE_MONGO
         if (options.front() == "Mongo" && options.size() == 3) {
-            return DataBase(SafeAlloc::MakeRaw<DbMongo>(settings, options[1], options[2]));
+            return DataBase(SafeAlloc::MakeRaw<DbMongo>(options[1], options[2]));
         }
 #endif
         if (options.front() == "Memory" && options.size() == 1) {
-            return DataBase(SafeAlloc::MakeRaw<DbMemory>(settings));
+            return DataBase(SafeAlloc::MakeRaw<DbMemory>());
         }
     }
 
