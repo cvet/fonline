@@ -95,32 +95,6 @@ auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
     return it->second;
 }
 
-auto TextPack::GetStrNumUpper(TextPackKey num) const -> TextPackKey
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto it = _strData.upper_bound(num);
-
-    if (it == _strData.end()) {
-        return 0;
-    }
-
-    return it->first;
-}
-
-auto TextPack::GetStrNumLower(TextPackKey num) const -> TextPackKey
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto it = _strData.lower_bound(num);
-
-    if (it == _strData.end()) {
-        return 0;
-    }
-
-    return it->first;
-}
-
 auto TextPack::GetStrCount(TextPackKey num) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
