@@ -89,21 +89,21 @@ export function timeout(ms: number) {
 }
 
 /**
- * A Mock runtime with minimal debugger functionality.
- * MockRuntime is a hypothetical (aka "Mock") "execution engine with debugging support":
+ * A FOS runtime with minimal debugger functionality.
+ * FosRuntime is a hypothetical "execution engine with debugging support":
  * it takes a Markdown (*.md) file and "executes" it by "running" through the text lines
  * and searching for "command" patterns that trigger some debugger related functionality (e.g. exceptions).
  * When it finds a command it typically emits an event.
  * The runtime can not only run through the whole file but also executes one line at a time
  * and stops on lines for which a breakpoint has been registered. This functionality is the
  * core of the "debugging support".
- * Since the MockRuntime is completely independent from VS Code or the Debug Adapter Protocol,
+ * Since the FosRuntime is completely independent from VS Code or the Debug Adapter Protocol,
  * it can be viewed as a simplified representation of a real "execution engine" (e.g. node.js)
  * or debugger (e.g. gdb).
  * When implementing your own debugger extension for VS Code, you probably don't need this
  * class because you can rely on some existing debugger or runtime.
  */
-export class MockRuntime extends EventEmitter {
+export class FosRuntime extends EventEmitter {
 
 	// the initial (and one and only) file we are 'debugging'
 	private _sourceFile: string = '';
@@ -235,7 +235,7 @@ export class MockRuntime extends EventEmitter {
 	}
 
 	/**
-	 * "Step into" for Mock debug means: go to next character
+	 * "Step into" for FOS debug means: go to next character
 	 */
 	public stepIn(targetId: number | undefined) {
 		if (typeof targetId === 'number') {
@@ -254,7 +254,7 @@ export class MockRuntime extends EventEmitter {
 	}
 
 	/**
-	 * "Step out" for Mock debug means: go to previous character
+	 * "Step out" for FOS debug means: go to previous character
 	 */
 	public stepOut() {
 		if (typeof this.currentColumn === 'number') {

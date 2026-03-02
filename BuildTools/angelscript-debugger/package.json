@@ -17,21 +17,22 @@
     "lint": "eslint src --ext ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --tsconfig=./tsconfig.json --external:vscode --format=cjs --platform=node --outfile=dist/extension.js",
+    "esbuild-adapter": "esbuild ./src/debugAdapter.ts --bundle --tsconfig=./tsconfig.json --format=cjs --platform=node --outfile=dist/debugAdapter.js",
     "watch": "npm run -S esbuild-base -- --sourcemap --sources-content=false --watch",
     "esbuild-web": "esbuild ./src/web-extension.ts --bundle --tsconfig=./tsconfig.json --external:vscode --format=cjs --platform=browser --outfile=dist/web-extension.js",
     "watch-web": "npm run -S esbuild-web -- --sourcemap --sources-content=false --watch",
     "package": "vsce package",
     "publish": "vsce publish",
     "publish-pre-release": "vsce publish --pre-release",
-    "vscode:prepublish": "rimraf dist && npm run -S esbuild-base -- --minify && npm run -S esbuild-web -- --minify",
+    "vscode:prepublish": "rimraf dist && npm run -S esbuild-base -- --minify && npm run -S esbuild-web -- --minify && npm run -S esbuild-adapter -- --minify",
     "test": "npm run typecheck",
-    "build": "npm run -S esbuild-base -- --sourcemap --sources-content=false && npm run -S esbuild-web -- --sourcemap --sources-content=false",
+    "build": "npm run -S esbuild-base -- --sourcemap --sources-content=false && npm run -S esbuild-web -- --sourcemap --sources-content=false && npm run -S esbuild-adapter -- --sourcemap --sources-content=false",
     "clean": "rimraf node_modules package-lock.json"
   },
   "devDependencies": {
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.0",
-    "@types/node": "^25.2.3",
+    "@types/node": "^18.19.86",
     "@types/vscode": "^1.66.0",
     "@typescript-eslint/eslint-plugin": "^5.17.0",
     "@typescript-eslint/parser": "^5.17.0",
@@ -51,7 +52,9 @@
     "vsce": "^2.15.0"
   },
   "main": "./dist/extension.js",
-  "browser": "./dist/web-extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
   "activationEvents": [
     "onDebugResolve:fos",
     "onDebugDynamicConfigurations:fos",
@@ -107,18 +110,29 @@
           "fos"
         ],
         "label": "FOS Debugger",
-        "program": "./out/debugAdapter.js",
+        "program": "./dist/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
           "attach": {
-            "required": [
-              "processId"
-            ],
             "properties": {
               "processId": {
                 "type": "string",
-                "description": "Process id.",
-                "default": "${workspaceFolder}/${command:AskForProgramName}"
+                "description": "Optional process id filter for discovered AngelScript runtimes.",
+                "default": ""
+              },
+              "endpoint": {
+                "type": "string",
+                "description": "Optional direct endpoint override (e.g. tcp://192.168.1.10:43042)."
+              },
+              "discoveryPort": {
+                "type": "number",
+                "description": "UDP discovery port used to find debugger targets on LAN.",
+                "default": 43001
+              },
+              "discoveryTimeoutMs": {
+                "type": "number",
+                "description": "UDP discovery timeout in milliseconds.",
+                "default": 800
               }
             }
           },
@@ -140,7 +154,8 @@
             "type": "fos",
             "request": "attach",
             "name": "Attach",
-            "processId": "${workspaceFolder}/${command:AskForProgramName}"
+            "discoveryPort": 43001,
+            "discoveryTimeoutMs": 800
           },
           {
             "type": "fos",

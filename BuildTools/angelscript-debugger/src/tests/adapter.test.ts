@@ -19,7 +19,7 @@ suite('Node Debug Adapter', () => {
 	let dc: DebugClient;
 
 	setup( () => {
-		dc = new DebugClient('node', DEBUG_ADAPTER, 'mock');
+		dc = new DebugClient('node', DEBUG_ADAPTER, 'fos');
 		return dc.start();
 	});
 
@@ -48,7 +48,7 @@ suite('Node Debug Adapter', () => {
 
 		test('should produce error for invalid \'pathFormat\'', done => {
 			dc.initializeRequest({
-				adapterID: 'mock',
+				adapterID: 'fos',
 				linesStartAt1: true,
 				columnsStartAt1: true,
 				pathFormat: 'url'

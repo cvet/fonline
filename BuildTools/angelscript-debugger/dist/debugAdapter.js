@@ -8,10 +8,6 @@ var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -28,7 +24,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/@vscode/debugadapter/lib/messages.js
 var require_messages = __commonJS({
@@ -169,12 +164,12 @@ var require_protocol = __commonJS({
           this._send("response", response);
         }
       }
-      sendRequest(command, args, timeout2, cb) {
+      sendRequest(command, args2, timeout2, cb) {
         const request = {
           command
         };
-        if (args && Object.keys(args).length > 0) {
-          request.arguments = args;
+        if (args2 && Object.keys(args2).length > 0) {
+          request.arguments = args2;
         }
         this._send("request", request);
         if (cb) {
@@ -257,16 +252,16 @@ var require_runDebugAdapter = __commonJS({
     exports2.runDebugAdapter = void 0;
     var Net2 = require("net");
     function runDebugAdapter(debugSession) {
-      let port = 0;
-      const args = process.argv.slice(2);
-      args.forEach(function(val, index, array) {
+      let port2 = 0;
+      const args2 = process.argv.slice(2);
+      args2.forEach(function(val, index, array) {
         const portMatch = /^--server=(\d{4,5})$/.exec(val);
         if (portMatch) {
-          port = parseInt(portMatch[1], 10);
+          port2 = parseInt(portMatch[1], 10);
         }
       });
-      if (port > 0) {
-        console.error(`waiting for debug protocol on port ${port}`);
+      if (port2 > 0) {
+        console.error(`waiting for debug protocol on port ${port2}`);
         Net2.createServer((socket) => {
           console.error(">> accepted connection from client");
           socket.on("end", () => {
@@ -275,7 +270,7 @@ var require_runDebugAdapter = __commonJS({
           const session = new debugSession(false, true);
           session.setRunAsServer(true);
           session.start(socket, socket);
-        }).listen(port);
+        }).listen(port2);
       } else {
         const session = new debugSession(false);
         process.on("SIGTERM", () => {
@@ -641,26 +636,26 @@ var require_debugSession = __commonJS({
         response.body.error = msg;
         this.sendResponse(response);
       }
-      runInTerminalRequest(args, timeout2, cb) {
-        this.sendRequest("runInTerminal", args, timeout2, cb);
+      runInTerminalRequest(args2, timeout2, cb) {
+        this.sendRequest("runInTerminal", args2, timeout2, cb);
       }
       dispatchRequest(request) {
         const response = new messages_1.Response(request);
         try {
           if (request.command === "initialize") {
-            var args = request.arguments;
-            if (typeof args.linesStartAt1 === "boolean") {
-              this._clientLinesStartAt1 = args.linesStartAt1;
+            var args2 = request.arguments;
+            if (typeof args2.linesStartAt1 === "boolean") {
+              this._clientLinesStartAt1 = args2.linesStartAt1;
             }
-            if (typeof args.columnsStartAt1 === "boolean") {
-              this._clientColumnsStartAt1 = args.columnsStartAt1;
+            if (typeof args2.columnsStartAt1 === "boolean") {
+              this._clientColumnsStartAt1 = args2.columnsStartAt1;
             }
-            if (args.pathFormat !== "path") {
+            if (args2.pathFormat !== "path") {
               this.sendErrorResponse(response, 2018, "debug adapter only supports native paths", null, ErrorDestination.Telemetry);
             } else {
               const initializeResponse = response;
               initializeResponse.body = {};
-              this.initializeRequest(initializeResponse, args);
+              this.initializeRequest(initializeResponse, args2);
             }
           } else if (request.command === "launch") {
             this.launchRequest(response, request.arguments, request);
@@ -749,7 +744,7 @@ var require_debugSession = __commonJS({
           this.sendErrorResponse(response, 1104, "{_stack}", { _exception: e.message, _stack: e.stack }, ErrorDestination.Telemetry);
         }
       }
-      initializeRequest(response, args) {
+      initializeRequest(response, args2) {
         response.body.supportsConditionalBreakpoints = false;
         response.body.supportsHitConditionalBreakpoints = false;
         response.body.supportsFunctionBreakpoints = false;
@@ -783,131 +778,131 @@ var require_debugSession = __commonJS({
         response.body.supportsExceptionFilterOptions = false;
         this.sendResponse(response);
       }
-      disconnectRequest(response, args, request) {
+      disconnectRequest(response, args2, request) {
         this.sendResponse(response);
         this.shutdown();
       }
-      launchRequest(response, args, request) {
+      launchRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      attachRequest(response, args, request) {
+      attachRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      terminateRequest(response, args, request) {
+      terminateRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      restartRequest(response, args, request) {
+      restartRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setBreakPointsRequest(response, args, request) {
+      setBreakPointsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setFunctionBreakPointsRequest(response, args, request) {
+      setFunctionBreakPointsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setExceptionBreakPointsRequest(response, args, request) {
+      setExceptionBreakPointsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      configurationDoneRequest(response, args, request) {
+      configurationDoneRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      continueRequest(response, args, request) {
+      continueRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      nextRequest(response, args, request) {
+      nextRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      stepInRequest(response, args, request) {
+      stepInRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      stepOutRequest(response, args, request) {
+      stepOutRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      stepBackRequest(response, args, request) {
+      stepBackRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      reverseContinueRequest(response, args, request) {
+      reverseContinueRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      restartFrameRequest(response, args, request) {
+      restartFrameRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      gotoRequest(response, args, request) {
+      gotoRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      pauseRequest(response, args, request) {
+      pauseRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      sourceRequest(response, args, request) {
+      sourceRequest(response, args2, request) {
         this.sendResponse(response);
       }
       threadsRequest(response, request) {
         this.sendResponse(response);
       }
-      terminateThreadsRequest(response, args, request) {
+      terminateThreadsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      stackTraceRequest(response, args, request) {
+      stackTraceRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      scopesRequest(response, args, request) {
+      scopesRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      variablesRequest(response, args, request) {
+      variablesRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setVariableRequest(response, args, request) {
+      setVariableRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setExpressionRequest(response, args, request) {
+      setExpressionRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      evaluateRequest(response, args, request) {
+      evaluateRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      stepInTargetsRequest(response, args, request) {
+      stepInTargetsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      gotoTargetsRequest(response, args, request) {
+      gotoTargetsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      completionsRequest(response, args, request) {
+      completionsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      exceptionInfoRequest(response, args, request) {
+      exceptionInfoRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      loadedSourcesRequest(response, args, request) {
+      loadedSourcesRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      dataBreakpointInfoRequest(response, args, request) {
+      dataBreakpointInfoRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setDataBreakpointsRequest(response, args, request) {
+      setDataBreakpointsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      readMemoryRequest(response, args, request) {
+      readMemoryRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      writeMemoryRequest(response, args, request) {
+      writeMemoryRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      disassembleRequest(response, args, request) {
+      disassembleRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      cancelRequest(response, args, request) {
+      cancelRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      breakpointLocationsRequest(response, args, request) {
+      breakpointLocationsRequest(response, args2, request) {
         this.sendResponse(response);
       }
-      setInstructionBreakpointsRequest(response, args, request) {
+      setInstructionBreakpointsRequest(response, args2, request) {
         this.sendResponse(response);
       }
       /**
        * Override this hook to implement custom requests.
        */
-      customRequest(command, response, args, request) {
+      customRequest(command, response, args2, request) {
         this.sendErrorResponse(response, 1014, "unrecognized request", null, ErrorDestination.Telemetry);
       }
       //---- protected -------------------------------------------------------------------------------------------------
@@ -982,12 +977,12 @@ var require_debugSession = __commonJS({
       /*
       * If argument starts with '_' it is OK to send its value to telemetry.
       */
-      static formatPII(format, excludePII, args) {
+      static formatPII(format, excludePII, args2) {
         return format.replace(_DebugSession._formatPIIRegexp, function(match, paramName) {
           if (excludePII && paramName.length > 0 && paramName[0] !== "_") {
             return match;
           }
-          return args[paramName] && args.hasOwnProperty(paramName) ? args[paramName] : match;
+          return args2[paramName] && args2.hasOwnProperty(paramName) ? args2[paramName] : match;
         });
       }
     };
@@ -1002,7 +997,7 @@ var require_internalLogger = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.InternalLogger = void 0;
-    var fs = require("fs");
+    var fs2 = require("fs");
     var path = require("path");
     var logger_1 = require_logger();
     var InternalLogger = class {
@@ -1028,11 +1023,11 @@ var require_internalLogger = __commonJS({
             const handleError = (err) => this.sendLog(`Error creating log file at path: ${options.logFilePath}. Error: ${err.toString()}
 `, logger_1.LogLevel.Error);
             try {
-              await fs.promises.mkdir(path.dirname(options.logFilePath), { recursive: true });
+              await fs2.promises.mkdir(path.dirname(options.logFilePath), { recursive: true });
               this.log(`Verbose logs are written to:
 `, logger_1.LogLevel.Warn);
               this.log(options.logFilePath + "\n", logger_1.LogLevel.Warn);
-              this._logFileStream = fs.createWriteStream(options.logFilePath);
+              this._logFileStream = fs2.createWriteStream(options.logFilePath);
               this.logDateTime();
               this.setupShutdownListeners();
               this._logFileStream.on("error", (err) => {
@@ -1262,9 +1257,9 @@ var require_loggingDebugSession = __commonJS({
       /**
        * Overload sendRequest to log
        */
-      sendRequest(command, args, timeout2, cb) {
-        logger2.verbose(`To client: ${JSON.stringify(command)}(${JSON.stringify(args)}), timeout: ${timeout2}`);
-        super.sendRequest(command, args, timeout2, cb);
+      sendRequest(command, args2, timeout2, cb) {
+        logger2.verbose(`To client: ${JSON.stringify(command)}(${JSON.stringify(args2)}), timeout: ${timeout2}`);
+        super.sendRequest(command, args2, timeout2, cb);
       }
       /**
        * Overload sendResponse to log
@@ -1550,7 +1545,7 @@ var require_path_browserify = __commonJS({
         assertPath(path);
         return path.length > 0 && path.charCodeAt(0) === 47;
       },
-      join: function join2() {
+      join: function join() {
         if (arguments.length === 0)
           return ".";
         var joined;
@@ -1980,20 +1975,6 @@ var require_base64_js = __commonJS({
   }
 });
 
-// src/extension.ts
-var extension_exports = {};
-__export(extension_exports, {
-  activate: () => activate,
-  deactivate: () => deactivate
-});
-module.exports = __toCommonJS(extension_exports);
-var Net = __toESM(require("net"));
-var vscode2 = __toESM(require("vscode"));
-var import_crypto = require("crypto");
-var import_os = require("os");
-var import_path = require("path");
-var import_process = require("process");
-
 // src/fosDebug.ts
 var import_debugadapter = __toESM(require_main());
 var import_path_browserify = __toESM(require_path_browserify());
@@ -2070,9 +2051,9 @@ var FosRuntime = class extends import_events.EventEmitter {
   /**
    * Start executing the given program.
    */
-  async start(program, stopOnEntry, debug2) {
+  async start(program, stopOnEntry, debug) {
     await this.loadSource(this.normalizePathAndCasing(program));
-    if (debug2) {
+    if (debug) {
       await this.verifyBreakpoints(this._sourceFile);
       if (stopOnEntry) {
         this.findNextStatement(false, "stopOnEntry");
@@ -2480,9 +2461,9 @@ var FosRuntime = class extends import_events.EventEmitter {
       });
     }
   }
-  sendEvent(event, ...args) {
+  sendEvent(event, ...args2) {
     setTimeout(() => {
-      this.emit(event, ...args);
+      this.emit(event, ...args2);
     }, 0);
   }
   normalizePathAndCasing(path) {
@@ -2531,7 +2512,7 @@ function getNodeDgramModule() {
     return void 0;
   }
 }
-async function discoverTargets(port, timeoutMs) {
+async function discoverTargets(port2, timeoutMs) {
   const dgram = getNodeDgramModule();
   if (!dgram) {
     throw new Error("Attach discovery requires Node.js dgram runtime. Use attach.endpoint (e.g. tcp://127.0.0.1:43042) or run the extension in desktop extension host.");
@@ -2576,7 +2557,7 @@ async function discoverTargets(port, timeoutMs) {
     socket.bind(0, () => {
       try {
         socket.setBroadcast(true);
-        socket.send(Buffer.from(DISCOVERY_PROBE, "utf8"), port, "255.255.255.255");
+        socket.send(Buffer.from(DISCOVERY_PROBE, "utf8"), port2, "255.255.255.255");
       } catch (error) {
         finish(void 0, error);
         return;
@@ -2585,20 +2566,20 @@ async function discoverTargets(port, timeoutMs) {
     });
   });
 }
-async function resolveAttachTarget(args, _readTextFile) {
-  if (args.endpoint) {
+async function resolveAttachTarget(args2, _readTextFile) {
+  if (args2.endpoint) {
     return {
-      processId: args.processId ?? "unknown",
-      endpoint: args.endpoint
+      processId: args2.processId ?? "unknown",
+      endpoint: args2.endpoint
     };
   }
-  const discoveryPort = typeof args.discoveryPort === "number" && args.discoveryPort > 0 ? args.discoveryPort : DEFAULT_DISCOVERY_PORT;
-  const discoveryTimeoutMs = typeof args.discoveryTimeoutMs === "number" && args.discoveryTimeoutMs > 0 ? args.discoveryTimeoutMs : DEFAULT_DISCOVERY_TIMEOUT_MS;
+  const discoveryPort = typeof args2.discoveryPort === "number" && args2.discoveryPort > 0 ? args2.discoveryPort : DEFAULT_DISCOVERY_PORT;
+  const discoveryTimeoutMs = typeof args2.discoveryTimeoutMs === "number" && args2.discoveryTimeoutMs > 0 ? args2.discoveryTimeoutMs : DEFAULT_DISCOVERY_TIMEOUT_MS;
   const targets = await discoverTargets(discoveryPort, discoveryTimeoutMs);
   if (targets.length === 0) {
     throw new Error(`No debugger targets discovered on UDP port ${discoveryPort}.`);
   }
-  const processId = normalizeProcessId(args.processId);
+  const processId = normalizeProcessId(args2.processId);
   if (processId) {
     const matched = targets.find((t) => t.processId === processId);
     if (!matched) {
@@ -2654,11 +2635,11 @@ function parseTransportEndpoint(endpoint) {
       throw new Error(`Invalid tcp endpoint '${endpoint}'. Expected tcp://host:port.`);
     }
     const host = hostPort.substring(0, separator);
-    const port = Number(hostPort.substring(separator + 1));
-    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+    const port2 = Number(hostPort.substring(separator + 1));
+    if (!Number.isFinite(port2) || port2 <= 0 || port2 > 65535) {
       throw new Error(`Invalid tcp endpoint port in '${endpoint}'.`);
     }
-    return { kind: "tcp", host, port };
+    return { kind: "tcp", host, port: port2 };
   }
   if (endpoint.startsWith("pipe://")) {
     const rawPath = endpoint.substring("pipe://".length);
@@ -3026,11 +3007,11 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
    * The 'initialize' request is the first request called by the frontend
    * to interrogate the features the debug adapter provides.
    */
-  initializeRequest(response, args) {
-    if (args.supportsProgressReporting) {
+  initializeRequest(response, args2) {
+    if (args2.supportsProgressReporting) {
       this._reportProgress = true;
     }
-    if (args.supportsInvalidatedEvent) {
+    if (args2.supportsInvalidatedEvent) {
       this._useInvalidatedEvent = true;
     }
     response.body = response.body || {};
@@ -3081,12 +3062,12 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
    * Called at the end of the configuration sequence.
    * Indicates that all breakpoints etc. have been sent to the DA and that the 'launch' can start.
    */
-  configurationDoneRequest(response, args) {
-    super.configurationDoneRequest(response, args);
+  configurationDoneRequest(response, args2) {
+    super.configurationDoneRequest(response, args2);
     this._configurationDone.notify();
   }
-  disconnectRequest(response, args, request) {
-    console.log(`disconnectRequest suspend: ${args.suspendDebuggee}, terminate: ${args.terminateDebuggee}`);
+  disconnectRequest(response, args2, request) {
+    console.log(`disconnectRequest suspend: ${args2.suspendDebuggee}, terminate: ${args2.terminateDebuggee}`);
     if (this._attachTransport) {
       this._attachTransport.setCloseHandler(void 0);
       this._attachTransport.setEventHandler(void 0);
@@ -3102,10 +3083,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     this._attachScopeRefs.clear();
     this.sendResponse(response);
   }
-  async attachRequest(response, args) {
-    import_debugadapter.logger.setup(args.trace ? import_debugadapter.Logger.LogLevel.Verbose : import_debugadapter.Logger.LogLevel.Stop, false);
+  async attachRequest(response, args2) {
+    import_debugadapter.logger.setup(args2.trace ? import_debugadapter.Logger.LogLevel.Verbose : import_debugadapter.Logger.LogLevel.Stop, false);
     try {
-      const target = await resolveAttachTarget(args, async (path) => {
+      const target = await resolveAttachTarget(args2, async (path) => {
         const data = await this._fileAccessor.readFile(path);
         return new TextDecoder().decode(data);
       });
@@ -3171,26 +3152,26 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       });
     }
   }
-  async launchRequest(response, args) {
-    import_debugadapter.logger.setup(args.trace ? import_debugadapter.Logger.LogLevel.Verbose : import_debugadapter.Logger.LogLevel.Stop, false);
+  async launchRequest(response, args2) {
+    import_debugadapter.logger.setup(args2.trace ? import_debugadapter.Logger.LogLevel.Verbose : import_debugadapter.Logger.LogLevel.Stop, false);
     await this._configurationDone.wait(1e3);
-    await this._runtime.start(args.program, !!args.stopOnEntry, !args.noDebug);
-    if (args.compileError) {
+    await this._runtime.start(args2.program, !!args2.stopOnEntry, !args2.noDebug);
+    if (args2.compileError) {
       this.sendErrorResponse(response, {
         id: 1001,
         format: `compile error: some fake error.`,
-        showUser: args.compileError === "show" ? true : args.compileError === "hide" ? false : void 0
+        showUser: args2.compileError === "show" ? true : args2.compileError === "hide" ? false : void 0
       });
     } else {
       this.sendResponse(response);
     }
   }
-  setFunctionBreakPointsRequest(response, args, request) {
+  setFunctionBreakPointsRequest(response, args2, request) {
     this.sendResponse(response);
   }
-  async setBreakPointsRequest(response, args) {
-    const path = args.source.path;
-    const clientLines = args.lines || [];
+  async setBreakPointsRequest(response, args2) {
+    const path = args2.source.path;
+    const clientLines = args2.lines || [];
     if (path) {
       this._pendingAttachBreakpoints.set(path, [...clientLines]);
     }
@@ -3233,13 +3214,13 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  breakpointLocationsRequest(response, args, request) {
-    if (args.source.path) {
-      const bps = this._runtime.getBreakpoints(args.source.path, this.convertClientLineToDebugger(args.line));
+  breakpointLocationsRequest(response, args2, request) {
+    if (args2.source.path) {
+      const bps = this._runtime.getBreakpoints(args2.source.path, this.convertClientLineToDebugger(args2.line));
       response.body = {
         breakpoints: bps.map((col) => {
           return {
-            line: args.line,
+            line: args2.line,
             column: this.convertDebuggerColumnToClient(col)
           };
         })
@@ -3251,14 +3232,14 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     this.sendResponse(response);
   }
-  async setExceptionBreakPointsRequest(response, args) {
+  async setExceptionBreakPointsRequest(response, args2) {
     let namedException = void 0;
     let otherExceptions = false;
-    if (args.filterOptions) {
-      for (const filterOption of args.filterOptions) {
+    if (args2.filterOptions) {
+      for (const filterOption of args2.filterOptions) {
         switch (filterOption.filterId) {
           case "namedException":
-            namedException = args.filterOptions[0].condition;
+            namedException = args2.filterOptions[0].condition;
             break;
           case "otherExceptions":
             otherExceptions = true;
@@ -3266,15 +3247,15 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
         }
       }
     }
-    if (args.filters) {
-      if (args.filters.indexOf("otherExceptions") >= 0) {
+    if (args2.filters) {
+      if (args2.filters.indexOf("otherExceptions") >= 0) {
         otherExceptions = true;
       }
     }
     this._runtime.setExceptionsFilters(namedException, otherExceptions);
     this.sendResponse(response);
   }
-  exceptionInfoRequest(response, args) {
+  exceptionInfoRequest(response, args2) {
     if (this._isAttachedTransport) {
       const stop = this._attachStoppedState ?? this._attachStopHistory.find((s) => s.reason === "exception");
       if (stop?.reason === "exception") {
@@ -3331,10 +3312,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  async stackTraceRequest(response, args) {
+  async stackTraceRequest(response, args2) {
     if (this._isAttachedTransport) {
-      const startFrame2 = typeof args.startFrame === "number" ? args.startFrame : 0;
-      const maxLevels2 = typeof args.levels === "number" ? args.levels : 1e3;
+      const startFrame2 = typeof args2.startFrame === "number" ? args2.startFrame : 0;
+      const maxLevels2 = typeof args2.levels === "number" ? args2.levels : 1e3;
       if (this._attachTransport) {
         try {
           const payload = await this._attachTransport.sendRequest("stackTrace", {
@@ -3377,8 +3358,8 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       this.sendResponse(response);
       return;
     }
-    const startFrame = typeof args.startFrame === "number" ? args.startFrame : 0;
-    const maxLevels = typeof args.levels === "number" ? args.levels : 1e3;
+    const startFrame = typeof args2.startFrame === "number" ? args2.startFrame : 0;
+    const maxLevels = typeof args2.levels === "number" ? args2.levels : 1e3;
     const endFrame = startFrame + maxLevels;
     const stk = this._runtime.stack(startFrame, endFrame);
     response.body = {
@@ -3403,10 +3384,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  scopesRequest(response, args) {
+  scopesRequest(response, args2) {
     if (this._isAttachedTransport) {
       const localsRef = this._variableHandles.create("locals");
-      this._attachScopeRefs.set(localsRef, { scope: "locals", frameId: args.frameId });
+      this._attachScopeRefs.set(localsRef, { scope: "locals", frameId: args2.frameId });
       const globalsRef = this._variableHandles.create("globals");
       this._attachScopeRefs.set(globalsRef, { scope: "globals" });
       response.body = {
@@ -3466,10 +3447,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     this.sendResponse(response);
   }
-  async variablesRequest(response, args, request) {
+  async variablesRequest(response, args2, request) {
     let vs = [];
-    const attachScopeRef = this._attachScopeRefs.get(args.variablesReference);
-    const v = this._variableHandles.get(args.variablesReference);
+    const attachScopeRef = this._attachScopeRefs.get(args2.variablesReference);
+    const v = this._variableHandles.get(args2.variablesReference);
     if (this._isAttachedTransport && this._attachTransport && attachScopeRef) {
       if (attachScopeRef.scope === "locals") {
         try {
@@ -3511,7 +3492,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  setVariableRequest(response, args) {
+  setVariableRequest(response, args2) {
     if (this._isAttachedTransport) {
       this.sendErrorResponse(response, {
         id: 2008,
@@ -3519,10 +3500,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       });
       return;
     }
-    const container = this._variableHandles.get(args.variablesReference);
-    const rv = container === "locals" ? this._runtime.getLocalVariable(args.name) : container instanceof RuntimeVariable && container.value instanceof Array ? container.value.find((v) => v.name === args.name) : void 0;
+    const container = this._variableHandles.get(args2.variablesReference);
+    const rv = container === "locals" ? this._runtime.getLocalVariable(args2.name) : container instanceof RuntimeVariable && container.value instanceof Array ? container.value.find((v) => v.name === args2.name) : void 0;
     if (rv) {
-      rv.value = this.convertToRuntime(args.value);
+      rv.value = this.convertToRuntime(args2.value);
       response.body = this.convertFromRuntime(rv);
       if (rv.memory && rv.reference) {
         this.sendEvent(new import_debugadapter.MemoryEvent(String(rv.reference), 0, rv.memory.length));
@@ -3530,7 +3511,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     this.sendResponse(response);
   }
-  continueRequest(response, args) {
+  continueRequest(response, args2) {
     if (this._isAttachedTransport && this._attachTransport) {
       this._attachTransport.sendRequest("continue").then(() => this.sendResponse(response)).catch((error) => {
         this.sendErrorResponse(response, {
@@ -3543,7 +3524,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     this._runtime.continue(false);
     this.sendResponse(response);
   }
-  pauseRequest(response, args) {
+  pauseRequest(response, args2) {
     if (this._isAttachedTransport && this._attachTransport) {
       this._attachTransport.sendRequest("pause").then(() => this.sendResponse(response)).catch((error) => {
         this.sendErrorResponse(response, {
@@ -3555,11 +3536,11 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     this.sendResponse(response);
   }
-  reverseContinueRequest(response, args) {
+  reverseContinueRequest(response, args2) {
     this._runtime.continue(true);
     this.sendResponse(response);
   }
-  nextRequest(response, args) {
+  nextRequest(response, args2) {
     if (this._isAttachedTransport && this._attachTransport) {
       this._attachTransport.sendRequest("next").then(() => this.sendResponse(response)).catch((error) => {
         this.sendErrorResponse(response, {
@@ -3569,15 +3550,15 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       });
       return;
     }
-    this._runtime.step(args.granularity === "instruction", false);
+    this._runtime.step(args2.granularity === "instruction", false);
     this.sendResponse(response);
   }
-  stepBackRequest(response, args) {
-    this._runtime.step(args.granularity === "instruction", true);
+  stepBackRequest(response, args2) {
+    this._runtime.step(args2.granularity === "instruction", true);
     this.sendResponse(response);
   }
-  stepInTargetsRequest(response, args) {
-    const targets = this._runtime.getStepInTargets(args.frameId);
+  stepInTargetsRequest(response, args2) {
+    const targets = this._runtime.getStepInTargets(args2.frameId);
     response.body = {
       targets: targets.map((t) => {
         return { id: t.id, label: t.label };
@@ -3585,7 +3566,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  stepInRequest(response, args) {
+  stepInRequest(response, args2) {
     if (this._isAttachedTransport && this._attachTransport) {
       this._attachTransport.sendRequest("stepIn").then(() => this.sendResponse(response)).catch((error) => {
         this.sendErrorResponse(response, {
@@ -3595,10 +3576,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       });
       return;
     }
-    this._runtime.stepIn(args.targetId);
+    this._runtime.stepIn(args2.targetId);
     this.sendResponse(response);
   }
-  stepOutRequest(response, args) {
+  stepOutRequest(response, args2) {
     if (this._isAttachedTransport && this._attachTransport) {
       this._attachTransport.sendRequest("stepOut").then(() => this.sendResponse(response)).catch((error) => {
         this.sendErrorResponse(response, {
@@ -3611,9 +3592,9 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     this._runtime.stepOut();
     this.sendResponse(response);
   }
-  async evaluateRequest(response, args) {
-    if (this._isAttachedTransport && args.context === "repl") {
-      const isMutatingReplCommand = /^(new|del)\s+[0-9]+$/.test(args.expression.trim());
+  async evaluateRequest(response, args2) {
+    if (this._isAttachedTransport && args2.context === "repl") {
+      const isMutatingReplCommand = /^(new|del)\s+[0-9]+$/.test(args2.expression.trim());
       if (isMutatingReplCommand) {
         this.sendErrorResponse(response, {
           id: 2010,
@@ -3624,9 +3605,9 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     let reply;
     let rv;
-    switch (args.context) {
+    switch (args2.context) {
       case "repl":
-        const matches = /new +([0-9]+)/.exec(args.expression);
+        const matches = /new +([0-9]+)/.exec(args2.expression);
         if (matches && matches.length === 2) {
           const mbp = await this._runtime.setBreakPoint(this._runtime.sourceFile, this.convertClientLineToDebugger(parseInt(matches[1])));
           const bp = new import_debugadapter.Breakpoint(mbp.verified, this.convertDebuggerLineToClient(mbp.line), void 0, this.createSource(this._runtime.sourceFile));
@@ -3634,7 +3615,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
           this.sendEvent(new import_debugadapter.BreakpointEvent("new", bp));
           reply = `breakpoint created`;
         } else {
-          const matches2 = /del +([0-9]+)/.exec(args.expression);
+          const matches2 = /del +([0-9]+)/.exec(args2.expression);
           if (matches2 && matches2.length === 2) {
             const mbp = this._runtime.clearBreakPoint(this._runtime.sourceFile, this.convertClientLineToDebugger(parseInt(matches2[1])));
             if (mbp) {
@@ -3644,7 +3625,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
               reply = `breakpoint deleted`;
             }
           } else {
-            const matches3 = /progress/.exec(args.expression);
+            const matches3 = /progress/.exec(args2.expression);
             if (matches3 && matches3.length === 1) {
               if (this._reportProgress) {
                 reply = `progress started`;
@@ -3657,10 +3638,10 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
         }
       // fall through
       default:
-        if (args.expression.startsWith("$")) {
-          rv = this._runtime.getLocalVariable(args.expression.substr(1));
+        if (args2.expression.startsWith("$")) {
+          rv = this._runtime.getLocalVariable(args2.expression.substr(1));
         } else {
-          rv = new RuntimeVariable("eval", this.convertToRuntime(args.expression));
+          rv = new RuntimeVariable("eval", this.convertToRuntime(args2.expression));
         }
         break;
     }
@@ -3674,13 +3655,13 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       };
     } else {
       response.body = {
-        result: reply ? reply : `evaluate(context: '${args.context}', '${args.expression}')`,
+        result: reply ? reply : `evaluate(context: '${args2.context}', '${args2.expression}')`,
         variablesReference: 0
       };
     }
     this.sendResponse(response);
   }
-  setExpressionRequest(response, args) {
+  setExpressionRequest(response, args2) {
     if (this._isAttachedTransport) {
       this.sendErrorResponse(response, {
         id: 2011,
@@ -3688,17 +3669,17 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       });
       return;
     }
-    if (args.expression.startsWith("$")) {
-      const rv = this._runtime.getLocalVariable(args.expression.substr(1));
+    if (args2.expression.startsWith("$")) {
+      const rv = this._runtime.getLocalVariable(args2.expression.substr(1));
       if (rv) {
-        rv.value = this.convertToRuntime(args.value);
+        rv.value = this.convertToRuntime(args2.value);
         response.body = this.convertFromRuntime(rv);
         this.sendResponse(response);
       } else {
         this.sendErrorResponse(response, {
           id: 1002,
           format: `variable '{lexpr}' not found`,
-          variables: { lexpr: args.expression },
+          variables: { lexpr: args2.expression },
           showUser: true
         });
       }
@@ -3706,7 +3687,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       this.sendErrorResponse(response, {
         id: 1003,
         format: `'{lexpr}' not an assignable expression`,
-        variables: { lexpr: args.expression },
+        variables: { lexpr: args2.expression },
         showUser: true
       });
     }
@@ -3738,35 +3719,35 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
 `));
     this._cancelledProgressId = void 0;
   }
-  dataBreakpointInfoRequest(response, args) {
+  dataBreakpointInfoRequest(response, args2) {
     response.body = {
       dataId: null,
       description: "cannot break on data access",
       accessTypes: void 0,
       canPersist: false
     };
-    if (args.variablesReference && args.name) {
-      const v = this._variableHandles.get(args.variablesReference);
+    if (args2.variablesReference && args2.name) {
+      const v = this._variableHandles.get(args2.variablesReference);
       if (v === "globals") {
-        response.body.dataId = args.name;
-        response.body.description = args.name;
+        response.body.dataId = args2.name;
+        response.body.description = args2.name;
         response.body.accessTypes = ["write"];
         response.body.canPersist = true;
       } else {
-        response.body.dataId = args.name;
-        response.body.description = args.name;
+        response.body.dataId = args2.name;
+        response.body.description = args2.name;
         response.body.accessTypes = ["read", "write", "readWrite"];
         response.body.canPersist = true;
       }
     }
     this.sendResponse(response);
   }
-  setDataBreakpointsRequest(response, args) {
+  setDataBreakpointsRequest(response, args2) {
     this._runtime.clearAllDataBreakpoints();
     response.body = {
       breakpoints: []
     };
-    for (const dbp of args.breakpoints) {
+    for (const dbp of args2.breakpoints) {
       const ok = this._runtime.setDataBreakpoint(dbp.dataId, dbp.accessType || "write");
       response.body.breakpoints.push({
         verified: ok
@@ -3774,7 +3755,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     }
     this.sendResponse(response);
   }
-  completionsRequest(response, args) {
+  completionsRequest(response, args2) {
     response.body = {
       targets: [
         {
@@ -3806,19 +3787,19 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  cancelRequest(response, args) {
-    if (args.requestId) {
-      this._cancellationTokens.set(args.requestId, true);
+  cancelRequest(response, args2) {
+    if (args2.requestId) {
+      this._cancellationTokens.set(args2.requestId, true);
     }
-    if (args.progressId) {
-      this._cancelledProgressId = args.progressId;
+    if (args2.progressId) {
+      this._cancelledProgressId = args2.progressId;
     }
   }
-  disassembleRequest(response, args) {
-    const memoryInt = args.memoryReference.slice(3);
+  disassembleRequest(response, args2) {
+    const memoryInt = args2.memoryReference.slice(3);
     const baseAddress = parseInt(memoryInt);
-    const offset = args.instructionOffset || 0;
-    const count = args.instructionCount;
+    const offset = args2.instructionOffset || 0;
+    const count = args2.instructionCount;
     const isHex = memoryInt.startsWith("0x");
     const pad = isHex ? memoryInt.length - 2 : memoryInt.length;
     const loc = this.createSource(this._runtime.sourceFile);
@@ -3842,9 +3823,9 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  setInstructionBreakpointsRequest(response, args) {
+  setInstructionBreakpointsRequest(response, args2) {
     this._runtime.clearInstructionBreakpoints();
-    const breakpoints = args.breakpoints.map((ibp) => {
+    const breakpoints = args2.breakpoints.map((ibp) => {
       const address = parseInt(ibp.instructionReference.slice(3));
       const offset = ibp.offset || 0;
       return {
@@ -3856,7 +3837,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
     };
     this.sendResponse(response);
   }
-  customRequest(command, response, args) {
+  customRequest(command, response, args2) {
     if (command === "toggleFormatting") {
       this._valuesInHex = !this._valuesInHex;
       if (this._useInvalidatedEvent) {
@@ -3864,7 +3845,7 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
       }
       this.sendResponse(response);
     } else {
-      super.customRequest(command, response, args);
+      super.customRequest(command, response, args2);
     }
   }
   //---- helpers
@@ -3944,260 +3925,42 @@ var FosDebugSession = class _FosDebugSession extends import_debugadapter.Logging
   }
 };
 
-// src/activateFosDebug.ts
-var vscode = __toESM(require("vscode"));
-function activateFosDebug(context, factory) {
-  context.subscriptions.push(
-    vscode.commands.registerCommand("extension.fos-debug.toggleFormatting", (variable) => {
-      const ds = vscode.debug.activeDebugSession;
-      if (ds) {
-        ds.customRequest("toggleFormatting");
-      }
-    })
-  );
-  context.subscriptions.push(vscode.commands.registerCommand("extension.fos-debug.getProgramName", (config) => {
-    return vscode.window.showInputBox({
-      placeHolder: "Please enter the name of a markdown file in the workspace folder",
-      value: "readme.md"
-    });
-  }));
-  const provider = new FosConfigurationProvider();
-  context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider("fos", provider));
-  context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider("fos", {
-    provideDebugConfigurations(folder) {
-      return [
-        {
-          name: "Dynamic Launch",
-          request: "launch",
-          type: "fos",
-          program: "${file}"
-        },
-        {
-          name: "Another Dynamic Launch",
-          request: "launch",
-          type: "fos",
-          program: "${file}"
-        },
-        {
-          name: "FOS Launch",
-          request: "launch",
-          type: "fos",
-          program: "${file}"
-        }
-      ];
-    }
-  }, vscode.DebugConfigurationProviderTriggerKind.Dynamic));
-  if (factory) {
-    context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory("fos", factory));
-    if ("dispose" in factory) {
-    }
-  }
-  context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider("fos", {
-    provideEvaluatableExpression(document, position) {
-      const VARIABLE_REGEXP = /\$[a-z][a-z0-9]*/ig;
-      const line = document.lineAt(position.line).text;
-      let m;
-      while (m = VARIABLE_REGEXP.exec(line)) {
-        const varRange = new vscode.Range(position.line, m.index, position.line, m.index + m[0].length);
-        if (varRange.contains(position)) {
-          return new vscode.EvaluatableExpression(varRange);
-        }
-      }
-      return void 0;
-    }
-  }));
-  context.subscriptions.push(vscode.languages.registerInlineValuesProvider("fos", {
-    provideInlineValues(document, viewport, context2) {
-      const allValues = [];
-      for (let l = viewport.start.line; l <= context2.stoppedLocation.end.line; l++) {
-        const line = document.lineAt(l);
-        var regExp = /\$([a-z][a-z0-9]*)/ig;
-        do {
-          var m = regExp.exec(line.text);
-          if (m) {
-            const varName = m[1];
-            const varRange = new vscode.Range(l, m.index, l, m.index + varName.length);
-            allValues.push(new vscode.InlineValueVariableLookup(varRange, varName, false));
-          }
-        } while (m);
-      }
-      return allValues;
-    }
-  }));
-}
-var FosConfigurationProvider = class {
-  /**
-   * Massage a debug configuration just before a debug session is being launched,
-   * e.g. add all missing attributes to the debug configuration.
-   */
-  async resolveDebugConfiguration(folder, config, token) {
-    if (!config.type && !config.request && !config.name) {
-      const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.languageId === "fos") {
-        config.type = "fos";
-        config.name = "Launch";
-        config.request = "launch";
-        config.program = "${file}";
-        config.stopOnEntry = true;
-      }
-    }
-    if (config.request === "launch" && !config.program) {
-      return vscode.window.showInformationMessage("Cannot find a program to debug").then((_) => {
-        return void 0;
-      });
-    }
-    if (config.request === "attach" && !config.endpoint) {
-      const discoveryPort = typeof config.discoveryPort === "number" && config.discoveryPort > 0 ? config.discoveryPort : 43001;
-      const discoveryTimeoutMs = typeof config.discoveryTimeoutMs === "number" && config.discoveryTimeoutMs > 0 ? config.discoveryTimeoutMs : 800;
-      let targets;
-      try {
-        targets = await discoverTargets(discoveryPort, discoveryTimeoutMs);
-      } catch (error) {
-        const message = error.message;
-        const endpoint = await vscode.window.showInputBox({
-          title: "Choose endpoint to attach:",
-          prompt: `Attach discovery unavailable (${message}). Enter endpoint manually (e.g. tcp://127.0.0.1:43042).`,
-          placeHolder: "tcp://127.0.0.1:43042",
-          ignoreFocusOut: true
-        });
-        if (!endpoint || endpoint.trim().length === 0) {
-          return void 0;
-        }
-        config.endpoint = endpoint.trim();
-        return config;
-      }
-      if (targets.length === 0) {
-        await vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
-        return void 0;
-      }
-      targets.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
-      const pickItems = targets.map((target) => {
-        const role = target.targetName ? target.targetName.charAt(0).toUpperCase() + target.targetName.slice(1) : "Runtime";
-        return {
-          label: `${role}: ${target.endpoint}`,
-          target
-        };
-      });
-      pickItems.push({
-        label: "Cancel",
-        cancel: true
-      });
-      const picked = await vscode.window.showQuickPick(pickItems, {
-        title: "Choose endpoint to attach:",
-        placeHolder: "Choose endpoint to attach:",
-        ignoreFocusOut: true
-      });
-      if (!picked || picked.cancel || !picked.target) {
-        return void 0;
-      }
-      config.endpoint = picked.target.endpoint;
-      config.processId = picked.target.processId;
-    }
-    return config;
-  }
-};
-var workspaceFileAccessor = {
-  isWindows: typeof process !== "undefined" && process.platform === "win32",
-  async readFile(path) {
-    let uri;
-    try {
-      uri = pathToUri(path);
-    } catch (e) {
-      return new TextEncoder().encode(`cannot read '${path}'`);
-    }
-    return await vscode.workspace.fs.readFile(uri);
+// src/debugAdapter.ts
+var import_fs = require("fs");
+var Net = __toESM(require("net"));
+var fsAccessor = {
+  isWindows: process.platform === "win32",
+  readFile(path) {
+    return import_fs.promises.readFile(path);
   },
-  async writeFile(path, contents) {
-    await vscode.workspace.fs.writeFile(pathToUri(path), contents);
+  writeFile(path, contents) {
+    return import_fs.promises.writeFile(path, contents);
   }
 };
-function pathToUri(path) {
-  try {
-    return vscode.Uri.file(path);
-  } catch (e) {
-    return vscode.Uri.parse(path);
+var port = 0;
+var args = process.argv.slice(2);
+args.forEach(function(val, index, array) {
+  const portMatch = /^--server=(\d{4,5})$/.exec(val);
+  if (portMatch) {
+    port = parseInt(portMatch[1], 10);
   }
-}
-
-// src/extension.ts
-var runMode = "inline";
-function activate(context) {
-  switch (runMode) {
-    case "server":
-      activateFosDebug(context, new FosDebugAdapterServerDescriptorFactory());
-      break;
-    case "namedPipeServer":
-      activateFosDebug(context, new FosDebugAdapterNamedPipeServerDescriptorFactory());
-      break;
-    case "external":
-    default:
-      activateFosDebug(context, new DebugAdapterExecutableFactory());
-      break;
-    case "inline":
-      activateFosDebug(context);
-      break;
-  }
-}
-function deactivate() {
-}
-var DebugAdapterExecutableFactory = class {
-  // The following use of a DebugAdapter factory shows how to control what debug adapter executable is used.
-  // Since the code implements the default behavior, it is absolutely not neccessary and we show it here only for educational purpose.
-  createDebugAdapterDescriptor(_session, executable) {
-    if (!executable) {
-      const command = "absolute path to my DA executable";
-      const args = [
-        "some args",
-        "another arg"
-      ];
-      const options = {
-        cwd: "working directory for executable",
-        env: { "envVariable": "some value" }
-      };
-      executable = new vscode2.DebugAdapterExecutable(command, args, options);
-    }
-    return executable;
-  }
-};
-var FosDebugAdapterServerDescriptorFactory = class {
-  createDebugAdapterDescriptor(session, executable) {
-    if (!this.server) {
-      this.server = Net.createServer((socket) => {
-        const session2 = new FosDebugSession(workspaceFileAccessor);
-        session2.setRunAsServer(true);
-        session2.start(socket, socket);
-      }).listen(0);
-    }
-    return new vscode2.DebugAdapterServer(this.server.address().port);
-  }
-  dispose() {
-    if (this.server) {
-      this.server.close();
-    }
-  }
-};
-var FosDebugAdapterNamedPipeServerDescriptorFactory = class {
-  createDebugAdapterDescriptor(session, executable) {
-    if (!this.server) {
-      const pipeName = (0, import_crypto.randomBytes)(10).toString("utf8");
-      const pipePath = import_process.platform === "win32" ? (0, import_path.join)("\\\\.\\pipe\\", pipeName) : (0, import_path.join)((0, import_os.tmpdir)(), pipeName);
-      this.server = Net.createServer((socket) => {
-        const session2 = new FosDebugSession(workspaceFileAccessor);
-        session2.setRunAsServer(true);
-        session2.start(socket, socket);
-      }).listen(pipePath);
-    }
-    return new vscode2.DebugAdapterNamedPipeServer(this.server.address());
-  }
-  dispose() {
-    if (this.server) {
-      this.server.close();
-    }
-  }
-};
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  activate,
-  deactivate
 });
-//# sourceMappingURL=extension.js.map
+if (port > 0) {
+  console.error(`waiting for debug protocol on port ${port}`);
+  Net.createServer((socket) => {
+    console.error(">> accepted connection from client");
+    socket.on("end", () => {
+      console.error(">> client connection closed\n");
+    });
+    const session = new FosDebugSession(fsAccessor);
+    session.setRunAsServer(true);
+    session.start(socket, socket);
+  }).listen(port);
+} else {
+  const session = new FosDebugSession(fsAccessor);
+  process.on("SIGTERM", () => {
+    session.shutdown();
+  });
+  session.start(process.stdin, process.stdout);
+}
+//# sourceMappingURL=debugAdapter.js.map
