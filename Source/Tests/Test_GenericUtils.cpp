@@ -48,6 +48,13 @@ TEST_CASE("GenericUtils")
         CHECK(Hashing::MurmurHash2(data, 7) == 4188131059U);
         CHECK(std::bit_cast<int32>(Hashing::MurmurHash2(data, 7)) == -106836237);
         CHECK(Hashing::MurmurHash2_64(data, 6) == 13226566493390071673ULL);
+
+        CHECK(Hashing::MurmurHash2(nullptr, 0) == 0);
+        CHECK(Hashing::MurmurHash2_64(nullptr, 0) == 0);
+
+        const auto* data2 = reinterpret_cast<const uint8*>("abcdefh");
+        CHECK(Hashing::MurmurHash2(data, 7) != Hashing::MurmurHash2(data2, 7));
+        CHECK(Hashing::MurmurHash2_64(data, 7) != Hashing::MurmurHash2_64(data2, 7));
     }
 
     SECTION("StdRandom")
@@ -85,6 +92,19 @@ TEST_CASE("GenericUtils")
         }
         CHECK(t3 == 5);
         CHECK(t4 == 25);
+
+        auto t5 = 0;
+        for ([[maybe_unused]] const auto i : iterate_range(0)) {
+            t5++;
+        }
+        CHECK(t5 == 0);
+
+        const vector<int32> empty_v;
+        auto t6 = 0;
+        for ([[maybe_unused]] const auto i : iterate_range(empty_v)) {
+            t6++;
+        }
+        CHECK(t6 == 0);
     }
 
     SECTION("lerp")
@@ -106,6 +126,10 @@ TEST_CASE("GenericUtils")
         CHECK(lerp(7u, 5u, 0.76f) == 5);
         CHECK(lerp(7u, 5u, 1.0f) == 5);
         CHECK(lerp(7u, 5u, 2.0f) == 5);
+
+        CHECK(lerp(11, 11, -2.0f) == 11);
+        CHECK(lerp(11, 11, 0.5f) == 11);
+        CHECK(lerp(11, 11, 2.0f) == 11);
     }
 
     SECTION("FloatCompare")
@@ -114,6 +138,9 @@ TEST_CASE("GenericUtils")
         CHECK(is_float_equal(-110.95667f, -110.95667f));
         CHECK(is_float_equal(0.95667f, 0.95667f));
         CHECK(!is_float_equal(1.0f, -1.0f));
+        CHECK(is_float_equal(1.0f, 1.0f + 1.0e-6f));
+        CHECK_FALSE(is_float_equal(1.0f, 1.0f + 1.0e-4f, 1.0e-5f));
+        CHECK(is_float_equal(1.0, 1.0 + 1.0e-9));
     }
 }
 

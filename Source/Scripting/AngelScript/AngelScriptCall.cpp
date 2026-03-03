@@ -496,12 +496,12 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                     arr->InsertLast(elem);
                 }
 
-                FO_AS_VERIFY(ctx->SetArgObject(i, arr));
-
                 if (arg_type.IsMutable) {
                     mutable_data[i] = arr;
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, static_cast<void*>(&mutable_data[i])));
                 }
                 else {
+                    FO_AS_VERIFY(ctx->SetArgObject(i, arr));
                     arr->Release();
                 }
             }
@@ -518,8 +518,10 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
 
                 if (arg_type.IsMutable) {
                     mutable_data[i] = dict;
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, static_cast<void*>(&mutable_data[i])));
                 }
                 else {
+                    FO_AS_VERIFY(ctx->SetArgObject(i, dict));
                     dict->Release();
                 }
             }

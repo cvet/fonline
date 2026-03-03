@@ -1559,6 +1559,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isSynced);
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
     FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
+    FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
 
     const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
 

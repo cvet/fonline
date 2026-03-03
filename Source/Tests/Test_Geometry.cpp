@@ -46,6 +46,7 @@ TEST_CASE("GeometryHelper")
     CHECK(GeometryHelper::GetDistance(0, 0, 0, 0) == 0);
     CHECK(GeometryHelper::GetDistance(0, 0, 1, 0) >= 0);
     CHECK(GeometryHelper::GetDistance(mpos {0, 0}, mpos {1, 1}) >= 0);
+    CHECK(GeometryHelper::GetDistance(1, 2, 7, 9) == GeometryHelper::GetDistance(7, 9, 1, 2));
 
     // GetDir
     CHECK(GeometryHelper::GetDir(0, 0, 1, 0) <= 7);
@@ -59,6 +60,7 @@ TEST_CASE("GeometryHelper")
 
     // GetDirAngleDiff
     CHECK(GeometryHelper::GetDirAngleDiff(30.0f, 60.0f) == 30.0f);
+    CHECK(GeometryHelper::GetDirAngleDiff(350.0f, 10.0f) == 20.0f);
 
     // GetDirAngleDiffSided
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(30.0f, 60.0f), 30.0f));
@@ -71,6 +73,10 @@ TEST_CASE("GeometryHelper")
         CHECK(dir == d);
         CHECK(GeometryHelper::NormalizeAngle(angle + 360 * 2) == angle);
     }
+    CHECK(GeometryHelper::NormalizeAngle(721) == 1);
+    CHECK(GeometryHelper::NormalizeAngle(-1) == 359);
+    CHECK(GeometryHelper::NormalizeAngle(-360) == 360);
+    CHECK(GeometryHelper::NormalizeAngle(-721) == 359);
 
     // CheckDist
     CHECK(GeometryHelper::CheckDist(mpos {0, 0}, mpos {0, 0}, 0));
@@ -115,6 +121,16 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::MoveHexAroundAwayUnsafe(ihex9, GeometryHelper::HexesInRadius(3));
     CHECK(GeometryHelper::GetDistance(ihex3, ihex9) == 4);
 
+    // MoveHexAroundAway (safe)
+    mpos safe_hex {5, 5};
+    CHECK(GeometryHelper::MoveHexAroundAway(safe_hex, 1, map_size));
+    CHECK(GeometryHelper::GetDistance(mpos {5, 5}, safe_hex) == 1);
+
+    mpos border_hex {0, 0};
+    const mpos border_before = border_hex;
+    CHECK_FALSE(GeometryHelper::MoveHexAroundAway(border_hex, 1, map_size));
+    CHECK(border_hex == border_before);
+
     // ForEachMultihexLines
     vector<uint8> lines = {2, 2, 4, 1};
     mpos start {5, 5};
@@ -124,6 +140,25 @@ TEST_CASE("GeometryHelper")
         count++;
     });
     CHECK(count == 3);
+
+    // ForEachMultihexLines edge cases
+    vector<uint8> invalid_and_odd = {9, 5, 2};
+    int32 skipped_count = 0;
+    GeometryHelper::ForEachMultihexLines(invalid_and_odd, start, map_size, [&](mpos) { skipped_count++; });
+    CHECK(skipped_count == 0);
+
+    vector<uint8> reverse_path = {2, 1, 5, 1};
+    int32 reverse_count = 0;
+    GeometryHelper::ForEachMultihexLines(reverse_path, start, map_size, [&](mpos pos) {
+        CHECK(pos != start);
+        reverse_count++;
+    });
+    CHECK(reverse_count == 1);
+
+    // HexesInRadius
+    CHECK(GeometryHelper::HexesInRadius(0) == 1);
+    CHECK(GeometryHelper::HexesInRadius(1) == 7);
+    CHECK(GeometryHelper::HexesInRadius(2) == 19);
 }
 
 FO_END_NAMESPACE

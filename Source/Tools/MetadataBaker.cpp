@@ -675,6 +675,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 
         const auto flags = span(tag_desc.Tokens).subspan(tok_index + 1);
         const bool is_common = target == "Common";
+        const bool is_client_only = target == "Client";
         const bool is_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
         const bool is_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
         const bool is_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
@@ -712,6 +713,9 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
         if (is_null_getter_for_proto && !is_virtual) {
             throw MetadataBakerException("Invalid Property codegen tag: null getter can only be on virtual property", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+        if (is_persistent && is_client_only) {
+            throw MetadataBakerException("Invalid Property codegen tag: persistent property can't be client only", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
         vector<string_view> tokens;

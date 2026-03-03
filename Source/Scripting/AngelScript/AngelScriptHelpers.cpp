@@ -194,7 +194,12 @@ auto MakeScriptArgName(const ComplexTypeDesc& type) -> string
         result += "@";
     }
     else {
-        result += "@+";
+        if (type.IsMutable) {
+            result += "@&";
+        }
+        else {
+            result += "@+";
+        }
     }
 
     return result;
