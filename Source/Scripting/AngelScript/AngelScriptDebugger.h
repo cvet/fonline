@@ -31,54 +31,50 @@
 // SOFTWARE.
 //
 
-#include "BasicCore.h"
-#include "Containers.h"
+#pragma once
+
+#include "Common.h"
+
+#include <angelscript.h>
+
+#if FO_ANGELSCRIPT_SCRIPTING
 
 FO_BEGIN_NAMESPACE
 
-struct Platform
+class AngelScriptBackend;
+enum class AngelScriptContextSetupReason : uint8;
+
+enum class DebuggerStepMode : uint8
 {
-    Platform() = delete;
+    None,
+    In,
+    Over,
+    Out,
+};
 
-    // Windows: OutputDebugStringW
-    // Android: __android_log_write ANDROID_LOG_INFO
-    // Other: none
-    static void InfoLog(const string& str) noexcept;
+class DebuggerEndpointServer final
+{
+public:
+    explicit DebuggerEndpointServer(const AngelScriptBackend* backend);
+    DebuggerEndpointServer(const DebuggerEndpointServer&) = delete;
+    auto operator=(const DebuggerEndpointServer&) = delete;
+    DebuggerEndpointServer(DebuggerEndpointServer&&) noexcept = delete;
+    auto operator=(DebuggerEndpointServer&&) noexcept = delete;
+    ~DebuggerEndpointServer();
 
-    // Windows (>= 10): SetThreadDescription
-    // Other: none
-    static void SetThreadName(const string& str) noexcept;
+    [[nodiscard]] auto IsPaused() const noexcept -> bool;
 
-    // Windows: GetModuleFileNameW
-    // Linux: readlink /proc/self/exe
-    // Mac: proc_pidpath
-    // Other: nullopt
-    static auto GetExePath() noexcept -> optional<string>;
+    void SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason);
+    void EmitEvent(string_view event_name, string_view body_json = "{}");
+    void Stop();
 
-    // Linux & Mac: fork
-    // Other: warning log message
-    static auto ForkProcess() noexcept -> bool;
+private:
+    static void AngelScriptLine(AngelScript::asIScriptContext* ctx, void* param);
 
-    // Windows: GetCurrentProcessId
-    // Linux & Mac: getpid
-    // Other: "0"
-    static auto GetCurrentProcessIdStr() noexcept -> string;
-
-    // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
-    // Linux & Mac: dlopen/dlclose/dlsym
-    // Other: nullptr
-    static auto LoadModule(const string& module_name) noexcept -> void*;
-    static void UnloadModule(void* module_handle) noexcept;
-    static auto GetFuncAddr(void* module_handle, const string& func_name) noexcept -> void*;
-    template<typename T>
-    static auto GetFuncAddr(void* module_handle, const string& func_name) noexcept -> T
-    {
-        return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
-    }
-
-    // Windows: GetAsyncKeyState
-    // Other: false
-    static auto IsShiftDown() noexcept -> bool;
+    class Impl;
+    unique_ptr<Impl> _impl {};
 };
 
 FO_END_NAMESPACE
+
+#endif

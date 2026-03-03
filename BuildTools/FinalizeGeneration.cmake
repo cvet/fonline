@@ -225,14 +225,9 @@ if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
 endif()
 
 # Json
-if(NOT FO_DISABLE_JSON)
-    StatusMessage("+ Json")
-    set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
-    include_directories("${FO_JSON_DIR}")
-    add_compile_definitions(FO_HAVE_JSON=1)
-else()
-    add_compile_definitions(FO_HAVE_JSON=0)
-endif()
+StatusMessage("+ Json")
+set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
+include_directories("${FO_JSON_DIR}")
 
 # LibreSSL
 if(FO_BUILD_SERVER_LIB)
@@ -587,6 +582,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Logging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
@@ -1003,6 +1000,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.cpp"

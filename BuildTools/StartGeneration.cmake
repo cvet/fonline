@@ -25,7 +25,6 @@ DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 DeclareOption(FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF)
-DeclareOption(FO_DISABLE_JSON "Force disable using of Json" OFF)
 DeclareOption(FO_DISABLE_MONGO "Force disable using of Mongo" OFF)
 DeclareOption(FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF)
 DeclareOption(FO_DISABLE_ASIO "Force disable using of Asio" OFF)

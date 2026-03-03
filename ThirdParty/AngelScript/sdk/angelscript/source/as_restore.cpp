@@ -3379,7 +3379,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 				 bc == asBC_COPY )
 		{
 			// In this case we know there is only 1 pointer on the stack above
-			asASSERT( offset == 1 );
+			// (FOnline Patch) asASSERT( offset == 1 );
 			return offset - (1 - AS_PTR_SIZE);
 		}
 
@@ -4498,7 +4498,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 				 bc == asBC_COPY )
 		{
 			// In this case we know there is only 1 pointer on the stack above
-			asASSERT( offset == AS_PTR_SIZE );
+			// (FOnline Patch) asASSERT( offset == AS_PTR_SIZE );
 			return offset + (1 - AS_PTR_SIZE);
 		}
 

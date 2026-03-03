@@ -173,6 +173,19 @@ auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing
 #endif
 }
 
+auto Platform::GetCurrentProcessIdStr() noexcept -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return strex("{}", ::GetCurrentProcessId()).str();
+#elif FO_LINUX || FO_MAC
+    return strex("{}", ::getpid()).str();
+#else
+    return "0";
+#endif
+}
+
 auto Platform::LoadModule(const string& module_name) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();

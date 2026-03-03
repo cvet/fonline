@@ -34,17 +34,15 @@
 #include "DataBase.h"
 #include "ImGuiStuff.h"
 
-FO_DISABLE_WARNINGS_PUSH()
-#if FO_HAVE_JSON
-#include "json.hpp"
-#endif
+#include <json.hpp>
 #if FO_HAVE_UNQLITE
-#include "unqlite.h"
+#include <unqlite.h>
 #endif
+FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_MONGO
-#include "mongoc/mongoc.h"
+#include <mongoc/mongoc.h>
 #endif
-#include "bson/bson.h"
+#include <bson/bson.h>
 FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
@@ -509,7 +507,6 @@ void DataBaseImpl::UnlockCommitThread()
     _commitThread.Resume();
 }
 
-#if FO_HAVE_JSON
 class DbJson final : public DataBaseImpl
 {
 public:
@@ -703,7 +700,6 @@ protected:
 private:
     string _storageDir {};
 };
-#endif
 
 #if FO_HAVE_UNQLITE
 class DbUnQLite final : public DataBaseImpl
@@ -1469,11 +1465,9 @@ auto ConnectToDataBase(string_view connection_info) -> DataBase
     if (const auto options = strvex(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());
 
-#if FO_HAVE_JSON
         if (options.front() == "JSON" && options.size() == 2) {
             return DataBase(SafeAlloc::MakeRaw<DbJson>(options[1]));
         }
-#endif
 #if FO_HAVE_UNQLITE
         if (options.front() == "DbUnQLite" && options.size() == 2) {
             return DataBase(SafeAlloc::MakeRaw<DbUnQLite>(options[1]));

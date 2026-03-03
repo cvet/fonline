@@ -70,6 +70,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32, ServerPort, 4000); // Server port number
+FIXED_SETTING(bool, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
+FIXED_SETTING(string, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size

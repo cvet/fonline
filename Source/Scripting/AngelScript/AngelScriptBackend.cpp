@@ -38,6 +38,7 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
+#include "AngelScriptDebugger.h"
 #include "AngelScriptDict.h"
 #include "AngelScriptEntity.h"
 #include "AngelScriptGlobals.h"
@@ -48,6 +49,7 @@
 #include "AngelScriptString.h"
 #include "AngelScriptTypes.h"
 
+#include <json.hpp>
 #include <preprocessor.h>
 
 FO_BEGIN_NAMESPACE
@@ -84,6 +86,12 @@ AngelScriptBackend::~AngelScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto endpoint_server = std::move(_debuggerEndpointServer);
+
+    if (endpoint_server) {
+        endpoint_server->Stop();
+    }
+
     for (const auto& cb : _cleanupCallbacks) {
         cb();
     }
@@ -100,6 +108,14 @@ AngelScriptBackend::~AngelScriptBackend()
 }
 
 auto AngelScriptBackend::GetGameEngine() -> BaseEngine*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_engine);
+    return _engine.get();
+}
+
+auto AngelScriptBackend::GetGameEngine() const -> const BaseEngine*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -136,13 +152,15 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_USE_CHARACTER_LITERALS, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_PRIVATE_PROP_AS_PROTECTED, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_REQUIRE_ENUM_SCOPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_INIT_GLOBAL_VARS_AFTER_BUILD, true));
+
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, false));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
 
@@ -156,6 +174,17 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     RegisterAngelScriptEntity(as_engine);
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
+
+    if (_engine && _engine->Settings.DebuggerEnabled) {
+        if (_debuggerEndpointServer == nullptr) {
+            try {
+                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
+            }
+            catch (...) {
+                WriteLog("Can't start AngelScript debugger endpoint server");
+            }
+        }
+    }
 }
 
 void AngelScriptBackend::SetMessageCallback(function<void(string_view)> message_callback)
@@ -488,10 +517,39 @@ void AngelScriptBackend::BindRequiredStuff()
 
         engine->AddLoopCallback([this, engine]() FO_DEFERRED {
             const auto time = engine->GameTime.GetFrameTime();
-            _contextMngr->ResumeSuspendedContexts(time);
+
+            if (_debuggerEndpointServer == nullptr || !_debuggerEndpointServer->IsPaused()) {
+                _contextMngr->ResumeSuspendedContexts(time);
+            }
         });
 
-        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.ScriptOverrunReportTime));
+        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.ScriptOverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32> line, string_view function_name) {
+            if (_debuggerEndpointServer != nullptr) {
+                nlohmann::json body;
+                body["reason"] = reason;
+
+                if (!text.empty()) {
+                    body["text"] = text;
+                }
+                if (!source_path.empty()) {
+                    body["source"] = source_path;
+                }
+                if (line.has_value()) {
+                    body["line"] = line.value();
+                }
+                if (!function_name.empty()) {
+                    body["function"] = function_name;
+                }
+
+                _debuggerEndpointServer->EmitEvent("stopped", body.dump());
+            }
+        });
+
+        _contextMngr->SetContextSetupCallback([this](AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason) {
+            if (_debuggerEndpointServer != nullptr) {
+                _debuggerEndpointServer->SetupContext(ctx, reason);
+            }
+        });
     }
 }
 

@@ -46,6 +46,8 @@ class ScriptArray;
 
 FO_BEGIN_NAMESPACE
 
+class DebuggerEndpointServer;
+
 class AngelScriptBackend : public ScriptSystemBackend
 {
 public:
@@ -60,6 +62,7 @@ public:
     [[nodiscard]] auto GetScriptSys() const noexcept -> const ScriptSystem* { return _scriptSys.get(); }
     [[nodiscard]] auto HasGameEngine() const noexcept -> bool { return !!_engine; } // Not present in baker/compiler
     [[nodiscard]] auto GetGameEngine() -> BaseEngine*; // Assert if not specified
+    [[nodiscard]] auto GetGameEngine() const -> const BaseEngine*; // Assert if not specified
     [[nodiscard]] auto HasEntityMngr() const noexcept -> bool { return !!_entityMngr; } // Not present on client
     [[nodiscard]] auto GetEntityMngr() -> EntityManagerApi*; // Assert if not specified
     [[nodiscard]] auto GetContextMngr() noexcept -> AngelScriptContextManager* { return _contextMngr.get(); }
@@ -82,6 +85,7 @@ private:
     unique_ptr<AngelScriptContextManager> _contextMngr {};
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
+    unique_ptr<DebuggerEndpointServer> _debuggerEndpointServer {};
 };
 
 FO_END_NAMESPACE
