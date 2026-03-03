@@ -32,6 +32,7 @@
 //
 
 #include "DataBase.h"
+#include "ImGuiStuff.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_JSON
@@ -70,6 +71,9 @@ public:
     void CommitChanges();
     void ClearChanges() noexcept;
     void WaitCommitThread() const;
+    void LockCommitThread();
+    void UnlockCommitThread();
+    virtual void DrawGui() { ImGui::TextUnformatted("No info"); }
 
 protected:
     [[nodiscard]] virtual auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document = 0;
@@ -175,6 +179,16 @@ void DataBase::ClearChanges() noexcept
     FO_STACK_TRACE_ENTRY();
 
     _impl->ClearChanges();
+}
+
+void DataBase::DrawGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _impl->LockCommitThread();
+    auto unlocker = scope_exit([this]() noexcept { safe_call([this] { _impl->UnlockCommitThread(); }); });
+
+    _impl->DrawGui();
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson, char escape_dot)
@@ -358,8 +372,6 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
         return _recordChanges.at(collection_name).at(id).Copy();
     }
 
-    _commitThread.Wait();
-
     auto doc = GetRecord(collection_name, id);
 
     if (_recordChanges.count(collection_name) != 0 && _recordChanges.at(collection_name).count(id) != 0) {
@@ -463,7 +475,6 @@ void DataBaseImpl::CommitChanges()
         }
 
         CommitRecords();
-
         return std::nullopt;
     });
 }
@@ -482,6 +493,20 @@ void DataBaseImpl::WaitCommitThread() const
     FO_STACK_TRACE_ENTRY();
 
     _commitThread.Wait();
+}
+
+void DataBaseImpl::LockCommitThread()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _commitThread.Pause();
+}
+
+void DataBaseImpl::UnlockCommitThread()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _commitThread.Resume();
 }
 
 #if FO_HAVE_JSON
@@ -1404,6 +1429,33 @@ protected:
         FO_STACK_TRACE_ENTRY();
 
         // Nothing
+    }
+
+    void DrawGui() override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        if (_collections.empty()) {
+            ImGui::TextUnformatted("No memory collections");
+            return;
+        }
+
+        for (auto&& [collection_name, collection] : _collections) {
+            if (ImGui::TreeNode(strex("{} ({})", collection_name.as_str(), collection.size()).c_str())) {
+                for (auto&& [id, doc] : collection) {
+                    if (ImGui::TreeNode(strex("{} ({} keys)", id, doc.Size()).c_str())) {
+                        for (auto&& [doc_key, doc_value] : doc) {
+                            const auto value_str = AnyData::ValueToString(doc_value);
+                            ImGui::BulletText("%s: %s", doc_key.c_str(), value_str.c_str());
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+        }
     }
 
 private:

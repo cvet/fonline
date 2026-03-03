@@ -191,6 +191,32 @@ void WorkThread::Wait() const
     }
 }
 
+void WorkThread::Pause()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    _paused = true;
+
+    while (_jobActive) {
+        _doneSignal.wait(locker);
+    }
+}
+
+void WorkThread::Resume()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    {
+        std::unique_lock locker(_dataLocker);
+
+        _paused = false;
+    }
+
+    _workSignal.notify_one();
+}
+
 void WorkThread::ThreadEntry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -215,6 +241,10 @@ void WorkThread::ThreadEntry() noexcept
                     locker.unlock();
                     _doneSignal.notify_all();
                     locker.lock();
+                }
+
+                while (_paused && !_finish) {
+                    _workSignal.wait(locker);
                 }
 
                 if (_jobs.empty()) {

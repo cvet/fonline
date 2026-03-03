@@ -53,8 +53,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonGameplaySettings, virtual BaseSettings);
-FIXED_SETTING(int32, MinNameLength, 4); // Minimum length for player name
-FIXED_SETTING(int32, MaxNameLength, 12); // Maximum length for player name
 FIXED_SETTING(uint32, LookChecks, 0); // Look checks
 FIXED_SETTING(vector<int32>, LookDir, 0, 20, 40, 60, 60); // Look direction values
 FIXED_SETTING(vector<int32>, LookSneakDir, 90, 60, 30, 0, 0); // Sneak look direction values
@@ -66,7 +64,6 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
-FIXED_SETTING(int32, RegistrationTimeout, 5); // Registration timeout in seconds
 FIXED_SETTING(int32, SneakDivider, 6); // Sneak divider value
 SETTING_GROUP_END();
 

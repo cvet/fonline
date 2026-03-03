@@ -572,18 +572,6 @@ FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackName text
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetTextNumUpper(ClientEngine* client, TextPackName textPack, uint32 strNum)
-{
-    return client->GetCurLang().GetTextPack(textPack).GetStrNumUpper(strNum);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetTextNumLower(ClientEngine* client, TextPackName textPack, uint32 strNum)
-{
-    return client->GetCurLang().GetTextPack(textPack).GetStrNumLower(strNum);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API uint32 Client_Game_GetTextCount(ClientEngine* client, TextPackName textPack, uint32 strNum)
 {
     return numeric_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
@@ -1501,21 +1489,9 @@ FO_SCRIPT_API void Client_Game_FlashUnfocusedWindow(ClientEngine* client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Login(ClientEngine* client, string_view login, string_view password)
-{
-    client->Connect(login, password, INIT_NET_REASON_LOGIN);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_Register(ClientEngine* client, string_view login, string_view password)
-{
-    client->Connect(login, password, INIT_NET_REASON_REG);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Connect(ClientEngine* client)
 {
-    client->Connect("", "", INIT_NET_REASON_CUSTOM);
+    client->Connect();
 }
 
 ///@ ExportMethod

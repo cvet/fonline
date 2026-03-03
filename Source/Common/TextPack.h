@@ -66,8 +66,6 @@ public:
 
     [[nodiscard]] auto GetStr(TextPackKey num) const -> const string&;
     [[nodiscard]] auto GetStr(TextPackKey num, size_t skip) const -> const string&;
-    [[nodiscard]] auto GetStrNumUpper(TextPackKey num) const -> TextPackKey;
-    [[nodiscard]] auto GetStrNumLower(TextPackKey num) const -> TextPackKey;
     [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;

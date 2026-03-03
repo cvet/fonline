@@ -191,7 +191,7 @@ int main(int argc, char** argv) // Handled by SDL
             // Log
             if (!hide_controls) {
                 ImGui::SetNextWindowCollapsed(App->Settings.CollapseLogOnStart, ImGuiCond_Once);
-                ImGui::SetNextWindowPos(ImVec2(10, 340), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(10, 350), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
 
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {

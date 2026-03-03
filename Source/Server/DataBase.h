@@ -70,6 +70,7 @@ public:
     void Delete(hstring collection_name, ident_t id);
     void CommitChanges(bool wait_commit_complete);
     void ClearChanges() noexcept;
+    void DrawGui();
 
 private:
     explicit DataBase(DataBaseImpl* impl);

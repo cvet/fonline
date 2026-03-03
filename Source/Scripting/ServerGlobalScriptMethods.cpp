@@ -44,27 +44,6 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API ident_t Server_Game_CreatePlayer(ServerEngine* server, string_view name, string_view password)
-{
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
-    }
-
-    const auto player_id = server->MakePlayerId(name);
-    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).Empty()) {
-        throw ScriptException("Player already registered", name);
-    }
-
-    AnyData::Document player_data;
-    player_data.Emplace("_Name", string(name));
-    player_data.Emplace("Password", string(password));
-
-    server->DbStorage.Insert(server->PlayersCollectionName, player_id, player_data);
-
-    return player_id;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring protoId, bool forPlayer)
 {
     return server->CreateCritter(protoId, forPlayer);
@@ -697,6 +676,25 @@ FO_SCRIPT_API Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId
     }
 
     return server->EntityMngr.GetCritter(crId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
+{
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+    if (strvex(name).trim() != name) {
+        throw ScriptException("Wrong player name (trimmed space)");
+    }
+    if (!strvex(name).is_valid_utf8()) {
+        throw ScriptException("Wrong player name encoding");
+    }
+    if (unloginedPlayer->GetLogined()) {
+        throw ScriptException("Player is already logined");
+    }
+
+    return server->LoginPlayer(unloginedPlayer, name);
 }
 
 ///@ ExportMethod PassOwnership

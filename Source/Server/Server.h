@@ -91,6 +91,8 @@ public:
     void Unlock();
     void DrawGui(string_view server_name);
 
+    auto LoginPlayer(Player* unlogined_player, string_view name) -> Player*;
+
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
 
     auto CreateCritter(hstring pid, bool for_player) -> Critter*;
@@ -112,17 +114,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerRegistration, Player* /*player*/, string /*name*/);
+    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8 /*command*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, string /*name*/, ident_t /*id*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8 /*arg2*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, Player* /*unloginedPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerEnter, Player* /*player*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
@@ -225,8 +221,6 @@ private:
     void Process_Ping(ServerConnection* connection);
     void Process_UpdateFile(ServerConnection* connection);
     void Process_UpdateFileData(ServerConnection* connection);
-    void Process_Register(Player* unlogined_player);
-    void Process_Login(Player* unlogined_player);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -271,7 +265,6 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    unordered_map<string, nanotime> _registrationHistory {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};
@@ -281,6 +274,7 @@ private:
     vector<shared_ptr<NetworkServerConnection>> _newConnections {};
     mutable std::mutex _newConnectionsLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
+    mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };
