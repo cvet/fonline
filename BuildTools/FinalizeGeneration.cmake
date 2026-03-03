@@ -864,9 +864,18 @@ list(APPEND FO_SOURCE_META_FILES
 
 list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ExtendedTypes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp")
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp")
 
 # Code generation
 include(FindPython3)
