@@ -1,6 +1,6 @@
 {
-  "name": "fo-angelscript-debugger",
-  "displayName": "FOnline AngelScript Debugger",
+  "name": "fo-angelscript",
+  "displayName": "FOnline AngelScript",
   "version": "0.1.0",
   "publisher": "fodev",
   "license": "MIT",
