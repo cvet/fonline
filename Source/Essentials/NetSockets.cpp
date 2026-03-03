@@ -137,15 +137,6 @@ auto net_sockets::startup() noexcept -> bool
 #endif
 }
 
-void net_sockets::shutdown() noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    ::WSACleanup();
-#endif
-}
-
 tcp_socket::tcp_socket(socket_t sock) noexcept :
     _sock {unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
         FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
@@ -302,7 +293,11 @@ auto tcp_server::accept() noexcept -> tcp_socket
     }
 
     sockaddr_in addr {};
+#if FO_WINDOWS
     int32 addr_len = sizeof(addr);
+#else
+    socklen_t addr_len = sizeof(addr);
+#endif
     const socket_t client_sock = ::accept(*_listenSock, reinterpret_cast<sockaddr*>(&addr), &addr_len);
 
     if (client_sock == INVALID_SOCKET_VALUE) {
@@ -428,7 +423,11 @@ auto udp_socket::receive_from(span<uint8> data, string& out_host, uint16& out_po
     }
 
     sockaddr_in addr {};
+#if FO_WINDOWS
     int32 addr_len = sizeof(addr);
+#else
+    socklen_t addr_len = sizeof(addr);
+#endif
     const int32 result = ::recvfrom(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32>(data.size()), 0, reinterpret_cast<sockaddr*>(&addr), &addr_len);
 
     if (result <= 0) {

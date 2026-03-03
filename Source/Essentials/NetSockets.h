@@ -49,7 +49,6 @@ class net_sockets final
 {
 public:
     static auto startup() noexcept -> bool;
-    static void shutdown() noexcept;
 };
 
 class tcp_socket final

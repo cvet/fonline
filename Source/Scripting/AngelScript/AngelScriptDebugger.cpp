@@ -580,6 +580,10 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
         return;
     }
 
+    _paused = false;
+    _pauseStartPending = false;
+    _singleStepRequested = false;
+
     {
         std::scoped_lock locker {_clientIoLocker};
         _activeClientSock.close();
@@ -594,8 +598,6 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
     if (_discoveryThread.joinable()) {
         _discoveryThread.join();
     }
-
-    net_sockets::shutdown();
 }
 
 auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
@@ -607,74 +609,38 @@ auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
 
 auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -> optional<int32>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    const size_t id_pos = message.find("\"id\"");
+    try {
+        const auto msg_json = nlohmann::json::parse(string {message});
 
-    if (id_pos == string_view::npos) {
-        return std::nullopt;
+        if (msg_json.contains("id") && msg_json["id"].is_number_integer()) {
+            return msg_json["id"].get<int32>();
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
     }
 
-    size_t colon_pos = message.find(':', id_pos + 4);
-
-    if (colon_pos == string_view::npos) {
-        return std::nullopt;
-    }
-
-    ++colon_pos;
-
-    while (colon_pos < message.size() && std::isspace(static_cast<int32>(message[colon_pos])) != 0) {
-        ++colon_pos;
-    }
-
-    size_t end_pos = colon_pos;
-
-    while (end_pos < message.size() && std::isdigit(static_cast<int32>(message[end_pos])) != 0) {
-        ++end_pos;
-    }
-
-    if (end_pos == colon_pos) {
-        return std::nullopt;
-    }
-
-    int32 request_id {};
-
-    for (size_t i = colon_pos; i < end_pos; i++) {
-        request_id = request_id * 10 + (message[i] - '0');
-    }
-
-    return request_id;
+    return std::nullopt;
 }
 
 auto DebuggerEndpointServer::Impl::ExtractRequestCommand(string_view message) const -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    const size_t key_pos = message.find("\"command\"");
+    try {
+        const auto msg_json = nlohmann::json::parse(string {message});
 
-    if (key_pos == string_view::npos) {
-        return {};
+        if (msg_json.contains("command") && msg_json["command"].is_string()) {
+            return msg_json["command"].get<string>();
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
     }
 
-    const size_t colon_pos = message.find(':', key_pos + 9);
-
-    if (colon_pos == string_view::npos) {
-        return {};
-    }
-
-    const size_t quote_begin = message.find('"', colon_pos + 1);
-
-    if (quote_begin == string_view::npos) {
-        return {};
-    }
-
-    const size_t quote_end = message.find('"', quote_begin + 1);
-
-    if (quote_end == string_view::npos || quote_end <= quote_begin + 1) {
-        return {};
-    }
-
-    return string {message.substr(quote_begin + 1, quote_end - quote_begin - 1)};
+    return {};
 }
 
 auto DebuggerEndpointServer::Impl::MakeDebuggerResponse(int32 request_id, string_view command, bool success, string_view body_json) const -> string
