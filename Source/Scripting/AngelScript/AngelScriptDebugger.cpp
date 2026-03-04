@@ -48,7 +48,6 @@ static constexpr uint16 ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN = 2000;
 static constexpr uint16 ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT = 43001;
 static constexpr string_view ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE = "fos-debug-discover-v1";
 static constexpr timespan ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT = std::chrono::milliseconds(10);
-static constexpr timespan ANGELSCRIPT_DEBUGGER_IDLE_SLEEP = std::chrono::milliseconds(10);
 static constexpr timespan ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP = std::chrono::milliseconds(10);
 
 struct DebuggerStepState
@@ -942,7 +941,6 @@ void DebuggerEndpointServer::Impl::RunTcp()
         tcp_socket client_sock = _tcpServer.accept();
 
         if (!client_sock.is_valid()) {
-            std::this_thread::sleep_for(ANGELSCRIPT_DEBUGGER_IDLE_SLEEP.value());
             continue;
         }
 
@@ -1060,7 +1058,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 
     WriteLog("AngelScript debugger UDP discovery port: {}", _discoveryPort);
 
-    if (!_discoverySocket.bind("0.0.0.0", _discoveryPort, true) || !_discoverySocket.set_broadcast(true)) {
+    if (!_discoverySocket.bind(_bindHost, _discoveryPort, true) || !_discoverySocket.set_broadcast(true)) {
         WriteLog("Can't bind debugger discovery udp socket on port {}", _discoveryPort);
         return;
     }
@@ -1071,11 +1069,10 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
         }
 
         string remote_host;
-        uint16 remote_port {};
+        uint16 remote_port = 0;
         const int32 read_size = _discoverySocket.receive_from(span<uint8>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
 
         if (read_size <= 0) {
-            std::this_thread::sleep_for(ANGELSCRIPT_DEBUGGER_IDLE_SLEEP.value());
             continue;
         }
 
