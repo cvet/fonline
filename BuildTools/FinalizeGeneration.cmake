@@ -1003,8 +1003,9 @@ StatusMessage("Core libs:")
 
 StatusMessage("+ EssentialsLib")
 add_library(EssentialsLib STATIC EXCLUDE_FROM_ALL ${FO_ESSENTIALS_SOURCE})
+target_link_libraries(EssentialsLib  ${FO_ESSENTIALS_SYSTEM_LIBS} ${FO_ESSENTIALS_LIBS})
 add_dependencies(EssentialsLib ${FO_GEN_DEPENDENCIES})
-list(APPEND FO_CORE_LIBS_GROUP EssentialsLib ${FO_ESSENTIALS_LIBS})
+list(APPEND FO_CORE_LIBS_GROUP EssentialsLib)
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     StatusMessage("+ AngelScriptScripting")
