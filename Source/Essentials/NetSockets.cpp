@@ -42,7 +42,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
 #endif
 
@@ -68,12 +67,12 @@ static auto ResolveIpv4Address(string_view host, sock_addr_t& addr) noexcept -> 
     FO_STACK_TRACE_ENTRY();
 
     if (host.empty() || host == "0.0.0.0" || host == "*") {
-        addr = ::htonl(INADDR_ANY);
+        addr = htonl(INADDR_ANY);
         return true;
     }
 
     if (host == "127.0.0.1" || host == "localhost") {
-        addr = ::htonl(INADDR_LOOPBACK);
+        addr = htonl(INADDR_LOOPBACK);
         return true;
     }
 
@@ -162,7 +161,7 @@ auto tcp_socket::connect(string_view host, uint16 port) noexcept -> bool
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
-    addr.sin_port = ::htons(port);
+    addr.sin_port = htons(port);
 
     if (!ResolveIpv4Address(host, addr.sin_addr.s_addr)) {
         CloseSocket(sock);
@@ -248,7 +247,7 @@ auto tcp_server::listen(string_view bind_host, uint16 port, int32 backlog) noexc
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
-    addr.sin_port = ::htons(port);
+    addr.sin_port = htons(port);
 
     if (!ResolveIpv4Address(bind_host, addr.sin_addr.s_addr)) {
         CloseSocket(sock);
@@ -328,19 +327,17 @@ auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexc
     }
 
     if (reuse_addr) {
-#if !FO_WEB
         constexpr int32 opt = 1;
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             CloseSocket(sock);
             return false;
         }
-#endif
     }
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
-    addr.sin_port = ::htons(port);
+    addr.sin_port = htons(port);
 
     if (!ResolveIpv4Address(bind_host, addr.sin_addr.s_addr)) {
         CloseSocket(sock);
@@ -391,12 +388,8 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
         return false;
     }
 
-#if !FO_WEB
     const int32 opt = enabled ? 1 : 0;
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&opt), sizeof(opt)) != SOCKET_ERROR_VALUE;
-#else
-    return false;
-#endif
 }
 
 auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) noexcept -> int32
@@ -409,7 +402,7 @@ auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) 
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
-    addr.sin_port = ::htons(port);
+    addr.sin_port = htons(port);
 
     if (!ResolveIpv4Address(host, addr.sin_addr.s_addr)) {
         return 0;
@@ -441,9 +434,9 @@ auto udp_socket::receive_from(span<uint8> data, string& out_host, uint16& out_po
         return result;
     }
 
-    const uint32 ip = ::ntohl(addr.sin_addr.s_addr);
+    const uint32 ip = ntohl(addr.sin_addr.s_addr);
     out_host = strex("{}.{}.{}.{}", (ip >> 24U) & 0xFFU, (ip >> 16U) & 0xFFU, (ip >> 8U) & 0xFFU, ip & 0xFFU);
-    out_port = ::ntohs(addr.sin_port);
+    out_port = ntohs(addr.sin_port);
     return result;
 }
 
