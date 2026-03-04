@@ -42,6 +42,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #endif
 
@@ -327,12 +328,14 @@ auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexc
     }
 
     if (reuse_addr) {
+#if !FO_WEB
         constexpr int32 opt = 1;
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             CloseSocket(sock);
             return false;
         }
+#endif
     }
 
     sockaddr_in addr {};
@@ -388,8 +391,12 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
         return false;
     }
 
+#if !FO_WEB
     const int32 opt = enabled ? 1 : 0;
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&opt), sizeof(opt)) != SOCKET_ERROR_VALUE;
+#else
+    return false;
+#endif
 }
 
 auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) noexcept -> int32
