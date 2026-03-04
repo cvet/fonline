@@ -30,7 +30,7 @@ if(NOT FO_DISABLE_RPMALLOC AND(FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_
     add_compile_definitions(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
     add_compile_definitions(ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
     target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    list(APPEND FO_COMMON_LIBS rpmalloc)
+    list(APPEND FO_ESSENTIALS_LIBS rpmalloc)
     DisableLibWarnings(rpmalloc)
 else()
     add_compile_definitions(FO_HAVE_RPMALLOC=0)
@@ -55,7 +55,7 @@ add_compile_definitions(FO_TRACY=${expr_TracyEnabled})
 set(TRACY_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_TRACY_DIR}" EXCLUDE_FROM_ALL)
 include_directories("${FO_TRACY_DIR}/public")
-list(APPEND FO_COMMON_LIBS TracyClient)
+list(APPEND FO_ESSENTIALS_LIBS TracyClient)
 DisableLibWarnings(TracyClient)
 
 # Zlib
@@ -70,7 +70,7 @@ set(FO_ZLIB_CONTRIB_SOURCE
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.c"
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
 add_library(zlibcontrib STATIC EXCLUDE_FROM_ALL ${FO_ZLIB_CONTRIB_SOURCE})
-list(APPEND FO_COMMON_LIBS zlibstatic zlibcontrib)
+list(APPEND FO_ESSENTIALS_LIBS zlibstatic zlibcontrib)
 DisableLibWarnings(zlibstatic zlibcontrib)
 set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
 set(ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
@@ -225,14 +225,9 @@ if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
 endif()
 
 # Json
-if(NOT FO_DISABLE_JSON)
-    StatusMessage("+ Json")
-    set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
-    include_directories("${FO_JSON_DIR}")
-    add_compile_definitions(FO_HAVE_JSON=1)
-else()
-    add_compile_definitions(FO_HAVE_JSON=0)
-endif()
+StatusMessage("+ Json")
+set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
+include_directories("${FO_JSON_DIR}")
 
 # LibreSSL
 if(FO_BUILD_SERVER_LIB)
@@ -384,7 +379,7 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
             StatusMessage("+ Backward-cpp (with libunwind)")
         elseif(haveBFD)
             StatusMessage("+ Backward-cpp (with bfd)")
-            list(APPEND FO_COMMON_SYSTEM_LIBS bfd)
+            list(APPEND FO_ESSENTIALS_SYSTEM_LIBS bfd)
         else()
             StatusMessage("+ Backward-cpp")
         endif()
@@ -543,7 +538,7 @@ set(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
 configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
 
 # Engine sources
-list(APPEND FO_COMMON_SOURCE
+list(APPEND FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/GlobalData.h"
@@ -587,8 +582,17 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Logging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h")
+
+if(MSVC)
+    list(APPEND FO_ESSENTIALS_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
+endif()
+
+list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.cpp"
@@ -646,6 +650,11 @@ list(APPEND FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
+
+if(MSVC)
+    list(APPEND FO_COMMON_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc")
+endif()
 
 list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
@@ -815,12 +824,6 @@ list(APPEND FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
-
-if(MSVC)
-    list(APPEND FO_COMMON_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
-endif()
 
 list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
@@ -998,8 +1001,14 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
+StatusMessage("+ EssentialsLib")
+add_library(EssentialsLib STATIC EXCLUDE_FROM_ALL ${FO_ESSENTIALS_SOURCE})
+target_link_libraries(EssentialsLib  ${FO_ESSENTIALS_SYSTEM_LIBS} ${FO_ESSENTIALS_LIBS})
+add_dependencies(EssentialsLib ${FO_GEN_DEPENDENCIES})
+list(APPEND FO_CORE_LIBS_GROUP EssentialsLib)
+
 if(FO_ANGELSCRIPT_SCRIPTING)
-    # AngelScript engine specific
+    StatusMessage("+ AngelScriptScripting")
     set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
     add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
@@ -1012,6 +1021,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptGlobals.cpp"
@@ -1033,7 +1044,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
     add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
     target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
-    target_link_libraries(AngelScriptScripting AngelScriptCore AngelScriptPreprocessor)
+    target_link_libraries(AngelScriptScripting EssentialsLib AngelScriptCore AngelScriptPreprocessor)
     list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
 endif()
 
@@ -1066,7 +1077,7 @@ if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
+    target_link_libraries(CommonLib EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 
     if(FO_ANGELSCRIPT_SCRIPTING)
@@ -1401,7 +1412,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications")
 set_property(TARGET ${FO_CORE_LIBS_GROUP} PROPERTY FOLDER "CoreLibs")
 set_property(TARGET ${FO_COMMANDS_GROUP} PROPERTY FOLDER "Commands")
-set_property(TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty")
+set_property(TARGET ${FO_ESSENTIALS_LIBS} ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty")
 set_property(TARGET ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty/Dummy")
 
 # Print cached variables

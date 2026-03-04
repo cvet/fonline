@@ -62,6 +62,7 @@
 #include "WorkThread.h"
 #include "Logging.h"
 #include "CommonHelpers.h"
+#include "NetSockets.h"
 // clang-format on
 
 FO_BEGIN_NAMESPACE

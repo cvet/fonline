@@ -11,3 +11,5 @@
 /[Cc]make-[Bb]uild**
 __pycache__
 .venv
+/BuildTools/angelscript-debugger/node_modules
+/BuildTools/angelscript-debugger/package-lock.json

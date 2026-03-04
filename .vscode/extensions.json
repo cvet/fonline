@@ -1,7 +1,6 @@
 {
     "recommendations": [
         "ms-vscode.cpptools",
-        "renesackers.angelscript",
         "ms-vscode.cmake-tools"
     ]
 }
