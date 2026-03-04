@@ -327,6 +327,7 @@ auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexc
         return false;
     }
 
+#if !FO_WEB
     if (reuse_addr) {
         constexpr int32 opt = 1;
 
@@ -335,6 +336,9 @@ auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexc
             return false;
         }
     }
+#else
+    ignore_unused(reuse_addr);
+#endif
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
@@ -389,8 +393,12 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
         return false;
     }
 
+#if !FO_WEB
     const int32 opt = enabled ? 1 : 0;
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&opt), sizeof(opt)) != SOCKET_ERROR_VALUE;
+#else
+    return false;
+#endif
 }
 
 auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) noexcept -> int32
