@@ -538,7 +538,7 @@ set(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
 configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
 
 # Engine sources
-list(APPEND FO_COMMON_SOURCE
+list(APPEND FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/GlobalData.h"
@@ -585,7 +585,14 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h")
+
+if(MSVC)
+    list(APPEND FO_ESSENTIALS_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
+endif()
+
+list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.cpp"
@@ -643,6 +650,11 @@ list(APPEND FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
+
+if(MSVC)
+    list(APPEND FO_COMMON_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc")
+endif()
 
 list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
@@ -812,12 +824,6 @@ list(APPEND FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
-
-if(MSVC)
-    list(APPEND FO_COMMON_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
-endif()
 
 list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
@@ -995,8 +1001,13 @@ list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 # Core libs
 StatusMessage("Core libs:")
 
+StatusMessage("+ EssentialsLib")
+add_library(EssentialsLib STATIC EXCLUDE_FROM_ALL ${FO_ESSENTIALS_SOURCE})
+add_dependencies(EssentialsLib ${FO_GEN_DEPENDENCIES})
+list(APPEND FO_CORE_LIBS_GROUP EssentialsLib)
+
 if(FO_ANGELSCRIPT_SCRIPTING)
-    # AngelScript engine specific
+    StatusMessage("+ AngelScriptScripting")
     set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
     add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
@@ -1032,7 +1043,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
     add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
     target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
-    target_link_libraries(AngelScriptScripting AngelScriptCore AngelScriptPreprocessor)
+    target_link_libraries(AngelScriptScripting EssentialsLib AngelScriptCore AngelScriptPreprocessor)
     list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
 endif()
 
@@ -1065,7 +1076,7 @@ if(FO_BUILD_COMMON_LIB)
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
+    target_link_libraries(CommonLib EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP CommonLib)
 
     if(FO_ANGELSCRIPT_SCRIPTING)
