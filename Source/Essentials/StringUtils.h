@@ -67,7 +67,7 @@ public:
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
 
     [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
-    [[nodiscard]] auto str() noexcept -> string { return string(_sv); }
+    [[nodiscard]] auto str() const noexcept -> string { return string(_sv); }
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;

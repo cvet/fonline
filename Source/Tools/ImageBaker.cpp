@@ -1939,7 +1939,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strvex(head).starts_with("MOS")) {
+    if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1962,7 +1962,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strvex(head).starts_with("MOS")) {
+        if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -2068,7 +2068,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strvex(head).starts_with("BAM")) {
+    if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -2091,7 +2091,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strvex(head).starts_with("BAM")) {
+        if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }
