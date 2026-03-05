@@ -88,8 +88,8 @@ jobs:
       fail-fast: false
       matrix:
         app:
-        - mac-intel-client
-        - ios-intel-client
+        - mac-client
+        - ios-client
     steps:
     - uses: actions/checkout@v4
     - run: BuildTools/validate.sh ${{matrix.app}}
