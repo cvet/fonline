@@ -867,37 +867,11 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            if constexpr (USE_FROM_CHARS) {
-                const auto result = std::from_chars(ptr, end_ptr, value);
-
-                return result.ec == std::errc() && result.ptr == end_ptr;
-            }
-            else {
-                // Assume all our strings are null terminated
-                if (*end_ptr != 0) {
-                    const auto count = static_cast<size_t>(end_ptr - ptr);
-                    array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
-                    MemCopy(str_nt.data(), ptr, count);
-                    str_nt[count] = 0;
-
-                    char* result_end_ptr;
-                    value = std::strtod(str_nt.data(), &result_end_ptr);
-
-                    return result_end_ptr == str_nt.data() + count;
-                }
-                else {
-                    const auto count = static_cast<size_t>(end_ptr - ptr);
-                    char* result_end_ptr;
-                    value = std::strtod(ptr, &result_end_ptr);
-
-                    return result_end_ptr == ptr + count;
-                }
-            }
+            const auto result = std::from_chars(ptr, end_ptr, value);
+            return result.ec == std::errc() && result.ptr == end_ptr;
         }
     }
 }
-
-#undef USE_FROM_CHARS
 
 auto strvex::is_number() const noexcept -> bool
 {
