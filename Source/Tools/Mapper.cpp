@@ -3312,7 +3312,7 @@ void MapperEngine::ParseCommand(string_view command)
 
     // Load map
     if (command[0] == '~') {
-        string map_name = strex(command.substr(1)).trim();
+        const string_view map_name = strvex(command.substr(1)).trim();
 
         if (map_name.empty()) {
             AddMess("Error parse map name");
@@ -3329,7 +3329,7 @@ void MapperEngine::ParseCommand(string_view command)
     }
     // Save map
     else if (command[0] == '^') {
-        string map_name = strex(command.substr(1)).trim();
+        const string_view map_name = strvex(command.substr(1)).trim();
 
         if (map_name.empty()) {
             AddMess("Error parse map name");
@@ -3363,7 +3363,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        string str = strex(command).substring_after(' ').trim();
+        string str = strvex(command).substring_after(' ').trim().str();
 
         if (!func.Call(str)) {
             AddMess("Script execution fail");
@@ -3381,7 +3381,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        vector<int32> anims = strex(command.substr(1)).split_to_int32(' ');
+        vector<int32> anims = strvex(command.substr(1)).split_to_int32(' ');
 
         if (anims.empty()) {
             return;

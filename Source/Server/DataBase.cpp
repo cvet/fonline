@@ -538,8 +538,7 @@ public:
 
             static_assert(sizeof(ident_t) == sizeof(int64));
 
-            const string id_str = strex(path).extract_file_name().erase_file_extension();
-            const auto id = strex(id_str).to_int64();
+            const auto id = strvex(path).extract_file_name().erase_file_extension().to_int64();
 
             if (id == 0) {
                 throw DataBaseException("DbJson Id is zero", path);

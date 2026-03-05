@@ -82,8 +82,19 @@ jobs:
     - if: ${{startsWith(matrix.app, 'android-x86-')}}
       run: BuildTools/prepare-workspace.sh packages android-x86
     - run: BuildTools/validate.sh ${{matrix.app}}
+  macos-intel:
+    runs-on: macos-26-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+        - mac-client
+        - ios-client
+    steps:
+    - uses: actions/checkout@v4
+    - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
-    runs-on: macos-15
+    runs-on: macos-26
     strategy:
       fail-fast: false
       matrix:

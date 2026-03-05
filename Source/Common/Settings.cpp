@@ -317,7 +317,7 @@ void GlobalSettings::ApplyInternalConfig()
 
     const auto config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
-    if (strex(config_str).starts_with("###InternalConfig###")) {
+    if (strvex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
@@ -472,7 +472,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                             string file_content;
                             file_content.resize(file.GetSize());
                             file.Read(file_content.data(), file_content.size());
-                            file_content = strex(file_content).trim();
+                            file_content = strvex(file_content).trim();
 
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(file_content);
                             end_pos++;

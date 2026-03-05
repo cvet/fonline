@@ -67,6 +67,7 @@ public:
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
 
     [[nodiscard]] auto strv() const noexcept -> string_view { return _sv; }
+    [[nodiscard]] auto str() const noexcept -> string { return string(_sv); }
 
     [[nodiscard]] auto length() const noexcept -> size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
@@ -281,6 +282,17 @@ namespace utf8
 }
 
 FO_END_NAMESPACE
+
+template<>
+struct std::formatter<FO_NAMESPACE strvex> : formatter<FO_NAMESPACE string_view>
+{
+    template<typename FormatContext>
+    // ReSharper disable once CppInconsistentNaming
+    auto format(const FO_NAMESPACE strvex& value, FormatContext& ctx) const
+    {
+        return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);
+    }
+};
 
 template<>
 struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
