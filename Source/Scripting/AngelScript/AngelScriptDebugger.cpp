@@ -191,7 +191,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
 
     constexpr uint16 base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16 span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
-    const int32 pid_num = strex(Platform::GetCurrentProcessIdStr()).to_int32();
+    const int32 pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
     const uint16 start_offset = pid_num > 0 ? numeric_cast<uint16>(pid_num % span) : uint16 {0};
 
     bool listen_ok = false;
@@ -267,7 +267,7 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string key = strex(source_path).extract_file_name();
+    const string key = strvex(source_path).extract_file_name().str();
 
     std::scoped_lock locker {_breakpointsLocker};
 
@@ -550,7 +550,7 @@ auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string key = strex(source_path).extract_file_name();
+    const string key = strvex(source_path).extract_file_name().str();
 
     std::scoped_lock locker {_breakpointsLocker};
 
@@ -1078,7 +1078,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 
         const string_view request = string_view(reinterpret_cast<const char*>(read_buf.data()), numeric_cast<size_t>(read_size));
 
-        if (!strex(request).starts_with(ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE)) {
+        if (!strvex(request).starts_with(ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE)) {
             continue;
         }
 

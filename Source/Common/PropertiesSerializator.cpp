@@ -441,26 +441,26 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     else if (value.Type() == AnyData::ValueType::String) {
         const auto& str = value.AsString();
 
-        if (strex(str).is_number()) {
+        if (strvex(str).is_number()) {
             if constexpr (std::same_as<T, bool>) {
-                result_value = strex(str).to_bool();
+                result_value = strvex(str).to_bool();
             }
             else if constexpr (std::floating_point<T>) {
-                result_value = numeric_cast<T>(strex(str).to_float64());
+                result_value = numeric_cast<T>(strvex(str).to_float64());
             }
             else {
-                result_value = numeric_cast<T>(strex(str).to_int64());
+                result_value = numeric_cast<T>(strvex(str).to_int64());
             }
         }
-        else if (strex(str).is_explicit_bool()) {
+        else if (strvex(str).is_explicit_bool()) {
             if constexpr (std::same_as<T, bool>) {
-                result_value = strex(str).to_bool();
+                result_value = strvex(str).to_bool();
             }
             else if constexpr (std::floating_point<T>) {
-                result_value = strex(str).to_bool() ? 1.0f : 0.0f;
+                result_value = strvex(str).to_bool() ? 1.0f : 0.0f;
             }
             else {
-                result_value = strex(str).to_bool() ? 1 : 0;
+                result_value = strvex(str).to_bool() ? 1 : 0;
             }
         }
         else {
@@ -763,34 +763,34 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
             else if (dict_key_type.IsInt8) {
-                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strex(dict_key).to_int64());
+                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt16) {
-                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strex(dict_key).to_int64());
+                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt32) {
-                *reinterpret_cast<int32*>(pdata) = numeric_cast<int32>(strex(dict_key).to_int64());
+                *reinterpret_cast<int32*>(pdata) = numeric_cast<int32>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt64) {
-                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strex(dict_key).to_int64());
+                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt8) {
-                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strex(dict_key).to_int64());
+                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt16) {
-                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strex(dict_key).to_int64());
+                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt32) {
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strex(dict_key).to_int64());
+                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsSingleFloat) {
-                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strex(dict_key).to_float32());
+                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strvex(dict_key).to_float32());
             }
             else if (dict_key_type.IsDoubleFloat) {
-                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strex(dict_key).to_float64());
+                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strvex(dict_key).to_float64());
             }
             else if (dict_key_type.IsBool) {
-                *reinterpret_cast<bool*>(pdata) = strex(dict_key).to_bool();
+                *reinterpret_cast<bool*>(pdata) = strvex(dict_key).to_bool();
             }
             else {
                 FO_UNREACHABLE_PLACE();

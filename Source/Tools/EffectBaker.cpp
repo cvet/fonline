@@ -300,7 +300,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("Invalid uniform buffer", fname, uniform_block.name, uniform_block.size);
         }
 
-        const string fname_wo_ext = strex(fname).erase_file_extension();
+        const string_view fname_wo_ext = strvex(fname).erase_file_extension();
         BakeShaderStage(strex("{}.fofx-{}-vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
         BakeShaderStage(strex("{}.fofx-{}-frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
 

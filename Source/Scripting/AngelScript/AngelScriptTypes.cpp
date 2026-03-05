@@ -394,19 +394,19 @@ static auto Any_Conv(const any_t& self) -> T
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (std::same_as<T, bool>) {
-        return strex(self).to_bool();
+        return strvex(self).to_bool();
     }
     else if constexpr (some_strong_type<T>) {
-        return T {numeric_cast<typename T::underlying_type>(strex(self).to_int64())};
+        return T {numeric_cast<typename T::underlying_type>(strvex(self).to_int64())};
     }
     else if constexpr (std::integral<T>) {
-        if (strex(self).is_explicit_bool()) {
-            return strex(self).to_bool() ? 1 : 0;
+        if (strvex(self).is_explicit_bool()) {
+            return strvex(self).to_bool() ? 1 : 0;
         }
-        return numeric_cast<T>(strex(self).to_int64());
+        return numeric_cast<T>(strvex(self).to_int64());
     }
     else if constexpr (std::floating_point<T>) {
-        return numeric_cast<T>(strex(self).to_float64());
+        return numeric_cast<T>(strvex(self).to_float64());
     }
     else if constexpr (std::same_as<T, string>) {
         return self;

@@ -854,7 +854,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(remote_call_name);
-        tag_tokens.emplace_back(strex(tag_desc.SourceFile).extract_file_name());
+        tag_tokens.emplace_back(strvex(tag_desc.SourceFile).extract_file_name());
         tag_tokens.emplace_back(inbound ? "In" : "Out");
 
         size_t cur_token = 3;

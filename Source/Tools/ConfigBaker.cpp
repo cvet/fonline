@@ -83,7 +83,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         const auto bake_config = [&](string_view sub_config) -> bool {
             FO_RUNTIME_ASSERT(_context->Settings->GetAppliedConfigs().size() == 1);
             const string config_path = _context->Settings->GetAppliedConfigs().front();
-            const string config_name = strex(config_path).extract_file_name();
+            const string_view config_name = strvex(config_path).extract_file_name();
             const string config_dir = strex(config_path).extract_dir();
 
             auto maincfg = GlobalSettings(true);
@@ -116,7 +116,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 const auto is_server_setting = server_settings.count(key) != 0;
                 const auto is_client_setting = client_settings.count(key) != 0;
                 const bool skip_write = value.empty() || value == "0" || strex(value).lower() == "false";
-                const auto shortened_value = strex(value).is_explicit_bool() ? (strex(value).to_bool() ? "1" : "0") : value;
+                const auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
 
                 if (!skip_write) {
                     server_config_content += strex("{}={}\n", key, shortened_value);

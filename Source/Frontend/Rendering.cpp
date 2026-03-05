@@ -270,14 +270,14 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
 
-        auto blend_func = strex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
+        auto blend_func = strvex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
         FO_RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
-        _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
 
         const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
