@@ -122,7 +122,12 @@ auto MakeScriptTypeName(const BaseTypeDesc& type) -> string
         return string("double");
     }
 
-    return type.Name;
+    if (type.IsSingleton) {
+        return strex("{}Singleton", type.Name);
+    }
+    else {
+        return type.Name;
+    }
 }
 
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string

@@ -46,6 +46,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class ScriptImGui;
+
 class EngineMetadata : public NameResolver
 {
 public:
@@ -107,7 +109,7 @@ public:
     mutable HashStorage Hashes;
 
 private:
-    void RegisterBaseType(string_view type_str);
+    auto RegisterBaseType(string_view type_str) -> BaseTypeDesc&;
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
@@ -141,6 +143,7 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
+    [[nodiscard]] auto GetImGui() noexcept -> ScriptImGui* { return _imgui.get(); }
 
     virtual void Shutdown() { }
     void FrameAdvance();
@@ -165,6 +168,7 @@ protected:
     void HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8> data); // Called by derived class
 
 private:
+    refcount_ptr<ScriptImGui> _imgui;
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
 };
 

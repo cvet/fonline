@@ -639,6 +639,93 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
     }
 }
 
+auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* source_spr = spr;
+
+    if (const auto* sheet = dynamic_cast<const SpriteSheet*>(spr); sheet != nullptr) {
+        source_spr = sheet->GetCurSpr();
+    }
+
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(source_spr);
+
+    if (atlas_spr == nullptr) {
+        return false;
+    }
+
+    auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
+    FO_RUNTIME_ASSERT(effect);
+
+    color = ApplyColorBrightness(color);
+
+    const auto& atlas_rect = atlas_spr->GetAtlasRect();
+    const auto tex_left = atlas_rect.x + atlas_rect.width * uv0.x;
+    const auto tex_top = atlas_rect.y + atlas_rect.height * uv0.y;
+    const auto tex_right = atlas_rect.x + atlas_rect.width * uv1.x;
+    const auto tex_bottom = atlas_rect.y + atlas_rect.height * uv1.y;
+
+    _spritesDrawBuf->CheckAllocBuf(4, 6);
+
+    auto& vbuf = _spritesDrawBuf->Vertices;
+    auto& vpos = _spritesDrawBuf->VertCount;
+    auto& ibuf = _spritesDrawBuf->Indices;
+    auto& ipos = _spritesDrawBuf->IndCount;
+
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
+    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+
+    auto& v0 = vbuf[vpos++];
+    v0.PosX = pos.x;
+    v0.PosY = pos.y + size.height;
+    v0.TexU = tex_left;
+    v0.TexV = tex_bottom;
+    v0.EggTexU = 0.0f;
+    v0.Color = color;
+
+    auto& v1 = vbuf[vpos++];
+    v1.PosX = pos.x;
+    v1.PosY = pos.y;
+    v1.TexU = tex_left;
+    v1.TexV = tex_top;
+    v1.EggTexU = 0.0f;
+    v1.Color = color;
+
+    auto& v2 = vbuf[vpos++];
+    v2.PosX = pos.x + size.width;
+    v2.PosY = pos.y;
+    v2.TexU = tex_right;
+    v2.TexV = tex_top;
+    v2.EggTexU = 0.0f;
+    v2.Color = color;
+
+    auto& v3 = vbuf[vpos++];
+    v3.PosX = pos.x + size.width;
+    v3.PosY = pos.y + size.height;
+    v3.TexU = tex_right;
+    v3.TexV = tex_bottom;
+    v3.EggTexU = 0.0f;
+    v3.Color = color;
+
+    if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+        _dipQueue.emplace_back(DipData {.MainTexture = atlas_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = 6});
+    }
+    else {
+        _dipQueue.back().IndicesCount += 6;
+    }
+
+    if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+        Flush();
+    }
+
+    return true;
+}
+
 void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();

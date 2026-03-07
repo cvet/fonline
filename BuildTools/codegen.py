@@ -1292,6 +1292,9 @@ def genMetadataRegistration(target, isStub):
         for methodTag in codeGenTags['ExportMethod']:
             targ, ent, name, ret, params, exportFlags, comment = methodTag
             if targ in allowedTargets and (ent == entity or ent == 'Entity'):
+                if 'GlobalGetter' in exportFlags:
+                    assert ent == 'Game', 'GlobalGetter export flag can be used only on Game methods'
+                    assert not params, 'GlobalGetter export flag requires a method without parameters'
                 if 'TimeEventRelated' in exportFlags and not gameEntitiesInfo[entity]['HasTimeEvents']:
                     continue    
                 isGeneric = ent == 'Entity'
@@ -1321,7 +1324,8 @@ def genMetadataRegistration(target, isStub):
                 else:
                     registerLines.append('    ignore_unused(call);')
                 registerLines.append('}' +
-                        (', .Getter = true' if 'Getter' in exportFlags else '') +
+                        (', .GlobalGetter = true' if 'GlobalGetter' in exportFlags else '') +
+                        (', .Getter = true' if 'Getter' in exportFlags or 'GlobalGetter' in exportFlags else '') +
                         (', .Setter = true' if 'Setter' in exportFlags else '') +
                         (', .PassOwnership = true' if 'PassOwnership' in exportFlags else '') + 
                         ' });')

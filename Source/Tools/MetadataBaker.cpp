@@ -208,13 +208,13 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ctx.Meta = SafeAlloc::MakeUnique<EngineMetadata>([] { });
 
     if (target == "Server") {
-        RegisterServerStubMetadata(ctx.Meta.get(), nullptr, true);
+        RegisterServerStubMetadata(ctx.Meta.get(), nullptr);
     }
     else if (target == "Client") {
-        RegisterClientStubMetadata(ctx.Meta.get(), nullptr, true);
+        RegisterClientStubMetadata(ctx.Meta.get(), nullptr);
     }
     else if (target == "Mapper") {
-        RegisterMapperStubMetadata(ctx.Meta.get(), nullptr, true);
+        RegisterMapperStubMetadata(ctx.Meta.get(), nullptr);
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -229,6 +229,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ParseEvent(ctx);
     ParseRemoteCall(ctx);
     ParseSetting(ctx);
+    ctx.Meta->FinalizeRegistration();
 
     // Serialize data
     vector<uint8> data;

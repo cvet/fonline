@@ -767,6 +767,32 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
     ScriptGenericCall(gen, true, [&](FuncCallData& call) { method.Call(call); });
 }
 
+static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* engine = GetGameEngine(gen->GetEngine());
+    FO_RUNTIME_ASSERT(engine);
+
+    const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
+    FO_RUNTIME_ASSERT(method.Call);
+
+    ScriptGenericCall(gen, false, [&](FuncCallData& base_call) {
+        FuncCallData call = base_call;
+        array<void*, MAX_CALL_ARGS> args_data;
+        Entity* engine_arg = engine;
+
+        call.ArgsData = span(args_data).subspan(0, base_call.ArgsData.size() + 1);
+        args_data[0] = cast_to_void(&engine_arg);
+
+        for (size_t i = 0; i < base_call.ArgsData.size(); i++) {
+            args_data[i + 1] = base_call.ArgsData[i];
+        }
+
+        method.Call(call);
+    });
+}
+
 static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1070,9 +1096,20 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
                 }
             }
 
-            const string possible_getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-            const string method_decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), possible_getset, method.Name, MakeScriptArgsName(method.Args));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), method_decl.c_str(), FO_SCRIPT_GENERIC(Entity_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)))
+            if (method.GlobalGetter) {
+                FO_RUNTIME_ASSERT(type_name.as_str() == "Game");
+                FO_RUNTIME_ASSERT(method.Getter);
+                FO_RUNTIME_ASSERT(!method.Setter);
+                FO_RUNTIME_ASSERT(method.Args.empty());
+
+                const string getter_decl = strex("{} get_{}()", MakeScriptReturnName(method.Ret, method.PassOwnership), method.Name);
+                FO_AS_VERIFY(as_engine->RegisterGlobalFunction(getter_decl.c_str(), FO_SCRIPT_GENERIC(Entity_GlobalMethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+            }
+            else {
+                const string possible_getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
+                const string method_decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), possible_getset, method.Name, MakeScriptArgsName(method.Args));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), method_decl.c_str(), FO_SCRIPT_GENERIC(Entity_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)))
+            }
         }
     }
 

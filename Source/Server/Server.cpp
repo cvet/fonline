@@ -34,7 +34,6 @@
 #include "Server.h"
 #include "AnyData.h"
 #include "Application.h"
-#include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"

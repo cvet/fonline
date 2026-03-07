@@ -61,19 +61,19 @@ FO_BEGIN_NAMESPACE
 
 #if !STUB_MODE
 #if SERVER_REGISTRATION
-void RegisterServerMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterServerMetadata(EngineMetadata* meta, const FileSystem* resources)
 #elif CLIENT_REGISTRATION
-void RegisterClientMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterClientMetadata(EngineMetadata* meta, const FileSystem* resources)
 #elif MAPPER_REGISTRATION
-void RegisterMapperMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterMapperMetadata(EngineMetadata* meta, const FileSystem* resources)
 #endif
 #else
 #if SERVER_REGISTRATION
-void RegisterServerStubMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterServerStubMetadata(EngineMetadata* meta, const FileSystem* resources)
 #elif CLIENT_REGISTRATION
-void RegisterClientStubMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterClientStubMetadata(EngineMetadata* meta, const FileSystem* resources)
 #elif MAPPER_REGISTRATION
-void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resources, bool dont_finalize)
+void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resources)
 #endif
 #endif
 {
@@ -101,10 +101,6 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
 #elif MAPPER_REGISTRATION
         RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Mapper"));
 #endif
-    }
-
-    if (!dont_finalize) {
-        meta->FinalizeRegistration();
     }
 }
 
