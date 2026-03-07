@@ -33,6 +33,8 @@
 
 #include "EngineBase.h"
 
+#include "ImGuiStuff.h"
+
 FO_BEGIN_NAMESPACE
 
 struct EngineBaseData
@@ -208,7 +210,12 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         registrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
-    RegisterBaseType(name);
+    auto& type = RegisterBaseType(name);
+
+    if (is_global) {
+        type.IsSingleton = true;
+    }
+
     return registrator;
 }
 
@@ -240,7 +247,7 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     unordered_map<int32, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
-        FO_RUNTIME_ASSERT_STR(key != "None" || value == 0, strex("Wrong enum {}", name));
+        FO_RUNTIME_ASSERT_STR(key != "None" || value <= 0, strex("Wrong enum {}", name));
         FO_RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev.emplace(value, key);
         string full_key = strex("{}::{}", name, key);
@@ -262,7 +269,7 @@ void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name,
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     const auto name_str = string(name);
-    FO_RUNTIME_ASSERT(name_str != "None" || entry_value == 0);
+    FO_RUNTIME_ASSERT(name_str != "None" || entry_value <= 0);
     FO_RUNTIME_ASSERT(_enums.count(name) != 0);
     FO_RUNTIME_ASSERT(_enums.at(name_str).count(entry_name) == 0);
     FO_RUNTIME_ASSERT(_enumsRev.at(name_str).count(entry_value) == 0);
@@ -469,7 +476,7 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     _migrationRules[hrule_name][hextra_info][htarget] = hreplacement;
 }
 
-void EngineMetadata::RegisterBaseType(string_view type_str)
+auto EngineMetadata::RegisterBaseType(string_view type_str) -> BaseTypeDesc&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -518,8 +525,7 @@ void EngineMetadata::RegisterBaseType(string_view type_str)
     }
 
     type.IsPrimitive = type.IsInt || type.IsFloat || type.IsBool;
-
-    _baseTypes.emplace(type_str, std::move(type));
+    return _baseTypes.emplace(type_str, std::move(type)).first->second;
 }
 
 void EngineMetadata::FinalizeRegistration()
@@ -931,9 +937,12 @@ BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const M
     Geometry(settings),
     GameTime(settings),
     ProtoMngr(*this),
-    TimeEventMngr(*this)
+    TimeEventMngr(*this),
+    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(this)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FinalizeRegistration();
 }
 
 void BaseEngine::FrameAdvance()

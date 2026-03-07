@@ -32,8 +32,15 @@
 //
 
 #include "ImGuiStuff.h"
+#include "EngineBase.h"
 
 FO_USING_NAMESPACE();
+
+ScriptImGui::ScriptImGui(BaseEngine* engine) :
+    Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr),
+    _engine {engine}
+{
+}
 
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {

@@ -463,6 +463,7 @@ struct BaseTypeDesc
     bool IsSimpleStruct {}; // Layout size is one primitive type
     bool IsComplexStruct {}; // Layout more than one primitive
     bool IsRefType {};
+    bool IsSingleton {};
     raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
     raw_ptr<const StructLayoutDesc> StructLayout {};
     raw_ptr<const RefTypeDesc> RefType {};
@@ -513,6 +514,7 @@ struct MethodDesc
     vector<ArgDesc> Args {};
     ComplexTypeDesc Ret {};
     CallType Call {};
+    bool GlobalGetter {};
     bool Getter {};
     bool Setter {};
     bool PassOwnership {};

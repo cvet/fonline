@@ -34,25 +34,24 @@
 #include "Common.h"
 
 #include "Client.h"
-#include "FileSystem.h"
-#include "Geometry.h"
+#include "ImGuiStuff.h"
 #include "NetCommand.h"
 
 FO_BEGIN_NAMESPACE
 
-///@ ExportMethod Getter
+///@ ExportMethod GlobalGetter
 FO_SCRIPT_API MapView* Client_Game_CurMap(ClientEngine* client)
 {
     return client->GetCurMap();
 }
 
-///@ ExportMethod Getter
+///@ ExportMethod GlobalGetter
 FO_SCRIPT_API LocationView* Client_Game_CurLocation(ClientEngine* client)
 {
     return client->GetCurLocation();
 }
 
-///@ ExportMethod Getter
+///@ ExportMethod GlobalGetter
 FO_SCRIPT_API PlayerView* Client_Game_CurPlayer(ClientEngine* client)
 {
     return client->GetCurPlayer();

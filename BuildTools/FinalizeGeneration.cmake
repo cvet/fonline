@@ -646,6 +646,7 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
+    "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
@@ -759,6 +760,7 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientItemScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientCritterScriptMethods.cpp"
@@ -838,6 +840,7 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"
@@ -857,12 +860,14 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/ClientImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientPlayerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientItemScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientCritterScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientLocationScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 list(APPEND FO_TESTS_SOURCE

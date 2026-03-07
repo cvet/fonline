@@ -343,8 +343,9 @@ void ClientEngine::MainLoop()
         }
 
         CanDrawInScripts = true;
+        const auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
+
         OnRenderIface.Fire();
-        CanDrawInScripts = false;
 
         ProcessVideo();
         ProcessScreenEffectFading();

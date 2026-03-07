@@ -41,6 +41,7 @@
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "Geometry.h"
+#include "ImGuiStuff.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"

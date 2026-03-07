@@ -43,6 +43,7 @@
 #include "EffectManager.h"
 #include "Entity.h"
 #include "Geometry.h"
+#include "ImGuiStuff.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
