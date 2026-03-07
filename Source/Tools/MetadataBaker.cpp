@@ -542,6 +542,9 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         if (!ctx.Meta->IsValidEntityType(holder_entity_hname)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown holder entity type", tag_desc.SourceFile, tag_desc.LineNumber, holder_entity_name);
         }
+        if (target == "Server" && (has_no_sync || has_owner_sync || has_public_sync)) {
+            throw MetadataBakerException("Invalid EntityHolder codegen tag: sync flags cannot be used with Server target", tag_desc.SourceFile, tag_desc.LineNumber);
+        }
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             // Stub for entry property
@@ -594,6 +597,11 @@ void MetadataBaker::ParsePropertyComponent(TagsParsingContext& ctx) const
         }
 
         const auto entity_name = tag_desc.Tokens[0];
+
+        if (ctx.OtherEntityTypes.contains(entity_name)) {
+            continue;
+        }
+
         const auto entity_hname = ctx.Meta->Hashes.ToHashedString(entity_name);
         const auto component_name = tag_desc.Tokens[1];
         const auto component_hname = ctx.Meta->Hashes.ToHashedString(component_name);
