@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const string file_name = strex(file).extract_file_name().erase_file_extension();
+    const string_view file_name = strvex(file).extract_file_name().erase_file_extension();
     throw ScriptCoreException(strex("File: {}", file_name), strex("Line: {}", line), strex("Result: {}", result));
 }
 

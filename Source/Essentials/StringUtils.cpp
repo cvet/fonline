@@ -752,12 +752,6 @@ auto strex::tokenize() const noexcept -> vector<string>
     return result;
 }
 
-#if defined(_MSC_VER) && _MSC_VER >= 1924
-#define USE_FROM_CHARS 1
-#else
-#define USE_FROM_CHARS 0
-#endif
-
 template<typename T>
 static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 {
@@ -805,35 +799,9 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         }
 
         std::make_unsigned_t<T> uvalue;
-        bool success;
-        bool out_of_range;
-
-        if constexpr (USE_FROM_CHARS) {
-            const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
-            success = result.ec == std::errc() && result.ptr == end_ptr;
-            out_of_range = result.ec == std::errc::result_out_of_range;
-        }
-        else {
-            // Assume all our strings are null terminated
-            if (*end_ptr != 0) {
-                const auto count = static_cast<size_t>(end_ptr - ptr);
-                array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
-                MemCopy(str_nt.data(), ptr, count);
-                str_nt[count] = 0;
-
-                char* result_end_ptr;
-                uvalue = std::strtoull(str_nt.data(), &result_end_ptr, base);
-                success = result_end_ptr == str_nt.data() + count;
-                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
-            }
-            else {
-                const auto count = static_cast<size_t>(end_ptr - ptr);
-                char* result_end_ptr;
-                uvalue = std::strtoull(ptr, &result_end_ptr, base);
-                success = result_end_ptr == ptr + count;
-                out_of_range = uvalue == ULLONG_MAX && errno == ERANGE;
-            }
-        }
+        const auto result = std::from_chars(ptr, end_ptr, uvalue, base);
+        const bool success = result.ec == std::errc() && result.ptr == end_ptr;
+        const bool out_of_range = result.ec == std::errc::result_out_of_range;
 
         if (success) {
             if (negative) {
@@ -899,37 +867,11 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            if constexpr (USE_FROM_CHARS) {
-                const auto result = std::from_chars(ptr, end_ptr, value);
-
-                return result.ec == std::errc() && result.ptr == end_ptr;
-            }
-            else {
-                // Assume all our strings are null terminated
-                if (*end_ptr != 0) {
-                    const auto count = static_cast<size_t>(end_ptr - ptr);
-                    array<char, strex::MAX_NUMBER_STRING_LENGTH + 1> str_nt;
-                    MemCopy(str_nt.data(), ptr, count);
-                    str_nt[count] = 0;
-
-                    char* result_end_ptr;
-                    value = std::strtod(str_nt.data(), &result_end_ptr);
-
-                    return result_end_ptr == str_nt.data() + count;
-                }
-                else {
-                    const auto count = static_cast<size_t>(end_ptr - ptr);
-                    char* result_end_ptr;
-                    value = std::strtod(ptr, &result_end_ptr);
-
-                    return result_end_ptr == ptr + count;
-                }
-            }
+            const auto result = std::from_chars(ptr, end_ptr, value);
+            return result.ec == std::errc() && result.ptr == end_ptr;
         }
     }
 }
-
-#undef USE_FROM_CHARS
 
 auto strvex::is_number() const noexcept -> bool
 {

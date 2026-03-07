@@ -121,7 +121,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             if (is_fomap && section_name == "Header") {
                 type_name = engine.Hashes.ToHashedString("Map");
             }
-            else if (strex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else {
@@ -153,7 +153,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         for (auto&& [key, value] : from_kv) {
             FO_RUNTIME_ASSERT(!key.empty());
 
-            if (strex(key).starts_with("$Text")) {
+            if (strvex(key).starts_with("$Text")) {
                 to_kv[key] = value;
             }
         }
@@ -200,7 +200,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             all_proto_texts[type_name][pid] = {};
 
             for (auto&& [key, value] : proto_kv) {
-                FO_RUNTIME_ASSERT(strex(key).starts_with("$Text"));
+                FO_RUNTIME_ASSERT(strvex(key).starts_with("$Text"));
 
                 const auto key_tok = strex(key).split(' ');
                 const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
@@ -211,8 +211,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                     const string& num = key_tok[i];
 
                     if (!num.empty()) {
-                        if (strex(num).is_number()) {
-                            text_key += strex(num).to_uint32();
+                        if (strvex(num).is_number()) {
+                            text_key += strvex(num).to_uint32();
                         }
                         else {
                             text_key += engine.Hashes.ToHashedString(num).as_uint32();

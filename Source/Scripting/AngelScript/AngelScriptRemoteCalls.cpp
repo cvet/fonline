@@ -299,7 +299,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             continue;
         }
 
-        const string ns = strex(inbound_call.SubsystemHint).erase_file_extension();
+        const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
         string func_decl;
 
         if (meta->GetSide() == EngineSideKind::ServerSide) {

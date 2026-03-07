@@ -539,6 +539,8 @@ configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE
 
 # Engine sources
 list(APPEND FO_ESSENTIALS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Essentials/Essentials.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Essentials.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/GlobalData.h"

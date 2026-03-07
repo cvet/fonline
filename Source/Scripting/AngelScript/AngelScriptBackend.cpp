@@ -379,7 +379,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         const auto sort_pos = first_line.find("Sort ");
 
         if (sort_pos != string::npos) {
-            sort = strex(first_line.substr(sort_pos + "Sort "_len)).substring_until(' ').to_int32();
+            sort = strvex(first_line.substr(sort_pos + "Sort "_len)).substring_until(' ').to_int32();
         }
 
         final_script_files_order.emplace_back(std::make_tuple(sort, std::move(script_name), script_path));

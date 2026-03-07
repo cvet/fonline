@@ -78,7 +78,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         if (Settings.WriteHealthFile) {
             const auto exe_path = Platform::GetExePath();
-            const string health_file_name = strex("{}_Health.txt", exe_path ? strex(exe_path.value()).extract_file_name().erase_file_extension().str() : string_view(FO_DEV_NAME));
+            const string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
 
             const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
                 if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
@@ -1001,7 +1001,7 @@ void ServerEngine::ProcessPlayer(Player* player)
 
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strex(s).trim()); }, player);
+            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:

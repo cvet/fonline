@@ -38,32 +38,7 @@
 #ifndef FO_PRECOMPILED_HEADER_GUARD
 #define FO_PRECOMPILED_HEADER_GUARD
 
-// Essential headers
-// In order of dependency
-// clang-format off
-#include "BasicCore.h"
-#include "GlobalData.h"
-#include "BaseLogging.h"
-#include "StackTrace.h"
-#include "SmartPointers.h"
-#include "MemorySystem.h"
-#include "Containers.h"
-#include "StringUtils.h"
-#include "DiskFileSystem.h"
-#include "Platform.h"
-#include "ExceptionHadling.h"
-#include "SafeArithmetics.h"
-#include "DataSerialization.h"
-#include "HashedString.h"
-#include "StrongType.h"
-#include "TimeRelated.h"
-#include "ExtendedTypes.h"
-#include "Compressor.h"
-#include "WorkThread.h"
-#include "Logging.h"
-#include "CommonHelpers.h"
-#include "NetSockets.h"
-// clang-format on
+#include "Essentials.h"
 
 FO_BEGIN_NAMESPACE
 

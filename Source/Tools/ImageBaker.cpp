@@ -252,9 +252,9 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
 
     const string ext = strex(fname_with_opt).get_file_extension();
     const string dir = strex(fname_with_opt).extract_dir();
-    const string name = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
+    const string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
     const string fname = strex("{}/{}.{}", dir, name, ext);
-    const string opt = strex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
+    const string_view opt = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
 
     const auto file = files.FindFileByPath(fname);
 
@@ -424,7 +424,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).starts_with("art/critters/")) {
+    if (strvex(fname).starts_with("art/critters/")) {
         collection.NewName = strex(fname).lower();
     }
 
@@ -477,7 +477,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
+        File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -683,11 +683,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strex(fname).starts_with("art/critters/")) {
+    if (strvex(fname).starts_with("art/critters/")) {
         collection.NewName = strex("{}.{}", strex(fname).erase_file_extension().lower(), "fofrm");
     }
     else {
-        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension(), "frm");
+        collection.NewName = strex("{}.{}", strvex(fname).erase_file_extension(), "frm");
     }
 
     // Animate pixels
@@ -748,7 +748,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         // Make palette
         auto* palette = reinterpret_cast<ucolor*>(FoPalette);
         ucolor custom_palette[256];
-        File palette_file = files.FindFileByPath(strex("{}.pal", strex(fname).erase_file_extension()));
+        File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
         if (palette_file) {
             auto palette_reader = palette_file.GetReader();
@@ -1374,7 +1374,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             reader.GoForward(name_len);
             auto index = reader.GetLEUInt16();
 
-            if (seq_name.empty() || strex(seq_name).compare_ignore_case(name)) {
+            if (seq_name.empty() || strvex(seq_name).compare_ignore_case(name)) {
                 anim_index = index;
 
                 // Read frame numbers
@@ -1939,7 +1939,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).starts_with("MOS")) {
+    if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
 
@@ -1962,7 +1962,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).starts_with("MOS")) {
+        if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
     }
@@ -2068,7 +2068,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     char head[8];
     reader.CopyData(head, 8);
 
-    if (!strex(head).starts_with("BAM")) {
+    if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
 
@@ -2091,7 +2091,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
         reader = FileReader(unpacked_data);
         reader.CopyData(head, 8);
 
-        if (!strex(head).starts_with("BAM")) {
+        if (head[0] != 'B' || head[1] != 'A' || head[2] != 'M') {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
     }

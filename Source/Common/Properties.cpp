@@ -980,29 +980,29 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).to_int32()));
+            SetValue<uint8>(prop, numeric_cast<uint8>(strvex(value).to_int32()));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).to_int32()));
+            SetValue<uint16>(prop, numeric_cast<uint16>(strvex(value).to_int32()));
         }
         else if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                SetValue<int32>(prop, strex(value).to_int32());
+                SetValue<int32>(prop, strvex(value).to_int32());
             }
             else {
-                SetValue<uint32>(prop, strex(value).to_uint32());
+                SetValue<uint32>(prop, strvex(value).to_uint32());
             }
         }
     }
     else if (base_type.IsBool) {
-        SetValue<bool>(prop, strex(value).to_bool());
+        SetValue<bool>(prop, strvex(value).to_bool());
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            SetValue<float32>(prop, strex(value).to_float32());
+            SetValue<float32>(prop, strvex(value).to_float32());
         }
         else if (base_type.IsDoubleFloat) {
-            SetValue<float64>(prop, strex(value).to_float64());
+            SetValue<float64>(prop, strvex(value).to_float64());
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {

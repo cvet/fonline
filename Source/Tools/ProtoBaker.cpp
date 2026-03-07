@@ -151,7 +151,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             if (is_fomap && section_name == "Header") {
                 type_name = meta->Hashes.ToHashedString("Map");
             }
-            else if (strex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = meta->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
             else {

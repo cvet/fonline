@@ -1514,7 +1514,7 @@ FO_SCRIPT_API string Client_Game_BuiltInCommand(ClientEngine* client, string_vie
         return "Unknown command";
     }
 
-    return strex(error).trim();
+    return strvex(error).trim().str();
 }
 
 ///@ ExportMethod
