@@ -38,12 +38,15 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto PrepareInputBuffer(string_view text, uint32 maxLength) -> vector<char>
+static auto PrepareInputBuffer(string_view text, uint32 max_length) -> vector<char>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto requested_len = numeric_cast<size_t>(maxLength);
-    const auto initial_len = std::max(requested_len, text.size());
+    if (text.size() > numeric_cast<size_t>(max_length)) {
+        throw ScriptException("Text arg length must be less or equal to maxLength arg");
+    }
+
+    const auto initial_len = std::max(numeric_cast<size_t>(max_length), text.size());
     vector<char> buffer(initial_len + 1);
 
     if (!text.empty()) {
