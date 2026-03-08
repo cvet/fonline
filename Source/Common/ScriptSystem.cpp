@@ -40,6 +40,25 @@
 
 FO_BEGIN_NAMESPACE
 
+static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32>>& funcs, ScriptFunc<void> func, int32 priority)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    funcs.emplace_back(std::move(func), priority);
+    std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
+}
+
+static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32>>& funcs, string_view error)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& func : funcs | std::views::keys) {
+        if (!func.Call()) {
+            throw ScriptSystemException(error);
+        }
+    }
+}
+
 void ScriptSystem::InitSubsystems(BaseEngine* engine)
 {
     FO_STACK_TRACE_ENTRY();
@@ -106,6 +125,7 @@ void ScriptSystem::ShutdownBackends()
     _engineTypes.clear();
     _globalFuncMap.clear();
     _initFunc.clear();
+    _validateFunc.clear();
     _backends.clear();
 }
 
@@ -113,8 +133,14 @@ void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _initFunc.emplace_back(std::move(func), priority);
-    std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
+    AddModuleFunc(_initFunc, std::move(func), priority);
+}
+
+void ScriptSystem::AddValidateFunc(ScriptFunc<void> func, int32 priority)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AddModuleFunc(_validateFunc, std::move(func), priority);
 }
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
@@ -174,11 +200,14 @@ void ScriptSystem::InitModules()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& func : _initFunc | std::views::keys) {
-        if (!func.Call()) {
-            throw ScriptSystemException("Module initialization failed");
-        }
-    }
+    RunModuleFuncs(_initFunc, "Module initialization failed");
+}
+
+void ScriptSystem::ValidateModules()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RunModuleFuncs(_validateFunc, "Module validation failed");
 }
 
 void ScriptSystem::ProcessScriptEvents()

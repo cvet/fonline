@@ -501,12 +501,19 @@ void AngelScriptBackend::BindRequiredStuff()
 
             _scriptSys->AddGlobalScriptFunc(func_desc);
 
-            // Check for special module init function
+            // Check for special module init and validation functions
             if (func_desc->Call && func_desc->Args.empty() && func_desc->Ret.Kind == ComplexTypeKind::None) {
-                if (strvex(func->GetName()).starts_with("ModuleInit") || strvex(func->GetName()).starts_with("module_init")) {
-                    const auto priority = strvex(func->GetName()).substring_after('_').to_int32();
+                auto func_name = strvex(func->GetName());
+
+                if (func_name.starts_with("ModuleInit") || func_name.starts_with("module_init")) {
+                    const auto priority = func_name.substring_after('_').to_int32();
                     auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
                     _scriptSys->AddInitFunc(std::move(func_wrapper), priority);
+                }
+                else if (func_name.starts_with("ModuleValidate") || func_name.starts_with("module_validate")) {
+                    const auto priority = func_name.substring_after('_').to_int32();
+                    auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
+                    _scriptSys->AddValidateFunc(std::move(func_wrapper), priority);
                 }
             }
         }

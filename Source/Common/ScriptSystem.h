@@ -458,6 +458,7 @@ public:
     void InitSubsystems(BaseEngine* engine);
     void InitSubsystems(EngineMetadata* meta, const FileSystem& resources);
     void InitModules();
+    void ValidateModules();
     void ProcessScriptEvents();
 
     void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
@@ -547,6 +548,7 @@ public:
     void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
     void AddInitFunc(ScriptFunc<void> func, int32 priority);
+    void AddValidateFunc(ScriptFunc<void> func, int32 priority);
 
     template<typename T>
         requires(!std::is_pointer_v<T>)
@@ -583,6 +585,7 @@ private:
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
     vector<pair<ScriptFunc<void>, int32>> _initFunc {};
+    vector<pair<ScriptFunc<void>, int32>> _validateFunc {};
 };
 
 class ScriptHelpers final
