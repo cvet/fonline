@@ -85,6 +85,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
+FIXED_SETTING(bool, DisableNetworking, false); // If true, server networking listeners are not started
 FIXED_SETTING(int32, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(string, WssPrivateKey, ""); // WebSocket Secure private key
