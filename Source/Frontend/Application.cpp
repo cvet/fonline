@@ -636,6 +636,8 @@ void Application::BeginFrame()
     ActiveRenderer->ClearRenderTarget(ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
+    const bool imgui_capture_mouse = io.WantCaptureMouse;
+    const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
     if (!NextFrameEventsQueue->empty()) {
         EventsQueue->insert(EventsQueue->end(), NextFrameEventsQueue->begin(), NextFrameEventsQueue->end());
@@ -658,7 +660,10 @@ void Application::BeginFrame()
             const auto y_ratio = numeric_cast<float32>(App->Settings.ScreenHeight) / numeric_cast<float32>(vp.height);
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
-            EventsQueue->emplace_back(ev);
+
+            if (!imgui_capture_mouse) {
+                EventsQueue->emplace_back(ev);
+            }
 
             io.AddMousePosEvent(numeric_cast<float32>(ev.MouseX), numeric_cast<float32>(ev.MouseY));
         } break;
@@ -667,12 +672,18 @@ void Application::BeginFrame()
             if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 InputEvent::MouseDownEvent ev;
                 ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
-                EventsQueue->emplace_back(ev);
+
+                if (!imgui_capture_mouse) {
+                    EventsQueue->emplace_back(ev);
+                }
             }
             else {
                 InputEvent::MouseUpEvent ev;
                 ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
-                EventsQueue->emplace_back(ev);
+
+                if (!imgui_capture_mouse) {
+                    EventsQueue->emplace_back(ev);
+                }
             }
 
             int32 mouse_button = -1;
@@ -710,7 +721,10 @@ void Application::BeginFrame()
         case SDL_EVENT_MOUSE_WHEEL: {
             InputEvent::MouseWheelEvent ev;
             ev.Delta = iround<int32>(sdl_event.wheel.y);
-            EventsQueue->emplace_back(ev);
+
+            if (!imgui_capture_mouse) {
+                EventsQueue->emplace_back(ev);
+            }
 
             float32 wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
             float32 wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
@@ -721,7 +735,10 @@ void Application::BeginFrame()
             if (sdl_event.type == SDL_EVENT_KEY_DOWN) {
                 InputEvent::KeyDownEvent ev;
                 ev.Code = (*KeysMap)[sdl_event.key.scancode];
-                EventsQueue->emplace_back(ev);
+
+                if (!imgui_capture_keyboard) {
+                    EventsQueue->emplace_back(ev);
+                }
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
                     RequestQuit();
@@ -730,7 +747,10 @@ void Application::BeginFrame()
             else {
                 InputEvent::KeyUpEvent ev;
                 ev.Code = (*KeysMap)[sdl_event.key.scancode];
-                EventsQueue->emplace_back(ev);
+
+                if (!imgui_capture_keyboard) {
+                    EventsQueue->emplace_back(ev);
+                }
             }
 
             const auto sdl_key_mods = sdl_event.key.mod;
@@ -747,10 +767,17 @@ void Application::BeginFrame()
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.text.text;
-            EventsQueue->emplace_back(ev1);
+
+            if (!imgui_capture_keyboard) {
+                EventsQueue->emplace_back(ev1);
+            }
+
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
-            EventsQueue->emplace_back(ev2);
+
+            if (!imgui_capture_keyboard) {
+                EventsQueue->emplace_back(ev2);
+            }
 
             io.AddInputCharactersUTF8(sdl_event.text.text);
         } break;
