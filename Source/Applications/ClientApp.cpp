@@ -175,7 +175,7 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Client.reset();
         }
 
-        ExitApp(true);
+        ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

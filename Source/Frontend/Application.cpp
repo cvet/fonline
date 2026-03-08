@@ -1006,9 +1006,13 @@ void Application::EndFrame()
 #endif
 }
 
-void Application::RequestQuit() noexcept
+void Application::RequestQuit(bool success) noexcept
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!success) {
+        _quitSuccess.store(false);
+    }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
         WriteLog("Quit requested");

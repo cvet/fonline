@@ -387,6 +387,7 @@ public:
     ~Application() = default;
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
+    [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
 
     auto CreateChildWindow(isize32 size) -> AppWindow*;
     void OpenLink(string_view link);
@@ -396,7 +397,7 @@ public:
 #endif
     void BeginFrame();
     void EndFrame();
-    void RequestQuit() noexcept;
+    void RequestQuit(bool success = true) noexcept;
     void WaitForRequestedQuit();
 
     static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
@@ -431,6 +432,7 @@ private:
     vector<unique_ptr<RenderTexture>> _imguiTextures {};
     vector<raw_ptr<AppWindow>> _allWindows {};
     std::atomic_bool _quit {};
+    std::atomic_bool _quitSuccess {true};
     std::condition_variable _quitEvent {};
     std::mutex _quitLocker {};
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};

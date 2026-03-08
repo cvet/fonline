@@ -268,7 +268,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         FO_RUNTIME_ASSERT(!server);
         FO_RUNTIME_ASSERT(clients.empty());
-        ExitApp(true);
+        ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         SetLogCallback("", nullptr);

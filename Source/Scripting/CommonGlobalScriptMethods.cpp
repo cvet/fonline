@@ -74,6 +74,14 @@ FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
+{
+    ignore_unused(engine);
+
+    App->RequestQuit(success);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view resourcePath)
 {
     ignore_unused(engine);

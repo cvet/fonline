@@ -56,7 +56,7 @@ int main(int argc, char** argv)
             server->Shutdown();
         }
 
-        ExitApp(true);
+        ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
