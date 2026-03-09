@@ -723,16 +723,17 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
 
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto prop_enum = static_cast<int32>(gen->GetArgDWord(0));
-    bool& is_virtual = *cast_from_void<bool*>(gen->GetArgAddress(1));
-    bool& is_dict = *cast_from_void<bool*>(gen->GetArgAddress(2));
-    bool& is_array = *cast_from_void<bool*>(gen->GetArgAddress(3));
-    bool& is_string_like = *cast_from_void<bool*>(gen->GetArgAddress(4));
-    string& enum_name = *cast_from_void<string*>(gen->GetArgAddress(5));
-    bool& is_int = *cast_from_void<bool*>(gen->GetArgAddress(6));
-    bool& is_float = *cast_from_void<bool*>(gen->GetArgAddress(7));
-    bool& is_bool = *cast_from_void<bool*>(gen->GetArgAddress(8));
-    int32& base_size = *cast_from_void<int32*>(gen->GetArgAddress(9));
-    bool& is_synced = *cast_from_void<bool*>(gen->GetArgAddress(10));
+    bool& is_disabled = *cast_from_void<bool*>(gen->GetArgAddress(1));
+    bool& is_virtual = *cast_from_void<bool*>(gen->GetArgAddress(2));
+    bool& is_dict = *cast_from_void<bool*>(gen->GetArgAddress(3));
+    bool& is_array = *cast_from_void<bool*>(gen->GetArgAddress(4));
+    bool& is_string_like = *cast_from_void<bool*>(gen->GetArgAddress(5));
+    string& enum_name = *cast_from_void<string*>(gen->GetArgAddress(6));
+    bool& is_int = *cast_from_void<bool*>(gen->GetArgAddress(7));
+    bool& is_float = *cast_from_void<bool*>(gen->GetArgAddress(8));
+    bool& is_bool = *cast_from_void<bool*>(gen->GetArgAddress(9));
+    int32& base_size = *cast_from_void<int32*>(gen->GetArgAddress(10));
+    bool& is_synced = *cast_from_void<bool*>(gen->GetArgAddress(11));
 
     if (prop_enum == 0) {
         throw ScriptException("'None' is not valid property entry in this context");
@@ -743,6 +744,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     const auto* prop = registrator->GetPropertyByIndex(prop_enum);
     FO_RUNTIME_ASSERT(prop);
 
+    is_disabled = prop->IsDisabled();
     is_virtual = prop->IsVirtual();
     is_dict = prop->IsDict();
     is_array = prop->IsArray();
@@ -918,7 +920,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void SetPropertyGetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_SetPropertyGetter), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void AddPropertySetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_AddPropertySetter_NonDeferred), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void AddPropertyDeferredSetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_AddPropertySetter_Deferred), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void GetPropertyInfo({}Property prop, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int&out baseSize, bool&out isSynced) const", name).c_str(), FO_SCRIPT_GENERIC(Game_GetPropertyInfo), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void GetPropertyInfo({}Property prop, bool&out isDisabled, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int&out baseSize, bool&out isSynced) const", name).c_str(), FO_SCRIPT_GENERIC(Game_GetPropertyInfo), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
     };
 
     const auto register_entity_abstract = [&](const char* name, const EntityTypeDesc& desc) {
