@@ -306,11 +306,28 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             if (tag_desc.Tokens.size() < 4) {
                 throw MetadataBakerException("Invalid Enum codegen tag: expected value after '='", tag_desc.SourceFile, tag_desc.LineNumber);
             }
-            if (!strvex(tag_desc.Tokens[3]).is_number()) {
+            if (!strvex(tag_desc.Tokens[3]).is_number() && tag_desc.Tokens[3] != "-") {
                 throw MetadataBakerException("Invalid Enum codegen tag: expected number after '='", tag_desc.SourceFile, tag_desc.LineNumber, tag_desc.Tokens[3]);
             }
 
-            enum_value = numeric_cast<int32>(strvex(tag_desc.Tokens[3]).to_int64());
+            int64 value;
+
+            if (tag_desc.Tokens[3] == "-") {
+                if (tag_desc.Tokens.size() < 5 || !strvex(tag_desc.Tokens[4]).is_number()) {
+                    throw MetadataBakerException("Invalid Enum codegen tag: expected number after '-'", tag_desc.SourceFile, tag_desc.LineNumber, tag_desc.Tokens[4]);
+                }
+
+                value = -strvex(tag_desc.Tokens[4]).to_int64();
+            }
+            else {
+                value = strvex(tag_desc.Tokens[3]).to_int64();
+            }
+
+            if (value < std::numeric_limits<int32>::min() || value > std::numeric_limits<int32>::max()) {
+                throw MetadataBakerException("Invalid Enum codegen tag: enum value out of int32 range", tag_desc.SourceFile, tag_desc.LineNumber, value);
+            }
+
+            enum_value = numeric_cast<int32>(value);
 
             if (std::ranges::any_of(enum_desc.Entries, [&](auto&& kv) { return kv.second == enum_value.value(); })) {
                 throw MetadataBakerException("Invalid Enum codegen tag: duplicate enum value", tag_desc.SourceFile, tag_desc.LineNumber, enum_value.value());
@@ -385,7 +402,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 if (max_value > std::numeric_limits<int32>::max()) {
                     throw MetadataBakerException("Enum underlying type overflow: max value exceed int32 range", "", enum_name);
                 }
-                if (max_value < std::numeric_limits<int32>::max()) {
+                if (min_value < std::numeric_limits<int32>::min()) {
                     throw MetadataBakerException("Enum underlying type overflow: min value less than int32 range", "", enum_name);
                 }
 
