@@ -82,6 +82,58 @@ FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName)
+{
+    const auto func_name = engine->Hashes.ToHashedString(funcName);
+    auto func = engine->FindFunc<void>(func_name);
+
+    if (!func) {
+        throw ScriptException("Script function not found", funcName);
+    }
+
+    return func.Call();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1)
+{
+    const auto func_name = engine->Hashes.ToHashedString(funcName);
+    auto func = engine->FindFunc<void, any_t>(func_name);
+
+    if (!func) {
+        throw ScriptException("Script function not found", funcName);
+    }
+
+    return func.Call(param1);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2)
+{
+    const auto func_name = engine->Hashes.ToHashedString(funcName);
+    auto func = engine->FindFunc<void, any_t, any_t>(func_name);
+
+    if (!func) {
+        throw ScriptException("Script function not found", funcName);
+    }
+
+    return func.Call(param1, param2);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2, any_t param3)
+{
+    const auto func_name = engine->Hashes.ToHashedString(funcName);
+    auto func = engine->FindFunc<void, any_t, any_t, any_t>(func_name);
+
+    if (!func) {
+        throw ScriptException("Script function not found", funcName);
+    }
+
+    return func.Call(param1, param2, param3);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_IsResourcePresent(BaseEngine* engine, string_view resourcePath)
 {
     ignore_unused(engine);
