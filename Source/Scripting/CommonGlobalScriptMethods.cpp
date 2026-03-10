@@ -84,24 +84,32 @@ FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void> func)
 {
+    ignore_unused(engine);
+
     return func.Call();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t> func, any_t param1)
 {
+    ignore_unused(engine);
+
     return func.Call(param1);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t> func, any_t param1, any_t param2)
 {
+    ignore_unused(engine);
+
     return func.Call(param1, param2);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t, any_t> func, any_t param1, any_t param2, any_t param3)
 {
+    ignore_unused(engine);
+
     return func.Call(param1, param2, param3);
 }
 
