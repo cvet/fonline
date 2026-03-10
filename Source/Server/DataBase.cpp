@@ -939,7 +939,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto locker = std::scoped_lock(_collectionsLocker);
+        std::scoped_lock locker {_collectionsLocker};
 
         for (auto& value : _collections | std::views::values) {
             const auto commit = unqlite_commit(value.get());
@@ -955,7 +955,7 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto locker = std::scoped_lock(_collectionsLocker);
+        std::scoped_lock locker {_collectionsLocker};
 
         unqlite* db;
 
@@ -1077,6 +1077,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
+        std::scoped_lock locker {_collectionsLocker};
+
         auto* collection = GetCollection(collection_name);
 
         if (collection == nullptr) {
@@ -1135,6 +1137,8 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
+        std::scoped_lock locker {_collectionsLocker};
+
         auto* collection = GetCollection(collection_name);
 
         if (collection == nullptr) {
@@ -1187,6 +1191,8 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
+        std::scoped_lock locker {_collectionsLocker};
+
         auto* collection = GetOrCreateCollection(collection_name);
 
         bson_t insert;
@@ -1214,6 +1220,8 @@ protected:
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(!doc.Empty());
+
+        std::scoped_lock locker {_collectionsLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -1258,6 +1266,8 @@ protected:
     void DeleteRecord(hstring collection_name, ident_t id) override
     {
         FO_STACK_TRACE_ENTRY();
+
+        std::scoped_lock locker {_collectionsLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -1330,6 +1340,7 @@ private:
 
     raw_ptr<mongoc_client_t> _client {};
     raw_ptr<mongoc_database_t> _database {};
+    mutable std::mutex _collectionsLocker {};
     unordered_map<string, raw_ptr<mongoc_collection_t>> _collections {};
 };
 #endif
