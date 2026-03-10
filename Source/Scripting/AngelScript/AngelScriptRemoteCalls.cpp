@@ -91,37 +91,45 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
             const auto* arr = *cast_from_void<const ScriptArray**>(arg_ptr);
-            const auto arr_size = numeric_cast<int32>(arr->GetSize());
+            const auto arr_size = arr != nullptr ? numeric_cast<int32>(arr->GetSize()) : 0;
             writer.Write<int32>(arr_size);
 
-            for (int32 j = 0; j < arr_size; j++) {
-                write_simple(arr->At(j), arg.Type.BaseType);
+            if (arr != nullptr) {
+                for (int32 j = 0; j < arr_size; j++) {
+                    write_simple(arr->At(j), arg.Type.BaseType);
+                }
             }
         }
         else if (arg.Type.Kind == ComplexTypeKind::Dict) {
             const auto* dict = *cast_from_void<const ScriptDict**>(arg_ptr);
-            const auto dict_size = numeric_cast<int32>(dict->GetSize());
+            const auto dict_size = dict != nullptr ? numeric_cast<int32>(dict->GetSize()) : 0;
             writer.Write<int32>(dict_size);
 
-            for (const auto& kv : dict->GetMap()) {
-                write_simple(kv.first, arg.Type.KeyType.value());
-                write_simple(kv.second, arg.Type.BaseType);
+            if (dict != nullptr) {
+                for (const auto& kv : dict->GetMap()) {
+                    write_simple(kv.first, arg.Type.KeyType.value());
+                    write_simple(kv.second, arg.Type.BaseType);
+                }
             }
         }
         else if (arg.Type.Kind == ComplexTypeKind::DictOfArray) {
             const auto* dict = *cast_from_void<const ScriptDict**>(arg_ptr);
-            const auto dict_size = numeric_cast<int32>(dict->GetSize());
+            const auto dict_size = dict != nullptr ? numeric_cast<int32>(dict->GetSize()) : 0;
             writer.Write<int32>(dict_size);
 
-            for (const auto& kv : dict->GetMap()) {
-                write_simple(kv.first, arg.Type.KeyType.value());
+            if (dict != nullptr) {
+                for (const auto& kv : dict->GetMap()) {
+                    write_simple(kv.first, arg.Type.KeyType.value());
 
-                const auto* arr = *cast_from_void<const ScriptArray**>(kv.second);
-                const auto arr_size = numeric_cast<int32>(arr->GetSize());
-                writer.Write<int32>(arr_size);
+                    const auto* arr = *cast_from_void<const ScriptArray**>(kv.second);
+                    const auto arr_size = arr != nullptr ? numeric_cast<int32>(arr->GetSize()) : 0;
+                    writer.Write<int32>(arr_size);
 
-                for (int32 j = 0; j < arr_size; j++) {
-                    write_simple(arr->At(j), arg.Type.BaseType);
+                    if (arr != nullptr) {
+                        for (int32 j = 0; j < arr_size; j++) {
+                            write_simple(arr->At(j), arg.Type.BaseType);
+                        }
+                    }
                 }
             }
         }
