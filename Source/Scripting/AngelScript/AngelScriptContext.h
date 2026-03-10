@@ -57,6 +57,7 @@ struct AngelScriptContextExtendedData
 {
     AngelScript::asIScriptContext* Root {};
     AngelScript::asIScriptContext* Parent {};
+    int32 ExceptionCount {};
     bool ExecutionActive {};
     size_t ExecutionCalls {};
     nanotime SuspendEndTime {};

@@ -514,6 +514,17 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     ignore_unused(param);
 
+    // Count exceptions
+    auto* backend = GetScriptBackend(ctx->GetEngine());
+    backend->IncreaseExceptionCounter();
+
+    for (auto* ctx_iter = ctx; ctx_iter != nullptr;) {
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx_iter);
+        FO_RUNTIME_ASSERT(ctx_ext);
+        ctx_ext->ExceptionCount++;
+        ctx_iter = ctx_ext->Parent;
+    }
+
     auto& ex = ctx->GetStdException();
 
     if (ex) {

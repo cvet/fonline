@@ -67,6 +67,7 @@ public:
     [[nodiscard]] auto GetEntityMngr() -> EntityManagerApi*; // Assert if not specified
     [[nodiscard]] auto GetContextMngr() noexcept -> AngelScriptContextManager* { return _contextMngr.get(); }
     [[nodiscard]] auto GetContextMngr() const noexcept -> const AngelScriptContextManager* { return _contextMngr.get(); }
+    [[nodiscard]] auto GetExceptionCounter() const noexcept -> int32 { return _exceptionCounter.load(); }
 
     void RegisterMetadata(EngineMetadata* meta);
     void SetMessageCallback(function<void(string_view)> message_callback);
@@ -75,6 +76,7 @@ public:
     auto CompileTextScripts(const vector<File>& files) -> vector<uint8>;
     void BindRequiredStuff();
     void AddCleanupCallback(function<void()> callback);
+    void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
 
 private:
     raw_ptr<EngineMetadata> _meta {};
@@ -86,6 +88,7 @@ private:
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
     unique_ptr<DebuggerEndpointServer> _debuggerEndpointServer {};
+    std::atomic_int32_t _exceptionCounter {};
 };
 
 FO_END_NAMESPACE

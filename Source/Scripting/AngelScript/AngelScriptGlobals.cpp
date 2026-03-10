@@ -102,6 +102,27 @@ static void Global_Yield(int32 durationMs)
     context_mngr->SuspendScriptContext(ctx, engine->GameTime.GetFrameTime() + std::chrono::milliseconds(durationMs));
 }
 
+static auto Global_GetGlobalExceptionCount() -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* ctx = AngelScript::asGetActiveContext();
+    FO_RUNTIME_ASSERT(ctx);
+    const auto* backend = GetScriptBackend(ctx->GetEngine());
+    return backend->GetExceptionCounter();
+}
+
+static auto Global_GetContextExceptionCount() -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* ctx = AngelScript::asGetActiveContext();
+    FO_RUNTIME_ASSERT(ctx);
+    const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    return ctx_ext->ExceptionCount;
+}
+
 static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -388,6 +409,8 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", FO_SCRIPT_GENERIC(Global_ThrowException<10>), FO_SCRIPT_GENERIC_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetContextExceptionCount()", FO_SCRIPT_FUNC(Global_GetContextExceptionCount), FO_SCRIPT_FUNC_CONV));
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
