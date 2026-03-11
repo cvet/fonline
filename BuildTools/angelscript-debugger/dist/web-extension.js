@@ -246,7 +246,7 @@ var FosConfigurationProvider = class {
         return config;
       }
       if (targets.length === 0) {
-        await vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
+        void vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
         return void 0;
       }
       targets.sort((left, right) => left.endpoint.localeCompare(right.endpoint));

@@ -173,7 +173,7 @@ class FosConfigurationProvider implements vscode.DebugConfigurationProvider {
 			}
 
 			if (targets.length === 0) {
-				await vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
+				void vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
 				return undefined;
 			}
 
