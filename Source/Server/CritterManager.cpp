@@ -183,9 +183,16 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, final_dir, ident_t {});
 
     if (!cr->IsDestroyed()) {
-        _engine->EntityMngr.CallInit(cr.get(), true);
+        if (map != nullptr) {
+            _engine->OnMapCritterIn.Fire(map, cr.get());
+        }
+        else {
+            _engine->OnGlobalMapCritterIn.Fire(cr.get());
+        }
 
         if (!cr->IsDestroyed()) {
+            _engine->EntityMngr.CallInit(cr.get(), true);
+            _engine->MapMngr.ProcessVisibleCritters(cr.get());
             _engine->MapMngr.ProcessVisibleItems(cr.get());
         }
     }

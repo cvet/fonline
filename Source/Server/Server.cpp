@@ -1432,7 +1432,12 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
     MapMngr.AddCritterToMap(cr.get(), nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
+        OnGlobalMapCritterIn.Fire(cr.get());
+    }
+    if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr.get(), true);
+        MapMngr.ProcessVisibleCritters(cr.get());
+        MapMngr.ProcessVisibleItems(cr.get());
     }
 
     if (cr->IsDestroyed()) {
@@ -1456,6 +1461,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 
     bool is_error = false;
     Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
+    refcount_ptr cr_holder = cr;
 
     if (is_error) {
         if (cr != nullptr) {
@@ -1477,11 +1483,15 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
-        OnCritterLoad.Fire(cr);
+        OnGlobalMapCritterIn.Fire(cr);
     }
-
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, false);
+        MapMngr.ProcessVisibleCritters(cr);
+        MapMngr.ProcessVisibleItems(cr);
+    }
+    if (!cr->IsDestroyed()) {
+        OnCritterLoad.Fire(cr);
     }
 
     if (cr->IsDestroyed()) {

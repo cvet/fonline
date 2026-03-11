@@ -1258,7 +1258,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
             }
         }
 
-        RemoveCritterFromMap(cr, prev_map);
+        RemoveCritterFromMap(cr, prev_map); // Todo: callbacks may turn critter to wrong state
 
         if (cr->IsDestroyed()) {
             return;
@@ -1282,6 +1282,13 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
                     cr->Send_AddCritter(group_cr.get());
                 }
             }
+        }
+
+        if (map != nullptr) {
+            _engine->OnMapCritterIn.Fire(map, cr);
+        }
+        else {
+            _engine->OnGlobalMapCritterIn.Fire(cr);
         }
 
         ProcessVisibleCritters(cr);
@@ -1347,8 +1354,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
         }
 
         map->AddCritter(cr);
-
-        _engine->OnMapCritterIn.Fire(map, cr);
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -1379,8 +1384,6 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ide
         }
 
         vec_add_unique_value(*cr_group, cr);
-
-        _engine->OnGlobalMapCritterIn.Fire(cr);
     }
 }
 
