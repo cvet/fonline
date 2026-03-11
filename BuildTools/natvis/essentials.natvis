@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="fo::raw_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::unique_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::refcount_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::propagate_const&lt;*&gt;">
+    <DisplayString>{_smartPtr}</DisplayString>
+    <Expand>
+      <ExpandedItem>_smartPtr</ExpandedItem>
+      <Item Name="[value]" ExcludeView="simple">_smartPtr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::SourceLocationData">
+    <DisplayString Condition="function != 0 &amp;&amp; file != 0">{function,s} @ {file,s}:{line}</DisplayString>
+    <DisplayString Condition="function != 0">{function,s}:{line}</DisplayString>
+    <DisplayString Condition="name != 0">{name,s}</DisplayString>
+    <DisplayString>(unknown)</DisplayString>
+    <Expand>
+      <Item Name="Function" Condition="function != 0">function,s</Item>
+      <Item Name="File" Condition="file != 0">file,s</Item>
+      <Item Name="Line">line</Item>
+      <Item Name="Name" Condition="name != 0">name,s</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::StackTraceData">
+    <DisplayString Condition="CallsCount == 0">empty stack</DisplayString>
+    <DisplayString Condition="CallsCount == 1">1 frame</DisplayString>
+    <DisplayString>{CallsCount} frames</DisplayString>
+    <Expand>
+      <Item Name="[count]" ExcludeView="simple">CallsCount</Item>
+      <CustomListItems MaxItemsPerView="64" Condition="CallsCount != 0">
+        <Variable Name="count" InitialValue="CallsCount > 64 ? 64 : CallsCount" />
+        <Variable Name="idx" InitialValue="count" />
+        <Loop>
+          <Break Condition="idx == 0" />
+          <Item Name="[{count - idx}] {CallTree[idx - 1]-&gt;function,s}" Condition="CallTree[idx - 1] != 0">*CallTree[idx - 1]</Item>
+          <Item Name="[{count - idx}]" Condition="CallTree[idx - 1] == 0">CallTree[idx - 1]</Item>
+          <Exec>idx = idx - 1</Exec>
+        </Loop>
+      </CustomListItems>
+      <Synthetic Name="Truncated" Condition="CallsCount &gt; 64">
+        <DisplayString>true</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::BaseEngineException">
+    <DisplayString>[{_name,s}] {_message}</DisplayString>
+    <Expand>
+      <Item Name="Type">_name,s</Item>
+      <Item Name="Message">_message</Item>
+      <Item Name="What" ExcludeView="simple">_extendedMessage</Item>
+      <ExpandedItem>_params</ExpandedItem>
+      <ExpandedItem>_stackTrace</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::hstring">
+    <DisplayString>hash={_entry-&gt;Hash,d} {_entry-&gt;Str}</DisplayString>
+    <Expand>
+      <Item Name="String">_entry-&gt;Str</Item>
+      <Item Name="Hash">_entry-&gt;Hash,d</Item>
+      <Item Name="HashHex" ExcludeView="simple">_entry-&gt;Hash,x</Item>
+      <Item Name="Entry">_entry</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ucolor">
+    <DisplayString>rgba({(int)comp.r}, {(int)comp.g}, {(int)comp.b}, {(int)comp.a})</DisplayString>
+    <Expand>
+      <Item Name="rgba">rgba,x</Item>
+      <Item Name="r">(int)comp.r</Item>
+      <Item Name="g">(int)comp.g</Item>
+      <Item Name="b">(int)comp.b</Item>
+      <Item Name="a">(int)comp.a</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ipos&lt;*&gt;">
+    <DisplayString>({x}, {y})</DisplayString>
+    <Expand>
+      <Item Name="x">x</Item>
+      <Item Name="y">y</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

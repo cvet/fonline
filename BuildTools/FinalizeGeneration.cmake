@@ -591,6 +591,7 @@ list(APPEND FO_ESSENTIALS_SOURCE
 
 if(MSVC)
     list(APPEND FO_ESSENTIALS_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis"
         "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
 endif()
 
