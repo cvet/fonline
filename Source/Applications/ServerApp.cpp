@@ -59,6 +59,7 @@ int main(int argc, char** argv) // Handled by SDL
         refcount_ptr<ServerEngine> server;
         vector<refcount_ptr<ClientEngine>> clients;
         bool auto_start_triggered = false;
+        bool start_client_triggered = false;
         bool hide_controls = false;
 
         list<pair<vector<string>, StackTraceData>> log_buffer;
@@ -81,6 +82,20 @@ int main(int argc, char** argv) // Handled by SDL
             server.reset();
         };
 
+        const auto start_client = [&] {
+            try {
+                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
+                clients.emplace_back(std::move(client));
+                hide_controls = true;
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            catch (...) {
+                FO_UNKNOWN_EXCEPTION();
+            }
+        };
+
         if (!App->Settings.NoStart) {
             WriteLog("Auto start server");
         }
@@ -93,6 +108,12 @@ int main(int argc, char** argv) // Handled by SDL
             if (!App->Settings.NoStart && !server && !auto_start_triggered) {
                 auto_start_triggered = true;
                 start_server();
+            }
+
+            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer && !start_client_triggered) {
+                start_client_triggered = true;
+                WriteLog("Auto start embedded client");
+                start_client();
             }
 
             if (hide_controls) {
@@ -128,17 +149,7 @@ int main(int argc, char** argv) // Handled by SDL
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
-                        try {
-                            auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
-                            clients.emplace_back(std::move(client));
-                            hide_controls = true;
-                        }
-                        catch (const std::exception& ex) {
-                            ReportExceptionAndContinue(ex);
-                        }
-                        catch (...) {
-                            FO_UNKNOWN_EXCEPTION();
-                        }
+                        start_client();
                     }
 
                     if (ImGui::Button("Save log", control_btn_size)) {

@@ -299,6 +299,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
 FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
+FIXED_SETTING(bool, AutoStartClientOnServer, false); // If true, server automatically spawns an embedded client on startup
 FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start
 FIXED_SETTING(int32, MaxServerLogLines, 1000); // Maximum server log lines in UI
 FIXED_SETTING(int32, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
