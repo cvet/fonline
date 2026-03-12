@@ -43,7 +43,7 @@ def getGuid(name: str) -> str:
 
 
 def getHash(input: str, seed: int = 0) -> str:
-    input = input.encode()
+    input_bytes = input.encode()
 
     def intTo4Bytes(i: int) -> int:
         return i & 0xffffffff
@@ -51,15 +51,15 @@ def getHash(input: str, seed: int = 0) -> str:
     m = 0x5bd1e995
     r = 24
 
-    length = len(input)
+    length = len(input_bytes)
     h = seed ^ length
 
     round = 0
     while length >= (round * 4) + 4:
-        k = input[round * 4]
-        k |= input[(round * 4) + 1] << 8
-        k |= input[(round * 4) + 2] << 16
-        k |= input[(round * 4) + 3] << 24
+        k = input_bytes[round * 4]
+        k |= input_bytes[(round * 4) + 1] << 8
+        k |= input_bytes[(round * 4) + 2] << 16
+        k |= input_bytes[(round * 4) + 3] << 24
         k = intTo4Bytes(k)
         k = intTo4Bytes(k * m)
         k ^= k >> r
@@ -71,16 +71,16 @@ def getHash(input: str, seed: int = 0) -> str:
     lengthDiff = length - (round * 4)
 
     if lengthDiff == 1:
-        h ^= input[-1]
+        h ^= input_bytes[-1]
         h = intTo4Bytes(h * m)
     elif lengthDiff == 2:
-        h ^= intTo4Bytes(input[-1] << 8)
-        h ^= input[-2]
+        h ^= intTo4Bytes(input_bytes[-1] << 8)
+        h ^= input_bytes[-2]
         h = intTo4Bytes(h * m)
     elif lengthDiff == 3:
-        h ^= intTo4Bytes(input[-1] << 16)
-        h ^= intTo4Bytes(input[-2] << 8)
-        h ^= input[-3]
+        h ^= intTo4Bytes(input_bytes[-1] << 16)
+        h ^= intTo4Bytes(input_bytes[-2] << 8)
+        h ^= input_bytes[-3]
         h = intTo4Bytes(h * m)
 
     h ^= h >> 13
@@ -147,7 +147,7 @@ def checkErrors() -> None:
             errorLines.append('//  Stub generated due to code generation error')
             errorLines.append('//')
             for messages in errors:
-                errorLines.append('//  ' + messages[0])
+                errorLines.append('//  ' + str(messages[0]))
                 for m in messages:
                     errorLines.append('//  - ' + str(m))
             errorLines.append('//')
@@ -998,6 +998,7 @@ def insertCodeGenLines(lines: list[str], entryName: str) -> None:
         for genTag in codeGenTags['CodeGen']:
             if curCodeGenTemplateType == genTag[0] and entryName == genTag[2]:
                 return genTag[3] + 1, genTag[4]
+        assert curCodeGenTemplateType is not None
         assert False, 'Code gen entry ' + entryName + ' in ' + curCodeGenTemplateType + ' not found'
     lineIndex, padding = findTag()
     
@@ -1072,6 +1073,7 @@ def metaTypeToEngineType(t: str, target: str, passIn: bool, refAsPtr: bool = Fal
     elif tt[0] in refTypes or tt[0] in entityRelatives:
         r = tt[0] + '*'
     elif tt[0] in customTypes:
+        r = ''
         for e in codeGenTags['ExportValueType']:
             if e[0] == tt[0]:
                 r = e[1]
@@ -1459,7 +1461,6 @@ def run_codegen() -> None:
     parse_all_tags()
     run_generic_codegen()
     run_metadata_registration_codegen()
-    run_markdown_codegen()
     write_embedded_resources()
     write_version_info()
     flush_generated_files()
