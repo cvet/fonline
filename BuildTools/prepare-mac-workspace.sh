@@ -6,6 +6,15 @@ CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$CUR_DIR/setup-env.sh"
 source "$CUR_DIR/internal-tools.sh"
 
+function resolve_cmake()
+{
+    if [[ -x $(command -v cmake) ]]; then
+        echo cmake
+    else
+        echo /Applications/CMake.app/Contents/bin/cmake
+    fi
+}
+
 while true; do
     ready=1
 
@@ -14,11 +23,7 @@ while true; do
         ready=0
     fi
 
-    if [[ -x $(command -v cmake) ]]; then
-        CMAKE=cmake
-    else
-        CMAKE=/Applications/CMake.app/Contents/bin/cmake
-    fi
+    CMAKE="$(resolve_cmake)"
     if [[ -z $CMAKE ]]; then
         echo "Please install CMake from https://cmake.org"
         ready=0

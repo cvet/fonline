@@ -20,7 +20,7 @@ DeclareOption(FO_ENABLE_3D "Supporting of 3d models" OFF)
 DeclareOption(FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF)
 DeclareOption(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF)
 DeclareOption(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
-DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
+DeclareOption(FO_GEOMETRY "HEXAGONAL or SQUARE geometry mode" "") # Required
 DeclareOption(FO_APP_ICON "Executable file icon" "") # Required
 DeclareOption(FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20)
 DeclareOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
@@ -59,7 +59,13 @@ set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
 
 # Check options
-set(requiredOptions "FO_MAIN_CONFIG" "FO_DEV_NAME" "FO_NICE_NAME" "FO_GEOMETRY" "FO_APP_ICON" "FO_OUTPUT_PATH")
+set(requiredOptions
+	"FO_MAIN_CONFIG"
+	"FO_DEV_NAME"
+	"FO_NICE_NAME"
+	"FO_GEOMETRY"
+	"FO_APP_ICON"
+	"FO_OUTPUT_PATH")
 
 foreach(opt ${requiredOptions})
 	if("${${opt}}" STREQUAL "")
@@ -580,51 +586,6 @@ macro(AddNativeIncludeDir)
 	endif()
 endmacro()
 
-macro(AddNativeSource)
-	if(FO_NATIVE_SCRIPTING)
-		# ResolveContributedFiles( ${ARGN} )
-		# foreach( resultEntry ${result} )
-		# StatusMessage( "Add engine source: ${resultEntry}" )
-		# list( APPEND FO_${target}_SOURCE ${resultEntry} )
-		# endforeach()
-	endif()
-endmacro()
-
-macro(AddMonoAssembly assembly)
-	if(FO_MONO_SCRIPTING)
-		StatusMessage("Add mono assembly ${assembly}")
-		list(APPEND FO_MONO_ASSEMBLIES ${assembly})
-		set(MonoAssembly_${assembly}_CommonRefs "")
-		set(MonoAssembly_${assembly}_ServerRefs "")
-		set(MonoAssembly_${assembly}_ClientRefs "")
-		set(MonoAssembly_${assembly}_MapperRefs "")
-		set(MonoAssembly_${assembly}_CommonSource "")
-		set(MonoAssembly_${assembly}_ServerSource "")
-		set(MonoAssembly_${assembly}_ClientSource "")
-		set(MonoAssembly_${assembly}_MapperSource "")
-	endif()
-endmacro()
-
-macro(AddMonoReference assembly target)
-	if(FO_MONO_SCRIPTING)
-		foreach(arg ${ARGN})
-			StatusMessage("Add mono assembly ${target}/${assembly} redefence to ${arg}")
-			list(APPEND MonoAssembly_${assembly}_${target}Refs ${arg})
-		endforeach()
-	endif()
-endmacro()
-
-macro(AddMonoSource assembly target)
-	if(FO_MONO_SCRIPTING)
-		ResolveContributedFiles(${ARGN})
-
-		foreach(resultEntry ${result})
-			StatusMessage("Add mono source for assembly ${target}/${assembly} at ${resultEntry}")
-			list(APPEND MonoAssembly_${assembly}_${target}Source ${resultEntry})
-		endforeach()
-	endif()
-endmacro()
-
 macro(CreatePackage package config)
 	list(APPEND FO_PACKAGES ${package})
 	set(Package_${package}_Config ${config})
@@ -634,13 +595,5 @@ endmacro()
 macro(AddToPackage package binary platform arch packType)
 	list(APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
 endmacro()
-
-# Core contribution
-set(FO_CONTRIBUTION_DIR ${FO_ENGINE_ROOT})
-
-AddNativeIncludeDir("Source/Scripting/Native")
-
-AddMonoAssembly("FOnline")
-AddMonoSource("FOnline" "Common" "Source/Scripting/Mono/*.cs")
 
 set(FO_CONTRIBUTION_DIR ${CMAKE_CURRENT_SOURCE_DIR})

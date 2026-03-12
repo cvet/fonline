@@ -1,49 +1,51 @@
 #!/usr/bin/python3
 
-print('[CodeGen]', 'Start code generation')
+from __future__ import annotations
 
-import os
-import sys
 import argparse
+import hashlib
+import os
+import subprocess
+import sys
 import time
 import uuid
-import subprocess
-import hashlib
-from collections.abc import Mapping, Iterable
+from collections.abc import Iterable, Mapping
+from typing import Any
 
-startTime = time.time()
 
-parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
-parser.add_argument('-maincfg', dest='maincfg', required=True, help='main config file')
-parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
-parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
-parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
-parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
-parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
-parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
-parser.add_argument('-markdown', dest='markdown', action='store_true', default=None, help='generate api in markdown format')
-parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
-parser.add_argument('-native', dest='native', action='store_true', default=None, help='generate native api')
-parser.add_argument('-angelscript', dest='angelscript', action='store_true', default=None, help='generate angelscript api')
-parser.add_argument('-csharp', dest='csharp', action='store_true', default=None, help='generate csharp api')
-parser.add_argument('-monoassembly', dest='monoassembly', action='append', default=[], help='assembly name')
-parser.add_argument('-monoserverref', dest='monoserverref', action='append', default=[], help='mono assembly server reference')
-parser.add_argument('-monoclientref', dest='monoclientref', action='append', default=[], help='mono assembly client reference')
-parser.add_argument('-monomapperref', dest='monomapperref', action='append', default=[], help='mono assembly mapper reference')
-parser.add_argument('-monoserversource', dest='monoserversource', action='append', default=[], help='csharp server file path')
-parser.add_argument('-monoclientsource', dest='monoclientsource', action='append', default=[], help='csharp client file path')
-parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
-parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
-parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
-args = parser.parse_args()
+GeneratedFileMap = dict[str, list[str]]
 
-def getGuid(name):
+
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
+    parser.add_argument('-maincfg', dest='maincfg', required=True, help='main config file')
+    parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
+    parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
+    parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
+    parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
+    parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
+    parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
+    parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
+    parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
+    return parser
+
+
+args = argparse.Namespace()
+startTime = 0.0
+
+
+def log(*parts: object) -> None:
+    print('[CodeGen]', *parts)
+
+
+def getGuid(name: str) -> str:
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
-def getHash(input, seed=0):
+
+def getHash(input: str, seed: int = 0) -> str:
     input = input.encode()
 
-    def intTo4Bytes(i):
+    def intTo4Bytes(i: int) -> int:
         return i & 0xffffffff
 
     m = 0x5bd1e995
@@ -121,20 +123,21 @@ codeGenTags = {
         'MigrationRule': [], #([args], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
 
-def verbosePrint(*str):
+def verbosePrint(*str: object) -> None:
     if args.verbose:
-        print('[CodeGen]', *str)
+        log(*str)
 
-errors = []
+errors: list[tuple[object, ...]] = []
 
-def showError(*messages):
+def showError(*messages: object) -> None:
     global errors
     errors.append(messages)
-    print('[CodeGen]', str(messages[0]))
+    log(str(messages[0]))
     for m in messages[1:]:
-        print('[CodeGen]', '-', str(m))
+        log('-', str(m))
 
-def checkErrors():
+
+def checkErrors() -> None:
     if errors:
         try:
             errorLines = []
@@ -161,7 +164,7 @@ def checkErrors():
         
         for e in errors[0]:
             if isinstance(e, BaseException):
-                print('[CodeGen]', 'Most recent exception:')
+                log('Most recent exception:')
                 raise e
         
         sys.exit(1)
@@ -171,7 +174,7 @@ tagsMetas = {}
 for k in codeGenTags.keys():
     tagsMetas[k] = []
 
-def parseMetaFile(absPath):
+def parseMetaFile(absPath: str) -> None:
     global tagsMetas
     
     try:
@@ -276,17 +279,22 @@ def parseMetaFile(absPath):
 # Meta files from build system
 metaFiles = []
 
-for path in args.meta:
-    absPath = os.path.abspath(path)
-    if absPath not in metaFiles and 'GeneratedSource' not in absPath:
-        assert os.path.isfile(absPath), 'Invalid meta file path ' + path
-        metaFiles.append(absPath)
-metaFiles.sort()
+def collect_meta_files() -> list[str]:
+    meta_files: list[str] = []
+    for path in args.meta:
+        absPath = os.path.abspath(path)
+        if absPath not in meta_files and 'GeneratedSource' not in absPath:
+            assert os.path.isfile(absPath), 'Invalid meta file path ' + path
+            meta_files.append(absPath)
+    meta_files.sort()
+    return meta_files
 
-for absPath in metaFiles:
-    parseMetaFile(absPath)
 
-checkErrors()
+def parse_meta_files() -> None:
+    for absPath in collect_meta_files():
+        parseMetaFile(absPath)
+
+    checkErrors()
 
 refTypes = set()
 engineEnums = set()
@@ -299,7 +307,11 @@ genericFuncdefs = set()
 propertyComponents = set()
 
 symTok = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
-def tokenize(text, anySymbols=[]):
+
+
+def tokenize(text: str | None, anySymbols: list[int] | None = None) -> list[str]:
+    if anySymbols is None:
+        anySymbols = []
     if text is None:
         return []
     text = text.strip()
@@ -324,7 +336,7 @@ def tokenize(text, anySymbols=[]):
     curTok = flushTok()
     return result
 
-def hashRecursive(hasher, data):
+def hashRecursive(hasher: Any, data: Any) -> None:
     def update(s):
         s = s.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
         hasher.update(s.encode('utf-8'))
@@ -342,7 +354,7 @@ def hashRecursive(hasher, data):
         update(str(data))
 compatablityHasher = hashlib.new('sha256')
 
-def parseTags():
+def parseTags() -> None:
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64',
             'float32', 'float64', 'string', 'bool', 'Entity', 'void', 'hstring', 'any'])
@@ -829,13 +841,7 @@ def parseTags():
             
             try:
                 fname = os.path.basename(absPath)
-                if fname == 'AngelScriptScripting-Template.cpp':
-                    templateType = 'AngelScript'
-                elif fname == 'MonoScripting-Template.cpp':
-                    templateType = 'Mono'
-                elif fname == 'NativeScripting-Template.cpp':
-                    templateType = 'Native'
-                elif fname == 'MetadataRegistration-Template.cpp':
+                if fname == 'MetadataRegistration-Template.cpp':
                     templateType = 'MetadataRegistration'
                 elif fname == 'GenericCode-Template.cpp':
                     templateType = 'GenericCode'
@@ -907,16 +913,18 @@ def parseTags():
     parseTypeTags4()
     postprocessTags()
 
-parseTags()
-checkErrors()
-tagsMetas = {} # Cleanup memory
+def parse_all_tags() -> None:
+    global tagsMetas
+    parseTags()
+    checkErrors()
+    tagsMetas = {}
 
 # Generate API
-files = {}
-lastFile = None
-genFileNames = []
+files: GeneratedFileMap = {}
+lastFile: list[str] | None = None
+genFileNames: list[str] = []
 
-def createFile(name, output):
+def createFile(name: str, output: str) -> None:
     assert output
     path = os.path.join(output, name)
     genFileNames.append(name)
@@ -925,17 +933,19 @@ def createFile(name, output):
     lastFile = []
     files[path] = lastFile
 
-def writeFile(line):
+def writeFile(line: str) -> None:
+    assert lastFile is not None, 'Output file is not initialized'
     lastFile.append(line)
 
-def insertFileLines(lines, lineIndex):
+def insertFileLines(lines: list[str], lineIndex: int) -> None:
+    assert lastFile is not None, 'Output file is not initialized'
     assert lineIndex <= len(lastFile), 'Invalid line index'
     lastFileCopy = lastFile[:]
     lastFileCopy = lastFileCopy[:lineIndex] + lines + lastFileCopy[lineIndex:]
     lastFile.clear()
     lastFile.extend(lastFileCopy)
 
-def flushFiles():
+def flushFiles() -> None:
     # Generate stubs missed files
     for fname in genFileList:
         if fname not in genFileNames:
@@ -966,9 +976,9 @@ def flushFiles():
         verbosePrint('flushFiles', 'write', path)
 
 # Code
-curCodeGenTemplateType = None
+curCodeGenTemplateType: str | None = None
 
-def writeCodeGenTemplate(templateType):
+def writeCodeGenTemplate(templateType: str) -> None:
     global curCodeGenTemplateType
     curCodeGenTemplateType = templateType
     
@@ -983,8 +993,8 @@ def writeCodeGenTemplate(templateType):
         lines = f.readlines()
     insertFileLines([l.rstrip('\r\n') for l in lines], 0)
 
-def insertCodeGenLines(lines, entryName):
-    def findTag():
+def insertCodeGenLines(lines: list[str], entryName: str) -> None:
+    def findTag() -> tuple[int, int]:
         for genTag in codeGenTags['CodeGen']:
             if curCodeGenTemplateType == genTag[0] and entryName == genTag[2]:
                 return genTag[3] + 1, genTag[4]
@@ -996,14 +1006,14 @@ def insertCodeGenLines(lines, entryName):
     
     insertFileLines(lines, lineIndex)
 
-def getEntityFromTarget(target):
+def getEntityFromTarget(target: str) -> str:
     if target == 'Server':
         return 'ServerEntity*'
     if target in ['Client', 'Mapper']:
         return 'ClientEntity*'
     return 'Entity*'
 
-def metaTypeToUnifiedType(t, selfEntity = 'SELF_ENTITY'):
+def metaTypeToUnifiedType(t: str, selfEntity: str = 'SELF_ENTITY') -> str:
     tt = t.split('.')
     if tt[0] == 'dict':
         d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
@@ -1026,8 +1036,8 @@ def metaTypeToUnifiedType(t, selfEntity = 'SELF_ENTITY'):
         r += '&'
     return r
 
-def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None, noRef=False):
-    def resolveEntity(e):
+def metaTypeToEngineType(t: str, target: str, passIn: bool, refAsPtr: bool = False, selfEntity: str | None = None, noRef: bool = False) -> str:
+    def resolveEntity(e: str) -> str:
         if target != 'Server':
             if e == 'Game' and target == 'Mapper':
                 return 'MapperEngine*'
@@ -1037,15 +1047,15 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None, noR
             return gameEntitiesInfo[e]['Server'] + '*'
     tt = t.split('.')
     if tt[0] == 'string':
-        r = 'string_view' if passIn and not tt[-1] == 'ref' else 'string'
+        r = 'string_view' if passIn and tt[-1] != 'ref' else 'string'
     elif tt[0] == 'dict':
         d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-        if passIn and not tt[-1] == 'ref':
+        if passIn and tt[-1] != 'ref':
             r = 'readonly_map<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + '>'
         else:
             r = 'map<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + '>'
     elif tt[0] == 'arr':
-        if passIn and not tt[-1] == 'ref':
+        if passIn and tt[-1] != 'ref':
             r = 'readonly_vector<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
         else:
             r = 'vector<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
@@ -1076,7 +1086,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False, selfEntity=None, noR
         r += '&' if not refAsPtr else '*'
     return r
 
-def genGenericCode():
+def genGenericCode() -> None:
     globalLines = []
     
     # Engine hooks
@@ -1144,13 +1154,14 @@ def genGenericCode():
     
     insertCodeGenLines(globalLines, 'Body')
 
-try:
-    genGenericCode()
-except Exception as ex:
-    showError('Code generation for generic code failed', ex)
-checkErrors()
+def run_generic_codegen() -> None:
+    try:
+        genGenericCode()
+    except Exception as ex:
+        showError('Code generation for generic code failed', ex)
+    checkErrors()
 
-def genMetadataRegistration(target, isStub):
+def genMetadataRegistration(target: str, isStub: bool) -> None:
     globalLines = []
     registerLines = []
     
@@ -1386,833 +1397,85 @@ def genMetadataRegistration(target, isStub):
         insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 1', '#define STUB_MODE ' + ('1' if isStub else '0')], 'Defines')
 
-try:
-    genMetadataRegistration('Mapper', False)
-    if args.angelscript:
-        genMetadataRegistration('Mapper', True)
-    
-    genMetadataRegistration('Server', False)
-    genMetadataRegistration('Client', False)
-    if args.angelscript:
-        genMetadataRegistration('Server', True)
-        genMetadataRegistration('Client', True)
-    
-except Exception as ex:
-    showError('Code generation for data registration failed', ex)
-    
-checkErrors()
-
-# Markdown
-def genApiMarkdown():
-    createFile('SCRIPT_API.md', args.mdpath)
-    writeFile('# ' + args.nicename + ' Script API')
-    writeFile('')
-    writeFile('## Table of Content')
-    writeFile('')
-    writeFile('GNEREATE AUTOMATICALLY')
-    writeFile('')
-    
-    # Generate source
-    def writeComm(comm, ident):
-        if not comm:
-            comm = ['...']
-        writeFile('')
-        index = 0
-        for c in comm:
-            if c.startswith('param'):
-                pass
-            elif c.startswith('return'):
-                pass
-            else:
-                pass
-            writeFile(''.center(ident * 2 + 2) + '' + c + '' + ('  ' if index < len(comm) - 1 else ''))
-            index += 1
-        writeFile('')
-    
-    writeFile('## Settings')
-    writeFile('')
-    writeFile('### General')
-    writeFile('')
-    for settTag in codeGenTags['ExportSettings']:
-        grName, targ, settings, flags, comm = settTag
-        writeFile('### ' + grName + (' ' + ', '.join(flags) if flags else ''))
-        writeComm(comm, 0)
-        for sett in settings:
-            fixOrVar, keyType, keyName, initValues, comm2 = sett
-            writeFile('* `' + ('const ' if fixOrVar == 'fix' else '')  + metaTypeToUnifiedType(keyType) + ' ' + keyName + ' = ' + ', '.join(initValues) + '`')
-            writeComm(comm2, 0)
-        writeFile('')
-    
-    for entity in gameEntities:
-        entityInfo = gameEntitiesInfo[entity]
-        writeFile('## ' + entity + ' entity')
-        writeComm(entityInfo['Comment'], 0)
-        writeFile('* `Target: ' + ('Server/Client' if entityInfo['Client'] else 'Server only') + '`')
-        writeFile('* `Built-in: ' + ('Yes' if entityInfo['Exported'] else 'No') + '`')
-        writeFile('* `Singleton: ' + ('Yes' if entityInfo['IsGlobal'] else 'No') + '`')
-        writeFile('* `Has proto: ' + ('Yes' if entityInfo['HasProtos'] else 'No') + '`')
-        writeFile('* `Has statics: ' + ('Yes' if entityInfo['HasStatics'] else 'No') + '`')
-        writeFile('* `Has abstract: ' + ('Yes' if entityInfo['HasAbstract'] else 'No') + '`')
-        writeFile('')
-        writeFile('### ' + entity + ' properties')
-        writeFile('')
-        for propTag in codeGenTags['ExportProperty']:
-            ent, access, type, name, flags, comm = propTag
-            if ent == entity:
-                writeFile('* `' + access + ' ' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
-                writeComm(comm, 0)
-        writeFile('### ' + entity + ' server events')
-        writeFile('')
-        for evTag in codeGenTags['ExportEvent']:
-            targ, ent, evName, evArgs, evFlags, comm = evTag
-            if ent == entity and targ == 'Server':
-                writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                writeComm(comm, 0)
-        writeFile('### ' + entity + ' client events')
-        writeFile('')
-        for evTag in codeGenTags['ExportEvent']:
-            targ, ent, evName, evArgs, evFlags, comm = evTag
-            if ent == entity and targ == 'Client':
-                writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                writeComm(comm, 0)
-        writeFile('### ' + entity + ' common methods')
-        writeFile('')
-        for methodTag in codeGenTags['ExportMethod']:
-            targ, ent, name, ret, params, exportFlags, comm = methodTag
-            if ent == entity and targ == 'Common':
-                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                writeComm(comm, 0)
-        writeFile('### ' + entity + ' server methods')
-        writeFile('')
-        for methodTag in codeGenTags['ExportMethod']:
-            targ, ent, name, ret, params, exportFlags, comm = methodTag
-            if ent == entity and targ == 'Server':
-                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                writeComm(comm, 0)
-        writeFile('### ' + entity + ' client methods')
-        writeFile('')
-        for methodTag in codeGenTags['ExportMethod']:
-            targ, ent, name, ret, params, exportFlags, comm = methodTag
-            if ent == entity and targ == 'Client':
-                writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                writeComm(comm, 0)
-        if entity == 'Game':
-            writeFile('### ' + entity + ' mapper events')
-            writeFile('')
-            for evTag in codeGenTags['ExportEvent']:
-                targ, ent, evName, evArgs, evFlags, comm = evTag
-                if ent == entity and targ == 'Mapper':
-                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
-                    writeComm(comm, 0)
-            writeFile('### ' + entity + ' mapper methods')
-            writeFile('')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comm = methodTag
-                if ent == entity and targ == 'Mapper':
-                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
-                    writeComm(comm, 0)
-    
-    writeFile('## Types')
-    writeFile('')
-    for eoTag in codeGenTags['ExportRefType']:
-        targ, refTypeName, fields, methods, flags, comm = eoTag
-        writeFile('### ' + refTypeName + ' reference object')
-        writeComm(comm, 0)
-        for f in fields:
-            writeFile('* `' + metaTypeToUnifiedType(f[0]) + ' ' + f[1] + '`')
-            writeComm(f[2], 0)
-        for m in methods:
-            writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
-            writeComm(m[2], 0)
-    for etTag in codeGenTags['ExportValueType']:
-        name, ntype, flags, comm = etTag
-        writeFile('### ' + name + ' value object')
-        writeComm(comm, 0)
-        if flags:
-            writeFile('* `Flags: ' + ', '.join(flags) + '`')
-        writeFile('')
-    
-    writeFile('## Enums')
-    writeFile('')
-    for eTag in codeGenTags['ExportEnum']:
-        gname, utype, keyValues, flags, comm = eTag
-        writeFile('* `' + gname + (' ' + ' '.join(flags) if flags else '') + '`')
-        writeComm(comm, 0)
-        for kv in keyValues:
-            writeFile('  - `' + kv[0] + ' = ' + kv[1] + '`')
-            if kv[2]:
-                writeComm(kv[2], 1)
-            else:
-                writeFile('')
-    
-    # Cleanup empty sections and generate Table of content
-    global lastFile
-    filteredLines = []
-    tableOfContent = []
-    i = 0
-    while i < len(lastFile):
-        if i < len(lastFile) - 2 and lastFile[i].startswith('### ') and lastFile[i + 2].startswith('#'):
-            i += 2
-            continue
-        if lastFile[i].startswith('## '):
-            tableOfContent.append('* [' + lastFile[i][3:] + '](#' + lastFile[i][3:].lower().replace(' ', '-') + ')')
-        elif lastFile[i].startswith('### '):
-            tableOfContent.append('  - [' + lastFile[i][4:] + '](#' + lastFile[i][4:].lower().replace(' ', '-') + ')')
-        filteredLines.append(lastFile[i])
-        i += 1
-    lastFile.clear()
-    lastFile.extend(filteredLines[:4] + tableOfContent + filteredLines[5:])
-
-if args.markdown:
+def run_metadata_registration_codegen() -> None:
     try:
-        genApiMarkdown()
-    
+        genMetadataRegistration('Server', False)
+        genMetadataRegistration('Server', True)
+        genMetadataRegistration('Client', False)
+        genMetadataRegistration('Client', True)
+        genMetadataRegistration('Mapper', False)
+        genMetadataRegistration('Mapper', True)
+
     except Exception as ex:
-        showError('Can\'t generate markdown representation', ex)
-    
+        showError('Code generation for data registration failed', ex)
+
     checkErrors()
 
-"""
-def genApi(target):
-    # C++ projects
-    if args.native:
-        createFile('FOnline.' + target + '.h')
-
-        # Generate source
-        def parseType(t):
-            def mapType(t):
-                typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int64': 'int64', 'uint64': 'uint64',
-                        'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*', 'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
-                        'CritterView': 'ScriptCritter*', 'CritterHexView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
-                        'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*',
-                        'string': 'string', 'Entity': 'ScriptEntity*'}
-                return typeMap[t] if t in typeMap else t
-            tt = t.split('.')
-            if tt[0] == 'dict':
-                r = 'map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
-            elif tt[0] in refTypes:
-                return tt[0] + '*'
-            else:
-                r = mapType(tt[0])
-            if 'arr' in tt:
-                r = 'vector<' + r + '>'
-            if 'ref' in tt:
-                r += '&'
-            return r
-        def parseArgs(args):
-            return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
-        def writeDoc(ident, doc):
-            if doc:
-                writeFile(''.center(ident) + '/**')
-                for d in doc:
-                    writeFile(''.center(ident) + ' * ' + d)
-                writeFile(''.center(ident) + ' */')
-            else:
-                writeFile(''.center(ident) + '/**')
-                writeFile(''.center(ident) + ' * ...')
-                writeFile(''.center(ident) + ' */')
-        def writeMethod(tok, entity):
-            writeDoc(4, tok[3])
-            writeFile('    ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ');')
-            writeFile('')
-        def writeProp(tok, entity):
-            rw, name, access, ret, mods, comms = tok
-            if not (target == 'Mapper' and 'Virtual' in access) and \
-                    not (target == 'Server' and 'PrivateClient' in access) and \
-                    not (target == 'Client' and 'PrivateServer' in access):
-                isGet, isSet = True, rw == 'rw'
-                if isGet:
-                    writeDoc(4, comms)
-                    writeFile('    ' + parseType(ret) + ' Get' + name + '();')
-                    writeFile('')
-                if isSet:
-                    writeDoc(4, comms)
-                    writeFile('    void Set' + name + '(' + parseType(ret) + ' value);')
-                    writeFile('')
-
-        # Header
-        writeFile('// FOnline scripting native API')
-        writeFile('')
-        writeFile('#include <cstdint>')
-        writeFile('#include <vector>')
-        writeFile('#include <map>')
-        writeFile('#include <functional>')
-        writeFile('')
-        
-        # Namespace begin
-        writeFile('namespace FOnline')
-        writeFile('{')
-        writeFile('')
-        
-        # Usings
-        writeFile('')
-        
-        # Forward declarations
-        writeFile('class ScriptEntity;')
-        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
-            writeFile('class Script' + entity + ';')
-        writeFile('class MapSprite;')
-        writeFile('')
-        
-        # Enums
-        for i in nativeMeta.enums:
-            group, entries, doc = i
-            writeDoc(0, doc)
-            writeFile('enum class ' + group)
-            writeFile('{')
-            for e in entries:
-                name, val, edoc = e
-                writeDoc(4, edoc)
-                writeFile('    ' + name + ' = ' + val + ',')
-                if e != entries[len(entries) - 1]:
-                    writeFile('')
-            writeFile('};')
-            writeFile('')
-
-        # Global
-        writeFile('class ScriptGame')
-        writeFile('{')
-        writeFile('public:')
-        for i in nativeMeta.properties['global']:
-            writeProp(i, None)
-        if target == 'Server':
-            for i in nativeMeta.methods['globalcommon']:
-                writeMethod(i, None)
-            for i in nativeMeta.methods['globalserver']:
-                writeMethod(i, None)
-        elif target == 'Client':
-            for i in nativeMeta.methods['globalcommon']:
-                writeMethod(i, None)
-            for i in nativeMeta.methods['globalclient']:
-                writeMethod(i, None)
-        elif target == 'Mapper':
-            for i in nativeMeta.methods['globalmapper']:
-                writeMethod(i, None)
-        writeFile('')
-        writeFile('private:')
-        writeFile('    void* _mainObjPtr;')
-        writeFile('};')
-        writeFile('')
-
-        # Entities
-        writeFile('class ScriptEntity')
-        writeFile('{')
-        writeFile('protected:')
-        writeFile('    void* _mainObjPtr;')
-        writeFile('    void* _thisPtr;')
-        writeFile('};')
-        writeFile('')
-
-        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
-            writeFile('class Script' + entity + ' : public ScriptEntity')
-            writeFile('{')
-            writeFile('public:')
-            for i in nativeMeta.properties[entity.lower()]:
-                writeProp(i, entity)
-            writeFile('')
-            if target == 'Server':
-                for i in nativeMeta.methods[entity.lower()]:
-                    writeMethod(i, entity)
-            if target == 'Client':
-                for i in nativeMeta.methods[entity.lower() + 'view']:
-                    writeMethod(i, entity)
-            writeFile('};')
-            writeFile('')
-
-        # Events
-        " ""
-        writeFile('## Events')
-        writeFile('')
-        for ename in ['server', 'client', 'mapper']:
-            writeFile('### ' + ename[0].upper() + ename[1:] + ' events')
-            writeFile('')
-            for e in nativeMeta.events[ename]:
-                name, eargs, doc = e
-                writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-                writeDoc(doc)
-            writeFile('')
-        " ""
-
-        # Settings
-        " ""
-        writeFile('## Settings')
-        writeFile('')
-        for i in nativeMeta.settings:
-            ret, name, init, doc = i
-            writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
-            writeDoc(doc)
-            writeFile('')
-        " ""
-
-        # Namespace end
-        writeFile('} // namespace FOnline')
-
-    # C# projects
-    if args.csharp:
-        # Generate source
-        def writeHeader(rootClass, usings=None):
-            writeFile('using System;')
-            writeFile('using System.Collections.Generic;')
-            writeFile('using System.Runtime.CompilerServices;')
-            writeFile('using hash = System.UInt32;')
-            if usings:
-                for u in usings:
-                    writeFile(u)
-            writeFile('')
-            writeFile('namespace FOnline')
-            writeFile('{')
-            writeFile('    ' + rootClass)
-            writeFile('    {')
-        def writeEndHeader():
-            writeFile('    }')
-            writeFile('}')
-        def parseType(t):
-            def mapType(t):
-                typeMap = {'int8': 'sbyte', 'uint8': 'byte', 'int16': 'short', 'uint16': 'ushort', 'int32': 'int', 'uint32': 'uint', 'int64': 'long', 'uint64': 'ulong',
-                        'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
-                return typeMap[t] if t in typeMap else t
-            tt = t.split('.')
-            if tt[0] == 'dict':
-                r = 'Dictionary<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
-            elif tt[0] == 'callback':
-                r = 'Action<' + mapType(tt[1]) + '>'
-            elif tt[0] == 'predicate':
-                r = 'Func<' + mapType(tt[1]) + ', bool>'
-            else:
-                r = mapType(tt[0])
-            if 'arr' in tt:
-                r += '[]'
-            if 'ref' in tt:
-                r = 'ref ' + r
-            return r
-        def parseArgs(args):
-            return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
-        def parseExtArgs(args, entity):
-            r = ['AppDomain domain']
-            if entity:
-                r.append('IntPtr entityPtr')
-            return ', '.join(r + ['out Exception ex'] + [parseType(a[0]) + ' ' + a[1] for a in args])
-        def parsePassArgs(args, entity, addDomEx=True):
-            r = []
-            if addDomEx:
-                r.append('AppDomain.CurrentDomain')
-            if entity:
-                r.append('_entityPtr')
-            if addDomEx:
-                r.append('out _ex')
-            return ', '.join(r + [('ref ' if 'ref' in a[0].split('.') else '') + a[1] for a in args])
-        def writeDoc(ident, doc):
-            if doc:
-                for comm in doc[1:-1]:
-                    writeFile(''.center(ident) + '/// ' + comm[3:])
-        def writeMethod(tok, entity, extCalls):
-            writeDoc(8, tok[3])
-            writeFile('        public ' + ('static ' if entity is None else '') + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')')
-            writeFile('        {')
-            writeFile('            Exception _ex;')
-            writeFile('            ' + ('var _result = ' if tok[1] != 'void' else '') +
-                    '_' + tok[0] + '(' + parsePassArgs(tok[2], entity) + ');')
-            writeFile('            if (_ex != null)')
-            writeFile('                throw _ex;')
-            if tok[1] != 'void':
-                writeFile('            return _result;')
-            writeFile('        }')
-            writeFile('')
-            extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
-            extCalls.append('        extern static ' + parseType(tok[1]) + ' _' + tok[0] + '(' + parseExtArgs(tok[2], entity) + ');')
-        def writeProp(tok, entity, extCalls):
-            rw, name, access, ret, mods, comms = tok
-            if not (target == 'Mapper' and 'Virtual' in access) and \
-                    not (target == 'Server' and 'PrivateClient' in access) and \
-                    not (target == 'Client' and 'PrivateServer' in access):
-                isGet, isSet = True, rw == 'rw'
-                writeDoc(8, comms)
-                writeFile('        public ' + ('static ' if entity is None else '') + parseType(ret) + ' ' + name)
-                writeFile('        {')
-                if isGet:
-                    writeFile('            get')
-                    writeFile('            {')
-                    writeFile('                Exception _ex;')
-                    if entity:
-                        writeFile('                var _result = _Get_' + name + '(AppDomain.CurrentDomain, _entityPtr, out _ex);')
-                    else:
-                        writeFile('                var _result = _Get_' + name + '(AppDomain.CurrentDomain, out _ex);')
-                    writeFile('                if (_ex != null)')
-                    writeFile('                    throw _ex;')
-                    writeFile('                return _result;')
-                    writeFile('            }')
-                    extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
-                    if entity:
-                        extCalls.append('        extern static ' + parseType(ret) + ' _Get_' + name + '(AppDomain domain, IntPtr entityPtr, out Exception ex);')
-                    else:
-                        extCalls.append('        extern static ' + parseType(ret) + ' _Get_' + name + '(AppDomain domain, out Exception ex);')
-                if isSet:
-                    writeFile('            set')
-                    writeFile('            {')
-                    writeFile('                Exception _ex;')
-                    if entity:
-                        writeFile('                _Set_' + name + '(AppDomain.CurrentDomain, _entityPtr, out _ex, value);')
-                    else:
-                        writeFile('                _Set_' + name + '(AppDomain.CurrentDomain, out _ex, value);')
-                    writeFile('                if (_ex != null)')
-                    writeFile('                    throw _ex;')
-                    writeFile('            }')
-                    extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
-                    if entity:
-                        extCalls.append('        extern static void _Set_' + name + '(AppDomain domain, IntPtr entityPtr, out Exception ex, ' + parseType(ret) + ' value);')
-                    else:
-                        extCalls.append('        extern static void _Set_' + name + '(AppDomain domain, out Exception ex, ' + parseType(ret) + ' value);')
-                writeFile('        }')
-                writeFile('')
-
-        # Global methods
-        createFile(target + 'Game.cs')
-        writeHeader('public static partial class Game')
-        extCalls = []
-        if target == 'Server':
-            for i in monoMeta.methods['globalcommon']:
-                writeMethod(i, None, extCalls)
-            for i in monoMeta.methods['globalserver']:
-                writeMethod(i, None, extCalls)
-        elif target == 'Client':
-            for i in monoMeta.methods['globalcommon']:
-                writeMethod(i, None, extCalls)
-            for i in monoMeta.methods['globalclient']:
-                writeMethod(i, None, extCalls)
-        elif target == 'Mapper':
-            for i in monoMeta.methods['globalcommon']:
-                writeMethod(i, None, extCalls)
-            for i in monoMeta.methods['globalmapper']:
-                writeMethod(i, None, extCalls)
-        writeFile('')
-        for i in extCalls:
-            writeFile(i)
-        writeEndHeader()
-
-        # Global properties
-        createFile(target + 'Globals.cs')
-        writeHeader('public static partial class Game')
-        extCalls = []
-        for i in monoMeta.properties['global']:
-            writeProp(i, None, extCalls)
-        for i in extCalls:
-            writeFile(i)
-        writeEndHeader()
-
-        # Entities
-        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
-            createFile(target + entity + '.cs')
-            writeHeader('public partial class ' + entity + ' : Entity')
-            extCalls = []
-            if target == 'Server':
-                for i in monoMeta.properties[entity.lower()]:
-                    writeProp(i, entity, extCalls)
-                for i in monoMeta.methods[entity.lower()]:
-                    writeMethod(i, entity, extCalls)
-            elif target == 'Client':
-                for i in monoMeta.properties[entity.lower()]:
-                    writeProp(i, entity, extCalls)
-                for i in monoMeta.methods[entity.lower() + 'view']:
-                    writeMethod(i, entity, extCalls)
-            elif target == 'Mapper':
-                for i in monoMeta.properties[entity.lower()]:
-                    writeProp(i, entity, extCalls)
-            for i in extCalls:
-                writeFile(i)
-            writeEndHeader()
-
-        # Events
-        def writeEvent(tok):
-            name, eargs, doc = tok
-            writeDoc(8, doc)
-            writeFile('        public static event ' + name + 'Delegate ' + name + ';')
-            writeFile('        public delegate void ' + name + 'Delegate(' + parseArgs(eargs) + ');')
-            writeFile('        public static event ' + name + 'RetDelegate ' + name + 'Ret;')
-            writeFile('        public delegate bool ' + name + 'RetDelegate(' + parseArgs(eargs) + ');')
-            writeFile('')
-        def writeEventExt(tok):
-            name, eargs, doc = tok
-            pargs = parseArgs(eargs)
-            writeFile('        static bool _' + name + '(' + (pargs + ', ' if pargs else '') + 'out Exception[] exs)')
-            writeFile('        {')
-            writeFile('            exs = null;')
-            writeFile('            foreach (var eventDelegate in ' + name + '.GetInvocationList().Cast<' + name + 'Delegate>())')
-            writeFile('            {')
-            writeFile('                try')
-            writeFile('                {')
-            writeFile('                    eventDelegate(' + parsePassArgs(eargs, None, False) + ');')
-            writeFile('                }')
-            writeFile('                catch (Exception ex)')
-            writeFile('                {')
-            writeFile('                    exs = exs == null ? new Exception[] { ex } : exs.Concat(new Exception[] { ex }).ToArray();')
-            writeFile('                }')
-            writeFile('            }')
-            writeFile('            foreach (var eventDelegate in ' + name + 'Ret.GetInvocationList().Cast<' + name + 'RetDelegate>())')
-            writeFile('            {')
-            writeFile('                try')
-            writeFile('                {')
-            writeFile('                    if (eventDelegate(' + parsePassArgs(eargs, None, False) + '))')
-            writeFile('                        return true;')
-            writeFile('                }')
-            writeFile('                catch (Exception ex)')
-            writeFile('                {')
-            writeFile('                    exs = exs == null ? new Exception[] { ex } : exs.Concat(new Exception[] { ex }).ToArray();')
-            writeFile('                }')
-            writeFile('            }')
-            writeFile('            return false;')
-            writeFile('        }')
-            writeFile('')
-        createFile(target + 'Events.cs')
-        writeHeader('public static partial class Game', ['using System.Linq;'])
-        if target == 'Server':
-            for e in monoMeta.events['server']:
-                writeEvent(e)
-            for e in monoMeta.events['server']:
-                writeEventExt(e)
-        elif target == 'Client':
-            for e in monoMeta.events['client']:
-                writeEvent(e)
-            for e in monoMeta.events['client']:
-                writeEventExt(e)
-        elif target == 'Mapper':
-            for e in monoMeta.events['mapper']:
-                writeEvent(e)
-            for e in monoMeta.events['mapper']:
-                writeEventExt(e)
-        writeEndHeader()
-
-        # Settings
-        createFile(target + 'Settings.cs')
-        writeHeader('public static partial class Game')
-        writeFile('        public static class Settings')
-        writeFile('        {')
-        for i in monoMeta.settings:
-            ret, name, init, doc = i
-            writeDoc(12, doc)
-            writeFile('            public static ' + parseType(ret) + ' ' + name)
-            writeFile('            {')
-            writeFile('                get')
-            writeFile('                {')
-            writeFile('                    Exception _ex;')
-            writeFile('                    var _result = _Setting_' + name + '(AppDomain.CurrentDomain, out _ex);')
-            writeFile('                    if (_ex != null)')
-            writeFile('                        throw _ex;')
-            writeFile('                    return _result;')
-            writeFile('                }')
-            writeFile('            }')
-            writeFile('')
-            extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
-            extCalls.append('        extern static ' + parseType(ret) + ' _Setting_' + name + '(AppDomain domain, out Exception ex);')
-        writeFile('        }')
-        writeEndHeader()
-
-        # Enums
-        createFile(target + 'Enums.cs')
-        writeFile('namespace FOnline')
-        writeFile('{')
-        for i in monoMeta.enums:
-            group, entries, doc = i
-            writeDoc(4, doc)
-            writeFile('    public enum ' + group)
-            writeFile('    {')
-            for e in entries:
-                name, val, edoc = e
-                writeDoc(8, edoc)
-                writeFile('        ' + name + ' = ' + val + ',')
-            writeFile('    }')
-            writeFile('')
-        writeFile('}')
-
-        # Generate .csproj files
-        for assembly in args.monoassembly:
-            csprojName = assembly + '.' + target + '.csproj'
-            projGuid = getGuid(csprojName)
-            csprojects.append((csprojName, projGuid))
-
-            createFile(csprojName)
-            writeFile('<?xml version="1.0" encoding="utf-8"?>')
-            writeFile('<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">')
-
-            writeFile('  <PropertyGroup>')
-            writeFile('    <Configuration Condition=" \'$(Configuration)\' == \'\' ">Debug</Configuration>')
-            writeFile('    <Platform Condition=" \'$(Platform)\' == \'\' ">AnyCPU</Platform>')
-            writeFile('    <ProjectGuid>' + projGuid + '</ProjectGuid>')
-            writeFile('    <OutputType>Library</OutputType>')
-            writeFile('    <RootNamespace>' + assembly + '</RootNamespace>')
-            writeFile('    <AssemblyName>' + assembly + '.' + target + '</AssemblyName>')
-            writeFile('    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>')
-            writeFile('    <FileAlignment>512</FileAlignment>')
-            writeFile('    <Deterministic>true</Deterministic>')
-            writeFile('  </PropertyGroup>')
-
-            writeFile('  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Debug|AnyCPU\' ">')
-            writeFile('    <DebugSymbols>true</DebugSymbols>')
-            writeFile('    <DebugType>embedded</DebugType>')
-            writeFile('    <Optimize>false</Optimize>')
-            writeFile('    <OutputPath>bin\\Debug\\</OutputPath>')
-            writeFile('    <DefineConstants>DEBUG;TRACE;' + target.upper() + '</DefineConstants>')
-            writeFile('    <ErrorReport>prompt</ErrorReport>')
-            writeFile('    <WarningLevel>4</WarningLevel>')
-            writeFile('  </PropertyGroup>')
-
-            writeFile('  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Release|AnyCPU\' ">')
-            writeFile('    <DebugType>embedded</DebugType>')
-            writeFile('    <Optimize>true</Optimize>')
-            writeFile('    <OutputPath>bin\\Release\\</OutputPath>')
-            writeFile('    <DefineConstants>TRACE;' + target.upper() + '</DefineConstants>')
-            writeFile('    <ErrorReport>prompt</ErrorReport>')
-            writeFile('    <WarningLevel>4</WarningLevel>')
-            writeFile('  </PropertyGroup>')
-
-            writeFile('  <ItemGroup>')
-            if target == 'Server':
-                for src in args.monoserversource:
-                    if src.split(',')[0] == assembly:
-                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
-            elif target == 'Client':
-                for src in args.monoclientsource:
-                    if src.split(',')[0] == assembly:
-                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
-            elif target == 'Mapper':
-                for src in args.monomappersource:
-                    if src.split(',')[0] == assembly:
-                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
-            writeFile('    <Compile Include="' + target + 'Game.cs" />')
-            writeFile('    <Compile Include="' + target + 'Globals.cs" />')
-            writeFile('    <Compile Include="' + target + 'Player.cs" />')
-            writeFile('    <Compile Include="' + target + 'Item.cs" />')
-            writeFile('    <Compile Include="' + target + 'Critter.cs" />')
-            writeFile('    <Compile Include="' + target + 'Map.cs" />')
-            writeFile('    <Compile Include="' + target + 'Location.cs" />')
-            writeFile('    <Compile Include="' + target + 'Events.cs" />')
-            writeFile('    <Compile Include="' + target + 'Settings.cs" />')
-            writeFile('    <Compile Include="' + target + 'Enums.cs" />')
-            writeFile('    <Compile Include="' + target + 'Content.cs" />')
-            writeFile('  </ItemGroup>')
-
-            writeFile('  <ItemGroup>')
-            def addRef(ref):
-                if ref in args.monoassembly:
-                    writeFile('    <ProjectReference Include="' + ref + '.' + target + '.csproj">')
-                    writeFile('      <Project>' + getGuid(ref + '.' + target + '.csproj') + '</Project>')
-                    writeFile('      <Name>' + ref + '.' + target + '</Name>')
-                    writeFile('    </ProjectReference>')
-                else:
-                    writeFile('    <Reference Include="' + ref + '">')
-                    writeFile('      <Private>True</Private>')
-                    writeFile('    </Reference>')
-            if target == 'Server':
-                for ref in args.monoserverref:
-                    if ref.split(',')[0] == assembly:
-                        addRef(ref.split(',')[1])
-            elif target == 'Client':
-                for ref in args.monoclientref:
-                    if ref.split(',')[0] == assembly:
-                        addRef(ref.split(',')[1])
-            elif target == 'Mapper':
-                for ref in args.monomapperref:
-                    if ref.split(',')[0] == assembly:
-                        addRef(ref.split(',')[1])
-            writeFile('  </ItemGroup>')
-
-            writeFile('  <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />')
-            writeFile('</Project>')
-"""
-
-csprojects = []
-"""
-try:
-    genApi('Server')
-    genApi('Client')
-    if args.mapper:
-        genApi('Mapper')
-        
-except Exception as ex:
-    showError('Can\'t generate scripts', ex)
-"""
-
-# Write solution file
-if csprojects:
+def write_embedded_resources() -> None:
     try:
-        # Write solution file that contains all project files
-        slnName = args.monoassembly[0] + '.sln'
-        createFile(slnName)
-        writeFile('')
-        writeFile('Microsoft Visual Studio Solution File, Format Version 12.00')
-        writeFile('# Visual Studio Version 16')
-        writeFile('VisualStudioVersion = 16.0.29905.134')
-        writeFile('MinimumVisualStudioVersion = 10.0.40219.1')
+        capacity = int(args.embedded)
+        assert capacity >= 10000, 'Embedded capacity must be greather/equal to 10000'
+        assert capacity % 10000 == 0, 'Embedded capacity must иу ьгдешзду ин 10000'
+        createFile('EmbeddedResources-Include.h', args.genoutput)
+        writeFile('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
 
-        for name, guid in csprojects:
-            writeFile('Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "' +
-                    name[:-7] + '", "' + name + '", "' + guid + '"')
-            writeFile('EndProject')
-
-        writeFile('Global')
-        writeFile('    GlobalSection(SolutionConfigurationPlatforms) = preSolution')
-        writeFile('        Debug|Any CPU = Debug|Any CPU')
-        writeFile('        Release|Any CPU = Release|Any CPU')
-        writeFile('    EndGlobalSection')
-        writeFile('    GlobalSection(ProjectConfigurationPlatforms) = postSolution')
-
-        for name, guid in csprojects:
-            writeFile('    ' + guid + '.Debug|Any CPU.ActiveCfg = Debug|Any CPU')
-            writeFile('    ' + guid + '.Debug|Any CPU.Build.0 = Debug|Any CPU')
-            writeFile('    ' + guid + '.Release|Any CPU.ActiveCfg = Release|Any CPU')
-            writeFile('    ' + guid + '.Release|Any CPU.Build.0 = Release|Any CPU')
-
-        writeFile('    EndGlobalSection')
-        writeFile('    GlobalSection(SolutionProperties) = preSolution')
-        writeFile('        HideSolutionNode = FALSE')
-        writeFile('    EndGlobalSection')
-        writeFile('    GlobalSection(ExtensibilityGlobals) = postSolution')
-        writeFile('        SolutionGuid = ' + getGuid(slnName))
-        writeFile('    EndGlobalSection')
-        writeFile('EndGlobal')
-        writeFile('')
-    
     except Exception as ex:
-        showError('Can\'t write solution files', ex)
+        showError('Can\'t write embedded resources', ex)
 
-checkErrors()
+    checkErrors()
 
-# Embedded resources
-try:
-    capacity = int(args.embedded)
-    assert capacity >= 10000, 'Embedded capacity must be greather/equal to 10000'
-    assert capacity % 10000 == 0, 'Embedded capacity must иу ьгдешзду ин 10000'
-    createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
-    
-except Exception as ex:
-    showError('Can\'t write embedded resources', ex)
 
-checkErrors()
+def try_get_git_branch() -> str:
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+    except Exception:
+        return ''
 
-# Version info
-createFile('Version-Include.h', args.genoutput)
-writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
-writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
-writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
 
-compatablityVersion = compatablityHasher.hexdigest()[:16]
-writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
-print('[CodeGen]', 'Compatability version: ' + compatablityVersion)
+def write_version_info() -> None:
+    createFile('Version-Include.h', args.genoutput)
+    writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
+    writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
+    writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
 
-try:
-    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
-    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "' + branch + '";')
-except:
-    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "";')
+    compatablityVersion = compatablityHasher.hexdigest()[:16]
+    writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
+    log('Compatability version: ' + compatablityVersion)
+    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "' + try_get_git_branch() + '";')
 
-# Actual writing of generated files
-try:
-    flushFiles()
-    
-except Exception as ex:
-    showError('Can\'t flush generated files', ex)
 
-checkErrors()
+def flush_generated_files() -> None:
+    try:
+        flushFiles()
 
-elapsedTime = time.time() - startTime
-print('[CodeGen]', 'Code generation complete in ' + '{:.2f}'.format(elapsedTime) + ' seconds')
+    except Exception as ex:
+        showError('Can\'t flush generated files', ex)
+
+    checkErrors()
+
+
+def run_codegen() -> None:
+    parse_meta_files()
+    parse_all_tags()
+    run_generic_codegen()
+    run_metadata_registration_codegen()
+    run_markdown_codegen()
+    write_embedded_resources()
+    write_version_info()
+    flush_generated_files()
+
+
+def main() -> None:
+    global args
+    global startTime
+
+    args = create_parser().parse_args()
+    startTime = time.time()
+    log('Start code generation')
+    run_codegen()
+    elapsedTime = time.time() - startTime
+    log('Code generation complete in ' + '{:.2f}'.format(elapsedTime) + ' seconds')
+
+
+if __name__ == '__main__':
+    main()

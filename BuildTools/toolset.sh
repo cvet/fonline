@@ -1,20 +1,11 @@
 #!/bin/bash -e
 
 CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$CUR_DIR/setup-env.sh"
+PYTHON_BIN="$(command -v python3 || command -v python || true)"
 
-mkdir -p "$FO_WORKSPACE"
-pushd "$FO_WORKSPACE"
-
-if [[ -d "emsdk" ]]; then
-    echo ""
-    echo "Found EMSDK, apply it"
-    echo ""
-    source emsdk/emsdk_env.sh
-    echo ""
+if [[ -z "$PYTHON_BIN" ]]; then
+	echo "Python not found" >&2
+	exit 1
 fi
 
-cd "build-linux-toolset"
-cmake --build . --config Release --target $1 --parallel
-
-popd
+exec "$PYTHON_BIN" "$CUR_DIR/shared_buildtools.py" toolset "$@"

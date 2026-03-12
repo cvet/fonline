@@ -6,8 +6,8 @@ if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
 endif()
 
 # Configuration checks
-if(FO_CODE_COVERAGE AND(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
-    AbortMessage("Code coverge build can not be mixed with other builds")
+if(FO_CODE_COVERAGE AND (FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
+    AbortMessage("Code coverage build can not be mixed with other builds")
 endif()
 
 if(FO_BUILD_ASCOMPILER AND NOT FO_ANGELSCRIPT_SCRIPTING)
@@ -18,7 +18,7 @@ endif()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
-if(NOT FO_DISABLE_RPMALLOC AND(FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
+if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     StatusMessage("+ Rpmalloc")
     set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     set(FO_RPMALLOC_SOURCE
@@ -898,62 +898,6 @@ list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/Gene
 list(APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
-
-if(FO_NATIVE_SCRIPTING)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -native)
-endif()
-
-if(FO_ANGELSCRIPT_SCRIPTING)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -angelscript)
-endif()
-
-if(FO_MONO_SCRIPTING)
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -csharp)
-endif()
-
-foreach(entry ${FO_MONO_ASSEMBLIES})
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -monoassembly ${entry})
-
-    foreach(ref ${MonoAssembly_${entry}_CommonRefs})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}")
-    endforeach()
-
-    foreach(ref ${MonoAssembly_${entry}_ServerRefs})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}")
-    endforeach()
-
-    foreach(ref ${MonoAssembly_${entry}_ClientRefs})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}")
-    endforeach()
-
-    foreach(ref ${MonoAssembly_${entry}_MapperRefs})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}")
-    endforeach()
-
-    foreach(src ${MonoAssembly_${entry}_CommonSource})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}")
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}")
-        list(APPEND FO_MONO_SOURCE ${src})
-    endforeach()
-
-    foreach(src ${MonoAssembly_${entry}_ServerSource})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}")
-        list(APPEND FO_MONO_SOURCE ${src})
-    endforeach()
-
-    foreach(src ${MonoAssembly_${entry}_ClientSource})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}")
-        list(APPEND FO_MONO_SOURCE ${src})
-    endforeach()
-
-    foreach(src ${MonoAssembly_${entry}_MapperSource})
-        list(APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}")
-        list(APPEND FO_MONO_SOURCE ${src})
-    endforeach()
-endforeach()
 
 list(APPEND FO_CODEGEN_META_SOURCE
     ${FO_SOURCE_META_FILES}
