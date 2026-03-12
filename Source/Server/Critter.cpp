@@ -55,9 +55,16 @@ Critter::~Critter()
     FO_STACK_TRACE_ENTRY();
 }
 
+auto Critter::GetName() const noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _player ? _player->GetName() : _proto->GetName();
+}
+
 auto Critter::GetOfflineTime() const -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }

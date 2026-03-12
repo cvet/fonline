@@ -78,7 +78,7 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto HasPlayer() const noexcept -> bool { return !!_player; }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player.get(); }
     [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player.get(); }
