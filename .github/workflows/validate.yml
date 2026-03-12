@@ -10,7 +10,7 @@ jobs:
   check-formatting:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: DoozyX/clang-format-lint-action@v0.20
       with:
         source: ./Source
@@ -19,13 +19,13 @@ jobs:
   unit-tests:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh code-coverage
     - uses: codecov/codecov-action@v4
@@ -46,7 +46,7 @@ jobs:
         - win64-ascompiler
         - win64-baker
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
     runs-on: ubuntu-24.04
@@ -70,7 +70,7 @@ jobs:
         - linux-baker
         - linux-gcc-baker
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - if: ${{startsWith(matrix.app, 'linux-')}}
       run: BuildTools/prepare-workspace.sh packages linux
     - if: ${{startsWith(matrix.app, 'web-')}}
@@ -91,7 +91,7 @@ jobs:
         - mac-client
         - ios-client
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
     runs-on: macos-26
@@ -102,5 +102,5 @@ jobs:
         - mac-client
         - ios-client
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: BuildTools/validate.sh ${{matrix.app}}
