@@ -233,15 +233,4 @@ auto Platform::GetFuncAddr(void* module_handle, const string& func_name) noexcep
     return func;
 }
 
-auto Platform::IsShiftDown() noexcept -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    return (::GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-#else
-    return false;
-#endif
-}
-
 FO_END_NAMESPACE

@@ -75,10 +75,6 @@ struct Platform
     {
         return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
     }
-
-    // Windows: GetAsyncKeyState
-    // Other: false
-    static auto IsShiftDown() noexcept -> bool;
 };
 
 FO_END_NAMESPACE

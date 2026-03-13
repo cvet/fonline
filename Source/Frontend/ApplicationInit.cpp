@@ -222,34 +222,6 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             sub_configs_to_apply.emplace_back(settings.UnpackagedSubConfig);
         }
 
-        if (auto_find_config && Platform::IsShiftDown()) {
-            const auto& sub_configs = settings.GetSubConfigs();
-            vector<string> sub_config_names;
-            set<int32> selected_sub_configs;
-
-            for (size_t i = 0; i < sub_configs.size(); i++) {
-                const auto& sub_config = sub_configs[i];
-                sub_config_names.emplace_back(sub_config.Name);
-
-                if (std::ranges::find(sub_configs_to_apply, sub_config.Name) != sub_configs_to_apply.end()) {
-                    selected_sub_configs.emplace(numeric_cast<int32>(i));
-                }
-            }
-
-            sub_config_names.emplace_back("RUN AS PACKAGED");
-            sub_configs_to_apply.clear();
-            Application::ChooseOptionsWindow("Choose sub config(s) to apply:", sub_config_names, selected_sub_configs);
-
-            for (const auto i : selected_sub_configs) {
-                if (i == numeric_cast<int32>(sub_config_names.size()) - 1) {
-                    ForcePackaged();
-                }
-                else {
-                    sub_configs_to_apply.emplace_back(sub_config_names[i]);
-                }
-            }
-        }
-
         for (const auto& sub_config_name : sub_configs_to_apply) {
             if (!sub_config_name.empty() && sub_config_name != "NONE") {
                 WriteLog("Apply sub config {}", sub_config_name);
