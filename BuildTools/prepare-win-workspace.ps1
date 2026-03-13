@@ -39,6 +39,18 @@ Function Test-BuildTools {
     }
 }
 
+Function Write-MissingTool {
+    Param (
+        [string] $Name,
+        [string[]] $Hints
+    )
+
+    Write-Host "$Name not found"
+    foreach ($hint in $Hints) {
+        Write-Host $hint
+    }
+}
+
 Write-Host "Prepare workspace"
 
 $FO_PROJECT_ROOT = $Env:FO_PROJECT_ROOT
@@ -71,22 +83,21 @@ while ($True) {
     $ready = $True
 
     if (!(Test-BuildTools)) {
-        Write-Host "Build Tools not found"
-        Write-Host "If you planning development in Visual Studio 2022 then install it"
-        Write-Host "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2022"
-        Write-Host "All this stuff you can get here: https://visualstudio.microsoft.com/downloads"
+        Write-MissingTool "Build Tools" @(
+            "If you planning development in Visual Studio 2022 then install it",
+            "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2022",
+            "All this stuff you can get here: https://visualstudio.microsoft.com/downloads"
+        )
         $ready = $False
     }
 
     if (!(Test-Command cmake)) {
-        Write-Host "CMake not found"
-        Write-Host "You can get it here: https://cmake.org"
+        Write-MissingTool "CMake" @("You can get it here: https://cmake.org")
         $ready = $False
     }
 
     if (!(Test-Command python)) {
-        Write-Host "Python not found"
-        Write-Host "You can get it here: https://www.python.org"
+        Write-MissingTool "Python" @("You can get it here: https://www.python.org")
         $ready = $False
     }
 

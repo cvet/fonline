@@ -1,1 +1,1 @@
-# Dummy cmake
+# Intentionally empty placeholder CMake file.

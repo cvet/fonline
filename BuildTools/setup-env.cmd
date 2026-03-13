@@ -1,31 +1,21 @@
 @echo off
 
+for /f "delims=" %%i in ('python "%~dp0buildtools.py" env --shell cmd') do %%i
+if errorlevel 1 exit /b 1
+
 echo Setup environment
-
-if "%FO_PROJECT_ROOT%"=="" set FO_PROJECT_ROOT=.
-if "%FO_ENGINE_ROOT%"=="" set FO_ENGINE_ROOT=%~p0..
-if "%FO_WORKSPACE%"=="" set FO_WORKSPACE=Workspace
-if "%FO_OUTPUT%"=="" set FO_OUTPUT=%FO_WORKSPACE%\output
-
-call :normalize_path "%FO_PROJECT_ROOT%"
-set FO_PROJECT_ROOT=%RETVAL%
-call :normalize_path "%FO_ENGINE_ROOT%"
-set FO_ENGINE_ROOT=%RETVAL%
-call :normalize_path "%FO_WORKSPACE%"
-set FO_WORKSPACE=%RETVAL%
-call :normalize_path "%FO_OUTPUT%"
-set FO_OUTPUT=%RETVAL%
-
-set /p FO_DOTNET_RUNTIME=< "%FO_ENGINE_ROOT%\ThirdParty\dotnet-runtime"
-
 echo FO_PROJECT_ROOT=%FO_PROJECT_ROOT%
 echo FO_ENGINE_ROOT=%FO_ENGINE_ROOT%
 echo FO_WORKSPACE=%FO_WORKSPACE%
 echo FO_OUTPUT=%FO_OUTPUT%
+echo EMSCRIPTEN_VERSION=%EMSCRIPTEN_VERSION%
+echo ANDROID_HOME=%ANDROID_HOME%
+echo ANDROID_SDK_ROOT=%ANDROID_SDK_ROOT%
+echo ANDROID_NDK_VERSION=%ANDROID_NDK_VERSION%
+echo ANDROID_SDK_VERSION=%ANDROID_SDK_VERSION%
+echo ANDROID_NATIVE_API_LEVEL_NUMBER=%ANDROID_NATIVE_API_LEVEL_NUMBER%
+echo ANDROID_NDK_ROOT=%ANDROID_NDK_ROOT%
 echo FO_DOTNET_RUNTIME=%FO_DOTNET_RUNTIME%
-
+echo FO_DOTNET_RUNTIME_ROOT=%FO_DOTNET_RUNTIME_ROOT%
+echo FO_IOS_SDK=%FO_IOS_SDK%
 exit /b
-
-:normalize_path
-    set RETVAL=%~f1
-    exit /b

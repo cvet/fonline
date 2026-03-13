@@ -2,9 +2,22 @@
 
 declare -a JOBS
 
+function has_arg()
+{
+    local arg
+    for arg in $PROGRAM_ARGS; do
+        for expected in "$@"; do
+            if [[ $arg = $expected ]]; then
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
 function run_job()
 {
-    eval $1 & JOBS[$!]="$1"
+    eval "$1" & JOBS[$!]="$1"
 }
 
 function wait_jobs()
@@ -24,8 +37,8 @@ function wait_jobs()
 
 function verify_workspace_part()
 {
-    if [[ ! -f "$1-version.txt" || `cat $1-version.txt` != $2 ]]; then
-        if [[ ! -z `check_arg check` ]]; then
+    if [[ ! -f "$1-version.txt" || $(cat "$1-version.txt") != $2 ]]; then
+        if has_arg check; then
             echo "Workspace is not ready"
             exit 1
         fi
@@ -45,12 +58,7 @@ PROGRAM_ARGS=$@
 
 function check_arg()
 {
-    for i in $PROGRAM_ARGS; do
-        for j in $@; do
-            if [[ $i = $j ]]; then
-                echo "1"
-                return
-            fi
-        done
-    done
+    if has_arg "$@"; then
+		echo "1"
+	fi
 }

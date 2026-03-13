@@ -20,88 +20,40 @@ pushd "$FO_WORKSPACE"
 
 PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=-1"
 
+function install_packages()
+{
+    for package_name in "$@"; do
+        echo "Install $package_name"
+        $PACKAGE_MANAGER install "$package_name"
+    done
+}
+
 function install_common_packages()
 {
     echo "Install common packages"
     $PACKAGE_MANAGER update
-
-    echo "Install clang"
-    $PACKAGE_MANAGER install clang
-    echo "Install clang-format"
-    $PACKAGE_MANAGER install clang-format
-    echo "Install build-essential"
-    $PACKAGE_MANAGER install build-essential
-    echo "Install git"
-    $PACKAGE_MANAGER install git
-    echo "Install cmake"
-    $PACKAGE_MANAGER install cmake
-    echo "Install python3"
-    $PACKAGE_MANAGER install python3
-    echo "Install wget"
-    $PACKAGE_MANAGER install wget
-    echo "Install unzip"
-    $PACKAGE_MANAGER install unzip
-    echo "Install binutils-dev"
-    $PACKAGE_MANAGER install binutils-dev
+	install_packages clang clang-format build-essential git cmake python3 wget unzip binutils-dev
 }
 
 function install_linux_packages()
 {
     echo "Install Linux packages"
     $PACKAGE_MANAGER update
-
-    echo "Install libc++-dev"
-    $PACKAGE_MANAGER install libc++-dev
-    echo "Install libc++abi-dev"
-    $PACKAGE_MANAGER install libc++abi-dev
-    echo "Install libx11-dev"
-    $PACKAGE_MANAGER install libx11-dev
-    echo "Install libxcursor-dev"
-    $PACKAGE_MANAGER install libxcursor-dev
-    echo "Install libxrandr-dev"
-    $PACKAGE_MANAGER install libxrandr-dev
-    echo "Install libxss-dev"
-    $PACKAGE_MANAGER install libxss-dev
-    echo "Install libjack-dev"
-    $PACKAGE_MANAGER install libjack-dev
-    echo "Install libpulse-dev"
-    $PACKAGE_MANAGER install libpulse-dev
-    echo "Install libasound-dev"
-    $PACKAGE_MANAGER install libasound-dev
-    echo "Install freeglut3-dev"
-    $PACKAGE_MANAGER install freeglut3-dev
-    echo "Install libssl-dev"
-    $PACKAGE_MANAGER install libssl-dev
-    echo "Install libevent-dev"
-    $PACKAGE_MANAGER install libevent-dev
-    echo "Install libxi-dev"
-    $PACKAGE_MANAGER install libxi-dev
-    echo "Install libzstd-dev"
-    $PACKAGE_MANAGER install libzstd-dev
+	install_packages libc++-dev libc++abi-dev libx11-dev libxcursor-dev libxrandr-dev libxss-dev libjack-dev libpulse-dev libasound-dev freeglut3-dev libssl-dev libevent-dev libxi-dev libzstd-dev
 }
 
 function install_web_packages()
 {
     echo "Install Web packages"
     $PACKAGE_MANAGER update
-
-    echo "Install nodejs"
-    $PACKAGE_MANAGER install nodejs
-    echo "Install default-jre"
-    $PACKAGE_MANAGER install default-jre
+	install_packages nodejs default-jre
 }
 
 function install_android_packages()
 {
     echo "Install Android packages"
     $PACKAGE_MANAGER update
-
-    echo "Install android-sdk"
-    $PACKAGE_MANAGER install android-sdk
-    echo "Install openjdk-8-jdk"
-    $PACKAGE_MANAGER install openjdk-8-jdk
-    echo "Install ant"
-    $PACKAGE_MANAGER install ant
+	install_packages android-sdk openjdk-8-jdk ant
 }
 
 function setup_emscripten()
