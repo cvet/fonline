@@ -1,5 +1,5 @@
 @echo off
 setlocal
 
-python "%~dp0shared_buildtools.py" toolset %*
+python "%~dp0buildtools.py" toolset %*
 exit /b %errorlevel%

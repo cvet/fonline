@@ -8,4 +8,4 @@ if [[ -z "$PYTHON_BIN" ]]; then
 	exit 1
 fi
 
-exec "$PYTHON_BIN" "$CUR_DIR/shared_buildtools.py" build "$@"
+exec "$PYTHON_BIN" "$CUR_DIR/buildtools.py" build "$@"

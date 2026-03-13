@@ -1,6 +1,6 @@
 @echo off
 
-for /f "delims=" %%i in ('python "%~dp0shared_buildtools.py" env --shell cmd') do %%i
+for /f "delims=" %%i in ('python "%~dp0buildtools.py" env --shell cmd') do %%i
 if errorlevel 1 exit /b 1
 
 echo Setup environment

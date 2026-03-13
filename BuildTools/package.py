@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Literal, Sequence
 
+import buildtools
 import foconfig
 
 
@@ -446,8 +447,9 @@ class Packager:
 		if self.has_pack('WebServer'):
 			shutil.copy(os.path.join(self.build_tools_path, 'web', 'simple-web-server.py'), os.path.join(self.target_output_path, 'web-server.py'))
 
-		assert 'EMSDK' in os.environ and os.environ['EMSDK'], 'No EMSDK provided'
-		file_packager_path = os.path.join(os.environ['EMSDK'], 'upstream', 'emscripten', 'tools', 'file_packager.py')
+		emsdk_root = buildtools.resolve_env().get('EMSDK', '')
+		assert emsdk_root, 'Workspace EMSDK is not prepared'
+		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
 		packager_args = [

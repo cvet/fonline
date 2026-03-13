@@ -1,5 +1,5 @@
 @echo off
 setlocal
 
-python "%~dp0shared_buildtools.py" format-source
+python "%~dp0buildtools.py" format-source
 exit /b %errorlevel%

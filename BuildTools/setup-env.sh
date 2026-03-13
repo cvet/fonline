@@ -8,7 +8,7 @@ if [[ -z "$PYTHON_BIN" ]]; then
 	exit 1
 fi
 
-eval "$($PYTHON_BIN "$CUR_DIR/shared_buildtools.py" env --shell bash)"
+eval "$($PYTHON_BIN "$CUR_DIR/buildtools.py" env --shell bash)"
 
 echo "Setup environment"
 echo "- FO_PROJECT_ROOT=$FO_PROJECT_ROOT"

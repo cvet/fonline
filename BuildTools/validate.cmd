@@ -1,5 +1,5 @@
 @echo off
 setlocal
 
-python "%~dp0shared_buildtools.py" validate %*
+python "%~dp0buildtools.py" validate %*
 exit /b %errorlevel%

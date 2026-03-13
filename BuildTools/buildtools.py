@@ -107,6 +107,11 @@ def read_first_line(path: Path) -> str:
 		return file.readline().strip()
 
 
+def resolve_workspace_emsdk_root(workspace: Path) -> str:
+	emsdk_root = workspace / 'emsdk'
+	return str(emsdk_root) if emsdk_root.is_dir() else ''
+
+
 def resolve_env() -> EnvMap:
 	script_dir = Path(__file__).resolve().parent
 	project_root = Path(os.environ.get('FO_PROJECT_ROOT') or Path.cwd()).resolve()
@@ -120,6 +125,7 @@ def resolve_env() -> EnvMap:
 		'FO_ENGINE_ROOT': str(engine_root),
 		'FO_WORKSPACE': str(workspace),
 		'FO_OUTPUT': str(output),
+		'EMSDK': resolve_workspace_emsdk_root(workspace),
 		'EMSCRIPTEN_VERSION': read_first_line(third_party / 'emscripten'),
 		'ANDROID_NDK_VERSION': read_first_line(third_party / 'android-ndk'),
 		'ANDROID_SDK_VERSION': read_first_line(third_party / 'android-sdk'),
@@ -137,7 +143,7 @@ def resolve_env() -> EnvMap:
 
 	ndk_root = workspace / 'android-ndk'
 	dotnet_runtime_root = workspace / 'dotnet' / 'runtime'
-	env['ANDROID_NDK_ROOT'] = os.environ.get('ANDROID_NDK_ROOT') or (str(ndk_root) if ndk_root.is_dir() else '')
+	env['ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('ANDROID_NDK_ROOT', '')
 	env['FO_DOTNET_RUNTIME_ROOT'] = os.environ.get('FO_DOTNET_RUNTIME_ROOT') or (str(dotnet_runtime_root) if dotnet_runtime_root.is_dir() else '')
 	return env
 
@@ -155,6 +161,7 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_ENGINE_ROOT',
 		'FO_WORKSPACE',
 		'FO_OUTPUT',
+		'EMSDK',
 		'EMSCRIPTEN_VERSION',
 		'ANDROID_HOME',
 		'ANDROID_SDK_ROOT',
