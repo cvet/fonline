@@ -1333,15 +1333,6 @@ foreach(package ${FO_PACKAGES})
         endif()
 
         list(APPEND packageCommands -config "${config}")
-
-        if(FO_ANGELSCRIPT_SCRIPTING)
-            list(APPEND packageCommands -angelscript)
-        endif()
-
-        if(FO_MONO_SCRIPTING)
-            list(APPEND packageCommands -mono)
-        endif()
-
         list(APPEND packageCommands -input ${FO_OUTPUT_PATH})
         list(APPEND packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
 
