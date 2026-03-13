@@ -9,11 +9,244 @@ import subprocess
 import sys
 import time
 import uuid
-from collections.abc import Iterable, Mapping
-from typing import Any
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import astuple, dataclass, is_dataclass
+from typing import Any, TypeAlias, TypedDict, cast
 
 
 GeneratedFileMap = dict[str, list[str]]
+CommentLines: TypeAlias = list[str]
+TagContext: TypeAlias = bool | int | str | list[str] | None
+
+EXPORT_TARGETS = ('Server', 'Client', 'Mapper', 'Common')
+REGISTRATION_TARGETS = ('Server', 'Client', 'Mapper')
+CLIENT_ENTITY_TARGETS = ('Client', 'Mapper')
+
+
+@dataclass(slots=True)
+class TagMetaRecord:
+    abs_path: str
+    line_index: int
+    tag_info: str | None
+    tag_context: TagContext
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class MethodArg:
+    arg_type: str
+    name: str
+
+
+@dataclass(slots=True)
+class RefTypeField:
+    field_type: str
+    name: str
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class RefTypeMethod:
+    name: str
+    ret: str
+    args: list[MethodArg]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class SettingsEntry:
+    kind: str
+    value_type: str
+    name: str
+    init_values: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class EnumKeyValue:
+    key: str
+    value: str | None
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class EntityInfo:
+    server: str
+    client: str
+    is_global: bool
+    has_protos: bool
+    has_statics: bool
+    has_abstract: bool
+    has_time_events: bool
+    exported: bool
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class MethodRegistrationInfo:
+    function_name: str
+    engine_entity_type_extern: str
+    return_type: str
+
+
+@dataclass(slots=True)
+class ExportEnumTag:
+    group_name: str
+    underlying_type: str
+    key_values: list[EnumKeyValue]
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportValueTypeTag:
+    name: str
+    native_type: str
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportPropertyTag:
+    entity: str
+    access: str
+    property_type: str
+    name: str
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportMethodTag:
+    target: str
+    entity: str
+    name: str
+    ret: str
+    args: list[MethodArg]
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportEventTag:
+    target: str
+    entity: str
+    name: str
+    args: list[MethodArg]
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportRefTypeTag:
+    target: str
+    name: str
+    fields: list[RefTypeField]
+    methods: list[RefTypeMethod]
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportEntityTag:
+    name: str
+    server_class_name: str
+    client_class_name: str
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class ExportSettingsTag:
+    group_name: str
+    target: str
+    settings: list[SettingsEntry]
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class EngineHookTag:
+    name: str
+    flags: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class MigrationRuleTag:
+    args: list[str]
+    comment: CommentLines
+
+
+@dataclass(slots=True)
+class CodeGenTag:
+    template_type: str
+    abs_path: str
+    entry: str
+    line_index: int
+    tag_context: TagContext
+    flags: list[str]
+    comment: CommentLines
+
+
+class CodeGenTagStore(TypedDict):
+    ExportEnum: list[ExportEnumTag]
+    ExportValueType: list[ExportValueTypeTag]
+    ExportProperty: list[ExportPropertyTag]
+    ExportMethod: list[ExportMethodTag]
+    ExportEvent: list[ExportEventTag]
+    ExportRefType: list[ExportRefTypeTag]
+    ExportEntity: list[ExportEntityTag]
+    ExportSettings: list[ExportSettingsTag]
+    EngineHook: list[EngineHookTag]
+    MigrationRule: list[MigrationRuleTag]
+    CodeGen: list[CodeGenTag]
+
+
+class TagMetaStore(TypedDict):
+    ExportEnum: list[TagMetaRecord]
+    ExportValueType: list[TagMetaRecord]
+    ExportProperty: list[TagMetaRecord]
+    ExportMethod: list[TagMetaRecord]
+    ExportEvent: list[TagMetaRecord]
+    ExportRefType: list[TagMetaRecord]
+    ExportEntity: list[TagMetaRecord]
+    ExportSettings: list[TagMetaRecord]
+    EngineHook: list[TagMetaRecord]
+    MigrationRule: list[TagMetaRecord]
+    CodeGen: list[TagMetaRecord]
+
+
+def create_codegen_tag_store() -> CodeGenTagStore:
+    return {
+        'ExportEnum': [],
+        'ExportValueType': [],
+        'ExportProperty': [],
+        'ExportMethod': [],
+        'ExportEvent': [],
+        'ExportRefType': [],
+        'ExportEntity': [],
+        'ExportSettings': [],
+        'EngineHook': [],
+        'MigrationRule': [],
+        'CodeGen': [],
+    }
+
+
+def create_tag_meta_store() -> TagMetaStore:
+    return {
+        'ExportEnum': [],
+        'ExportValueType': [],
+        'ExportProperty': [],
+        'ExportMethod': [],
+        'ExportEvent': [],
+        'ExportRefType': [],
+        'ExportEntity': [],
+        'ExportSettings': [],
+        'EngineHook': [],
+        'MigrationRule': [],
+        'CodeGen': [],
+    }
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -31,22 +264,23 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 args = argparse.Namespace()
-startTime = 0.0
+start_time = 0.0
 
 
 def log(*parts: object) -> None:
     print('[CodeGen]', *parts)
 
 
-def getGuid(name: str) -> str:
+def get_guid(name: str) -> str:
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
 
-def getHash(input: str, seed: int = 0) -> str:
-    input_bytes = input.encode()
+def int_to_4_bytes(value: int) -> int:
+    return value & 0xffffffff
 
-    def intTo4Bytes(i: int) -> int:
-        return i & 0xffffffff
+
+def get_hash(input_text: str, seed: int = 0) -> str:
+    input_bytes = input_text.encode()
 
     m = 0x5bd1e995
     r = 24
@@ -54,37 +288,37 @@ def getHash(input: str, seed: int = 0) -> str:
     length = len(input_bytes)
     h = seed ^ length
 
-    round = 0
-    while length >= (round * 4) + 4:
-        k = input_bytes[round * 4]
-        k |= input_bytes[(round * 4) + 1] << 8
-        k |= input_bytes[(round * 4) + 2] << 16
-        k |= input_bytes[(round * 4) + 3] << 24
-        k = intTo4Bytes(k)
-        k = intTo4Bytes(k * m)
+    round_index = 0
+    while length >= (round_index * 4) + 4:
+        k = input_bytes[round_index * 4]
+        k |= input_bytes[(round_index * 4) + 1] << 8
+        k |= input_bytes[(round_index * 4) + 2] << 16
+        k |= input_bytes[(round_index * 4) + 3] << 24
+        k = int_to_4_bytes(k)
+        k = int_to_4_bytes(k * m)
         k ^= k >> r
-        k = intTo4Bytes(k * m)
-        h = intTo4Bytes(h * m)
+        k = int_to_4_bytes(k * m)
+        h = int_to_4_bytes(h * m)
         h ^= k
-        round += 1
+        round_index += 1
 
-    lengthDiff = length - (round * 4)
+    length_diff = length - (round_index * 4)
 
-    if lengthDiff == 1:
+    if length_diff == 1:
         h ^= input_bytes[-1]
-        h = intTo4Bytes(h * m)
-    elif lengthDiff == 2:
-        h ^= intTo4Bytes(input_bytes[-1] << 8)
+        h = int_to_4_bytes(h * m)
+    elif length_diff == 2:
+        h ^= int_to_4_bytes(input_bytes[-1] << 8)
         h ^= input_bytes[-2]
-        h = intTo4Bytes(h * m)
-    elif lengthDiff == 3:
-        h ^= intTo4Bytes(input_bytes[-1] << 16)
-        h ^= intTo4Bytes(input_bytes[-2] << 8)
+        h = int_to_4_bytes(h * m)
+    elif length_diff == 3:
+        h ^= int_to_4_bytes(input_bytes[-1] << 16)
+        h ^= int_to_4_bytes(input_bytes[-2] << 8)
         h ^= input_bytes[-3]
-        h = intTo4Bytes(h * m)
+        h = int_to_4_bytes(h * m)
 
     h ^= h >> 13
-    h = intTo4Bytes(h * m)
+    h = int_to_4_bytes(h * m)
     h ^= h >> 15
 
     assert h <= 0xffffffff
@@ -93,13 +327,13 @@ def getHash(input: str, seed: int = 0) -> str:
     else:
         return str(-((h ^ 0xFFFFFFFF) + 1))
 
-assert getHash('abcd') == '646393889'
-assert getHash('abcde') == '1594468574'
-assert getHash('abcdef') == '1271458169'
-assert getHash('abcdefg') == '-106836237'
+assert get_hash('abcd') == '646393889'
+assert get_hash('abcde') == '1594468574'
+assert get_hash('abcdef') == '1271458169'
+assert get_hash('abcdefg') == '-106836237'
 
 # Generated file list
-genFileList = ['EmbeddedResources-Include.h',
+generated_file_list = ['EmbeddedResources-Include.h',
         'Version-Include.h',
         'GenericCode-Common.cpp',
         'MetadataRegistration-Server.cpp',
@@ -110,203 +344,223 @@ genFileList = ['EmbeddedResources-Include.h',
         'MetadataRegistration-MapperStub.cpp']
 
 # Parse meta information
-codeGenTags = {
-        'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
-        'ExportValueType': [], # (name, native type, [flags], [comment])
-        'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
-        'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
-        'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
-        'ExportRefType': [], # (target, name, [(type, name, [comment])], [(name, ret, [(type, name)], [comment])], [flags], [comment])
-        'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
-        'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
-        'EngineHook': [], #(name, [flags], [comment])
-        'MigrationRule': [], #([args], [comment])
-        'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
+codegen_tags: CodeGenTagStore = create_codegen_tag_store()
 
-def verbosePrint(*str: object) -> None:
+def verbose_print(*parts: object) -> None:
     if args.verbose:
-        log(*str)
+        log(*parts)
 
 errors: list[tuple[object, ...]] = []
 
-def showError(*messages: object) -> None:
+def show_error(*messages: object) -> None:
     global errors
     errors.append(messages)
     log(str(messages[0]))
-    for m in messages[1:]:
-        log('-', str(m))
+    for message_part in messages[1:]:
+        log('-', str(message_part))
 
 
-def checkErrors() -> None:
+def write_error_stub(output_dir: str, error_lines: list[str], file_name: str) -> None:
+    with open(output_dir.rstrip('/') + '/' + file_name, 'w', encoding='utf-8') as file:
+        file.write('\n'.join(error_lines))
+
+
+def check_errors() -> None:
     if errors:
         try:
-            errorLines = []
-            errorLines.append('')
-            errorLines.append('#error Code generation failed')
-            errorLines.append('')
-            errorLines.append('//  Stub generated due to code generation error')
-            errorLines.append('//')
+            error_lines = []
+            error_lines.append('')
+            error_lines.append('#error Code generation failed')
+            error_lines.append('')
+            error_lines.append('//  Stub generated due to code generation error')
+            error_lines.append('//')
             for messages in errors:
-                errorLines.append('//  ' + str(messages[0]))
-                for m in messages:
-                    errorLines.append('//  - ' + str(m))
-            errorLines.append('//')
-            
-            def writeStub(fname):
-                with open(args.genoutput.rstrip('/') + '/' + fname, 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(errorLines))
-            
-            for fname in genFileList:
-                writeStub(fname)
+                error_lines.append('//  ' + str(messages[0]))
+                for message_part in messages:
+                    error_lines.append('//  - ' + str(message_part))
+            error_lines.append('//')
+
+            for file_name in generated_file_list:
+                write_error_stub(args.genoutput, error_lines, file_name)
             
         except Exception as ex:
-            showError('Can\'t write stubs', ex)
+            show_error('Can\'t write stubs', ex)
         
-        for e in errors[0]:
-            if isinstance(e, BaseException):
+        for error_entry in errors[0]:
+            if isinstance(error_entry, BaseException):
                 log('Most recent exception:')
-                raise e
+                raise error_entry
         
         sys.exit(1)
 
-# Parse tags
-tagsMetas = {}
-for k in codeGenTags.keys():
-    tagsMetas[k] = []
 
-def parseMetaFile(absPath: str) -> None:
-    global tagsMetas
-    
+def run_codegen_step(action: Callable[[], None], error_message: str) -> None:
     try:
-        with open(absPath, 'r', encoding='utf-8-sig') as f:
+        action()
+    except Exception as ex:
+        show_error(error_message, ex)
+    check_errors()
+
+
+# Parse tags
+tag_metas: TagMetaStore = create_tag_meta_store()
+
+
+def find_comment_start(line: str) -> int:
+    for start_pos, char in enumerate(line):
+        if char != ' ' and char != '\t':
+            return start_pos
+    return -1
+
+
+def collect_stripped_block(lines: list[str], start_index: int, end_marker: str, trim_left: bool = False) -> list[str] | None:
+    for index in range(start_index, len(lines)):
+        candidate = lines[index].lstrip() if trim_left else lines[index]
+        if candidate.startswith(end_marker):
+            return [line.strip() for line in lines[start_index:index] if line.strip()]
+    return None
+
+
+def find_enclosing_class_name(lines: list[str], line_index: int) -> str | None:
+    for index in range(line_index, 0, -1):
+        if lines[index].startswith('class '):
+            return lines[index][6:lines[index].find(' ', 6)]
+    return None
+
+
+def find_enclosing_property_entity(lines: list[str], line_index: int) -> str | None:
+    for index in range(line_index, 0, -1):
+        if lines[index].startswith('class '):
+            property_pos = lines[index].find('Properties')
+            assert property_pos != -1
+            return lines[index][6:property_pos]
+    return None
+
+
+def resolve_export_tag_context(tag_name: str, lines: list[str], line_index: int) -> TagContext:
+    if tag_name == 'ExportEnum':
+        return collect_stripped_block(lines, line_index + 1, '};', trim_left=True)
+    if tag_name == 'ExportValueType':
+        return True
+    if tag_name == 'ExportProperty':
+        property_entity = find_enclosing_property_entity(lines, line_index)
+        assert property_entity is not None
+        return property_entity + ' ' + lines[line_index + 1].strip()
+    if tag_name == 'ExportMethod':
+        return lines[line_index + 1].strip()
+    if tag_name == 'ExportEvent':
+        class_name = find_enclosing_class_name(lines, line_index)
+        assert class_name is not None
+        return class_name + ' ' + lines[line_index + 1].strip()
+    if tag_name == 'ExportRefType':
+        return collect_stripped_block(lines, line_index + 1, '};')
+    if tag_name == 'ExportEntity':
+        return True
+    if tag_name == 'ExportSettings':
+        return collect_stripped_block(lines, line_index + 1, 'SETTING_GROUP_END')
+    assert False, 'Invalid export tag context ' + tag_name
+
+
+def resolve_tag_context(tag_name: str, lines: list[str], line_index: int, tag_pos: int) -> TagContext:
+    if tag_name.startswith('Export'):
+        return resolve_export_tag_context(tag_name, lines, line_index)
+    if tag_name == 'EngineHook':
+        return lines[line_index + 1].strip()
+    if tag_name == 'CodeGen':
+        return tag_pos
+    return None
+
+def parse_meta_file(abs_path: str) -> None:
+    try:
+        with open(abs_path, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
     except Exception as ex:
-        showError('Can\'t read file', absPath, ex)
+        show_error('Can\'t read file', abs_path, ex)
         return
         
-    lastComment = []
+    last_comment: CommentLines = []
     
-    for lineIndex in range(len(lines)):
-        line = lines[lineIndex]
-        lineLen = len(line)
+    for line_index in range(len(lines)):
+        line = lines[line_index]
+        line_len = len(line)
         
-        if lineLen < 5:
+        if line_len < 5:
             continue
         
         try:
-            tagPos = -1
-            for startPos in range(lineLen):
-                if line[startPos] != ' ' and line[startPos] != '\t':
-                    tagPos = startPos
-                    break
-            if tagPos == -1 or lineLen - tagPos <= 2 or line[tagPos] != '/' or line[tagPos + 1] != '/':
-                lastComment = []
+            tag_pos = find_comment_start(line)
+            if tag_pos == -1 or line_len - tag_pos <= 2 or line[tag_pos] != '/' or line[tag_pos + 1] != '/':
+                last_comment = []
                 continue
             
-            if lineLen - tagPos >= 4 and line[tagPos + 2] == '/' and line[tagPos + 3] == '@':
-                tagStr = line[tagPos + 4:].strip()
+            if line_len - tag_pos >= 4 and line[tag_pos + 2] == '/' and line[tag_pos + 3] == '@':
+                tag_str = line[tag_pos + 4:].strip()
                 
-                commentPos = tagStr.find('//')
-                if commentPos != -1:
-                    lastComment = [tagStr[commentPos + 2:].strip()]
-                    tagStr = tagStr[:commentPos].rstrip()
+                comment_pos = tag_str.find('//')
+                if comment_pos != -1:
+                    last_comment = [tag_str[comment_pos + 2:].strip()]
+                    tag_str = tag_str[:comment_pos].rstrip()
                 
-                comment = lastComment if lastComment else []
+                comment = last_comment if last_comment else []
                 
-                tagSplit = tagStr.split(' ', 1)
-                tagName = tagSplit[0]
+                tag_split = tag_str.split(' ', 1)
+                tag_name = tag_split[0]
                 
-                if tagName not in tagsMetas:
-                    showError('Invalid tag ' + tagName, absPath + ' (' + str(lineIndex + 1) + ')', line.strip())
+                if tag_name not in tag_metas:
+                    show_error('Invalid tag ' + tag_name, abs_path + ' (' + str(line_index + 1) + ')', line.strip())
                     continue
                 
-                tagInfo = tagSplit[1] if len(tagSplit) > 1 else None
+                tag_info = tag_split[1] if len(tag_split) > 1 else None
+
+                tag_context = resolve_tag_context(tag_name, lines, line_index, tag_pos)
                 
-                tagContext = None
-                if tagName.startswith('Export'):
-                    if tagName == 'ExportEnum':
-                        for i in range(lineIndex + 1, len(lines)):
-                            if lines[i].lstrip().startswith('};'):
-                                tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
-                                break
-                    elif tagName == 'ExportValueType':
-                        tagContext = True
-                    elif tagName == 'ExportProperty':
-                        tagContext = lines[lineIndex + 1].strip()
-                        for i in range(lineIndex, 0, -1):
-                            if lines[i].startswith('class '):
-                                propPos = lines[i].find('Properties')
-                                assert propPos != -1
-                                tagContext = lines[i][6:propPos] + ' ' + lines[lineIndex + 1].strip()
-                                break
-                    elif tagName == 'ExportMethod':
-                        tagContext = lines[lineIndex + 1].strip()
-                    elif tagName == 'ExportEvent':
-                        for i in range(lineIndex, 0, -1):
-                            if lines[i].startswith('class '):
-                                className = lines[i][6:lines[i].find(' ', 6)]
-                                tagContext = className + ' ' + lines[lineIndex + 1].strip()
-                                break
-                    elif tagName == 'ExportRefType':
-                        for i in range(lineIndex + 1, len(lines)):
-                            if lines[i].startswith('};'):
-                                tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
-                                break
-                    elif tagName == 'ExportEntity':
-                        tagContext = True
-                    elif tagName == 'ExportSettings':
-                        for i in range(lineIndex + 1, len(lines)):
-                            if lines[i].startswith('SETTING_GROUP_END'):
-                                tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
-                                break
-                    assert 'Invalid tag context', absPath
-                elif tagName == 'EngineHook':
-                    tagContext = lines[lineIndex + 1].strip()
-                elif tagName == 'CodeGen':
-                    tagContext = tagPos
+                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment))
+                last_comment = []
                 
-                tagsMetas[tagName].append((absPath, lineIndex, tagInfo, tagContext, comment))
-                lastComment = []
-                
-            elif lineLen - tagPos >= 3 and line[tagPos + 2] != '/':
-                lastComment.append(line[tagPos + 2:].strip())
+            elif line_len - tag_pos >= 3 and line[tag_pos + 2] != '/':
+                last_comment.append(line[tag_pos + 2:].strip())
             else:
-                lastComment = []
+                last_comment = []
                 
         except Exception as ex:
-            showError('Invalid tag format', absPath + ' (' + str(lineIndex + 1) + ')', line.strip(), ex)
+            show_error('Invalid tag format', abs_path + ' (' + str(line_index + 1) + ')', line.strip(), ex)
 
 # Meta files from build system
-metaFiles = []
+meta_files_registry = []
 
 def collect_meta_files() -> list[str]:
     meta_files: list[str] = []
     for path in args.meta:
-        absPath = os.path.abspath(path)
-        if absPath not in meta_files and 'GeneratedSource' not in absPath:
-            assert os.path.isfile(absPath), 'Invalid meta file path ' + path
-            meta_files.append(absPath)
+        abs_path = os.path.abspath(path)
+        if abs_path not in meta_files and 'GeneratedSource' not in abs_path:
+            assert os.path.isfile(abs_path), 'Invalid meta file path ' + path
+            meta_files.append(abs_path)
     meta_files.sort()
     return meta_files
 
 
 def parse_meta_files() -> None:
-    for absPath in collect_meta_files():
-        parseMetaFile(absPath)
+    for abs_path in collect_meta_files():
+        parse_meta_file(abs_path)
 
-    checkErrors()
+    check_errors()
 
-refTypes = set()
-engineEnums = set()
-customTypes = set()
-customTypesNativeMap = {}
-gameEntities = []
-gameEntitiesInfo = {}
-entityRelatives = set()
-genericFuncdefs = set()
-propertyComponents = set()
+ref_types: set[str] = set()
+engine_enums: set[str] = set()
+custom_types: set[str] = set()
+custom_types_native_map: dict[str, str] = {}
+game_entities: list[str] = []
+game_entities_info: dict[str, EntityInfo] = {}
+entity_relatives: set[str] = set()
+generic_funcdefs: set[str] = set()
 
-symTok = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
+symbol_tokens = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
+
+
+def flush_token(result: list[str], current_token: str) -> str:
+    if current_token.strip():
+        result.append(current_token.strip())
+    return ''
 
 
 def tokenize(text: str | None, anySymbols: list[int] | None = None) -> list[str]:
@@ -315,1116 +569,1325 @@ def tokenize(text: str | None, anySymbols: list[int] | None = None) -> list[str]
     if text is None:
         return []
     text = text.strip()
-    result = []
-    curTok = ''
-    def flushTok():
-        if curTok.strip():
-            result.append(curTok.strip())
-        return ''
+    result: list[str] = []
+    current_token = ''
+
     for ch in text:
-        if ch in symTok:
+        if ch in symbol_tokens:
             if len(result) in anySymbols:
-                curTok += ch
+                current_token += ch
                 continue
-            curTok = flushTok()
-            curTok = ch
-            curTok = flushTok()
+            current_token = flush_token(result, current_token)
+            current_token = ch
+            current_token = flush_token(result, current_token)
         elif ch in ' \t':
-            curTok = flushTok()
+            current_token = flush_token(result, current_token)
         else:
-            curTok += ch
-    curTok = flushTok()
+            current_token += ch
+    current_token = flush_token(result, current_token)
     return result
 
-def hashRecursive(hasher: Any, data: Any) -> None:
-    def update(s):
-        s = s.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
-        hasher.update(s.encode('utf-8'))
+
+def normalize_hash_text(text: str) -> str:
+    return text.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
+
+
+def require_list_context(tag_context: TagContext, tag_name: str) -> list[str]:
+    assert isinstance(tag_context, list), 'Invalid context type for ' + tag_name
+    return tag_context
+
+
+def require_str_context(tag_context: TagContext, tag_name: str) -> str:
+    assert isinstance(tag_context, str), 'Invalid context type for ' + tag_name
+    return tag_context
+
+
+def require_int_context(tag_context: TagContext, tag_name: str) -> int:
+    assert isinstance(tag_context, int), 'Invalid context type for ' + tag_name
+    return tag_context
+
+
+def require_enum_value_text(key_value: EnumKeyValue) -> str:
+    assert key_value.value is not None, 'Enum value is not resolved for ' + key_value.key
+    return key_value.value
+
+
+def get_context_preview(tag_context: TagContext) -> str:
+    if isinstance(tag_context, list):
+        return tag_context[0] if tag_context else '(empty)'
+    if isinstance(tag_context, str):
+        return tag_context
+    return '(empty)'
+
+
+def hash_recursive(hasher: Any, data: Any) -> None:
     if isinstance(data, Mapping):
         for key in sorted(data.keys()):
-            update(str(key))
-            hashRecursive(hasher, data[key])
+            hasher.update(normalize_hash_text(str(key)).encode('utf-8'))
+            hash_recursive(hasher, data[key])
+    elif is_dataclass(data):
+        hash_recursive(hasher, astuple(cast(Any, data)))
     elif isinstance(data, Iterable) and not isinstance(data, str):
-        for i, item in enumerate(data):
-            update(str(i))
-            hashRecursive(hasher, item)
-    elif data is None:
-        update('None')
+        for index, item in enumerate(data):
+            hasher.update(normalize_hash_text(str(index)).encode('utf-8'))
+            hash_recursive(hasher, item)
     else:
-        update(str(data))
-compatablityHasher = hashlib.new('sha256')
+        hasher.update(normalize_hash_text(str(data)).encode('utf-8'))
 
-def parseTags() -> None:
-    validTypes = set()
-    validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64',
-            'float32', 'float64', 'string', 'bool', 'Entity', 'void', 'hstring', 'any'])
-    
-    def unifiedTypeToMetaType(t):
-        if t.startswith('callback('):
-            assert t[-1] == ')'
-            name = 'callback'
-            fd = [unifiedTypeToMetaType(a) for a in t[t.find('(')+1:t.find(')')].split(',')]
-            genericFuncdefs.add('|'.join(fd))
-            return name + '.' + '|'.join(fd) + '|'
-        if t.endswith('&'):
-            return unifiedTypeToMetaType(t[:-1]) + '.ref'
-        if '=>' in t:
-            tt = t.split('=>')
-            return 'dict.' + unifiedTypeToMetaType(tt[0]) + '.' + unifiedTypeToMetaType(tt[1])
-        if t.endswith('[]'):
-            return 'arr.' + unifiedTypeToMetaType(t[:-2])
-        if t == 'SELF_ENTITY':
-            return 'SELF_ENTITY'
-        assert t in validTypes, 'Invalid type ' + t
-        return t
+compatibility_hasher = hashlib.new('sha256')
 
-    def engineTypeToUnifiedType(t):
-        typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-            'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
-            'float32': 'float32', 'float64': 'float64', 'bool': 'bool', 'void': 'void',
-            'string_view': 'string', 'string': 'string',
-            'hstring': 'hstring', 'any_t': 'any'}
-        if t.startswith('ScriptFunc<'):
-            fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
-            r = 'callback(' + ','.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + ')'
-            return r
-        elif t.startswith('readonly_vector<'):
-            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')]) + '[]'
-            assert not t.endswith('&')
-            return r
-        elif t.startswith('readonly_map<') :
-            tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
-            r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
-            assert not t.endswith('&')
-            return r
-        elif t.startswith('vector<'):
-            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')]) + '[]'
-            if t.endswith('&'):
-                r += '&'
-            return r
-        elif t.startswith('map<'):
-            tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
-            r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
-            if t.endswith('&'):
-                r += '&'
-            return r
-        elif t[-1] in ['&', '*'] and t[:-1] in customTypesNativeMap:
-            return customTypesNativeMap[t[:-1]] + t[-1]
-        elif t in customTypesNativeMap:
-            return customTypesNativeMap[t]
-        elif t in typeMap:
-            return typeMap[t]
-        elif t[-1] == '&' and t[:-1] in typeMap:
-            return typeMap[t[:-1]] + '&'
-        elif t[-1] == '*' and t[:-1] in typeMap:
-            return typeMap[t[:-1]] + '*'
-        elif t in validTypes:
-            return t
-        elif t[-1] == '&' and t[:-1] in validTypes:
-            return t
-        elif t[-1] == '*' and t not in typeMap:
-            tt = t[:-1]
-            if tt in refTypes or tt in entityRelatives:
-                return tt
-            for ename, einfo in gameEntitiesInfo.items():
-                if tt == einfo['Server'] or tt == einfo['Client']:
-                    return ename
-            if tt in ['ServerEntity', 'ClientEntity', 'Entity']:
-                return 'Entity'
-            if tt == 'ScriptSelfEntity':
-                return 'SELF_ENTITY'
-            assert False, tt
+
+def split_engine_args(function_args_text: str) -> list[str]:
+    result: list[str] = []
+    braces = 0
+    current = ''
+    for char in function_args_text:
+        if char == ',' and braces == 0:
+            result.append(current.strip())
+            current = ''
         else:
-            assert False, 'Invalid engine type ' + t
+            current += char
+            if char == '<':
+                braces += 1
+            elif char == '>':
+                braces -= 1
+    if current.strip():
+        result.append(current.strip())
+    return result
 
-    def engineTypeToMetaType(t):
-        ut = engineTypeToUnifiedType(t)
-        return unifiedTypeToMetaType(ut)
 
-    def splitEngineArgs(fargs):
-        result = []
-        braces = 0
-        r = ''
-        for c in fargs:
-            if c == ',' and braces == 0:
-                result.append(r.strip())
-                r = ''
-            else:
-                r += c
-                if c == '<':
-                    braces += 1
-                elif c == '>':
-                    braces -= 1
-        if r.strip():
-            result.append(r.strip())
+def parse_export_property_definition(tag_context: str, export_flags: list[str], valid_types: set[str]) -> tuple[str, str, str, str, list[str]]:
+    entity = tag_context[:tag_context.find(' ')]
+
+    access = export_flags[0]
+    assert access in ['Common', 'Server', 'Client'], 'Invalid export property target ' + access
+    property_flags = export_flags[1:]
+
+    tokens = [token.strip() for token in tag_context[tag_context.find('(') + 1:tag_context.find(')')].split(',')]
+    assert len(tokens) == 2
+    property_type = engine_type_to_meta_type(tokens[0], valid_types)
+    assert 'uint64' not in property_type, 'Type uint64 is not supported by properties'
+    property_name = tokens[1]
+    property_flags.append('CoreProperty')
+    return entity, access, property_type, property_name, property_flags
+
+
+def resolve_property_targets(entity: str, property_flags: list[str], game_entities: list[str]) -> list[str]:
+    if entity == 'Entity':
+        property_flags.append('SharedProperty')
+        return game_entities
+    assert entity in game_entities, 'Invalid entity ' + entity
+    return [entity]
+
+
+def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
+    result_args: list[MethodArg] = []
+    raw_args = split_engine_args(args_text)
+    for arg in raw_args[1:] if skip_first_arg else raw_args:
+        arg = arg.strip()
+        separator = arg.rfind(' ')
+        arg_type = engine_type_to_meta_type(arg[:separator].rstrip(), valid_types)
+        arg_name = arg[separator + 1:]
+        result_args.append(MethodArg(arg_type, arg_name))
+    return result_args
+
+
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg]]:
+    brace_open_pos = tag_context.find('(')
+    brace_close_pos = tag_context.rfind(')')
+    ret_space = tag_context.rfind(' ', 0, brace_open_pos)
+    function_name = tag_context[ret_space:brace_open_pos]
+    function_args = tag_context[brace_open_pos + 1:brace_close_pos]
+
+    function_tokens = function_name.split('_')
+    assert len(function_tokens) == 3, function_name
+
+    target = function_tokens[0].strip()
+    assert target in EXPORT_TARGETS, target
+    entity = function_tokens[1]
+    assert entity in game_entities + ['Entity'], entity
+    name = function_tokens[2]
+    ret = engine_type_to_meta_type(tag_context[tag_context.rfind(' ', 0, ret_space - 1):ret_space].strip(), valid_types)
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True)
+
+
+def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
+    class_name = tag_context[:tag_context.find(' ')].strip()
+    for entity_name, entity_info in game_entities_info.items():
+        if class_name == entity_info.server or class_name == entity_info.client:
+            return ('Server' if class_name == entity_info.server else 'Client'), entity_name
+    if class_name == 'MapperEngine':
+        return 'Mapper', 'Game'
+    assert False, class_name
+
+
+def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tuple[str, list[MethodArg]]:
+    brace_open_pos = tag_context.find('(')
+    brace_close_pos = tag_context.rfind(')')
+    first_comma_pos = tag_context.find(',', brace_open_pos)
+    event_name = tag_context[brace_open_pos + 1:first_comma_pos if first_comma_pos != -1 else brace_close_pos].strip()
+
+    event_args: list[MethodArg] = []
+    if first_comma_pos != -1:
+        args_text = tag_context[first_comma_pos + 1:brace_close_pos].strip()
+        if args_text:
+            for arg in split_engine_args(args_text):
+                arg = arg.strip()
+                separator = arg.find('/')
+                arg_type = engine_type_to_meta_type(arg[:separator - 1].rstrip(), valid_types)
+                arg_name = arg[separator + 2:-2]
+                event_args.append(MethodArg(arg_type, arg_name))
+
+    return event_name, event_args
+
+
+def parse_settings_group_name(first_line: str) -> str:
+    assert first_line.startswith('SETTING_GROUP'), 'Invalid start macro'
+    group_name = first_line[first_line.find('(') + 1:first_line.find(',')]
+    assert group_name.endswith('Settings'), 'Invalid group ending ' + group_name
+    return group_name[:-len('Settings')]
+
+
+def parse_settings_entry(line: str, valid_types: set[str]) -> SettingsEntry:
+    setting_comment = [line[line.find('//') + 2:].strip()] if line.find('//') != -1 else []
+    setting_type = line[:line.find('(')]
+    assert setting_type in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + setting_type
+    setting_args = [token.strip().strip('"') for token in line[line.find('(') + 1:line.find(')')].split(',')]
+    return SettingsEntry(
+        'fix' if setting_type == 'FIXED_SETTING' else 'var',
+        engine_type_to_meta_type(setting_args[0], valid_types),
+        setting_args[1],
+        setting_args[2:],
+        setting_comment,
+    )
+
+
+def parse_settings_entries(tag_context: list[str], valid_types: set[str], hasher: Any) -> list[SettingsEntry]:
+    settings: list[SettingsEntry] = []
+    for line in tag_context[1:]:
+        settings.append(parse_settings_entry(line, valid_types))
+        hash_recursive(hasher, (settings[-1].kind, settings[-1].value_type, settings[-1].name, settings[-1].init_values))
+    return settings
+
+
+def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
+    key_values: list[EnumKeyValue] = []
+    assert enum_lines[1].startswith('{')
+    for raw_line in enum_lines[2:]:
+        comment_position = raw_line.find('//')
+        line = raw_line[:comment_position].rstrip() if comment_position != -1 else raw_line
+        separator = line.find('=')
+        if separator == -1:
+            next_value = str(int(require_enum_value_text(key_values[-1]), 0) + 1) if key_values else '0'
+            key_values.append(EnumKeyValue(line.rstrip(','), next_value, []))
+        else:
+            key_values.append(EnumKeyValue(line[:separator].rstrip(), line[separator + 1:].lstrip().rstrip(','), []))
+    return key_values
+
+
+def find_token_index(tokens: list[str], value: str, start: int = 0) -> int:
+    try:
+        return tokens.index(value, start)
+    except ValueError:
+        return -1
+
+
+def parse_exported_ref_type_method(stripped_line: str, line_tokens: list[str], function_token_index: int, valid_types: set[str]) -> RefTypeMethod:
+    if line_tokens[0] == 'auto':
+        signature_end = line_tokens.index(')', function_token_index)
+        assert line_tokens[signature_end + 1] == '-'
+        assert line_tokens[signature_end + 2] == '>'
+        declaration_end = line_tokens.index(';', signature_end + 2)
+        return_type = ''.join(line_tokens[signature_end + 3:declaration_end])
+    else:
+        assert line_tokens[0] == 'void'
+        return_type = 'void'
+
+    function_begin = stripped_line.index('(')
+    function_end = stripped_line.index(')')
+    assert function_begin != -1 and function_end != -1 and function_begin < function_end, 'Invalid function definition'
+    function_args = stripped_line[function_begin + 1:function_end]
+    result_args = parse_method_args(function_args, valid_types)
+    return RefTypeMethod(line_tokens[function_token_index - 1], engine_type_to_meta_type(return_type, valid_types), result_args, [])
+
+
+def parse_exported_ref_type_members(tag_context: list[str], export_flags: list[str], valid_types: set[str]) -> tuple[list[RefTypeField], list[RefTypeMethod]]:
+
+    fields: list[RefTypeField] = []
+    methods: list[RefTypeMethod] = []
+
+    export_key = find_token_index(export_flags, 'Export')
+    if export_key == -1:
+        return fields, methods
+
+    assert export_flags[export_key + 1] == '='
+    export_tokens = [token for token in export_flags[export_key + 2:] if token != ',']
+    assert export_tokens
+
+    for line in tag_context[2:]:
+        stripped_line = line.lstrip()
+        comment_position = stripped_line.find('//')
+        if comment_position != -1:
+            stripped_line = stripped_line[:comment_position]
+        if not stripped_line:
+            continue
+
+        line_tokens = tokenize(stripped_line)
+        assert len(line_tokens) >= 2
+        value_token_index = find_token_index(line_tokens, '{')
+        function_token_index = find_token_index(line_tokens, '(')
+
+        if value_token_index != -1 and line_tokens[value_token_index - 1] in export_tokens:
+            fields.append(RefTypeField(engine_type_to_meta_type(''.join(line_tokens[:value_token_index - 1]), valid_types), line_tokens[value_token_index - 1], []))
+            export_tokens.remove(line_tokens[value_token_index - 1])
+            continue
+
+        if function_token_index == -1 or line_tokens[function_token_index - 1] not in export_tokens:
+            continue
+
+        methods.append(parse_exported_ref_type_method(stripped_line, line_tokens, function_token_index, valid_types))
+        export_tokens.remove(line_tokens[function_token_index - 1])
+
+    assert not export_tokens, 'Exports not found ' + str(export_tokens)
+    return fields, methods
+
+
+def create_valid_types() -> set[str]:
+    valid_types = set()
+    valid_types.update([
+        'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64',
+        'float32', 'float64', 'string', 'bool', 'Entity', 'void', 'hstring', 'any',
+    ])
+    return valid_types
+
+
+def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str]) -> None:
+    codegen_tags['ExportEnum'].append(ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment))
+    hash_recursive(compatibility_hasher, (group_name, underlying_type, key_values, export_flags))
+
+    assert group_name not in valid_types, 'Enum already in valid types'
+    valid_types.add(group_name)
+    assert group_name not in engine_enums, 'Enum already in engine enums'
+    engine_enums.add(group_name)
+
+
+def register_entity_relative_type(type_name: str, valid_types: set[str]) -> None:
+    assert type_name not in valid_types
+    valid_types.add(type_name)
+    assert type_name not in entity_relatives
+    entity_relatives.add(type_name)
+
+
+def unified_type_to_meta_type(unified_type: str, valid_types: set[str]) -> str:
+    if unified_type.startswith('callback('):
+        assert unified_type[-1] == ')'
+        callback_args = [unified_type_to_meta_type(arg, valid_types) for arg in unified_type[unified_type.find('(') + 1:unified_type.find(')')].split(',')]
+        generic_funcdefs.add('|'.join(callback_args))
+        return 'callback.' + '|'.join(callback_args) + '|'
+    if unified_type.endswith('&'):
+        return unified_type_to_meta_type(unified_type[:-1], valid_types) + '.ref'
+    if '=>' in unified_type:
+        key_type, value_type = unified_type.split('=>')
+        return 'dict.' + unified_type_to_meta_type(key_type, valid_types) + '.' + unified_type_to_meta_type(value_type, valid_types)
+    if unified_type.endswith('[]'):
+        return 'arr.' + unified_type_to_meta_type(unified_type[:-2], valid_types)
+    if unified_type == 'SELF_ENTITY':
+        return 'SELF_ENTITY'
+    assert unified_type in valid_types, 'Invalid type ' + unified_type
+    return unified_type
+
+
+def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
+    type_map = {
+        'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
+        'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
+        'float32': 'float32', 'float64': 'float64', 'bool': 'bool', 'void': 'void',
+        'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
+    }
+    if engine_type.startswith('ScriptFunc<'):
+        function_args = split_engine_args(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')])
+        return 'callback(' + ','.join([engine_type_to_unified_type(arg.strip(), valid_types) for arg in function_args]) + ')'
+    if engine_type.startswith('readonly_vector<'):
+        result = engine_type_to_unified_type(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')], valid_types) + '[]'
+        assert not engine_type.endswith('&')
         return result
+    if engine_type.startswith('readonly_map<'):
+        key_type, value_type = engine_type[engine_type.find('<') + 1:engine_type.rfind('>')].split(',', 1)
+        result = engine_type_to_unified_type(key_type.strip(), valid_types) + '=>' + engine_type_to_unified_type(value_type.strip(), valid_types)
+        assert not engine_type.endswith('&')
+        return result
+    if engine_type.startswith('vector<'):
+        result = engine_type_to_unified_type(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')], valid_types) + '[]'
+        if engine_type.endswith('&'):
+            result += '&'
+        return result
+    if engine_type.startswith('map<'):
+        key_type, value_type = engine_type[engine_type.find('<') + 1:engine_type.rfind('>')].split(',', 1)
+        result = engine_type_to_unified_type(key_type.strip(), valid_types) + '=>' + engine_type_to_unified_type(value_type.strip(), valid_types)
+        if engine_type.endswith('&'):
+            result += '&'
+        return result
+    if engine_type[-1] in ['&', '*'] and engine_type[:-1] in custom_types_native_map:
+        return custom_types_native_map[engine_type[:-1]] + engine_type[-1]
+    if engine_type in custom_types_native_map:
+        return custom_types_native_map[engine_type]
+    if engine_type in type_map:
+        return type_map[engine_type]
+    if engine_type[-1] == '&' and engine_type[:-1] in type_map:
+        return type_map[engine_type[:-1]] + '&'
+    if engine_type[-1] == '*' and engine_type[:-1] in type_map:
+        return type_map[engine_type[:-1]] + '*'
+    if engine_type in valid_types:
+        return engine_type
+    if engine_type[-1] == '&' and engine_type[:-1] in valid_types:
+        return engine_type
+    if engine_type[-1] == '*' and engine_type not in type_map:
+        entity_type = engine_type[:-1]
+        if entity_type in ref_types or entity_type in entity_relatives:
+            return entity_type
+        for entity_name, entity_info in game_entities_info.items():
+            if entity_type == entity_info.server or entity_type == entity_info.client:
+                return entity_name
+        if entity_type in ['ServerEntity', 'ClientEntity', 'Entity']:
+            return 'Entity'
+        if entity_type == 'ScriptSelfEntity':
+            return 'SELF_ENTITY'
+        assert False, entity_type
+    assert False, 'Invalid engine type ' + engine_type
 
-    def parseTypeTags1():
-        global codeGenTags
-        
-        for tagMeta in tagsMetas['ExportEnum']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                
-                firstLine = tagContext[0]
-                assert firstLine.startswith('enum class ')
-                sep = firstLine.find(':')
-                grname = firstLine[len('enum class '):sep if sep != -1 else len(firstLine)].strip()
-                utype = engineTypeToMetaType('int32' if sep == -1 else firstLine[sep + 1:].strip())
-                
-                keyValues = []
-                assert tagContext[1].startswith('{')
-                for l in tagContext[2:]:
-                    comm = l.find('//')
-                    if comm != -1:
-                        l = l[:comm].rstrip()
-                    sep = l.find('=')
-                    if sep == -1:
-                        keyValues.append((l.rstrip(','), str(int(keyValues[-1][1], 0) + 1) if len(keyValues) else '0', []))
-                    else:
-                        keyValues.append((l[:sep].rstrip(), l[sep + 1:].lstrip().rstrip(','), []))
-                
-                codeGenTags['ExportEnum'].append((grname, utype, keyValues, exportFlags, comment))
-                hashRecursive(compatablityHasher, (grname, utype, keyValues, exportFlags))
-                
-                assert grname not in validTypes, 'Enum already in valid types'
-                validTypes.add(grname)
-                assert grname not in engineEnums, 'Enum already in engine enums'
-                engineEnums.add(grname)
-                
-            except Exception as ex:
-                showError('Invalid tag ExportEnum', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
 
-    def parseTypeTags2():
-        global codeGenTags
-        
-        for tagMeta in tagsMetas['ExportValueType']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                tok = tokenize(tagInfo)
-                
-                name = tok[0]
-                ntype = tok[1]
-                exportFlags = tok[2:]
-                
-                assert 'Layout' in exportFlags, 'No Layout specified in ExportValueType'
-                assert exportFlags[exportFlags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
-                
-                codeGenTags['ExportValueType'].append((name, ntype, exportFlags, comment))
-                hashRecursive(compatablityHasher, (name, ntype, exportFlags))
-                
-                assert name not in validTypes, 'Type already in valid types'
-                validTypes.add(name)
-                assert name not in customTypes, 'Type already in custom types'
-                customTypes.add(name)
-                assert ntype not in customTypesNativeMap, 'Type already in custom types native map'
-                customTypesNativeMap[ntype] = name
-                
-            except Exception as ex:
-                showError('Invalid tag ExportValueType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+def engine_type_to_meta_type(engine_type: str, valid_types: set[str]) -> str:
+    return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types), valid_types)
 
-        for tagMeta in tagsMetas['ExportEntity']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
 
-            try:
-                exportFlags = tokenize(tagInfo)
-                
-                name = exportFlags[0]
-                serverClassName = exportFlags[1]
-                clientClassName = exportFlags[2]
-                exportFlags = exportFlags[3:]
-                
-                codeGenTags['ExportEntity'].append((name, serverClassName, clientClassName, exportFlags, comment))
-                hashRecursive(compatablityHasher, (name, serverClassName, clientClassName, exportFlags))
-                
-                assert name not in validTypes           
-                validTypes.add(name)
-                assert name not in gameEntities
-                gameEntities.append(name)
-                gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
-                        'HasProtos': 'HasProtos' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags,
-                        'HasAbstract': 'HasAbstract' in exportFlags, 'HasTimeEvents': 'HasTimeEvents' in exportFlags,
-                        'Exported': True, 'Comment': comment}
-                
-                assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
-                validTypes.add(name + 'Component')
-                assert name + 'Property' not in validTypes, name + 'Property already in valid types'
-                validTypes.add(name + 'Property')
-                
-                if gameEntitiesInfo[name]['HasAbstract']:
-                    assert 'Abstract' + name not in validTypes
-                    validTypes.add('Abstract' + name)
-                    assert 'Abstract' + name not in entityRelatives
-                    entityRelatives.add('Abstract' + name)
-                
-                if gameEntitiesInfo[name]['HasProtos']:
-                    assert 'Proto' + name not in validTypes
-                    validTypes.add('Proto' + name)
-                    assert 'Proto' + name not in entityRelatives
-                    entityRelatives.add('Proto' + name)
-                
-                if gameEntitiesInfo[name]['HasStatics']:
-                    assert 'Static' + name not in validTypes
-                    validTypes.add('Static' + name)
-                    assert 'Static' + name not in entityRelatives
-                    entityRelatives.add('Static' + name)
-                
-            except Exception as ex:
-                showError('Invalid tag ExportEntity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
-                
-    def parseTypeTags3():
-        global codeGenTags
-        
-        for tagMeta in tagsMetas['ExportRefType']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
-                target = exportFlags[0]
-                exportFlags = exportFlags[1:]
-                
-                firstLine = tagContext[0]
-                firstLineTok = tokenize(firstLine)
-                assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in first line'
-                assert firstLineTok[0] in ['class', 'struct'], 'Expected class/struct'
-                
-                refTypeName = firstLineTok[1]
-                assert refTypeName not in validTypes
-                
-                assert tagContext[1].startswith('{')
-                
-                fields = []
-                methods = []
-                
-                def findIndex(lst, value, start=0):
-                    try:
-                        return lst.index(value, start)
-                    except ValueError:
-                        return -1
-                
-                exportKey = findIndex(exportFlags, 'Export')
-                if exportKey != -1:
-                    assert exportFlags[exportKey+1] == '='
-                    exportTokens = exportFlags[exportKey+2:]
-                    exportTokens = [e for e in exportTokens if e != ',']
-                    assert exportTokens
-                    
-                    for line in tagContext[2:]:
-                        line = line.lstrip()
-                        commPos = line.find('//')
-                        if commPos != -1:
-                            line = line[:commPos]
-                        if not line:
-                            continue
-                        
-                        lTok = tokenize(line)
-                        assert len(lTok) >= 2
-                        valueTok = findIndex(lTok, '{')
-                        funcTok = findIndex(lTok, '(')
-                        
-                        if valueTok != -1 and lTok[valueTok-1] in exportTokens:
-                            fields.append((engineTypeToMetaType(''.join(lTok[:valueTok-1])), lTok[valueTok-1], []))
-                            exportTokens.remove(lTok[valueTok-1])
-                        elif funcTok != -1 and lTok[funcTok-1] in exportTokens:
-                            if lTok[0] == 'auto':
-                                end1 = lTok.index(')', funcTok)
-                                assert lTok[end1+1] == '-'
-                                assert lTok[end1+2] == '>'
-                                end2 = lTok.index(';', end1+2)
-                                ret = ''.join(lTok[end1+3:end2])
-                            else:
-                                assert lTok[0] == 'void'
-                                ret = 'void'
-                            
-                            funcBegin = line.index('(')
-                            funcEnd = line.index(')')
-                            assert funcBegin != -1 and funcEnd != -1 and funcBegin < funcEnd, 'Invalid function definition'
-                            funcArgs = line[funcBegin+1:funcEnd]
-                            resultArgs = []
-                            for arg in splitEngineArgs(funcArgs):
-                                arg = arg.strip()
-                                sep = arg.rfind(' ')
-                                argType = engineTypeToMetaType(arg[:sep].rstrip())
-                                argName = arg[sep + 1:]
-                                resultArgs.append((argType, argName))
-                            
-                            methods.append((lTok[funcTok-1], engineTypeToMetaType(ret), resultArgs, []))
-                            exportTokens.remove(lTok[funcTok-1])
-                    
-                    assert not exportTokens, 'Exports not found ' + str(exportTokens)
-                
-                codeGenTags['ExportRefType'].append((target, refTypeName, fields, methods, exportFlags, comment))
-                hashRecursive(compatablityHasher, (target, refTypeName, fields, methods, exportFlags))
-                
-                validTypes.add(refTypeName)
-                refTypes.add(refTypeName)
-                
-            except Exception as ex:
-                showError('Invalid tag ExportRefType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
-    
-    def parseTypeTags4():
-        global codeGenTags
-        
-        for tagMeta in tagsMetas['ExportProperty']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:    
-                exportFlags = tokenize(tagInfo)
-                entity = tagContext[:tagContext.find(' ')]
-                
-                access = exportFlags[0]
-                assert access in ['Common', 'Server', 'Client'], 'Invalid export property target ' + access
-                exportFlags = exportFlags[1:]
-                
-                toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
-                assert len(toks) == 2
-                ptype = engineTypeToMetaType(toks[0])
-                assert 'uint64' not in ptype, 'Type uint64 is not supported by properties'
-                name = toks[1]
-                
-                exportFlags.append('CoreProperty')
-                
-                if entity == 'Entity':
-                    entities = gameEntities
-                    exportFlags.append('SharedProperty')
-                else:
-                    entities = [entity]
-                    assert entity in gameEntities, 'Invalid entity ' + entity
-                
-                for entity in entities:
-                    codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
-                    hashRecursive(compatablityHasher, (entity, access, ptype, name, exportFlags))
-                
-            except Exception as ex:
-                showError('Invalid tag ExportProperty', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
-                
-        for tagMeta in tagsMetas['ExportMethod']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                
-                braceOpenPos = tagContext.find('(')
-                braceClosePos = tagContext.rfind(')')
-                retSpace = tagContext.rfind(' ', 0, braceOpenPos)
-                funcName = tagContext[retSpace:braceOpenPos]
-                funcArgs = tagContext[braceOpenPos + 1:braceClosePos]
-                
-                funcTok = funcName.split('_')
-                assert len(funcTok) == 3, funcName
-                
-                target = funcTok[0].strip()
-                assert target in ['Server', 'Client', 'Mapper', 'Common'], target
-                entity = funcTok[1]
-                assert entity in gameEntities + ['Entity'], entity
-                name = funcTok[2]
-                ret = engineTypeToMetaType(tagContext[tagContext.rfind(' ', 0, retSpace - 1):retSpace].strip())
-                
-                resultArgs = []
-                for arg in splitEngineArgs(funcArgs)[1:]:
-                    arg = arg.strip()
-                    sep = arg.rfind(' ')
-                    argType = engineTypeToMetaType(arg[:sep].rstrip())
-                    argName = arg[sep + 1:]
-                    resultArgs.append((argType, argName))
-                
-                codeGenTags['ExportMethod'].append((target, entity, name, ret, resultArgs, exportFlags, comment))
-                hashRecursive(compatablityHasher, (target, entity, name, ret, resultArgs, exportFlags))
-                
-            except Exception as ex:
-                showError('Invalid tag ExportMethod', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
-                
-        for tagMeta in tagsMetas['ExportEvent']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                
-                target = None
-                entity = None
-                className = tagContext[:tagContext.find(' ')].strip()
-                for ename, einfo in gameEntitiesInfo.items():
-                    if className == einfo['Server'] or className == einfo['Client']:
-                        target, entity = ('Server' if className == einfo['Server'] else 'Client'), ename
-                        break
-                if className == 'MapperEngine':
-                    target, entity = 'Mapper', 'Game'
-                assert target in ['Server', 'Client', 'Mapper'], target
-                
-                braceOpenPos = tagContext.find('(')
-                braceClosePos = tagContext.rfind(')')
-                firstCommaPos = tagContext.find(',', braceOpenPos)
-                eventName = tagContext[braceOpenPos + 1:firstCommaPos if firstCommaPos != -1 else braceClosePos].strip()
-                
-                eventArgs = []
-                if firstCommaPos != -1:
-                    argsStr = tagContext[firstCommaPos + 1:braceClosePos].strip()
-                    if len(argsStr):
-                        for arg in splitEngineArgs(argsStr):
-                            arg = arg.strip()
-                            sep = arg.find('/')
-                            argType = engineTypeToMetaType(arg[:sep - 1].rstrip())
-                            argName = arg[sep + 2:-2]
-                            eventArgs.append((argType, argName))
-                
-                codeGenTags['ExportEvent'].append((target, entity, eventName, eventArgs, exportFlags, comment))
-                hashRecursive(compatablityHasher, (target, entity, eventName, eventArgs, exportFlags))
-            
-            except Exception as ex:
-                showError('Invalid tag ExportEvent', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
-        
-        for tagMeta in tagsMetas['ExportSettings']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
-                target = exportFlags[0]
-                exportFlags = exportFlags[1:]
-                
-                firstLine = tagContext[0]
-                assert firstLine.startswith('SETTING_GROUP'), 'Invalid start macro'
-                grName = firstLine[firstLine.find('(') + 1:firstLine.find(',')]
-                assert grName.endswith('Settings'), 'Invalid group ending ' + grName
-                grName = grName[:-len('Settings')]
-                
-                settings = []
-                for l in tagContext[1:]:
-                    settComment = [l[l.find('//') + 2:].strip()] if l.find('//') != -1 else []
-                    settType = l[:l.find('(')]
-                    assert settType in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + settType
-                    settArgs = [t.strip().strip('"') for t in l[l.find('(') + 1:l.find(')')].split(',')]
-                    settings.append(('fix' if settType == 'FIXED_SETTING' else 'var', engineTypeToMetaType(settArgs[0]), settArgs[1], settArgs[2:], settComment))
-                    hashRecursive(compatablityHasher, settings[-1][0:-1])
-                
-                codeGenTags['ExportSettings'].append((grName, target, settings, exportFlags, comment))
-                hashRecursive(compatablityHasher, (grName, target, exportFlags))
-                
-            except Exception as ex:
-                showError('Invalid tag ExportSettings', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
-        
-        for tagMeta in tagsMetas['EngineHook']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                name = tokenize(tagContext)[2]
-                assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
-                
-                codeGenTags['EngineHook'].append((name, [], comment))
-                hashRecursive(compatablityHasher, name)
-            
-            except Exception as ex:
-                showError('Invalid tag EngineHook', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
-        
-        for tagMeta in tagsMetas['MigrationRule']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                ruleArgs = tokenize(tagInfo, anySymbols=[2, 3])
-                assert len(ruleArgs) and ruleArgs[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
-                assert len(ruleArgs) == 4, 'Invalid migration rule args'
-                assert not len([t for t in codeGenTags['MigrationRule'] if t[0][0:3] == ruleArgs[0:3]]), 'Migration rule already added'
-                assert ruleArgs[2] != ruleArgs[3], 'Migration rule same last args'
-                
-                codeGenTags['MigrationRule'].append((ruleArgs, comment))
-                hashRecursive(compatablityHasher, ruleArgs)
-            
-            except Exception as ex:
-                showError('Invalid tag MigrationRule', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
-                
-        for tagMeta in tagsMetas['CodeGen']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                fname = os.path.basename(absPath)
-                if fname == 'MetadataRegistration-Template.cpp':
-                    templateType = 'MetadataRegistration'
-                elif fname == 'GenericCode-Template.cpp':
-                    templateType = 'GenericCode'
-                else:
-                    assert False, fname
-                
-                flags = tokenize(tagInfo)
-                assert len(flags) >= 1, 'Invalid CodeGen entry'
-                
-                codeGenTags['CodeGen'].append((templateType, absPath, flags[0], lineIndex, tagContext, flags[1:], comment))
-                hashRecursive(compatablityHasher, (templateType, flags[0], lineIndex, flags[1:]))
-            
-            except Exception as ex:
-                showError('Invalid tag CodeGen', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
-    
-    def postprocessTags():
-        # Generate missed enum values
-        def findNextValue(kv):
-            result = 0
-            for _, value, _ in kv:
-                if value is not None:
-                    ivalue = int(value, 0)
-                    if ivalue >= result:
-                        result = ivalue + 1
-            return str(result)
-        
-        for e in codeGenTags['ExportEnum']:
-            gname, _, keyValues, _, _ = e
-            for kv in keyValues:
-                if kv[1] is None:
-                    kv[1] = findNextValue(keyValues)
-                    hashRecursive(compatablityHasher, kv[1])
-        
-        # Generate entity properties enums
-        for entity in gameEntities:
-            keyValues = [['None', '0', []]]
-            index = 1
-            for propTag in codeGenTags['ExportProperty']:
-                ent, _, _, name, _, _ = propTag
-                if ent == entity:
-                    name = name.replace('.', '_')
-                    keyValues.append([name, str(index), []])
-                    index += 1
-            codeGenTags['ExportEnum'].append([entity + 'Property', 'uint16', keyValues, [], []])
-            hashRecursive(compatablityHasher, (entity + 'Property', 'uint16', keyValues))
-        
-        # Check for zero key entry in enums
-        for e in codeGenTags['ExportEnum']:
-            gname, _, keyValues, _, _ = e
-            if not [1 for kv in keyValues if int(kv[1], 0) == 0]:
-                showError('Zero entry not found in enum group ' + gname)
-        
-        # Check uniquiness of enums
-        for e in codeGenTags['ExportEnum']:
-            gname, _, keyValues, _, _ = e
-            keys = set()
-            values = set()
-            for kv in keyValues:
-                if kv[0] in keys:
-                    showError('Detected collision in enum group ' + gname + ' key ' + kv[0])
-                if int(kv[1], 0) in values:
-                    showError('Detected collision in enum group ' + gname + ' value ' + kv[1] + (' (evaluated to ' + str(int(kv[1], 0)) + ')' if str(int(kv[1], 0)) != kv[1] else ''))
-                keys.add(kv[0])
-                values.add(int(kv[1], 0))
-    
-    parseTypeTags1()
-    parseTypeTags2()
-    parseTypeTags3()
-    parseTypeTags4()
-    postprocessTags()
+def find_next_enum_value(key_values: list[EnumKeyValue]) -> str:
+    result = 0
+    for key_value in key_values:
+        if key_value.value is not None:
+            int_value = int(key_value.value, 0)
+            if int_value >= result:
+                result = int_value + 1
+    return str(result)
+
+
+def postprocess_tags() -> None:
+    for enum_tag in codegen_tags['ExportEnum']:
+        for key_value in enum_tag.key_values:
+            if key_value.value is None:
+                key_value.value = find_next_enum_value(enum_tag.key_values)
+                hash_recursive(compatibility_hasher, key_value.value)
+
+    for entity in game_entities:
+        key_values = [EnumKeyValue('None', '0', [])]
+        index = 1
+        for prop_tag in codegen_tags['ExportProperty']:
+            if prop_tag.entity == entity:
+                key_values.append(EnumKeyValue(prop_tag.name.replace('.', '_'), str(index), []))
+                index += 1
+        codegen_tags['ExportEnum'].append(ExportEnumTag(entity + 'Property', 'uint16', key_values, [], []))
+        hash_recursive(compatibility_hasher, (entity + 'Property', 'uint16', key_values))
+
+    for enum_tag in codegen_tags['ExportEnum']:
+        if not [1 for key_value in enum_tag.key_values if int(require_enum_value_text(key_value), 0) == 0]:
+            show_error('Zero entry not found in enum group ' + enum_tag.group_name)
+
+    for enum_tag in codegen_tags['ExportEnum']:
+        keys = set()
+        values = set()
+        for key_value in enum_tag.key_values:
+            if key_value.key in keys:
+                show_error('Detected collision in enum group ' + enum_tag.group_name + ' key ' + key_value.key)
+            value_text = require_enum_value_text(key_value)
+            evaluated_value = int(value_text, 0)
+            if evaluated_value in values:
+                show_error('Detected collision in enum group ' + enum_tag.group_name + ' value ' + value_text + (' (evaluated to ' + str(evaluated_value) + ')' if str(evaluated_value) != value_text else ''))
+            keys.add(key_value.key)
+            values.add(evaluated_value)
+
+
+def parse_enum_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportEnum']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            enum_lines = require_list_context(tag_context, 'ExportEnum')
+            export_flags = tokenize(tag_info)
+
+            first_line = enum_lines[0]
+            assert first_line.startswith('enum class ')
+            separator = first_line.find(':')
+            group_name = first_line[len('enum class '):separator if separator != -1 else len(first_line)].strip()
+            underlying_type = engine_type_to_meta_type('int32' if separator == -1 else first_line[separator + 1:].strip(), valid_types)
+
+            key_values = parse_enum_key_values(enum_lines)
+            register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types)
+
+        except Exception as ex:
+            show_error('Invalid tag ExportEnum', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
+
+
+def parse_export_value_type_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportValueType']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            tokens = tokenize(tag_info)
+
+            type_name = tokens[0]
+            native_type = tokens[1]
+            export_flags = tokens[2:]
+
+            assert 'Layout' in export_flags, 'No Layout specified in ExportValueType'
+            assert export_flags[export_flags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
+
+            codegen_tags['ExportValueType'].append(ExportValueTypeTag(type_name, native_type, export_flags, comment))
+            hash_recursive(compatibility_hasher, (type_name, native_type, export_flags))
+
+            assert type_name not in valid_types, 'Type already in valid types'
+            valid_types.add(type_name)
+            assert type_name not in custom_types, 'Type already in custom types'
+            custom_types.add(type_name)
+            assert native_type not in custom_types_native_map, 'Type already in custom types native map'
+            custom_types_native_map[native_type] = type_name
+
+        except Exception as ex:
+            show_error('Invalid tag ExportValueType', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
+
+
+def parse_export_entity_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportEntity']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            export_flags = tokenize(tag_info)
+
+            entity_name = export_flags[0]
+            server_class_name = export_flags[1]
+            client_class_name = export_flags[2]
+            export_flags = export_flags[3:]
+
+            codegen_tags['ExportEntity'].append(ExportEntityTag(entity_name, server_class_name, client_class_name, export_flags, comment))
+            hash_recursive(compatibility_hasher, (entity_name, server_class_name, client_class_name, export_flags))
+
+            assert entity_name not in valid_types
+            valid_types.add(entity_name)
+            assert entity_name not in game_entities
+            game_entities.append(entity_name)
+            game_entities_info[entity_name] = EntityInfo(
+                server=server_class_name,
+                client=client_class_name,
+                is_global='Global' in export_flags,
+                has_protos='HasProtos' in export_flags,
+                has_statics='HasStatics' in export_flags,
+                has_abstract='HasAbstract' in export_flags,
+                has_time_events='HasTimeEvents' in export_flags,
+                exported=True,
+                comment=comment,
+            )
+
+            assert entity_name + 'Component' not in valid_types, entity_name + 'Property component already in valid types'
+            valid_types.add(entity_name + 'Component')
+            assert entity_name + 'Property' not in valid_types, entity_name + 'Property already in valid types'
+            valid_types.add(entity_name + 'Property')
+
+            if game_entities_info[entity_name].has_abstract:
+                register_entity_relative_type('Abstract' + entity_name, valid_types)
+            if game_entities_info[entity_name].has_protos:
+                register_entity_relative_type('Proto' + entity_name, valid_types)
+            if game_entities_info[entity_name].has_statics:
+                register_entity_relative_type('Static' + entity_name, valid_types)
+
+        except Exception as ex:
+            show_error('Invalid tag ExportEntity', abs_path + ' (' + str(line_index + 1) + ')', ex)
+
+
+def parse_foundation_tags(valid_types: set[str]) -> None:
+    parse_export_value_type_tags(valid_types)
+    parse_export_entity_tags(valid_types)
+
+
+def parse_ref_type_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportRefType']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            ref_type_lines = require_list_context(tag_context, 'ExportRefType')
+            export_flags = tokenize(tag_info)
+            assert export_flags and export_flags[0] in EXPORT_TARGETS, 'Expected target in tag info'
+            target = export_flags[0]
+            export_flags = export_flags[1:]
+
+            first_line = ref_type_lines[0]
+            first_line_tokens = tokenize(first_line)
+            assert len(first_line_tokens) >= 2, 'Expected 4 or more tokens in first line'
+            assert first_line_tokens[0] in ['class', 'struct'], 'Expected class/struct'
+
+            ref_type_name = first_line_tokens[1]
+            assert ref_type_name not in valid_types
+
+            assert ref_type_lines[1].startswith('{')
+
+            fields, methods = parse_exported_ref_type_members(ref_type_lines, export_flags, valid_types)
+
+            codegen_tags['ExportRefType'].append(ExportRefTypeTag(target, ref_type_name, fields, methods, export_flags, comment))
+            hash_recursive(compatibility_hasher, (target, ref_type_name, fields, methods, export_flags))
+
+            valid_types.add(ref_type_name)
+            ref_types.add(ref_type_name)
+
+        except Exception as ex:
+            show_error('Invalid tag ExportRefType', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
+
+
+def parse_export_property_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportProperty']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            property_context = require_str_context(tag_context, 'ExportProperty')
+            entity, access, property_type, property_name, property_flags = parse_export_property_definition(property_context, tokenize(tag_info), valid_types)
+            for target_entity in resolve_property_targets(entity, property_flags, game_entities):
+                codegen_tags['ExportProperty'].append(ExportPropertyTag(target_entity, access, property_type, property_name, property_flags, comment))
+                hash_recursive(compatibility_hasher, (target_entity, access, property_type, property_name, property_flags))
+
+        except Exception as ex:
+            show_error('Invalid tag ExportProperty', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
+
+
+def parse_export_method_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportMethod']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            method_context = require_str_context(tag_context, 'ExportMethod')
+            export_flags = tokenize(tag_info)
+
+            target, entity, name, ret, result_args = parse_export_method_signature(method_context, valid_types, game_entities)
+
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment))
+            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags))
+
+        except Exception as ex:
+            show_error('Invalid tag ExportMethod', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
+
+
+def parse_export_event_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportEvent']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            event_context = require_str_context(tag_context, 'ExportEvent')
+            export_flags = tokenize(tag_info)
+
+            target, entity = resolve_event_target(event_context, game_entities_info)
+            assert target in ['Server', 'Client', 'Mapper'], target
+
+            event_name, event_args = parse_export_event_signature(event_context, valid_types)
+
+            codegen_tags['ExportEvent'].append(ExportEventTag(target, entity, event_name, event_args, export_flags, comment))
+            hash_recursive(compatibility_hasher, (target, entity, event_name, event_args, export_flags))
+
+        except Exception as ex:
+            show_error('Invalid tag ExportEvent', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
+
+
+def parse_export_settings_tags(valid_types: set[str]) -> None:
+    for tag_meta in tag_metas['ExportSettings']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            settings_context = require_list_context(tag_context, 'ExportSettings')
+            export_flags = tokenize(tag_info)
+            assert export_flags and export_flags[0] in EXPORT_TARGETS, 'Expected target in tag info'
+            target = export_flags[0]
+            export_flags = export_flags[1:]
+
+            group_name = parse_settings_group_name(settings_context[0])
+            settings = parse_settings_entries(settings_context, valid_types, compatibility_hasher)
+
+            codegen_tags['ExportSettings'].append(ExportSettingsTag(group_name, target, settings, export_flags, comment))
+            hash_recursive(compatibility_hasher, (group_name, target, export_flags))
+
+        except Exception as ex:
+            show_error('Invalid tag ExportSettings', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
+
+
+def parse_engine_hook_tags() -> None:
+    for tag_meta in tag_metas['EngineHook']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            hook_context = require_str_context(tag_context, 'EngineHook')
+            name = tokenize(hook_context)[2]
+            assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
+
+            codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
+            hash_recursive(compatibility_hasher, name)
+
+        except Exception as ex:
+            show_error('Invalid tag EngineHook', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
+
+
+def parse_migration_rule_tags() -> None:
+    for tag_meta in tag_metas['MigrationRule']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            rule_args = tokenize(tag_info, anySymbols=[2, 3])
+            assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
+            assert len(rule_args) == 4, 'Invalid migration rule args'
+            assert not len([rule_tag for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0:3] == rule_args[0:3]]), 'Migration rule already added'
+            assert rule_args[2] != rule_args[3], 'Migration rule same last args'
+
+            codegen_tags['MigrationRule'].append(MigrationRuleTag(rule_args, comment))
+            hash_recursive(compatibility_hasher, rule_args)
+
+        except Exception as ex:
+            show_error('Invalid tag MigrationRule', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
+
+
+def parse_codegen_tags() -> None:
+    for tag_meta in tag_metas['CodeGen']:
+        abs_path = tag_meta.abs_path
+        line_index = tag_meta.line_index
+        tag_info = tag_meta.tag_info
+        tag_context = tag_meta.tag_context
+        comment = tag_meta.comment
+
+        try:
+            file_name = os.path.basename(abs_path)
+            if file_name == 'MetadataRegistration-Template.cpp':
+                template_type = 'MetadataRegistration'
+            elif file_name == 'GenericCode-Template.cpp':
+                template_type = 'GenericCode'
+            else:
+                assert False, file_name
+
+            flags = tokenize(tag_info)
+            assert len(flags) >= 1, 'Invalid CodeGen entry'
+
+            codegen_tags['CodeGen'].append(CodeGenTag(template_type, abs_path, flags[0], line_index, tag_context, flags[1:], comment))
+            hash_recursive(compatibility_hasher, (template_type, flags[0], line_index, flags[1:]))
+
+        except Exception as ex:
+            show_error('Invalid tag CodeGen', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
+
+
+def parse_runtime_tags(valid_types: set[str]) -> None:
+    parse_export_property_tags(valid_types)
+    parse_export_method_tags(valid_types)
+    parse_export_event_tags(valid_types)
+    parse_export_settings_tags(valid_types)
+    parse_engine_hook_tags()
+    parse_migration_rule_tags()
+    parse_codegen_tags()
+
+def parse_tags() -> None:
+    valid_types = create_valid_types()
+
+    parse_enum_tags(valid_types)
+    parse_foundation_tags(valid_types)
+    parse_ref_type_tags(valid_types)
+    parse_runtime_tags(valid_types)
+    postprocess_tags()
 
 def parse_all_tags() -> None:
-    global tagsMetas
-    parseTags()
-    checkErrors()
-    tagsMetas = {}
+    global tag_metas
+    parse_tags()
+    check_errors()
+    tag_metas = create_tag_meta_store()
 
 # Generate API
-files: GeneratedFileMap = {}
-lastFile: list[str] | None = None
-genFileNames: list[str] = []
+class GeneratedOutput:
+    def __init__(self) -> None:
+        self.files: GeneratedFileMap = {}
+        self.current_file: list[str] | None = None
+        self.generated_file_names: list[str] = []
+        self.current_template_type: str | None = None
 
-def createFile(name: str, output: str) -> None:
-    assert output
-    path = os.path.join(output, name)
-    genFileNames.append(name)
-    
-    global lastFile
-    lastFile = []
-    files[path] = lastFile
+    def create_file(self, name: str, output: str) -> None:
+        assert output
+        path = os.path.join(output, name)
+        self.generated_file_names.append(name)
+        self.current_file = []
+        self.files[path] = self.current_file
 
-def writeFile(line: str) -> None:
-    assert lastFile is not None, 'Output file is not initialized'
-    lastFile.append(line)
+    def write_line(self, line: str) -> None:
+        assert self.current_file is not None, 'Output file is not initialized'
+        self.current_file.append(line)
 
-def insertFileLines(lines: list[str], lineIndex: int) -> None:
-    assert lastFile is not None, 'Output file is not initialized'
-    assert lineIndex <= len(lastFile), 'Invalid line index'
-    lastFileCopy = lastFile[:]
-    lastFileCopy = lastFileCopy[:lineIndex] + lines + lastFileCopy[lineIndex:]
-    lastFile.clear()
-    lastFile.extend(lastFileCopy)
+    def insert_lines(self, lines: list[str], line_index: int) -> None:
+        assert self.current_file is not None, 'Output file is not initialized'
+        assert line_index <= len(self.current_file), 'Invalid line index'
+        updated_lines = self.current_file[:line_index] + lines + self.current_file[line_index:]
+        self.current_file.clear()
+        self.current_file.extend(updated_lines)
 
-def flushFiles() -> None:
-    # Generate stubs missed files
-    for fname in genFileList:
-        if fname not in genFileNames:
-            createFile(fname, args.genoutput)
-            writeFile('// Empty file')
-            verbosePrint('flushFiles', 'empty', fname)
-    
-    # Write if content changed
-    for path, lines in files.items():
-        pathDir = os.path.dirname(path)
-        if not os.path.isdir(pathDir):
-            os.makedirs(pathDir)
-        
-        if os.path.isfile(path):
-            with open(path, 'r', encoding='utf-8-sig') as f:
-                curLines = f.readlines()
-            newLinesStr = ''.join([l.rstrip('\r\n') for l in curLines]).rstrip()
-            curLinesStr = ''.join(lines).rstrip()
-            if newLinesStr == curLinesStr:
-                verbosePrint('flushFiles', 'skip', path)
-                continue
+    def flush(self) -> None:
+        for file_name in generated_file_list:
+            if file_name not in self.generated_file_names:
+                self.create_file(file_name, args.genoutput)
+                self.write_line('// Empty file')
+                verbose_print('flushFiles', 'empty', file_name)
+
+        for path, lines in self.files.items():
+            path_dir = os.path.dirname(path)
+            if not os.path.isdir(path_dir):
+                os.makedirs(path_dir)
+
+            if os.path.isfile(path):
+                with open(path, 'r', encoding='utf-8-sig') as f:
+                    current_lines = f.readlines()
+                new_lines_str = ''.join([line.rstrip('\r\n') for line in current_lines]).rstrip()
+                current_lines_str = ''.join(lines).rstrip()
+                if new_lines_str == current_lines_str:
+                    verbose_print('flushFiles', 'skip', path)
+                    continue
+                verbose_print('flushFiles', 'diff found', path, len(new_lines_str), len(current_lines_str))
             else:
-                verbosePrint('flushFiles', 'diff found', path, len(newLinesStr), len(curLinesStr))
-        else:
-            verbosePrint('flushFiles', 'no file', path)
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines).rstrip('\n') + '\n')
-        verbosePrint('flushFiles', 'write', path)
+                verbose_print('flushFiles', 'no file', path)
 
-# Code
-curCodeGenTemplateType: str | None = None
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines).rstrip('\n') + '\n')
+            verbose_print('flushFiles', 'write', path)
 
-def writeCodeGenTemplate(templateType: str) -> None:
-    global curCodeGenTemplateType
-    curCodeGenTemplateType = templateType
-    
-    templatePath = None
-    for genTag in codeGenTags['CodeGen']:
-        if curCodeGenTemplateType == genTag[0]:
-            templatePath = genTag[1]
-            break
-    assert templatePath, 'Code gen template not found'
-    
-    with open(templatePath, 'r', encoding='utf-8-sig') as f:
-        lines = f.readlines()
-    insertFileLines([l.rstrip('\r\n') for l in lines], 0)
+    def write_codegen_template(self, template_type: str) -> None:
+        self.current_template_type = template_type
 
-def insertCodeGenLines(lines: list[str], entryName: str) -> None:
-    def findTag() -> tuple[int, int]:
-        for genTag in codeGenTags['CodeGen']:
-            if curCodeGenTemplateType == genTag[0] and entryName == genTag[2]:
-                return genTag[3] + 1, genTag[4]
-        assert curCodeGenTemplateType is not None
-        assert False, 'Code gen entry ' + entryName + ' in ' + curCodeGenTemplateType + ' not found'
-    lineIndex, padding = findTag()
-    
-    if padding:
-        lines = [''.center(padding) + l for l in lines]
-    
-    insertFileLines(lines, lineIndex)
+        template_path = None
+        for gen_tag in codegen_tags['CodeGen']:
+            if self.current_template_type == gen_tag.template_type:
+                template_path = gen_tag.abs_path
+                break
+        assert template_path, 'Code gen template not found'
 
-def getEntityFromTarget(target: str) -> str:
+        with open(template_path, 'r', encoding='utf-8-sig') as f:
+            lines = f.readlines()
+        self.insert_lines([line.rstrip('\r\n') for line in lines], 0)
+
+    def insert_codegen_lines(self, lines: list[str], entry_name: str) -> None:
+        line_index, padding = self._find_codegen_tag(entry_name)
+
+        if padding:
+            lines = [''.center(padding) + line for line in lines]
+
+        self.insert_lines(lines, line_index)
+
+    def _find_codegen_tag(self, entry_name: str) -> tuple[int, int]:
+        for gen_tag in codegen_tags['CodeGen']:
+            if self.current_template_type == gen_tag.template_type and entry_name == gen_tag.entry:
+                return gen_tag.line_index + 1, require_int_context(gen_tag.tag_context, 'CodeGen')
+        assert self.current_template_type is not None, 'Code gen template type is not initialized'
+        assert False, 'Code gen entry ' + entry_name + ' in ' + self.current_template_type + ' not found'
+
+
+generated_output = GeneratedOutput()
+
+def get_entity_from_target(target: str) -> str:
     if target == 'Server':
         return 'ServerEntity*'
-    if target in ['Client', 'Mapper']:
+    if target in CLIENT_ENTITY_TARGETS:
         return 'ClientEntity*'
     return 'Entity*'
 
-def metaTypeToUnifiedType(t: str, selfEntity: str = 'SELF_ENTITY') -> str:
-    tt = t.split('.')
-    if tt[0] == 'dict':
-        d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-        r = metaTypeToUnifiedType(tt[1], selfEntity) + '=>' + metaTypeToUnifiedType(d2, selfEntity)
-    elif tt[0] == 'arr':
-        r = '' + metaTypeToUnifiedType(tt[1], selfEntity) + '[]'
-    elif tt[0] == 'callback':
-        r = 'callback(' + ','.join([metaTypeToUnifiedType(a, selfEntity) for a in '.'.join(tt[1:]).split('|') if a]) + ')'
-    elif tt[0] == 'Entity':
-        r = tt[0]
-    elif tt[0] in gameEntities:
-        r = tt[0]
-    elif tt[0] in refTypes or tt[0] in entityRelatives:
-        r = tt[0]
-    elif tt[0] == 'SELF_ENTITY':
-        r = selfEntity
-    else:
-        r = tt[0]
-    if tt[-1] == 'ref':
-        r += '&'
-    return r
 
-def metaTypeToEngineType(t: str, target: str, passIn: bool, refAsPtr: bool = False, selfEntity: str | None = None, noRef: bool = False) -> str:
-    def resolveEntity(e: str) -> str:
-        if target != 'Server':
-            if e == 'Game' and target == 'Mapper':
-                return 'MapperEngine*'
-            else:
-                return gameEntitiesInfo[e]['Client'] + '*'
+def meta_type_to_unified_type(meta_type: str, self_entity: str = 'SELF_ENTITY') -> str:
+    type_parts = meta_type.split('.')
+    if type_parts[0] == 'dict':
+        value_type = type_parts[2] if type_parts[2] != 'arr' else type_parts[2] + '.' + type_parts[3]
+        result = meta_type_to_unified_type(type_parts[1], self_entity) + '=>' + meta_type_to_unified_type(value_type, self_entity)
+    elif type_parts[0] == 'arr':
+        result = meta_type_to_unified_type(type_parts[1], self_entity) + '[]'
+    elif type_parts[0] == 'callback':
+        result = 'callback(' + ','.join([meta_type_to_unified_type(arg, self_entity) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + ')'
+    elif type_parts[0] == 'Entity':
+        result = type_parts[0]
+    elif type_parts[0] in game_entities:
+        result = type_parts[0]
+    elif type_parts[0] in ref_types or type_parts[0] in entity_relatives:
+        result = type_parts[0]
+    elif type_parts[0] == 'SELF_ENTITY':
+        result = self_entity
+    else:
+        result = type_parts[0]
+    if type_parts[-1] == 'ref':
+        result += '&'
+    return result
+
+
+def map_meta_type(meta_type: str) -> str:
+    type_map = {'any': 'any_t'}
+    return type_map[meta_type] if meta_type in type_map else meta_type
+
+
+def cpp_bool(value: bool) -> str:
+    return 'true' if value else 'false'
+
+
+def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, target: str) -> MethodRegistrationInfo:
+    is_generic = method_tag.entity == 'Entity'
+    entity_info = game_entities_info[entity]
+    engine_entity_type = entity_info.client if target != 'Server' else entity_info.server
+    engine_entity_type_extern = get_entity_from_target(target) if is_generic else engine_entity_type + '*'
+    engine_entity_type_name = 'Entity' if is_generic else entity
+    if entity == 'Game':
+        if target == 'Mapper':
+            engine_entity_type = 'MapperEngine*'
+        if method_tag.target == 'Common':
+            engine_entity_type_extern = 'BaseEngine*'
+        elif method_tag.target == 'Mapper':
+            engine_entity_type_extern = 'MapperEngine*'
+    return MethodRegistrationInfo(
+        function_name=method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name,
+        engine_entity_type_extern=engine_entity_type_extern,
+        return_type=meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'),
+    )
+
+
+def resolve_engine_entity_type(entity_name: str, target: str) -> str:
+    entity_info = game_entities_info[entity_name]
+    if target == 'Server':
+        return entity_info.server + '*'
+    if entity_name == 'Game' and target == 'Mapper':
+        return 'MapperEngine*'
+    return entity_info.client + '*'
+
+
+def meta_type_to_engine_type(meta_type: str, target: str, pass_in: bool, ref_as_ptr: bool = False, self_entity: str | None = None, no_ref: bool = False) -> str:
+    type_parts = meta_type.split('.')
+    if type_parts[0] == 'string':
+        result = 'string_view' if pass_in and type_parts[-1] != 'ref' else 'string'
+    elif type_parts[0] == 'dict':
+        value_type = type_parts[2] if type_parts[2] != 'arr' else type_parts[2] + '.' + type_parts[3]
+        if pass_in and type_parts[-1] != 'ref':
+            result = 'readonly_map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity) + '>'
         else:
-            return gameEntitiesInfo[e]['Server'] + '*'
-    tt = t.split('.')
-    if tt[0] == 'string':
-        r = 'string_view' if passIn and tt[-1] != 'ref' else 'string'
-    elif tt[0] == 'dict':
-        d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-        if passIn and tt[-1] != 'ref':
-            r = 'readonly_map<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + '>'
+            result = 'map<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + ', ' + meta_type_to_engine_type(value_type, target, False, self_entity=self_entity) + '>'
+    elif type_parts[0] == 'arr':
+        if pass_in and type_parts[-1] != 'ref':
+            result = 'readonly_vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + '>'
         else:
-            r = 'map<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + ', ' + metaTypeToEngineType(d2, target, False, selfEntity=selfEntity) + '>'
-    elif tt[0] == 'arr':
-        if passIn and tt[-1] != 'ref':
-            r = 'readonly_vector<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
-        else:
-            r = 'vector<' + metaTypeToEngineType(tt[1], target, False, selfEntity=selfEntity) + '>'
-    elif tt[0] == 'callback':
-        r = '<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True, selfEntity=selfEntity) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
-        r = 'ScriptFunc' + r
-    elif tt[0] == 'Entity':
-        r = getEntityFromTarget(target)
-    elif tt[0] == 'SELF_ENTITY':
-        assert selfEntity
-        r = resolveEntity(selfEntity) if selfEntity != 'Entity' else 'ScriptSelfEntity*'
-    elif tt[0] in gameEntities:
-        r = resolveEntity(tt[0])
-    elif tt[0] in refTypes or tt[0] in entityRelatives:
-        r = tt[0] + '*'
-    elif tt[0] in customTypes:
-        r = ''
-        for e in codeGenTags['ExportValueType']:
-            if e[0] == tt[0]:
-                r = e[1]
+            result = 'vector<' + meta_type_to_engine_type(type_parts[1], target, False, self_entity=self_entity) + '>'
+    elif type_parts[0] == 'callback':
+        callback_signature = '<' + ', '.join([meta_type_to_engine_type(arg, target, False, ref_as_ptr=True, self_entity=self_entity) for arg in '.'.join(type_parts[1:]).split('|') if arg]) + '>'
+        result = 'ScriptFunc' + callback_signature
+    elif type_parts[0] == 'Entity':
+        result = get_entity_from_target(target)
+    elif type_parts[0] == 'SELF_ENTITY':
+        assert self_entity
+        result = resolve_engine_entity_type(self_entity, target) if self_entity != 'Entity' else 'ScriptSelfEntity*'
+    elif type_parts[0] in game_entities:
+        result = resolve_engine_entity_type(type_parts[0], target)
+    elif type_parts[0] in ref_types or type_parts[0] in entity_relatives:
+        result = type_parts[0] + '*'
+    elif type_parts[0] in custom_types:
+        result = ''
+        for exported_value_type in codegen_tags['ExportValueType']:
+            if exported_value_type.name == type_parts[0]:
+                result = exported_value_type.native_type
                 break
-        assert r, 'Invalid native type ' + tt[0]
+        assert result, 'Invalid native type ' + type_parts[0]
     else:
-        def mapType(mt):
-            typeMap = {'any': 'any_t'}
-            return typeMap[mt] if mt in typeMap else mt
-        r = mapType(tt[0])
-    if tt[-1] == 'ref' and not noRef:
-        r += '&' if not refAsPtr else '*'
-    return r
+        result = map_meta_type(type_parts[0])
+    if type_parts[-1] == 'ref' and not no_ref:
+        result += '&' if not ref_as_ptr else '*'
+    return result
 
-def genGenericCode() -> None:
-    globalLines = []
+
+def is_engine_hook_enabled(hook_name: str) -> bool:
+    for hook_tag in codegen_tags['EngineHook']:
+        if hook_tag.name == hook_name:
+            return True
+    return False
+
+
+def append_settings_getter(global_lines: list[str], target: str) -> None:
+    global_lines.append('[[maybe_unused]] auto Get' + target + 'Settings() -> unordered_set<string>')
+    global_lines.append('{')
+    global_lines.append('    unordered_set<string> settings = {')
+    for settings_tag in codegen_tags['ExportSettings']:
+        if settings_tag.target in [target, 'Common']:
+            for setting in settings_tag.settings:
+                global_lines.append('        "' + setting.name + '",')
+    global_lines.append('    };')
+    global_lines.append('    return settings;')
+    global_lines.append('}')
+    global_lines.append('')
+
+def generate_generic_code() -> None:
+    global_lines = []
     
-    # Engine hooks
-    def isHookEnabled(hookName):
-        for hookTag in codeGenTags['EngineHook']:
-            name, flags, _ = hookTag
-            if name == hookName:
-                return True
-        return False
-    
-    globalLines.append('// Engine hooks')
-    if not isHookEnabled('InitServerEngine'):
-        globalLines.append('class ServerEngine;')
-        globalLines.append('void InitServerEngine(ServerEngine*) { /* Stub */ }')
-    if not isHookEnabled('InitClientEngine'):
-        globalLines.append('class ClientEngine;')
-        globalLines.append('void InitClientEngine(ClientEngine*) { /* Stub */ }')
-    if not isHookEnabled('ConfigSectionParseHook'):
-        globalLines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
-    if not isHookEnabled('ConfigEntryParseHook'):
-        globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
-    if not isHookEnabled('SetupBakersHook'):
-        globalLines.append('class BaseBaker;')
-        globalLines.append('struct BakingContext;')
-        globalLines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
-    globalLines.append('')
+    global_lines.append('// Engine hooks')
+    if not is_engine_hook_enabled('InitServerEngine'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('void InitServerEngine(ServerEngine*) { /* Stub */ }')
+    if not is_engine_hook_enabled('InitClientEngine'):
+        global_lines.append('class ClientEngine;')
+        global_lines.append('void InitClientEngine(ClientEngine*) { /* Stub */ }')
+    if not is_engine_hook_enabled('ConfigSectionParseHook'):
+        global_lines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
+    if not is_engine_hook_enabled('ConfigEntryParseHook'):
+        global_lines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
+    if not is_engine_hook_enabled('SetupBakersHook'):
+        global_lines.append('class BaseBaker;')
+        global_lines.append('struct BakingContext;')
+        global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
+    global_lines.append('')
     
     # Engine properties
-    globalLines.append('// Engine property indices')
-    globalLines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(&props) { }')
-    commonParsed = set()
-    for entity in gameEntities:
+    global_lines.append('// Engine property indices')
+    global_lines.append('EntityProperties::EntityProperties(Properties& props) noexcept : _propsRef(&props) { }')
+    common_parsed: set[str] = set()
+    for entity in game_entities:
         index = 1
-        for propTag in codeGenTags['ExportProperty']:
-            ent, _, _, name, flags, _ = propTag
-            if ent == entity:
-                if 'SharedProperty' not in flags:
-                    globalLines.append('uint16 ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
-                elif name not in commonParsed:
-                    globalLines.append('uint16 EntityProperties::' + name + '_RegIndex = ' + str(index) + ';')
-                    commonParsed.add(name)
+        for prop_tag in codegen_tags['ExportProperty']:
+            if prop_tag.entity == entity:
+                if 'SharedProperty' not in prop_tag.flags:
+                    global_lines.append('uint16 ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                elif prop_tag.name not in common_parsed:
+                    global_lines.append('uint16 EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    common_parsed.add(prop_tag.name)
                 index += 1
-    globalLines.append('')
+    global_lines.append('')
     
     # Settings list
-    def writeSettings(target):
-        globalLines.append('[[maybe_unused]] auto Get' + target + 'Settings() -> unordered_set<string>')
-        globalLines.append('{')
-        globalLines.append('    unordered_set<string> settings = {')
-        for settTag in codeGenTags['ExportSettings']:
-            grName, targ, settings, flags, _ = settTag
-            if targ in [target, 'Common']:
-                for sett in settings:
-                    fixOrVar, keyType, keyName, initValues, _ = sett
-                    globalLines.append('        "' + keyName + '",')
-        globalLines.append('    };')
-        globalLines.append('    return settings;')
-        globalLines.append('}')
-        globalLines.append('')
-    writeSettings('Server')
-    writeSettings('Client')
+    append_settings_getter(global_lines, 'Server')
+    append_settings_getter(global_lines, 'Client')
     
-    createFile('GenericCode-Common.cpp', args.genoutput)
-    writeCodeGenTemplate('GenericCode')
-    
-    insertCodeGenLines(globalLines, 'Body')
+    generated_output.create_file('GenericCode-Common.cpp', args.genoutput)
+    generated_output.write_codegen_template('GenericCode')
+
+    generated_output.insert_codegen_lines(global_lines, 'Body')
 
 def run_generic_codegen() -> None:
-    try:
-        genGenericCode()
-    except Exception as ex:
-        showError('Code generation for generic code failed', ex)
-    checkErrors()
+    run_codegen_step(generate_generic_code, 'Code generation for generic code failed')
 
-def genMetadataRegistration(target: str, isStub: bool) -> None:
-    globalLines = []
-    registerLines = []
-    
-    def entityAllowed(entity, entityTarget):
-        if entityTarget == 'Server':
-            return gameEntitiesInfo[entity]['Server'] is not None
-        if entityTarget in ['Client', 'Mapper']:
-            return gameEntitiesInfo[entity]['Client'] is not None
-        assert False, entityTarget
+
+def get_allowed_registration_targets(target: str) -> list[str]:
+    return ['Common', target] + (['Client'] if target == 'Mapper' else [])
+
+
+def entity_allowed(entity: str, target: str) -> bool:
+    if target == 'Server':
+        return game_entities_info[entity].server is not None
+    if target in CLIENT_ENTITY_TARGETS:
+        return game_entities_info[entity].client is not None
+    assert False, target
+
+
+def append_ref_call_registration(register_lines: list[str], method_name: str, call: str, is_stub: bool) -> None:
+    register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
+            '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if is_stub else ''))
+    if not is_stub:
+        register_lines.append('        struct Wrapped { ' + call + ' };')
+        register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
+        register_lines.append('    } },')
+
+
+def append_ref_method_registration(
+    register_lines: list[str],
+    ref_type_tag: ExportRefTypeTag,
+    method_name: str,
+    ret: str,
+    params: list[MethodArg],
+    is_stub: bool,
+    getter: bool = False,
+    setter: bool = False,
+) -> None:
+    register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
+        '.Args = {' + ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type) + '")}' for p in params) + '}, ' +
+        '.Ret = ' + ('resolve_type("' + meta_type_to_unified_type(ret) + '")' if ret != 'void' else '{' + '}') + ', ' +
+            '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); }' if is_stub else ''))
+    if not is_stub:
+        is_property = getter or setter
+        register_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::' + method_name +
+                (' (Getter)' if getter else '') + (' (Setter)' if setter else '') + '");')
+        register_lines.append('        struct Wrapped { static ' +
+                ('auto' if ret != 'void' else 'void') + ' Call(' + ref_type_tag.name + '* self' + (', ' if params else '') +
+        ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True) + ' ' + p.name for p in params]) + ') ' +
+            ('-> ' + meta_type_to_engine_type(ret, ref_type_tag.target, False) if ret != 'void' else '') +
+                ' { ' + ('return ' if ret != 'void' else '') + 'self->' + method_name +
+        ('(' if not is_property else ' = ' if setter else '') + ', '.join([p.name for p in params]) + (')' if not is_property else '') + '; } };')
+        register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
+        register_lines.append('    }' + (', .Getter = true' if getter else '') + (', .Setter = true' if setter else '') + ' },')
+    else:
+        register_lines[-1] += (', .Getter = true' if getter else '') + (', .Setter = true' if setter else '') + ' },'
+
+
+def calc_unique_zone_name(zone_names: list[str], name: str) -> str:
+    count = zone_names.count(name)
+    zone_names.append(name)
+    return name if count == 0 else name + '_' + str(count + 1)
+
+
+def append_ref_type_registration(register_lines: list[str], target: str, is_stub: bool) -> None:
+    allowed_targets = get_allowed_registration_targets(target)
+
+    register_lines.append('// Ref types')
+    for ref_type_tag in codegen_tags['ExportRefType']:
+        if ref_type_tag.target in allowed_targets:
+            register_lines.append('meta->RegisterRefType("' + ref_type_tag.name + '");')
+    register_lines.append('')
+
+    for ref_type_tag in codegen_tags['ExportRefType']:
+        if ref_type_tag.target not in allowed_targets:
+            continue
+
+        register_lines.append('meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {')
+
+        if 'RefCounted' in ref_type_tag.flags:
+            append_ref_call_registration(register_lines, '__AddRef', 'static void Call(' + ref_type_tag.name + '* self) { self->AddRef(); }', is_stub)
+            append_ref_call_registration(register_lines, '__Release', 'static void Call(' + ref_type_tag.name + '* self) { self->Release(); }', is_stub)
+
+        if 'HasFactory' in ref_type_tag.flags:
+            register_lines.append('    MethodDesc{ .Name = "__Factory", ' +
+                    '.Ret = resolve_type("' + ref_type_tag.name + '"), .Call = [](FuncCallData& call) {' +
+                    (' ignore_unused(call); } },' if is_stub else ''))
+            if not is_stub:
+                register_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
+                register_lines.append('        struct Wrapped { ' + 'static auto Call() -> ' + ref_type_tag.name + '* ' +
+                        '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
+                register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
+                register_lines.append('    } },')
+
+        for field in ref_type_tag.fields:
+            append_ref_method_registration(register_lines, ref_type_tag, field.name, field.field_type, [], is_stub, getter=True)
+            append_ref_method_registration(register_lines, ref_type_tag, field.name, 'void', [MethodArg(field.field_type, 'value')], is_stub, setter=True)
+        for method in ref_type_tag.methods:
+            append_ref_method_registration(register_lines, ref_type_tag, method.name, method.ret, method.args, is_stub)
+        register_lines.append('});')
+        register_lines.append('')
+
+
+def append_entity_type_registration(register_lines: list[str], target: str) -> None:
+    register_lines.append('// Entity types')
+    register_lines.append('unordered_map<string, PropertyRegistrator*> registrators;')
+    register_lines.append('PropertyRegistrator* registrator = nullptr;')
+    register_lines.append('')
+    for entity in game_entities:
+        if not entity_allowed(entity, target):
+            continue
+        entity_info = game_entities_info[entity]
+        register_lines.append('registrators["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
+                cpp_bool(entity_info.exported) + ', ' +
+                cpp_bool(entity_info.is_global) + ', ' +
+                cpp_bool(entity_info.has_protos) + ', ' +
+                cpp_bool(entity_info.has_statics) + ', ' +
+                cpp_bool(entity_info.has_abstract) + ');')
+    register_lines.append('')
+
+
+def get_register_flags(value_type: str, name: str, access: str, base_flags: list[str]) -> list[str]:
+    return [access, meta_type_to_unified_type(value_type), name] + base_flags
+
+
+def append_property_registration(register_lines: list[str], target: str) -> None:
+    register_lines.append('// Properties')
+    for entity in game_entities:
+        if not entity_allowed(entity, target):
+            continue
+        register_lines.append('registrator = registrators["' + entity + '"];')
+        for prop_tag in codegen_tags['ExportProperty']:
+            if prop_tag.entity == entity:
+                register_lines.append('registrator->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
+        register_lines.append('')
+
+
+def append_method_registration(global_lines: list[str], register_lines: list[str], target: str, is_stub: bool) -> None:
+    allowed_targets = get_allowed_registration_targets(target)
+
+    register_lines.append('// Methods')
+    register_lines.append('vector<MethodDesc> methods;')
+    register_lines.append('methods.reserve(256);')
+    for entity in game_entities:
+        zone_names: list[str] = []
+
+        for method_tag in codegen_tags['ExportMethod']:
+            if method_tag.target not in allowed_targets or (method_tag.entity != entity and method_tag.entity != 'Entity'):
+                continue
+            if 'GlobalGetter' in method_tag.flags:
+                assert method_tag.entity == 'Game', 'GlobalGetter export flag can be used only on Game methods'
+                assert not method_tag.args, 'GlobalGetter export flag requires a method without parameters'
+            if 'TimeEventRelated' in method_tag.flags and not game_entities_info[entity].has_time_events:
+                continue
+
+            registration_info = resolve_method_registration_info(entity, method_tag, target)
+            if not is_stub:
+                global_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
+                    ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ');')
+            register_lines.append('methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
+                    '.Args = {' + ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in method_tag.args) + '}, ' +
+                    '.Ret = ' + ('resolve_type("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
+                    '.Call = [](FuncCallData& call) {')
+            if not is_stub:
+                register_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                register_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
+                    ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+            else:
+                register_lines.append('    ignore_unused(call);')
+            register_lines.append('}' +
+                    (', .GlobalGetter = true' if 'GlobalGetter' in method_tag.flags else '') +
+                    (', .Getter = true' if 'Getter' in method_tag.flags or 'GlobalGetter' in method_tag.flags else '') +
+                    (', .Setter = true' if 'Setter' in method_tag.flags else '') +
+                    (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
+                    ' });')
+        register_lines.append('meta->RegisterEntityMethods("' + entity + '", std::move(methods));')
+        register_lines.append('methods.clear();')
+        register_lines.append('')
+    register_lines.append('')
+
+
+def append_event_registration(register_lines: list[str], target: str) -> None:
+    allowed_targets = get_allowed_registration_targets(target)
+
+    register_lines.append('// Events')
+    for entity in game_entities:
+        for event_tag in codegen_tags['ExportEvent']:
+            if event_tag.target in allowed_targets and event_tag.entity == entity:
+                resolved_args = ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
+                register_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
+                        '.Args = {' + resolved_args + '}, .Exported = true, .Deferred = false });')
+    register_lines.append('')
+
+
+def append_migration_rule_registration(register_lines: list[str]) -> None:
+    register_lines.append('// Migration rules')
+    register_lines.append('const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };')
+    register_lines.append('')
+    register_lines.append('meta->RegisterMigrationRules({')
+    for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'])):
+        register_lines.append('    {')
+        register_lines.append('        to_hstring("' + source_type + '"), {')
+        for source_name in sorted(set(rule_tag.args[1] for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0] == source_type)):
+            register_lines.append('            {')
+            register_lines.append('                to_hstring("' + source_name + '"), {')
+            for rule_tag in codegen_tags['MigrationRule']:
+                if rule_tag.args[0] == source_type and rule_tag.args[1] == source_name:
+                    register_lines.append('                    {to_hstring("' + rule_tag.args[2] + '"), to_hstring("' + rule_tag.args[3] + '")},')
+            register_lines.append('                },')
+            register_lines.append('            },')
+        register_lines.append('        },')
+        register_lines.append('    },')
+    register_lines.append('});')
+    register_lines.append('')
+
+
+def get_registration_define_lines(target: str, is_stub: bool) -> list[str]:
+    if target == 'Server':
+        return ['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
+                '#define MAPPER_REGISTRATION 0', '#define STUB_MODE ' + ('1' if is_stub else '0')]
+    if target == 'Client':
+        return ['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
+                '#define MAPPER_REGISTRATION 0', '#define STUB_MODE ' + ('1' if is_stub else '0')]
+    assert target == 'Mapper', target
+    return ['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+            '#define MAPPER_REGISTRATION 1', '#define STUB_MODE ' + ('1' if is_stub else '0')]
+
+
+def build_common_header_include_lines() -> list[str]:
+    return ['#include "' + common_header + '"' for common_header in args.commonheader]
+
+def generate_metadata_registration(target: str, is_stub: bool) -> None:
+    global_lines: list[str] = []
+    register_lines: list[str] = []
     
     # Enums
-    registerLines.append('// Enums')
-    for e in codeGenTags['ExportEnum']:
-        gname, utype, keyValues, _, _ = e
-        registerLines.append('meta->RegisterEnumGroup("' + gname + '", "' + utype + '",')
-        registerLines.append('{')
-        for kv in keyValues:
-            registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
-        registerLines.append('});')
-        registerLines.append('')
+    register_lines.append('// Enums')
+    for enum_tag in codegen_tags['ExportEnum']:
+        register_lines.append('meta->RegisterEnumGroup("' + enum_tag.group_name + '", "' + enum_tag.underlying_type + '",')
+        register_lines.append('{')
+        for key_value in enum_tag.key_values:
+            register_lines.append('    {"' + key_value.key + '", ' + require_enum_value_text(key_value) + '},')
+        register_lines.append('});')
+        register_lines.append('')
     
     # Value types
-    registerLines.append('// Value types')
-    for et in codeGenTags['ExportValueType']:
-        name, ntype, flags, _ = et
-        registerLines.append('meta->RegisterValueType("' + name + '");')
-    registerLines.append('')
+    register_lines.append('// Value types')
+    for value_type_tag in codegen_tags['ExportValueType']:
+        register_lines.append('meta->RegisterValueType("' + value_type_tag.name + '");')
+    register_lines.append('')
     
-    for et in codeGenTags['ExportValueType']:
-        name, ntype, flags, _ = et
-        registerLines.append('meta->RegisterValueTypeLayout("' + name + '", { {')
-        for layoutEntry in ''.join(flags[flags.index('Layout') + 2:]).split('+'):
-            type, name = layoutEntry.split('-')
-            registerLines.append('    {string_view("' + name + '"), string_view("' + type + '")},')
-        registerLines.append('} });')
-        registerLines.append('')
+    for value_type_tag in codegen_tags['ExportValueType']:
+        register_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
+        for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
+            field_type, field_name = layout_entry.split('-')
+            register_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
+        register_lines.append('} });')
+        register_lines.append('')
     
-    # Ref types
-    allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
-    registerLines.append('// Ref types')
-    for eo in codeGenTags['ExportRefType']:
-        targ, refTypeName, fields, methods, flags, _ = eo
-        if targ in allowedTargets:
-            registerLines.append('meta->RegisterRefType("' + refTypeName + '");')
-    registerLines.append('')
+    append_ref_type_registration(register_lines, target, is_stub)
+    append_entity_type_registration(register_lines, target)
+    append_property_registration(register_lines, target)
+    append_method_registration(global_lines, register_lines, target, is_stub)
+    append_event_registration(register_lines, target)
+    append_migration_rule_registration(register_lines)
+    include_lines = build_common_header_include_lines()
     
-    for eo in codeGenTags['ExportRefType']:
-        targ, refTypeName, fields, methods, flags, _ = eo
-        if targ in allowedTargets:
-            registerLines.append('meta->RegisterRefTypeMethods("' + refTypeName + '", {')
-            if 'RefCounted' in flags:
-                def writeRefCall(name, call):
-                    registerLines.append('    MethodDesc{ .Name = "' + name + '", ' +
-                            '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if isStub else ''))
-                    if not isStub:
-                            registerLines.append('        struct Wrapped { ' + call + ' };')
-                            registerLines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                            registerLines.append('    } },')
-                writeRefCall('__AddRef', 'static void Call(' + refTypeName + '* self) { self->AddRef(); }')
-                writeRefCall('__Release', 'static void Call(' + refTypeName + '* self) { self->Release(); }')
-            if 'HasFactory' in flags:
-                registerLines.append('    MethodDesc{ .Name = "__Factory", ' +
-                        '.Ret = resolve_type("' + refTypeName + '"), .Call = [](FuncCallData& call) {' +
-                        (' ignore_unused(call); } },' if isStub else ''))
-                if not isStub:
-                    registerLines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + refTypeName + '::__Factory");')
-                    registerLines.append('        struct Wrapped { ' + 'static auto Call() -> ' + refTypeName + '* ' +
-                            '{ return SafeAlloc::MakeRefCounted<' + refTypeName + '>().release_ownership(); }' + ' };')
-                    registerLines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                    registerLines.append('    } },')
-            def writeMethod(methodName, ret, params, getter=False, setter=False):
-                registerLines.append('    MethodDesc{ .Name = "' + methodName + '", ' +
-                        '.Args = {' + ', '.join('{"' + p[1] + '", resolve_type("' + metaTypeToUnifiedType(p[0]) + '")}' for p in params) + '}, ' +
-                        '.Ret = ' + ('resolve_type("' + metaTypeToUnifiedType(ret) + '")' if ret != 'void' else '{' + '}') + ', ' +
-                        '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); }' if isStub else ''))
-                if not isStub:
-                    isProp = getter or setter
-                    registerLines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + refTypeName + '::' + methodName +
-                            (' (Getter)' if getter else '') + (' (Setter)' if setter else '') + '");')
-                    registerLines.append('        struct Wrapped { static ' +
-                            ('auto' if ret != 'void' else 'void') + ' Call(' + refTypeName + '* self' + (', ' if params else '') +
-                            ', '.join([metaTypeToEngineType(p[0], targ, True) + ' ' + p[1] for p in params]) + ') ' +
-                            ('-> ' + metaTypeToEngineType(ret, targ, False) if ret != 'void' else '') +
-                            ' { ' + ('return ' if ret != 'void' else '') + 'self->' + methodName +
-                            ('(' if not isProp else ' = ' if setter else '') + ', '.join([p[1] for p in params]) + (')' if not isProp else '') + '; } };')
-                    registerLines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                    registerLines.append('    }' + (', .Getter = true' if getter else '') + (', .Setter = true' if setter else '') + ' },')
-                else:
-                    registerLines[-1] += (', .Getter = true' if getter else '') + (', .Setter = true' if setter else '') + ' },'
-            for f in fields:
-                writeMethod(f[1], f[0], [], getter=True)
-                writeMethod(f[1], 'void', [[f[0], 'value']], setter=True)
-            for m in methods:
-                writeMethod(m[0], m[1], m[2])
-            registerLines.append('});')
-            registerLines.append('')
+    generated_output.create_file('MetadataRegistration-' + target + ('Stub' if is_stub else '') + '.cpp', args.genoutput)
+    generated_output.write_codegen_template('MetadataRegistration')
+    generated_output.insert_codegen_lines(register_lines, 'Register')
+    generated_output.insert_codegen_lines(global_lines, 'Global')
+    generated_output.insert_codegen_lines(include_lines, 'Includes')
     
-    # Entity types
-    registerLines.append('// Entity types')
-    registerLines.append('unordered_map<string, PropertyRegistrator*> registrators;')
-    registerLines.append('PropertyRegistrator* registrator = nullptr;')
-    registerLines.append('')
-    for entity in gameEntities:
-        if not entityAllowed(entity, target):
-            continue
-        registerLines.append('registrators["' + entity + '"] = meta->RegisterEntityType("' + entity + '", ' +
-                ('true' if gameEntitiesInfo[entity]['Exported'] else 'false') + ', ' +
-                ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') + ', ' +
-                ('true' if gameEntitiesInfo[entity]['HasProtos'] else 'false') + ', ' +
-                ('true' if gameEntitiesInfo[entity]['HasStatics'] else 'false') + ', ' +
-                ('true' if gameEntitiesInfo[entity]['HasAbstract'] else 'false') + ');')
-    registerLines.append('')
-    
-    # Properties
-    registerLines.append('// Properties')
-    def getRegisterFlags(t, name, access, baseFlags):
-        return [access, metaTypeToUnifiedType(t), name] + baseFlags
-    for entity in gameEntities:
-        if not entityAllowed(entity, target):
-            continue
-        registerLines.append('registrator = registrators["' + entity + '"];')
-        for propTag in codeGenTags['ExportProperty']:
-            ent, access, type, name, flags, _ = propTag
-            if ent == entity:
-                registerLines.append('registrator->RegisterProperty({' + ', '.join(['"' + f + '"' for f in getRegisterFlags(type, name, access, flags)]) + '});')
-        registerLines.append('')
-    
-    # Methods
-    registerLines.append('// Methods')
-    registerLines.append('vector<MethodDesc> methods;')
-    registerLines.append('methods.reserve(256);')
-    allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
-    for entity in gameEntities:
-        zoneNames = []
-        def calcZoneName(name):
-            count = zoneNames.count(name)
-            zoneNames.append(name)
-            return name if count == 0 else name + '_' + str(count + 1)
-        for methodTag in codeGenTags['ExportMethod']:
-            targ, ent, name, ret, params, exportFlags, comment = methodTag
-            if targ in allowedTargets and (ent == entity or ent == 'Entity'):
-                if 'GlobalGetter' in exportFlags:
-                    assert ent == 'Game', 'GlobalGetter export flag can be used only on Game methods'
-                    assert not params, 'GlobalGetter export flag requires a method without parameters'
-                if 'TimeEventRelated' in exportFlags and not gameEntitiesInfo[entity]['HasTimeEvents']:
-                    continue    
-                isGeneric = ent == 'Entity'
-                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-                engineEntityTypeExtern = getEntityFromTarget(target) if isGeneric else engineEntityType + '*'
-                engineEntityTypeExtern2 = 'Entity' if isGeneric else entity
-                if entity == 'Game':
-                    if target == 'Mapper':
-                        engineEntityType = 'MapperEngine*'
-                    if targ == 'Common':
-                        engineEntityTypeExtern = 'BaseEngine*'
-                    elif targ == 'Mapper':
-                        engineEntityTypeExtern = 'MapperEngine*'
-                retType = metaTypeToEngineType(ret, targ, False, selfEntity='Entity')
-                funcName = targ + '_' + engineEntityTypeExtern2 + '_' + name
-                if not isStub:
-                    globalLines.append('extern ' + retType + ' ' + funcName + '(' + engineEntityTypeExtern + (', ' if params else '') +
-                            ', '.join([metaTypeToEngineType(p[0], targ, True, selfEntity='Entity') for p in params]) + ');')
-                registerLines.append('methods.emplace_back(MethodDesc{ .Name = "' + name + '", ' +
-                        '.Args = {' + ', '.join('{"' + p[1] + '", resolve_type("' + metaTypeToUnifiedType(p[0], selfEntity=entity) + '")}' for p in params) + '}, ' +
-                        '.Ret = ' + ('resolve_type("' + metaTypeToUnifiedType(ret, selfEntity=entity) + '")' if ret != 'void' else '{' + '}') + ', ' +
-                        '.Call = [](FuncCallData& call) {')
-                if not isStub:
-                    registerLines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calcZoneName(funcName) + '");')
-                    registerLines.append('    NativeDataCaller::NativeCall<static_cast<' + retType + '(*)(' + engineEntityTypeExtern + (', ' if params else '') +
-                            ', '.join([metaTypeToEngineType(p[0], targ, True, selfEntity='Entity') for p in params]) + ')>(&' + funcName + ')>(call);')
-                else:
-                    registerLines.append('    ignore_unused(call);')
-                registerLines.append('}' +
-                        (', .GlobalGetter = true' if 'GlobalGetter' in exportFlags else '') +
-                        (', .Getter = true' if 'Getter' in exportFlags or 'GlobalGetter' in exportFlags else '') +
-                        (', .Setter = true' if 'Setter' in exportFlags else '') +
-                        (', .PassOwnership = true' if 'PassOwnership' in exportFlags else '') + 
-                        ' });')
-        registerLines.append('meta->RegisterEntityMethods("' + entity + '", std::move(methods));')
-        registerLines.append('methods.clear();')
-        registerLines.append('')
-    registerLines.append('')
-    
-    # Events
-    registerLines.append('// Events')
-    for entity in gameEntities:
-        for evTag in codeGenTags['ExportEvent']:
-            targ, ent, evName, evArgs, evFlags, _ = evTag
-            if targ in allowedTargets and ent == entity:
-                evArgs = ', '.join('{"' + p[1] + '", resolve_type("' + metaTypeToUnifiedType(p[0], selfEntity=entity) + '")}' for p in evArgs)
-                registerLines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + evName + '", ' +
-                        '.Args = {' + evArgs + '}, .Exported = true, .Deferred = false });')
-    registerLines.append('')
-    
-    # Migration rules
-    registerLines.append('// Migration rules')
-    registerLines.append('const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };')
-    registerLines.append('')
-    registerLines.append('meta->RegisterMigrationRules({')
-    for arg0 in sorted(set(ruleTag[0][0] for ruleTag in codeGenTags['MigrationRule'])):
-        registerLines.append('    {')
-        registerLines.append('        to_hstring("' + arg0 + '"), {')
-        for arg1 in sorted(set(ruleTag[0][1] for ruleTag in codeGenTags['MigrationRule'] if ruleTag[0][0] == arg0)):
-            registerLines.append('            {')
-            registerLines.append('                to_hstring("' + arg1 + '"), {')
-            for ruleTag in codeGenTags['MigrationRule']:
-                if ruleTag[0][0] == arg0 and ruleTag[0][1] == arg1:
-                    registerLines.append('                    {to_hstring("' + ruleTag[0][2] + '"), to_hstring("' + ruleTag[0][3] + '")},')
-            registerLines.append('                },')
-            registerLines.append('            },')
-        registerLines.append('        },')
-        registerLines.append('    },')
-    registerLines.append('});')
-    registerLines.append('')
-    
-    includeLines = []
-    for commonheader in args.commonheader:
-        includeLines.append('#include "' + commonheader + '"')
-    
-    createFile('MetadataRegistration-' + target + ('Stub' if isStub else '') + '.cpp', args.genoutput)
-    writeCodeGenTemplate('MetadataRegistration')
-    insertCodeGenLines(registerLines, 'Register')
-    insertCodeGenLines(globalLines, 'Global')
-    insertCodeGenLines(includeLines, 'Includes')
-    
-    if target == 'Server':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
-                '#define MAPPER_REGISTRATION 0', '#define STUB_MODE ' + ('1' if isStub else '0')], 'Defines')
-    elif target == 'Client':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
-                '#define MAPPER_REGISTRATION 0', '#define STUB_MODE ' + ('1' if isStub else '0')], 'Defines')
-    elif target == 'Mapper':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
-                '#define MAPPER_REGISTRATION 1', '#define STUB_MODE ' + ('1' if isStub else '0')], 'Defines')
+    generated_output.insert_codegen_lines(get_registration_define_lines(target, is_stub), 'Defines')
 
 def run_metadata_registration_codegen() -> None:
-    try:
-        genMetadataRegistration('Server', False)
-        genMetadataRegistration('Server', True)
-        genMetadataRegistration('Client', False)
-        genMetadataRegistration('Client', True)
-        genMetadataRegistration('Mapper', False)
-        genMetadataRegistration('Mapper', True)
+    def generate_all_metadata_registration() -> None:
+        for target in REGISTRATION_TARGETS:
+            for is_stub in (False, True):
+                generate_metadata_registration(target, is_stub)
 
-    except Exception as ex:
-        showError('Code generation for data registration failed', ex)
-
-    checkErrors()
+    run_codegen_step(generate_all_metadata_registration, 'Code generation for data registration failed')
 
 def write_embedded_resources() -> None:
-    try:
+    def write_embedded_resources_impl() -> None:
         capacity = int(args.embedded)
-        assert capacity >= 10000, 'Embedded capacity must be greather/equal to 10000'
-        assert capacity % 10000 == 0, 'Embedded capacity must иу ьгдешзду ин 10000'
-        createFile('EmbeddedResources-Include.h', args.genoutput)
-        writeFile('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
+        assert capacity >= 10000, 'Embedded capacity must be greater than or equal to 10000'
+        assert capacity % 10000 == 0, 'Embedded capacity must be divisible by 10000'
+        generated_output.create_file('EmbeddedResources-Include.h', args.genoutput)
+        generated_output.write_line('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
 
-    except Exception as ex:
-        showError('Can\'t write embedded resources', ex)
-
-    checkErrors()
+    run_codegen_step(write_embedded_resources_impl, 'Can\'t write embedded resources')
 
 
 def try_get_git_branch() -> str:
@@ -1435,25 +1898,22 @@ def try_get_git_branch() -> str:
 
 
 def write_version_info() -> None:
-    createFile('Version-Include.h', args.genoutput)
-    writeFile('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
-    writeFile('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
-    writeFile('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
+    def write_version_info_impl() -> None:
+        generated_output.create_file('Version-Include.h', args.genoutput)
+        generated_output.write_line('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
+        generated_output.write_line('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
+        generated_output.write_line('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
 
-    compatablityVersion = compatablityHasher.hexdigest()[:16]
-    writeFile('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatablityVersion + '";')
-    log('Compatability version: ' + compatablityVersion)
-    writeFile('static constexpr string_view_nt FO_GIT_BRANCH = "' + try_get_git_branch() + '";')
+        compatibility_version = compatibility_hasher.hexdigest()[:16]
+        generated_output.write_line('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatibility_version + '";')
+        log('Compatibility version: ' + compatibility_version)
+        generated_output.write_line('static constexpr string_view_nt FO_GIT_BRANCH = "' + try_get_git_branch() + '";')
+
+    run_codegen_step(write_version_info_impl, 'Can\'t write version info')
 
 
 def flush_generated_files() -> None:
-    try:
-        flushFiles()
-
-    except Exception as ex:
-        showError('Can\'t flush generated files', ex)
-
-    checkErrors()
+    run_codegen_step(generated_output.flush, 'Can\'t flush generated files')
 
 
 def run_codegen() -> None:
@@ -1468,14 +1928,14 @@ def run_codegen() -> None:
 
 def main() -> None:
     global args
-    global startTime
+    global start_time
 
     args = create_parser().parse_args()
-    startTime = time.time()
+    start_time = time.time()
     log('Start code generation')
     run_codegen()
-    elapsedTime = time.time() - startTime
-    log('Code generation complete in ' + '{:.2f}'.format(elapsedTime) + ' seconds')
+    elapsed_time = time.time() - start_time
+    log('Code generation complete in ' + '{:.2f}'.format(elapsed_time) + ' seconds')
 
 
 if __name__ == '__main__':

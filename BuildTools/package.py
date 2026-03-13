@@ -15,7 +15,7 @@ import tarfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Literal, Sequence
+from typing import Callable, Iterable, Literal, Sequence
 
 import foconfig
 
@@ -47,8 +47,6 @@ def parse_args() -> argparse.Namespace:
 	# iOS: Raw Bundle
 	# Web: Raw Zip
 	parser.add_argument('-config', dest='config', required=True, help='config name')
-	parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
-	parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	return parser.parse_args()
@@ -81,28 +79,40 @@ def patch_file(file_path: str | Path, text_from: str, text_to: str) -> None:
 
 
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
-	archive = zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level)
-	for root, _, files in os.walk(path):
-		for file_name in files:
-			archive.write(os.path.join(root, file_name), os.path.join(os.path.relpath(root, path), file_name))
-	archive.close()
+	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
+		for root, _, files in os.walk(path):
+			for file_name in files:
+				archive.write(os.path.join(root, file_name), os.path.join(os.path.relpath(root, path), file_name))
 
 
 def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
 	def filter_member(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 		return tar_info
 
-	archive = tarfile.open(name, mode)
-	current_dir = os.getcwd()
-	new_dir, folder = os.path.split(path)
-	os.chdir(new_dir)
-	archive.add(folder, filter=filter_member)
-	os.chdir(current_dir)
-	archive.close()
+	with tarfile.open(name, mode) as archive:
+		archive.add(path, arcname=os.path.basename(os.fspath(path)), filter=filter_member)
 
 
 def make_embedded_marker(size: int) -> bytearray:
 	return bytearray([(index + 42) % 200 for index in range(size)])
+
+
+@dataclass
+class BinaryVariant:
+	role: str = ''
+	profiling: str = ''
+	graphics: str = ''
+
+	def log_name(self) -> str:
+		return '+'.join(part for part in [self.role, self.profiling, self.graphics] if part)
+
+	def output_suffix(self, is_windows: bool) -> str:
+		suffix = ''
+		if self.profiling:
+			suffix += '_Profiling'
+		if is_windows and self.graphics == 'OGL':
+			suffix += '_OpenGL'
+		return suffix
 
 
 @dataclass
@@ -142,6 +152,51 @@ class Packager:
 
 	def iter_arches(self) -> list[str]:
 		return self.args.arch.split('+')
+
+	def build_binary_entry(self, arch: str, variant: BinaryVariant) -> str:
+		entry = self.args.target + '-' + self.args.platform + '-' + arch
+		if variant.profiling == 'TotalProfiling':
+			entry += '-Profiling_Total'
+		elif variant.profiling == 'OnDemandProfiling':
+			entry += '-Profiling_OnDemand'
+		if self.has_pack('Debug'):
+			entry += '-Debug'
+		return entry
+
+	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
+		return variant.output_suffix(is_windows)
+
+	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
+		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
+
+	def copy_optional_pdb(self, bin_path: str, input_name: str, output_name: str) -> None:
+		pdb_path = os.path.join(bin_path, input_name + '.pdb')
+		if os.path.isfile(pdb_path):
+			log('PDB file included')
+			shutil.copy(pdb_path, os.path.join(self.target_output_path, output_name + '.pdb'))
+		else:
+			log('PDB file NOT included')
+
+	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None) -> str:
+		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
+		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
+		self.patch_packaged_binary(output_file_path, additional_config_data)
+		return output_file_path
+
+	def select_platform_packager(self) -> Callable[[], None]:
+		if self.args.platform == 'Windows':
+			return self.package_windows
+		if self.args.platform == 'Linux':
+			return self.package_linux
+		if self.args.platform == 'Web':
+			return self.package_web
+		if self.args.platform == 'Android':
+			return self.package_android
+		if self.args.platform == 'macOS':
+			return self.package_macos
+		if self.args.platform == 'iOS':
+			return self.package_ios
+		raise AssertionError('Unknown build target')
 
 	def prepare_output(self) -> None:
 		log('Output to', self.target_output_path)
@@ -293,79 +348,74 @@ class Packager:
 		self.patch_config(file_path, additional_config_data)
 		self.patch_packaged_mark(file_path)
 
-	def iter_windows_bin_types(self) -> list[str]:
-		bin_types = ['']
+	def iter_windows_variants(self) -> list[BinaryVariant]:
+		bin_roles = ['']
 		if self.has_pack('Headless'):
-			bin_types.append('Headless')
+			bin_roles.append('Headless')
 		if self.has_pack('Service'):
-			bin_types.append('Service')
-		if self.has_pack('TotalProfiling'):
-			bin_types.append('TotalProfiling')
-		if self.has_pack('OnDemandProfiling'):
-			bin_types.append('OnDemandProfiling')
-		if self.has_pack('OGL'):
-			bin_types.append('OGL')
-		return bin_types
+			bin_roles.append('Service')
 
-	def iter_linux_bin_types(self) -> list[str]:
-		bin_types = ['']
-		if self.has_pack('Headless'):
-			bin_types.append('Headless')
-		if self.has_pack('Daemon'):
-			bin_types.append('Daemon')
+		profiling_variants = ['']
 		if self.has_pack('TotalProfiling'):
-			bin_types.append('TotalProfiling')
+			profiling_variants.append('TotalProfiling')
 		if self.has_pack('OnDemandProfiling'):
-			bin_types.append('OnDemandProfiling')
-		return bin_types
+			profiling_variants.append('OnDemandProfiling')
+
+		graphics_variants = ['']
+		if self.has_pack('OGL'):
+			graphics_variants.append('OGL')
+
+		return [
+			BinaryVariant(bin_role, profiling_variant, graphics_variant)
+			for bin_role in bin_roles
+			for profiling_variant in profiling_variants
+			for graphics_variant in graphics_variants
+		]
+
+	def iter_linux_variants(self) -> list[BinaryVariant]:
+		bin_roles = ['']
+		if self.has_pack('Headless'):
+			bin_roles.append('Headless')
+		if self.has_pack('Daemon'):
+			bin_roles.append('Daemon')
+
+		profiling_variants = ['']
+		if self.has_pack('TotalProfiling'):
+			profiling_variants.append('TotalProfiling')
+		if self.has_pack('OnDemandProfiling'):
+			profiling_variants.append('OnDemandProfiling')
+
+		return [
+			BinaryVariant(bin_role, profiling_variant)
+			for bin_role in bin_roles
+			for profiling_variant in profiling_variants
+		]
 
 	def package_windows(self) -> None:
 		for arch in self.iter_arches():
-			for bin_type in self.iter_windows_bin_types():
+			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
-				bin_name = self.args.devname + '_' + self.args.target + (bin_type if bin_type in ['Headless', 'Service'] else '') + ('Lib' if is_lib else '')
-				log('Setup', arch, bin_name, bin_type)
+				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
+				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + \
-					('_Profiling' if bin_type in ['TotalProfiling', 'OnDemandProfiling'] else '') + \
-					('_OpenGL' if bin_type == 'OGL' else '')
-				bin_entry = self.args.target + '-' + self.args.platform + '-' + arch + \
-					('-Profiling_Total' if bin_type == 'TotalProfiling' else '') + \
-					('-Profiling_OnDemand' if bin_type == 'OnDemandProfiling' else '') + \
-					('-Debug' if self.has_pack('Debug') else '')
-				bin_path = self.get_input(os.path.join('Binaries', bin_entry), bin_name)
+				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=True)
+				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				output_file_path = os.path.join(self.target_output_path, bin_out_name + bin_ext)
-				shutil.copy(os.path.join(bin_path, bin_name + bin_ext), output_file_path)
-
-				pdb_path = os.path.join(bin_path, bin_name + '.pdb')
-				if os.path.isfile(pdb_path):
-					log('PDB file included')
-					shutil.copy(pdb_path, os.path.join(self.target_output_path, bin_out_name + '.pdb'))
-				else:
-					log('PDB file NOT included')
-
-				self.patch_packaged_binary(output_file_path, 'ForceOpenGL=1' if bin_type == 'OGL' else None)
+				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, 'ForceOpenGL=1' if variant.graphics == 'OGL' else None)
+				self.copy_optional_pdb(bin_path, bin_name, bin_out_name)
 
 	def package_linux(self) -> None:
 		for arch in self.iter_arches():
-			for bin_type in self.iter_linux_bin_types():
-				bin_name = self.args.devname + '_' + self.args.target + (bin_type if bin_type in ['Headless', 'Daemon'] else '')
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + \
-					('_Profiling' if bin_type in ['TotalProfiling', 'OnDemandProfiling'] else '')
-				log('Setup', arch, bin_name, bin_type)
-				bin_entry = self.args.target + '-' + self.args.platform + '-' + arch + \
-					('-Profiling_Total' if bin_type == 'TotalProfiling' else '') + \
-					('-Profiling_OnDemand' if bin_type == 'OnDemandProfiling' else '') + \
-					('-Debug' if self.has_pack('Debug') else '')
-				bin_path = self.get_input(os.path.join('Binaries', bin_entry), bin_name)
+			for variant in self.iter_linux_variants():
+				bin_name = self.args.devname + '_' + self.args.target + variant.role
+				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=False)
+				log('Setup', arch, bin_name, variant.log_name())
+				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
 
-				output_file_path = os.path.join(self.target_output_path, bin_out_name)
-				shutil.copy(os.path.join(bin_path, bin_name), output_file_path)
-				self.patch_packaged_binary(output_file_path)
+				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '')
 
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
@@ -462,20 +512,7 @@ class Packager:
 			if not self.has_pack('NoRes'):
 				self.prepare_resources()
 
-			if self.args.platform == 'Windows':
-				self.package_windows()
-			elif self.args.platform == 'Linux':
-				self.package_linux()
-			elif self.args.platform == 'Web':
-				self.package_web()
-			elif self.args.platform == 'Android':
-				self.package_android()
-			elif self.args.platform == 'macOS':
-				self.package_macos()
-			elif self.args.platform == 'iOS':
-				self.package_ios()
-			else:
-				assert False, 'Unknown build target'
+			self.select_platform_packager()()
 
 			self.finalize_output()
 			log('Complete!')
