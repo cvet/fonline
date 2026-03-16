@@ -116,7 +116,7 @@ public:
     [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator.get(); }
     [[nodiscard]] auto GetName() const noexcept -> const string& { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> const string& { return _propNameWithoutComponent; }
-    [[nodiscard]] auto GetComponent() const noexcept -> const hstring& { return _component; }
+    [[nodiscard]] auto GetComponentName() const noexcept -> const string& { return _componentName; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16 { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
@@ -164,6 +164,8 @@ public:
     [[nodiscard]] auto GetViewTypeName() const noexcept -> const string& { return _viewTypeName; }
 
     [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
+    [[nodiscard]] auto IsComponentItself() const noexcept -> bool { return _isComponentItself; }
+    [[nodiscard]] auto IsInComponent() const noexcept -> bool { return !_componentName.empty(); }
     [[nodiscard]] auto IsCoreProperty() const noexcept -> bool { return _isCoreProperty; }
     [[nodiscard]] auto IsCommon() const noexcept -> bool { return _isCommon; }
     [[nodiscard]] auto IsServerOnly() const noexcept -> bool { return _isServerOnly; }
@@ -199,7 +201,7 @@ private:
 
     string _propName {};
     string _propNameWithoutComponent {};
-    hstring _component {};
+    string _componentName {};
     string _scriptFuncType {};
 
     BaseTypeDesc _baseType {};
@@ -224,6 +226,7 @@ private:
     string _viewTypeName {};
 
     bool _isDisabled {};
+    bool _isComponentItself {};
     bool _isCoreProperty {};
     bool _isCommon {};
     bool _isServerOnly {};
@@ -370,17 +373,15 @@ public:
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
-    [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
+    [[nodiscard]] auto FindProperty(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetPropertyByIndex(int32 property_index) const noexcept -> const Property*;
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
-    [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>;
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _registeredComponents; }
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<string>& { return _registeredComponents; }
     [[nodiscard]] auto GetHashResolver() const noexcept -> HashResolver* { return _hashResolver.get(); }
     [[nodiscard]] auto GetNameResolver() const noexcept -> NameResolver* { return _nameResolver.get(); }
 
-    void RegisterComponent(string_view name);
     auto RegisterProperty(const initializer_list<string_view>& tokens) -> const Property* { return RegisterProperty({tokens.begin(), tokens.end()}); }
     auto RegisterProperty(const span<const string_view>& tokens) -> const Property*;
 
@@ -389,12 +390,12 @@ private:
     const hstring _typeNamePlural;
     const EngineSideKind _side;
     const hstring _propMigrationRuleName;
-    const hstring _componentMigrationRuleName;
     mutable raw_ptr<HashResolver> _hashResolver;
     mutable raw_ptr<NameResolver> _nameResolver;
     vector<unique_ptr<Property>> _registeredProperties {};
     unordered_map<string, raw_ptr<const Property>> _registeredPropertiesLookup {};
-    unordered_set<hstring> _registeredComponents {};
+    unordered_set<string> _registeredComponents {};
+    unordered_set<string> _componentsWithProperties {};
     map<string, vector<pair<raw_ptr<const Property>, int32>>> _propertyGroups {};
 
     // PlainData info

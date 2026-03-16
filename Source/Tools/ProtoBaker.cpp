@@ -235,36 +235,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, property_registrator, &props);
             const auto inserted = all_protos[type_name].emplace(pid, proto).second;
             FO_RUNTIME_ASSERT(inserted);
-
-            // Components
-            for (auto&& [key, value] : proto_kv) {
-                if (key.front() == '$') {
-                    continue;
-                }
-
-                bool is_component;
-                const auto* prop = property_registrator->FindProperty(key, &is_component);
-                ignore_unused(prop);
-
-                if (!is_component) {
-                    continue;
-                }
-
-                if (value != "Enabled" && value != "Disabled") {
-                    throw ProtoBakerException("Proto item has invalid component value (expected Enabled or Disabled)", base_name, key, value);
-                }
-
-                auto component_name = meta->Hashes.ToHashedString(key);
-                component_name = meta->CheckMigrationRule(component_rule_name, type_name, component_name).value_or(component_name);
-
-                if (!property_registrator->IsComponentRegistered(component_name)) {
-                    throw ProtoBakerException("Proto item has invalid component", base_name, component_name);
-                }
-
-                if (value == "Enabled") {
-                    proto->EnableComponent(component_name);
-                }
-            }
         }
     }
 
@@ -302,14 +272,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
                 const auto proto_name = proto->GetName();
                 writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
                 writer.WritePtr(proto_name.data(), proto_name.length());
-
-                writer.Write<uint16>(numeric_cast<uint16>(proto->GetComponents().size()));
-
-                for (const auto& component : proto->GetComponents()) {
-                    const auto& component_str = component.as_str();
-                    writer.Write<uint16>(numeric_cast<uint16>(component_str.length()));
-                    writer.WritePtr(component_str.data(), component_str.length());
-                }
 
                 proto->GetProperties().StoreAllData(props_data, str_hashes);
                 writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));

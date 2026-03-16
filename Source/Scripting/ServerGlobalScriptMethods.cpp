@@ -807,18 +807,6 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring lo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationComponent component)
-{
-    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
-        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return loc.get();
-        }
-    }
-
-    return nullptr;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
@@ -859,23 +847,6 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, h
 
     for (auto& loc : locs | std::views::values) {
         if (!pid || pid == loc->GetProtoId()) {
-            result.emplace_back(loc.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationComponent component)
-{
-    auto& locs = server->EntityMngr.GetLocations();
-
-    vector<Location*> result;
-    result.reserve(locs.size());
-
-    for (auto& loc : locs | std::views::values) {
-        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(loc.get());
         }
     }
