@@ -127,7 +127,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
     FO_STACK_TRACE_ENTRY();
 
     const auto proto_rule_name = meta->Hashes.ToHashedString("Proto");
-    const auto component_rule_name = meta->Hashes.ToHashedString("Component");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;

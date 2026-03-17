@@ -378,7 +378,7 @@ public:
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>;
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<string>& { return _registeredComponents; }
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_map<string, raw_ptr<const Property>>& { return _registeredComponents; }
     [[nodiscard]] auto GetHashResolver() const noexcept -> HashResolver* { return _hashResolver.get(); }
     [[nodiscard]] auto GetNameResolver() const noexcept -> NameResolver* { return _nameResolver.get(); }
 
@@ -394,8 +394,7 @@ private:
     mutable raw_ptr<NameResolver> _nameResolver;
     vector<unique_ptr<Property>> _registeredProperties {};
     unordered_map<string, raw_ptr<const Property>> _registeredPropertiesLookup {};
-    unordered_set<string> _registeredComponents {};
-    unordered_set<string> _componentsWithProperties {};
+    unordered_map<string, raw_ptr<const Property>> _registeredComponents {};
     map<string, vector<pair<raw_ptr<const Property>, int32>>> _propertyGroups {};
 
     // PlainData info

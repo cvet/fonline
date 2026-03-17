@@ -990,15 +990,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
         }
     }
     else if (base_type.IsBool) {
-        if (value == "Enabled") {
-            SetValue<bool>(prop, true);
-        }
-        else if (value == "Disabled") {
-            SetValue<bool>(prop, false);
-        }
-        else {
-            SetValue<bool>(prop, strvex(value).to_bool());
-        }
+        SetValue<bool>(prop, strvex(value).to_bool());
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
@@ -1403,7 +1395,6 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
         FO_RUNTIME_ASSERT(!prop->_componentName.empty());
         FO_RUNTIME_ASSERT(!prop->_propNameWithoutComponent.empty());
-        _componentsWithProperties.emplace(prop->_componentName);
     }
     else {
         prop->_propNameWithoutComponent = prop->_propName;
@@ -1524,7 +1515,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         FO_RUNTIME_ASSERT(prop->_componentName.empty());
         FO_RUNTIME_ASSERT(prop->IsBaseTypeBool());
         FO_RUNTIME_ASSERT(prop->IsPlainData());
-        _registeredComponents.emplace(prop->_propName);
+        _registeredComponents.emplace(prop->_propName, prop.get());
     }
 
     FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon);
