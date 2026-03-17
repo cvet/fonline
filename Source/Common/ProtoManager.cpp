@@ -149,16 +149,6 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
                     auto* proto = CreateProto(type_name, proto_id, nullptr);
 
-                    const auto components_count = reader.Read<uint16>();
-
-                    for (uint16 k = 0; k < components_count; k++) {
-                        const auto component_name_len = reader.Read<uint16>();
-                        const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
-                        const auto component_name_hashed = _meta->Hashes.ToHashedString(component_name);
-
-                        proto->EnableComponent(component_name_hashed);
-                    }
-
                     const auto data_size = reader.Read<uint32>();
                     props_data.resize(data_size);
                     reader.ReadPtr<uint8>(props_data.data(), data_size);

@@ -73,6 +73,7 @@ private:
     {
         unique_ptr<EngineMetadata> Meta {};
         unordered_set<string> OtherEntityTypes {};
+        unordered_map<string, unordered_map<string, string>> ComponentScopes {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};
@@ -82,7 +83,6 @@ private:
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
     void ParseEntityHolder(TagsParsingContext& ctx) const;
-    void ParsePropertyComponent(TagsParsingContext& ctx) const;
     void ParseProperty(TagsParsingContext& ctx) const;
     void ParseEvent(TagsParsingContext& ctx) const;
     void ParseRemoteCall(TagsParsingContext& ctx) const;

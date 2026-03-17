@@ -138,18 +138,6 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
         }
     }
 
-    // Property components
-    for (const auto& tokens : engine_data["PropertyComponent"]) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 2);
-        const auto entity_name = tokens[0];
-        const auto component_name = tokens[1];
-        const auto component_hname = meta->Hashes.ToHashedString(component_name);
-        auto* prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
-
-        prop_registrator->RegisterComponent(component_name);
-        meta->RegisterEnumEntry(strex("{}Component", entity_name), component_name, component_hname.as_int32());
-    }
-
     // Properties
     for (const auto& tokens : engine_data["Property"]) {
         FO_RUNTIME_ASSERT(tokens.size() >= 4);
@@ -158,7 +146,7 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
         const auto prop_tokens = span(tokens).subspan(1);
 
         const auto* prop = prop_registrator->RegisterProperty(prop_tokens);
-        const auto prop_enum_name = prop->GetComponent() ? strex("{}_{}", prop->GetComponent(), prop->GetNameWithoutComponent()) : prop->GetName();
+        const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32>(prop->GetRegIndex()));
     }
 

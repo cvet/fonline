@@ -231,15 +231,9 @@ static void Entity_GetComponent(AngelScript::asIScriptGeneric* gen)
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityNonDestroyed(entity);
-    const auto& component = *cast_from_void<const hstring*>(gen->GetAuxiliary());
-    bool has_component = false;
-
-    if (const auto* proto_entity = dynamic_cast<const ProtoEntity*>(entity); proto_entity != nullptr) {
-        has_component = proto_entity->HasComponent(component);
-    }
-    else if (const auto* entity_with_proto = dynamic_cast<const EntityWithProto*>(entity); entity_with_proto != nullptr) {
-        has_component = entity_with_proto->GetProto()->HasComponent(component);
-    }
+    const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
+    const auto& props = entity->GetProperties();
+    const auto has_component = props.GetValue<bool>(prop);
 
     if (has_component) {
         new (gen->GetAddressOfReturnLocation()) Entity*(entity);
@@ -1027,54 +1021,53 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         const auto proto_class_name = "Proto" + class_name;
         const auto static_class_name = "Static" + class_name;
 
-        for (const auto& component : registrator->GetComponents()) {
+        for (const auto& [name, prop] : registrator->GetComponents()) {
             {
-                const auto component_type = strex("{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("{}{}Component", type_name_str, name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(&component)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
             }
             if (type_desc.HasAbstract) {
-                const auto component_type = strex("Abstract{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Abstract{}{}Component", type_name_str, name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(&component)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(abstract_class_name.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
             }
             if (type_desc.HasProtos) {
-                const auto component_type = strex("Proto{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Proto{}{}Component", type_name_str, name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(&component)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(proto_class_name.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
             }
             if (type_desc.HasStatics) {
-                const auto component_type = strex("Static{}{}Component", type_name_str, component).str();
+                const auto component_type = strex("Static{}{}Component", type_name_str, name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, component).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(&component)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(static_class_name.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
             }
         }
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
-            const auto component = prop->GetComponent();
             const auto is_handle = prop->IsArray() || prop->IsDict();
 
-            if (!prop->IsDisabled()) {
+            if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
                     if (type_desc.HasAbstract) {
-                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Abstract{}{}Component", type_name_str, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("Abstract{}{}Component", type_name_str, prop->GetComponentName()).c_str() : abstract_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
                     }
                     if (type_desc.HasProtos) {
-                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Proto{}{}Component", type_name_str, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("Proto{}{}Component", type_name_str, prop->GetComponentName()).c_str() : proto_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
                     }
                     if (type_desc.HasStatics) {
-                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("Static{}{}Component", type_name_str, component).c_str() : static_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                        FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("Static{}{}Component", type_name_str, prop->GetComponentName()).c_str() : static_class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
                     }
                 }
             }
 
-            if (!prop->IsDisabled() && prop->IsMutable()) {
+            if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
                 const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), is_handle ? "@+" : "").str();
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(component ? strex("{}{}Component", type_name_str, component).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
             }
         }
     }
