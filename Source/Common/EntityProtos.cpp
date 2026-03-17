@@ -44,14 +44,6 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
     FO_STRONG_ASSERT(_protoId);
 }
 
-void ProtoEntity::EnableComponent(hstring component)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _components.emplace(component);
-    _componentHashes.emplace(component.as_hash());
-}
-
 EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
     _proto {proto}
 {

@@ -361,23 +361,6 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoItems();
-
-    vector<ProtoItem*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoItem*>(proto.get()));
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
@@ -411,23 +394,6 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoCritters();
-
-    vector<ProtoCritter*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
-        }
     }
 
     return result;
@@ -473,23 +439,6 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoMaps();
-
-    vector<ProtoMap*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoMap*>(proto.get()));
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
@@ -523,23 +472,6 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoLocations();
-
-    vector<ProtoLocation*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
-        }
     }
 
     return result;

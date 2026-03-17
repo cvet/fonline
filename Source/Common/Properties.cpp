@@ -431,14 +431,9 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
         }
 
         // Find property
-        bool is_component;
-        const auto* prop = _registrator->FindProperty(key, &is_component);
+        const auto* prop = _registrator->FindProperty(key);
 
         if (prop == nullptr) {
-            if (is_component) {
-                continue;
-            }
-
             WriteLog("Failed to load unknown property {}", key);
             errors++;
             continue;
@@ -1269,7 +1264,6 @@ PropertyRegistrator::PropertyRegistrator(string_view type_name, EngineSideKind s
     _typeNamePlural {hash_resolver.ToHashedString(strex("{}s", type_name))},
     _side {side},
     _propMigrationRuleName {hash_resolver.ToHashedString("Property")},
-    _componentMigrationRuleName {hash_resolver.ToHashedString("Component")},
     _hashResolver {&hash_resolver},
     _nameResolver {&name_resolver}
 {
@@ -1284,16 +1278,6 @@ PropertyRegistrator::~PropertyRegistrator()
     FO_STACK_TRACE_ENTRY();
 }
 
-void PropertyRegistrator::RegisterComponent(string_view name)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto name_hash = _hashResolver->ToHashedString(name);
-
-    FO_RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
-    _registeredComponents.emplace(name_hash);
-}
-
 auto PropertyRegistrator::GetPropertyByIndex(int32 property_index) const noexcept -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
@@ -1306,24 +1290,12 @@ auto PropertyRegistrator::GetPropertyByIndex(int32 property_index) const noexcep
     return nullptr;
 }
 
-auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_component) const -> const Property*
+auto PropertyRegistrator::FindProperty(string_view property_name) const -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto key = string(property_name);
     const auto hkey = _hashResolver->ToHashedString(key);
-
-    if (IsComponentRegistered(hkey)) {
-        if (is_component != nullptr) {
-            *is_component = true;
-        }
-
-        return nullptr;
-    }
-
-    if (is_component != nullptr) {
-        *is_component = false;
-    }
 
     if (const auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
         key = rule.value();
@@ -1334,19 +1306,6 @@ auto PropertyRegistrator::FindProperty(string_view property_name, bool* is_compo
     }
 
     return nullptr;
-}
-
-auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const noexcept -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    hstring migrated_component_name = component_name;
-
-    if (const auto rule = _nameResolver->CheckMigrationRule(_componentMigrationRuleName, _typeName, migrated_component_name); rule.has_value()) {
-        migrated_component_name = rule.value();
-    }
-
-    return _registeredComponents.find(migrated_component_name) != _registeredComponents.end();
 }
 
 auto PropertyRegistrator::GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>
@@ -1432,15 +1391,16 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     ignore_unused(h);
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
-        prop->_component = _hashResolver->ToHashedString(prop->_propName.substr(0, dot_pos));
+        prop->_componentName = prop->_propName.substr(0, dot_pos);
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
-        FO_RUNTIME_ASSERT(!!prop->_component);
+        FO_RUNTIME_ASSERT(!prop->_componentName.empty());
         FO_RUNTIME_ASSERT(!prop->_propNameWithoutComponent.empty());
-        FO_RUNTIME_ASSERT(_registeredComponents.count(_hashResolver->ToHashedString(prop->_component)) != 0);
     }
     else {
         prop->_propNameWithoutComponent = prop->_propName;
     }
+
+    bool is_component_marker = false;
 
     for (size_t i = 3; i < tokens.size(); i++) {
         if (tokens[i] == "Group") {
@@ -1474,6 +1434,11 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         else if (tokens[i] == "CoreProperty") {
             FO_RUNTIME_ASSERT(!prop->_isCoreProperty);
             prop->_isCoreProperty = true;
+        }
+        else if (tokens[i] == "Component") {
+            FO_RUNTIME_ASSERT(!prop->_isComponentItself);
+            prop->_isComponentItself = true;
+            is_component_marker = true;
         }
         else if (tokens[i] == "Persistent") {
             FO_RUNTIME_ASSERT(!prop->_isPersistent);
@@ -1545,6 +1510,13 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     prop->_isSynced = prop->_isCommon && prop->_isMutable && (prop->_isOwnerSync || prop->_isPublicSync);
+
+    if (is_component_marker) {
+        FO_RUNTIME_ASSERT(prop->_componentName.empty());
+        FO_RUNTIME_ASSERT(prop->IsBaseTypeBool());
+        FO_RUNTIME_ASSERT(prop->IsPlainData());
+        _registeredComponents.emplace(prop->_propName, prop.get());
+    }
 
     FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon);
     FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable);

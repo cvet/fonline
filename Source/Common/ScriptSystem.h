@@ -58,14 +58,6 @@ enum class ScriptEnum_uint32 : uint32
 };
 // ReSharper restore CppInconsistentNaming
 
-using GameComponent = ScriptEnum_int32;
-using PlayerComponent = ScriptEnum_int32;
-using ItemComponent = ScriptEnum_int32;
-using CritterComponent = ScriptEnum_int32;
-using MapComponent = ScriptEnum_int32;
-using LocationComponent = ScriptEnum_int32;
-static_assert(sizeof(GameComponent) == sizeof(hstring::hash_t));
-
 using GameProperty = ScriptEnum_uint16;
 using PlayerProperty = ScriptEnum_uint16;
 using ItemProperty = ScriptEnum_uint16;

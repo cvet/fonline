@@ -426,18 +426,6 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
-{
-    for (auto& item : self->GetInvItems()) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item.get();
-        }
-    }
-
-    return nullptr;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
@@ -455,23 +443,6 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property,
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self)
 {
     return vec_transform(self->GetInvItems(), [](auto&& item) -> Item* { return item.get(); });
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
-{
-    const auto items = self->GetInvItems();
-
-    vector<Item*> result;
-    result.reserve(items.size());
-
-    for (auto& item : items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.push_back(item.get());
-        }
-    }
-
-    return result;
 }
 
 ///@ ExportMethod

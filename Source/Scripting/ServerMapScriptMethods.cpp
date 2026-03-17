@@ -128,24 +128,6 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, hstring pid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    const auto hex_items = self->GetItemsOnHex(hex);
-
-    for (auto& item : hex_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item.get();
-        }
-    }
-
-    return nullptr;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -175,24 +157,6 @@ FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, hstrin
 
     for (auto& item : hex_items) {
         if (item->GetProtoId() == pid) {
-            return item.get();
-        }
-    }
-
-    return nullptr;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API Item* Server_Map_GetItem(Map* self, mpos hex, int32 radius, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    auto hex_items = self->GetItemsInRadius(hex, radius);
-
-    for (auto& item : hex_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item.get();
         }
     }
@@ -285,23 +249,6 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radiu
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemComponent component)
-{
-    const auto map_items = self->GetItems();
-
-    vector<Item*> result;
-    result.reserve(map_items.size());
-
-    for (auto& item : map_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
@@ -312,27 +259,6 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property
 
     for (auto& item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(item.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    const auto hex_items = self->GetItemsOnHex(hex);
-
-    vector<Item*> result;
-    result.reserve(hex_items.size());
-
-    for (auto& item : hex_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(item.get());
         }
     }
@@ -356,27 +282,6 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, ItemPropert
 
     for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(item.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, mpos hex, int32 radius, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    auto hex_items = self->GetItemsInRadius(hex, radius);
-
-    vector<Item*> result;
-    result.reserve(hex_items.size());
-
-    for (auto& item : hex_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             result.emplace_back(item.get());
         }
     }
@@ -445,48 +350,6 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    const auto map_static_items = self->GetStaticItemsOnHex(hex);
-
-    vector<StaticItem*> result;
-    result.reserve(map_static_items.size());
-
-    for (auto& item : map_static_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemComponent component)
-{
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex args");
-    }
-
-    const auto map_static_items = self->GetStaticItemsInRadius(hex, radius, {});
-
-    vector<StaticItem*> result;
-    result.reserve(map_static_items.size());
-
-    for (auto* item : map_static_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item);
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -537,23 +400,6 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemComponent component)
-{
-    const auto map_static_items = self->GetStaticItems();
-
-    vector<StaticItem*> result;
-    result.reserve(map_static_items.size());
-
-    for (auto& item : map_static_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(item.get());
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
@@ -598,20 +444,6 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, mpos hex)
     }
 
     return cr;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterComponent component, CritterFindType findType)
-{
-    const auto map_critters = self->GetCritters();
-
-    for (auto& cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return cr.get();
-        }
-    }
-
-    return nullptr;
 }
 
 ///@ ExportMethod
@@ -699,23 +531,6 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, Cr
 
     for (auto& cr : map_critters) {
         if ((!pid || cr->GetProtoId() == pid) && cr->CheckFind(findType)) {
-            critters.emplace_back(cr.get());
-        }
-    }
-
-    return critters;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterComponent component, CritterFindType findType)
-{
-    const auto map_critters = self->GetCritters();
-    vector<Critter*> critters;
-
-    critters.reserve(map_critters.size());
-
-    for (auto& cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             critters.emplace_back(cr.get());
         }
     }
