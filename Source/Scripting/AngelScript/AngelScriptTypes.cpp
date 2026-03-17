@@ -316,7 +316,7 @@ static auto HashedString_EqualsString(const hstring& self, const string& other) 
     return self.as_str() == other;
 }
 
-static auto HashedString_StringCast(const hstring& self) -> const string&
+static auto HashedString_StringCast(const hstring& self) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -702,7 +702,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int opCmp(const hstring &in) const", FO_SCRIPT_FUNC_THIS(Type_Cmp<hstring>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", FO_SCRIPT_FUNC_THIS(Type_Equals<hstring>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", FO_SCRIPT_FUNC_THIS(HashedString_EqualsString), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", FO_SCRIPT_FUNC_THIS(HashedString_StringCast), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string opImplCast() const", FO_SCRIPT_FUNC_THIS(HashedString_StringCast), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string opImplConv() const", FO_SCRIPT_FUNC_THIS(HashedString_StringConv), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "string get_str() const", FO_SCRIPT_FUNC_THIS(HashedString_GetString), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int get_hash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetHash), FO_SCRIPT_FUNC_THIS_CONV));
@@ -711,7 +711,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetZero<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
 
     // Register any
-    FO_AS_VERIFY(as_engine->RegisterObjectType("any", sizeof(any_t), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>()));
+    FO_AS_VERIFY(as_engine->RegisterObjectType("any", sizeof(any_t), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<any_t>()));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Any_Construct), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const any &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructCopy), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const bool &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), FO_SCRIPT_FUNC_THIS_CONV));

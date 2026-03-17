@@ -80,6 +80,7 @@ public:
 	void RemoveIndexUnordered(asUINT index); // Removes the entry without keeping the order
 
 	bool operator==(const asCArray<T> &) const;
+	bool operator!=(const asCArray<T> &) const;
 
 protected:
 	T      *array;
@@ -434,6 +435,12 @@ bool asCArray<T>::operator ==(const asCArray<T> &other) const
 			return false;
 
 	return true;
+}
+
+template <class T>
+bool asCArray<T>::operator !=(const asCArray<T> &other) const
+{
+	return !(*this == other);
 }
 
 

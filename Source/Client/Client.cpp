@@ -201,6 +201,9 @@ void ClientEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
     TimeEventMngr.ClearTimeEvents();
     ShutdownBackends();
 

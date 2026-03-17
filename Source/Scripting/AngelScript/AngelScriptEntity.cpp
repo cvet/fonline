@@ -351,7 +351,9 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
         FO_RUNTIME_ASSERT(casted_proto);
-        new (gen->GetAddressOfReturnLocation()) Entity*(const_cast<ProtoCustomEntity*>(casted_proto));
+        auto* mutable_proto = const_cast<ProtoCustomEntity*>(casted_proto);
+        auto* entity = static_cast<Entity*>(mutable_proto);
+        new (gen->GetAddressOfReturnLocation()) Entity*(entity);
     }
     else {
         new (gen->GetAddressOfReturnLocation()) Entity*(nullptr);
@@ -368,7 +370,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
 
     auto* as_engine = gen->GetEngine();
-    auto* result = CreateScriptArray(as_engine, strex("{}[]", entity_type).c_str());
+    auto* result = CreateScriptArray(as_engine, strex("Proto{}[]", entity_type).c_str());
     result->Reserve(numeric_cast<int32>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {

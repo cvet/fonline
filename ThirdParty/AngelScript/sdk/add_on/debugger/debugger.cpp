@@ -571,10 +571,14 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 						const char *propName = 0;
 						int offset = 0;
 						bool isReference = 0;
-						type->GetProperty(n, &propName, &typeId, 0, 0, &offset, &isReference);
+						int compositeOffset = 0;
+						bool isCompositeIndirect = false;
+						type->GetProperty(n, &propName, &typeId, 0, 0, &offset, &isReference, 0, &compositeOffset, &isCompositeIndirect);
 						if( name == propName )
 						{
-							ptr = (void*)(((asBYTE*)ctx->GetThisPointer())+offset);
+							ptr = (void*)(((asBYTE*)ctx->GetThisPointer())+compositeOffset);
+							if (isCompositeIndirect) ptr = *(void**)ptr;
+							ptr = (void*)(((asBYTE*)ptr) + offset);
 							if( isReference ) ptr = *(void**)ptr;
 							break;
 						}

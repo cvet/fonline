@@ -652,7 +652,22 @@ void ServerEngine::Shutdown()
     _starter.Clear();
     _mainWorker.Clear();
     _healthWriter.Clear();
+
     OnFinish.Fire();
+
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
+    for (auto& entity : EntityMngr.GetEntities() | std::views::values) {
+        entity->UnsubscribeAllEvents();
+        entity->ClearAllTimeEvents();
+
+        if (auto* item = dynamic_cast<Item*>(entity.get()); item != nullptr) {
+            item->StaticScriptFunc = {};
+            item->TriggerScriptFunc = {};
+        }
+    }
+
     TimeEventMngr.ClearTimeEvents();
     ShutdownBackends();
     EntityMngr.DestroyInnerEntities(this);

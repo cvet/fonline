@@ -107,7 +107,7 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm")
     enable_language(ASM)
     if(CMAKE_ASM_COMPILER_WORKS)
         set(ANGELSCRIPT_SOURCE ${ANGELSCRIPT_SOURCE} ../../source/as_callfunc_arm.cpp ../../source/as_callfunc_arm_gcc.S)
-        #! set_property(SOURCE ../../source/as_callfunc_arm_gcc.S APPEND PROPERTY COMPILE_FLAGS " -Wa,-mimplicit-it=always")
+        #! (FOnline Patch) set_property(SOURCE ../../source/as_callfunc_arm_gcc.S APPEND PROPERTY COMPILE_FLAGS " -Wa,-mimplicit-it=always")
     else()
         message(FATAL ERROR "ARM target requires a working assembler")
     endif()
@@ -123,17 +123,17 @@ endif()
 add_definitions(-DANGELSCRIPT_EXPORT -D_LIB)
 
 # Fix x64 issues on Linux
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64" AND NOT APPLE)
+if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" AND NOT APPLE)
     add_definitions(-fPIC)
 endif()
 
 if(NOT BUILD_FRAMEWORK)
-    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" angelscript) #!
+    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" angelscript) #! (FOnline Patch) 
 else()
-    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" Angelscript) #! # OS X frameworks should have capitalized name
+    option(ANGELSCRIPT_LIBRARY_NAME "Library target name" Angelscript) #! (FOnline Patch) OS X frameworks should have capitalized name
     set(BUILD_SHARED_LIBS TRUE)
 endif()
-#! set(ANGELSCRIPT_LIBRARY_NAME ${ANGELSCRIPT_LIBRARY_NAME} CACHE STRING "" FORCE)
+#! (FOnline Patch) set(ANGELSCRIPT_LIBRARY_NAME ${ANGELSCRIPT_LIBRARY_NAME} CACHE STRING "" FORCE)
 
 add_library(${ANGELSCRIPT_LIBRARY_NAME} ${ANGELSCRIPT_SOURCE} ${ANGELSCRIPT_HEADERS})
 # Don't override the default library output path to avoid conflicts when building for multiple target platforms
@@ -155,8 +155,10 @@ if(BUILD_FRAMEWORK)
 endif()
 
 if(MSVC)
-    #set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "/MP")
+    set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "/MP")
 endif()
 
 # Don't override the default runtime output path to avoid conflicts when building for multiple target platforms
 #set(RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
+
+

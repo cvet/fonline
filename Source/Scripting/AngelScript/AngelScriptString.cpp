@@ -36,16 +36,49 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptArray.h"
+#include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
-static auto StringFactory(AngelScript::asUINT length, const char* s) -> string
+class ScriptStringFactory final : public AngelScript::asIStringFactory
 {
-    FO_NO_STACK_TRACE_ENTRY();
+public:
+    auto GetStringConstant(const char* data, AngelScript::asUINT length) -> const void* override
+    {
+        FO_NO_STACK_TRACE_ENTRY();
 
-    return string(s, length);
-}
+        auto* pstr = SafeAlloc::MakeRaw<string>(data, length);
+        return cast_to_void(pstr);
+    }
+
+    auto ReleaseStringConstant(const void* str) -> int override
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        const auto* pstr = cast_from_void<const string*>(str);
+        FO_RUNTIME_ASSERT(pstr);
+        delete pstr;
+        return 0;
+    }
+
+    auto GetRawStringData(const void* str, char* data, AngelScript::asUINT* length) const -> int override
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        const auto* pstr = cast_from_void<const string*>(str);
+        FO_RUNTIME_ASSERT(pstr);
+
+        if (length != nullptr) {
+            *length = numeric_cast<AngelScript::asUINT>(pstr->size());
+        }
+        if (data != nullptr && !pstr->empty()) {
+            MemCopy(data, pstr->data(), pstr->size());
+        }
+
+        return 0;
+    }
+};
 
 static auto ConstructString(string* str) -> void
 {
@@ -786,10 +819,14 @@ void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* backend = GetScriptBackend(as_engine);
+    auto string_factory = SafeAlloc::MakeUnique<ScriptStringFactory>();
+
     int32 as_result = 0;
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>()));
-    FO_AS_VERIFY(as_engine->RegisterStringFactory("string", FO_SCRIPT_FUNC(StringFactory), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterStringFactory("string", string_factory.get()));
+    backend->AddPostCleanupCallback([ptr = string_factory.release()] { delete ptr; });
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(ConstructString), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f(const string &in)", FO_SCRIPT_FUNC_THIS(CopyConstructString), FO_SCRIPT_FUNC_THIS_CONV));

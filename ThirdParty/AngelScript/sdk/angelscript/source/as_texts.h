@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -105,6 +105,8 @@
 #define TXT_EXPECTED_STRING                   "Expected string"
 #define TXT_EXPR_DOESNT_EVAL_TO_FUNC          "Expression doesn't evaluate to a function"
 #define TXT_EXPR_MUST_BE_BOOL                 "Expression must be of boolean type"
+#define TXT_EXTERNAL_SHARED_s_NOT_FOUND       "External shared entity '%s' not found"
+#define TXT_EXTERNAL_SHARED_s_CANNOT_REDEF    "External shared entity '%s' cannot redefine the original entity"
 
 #define TXT_FAILED_TO_COMPILE_DEF_ARG_d_IN_FUNC_s "Failed while compiling default arg for parameter %d in function '%s'"
 #define TXT_FAILED_TO_CREATE_TEMP_OBJ             "Previous error occurred while attempting to create a temporary copy of object"
@@ -152,12 +154,14 @@
 #define TXT_INVALID_UNICODE_FORMAT_EXPECTED_d      "Invalid unicode escape sequence, expected %d hex digits"
 #define TXT_INVALID_UNICODE_VALUE                  "Invalid unicode code point"
 #define TXT_INVALID_UNICODE_SEQUENCE_IN_SRC        "Invalid unicode sequence in source"
+#define TXT_INVALID_USE_OF_NAMED_ARGS              "Invalid use of named arguments"
 
 #define TXT_METHOD_CANNOT_OVERRIDE_s                "Method '%s' declared as final and cannot be overridden"
 #define TXT_METHOD_CANT_HAVE_NAME_OF_CLASS          "The method cannot be named with the class name"
 #define TXT_METHOD_s_DOES_NOT_OVERRIDE              "Method '%s' marked as override but does not replace any base class or interface method"
 #define TXT_METHOD_s_s_HAS_NO_RETURN_TYPE           "Method '%s::%s' is missing the return type, nor is it the same name as object to be a constructor"
 #define TXT_MISSING_IMPLEMENTATION_OF_s             "Missing implementation of '%s'"
+#define TXT_MISSING_DEFINITION_OF_s                 "Missing definition of '%s'"
 #define TXT_MIXIN_CANNOT_BE_DECLARED_AS_s           "Mixin class cannot be declared as '%s'"
 #define TXT_MIXIN_CANNOT_HAVE_CONSTRUCTOR           "Mixin classes cannot have constructors or destructors"
 #define TXT_MIXIN_CLASS_CANNOT_INHERIT              "Mixin class cannot inherit from classes"
@@ -195,7 +199,7 @@
 #define TXT_NO_MATCHING_OP_FOUND_FOR_TYPES_s_AND_s "No matching operator that takes the types '%s' and '%s' found"
 #define TXT_NON_CONST_METHOD_ON_CONST_OBJ          "Non-const method call on read-only object reference"
 #define TXT_NONTERMINATED_STRING                   "Non-terminated string literal"
-#define TXT_NOT_A_FUNC_s_IS_VAR                    "Expression doesn't form a function call. '%s' is a variable of a non-function type"
+#define TXT_NOT_A_FUNC_s_IS_TYPE_s                 "Expression doesn't form a function call. '%s' evaluates to the non-function type '%s'"
 #define TXT_NOT_ALL_PATHS_RETURN                   "Not all paths return a value"
 #define TXT_NOT_ENOUGH_VALUES_FOR_LIST             "Not enough values to match pattern"
 #define TXT_s_NOT_DECLARED                         "'%s' is not declared"
@@ -219,10 +223,12 @@
 #define TXT_PARAMETER_ALREADY_DECLARED            "Parameter already declared"
 #define TXT_PARAMETER_CANT_BE_s                   "Parameter type can't be '%s', because the type cannot be instantiated."
 #define TXT_POS_ARG_AFTER_NAMED_ARG               "Positional arguments cannot be passed after named arguments"
+#define TXT_PREV_ERROR_WHILE_COMP_LIST_FOR_TYPE_s "Previous error occurred while attempting to compile initialization list for type '%s'"
 #define TXT_PRIVATE_METHOD_CALL_s                 "Illegal call to private method '%s'"
 #define TXT_PRIVATE_PROP_ACCESS_s                 "Illegal access to private property '%s'"
 #define TXT_PROTECTED_METHOD_CALL_s               "Illegal call to protected method '%s'"
 #define TXT_PROTECTED_PROP_ACCESS_s               "Illegal access to protected property '%s'"
+#define TXT_PROP_ACCESS_WITH_INDEX_ONE_ARG        "Property accessor with index must have 1 and only 1 index argument"
 #define TXT_PROPERTY_ACCESSOR_DISABLED            "Property accessors have been disabled by the application"
 #define TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED "Property accessor must be implemented"
 #define TXT_PROPERTY_CANT_BE_CONST                "Class properties cannot be declared as const"
@@ -345,5 +351,6 @@
 #define TXT_OUT_OF_BOUNDS                 "Out of range"
 #define TXT_EXCEPTION_CAUGHT              "Caught an exception from the application"
 #define TXT_MISMATCH_IN_VALUE_ASSIGN      "Mismatching types in value assignment"
+#define TXT_TOO_MANY_NESTED_CALLS         "Too many nested calls"
 
 #endif

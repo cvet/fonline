@@ -48,14 +48,14 @@ asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngi
 	ctx = asGetActiveContext();
 	if( ctx )
 	{
-		// It may not always be possible to reuse the current context, 
+		// It may not always be possible to reuse the current context,
 		// in which case we'll have to create a new one any way.
 		if( ctx->GetEngine() == objType->GetEngine() && ctx->PushState() == asSUCCESS )
 			isNested = true;
 		else
 			ctx = 0;
 	}
-	
+
 	if( ctx == 0 )
 	{
 		// Request a context from the engine
@@ -81,7 +81,7 @@ asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngi
 	{
 		r = ctx->Execute();
 
-		// We can't allow this execution to be suspended 
+		// We can't allow this execution to be suspended
 		// so resume the execution immediately
 		if( r != asEXECUTION_SUSPENDED )
 			break;
@@ -782,30 +782,43 @@ asCScriptObject &ScriptObject_Assignment(asCScriptObject *other, asCScriptObject
 
 asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 {
-	if( &other != this )
+	CopyFromAs(&other, objType);
+
+	return *this;
+}
+
+// FOnline Patch: default script-object assignment must copy inherited base properties
+// and remain available even when no explicit opAssign behaviour was registered.
+int asCScriptObject::CopyFromAs(const asCScriptObject *other, asCObjectType *in_objType)
+{
+	if( other != this )
 	{
-		if( !other.objType->DerivesFrom(objType) )
+		if( !other->objType->DerivesFrom(in_objType) )
 		{
 			// We cannot allow a value assignment from a type that isn't the same or 
 			// derives from this type as the member properties may not have the same layout
 			asIScriptContext *ctx = asGetActiveContext();
 			ctx->SetException(TXT_MISMATCH_IN_VALUE_ASSIGN);
-			return *this;
+			return asERROR;
 		}
 
 		// If the script class implements the opAssign method, it should be called
-		asCScriptEngine *engine = objType->engine;
-		asCScriptFunction *func = engine->scriptFunctions[objType->beh.copy];
-		if( func->funcType == asFUNC_SYSTEM )
+		asCScriptEngine *engine = in_objType->engine;
+		asCScriptFunction *func = in_objType->beh.copy ? engine->scriptFunctions[in_objType->beh.copy] : nullptr;
+		if( func == nullptr || func->funcType == asFUNC_SYSTEM )
 		{
-			// Copy all properties
-			for( asUINT n = 0; n < objType->properties.GetLength(); n++ )
+			if( in_objType->derivedFrom )
+				CopyFromAs(other, in_objType->derivedFrom);
+
+			for( asUINT n = in_objType->derivedFrom ? in_objType->derivedFrom->properties.GetLength() : 0;
+			     n < in_objType->properties.GetLength();
+			     n++ )
 			{
-				asCObjectProperty *prop = objType->properties[n];
+				asCObjectProperty *prop = in_objType->properties[n];
 				if( prop->type.IsObject() )
 				{
 					void **dst = (void**)(((char*)this) + prop->byteOffset);
-					void **src = (void**)(((char*)&other) + prop->byteOffset);
+					void **src = (void**)(((char*)other) + prop->byteOffset);
 					if( !prop->type.IsObjectHandle() )
 					{
 						if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
@@ -816,20 +829,20 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 					else
 						CopyHandle((asPWORD*)src, (asPWORD*)dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
 				}
-				else if (prop->type.IsFuncdef())
+				else if( prop->type.IsFuncdef() )
 				{
 					asCScriptFunction **dst = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
-					asCScriptFunction **src = (asCScriptFunction**)(((char*)&other) + prop->byteOffset);
-					if (*dst)
+					asCScriptFunction **src = (asCScriptFunction**)(((char*)other) + prop->byteOffset);
+					if( *dst )
 						(*dst)->Release();
 					*dst = *src;
-					if (*dst)
+					if( *dst )
 						(*dst)->AddRef();
 				}
 				else
 				{
 					void *dst = ((char*)this) + prop->byteOffset;
-					void *src = ((char*)&other) + prop->byteOffset;
+					void *src = ((char*)other) + prop->byteOffset;
 					memcpy(dst, src, prop->type.GetSizeInMemoryBytes());
 				}
 			}
@@ -852,27 +865,22 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 
 			if( ctx == 0 )
 			{
-				// Request a context from the engine
 				ctx = engine->RequestContext();
 				if( ctx == 0 )
-				{
-					// TODO: How to best report this failure?
-					return *this;
-				}
+					return asERROR;
 			}
 
-			r = ctx->Prepare(engine->scriptFunctions[objType->beh.copy]);
+			r = ctx->Prepare(engine->scriptFunctions[in_objType->beh.copy]);
 			if( r < 0 )
 			{
 				if( isNested )
 					ctx->PopState();
 				else
 					engine->ReturnContext(ctx);
-				// TODO: How to best report this failure?
-				return *this;
+				return r;
 			}
 
-			r = ctx->SetArgAddress(0, const_cast<asCScriptObject*>(&other));
+			r = ctx->SetArgAddress(0, const_cast<asCScriptObject*>(other));
 			asASSERT( r >= 0 );
 			r = ctx->SetObject(this);
 			asASSERT( r >= 0 );
@@ -897,7 +905,6 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 					// then we should forward that to the outer execution.
 					if( r == asEXECUTION_EXCEPTION )
 					{
-						// TODO: How to improve this exception
 						ctx->SetException(TXT_EXCEPTION_IN_NESTED_CALL);
 					}
 					else if( r == asEXECUTION_ABORTED )
@@ -905,23 +912,19 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 				}
 				else
 				{
-					// Return the context to the engine
 					engine->ReturnContext(ctx);
 				}
-				return *this;
+				return asERROR;
 			}
 
 			if( isNested )
 				ctx->PopState();
 			else
-			{
-				// Return the context to the engine
 				engine->ReturnContext(ctx);
-			}
 		}
 	}
 
-	return *this;
+	return asSUCCESS;
 }
 
 int asCScriptObject::CopyFrom(asIScriptObject *other)
@@ -995,7 +998,7 @@ void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *in_objType
 		{
 			// Call the script class' opAssign method
 			asASSERT(in_objType->flags & asOBJ_SCRIPT_OBJECT );
-			reinterpret_cast<asCScriptObject*>(dst)->CopyFrom(reinterpret_cast<asCScriptObject*>(src));
+			engine->CallObjectMethod(dst, src, funcIndex);
 		}
 	}
 	else if( in_objType->size && (in_objType->flags & asOBJ_POD) )

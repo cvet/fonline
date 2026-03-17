@@ -44,6 +44,18 @@
 
 FO_BEGIN_NAMESPACE
 
+struct AngelScriptThreadCleanupHelper
+{
+    ~AngelScriptThreadCleanupHelper() noexcept
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        AngelScript::asThreadCleanup();
+    }
+};
+
+static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
+
 struct AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*

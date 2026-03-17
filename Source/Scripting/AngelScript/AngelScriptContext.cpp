@@ -95,7 +95,7 @@ void AngelScriptContextManager::CreateContext()
 
     auto* ctx = _asEngine->CreateContext();
     FO_RUNTIME_ASSERT(ctx);
-    vec_add_unique_value(_freeContexts, ctx);
+    _freeContexts.emplace_back(refcount_ptr<AngelScript::asIScriptContext>::adopt, ctx);
 
     auto ctx_ext = SafeAlloc::MakeUnique<AngelScriptContextExtendedData>();
     ctx_ext->StackTrace.reserve(128);

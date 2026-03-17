@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -153,7 +153,6 @@ AS_API asIScriptContext *asGetActiveContext()
 }
 
 // internal
-// Note: There is no asPopActiveContext(), just call tld->activeContexts.PopLast() instead
 asCThreadLocalData *asPushActiveContext(asIScriptContext *ctx)
 {
 	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
@@ -162,6 +161,15 @@ asCThreadLocalData *asPushActiveContext(asIScriptContext *ctx)
 		return 0;
 	tld->activeContexts.PushLast(ctx);
 	return tld;
+}
+
+// internal
+void asPopActiveContext(asCThreadLocalData *tld, asIScriptContext *ctx)
+{
+	UNUSED_VAR(ctx);
+	asASSERT(tld && tld->activeContexts[tld->activeContexts.GetLength() - 1] == ctx);
+	if (tld)
+		tld->activeContexts.PopLast();
 }
 
 asCContext::asCContext(asCScriptEngine *engine, bool holdRef)
@@ -187,8 +195,11 @@ asCContext::asCContext(asCScriptEngine *engine, bool holdRef)
 	m_exceptionCallback         = false;
 	m_regs.doProcessSuspend     = false;
 	m_doSuspend                 = false;
+	m_stdException              = std::exception_ptr();
 	m_userData                  = 0;
 	m_regs.ctx                  = this;
+	BeginScriptCall             = 0;
+	EndScriptCall               = 0;
 }
 
 asCContext::~asCContext()
@@ -466,22 +477,19 @@ int asCContext::Prepare(asIScriptFunction *func)
 	{
 		m_exceptionLine           = -1;
 		m_exceptionFunction       = 0;
-		m_stdException            = nullptr; // (FOnline Patch)
 		m_doAbort                 = false;
 		m_doSuspend               = false;
 		m_regs.doProcessSuspend   = m_lineCallback;
 		m_externalSuspendRequest  = false;
+		m_stdException            = std::exception_ptr();
 	}
+	else
+		m_stdException = std::exception_ptr();
 	m_status = asEXECUTION_PREPARED;
 	m_regs.programPointer = 0;
 
 	// Reserve space for the arguments and return value
-#if 0 // (FOnline Patch)
 	m_regs.stackFramePointer = m_regs.stackPointer - m_argumentsSize - m_returnValueSize;
-#else
-	int size = m_argumentsSize + m_returnValueSize;
-	m_regs.stackFramePointer = m_regs.stackPointer - size - (size % 2 == 1 ? 1 : 0);
-#endif
 	m_originalStackPointer   = m_regs.stackPointer;
 	m_regs.stackPointer      = m_regs.stackFramePointer;
 
@@ -507,6 +515,11 @@ int asCContext::Unprepare()
 	if( m_status == asEXECUTION_ACTIVE || m_status == asEXECUTION_SUSPENDED )
 		return asCONTEXT_ACTIVE;
 
+	// Set the context as active so that any clean up code can use access it if desired
+	asCThreadLocalData *tld = asPushActiveContext((asIScriptContext *)this);
+	asDWORD count = m_refCount.get();
+	UNUSED_VAR(count);
+
 	// Only clean the stack if the context was prepared but not executed until the end
 	if( m_status != asEXECUTION_UNINITIALIZED &&
 		m_status != asEXECUTION_FINISHED )
@@ -516,6 +529,11 @@ int asCContext::Unprepare()
 
 	// Release the returned object (if any)
 	CleanReturnObject();
+
+	// TODO: Unprepare is called during destruction, so nobody
+	//       must be allowed to keep an extra reference
+	asASSERT(m_refCount.get() == count);
+	asPopActiveContext(tld, this);
 
 	// Release the object if it is a script object
 	if( m_initialFunction && m_initialFunction->objectType && (m_initialFunction->objectType->flags & asOBJ_SCRIPT_OBJECT) )
@@ -542,7 +560,6 @@ int asCContext::Unprepare()
 	m_initialFunction = 0;
 	m_currentFunction = 0;
 	m_exceptionFunction = 0;
-	m_stdException = nullptr; // (FOnline Patch)
 	m_regs.programPointer = 0;
 
 	// Reset status
@@ -1194,26 +1211,25 @@ int asCContext::Execute()
 		return asCONTEXT_NOT_PREPARED;
 	}
 
-	bool callBeginScriptCall = m_status != asEXECUTION_SUSPENDED; // (FOnline Patch)
+	// (FOnline Patch) Mirror host script-call hooks for top-level Execute and nested script calls.
+	bool callBeginScriptCall = m_status != asEXECUTION_SUSPENDED;
 
 	m_status = asEXECUTION_ACTIVE;
 
 	asCThreadLocalData *tld = asPushActiveContext((asIScriptContext *)this);
 
-	if( m_regs.programPointer == 0 )
+	// Make sure there are not too many nested calls, as it could crash the application 
+	// by filling up the thread call stack
+	if (tld->activeContexts.GetLength() > m_engine->ep.maxNestedCalls)
+		SetInternalException(TXT_TOO_MANY_NESTED_CALLS);
+	else if( m_regs.programPointer == 0 )
 	{
 		if( m_currentFunction->funcType == asFUNC_DELEGATE )
 		{
 			// Push the object pointer onto the stack
-#if 1 // (FOnline Patch)
 			asASSERT( m_regs.stackPointer - AS_PTR_SIZE >= m_stackBlocks[m_stackIndex] );
 			m_regs.stackPointer -= AS_PTR_SIZE;
 			m_regs.stackFramePointer -= AS_PTR_SIZE;
-#else
-			asASSERT( m_regs.stackPointer - 2 >= m_stackBlocks[m_stackIndex] );
-			m_regs.stackPointer -= 2;
-			m_regs.stackFramePointer -= 2;
-#endif
 			*(asPWORD*)m_regs.stackPointer = asPWORD(m_currentFunction->objForDelegate);
 
 			// Make the call to the delegated object method
@@ -1281,6 +1297,9 @@ int asCContext::Execute()
 
 			// Set up the internal registers for executing the script function
 			PrepareScriptFunction();
+
+			if( callBeginScriptCall && BeginScriptCall != 0 && m_status == asEXECUTION_ACTIVE )
+				BeginScriptCall(this, m_currentFunction);
 		}
 		else if( m_currentFunction->funcType == asFUNC_SYSTEM )
 		{
@@ -1302,9 +1321,6 @@ int asCContext::Execute()
 			asASSERT( m_status == asEXECUTION_EXCEPTION );
 		}
 	}
-
-	if (callBeginScriptCall && BeginScriptCall) // (FOnline Patch)
-		BeginScriptCall(this, m_currentFunction);
 
 	asUINT gcPreObjects = 0;
 	if( m_engine->ep.autoGarbageCollect )
@@ -1342,13 +1358,7 @@ int asCContext::Execute()
 	}
 
 	// Pop the active context
-	asASSERT(tld && tld->activeContexts[tld->activeContexts.GetLength()-1] == this);
-	if( tld )
-		tld->activeContexts.PopLast();
-
-	// (FOnline Patch)
-	if (m_status == asEXECUTION_FINISHED && EndScriptCall)
-		EndScriptCall(this);
+	asPopActiveContext(tld, this);
 
 	if( m_status == asEXECUTION_FINISHED )
 	{
@@ -1552,14 +1562,14 @@ int asCContext::GetLineNumber(asUINT stackLevel, int *column, const char **secti
 	if( stackLevel == 0 )
 	{
 		func = m_currentFunction;
-		if( func && func->scriptData == 0 ) return 0;
+		if( func->scriptData == 0 ) return 0;
 		bytePos = m_regs.programPointer;
 	}
 	else
 	{
 		asPWORD *s = m_callStack.AddressOf() + (GetCallstackSize()-stackLevel-1)*CALLSTACK_FRAME_SIZE;
 		func = (asCScriptFunction*)s[1];
-		if( func && func->scriptData == 0 ) return 0;
+		if( func->scriptData == 0 ) return 0;
 		bytePos = (asDWORD*)s[2];
 
 		// Subract 1 from the bytePos, because we want the line where
@@ -1716,8 +1726,7 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 
 	PrepareScriptFunction();
 
-	// (FOnline Patch)
-	if (BeginScriptCall)
+	if( BeginScriptCall != 0 && m_status == asEXECUTION_ACTIVE )
 		BeginScriptCall(this, m_currentFunction);
 }
 
@@ -1970,6 +1979,10 @@ void asCContext::ExecuteNext()
 	// Return to the caller, and remove the arguments from the stack
 	case asBC_RET:
 		{
+			// (FOnline Patch) Notify the host before unwinding the current script frame.
+			if( EndScriptCall != 0 )
+				EndScriptCall(this);
+
 			// Return if this was the first function, or a nested execution
 			if( m_callStack.GetLength() == 0 ||
 				m_callStack[m_callStack.GetLength() - CALLSTACK_FRAME_SIZE] == 0 )
@@ -1977,10 +1990,6 @@ void asCContext::ExecuteNext()
 				m_status = asEXECUTION_FINISHED;
 				return;
 			}
-
-			// (FOnline Patch)
-			if (EndScriptCall)
-				EndScriptCall(this);
 
 			asWORD w = asBC_WORDARG0(l_bc);
 
@@ -2516,18 +2525,9 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_STR:
-		{
-			// Get the string id from the argument
-			asWORD w = asBC_WORDARG0(l_bc);
-			// Push the string pointer on the stack
-			const asCString &b = m_engine->GetConstantString(w);
-			l_sp -= AS_PTR_SIZE;
-			*(asPWORD*)l_sp = (asPWORD)b.AddressOf();
-			// Push the string length on the stack
-			--l_sp;
-			*l_sp = (asDWORD)b.GetLength();
-			l_bc++;
-		}
+		// TODO: NEWSTRING: Deprecate this instruction
+		asASSERT(false);
+		l_bc++;
 		break;
 
 	case asBC_CALLSYS:
@@ -4388,23 +4388,7 @@ void asCContext::ExecuteNext()
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
-				void* ptr = 0;
-#ifdef AS_NO_EXCEPTIONS // (FOnline Patch)
-				ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
-#else
-				try
-				{
-					ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
-				}
-				catch (const std::exception& ex)
-				{
-					SetException(ex.what());
-				}
-				catch (...)
-				{
-					SetException(TXT_EXCEPTION_CAUGHT);
-				}
-#endif
+				void *ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
 				m_callingSystemFunction = 0;
 				*(asPWORD*)&m_regs.valueRegister = (asPWORD)ptr;
 			}
@@ -4545,7 +4529,6 @@ void asCContext::SetInternalException(const char *descr)
 
 	m_exceptionString       = descr;
 	m_exceptionFunction     = m_currentFunction->id;
-	m_stdException          = std::current_exception(); // (FOnline Patch)
 
 	if( m_currentFunction->scriptData )
 	{
@@ -5071,12 +5054,6 @@ const char *asCContext::GetExceptionString()
 }
 
 // interface
-std::exception_ptr& asCContext::GetStdException() // (FOnline Patch)
-{
-	return m_stdException;
-}
-
-// interface
 asEContextState asCContext::GetState() const
 {
 	return m_status;
@@ -5217,12 +5194,14 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		func(&gen);
 	}
-	catch (const std::exception& ex) // (FOnline Patch)
+	catch( const std::exception &ex )
 	{
+		m_stdException = std::current_exception();
 		SetException(ex.what());
 	}
 	catch (...)
 	{
+		m_stdException = std::exception_ptr();
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
 		SetException(TXT_EXCEPTION_CAUGHT);
@@ -5234,17 +5213,11 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	m_regs.objectRegister = gen.objectRegister;
 	m_regs.objectType = descr->returnType.GetTypeInfo();
 
-	// (FOnline Patch)
-	if( (descr->returnType.IsObject() || descr->returnType.IsFuncdef()) && !descr->returnType.IsReference() )
+	// (FOnline Patch) Match native system-call semantics for @+ returns in generic calls.
+	if( sysFunc->returnAutoHandle && m_regs.objectRegister )
 	{
-		if( descr->returnType.IsObjectHandle() )
-		{
-			if( sysFunc->returnAutoHandle && m_regs.objectRegister )
-			{
-				asASSERT( !(descr->returnType.GetTypeInfo()->flags & asOBJ_NOCOUNT) );
-				m_engine->CallObjectMethod(m_regs.objectRegister, CastToObjectType(descr->returnType.GetTypeInfo())->beh.addref);
-			}
-		}
+		asASSERT( !(descr->returnType.GetTypeInfo()->flags & asOBJ_NOCOUNT) );
+		m_engine->CallObjectMethod(m_regs.objectRegister, CastToObjectType(descr->returnType.GetTypeInfo())->beh.addref);
 	}
 
 	// Clean up arguments
@@ -5278,6 +5251,12 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 
 	// Return how much should be popped from the stack
 	return popSize;
+	}
+
+	// (FOnline Patch) Expose the preserved host exception to the engine integration layer.
+	std::exception_ptr &asCContext::GetStdException()
+{
+	return m_stdException;
 }
 
 // interface

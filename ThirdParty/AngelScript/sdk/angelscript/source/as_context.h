@@ -46,6 +46,8 @@
 #include "as_objecttype.h"
 #include "as_callfunc.h"
 
+#include <exception>
+
 BEGIN_AS_NAMESPACE
 
 class asCScriptFunction;
@@ -54,12 +56,6 @@ class asCScriptEngine;
 class asCContext : public asIScriptContext
 {
 public:
-	// (FOnline Patch)
-	using BeginScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*);
-	using EndScriptCallFuncType = void(*)(asIScriptContext*) noexcept;
-	BeginScriptCallFuncType BeginScriptCall{};
-	EndScriptCallFuncType EndScriptCall{};
-
 	// Memory management
 	int  AddRef() const;
 	int  Release() const;
@@ -109,7 +105,6 @@ public:
 	int                GetExceptionLineNumber(int *column, const char **sectionName);
 	asIScriptFunction *GetExceptionFunction();
 	const char *       GetExceptionString();
-	std::exception_ptr& GetStdException(); // (FOnline Patch)
 	int                SetExceptionCallback(asSFuncPtr callback, void *obj, int callConv);
 	void               ClearExceptionCallback();
 
@@ -137,6 +132,11 @@ public:
 	// Internal public functions
 	asCContext(asCScriptEngine *engine, bool holdRef);
 	virtual ~asCContext();
+
+	// (FOnline Patch) Preserve native exceptions and expose script call hooks to the host.
+	std::exception_ptr &GetStdException();
+	void (*BeginScriptCall)(asIScriptContext *ctx, asIScriptFunction *func);
+	void (*EndScriptCall)(asIScriptContext *ctx);
 
 //protected:
 	friend class asCScriptEngine;
@@ -193,11 +193,12 @@ public:
 	bool      m_needToCleanupArgs;
 	bool      m_inExceptionHandler;
 	asCString m_exceptionString;
-	std::exception_ptr m_stdException; // (FOnline Patch)
 	int       m_exceptionFunction;
 	int       m_exceptionSectionIdx;
 	int       m_exceptionLine;
 	int       m_exceptionColumn;
+	// (FOnline Patch) Preserve the original host exception captured during script execution.
+	std::exception_ptr m_stdException;
 
 	// The last prepared function, and some cached values related to it
 	asCScriptFunction *m_initialFunction;

@@ -1,24 +1,24 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-      this software in a product, an acknowledgment in the product 
+      this software in a product, an acknowledgment in the product
       documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -45,18 +45,18 @@ BEGIN_AS_NAMESPACE
 
 #ifdef AS_NO_THREADS
 
-#define DECLARECRITICALSECTION(x) 
-#define ENTERCRITICALSECTION(x) 
-#define LEAVECRITICALSECTION(x) 
+#define DECLARECRITICALSECTION(x)
+#define ENTERCRITICALSECTION(x)
+#define LEAVECRITICALSECTION(x)
 
 inline bool tryEnter() { return true; }
 #define TRYENTERCRITICALSECTION(x) tryEnter()
 
-#define DECLAREREADWRITELOCK(x)    
-#define ACQUIREEXCLUSIVE(x)        
-#define RELEASEEXCLUSIVE(x)        
-#define ACQUIRESHARED(x)           
-#define RELEASESHARED(x)           
+#define DECLAREREADWRITELOCK(x)
+#define ACQUIREEXCLUSIVE(x)
+#define RELEASEEXCLUSIVE(x)
+#define ACQUIRESHARED(x)
+#define RELEASESHARED(x)
 
 #else
 
@@ -71,35 +71,79 @@ inline bool tryEnter() { return true; }
 #define ACQUIRESHARED(x)           x.AcquireShared()
 #define RELEASESHARED(x)           x.ReleaseShared()
 
-#ifdef AS_CXX_THREADS // (FOnline Patch)
+#ifdef AS_CXX_THREADS
+
+END_AS_NAMESPACE
+#include <mutex>
+#include <shared_mutex>
+BEGIN_AS_NAMESPACE
 
 class asCThreadCriticalSection
 {
 public:
-	void Enter() { mutex.lock(); }
-	void Leave() { mutex.unlock(); }
-	bool TryEnter() { return mutex.try_lock(); }
+	asCThreadCriticalSection() = default;
+	~asCThreadCriticalSection() = default;
+
+	void Enter()
+	{
+		cs.lock();
+	}
+
+	void Leave()
+	{
+		cs.unlock();
+	}
+
+	bool TryEnter()
+	{
+		return cs.try_lock();
+	}
 
 protected:
-	std::mutex mutex {};
+	std::mutex cs;
 };
 
 class asCThreadReadWriteLock
 {
 public:
-	void AcquireExclusive() { mutex.lock(); }
-	void ReleaseExclusive() { mutex.unlock(); }
-	bool TryAcquireExclusive() { return mutex.try_lock(); }
+	asCThreadReadWriteLock() = default;
+	~asCThreadReadWriteLock() = default;
 
-	void AcquireShared() { mutex.lock_shared(); }
-	void ReleaseShared() { mutex.unlock_shared(); }
-	bool TryAcquireShared() { return mutex.try_lock_shared(); }
+	void AcquireExclusive()
+	{
+		lock.lock();
+	}
+
+	void ReleaseExclusive()
+	{
+		lock.unlock();
+	}
+
+	bool TryAcquireExclusive()
+	{
+		return lock.try_lock();
+	}
+
+	void AcquireShared()
+	{
+		lock.lock_shared();
+	}
+
+	void ReleaseShared()
+	{
+		lock.unlock_shared();
+	}
+
+	bool TryAcquireShared()
+	{
+		return lock.try_lock_shared();
+	}
 
 protected:
-	std::shared_mutex mutex {};
+	std::shared_mutex lock;
 };
 
-#elif defined(AS_POSIX_THREADS) // (FOnline Patch)
+#elif defined(AS_POSIX_THREADS)
 
 END_AS_NAMESPACE
 #include <pthread.h>
@@ -143,7 +187,9 @@ END_AS_NAMESPACE
 #ifdef AS_XBOX360
 #include <xtl.h>
 #else
-#define WIN32_LEAN_AND_MEAN
+#ifndef WIN32_LEAN_AND_MEAN
+  #define WIN32_LEAN_AND_MEAN
+#endif
 #ifndef _WIN32_WINNT
   #define _WIN32_WINNT 0x0600 // We need this to get the declaration for Windows Phone compatible Ex functions
 #endif
@@ -182,11 +228,11 @@ public:
 	void ReleaseShared();
 
 protected:
-	// The Slim Read Write Lock object, SRWLOCK, is more efficient 
+	// The Slim Read Write Lock object, SRWLOCK, is more efficient
 	// but it is only available from Windows Vista so we cannot use it and
 	// maintain compatibility with olders versions of Windows.
 
-	// Critical sections and semaphores are available on Windows XP and onwards. 
+	// Critical sections and semaphores are available on Windows XP and onwards.
 	// Windows XP is oldest version we support with multithreading.
 	
 	// The implementation is based on the following article, that shows

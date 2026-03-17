@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -279,11 +279,11 @@ int asCBuilder::Build()
 	Reset();
 
 	// The template callbacks must only be called after the subtypes have a known structure,
-	// otherwise the callback may think it is not possible to create the template instance, 
+	// otherwise the callback may think it is not possible to create the template instance,
 	// even though it is.
-	// TODO: This flag shouldn't be set globally in the engine, as it would mean that another 
-	//       thread requesting a template instance in parallel to the compilation wouldn't 
-	//       evaluate the template instance. 
+	// TODO: This flag shouldn't be set globally in the engine, as it would mean that another
+	//       thread requesting a template instance in parallel to the compilation wouldn't
+	//       evaluate the template instance.
 	engine->deferValidationOfTemplateTypes = true;
 	asUINT numTempl = (asUINT)engine->templateInstanceTypes.GetLength();
 
@@ -293,7 +293,7 @@ int asCBuilder::Build()
 	CompileInterfaces();
 	CompileClasses(numTempl);
 
-	// Evaluate the template instances one last time, this time with error messages, as we know 
+	// Evaluate the template instances one last time, this time with error messages, as we know
 	// all classes have been fully built and it is known which ones will need garbage collection.
 	EvaluateTemplateInstances(numTempl, false);
 	engine->deferValidationOfTemplateTypes = false;
@@ -376,7 +376,7 @@ int asCBuilder::CompileGlobalVar(const char *sectionName, const char *code, int 
 	if( numWarnings > 0 && engine->ep.compilerWarnings == 2 )
 		WriteError(TXT_WARNINGS_TREATED_AS_ERROR, 0, 0);
 
-	// None of the functions should be added to the module if any error occurred, 
+	// None of the functions should be added to the module if any error occurred,
 	// or it was requested that the functions wouldn't be added to the scope
 	if( numErrors > 0 )
 	{
@@ -520,12 +520,12 @@ int asCBuilder::CompileFunction(const char *sectionName, const char *code, int l
 	node = node->firstChild;
 
 	// Create the function
-	bool isConstructor, isDestructor, isPrivate, isProtected, isFinal, isOverride, isShared;
+	asSFunctionTraits funcTraits;
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, compileFlags & asCOMP_ADD_TO_MODULE ? module : 0, asFUNC_SCRIPT);
 	if( func == 0 )
 		return asOUT_OF_MEMORY;
 
-	GetParsedFunctionDetails(node, scripts[0], 0, func->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, func->defaultArgs, func->isReadOnly, isConstructor, isDestructor, isPrivate, isProtected, isFinal, isOverride, isShared, module->defaultNamespace);
+	GetParsedFunctionDetails(node, scripts[0], 0, func->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, func->defaultArgs, funcTraits, module->defaultNamespace);
 	func->id                           = engine->GetNextScriptFunctionId();
 	func->scriptData->scriptSectionIdx = engine->GetScriptSectionNameIndex(sectionName ? sectionName : "");
 	int row, col;
@@ -552,7 +552,7 @@ int asCBuilder::CompileFunction(const char *sectionName, const char *code, int l
 		}
 
 		module->globalFunctions.Put(func);
-		
+
 		module->AddScriptFunction(func);
 	}
 	else
@@ -588,7 +588,7 @@ int asCBuilder::CompileFunction(const char *sectionName, const char *code, int l
 	if( numWarnings > 0 && engine->ep.compilerWarnings == 2 )
 		WriteError(TXT_WARNINGS_TREATED_AS_ERROR, 0, 0);
 
-	// None of the functions should be added to the module if any error occurred, 
+	// None of the functions should be added to the module if any error occurred,
 	// or it was requested that the functions wouldn't be added to the scope
 	if( !(compileFlags & asCOMP_ADD_TO_MODULE) || numErrors > 0 )
 	{
@@ -873,6 +873,10 @@ void asCBuilder::CompileFunctions()
 		// Don't compile the function again if it was an existing shared function
 		if( current->isExistingShared ) continue;
 
+		// Don't compile if there is no statement block
+		if (current->node && !(current->node->nodeType == snStatementBlock || current->node->lastChild->nodeType == snStatementBlock))
+			continue;
+
 		asCCompiler compiler(engine);
 		asCScriptFunction *func = engine->scriptFunctions[current->funcId];
 
@@ -1136,7 +1140,7 @@ asCGlobalProperty *asCBuilder::GetGlobalProperty(const char *prop, asSNameSpace 
 			if( isPureConstant ) *isPureConstant = globDesc->isPureConstant;
 			if( constantValue  ) *constantValue  = globDesc->constantValue;
 		}
-		else 
+		else
 #endif
 		if( isAppProp )
 		{
@@ -1264,7 +1268,7 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 
 		// Move to next parameter
 		n = n->next->next;
-		if( n && n->nodeType == snIdentifier ) 
+		if( n && n->nodeType == snIdentifier )
 		{
 			func->parameterNames[index] = asCString(&source.code[n->tokenPos], n->tokenLength);
 			n = n->next;
@@ -1293,17 +1297,17 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 	{
 		if( objType == 0 )
 			return asINVALID_DECLARATION;
-		func->isReadOnly = true;
+		func->SetReadOnly(true);
 
 		n = n->next;
 	}
 	else
-		func->isReadOnly = false;
+		func->SetReadOnly(false);
 
 	// If the caller expects a list pattern, check for the existence, else report an error if not
 	if( listPattern )
 	{
-		if( n == 0 || n->nodeType != snListPattern ) 
+		if( n == 0 || n->nodeType != snListPattern )
 			return asINVALID_DECLARATION;
 		else
 		{
@@ -1316,7 +1320,7 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 		if( n )
 			return asINVALID_DECLARATION;
 	}
-	
+
 	// Make sure the default args are declared correctly
 	ValidateDefaultArgs(&source, node, func);
 
@@ -1541,13 +1545,14 @@ int asCBuilder::RegisterFuncDef(asCScriptNode *node, asCScriptCode *file, asSNam
 	// namespace and parent are exclusively mutual
 	asASSERT((ns == 0 && parent) || (ns && parent == 0));
 
-	// TODO: redesign: Allow funcdefs to be explicitly declared as 'shared'. In this case
-	//                 an error should be given if any of the arguments/return type is not
-	//                 shared.
+	// Skip leading 'shared' and 'external' keywords
+	asCScriptNode *n = node->firstChild;
+	while (n->nodeType == snIdentifier)
+		n = n->next;
 
 	// Find the name
-	asASSERT( node->firstChild->nodeType == snDataType );
-	asCScriptNode *n = node->firstChild->next->next;
+	asASSERT( n->nodeType == snDataType );
+	n = n->next->next;
 
 	asCString name;
 	name.Assign(&file->code[n->tokenPos], n->tokenLength);
@@ -1599,22 +1604,14 @@ int asCBuilder::RegisterFuncDef(asCScriptNode *node, asCScriptCode *file, asSNam
 void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 {
 	asCArray<asCString *>      defaultArgs;
-	bool                       isConstMethod;
-	bool                       isConstructor;
-	bool                       isDestructor;
-	bool                       isProtected;
-	bool                       isPrivate;
-	bool                       isOverride;
-	bool                       isFinal;
-	bool                       isShared;
+	asSFunctionTraits          funcTraits;
 
 	asCFuncdefType *fdt = module->funcDefs[funcDef->idx];
 	asASSERT( fdt );
 	asCScriptFunction *func = fdt->funcdef;
 
-	// TODO: It should be possible to declare funcdef as shared. In this case a compiler error will be given if any of the types it uses are not shared
 	asSNameSpace *implicitNs = func->nameSpace ? func->nameSpace : fdt->parentClass->nameSpace;
-	GetParsedFunctionDetails(funcDef->node, funcDef->script, fdt->parentClass, funcDef->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared, implicitNs);
+	GetParsedFunctionDetails(funcDef->node, funcDef->script, fdt->parentClass, funcDef->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, defaultArgs, funcTraits, implicitNs);
 
 	// There should not be any defaultArgs, but if there are any we need to delete them to avoid leaks
 	for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
@@ -1622,16 +1619,34 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 			asDELETE(defaultArgs[n], asCString);
 
 	// All funcdefs are shared, unless one of the parameter types or return type is not shared
-	isShared = true;
-	if( func->returnType.GetTypeInfo() && !func->returnType.GetTypeInfo()->IsShared() )
-		isShared = false;
-	for( asUINT n = 0; isShared && n < func->parameterTypes.GetLength(); n++ )
-		if( func->parameterTypes[n].GetTypeInfo() && !func->parameterTypes[n].GetTypeInfo()->IsShared() )
-			isShared = false;
-	func->isShared = isShared;
+	bool declaredShared = funcTraits.GetTrait(asTRAIT_SHARED);
+	funcTraits.SetTrait(asTRAIT_SHARED, true);
+	if (func->returnType.GetTypeInfo() && !func->returnType.GetTypeInfo()->IsShared())
+	{
+		if (declaredShared)
+		{
+			asCString s;
+			s.Format(TXT_SHARED_CANNOT_USE_NON_SHARED_TYPE_s, func->returnType.GetTypeInfo()->name.AddressOf());
+			WriteError(s.AddressOf(), funcDef->script, funcDef->node);
+		}
+		funcTraits.SetTrait(asTRAIT_SHARED, false);
+	}
+	for( asUINT n = 0; funcTraits.GetTrait(asTRAIT_SHARED) && n < func->parameterTypes.GetLength(); n++ )
+		if (func->parameterTypes[n].GetTypeInfo() && !func->parameterTypes[n].GetTypeInfo()->IsShared())
+		{
+			if (declaredShared)
+			{
+				asCString s;
+				s.Format(TXT_SHARED_CANNOT_USE_NON_SHARED_TYPE_s, func->parameterTypes[n].GetTypeInfo()->name.AddressOf());
+				WriteError(s.AddressOf(), funcDef->script, funcDef->node);
+			}
+			funcTraits.SetTrait(asTRAIT_SHARED, false);
+		}
+	func->SetShared(funcTraits.GetTrait(asTRAIT_SHARED));
 
 	// Check if there is another identical funcdef from another module and if so reuse that instead
-	if( func->isShared )
+	bool found = false;
+	if( func->IsShared() )
 	{
 		for( asUINT n = 0; n < engine->funcDefs.GetLength(); n++ )
 		{
@@ -1639,7 +1654,7 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 			if( fdt2 == 0 || fdt == fdt2 )
 				continue;
 
-			if( !fdt2->funcdef->isShared )
+			if( !fdt2->funcdef->IsShared() )
 				continue;
 
 			if( fdt2->name == fdt->name &&
@@ -1654,10 +1669,23 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 				engine->funcDefs.RemoveValue(fdt);
 
 				fdt->ReleaseInternal();
+				found = true;
 				break;
 			}
 		}
 	}
+
+	// If the funcdef was declared as external then the existing shared declaration must have been found
+	if (funcTraits.GetTrait(asTRAIT_EXTERNAL) && !found)
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_NOT_FOUND, funcDef->name.AddressOf());
+		WriteError(str, funcDef->script, funcDef->node);
+	}
+
+	// Remember if the type was declared as external so the saved bytecode can be flagged accordingly
+	if (funcTraits.GetTrait(asTRAIT_EXTERNAL) && found)
+		module->externalTypes.PushLast(engine->scriptFunctions[funcDef->idx]->funcdefType);
 }
 
 int asCBuilder::RegisterGlobalVar(asCScriptNode *node, asCScriptCode *file, asSNameSpace *ns)
@@ -1807,6 +1835,7 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 	bool isFinal = false;
 	bool isShared = false;
 	bool isAbstract = false;
+	bool isExternal = false;
 
 	// Check the class modifiers
 	while( n->tokenType == ttIdentifier )
@@ -1835,6 +1864,16 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 				WriteWarning(msg, file, n);
 			}
 			isShared = true;
+		}
+		else if (file->TokenEquals(n->tokenPos, n->tokenLength, EXTERNAL_TOKEN))
+		{
+			if (isExternal)
+			{
+				asCString msg;
+				msg.Format(TXT_ATTR_s_INFORMED_MULTIPLE_TIMES, asCString(&file->code[n->tokenPos], n->tokenLength).AddressOf());
+				WriteWarning(msg, file, n);
+			}
+			isExternal = true;
 		}
 		else if( file->TokenEquals(n->tokenPos, n->tokenLength, ABSTRACT_TOKEN) )
 		{
@@ -1878,11 +1917,25 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 	decl->name             = name;
 	decl->script           = file;
 	decl->node             = node;
-	asCObjectType *st = 0;
+
+	// External shared interfaces must not try to redefine the interface
+	if (isExternal && (n->next == 0 || n->next->tokenType != ttEndStatement))
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_CANNOT_REDEF, name.AddressOf());
+		WriteError(str, file, n);
+	}
+	else if (!isExternal && n->next && n->next->tokenType == ttEndStatement)
+	{
+		asCString str;
+		str.Format(TXT_MISSING_DEFINITION_OF_s, name.AddressOf());
+		WriteError(str, file, n);
+	}
 
 	// If this type is shared and there already exist another shared
 	// type of the same name, then that one should be used instead of
 	// creating a new one.
+	asCObjectType *st = 0;
 	if( isShared )
 	{
 		for( asUINT i = 0; i < engine->sharedScriptTypes.GetLength(); i++ )
@@ -1904,6 +1957,18 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 		}
 	}
 
+	// If the class was declared as external then it must have been compiled in a different module first
+	if (isExternal && decl->typeInfo == 0)
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_NOT_FOUND, name.AddressOf());
+		WriteError(str, file, n);
+	}
+
+	// Remember if the class was declared as external so the saved bytecode can be flagged accordingly
+	if (isExternal)
+		module->externalTypes.PushLast(st);
+
 	if (!decl->isExistingShared)
 	{
 		// Create a new object type for this class
@@ -1918,7 +1983,7 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 		// callback may be called with a script class before the compilation
 		// completes, and until it is known, the callback must assume the class
 		// is garbage collected.
-		st->flags = asOBJ_REF | asOBJ_SCRIPT_OBJECT | asOBJ_GC;
+		st->flags = asOBJ_REF | asOBJ_SCRIPT_OBJECT | asOBJ_GC | asOBJ_IMPLICIT_HANDLE;
 
 		if (isShared)
 			st->flags |= asOBJ_SHARED;
@@ -1931,8 +1996,6 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 
 		if (node->tokenType == ttHandle)
 			st->flags |= asOBJ_IMPLICIT_HANDLE;
-
-		st->flags |= asOBJ_IMPLICIT_HANDLE; // (FOnline Patch)
 
 		st->size = sizeof(asCScriptObject);
 		st->name = name;
@@ -1993,20 +2056,25 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSNameSpace *ns)
 {
 	asCScriptNode *n = node->firstChild;
-	asCString name(&file->code[n->tokenPos], n->tokenLength);
 
 	bool isShared = false;
-	if( name == SHARED_TOKEN )
+	bool isExternal = false;
+	while( n->nodeType == snIdentifier )
 	{
-		isShared = true;
-
+		if (file->TokenEquals(n->tokenPos, n->tokenLength, SHARED_TOKEN))
+			isShared = true;
+		else if (file->TokenEquals(n->tokenPos, n->tokenLength, EXTERNAL_TOKEN))
+			isExternal = true;
+		else
+			break;
 		n = n->next;
-		name.Assign(&file->code[n->tokenPos], n->tokenLength);
 	}
 
 	int r, c;
 	file->ConvertPosToRowCol(n->tokenPos, &r, &c);
 
+	asCString name;
+	name.Assign(&file->code[n->tokenPos], n->tokenLength);
 	CheckNameConflict(name.AddressOf(), n, file, ns);
 
 	sClassDeclaration *decl = asNEW(sClassDeclaration);
@@ -2020,6 +2088,20 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 	decl->name             = name;
 	decl->script           = file;
 	decl->node             = node;
+
+	// External shared interfaces must not try to redefine the interface
+	if (isExternal && (n->next == 0 || n->next->tokenType != ttEndStatement) )
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_CANNOT_REDEF, name.AddressOf());
+		WriteError(str, file, n);
+	}
+	else if (!isExternal && n->next && n->next->tokenType == ttEndStatement)
+	{
+		asCString str;
+		str.Format(TXT_MISSING_DEFINITION_OF_s, name.AddressOf());
+		WriteError(str, file, n);
+	}
 
 	// If this type is shared and there already exist another shared
 	// type of the same name, then that one should be used instead of
@@ -2040,9 +2122,22 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 				decl->typeInfo = st;
 				module->classTypes.PushLast(st);
 				st->AddRefInternal();
+
+				// Remember if the interface was declared as external so the saved bytecode can be flagged accordingly
+				if (isExternal)
+					module->externalTypes.PushLast(st);
+
 				return 0;
 			}
 		}
+	}
+
+	// If the interface was declared as external then it must have been compiled in a different module first
+	if (isExternal)
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_NOT_FOUND, name.AddressOf());
+		WriteError(str, file, n);
 	}
 
 	// Register the object type for the interface
@@ -2050,12 +2145,10 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 	if( st == 0 )
 		return asOUT_OF_MEMORY;
 
-	st->flags = asOBJ_REF | asOBJ_SCRIPT_OBJECT;
+	st->flags = asOBJ_REF | asOBJ_SCRIPT_OBJECT | asOBJ_IMPLICIT_HANDLE;
 
 	if( isShared )
 		st->flags |= asOBJ_SHARED;
-
-	st->flags |= asOBJ_IMPLICIT_HANDLE; // (FOnline Patch)
 
 	st->size = 0; // Cannot be instantiated
 	st->name = name;
@@ -2593,8 +2686,10 @@ void asCBuilder::DetermineTypeRelations()
 		asASSERT(node && node->nodeType == snInterface);
 		node = node->firstChild;
 
-		// Skip the 'shared' keyword
-		if (intfType->IsShared())
+		// Skip the 'shared' & 'external' keywords
+		while( node->nodeType == snIdentifier &&
+			   (intfDecl->script->TokenEquals(node->tokenPos, node->tokenLength, SHARED_TOKEN) ||
+				intfDecl->script->TokenEquals(node->tokenPos, node->tokenLength, EXTERNAL_TOKEN)) )
 			node = node->next;
 
 		// Skip the name
@@ -2684,7 +2779,8 @@ void asCBuilder::DetermineTypeRelations()
 
 		while (file->TokenEquals(node->tokenPos, node->tokenLength, FINAL_TOKEN) ||
 			file->TokenEquals(node->tokenPos, node->tokenLength, SHARED_TOKEN) ||
-			file->TokenEquals(node->tokenPos, node->tokenLength, ABSTRACT_TOKEN))
+			file->TokenEquals(node->tokenPos, node->tokenLength, ABSTRACT_TOKEN) ||
+			file->TokenEquals(node->tokenPos, node->tokenLength, EXTERNAL_TOKEN))
 		{
 			node = node->next;
 		}
@@ -3040,82 +3136,77 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 		while( node && node->nodeType == snIdentifier )
 			node = node->next;
 
-		while( node )
+		while( node && node->nodeType == snDeclaration )
 		{
-			if( node->nodeType == snDeclaration )
+			asCScriptNode *nd = node->firstChild;
+
+			// Is the property declared as private or protected?
+			bool isPrivate = false, isProtected = false;
+			if( nd && nd->tokenType == ttPrivate )
 			{
-				asCScriptNode *nd = node->firstChild;
-
-				// Is the property declared as private or protected?
-				bool isPrivate = false, isProtected = false;
-				if( nd && nd->tokenType == ttPrivate )
-				{
-					isPrivate = true;
-					nd = nd->next;
-				}
-				else if( nd && nd->tokenType == ttProtected )
-				{
-					isProtected = true;
-					nd = nd->next;
-				}
-
-				// Determine the type of the property
-				asCScriptCode *file = decl->script;
-				asCDataType dt = CreateDataTypeFromNode(nd, file, ot->nameSpace, false, ot);
-				if( ot->IsShared() && dt.GetTypeInfo() && !dt.GetTypeInfo()->IsShared() )
-				{
-					asCString msg;
-					msg.Format(TXT_SHARED_CANNOT_USE_NON_SHARED_TYPE_s, dt.GetTypeInfo()->name.AddressOf());
-					WriteError(msg, file, node);
-				}
-
-				if( dt.IsReadOnly() )
-					WriteError(TXT_PROPERTY_CANT_BE_CONST, file, node);
-
-				// Multiple properties can be declared separated by ,
+				isPrivate = true;
 				nd = nd->next;
-				while( nd )
-				{
-					asCString name(&file->code[nd->tokenPos], nd->tokenLength);
-
-					if( !decl->isExistingShared )
-					{
-						CheckNameConflictMember(ot, name.AddressOf(), nd, file, true);
-						AddPropertyToClass(decl, name, dt, isPrivate, isProtected, false, file, nd);
-					}
-					else
-					{
-						// Verify that the property exists in the original declaration
-						bool found = false;
-						for( asUINT p = 0; p < ot->properties.GetLength(); p++ )
-						{
-							asCObjectProperty *prop = ot->properties[p];
-							if( prop->isPrivate == isPrivate &&
-								prop->isProtected == isProtected &&
-								prop->name == name &&
-								prop->type.IsEqualExceptRef(dt) )
-							{
-								found = true;
-								break;
-							}
-						}
-						if( !found )
-						{
-							asCString str;
-							str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL, ot->GetName());
-							WriteError(str, file, nd);
-						}
-					}
-
-					// Skip the initialization node
-					if( nd->next && nd->next->nodeType != snIdentifier )
-						nd = nd->next;
-
-					nd = nd->next;
-				}
 			}
-			else
-				asASSERT(false);
+			else if( nd && nd->tokenType == ttProtected )
+			{
+				isProtected = true;
+				nd = nd->next;
+			}
+
+			// Determine the type of the property
+			asCScriptCode *file = decl->script;
+			asCDataType dt = CreateDataTypeFromNode(nd, file, ot->nameSpace, false, ot);
+			if( ot->IsShared() && dt.GetTypeInfo() && !dt.GetTypeInfo()->IsShared() )
+			{
+				asCString msg;
+				msg.Format(TXT_SHARED_CANNOT_USE_NON_SHARED_TYPE_s, dt.GetTypeInfo()->name.AddressOf());
+				WriteError(msg, file, node);
+			}
+
+			if( dt.IsReadOnly() )
+				WriteError(TXT_PROPERTY_CANT_BE_CONST, file, node);
+
+			// Multiple properties can be declared separated by ,
+			nd = nd->next;
+			while( nd )
+			{
+				asCString name(&file->code[nd->tokenPos], nd->tokenLength);
+
+				if( !decl->isExistingShared )
+				{
+					CheckNameConflictMember(ot, name.AddressOf(), nd, file, true);
+					AddPropertyToClass(decl, name, dt, isPrivate, isProtected, false, file, nd);
+				}
+				else
+				{
+					// Verify that the property exists in the original declaration
+					bool found = false;
+					for( asUINT p = 0; p < ot->properties.GetLength(); p++ )
+					{
+						asCObjectProperty *prop = ot->properties[p];
+						if( prop->isPrivate == isPrivate &&
+							prop->isProtected == isProtected &&
+							prop->name == name &&
+							prop->type.IsEqualExceptRef(dt) )
+						{
+							found = true;
+							break;
+						}
+					}
+					if( !found )
+					{
+						asCString str;
+						str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL, ot->GetName());
+						WriteError(str, file, nd);
+					}
+				}
+
+				// Skip the initialization node
+				if( nd->next && nd->next->nodeType != snIdentifier )
+					nd = nd->next;
+
+				nd = nd->next;
+			}
 
 			node = node->next;
 		}
@@ -3203,7 +3294,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 				asCDataType dt = prop->type;
 
 				// TODO: Add this check again, once solving the issues commented below
-				/* 
+				/*
 				if( dt.IsTemplate() )
 				{
 					// TODO: This must verify all sub types, not just the first one
@@ -3307,7 +3398,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 	{
 		if( numReevaluations > typesToValidate.GetLength() )
 		{
-			// No types could be completely evaluated in the last iteration so 
+			// No types could be completely evaluated in the last iteration so
 			// we consider the remaining types in the array as garbage collected
 			break;
 		}
@@ -3332,7 +3423,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 
 		// Evaluate template instances (silently) before verifying each of the classes, since it is possible that
 		// a class will be marked as non-garbage collected, which in turn will mark the template instance that uses
-		// it as non-garbage collected, which in turn means the class that contains the array also do not have to be 
+		// it as non-garbage collected, which in turn means the class that contains the array also do not have to be
 		// garbage collected
 		EvaluateTemplateInstances(numTempl, true);
 
@@ -3346,7 +3437,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 
 			if (dt.IsFuncdef())
 			{
-				// If a class holds a function pointer as member then the class must be garbage collected as the 
+				// If a class holds a function pointer as member then the class must be garbage collected as the
 				// function pointer can form circular references with the class through use of a delegate. Example:
 				//
 				//   class A { B @b; void f(); }
@@ -3438,7 +3529,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 					else if( prop->flags & asOBJ_GC )
 					{
 						// If a type is not a script object, adopt its GC flag
-						// TODO: runtime optimize: Just because an application registered class is garbage collected, doesn't mean it 
+						// TODO: runtime optimize: Just because an application registered class is garbage collected, doesn't mean it
 						//                         can form a circular reference with this script class. Perhaps need a flag to tell
 						//                         if the script classes that contains the type should be garbage collected or not.
 						gc = true;
@@ -3455,8 +3546,8 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 			}
 		}
 
-		// If the class wasn't found to require garbage collection, but it 
-		// contains another type that has yet to be evaluated then it must be 
+		// If the class wasn't found to require garbage collection, but it
+		// contains another type that has yet to be evaluated then it must be
 		// re-evaluated.
 		if( !gc && mustReevaluate )
 		{
@@ -3502,11 +3593,11 @@ void asCBuilder::IncludeMethodsFromMixins(sClassDeclaration *decl)
 		sMixinClass *mixin = 0;
 		while( ns )
 		{
-			// Need to make sure the name is not an object type 
+			// Need to make sure the name is not an object type
 			asCObjectType *objType = GetObjectType(name.AddressOf(), ns);
 			if( objType == 0 )
 				mixin = GetMixinClass(name.AddressOf(), ns);
-			
+
 			if( objType || mixin )
 				break;
 
@@ -3576,11 +3667,11 @@ void asCBuilder::IncludePropertiesFromMixins(sClassDeclaration *decl)
 		sMixinClass *mixin = 0;
 		while( ns )
 		{
-			// Need to make sure the name is not an object type 
+			// Need to make sure the name is not an object type
 			asCObjectType *objType = GetObjectType(name.AddressOf(), ns);
 			if( objType == 0 )
 				mixin = GetMixinClass(name.AddressOf(), ns);
-			
+
 			if( objType || mixin )
 				break;
 
@@ -3708,15 +3799,14 @@ int asCBuilder::CreateVirtualFunction(asCScriptFunction *func, int idx)
 	vf->parameterTypes   = func->parameterTypes;
 	vf->inOutFlags       = func->inOutFlags;
 	vf->id               = engine->GetNextScriptFunctionId();
-	vf->isReadOnly       = func->isReadOnly;
 	vf->objectType       = func->objectType;
 	vf->objectType->AddRefInternal();
 	vf->signatureId      = func->signatureId;
-	vf->isPrivate        = func->isPrivate;
-	vf->isProtected      = func->isProtected;
-	vf->isFinal          = func->isFinal;
-	vf->isOverride       = func->isOverride;
 	vf->vfTableIdx       = idx;
+	vf->traits           = func->traits;
+
+	// Clear the shared trait since the virtual function should not have that
+	vf->SetShared(false);
 
 	// It is not necessary to copy the default args, as they have no meaning in the virtual function
 
@@ -3785,7 +3875,7 @@ bool asCBuilder::DoesMethodExist(asCObjectType *objType, int methodId, asUINT *m
 
 		if( m->name           != method->name           ) continue;
 		if( m->returnType     != method->returnType     ) continue;
-		if( m->isReadOnly     != method->isReadOnly     ) continue;
+		if( m->IsReadOnly()   != method->IsReadOnly()   ) continue;
 		if( m->parameterTypes != method->parameterTypes ) continue;
 		if( m->inOutFlags     != method->inOutFlags     ) continue;
 
@@ -3810,7 +3900,7 @@ void asCBuilder::AddDefaultConstructor(asCObjectType *objType, asCScriptCode *fi
 
 	// Add the script function
 	// TODO: declaredAt should be set to where the class has been declared
-	module->AddScriptFunction(file->idx, 0, funcId, objType->name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, false, objType, false, false, false, false, false, false, false, objType->nameSpace);
+	module->AddScriptFunction(file->idx, 0, funcId, objType->name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, false, objType, false, asSFunctionTraits(), objType->nameSpace);
 
 	// Set it as default constructor
 	if( objType->beh.construct )
@@ -3853,18 +3943,24 @@ void asCBuilder::AddDefaultConstructor(asCObjectType *objType, asCScriptCode *fi
 
 	// If the object is shared, then the factory must also be marked as shared
 	if( objType->flags & asOBJ_SHARED )
-		engine->scriptFunctions[funcId]->isShared = true;
+		engine->scriptFunctions[funcId]->SetShared(true);
 }
 
 int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, asSNameSpace *ns)
 {
 	// Is it a shared enum?
 	bool isShared = false;
+	bool isExternal = false;
 	asCEnumType *existingSharedType = 0;
 	asCScriptNode *tmp = node->firstChild;
-	if( tmp->nodeType == snIdentifier && file->TokenEquals(tmp->tokenPos, tmp->tokenLength, SHARED_TOKEN) )
+	while( tmp->nodeType == snIdentifier )
 	{
-		isShared = true;
+		if (file->TokenEquals(tmp->tokenPos, tmp->tokenLength, SHARED_TOKEN))
+			isShared = true;
+		else if (file->TokenEquals(tmp->tokenPos, tmp->tokenLength, EXTERNAL_TOKEN))
+			isExternal = true;
+		else
+			break;
 		tmp = tmp->next;
 	}
 
@@ -3891,6 +3987,18 @@ int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, asSNameSp
 			}
 		}
 	}
+
+	// If the enum was declared as external then it must have been compiled in a different module first
+	if (isExternal && existingSharedType == 0)
+	{
+		asCString str;
+		str.Format(TXT_EXTERNAL_SHARED_s_NOT_FOUND, name.AddressOf());
+		WriteError(str, file, tmp);
+	}
+
+	// Remember if the type was declared as external so the saved bytecode can be flagged accordingly
+	if (isExternal && existingSharedType)
+		module->externalTypes.PushLast(existingSharedType);
 
 	// Check the name and add the enum
 	int r = CheckNameConflict(name.AddressOf(), tmp->firstChild, file, ns);
@@ -3938,12 +4046,24 @@ int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, asSNameSp
 		asCDataType type = CreateDataTypeFromNode(tmp, file, ns);
 		asASSERT(!type.IsReference());
 
+		// External shared enums must not redeclare the enum values
+		if (isExternal && (tmp->next == 0 || tmp->next->tokenType != ttEndStatement) )
+		{
+			asCString str;
+			str.Format(TXT_EXTERNAL_SHARED_s_CANNOT_REDEF, name.AddressOf());
+			WriteError(str, file, tmp);
+		}
+		else if (!isExternal && tmp->next && tmp->next->tokenType == ttEndStatement)
+		{
+			asCString str;
+			str.Format(TXT_MISSING_DEFINITION_OF_s, name.AddressOf());
+			WriteError(str, file, tmp);
+		}
+
 		// Register the enum values
 		tmp = tmp->next;
-		while( tmp )
+		while( tmp && tmp->nodeType == snIdentifier )
 		{
-			asASSERT(snIdentifier == tmp->nodeType);
-
 			name.Assign(&file->code[tmp->tokenPos], tmp->tokenLength);
 
 			if( existingSharedType )
@@ -4008,7 +4128,7 @@ int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, asSNameSp
 				gvar->ns                 = ns;
 				// No need to allocate space on the global memory stack since the values are stored in the asCObjectType
 				// Set the index to a negative to allow compiler to diferentiate from ordinary global var when compiling the initialization
-				gvar->index              = -1; 
+				gvar->index              = -1;
 				gvar->isCompiled         = false;
 				gvar->isPureConstant     = true;
 				gvar->isEnumValue        = true;
@@ -4091,34 +4211,41 @@ int asCBuilder::RegisterTypedef(asCScriptNode *node, asCScriptCode *file, asSNam
 	return r;
 }
 
-void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCString> &parameterNames, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate, bool &isProtected, bool &isOverride, bool &isFinal, bool &isShared, asSNameSpace *implicitNamespace)
+void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCString> &parameterNames, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, asSFunctionTraits &funcTraits, asSNameSpace *implicitNamespace)
 {
 	node = node->firstChild;
 
+	// Is the function shared?
+	funcTraits.SetTrait(asTRAIT_SHARED, false);
+	funcTraits.SetTrait(asTRAIT_EXTERNAL, false);
+	while (node->tokenType == ttIdentifier)
+	{
+		if (file->TokenEquals(node->tokenPos, node->tokenLength, SHARED_TOKEN))
+			funcTraits.SetTrait(asTRAIT_SHARED, true);
+		else if (file->TokenEquals(node->tokenPos, node->tokenLength, EXTERNAL_TOKEN))
+			funcTraits.SetTrait(asTRAIT_EXTERNAL, true);
+		else
+			break;
+		node = node->next;
+	}
+
 	// Is the function a private or protected class method?
-	isPrivate = false, isProtected = false;
+	funcTraits.SetTrait(asTRAIT_PRIVATE, false);
+	funcTraits.SetTrait(asTRAIT_PROTECTED, false);
 	if( node->tokenType == ttPrivate )
 	{
-		isPrivate = true;
+		funcTraits.SetTrait(asTRAIT_PRIVATE, true);
 		node = node->next;
 	}
 	else if( node->tokenType == ttProtected )
 	{
-		isProtected = true;
-		node = node->next;
-	}
-
-	// Is the function shared?
-	isShared = false;
-	if( node->tokenType == ttIdentifier && file->TokenEquals(node->tokenPos, node->tokenLength, SHARED_TOKEN) )
-	{
-		isShared = true;
+		funcTraits.SetTrait(asTRAIT_PROTECTED, true);
 		node = node->next;
 	}
 
 	// Find the name
-	isConstructor = false;
-	isDestructor = false;
+	funcTraits.SetTrait(asTRAIT_CONSTRUCTOR, false);
+	funcTraits.SetTrait(asTRAIT_DESTRUCTOR, false);
 	asCScriptNode *n = 0;
 	if( node->nodeType == snDataType )
 		n = node->next->next;
@@ -4128,18 +4255,17 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 		if( node->tokenType == ttBitNot )
 		{
 			n = node->next;
-			isDestructor = true;
+			funcTraits.SetTrait(asTRAIT_DESTRUCTOR, true);
 		}
 		else
 		{
 			n = node;
-			isConstructor = true;
+			funcTraits.SetTrait(asTRAIT_CONSTRUCTOR, true);
 		}
 	}
 	name.Assign(&file->code[n->tokenPos], n->tokenLength);
 
-	// Initialize a script function object for registration
-	if( !isConstructor && !isDestructor )
+	if( !funcTraits.GetTrait(asTRAIT_CONSTRUCTOR) && !funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
 	{
 		returnType = CreateDataTypeFromNode(node, file, implicitNamespace, false, objType);
 		returnType = ModifyDataTypeFromNode(returnType, node->next, file, 0, 0);
@@ -4148,7 +4274,7 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 			returnType.GetTypeInfo() &&
 			(returnType.GetTypeInfo()->flags & asOBJ_REF) &&
 			!(returnType.GetTypeInfo()->flags & asOBJ_SCOPED) &&
-			!returnType.IsReference() && 
+			!returnType.IsReference() &&
 			!returnType.IsObjectHandle() )
 		{
 			WriteError(TXT_REF_TYPE_CANT_BE_RETURNED_BY_VAL, file, node);
@@ -4157,9 +4283,9 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 	else
 		returnType = asCDataType::CreatePrimitive(ttVoid, false);
 
-	isConstMethod = false;
-	isFinal = false;
-	isOverride = false;
+	funcTraits.SetTrait(asTRAIT_CONST, false);
+	funcTraits.SetTrait(asTRAIT_FINAL, false);
+	funcTraits.SetTrait(asTRAIT_OVERRIDE, false);
 
 	if( objType && n->next->next )
 	{
@@ -4168,16 +4294,16 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 		// Is this a const method?
 		if( decorator->tokenType == ttConst )
 		{
-			isConstMethod = true;
+			funcTraits.SetTrait(asTRAIT_CONST, true);
 			decorator = decorator->next;
 		}
 
 		while( decorator )
 		{
 			if( decorator->tokenType == ttIdentifier && file->TokenEquals(decorator->tokenPos, decorator->tokenLength, FINAL_TOKEN) )
-				isFinal = true;
+				funcTraits.SetTrait(asTRAIT_FINAL, true);
 			else if( decorator->tokenType == ttIdentifier && file->TokenEquals(decorator->tokenPos, decorator->tokenLength, OVERRIDE_TOKEN) )
-				isOverride = true;
+				funcTraits.SetTrait(asTRAIT_OVERRIDE, true);
 
 			decorator = decorator->next;
 		}
@@ -4212,7 +4338,7 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 			type.GetTypeInfo() &&
 			(type.GetTypeInfo()->flags & asOBJ_REF) &&
 			!(type.GetTypeInfo()->flags & asOBJ_SCOPED) &&
-			!type.IsReference() && 
+			!type.IsReference() &&
 			!type.IsObjectHandle() )
 		{
 			WriteError(TXT_REF_TYPE_CANT_BE_PASSED_BY_VAL, file, node);
@@ -4284,14 +4410,7 @@ int asCBuilder::RegisterScriptFunctionFromNode(asCScriptNode *node, asCScriptCod
 	asCArray<asCDataType>      parameterTypes;
 	asCArray<asETypeModifiers> inOutFlags;
 	asCArray<asCString *>      defaultArgs;
-	bool                       isConstMethod;
-	bool                       isOverride;
-	bool                       isFinal;
-	bool                       isConstructor;
-	bool                       isDestructor;
-	bool                       isPrivate;
-	bool                       isProtected;
-	bool                       isShared;
+	asSFunctionTraits          funcTraits;
 
 	asASSERT( (objType && ns == 0) || isGlobalFunction || isMixin );
 
@@ -4304,9 +4423,9 @@ int asCBuilder::RegisterScriptFunctionFromNode(asCScriptNode *node, asCScriptCod
 			ns = engine->nameSpaces[0];
 	}
 
-	GetParsedFunctionDetails(node, file, objType, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared, ns);
+	GetParsedFunctionDetails(node, file, objType, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, funcTraits, ns);
 
-	return RegisterScriptFunction(node, file, objType, isInterface, isGlobalFunction, ns, isExistingShared, isMixin, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared);
+	return RegisterScriptFunction(node, file, objType, isInterface, isGlobalFunction, ns, isExistingShared, isMixin, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, funcTraits);
 }
 
 asCScriptFunction *asCBuilder::RegisterLambda(asCScriptNode *node, asCScriptCode *file, asCScriptFunction *funcDef, const asCString &name, asSNameSpace *ns)
@@ -4329,7 +4448,7 @@ asCScriptFunction *asCBuilder::RegisterLambda(asCScriptNode *node, asCScriptCode
 
 	// Get the return and parameter types from the funcDef
 	asCString funcName = name;
-	int r = RegisterScriptFunction(args, file, 0, 0, true, ns, false, false, funcName, funcDef->returnType, parameterNames, funcDef->parameterTypes, funcDef->inOutFlags, defaultArgs, false, false, false, false, false, false, false, false);
+	int r = RegisterScriptFunction(args, file, 0, 0, true, ns, false, false, funcName, funcDef->returnType, parameterNames, funcDef->parameterTypes, funcDef->inOutFlags, defaultArgs, asSFunctionTraits());
 	if( r < 0 )
 		return 0;
 
@@ -4337,7 +4456,7 @@ asCScriptFunction *asCBuilder::RegisterLambda(asCScriptNode *node, asCScriptCode
 	return engine->scriptFunctions[functions[functions.GetLength()-1]->funcId];
 }
 
-int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, bool isInterface, bool isGlobalFunction, asSNameSpace *ns, bool isExistingShared, bool isMixin, asCString &name, asCDataType &returnType, asCArray<asCString> &parameterNames, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, bool isConstMethod, bool isConstructor, bool isDestructor, bool isPrivate, bool isProtected, bool isOverride, bool isFinal, bool isShared)
+int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, bool isInterface, bool isGlobalFunction, asSNameSpace *ns, bool isExistingShared, bool isMixin, asCString &name, asCDataType &returnType, asCArray<asCString> &parameterNames, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, asSFunctionTraits funcTraits)
 {
 	// Determine default namespace if not specified
 	if( ns == 0 )
@@ -4354,7 +4473,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 		// Should validate that the function really exists in the class/interface
 		bool found = false;
-		if( isConstructor || isDestructor )
+		if(funcTraits.GetTrait(asTRAIT_CONSTRUCTOR) || funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
 		{
 			// TODO: shared: Should check the existance of these too
 			found = true;
@@ -4365,7 +4484,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 			{
 				asCScriptFunction *func = engine->scriptFunctions[objType->methods[n]];
 				if( func->name == name &&
-					func->IsSignatureExceptNameEqual(returnType, parameterTypes, inOutFlags, objType, isConstMethod) )
+					func->IsSignatureExceptNameEqual(returnType, parameterTypes, inOutFlags, objType, funcTraits.GetTrait(asTRAIT_CONST)) )
 				{
 					// Add the shared function in this module too
 					module->AddScriptFunction(func);
@@ -4393,7 +4512,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 	}
 
 	// Check for name conflicts
-	if( !isConstructor && !isDestructor )
+	if( !funcTraits.GetTrait(asTRAIT_CONSTRUCTOR) && !funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
 	{
 		if( objType )
 		{
@@ -4425,14 +4544,14 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		if( name != objType->name )
 		{
 			asCString str;
-			if( isDestructor )
+			if(funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
 				str.Format(TXT_DESTRUCTOR_s_s_NAME_ERROR, objType->name.AddressOf(), name.AddressOf());
 			else
 				str.Format(TXT_METHOD_s_s_HAS_NO_RETURN_TYPE, objType->name.AddressOf(), name.AddressOf());
 			WriteError(str, file, node);
 		}
 
-		if( isDestructor )
+		if(funcTraits.GetTrait(asTRAIT_DESTRUCTOR))
 			name = "~" + name;
 	}
 
@@ -4461,14 +4580,14 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		func->isExistingShared  = false;
 		func->paramNames        = parameterNames;
 
-		if( isShared )
+		if(funcTraits.GetTrait(asTRAIT_SHARED))
 		{
 			// Look for a pre-existing shared function with the same signature
 			for( asUINT n = 0; n < engine->scriptFunctions.GetLength(); n++ )
 			{
 				asCScriptFunction *f = engine->scriptFunctions[n];
 				if( f &&
-					f->isShared &&
+					f->IsShared() &&
 					f->name == name &&
 					f->nameSpace == ns &&
 					f->objectType == objType &&
@@ -4480,14 +4599,42 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 				}
 			}
 		}
+
+		// Remember if the function was declared as external so the saved bytecode can be flagged accordingly
+		if (funcTraits.GetTrait(asTRAIT_EXTERNAL) && func->isExistingShared)
+			module->externalFunctions.PushLast(engine->scriptFunctions[func->funcId]);
+
+		if (funcTraits.GetTrait(asTRAIT_EXTERNAL) && !func->isExistingShared)
+		{
+			// Mark it as existing shared to avoid compiling it
+			func->isExistingShared = true;
+
+			asCString str;
+			str.Format(TXT_EXTERNAL_SHARED_s_NOT_FOUND, name.AddressOf());
+			WriteError(str, file, node);
+		}
+
+		// External shared function must not try to redefine the interface
+		if (funcTraits.GetTrait(asTRAIT_EXTERNAL) && !(node->tokenType == ttEndStatement || node->lastChild->tokenType == ttEndStatement))
+		{
+			asCString str;
+			str.Format(TXT_EXTERNAL_SHARED_s_CANNOT_REDEF, name.AddressOf());
+			WriteError(str, file, node);
+		}
+		else if (!funcTraits.GetTrait(asTRAIT_EXTERNAL) && !(node->nodeType == snStatementBlock || node->lastChild->nodeType == snStatementBlock) )
+		{
+			asCString str;
+			str.Format(TXT_MISSING_DEFINITION_OF_s, name.AddressOf());
+			WriteError(str, file, node);
+		}
 	}
 
 	// Destructors may not have any parameters
-	if( isDestructor && parameterTypes.GetLength() > 0 )
+	if (funcTraits.GetTrait(asTRAIT_DESTRUCTOR) && parameterTypes.GetLength() > 0)
 		WriteError(TXT_DESTRUCTOR_MAY_NOT_HAVE_PARM, file, node);
 
 	// If a function, class, or interface is shared then only shared types may be used in the signature
-	if( (objType && objType->IsShared()) || isShared )
+	if( (objType && objType->IsShared()) || funcTraits.GetTrait(asTRAIT_SHARED))
 	{
 		asCTypeInfo *ti = returnType.GetTypeInfo();
 		if( ti && !ti->IsShared() )
@@ -4521,7 +4668,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		for( asUINT n = 0; n < funcs.GetLength(); ++n )
 		{
 			asCScriptFunction *func = GetFunctionDescription(funcs[n]);
-			if( func->IsSignatureExceptNameEqual(returnType, parameterTypes, inOutFlags, objType, isConstMethod) )
+			if( func->IsSignatureExceptNameEqual(returnType, parameterTypes, inOutFlags, objType, funcTraits.GetTrait(asTRAIT_CONST)) )
 			{
 				// TODO: clean up: Reuse the same error handling for both opConv and normal methods
 				if( isMixin )
@@ -4550,7 +4697,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		for( asUINT n = 0; n < funcs.GetLength(); ++n )
 		{
 			asCScriptFunction *func = GetFunctionDescription(funcs[n]);
-			if( func->IsSignatureExceptNameAndReturnTypeEqual(parameterTypes, inOutFlags, objType, isConstMethod) )
+			if( func->IsSignatureExceptNameAndReturnTypeEqual(parameterTypes, inOutFlags, objType, funcTraits.GetTrait(asTRAIT_CONST)) )
 			{
 				if( isMixin )
 				{
@@ -4593,7 +4740,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		int row = 0, col = 0;
 		if( node )
 			file->ConvertPosToRowCol(node->tokenPos, &row, &col);
-		module->AddScriptFunction(file->idx, (row&0xFFFFF)|((col&0xFFF)<<20), funcId, name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, isInterface, objType, isConstMethod, isGlobalFunction, isPrivate, isProtected, isFinal, isOverride, isShared, ns);
+		module->AddScriptFunction(file->idx, (row&0xFFFFF)|((col&0xFFF)<<20), funcId, name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, isInterface, objType, isGlobalFunction, funcTraits, ns);
 	}
 
 	// Make sure the default args are declared correctly
@@ -4605,7 +4752,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		asASSERT( !isExistingShared );
 
 		engine->scriptFunctions[funcId]->AddRefInternal();
-		if( isConstructor )
+		if(funcTraits.GetTrait(asTRAIT_CONSTRUCTOR))
 		{
 			int factoryId = engine->GetNextScriptFunctionId();
 			if( parameterTypes.GetLength() == 0 )
@@ -4638,7 +4785,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 			// If the object is shared, then the factory must also be marked as shared
 			if( objType->flags & asOBJ_SHARED )
-				engine->scriptFunctions[factoryId]->isShared = true;
+				engine->scriptFunctions[factoryId]->SetShared(true);
 
 			// Add a dummy function to the builder so that it doesn't mix up the fund Ids
 			functions.PushLast(0);
@@ -4648,7 +4795,7 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 			compiler.CompileFactory(this, file, engine->scriptFunctions[factoryId]);
 			engine->scriptFunctions[factoryId]->AddRefInternal();
 		}
-		else if( isDestructor )
+		else if(funcTraits.GetTrait(asTRAIT_DESTRUCTOR))
 			objType->beh.destruct = funcId;
 		else
 		{
@@ -4720,14 +4867,12 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 		WriteError(TXT_PROPERTY_WITHOUT_ACCESSOR, file, node);
 
 	node = node->next;
-	while( node )
+	while (node)
 	{
-		asCScriptNode             *next        = node->next;
-		asCScriptNode             *funcNode    = 0;
-		bool                       success     = false;
-		bool                       isConst     = false;
-		bool                       isFinal     = false;
-		bool                       isOverride  = false;
+		asCScriptNode             *next = node->next;
+		asCScriptNode             *funcNode = 0;
+		bool                       success = false;
+		asSFunctionTraits          funcTraits;
 		asCDataType                returnType;
 		asCArray<asCString>        paramNames;
 		asCArray<asCDataType>      paramTypes;
@@ -4735,33 +4880,44 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 		asCArray<asCString*>       defaultArgs;
 		asCString                  name;
 
+		funcTraits.SetTrait(asTRAIT_PRIVATE, isPrivate);
+		funcTraits.SetTrait(asTRAIT_PROTECTED, isProtected);
+
 		// TODO: getset: Allow private for individual property accessors
 		// TODO: getset: If the accessor uses its own name, then the property should be automatically declared
 
-		if( node->firstChild->nodeType == snIdentifier && file->TokenEquals(node->firstChild->tokenPos, node->firstChild->tokenLength, GET_TOKEN) )
+		if (node->firstChild->nodeType == snIdentifier && file->TokenEquals(node->firstChild->tokenPos, node->firstChild->tokenLength, GET_TOKEN))
+			name = "get_";
+		else if (node->firstChild->nodeType == snIdentifier && file->TokenEquals(node->firstChild->tokenPos, node->firstChild->tokenLength, SET_TOKEN))
+			name = "set_";
+		else
+			WriteError(TXT_UNRECOGNIZED_VIRTUAL_PROPERTY_NODE, file, node);
+
+		if (name != "")
 		{
-			funcNode  = node->firstChild->next;
+			success = true;
+			funcNode = node->firstChild->next;
 
-			if( funcNode && funcNode->tokenType == ttConst )
+			if (funcNode && funcNode->tokenType == ttConst)
 			{
-				isConst = true;
+				funcTraits.SetTrait(asTRAIT_CONST, true);
 				funcNode = funcNode->next;
 			}
 
-			while( funcNode && funcNode->nodeType != snStatementBlock )
+			while (funcNode && funcNode->nodeType != snStatementBlock)
 			{
-				if( funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, FINAL_TOKEN) )
-					isFinal = true;
-				else if( funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, OVERRIDE_TOKEN) )
-					isOverride = true;
+				if (funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, FINAL_TOKEN))
+					funcTraits.SetTrait(asTRAIT_FINAL, true);
+				else if (funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, OVERRIDE_TOKEN))
+					funcTraits.SetTrait(asTRAIT_OVERRIDE, true);
 
 				funcNode = funcNode->next;
 			}
 
-			if( funcNode )
+			if (funcNode)
 				funcNode->DisconnectParent();
 
-			if( funcNode == 0 && (objType == 0 || !objType->IsInterface()) )
+			if (funcNode == 0 && (objType == 0 || !objType->IsInterface()))
 			{
 				// TODO: getset: If no implementation is supplied the builder should provide an automatically generated implementation
 				//               The compiler needs to be able to handle the different types, primitive, value type, and handle
@@ -4769,53 +4925,28 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 				WriteError(TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED, file, node);
 			}
 
-			// Setup the signature for the get accessor method
-			returnType = emulatedType;
-			name       = "get_" + emulatedName;
-			success    = true;
-		}
-		else if( node->firstChild->nodeType == snIdentifier && file->TokenEquals(node->firstChild->tokenPos, node->firstChild->tokenLength, SET_TOKEN) )
-		{
-			funcNode  = node->firstChild->next;
-
-			if( funcNode && funcNode->tokenType == ttConst )
+			if (name == "get_")
 			{
-				isConst = true;
-				funcNode = funcNode->next;
+				// Setup the signature for the get accessor method
+				returnType = emulatedType;
+				name = "get_" + emulatedName;
 			}
-
-			while( funcNode && funcNode->nodeType != snStatementBlock )
+			else if (name == "set_")
 			{
-				if( funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, FINAL_TOKEN) )
-					isFinal = true;
-				else if( funcNode->tokenType == ttIdentifier && file->TokenEquals(funcNode->tokenPos, funcNode->tokenLength, OVERRIDE_TOKEN) )
-					isOverride = true;
-
-				funcNode = funcNode->next;
+				// Setup the signature for the set accessor method
+				returnType = asCDataType::CreatePrimitive(ttVoid, false);
+				paramModifiers.PushLast(asTM_NONE);
+				paramNames.PushLast("value");
+				paramTypes.PushLast(emulatedType);
+				defaultArgs.PushLast(0);
+				name = "set_" + emulatedName;
 			}
-
-			if( funcNode )
-				funcNode->DisconnectParent();
-
-			if( funcNode == 0 && (objType == 0 || !objType->IsInterface()) )
-				WriteError(TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED, file, node);
-
-			// Setup the signature for the set accessor method
-			returnType = asCDataType::CreatePrimitive(ttVoid, false);
-			paramModifiers.PushLast(asTM_NONE);
-			paramNames.PushLast("value");
-			paramTypes.PushLast(emulatedType);
-			defaultArgs.PushLast(0);
-			name = "set_" + emulatedName;
-			success = true;
 		}
-		else
-			WriteError(TXT_UNRECOGNIZED_VIRTUAL_PROPERTY_NODE, file, node);
 
 		if( success )
 		{
 			if( !isExistingShared )
-				RegisterScriptFunction(funcNode, file, objType, isInterface, isGlobalFunction, ns, false, false, name, returnType, paramNames, paramTypes, paramModifiers, defaultArgs, isConst, false, false, isPrivate, isProtected, isOverride, isFinal, false);
+				RegisterScriptFunction(funcNode, file, objType, isInterface, isGlobalFunction, ns, false, false, name, returnType, paramNames, paramTypes, paramModifiers, defaultArgs, funcTraits);
 			else
 			{
 				// Free the funcNode as it won't be used
@@ -4827,7 +4958,7 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 				{
 					asCScriptFunction *func = engine->scriptFunctions[objType->methods[n]];
 					if( func->name == name &&
-						func->IsSignatureExceptNameEqual(returnType, paramTypes, paramModifiers, objType, isConst) )
+						func->IsSignatureExceptNameEqual(returnType, paramTypes, paramModifiers, objType, funcTraits.GetTrait(asTRAIT_CONST)) )
 					{
 						found = true;
 						break;
@@ -4859,12 +4990,12 @@ int asCBuilder::RegisterImportedFunction(int importID, asCScriptNode *node, asCS
 	asCArray<asCDataType>      parameterTypes;
 	asCArray<asETypeModifiers> inOutFlags;
 	asCArray<asCString *>      defaultArgs;
-	bool isConstMethod, isOverride, isFinal, isConstructor, isDestructor, isPrivate, isProtected, isShared;
+	asSFunctionTraits          funcTraits;
 
 	if( ns == 0 )
 		ns = engine->nameSpaces[0];
 
-	GetParsedFunctionDetails(node->firstChild, file, 0, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared, ns);
+	GetParsedFunctionDetails(node->firstChild, file, 0, name, returnType, parameterNames, parameterTypes, inOutFlags, defaultArgs, funcTraits, ns);
 	CheckNameConflict(name.AddressOf(), node, file, ns);
 
 	// Check that the same function hasn't been registered already in the namespace
@@ -4951,7 +5082,7 @@ void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *ob
 		asASSERT( errNode && script );
 
 		// If the scope contains ::identifier, then use the last identifier as the class name and the rest of it as the namespace
-		// TODO: child funcdef: A scope can include a template type, e.g. array<ns::type> 
+		// TODO: child funcdef: A scope can include a template type, e.g. array<ns::type>
 		int n = scope.FindLast("::");
 		asCString className = n >= 0 ? scope.SubString(n+2) : scope;
 		asCString nsName = n >= 0 ? scope.SubString(0, n) : "";
@@ -4964,8 +5095,8 @@ void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *ob
 				ns = engine->nameSpaces[0];
 			else
 				ns = GetNameSpaceByString(nsName, objectType->nameSpace, errNode, script, 0, false);
-			
-			// If the namespace isn't found return silently and let the calling 
+
+			// If the namespace isn't found return silently and let the calling
 			// function report the error if it cannot resolve the symbol
 			if (ns == 0)
 				return;
@@ -4993,7 +5124,7 @@ void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *ob
 	{
 		asCScriptFunction *func = engine->scriptFunctions[objectType->methods[n]];
 		if( func->name == name &&
-			(!objIsConst || func->isReadOnly) &&
+			(!objIsConst || func->IsReadOnly()) &&
 			(func->accessMask & module->accessMask) )
 		{
 			// When the scope is defined the returned methods should be the true methods, not the virtual method stubs
@@ -5015,12 +5146,11 @@ void asCBuilder::WriteInfo(const asCString &scriptname, const asCString &message
 	// Need to store the pre message in a structure
 	if( pre )
 	{
-		// (FOnline Patch) remove pre messages to more clear log
-		//engine->preMessage.isSet      = true;
-		//engine->preMessage.c          = c;
-		//engine->preMessage.r          = r;
-		//engine->preMessage.message    = message;
-		//engine->preMessage.scriptname = scriptname;
+		engine->preMessage.isSet      = true;
+		engine->preMessage.c          = c;
+		engine->preMessage.r          = r;
+		engine->preMessage.message    = message;
+		engine->preMessage.scriptname = scriptname;
 	}
 	else
 	{
@@ -5239,13 +5369,21 @@ asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameS
 	return ns;
 }
 
-asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCode *file, asSNameSpace *implicitNamespace, bool acceptHandleForScope, asCObjectType *currentType)
+asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCode *file, asSNameSpace *implicitNamespace, bool acceptHandleForScope, asCObjectType *currentType, bool reportError, bool *isValid)
 {
-	asASSERT(node->nodeType == snDataType);
+	asASSERT(node->nodeType == snDataType || node->nodeType == snIdentifier || node->nodeType == snScope );
 
 	asCDataType dt;
 
 	asCScriptNode *n = node->firstChild;
+
+	if (isValid)
+		*isValid = true;
+
+	// If the informed node is an identifier or scope, then the
+	// datatype should be identified directly from that
+	if (node->nodeType != snDataType)
+		n = node;
 
 	bool isConst = false;
 	bool isImplicitHandle = false;
@@ -5262,6 +5400,8 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	{
 		// The namespace and parent type doesn't exist. Return a dummy type instead.
 		dt = asCDataType::CreatePrimitive(ttInt, false);
+		if (isValid)
+			*isValid = false;
 		return dt;
 	}
 
@@ -5319,8 +5459,6 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 				if( ti->flags & asOBJ_IMPLICIT_HANDLE )
 					isImplicitHandle = true;
-				if( ti->flags & asOBJ_FUNCDEF ) // (FOnline Patch)
-					isImplicitHandle = true;
 
 				// Make sure the module has access to the object type
 				if( !module || (module->accessMask & ti->accessMask) )
@@ -5339,15 +5477,23 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 							ti = GetTemplateInstanceFromNode(n, file, CastToObjectType(ti), implicitNamespace, currentType, &n);
 							if (ti == 0)
 							{
+								if (isValid)
+									*isValid = false;
+
 								// Return a dummy
 								return asCDataType::CreatePrimitive(ttInt, false);
 							}
 						}
 						else if( n && n->next && n->next->nodeType == snDataType )
 						{
-							asCString msg;
-							msg.Format(TXT_TYPE_s_NOT_TEMPLATE, ti->name.AddressOf());
-							WriteError(msg, file, n);
+							if (reportError)
+							{
+								asCString msg;
+								msg.Format(TXT_TYPE_s_NOT_TEMPLATE, ti->name.AddressOf());
+								WriteError(msg, file, n);
+							}
+							if (isValid)
+								*isValid = false;
 						}
 
 						// Create object data type
@@ -5359,11 +5505,16 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				}
 				else
 				{
-					asCString msg;
-					msg.Format(TXT_TYPE_s_NOT_AVAILABLE_FOR_MODULE, (const char *)str.AddressOf());
-					WriteError(msg, file, n);
+					if (reportError)
+					{
+						asCString msg;
+						msg.Format(TXT_TYPE_s_NOT_AVAILABLE_FOR_MODULE, (const char *)str.AddressOf());
+						WriteError(msg, file, n);
+					}
 
 					dt.SetTokenType(ttInt);
+					if (isValid)
+						*isValid = false;
 				}
 			}
 
@@ -5379,20 +5530,25 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 		if( !found )
 		{
-			asCString msg;
-			if( origNs && origNs->name == "" )
-				msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_GLOBAL_NS, str.AddressOf());
-			else if (origNs)
-				msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s, str.AddressOf(), origNs->name.AddressOf());
-			else
+			if (reportError)
 			{
-				// TODO: child funcdef: Message should explain that the identifier is not a type of the parent type
-				asCDataType pt = asCDataType::CreateType(origParentType, false);
-				msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s, str.AddressOf(), pt.Format(origParentType->nameSpace, false).AddressOf());
+				asCString msg;
+				if (origNs && origNs->name == "")
+					msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_GLOBAL_NS, str.AddressOf());
+				else if (origNs)
+					msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s, str.AddressOf(), origNs->name.AddressOf());
+				else
+				{
+					// TODO: child funcdef: Message should explain that the identifier is not a type of the parent type
+					asCDataType pt = asCDataType::CreateType(origParentType, false);
+					msg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s, str.AddressOf(), pt.Format(origParentType->nameSpace, false).AddressOf());
+				}
+				WriteError(msg, file, n);
 			}
-			WriteError(msg, file, n);
 
 			dt = asCDataType::CreatePrimitive(ttInt, isConst);
+			if (isValid)
+				*isValid = false;
 			return dt;
 		}
 	}
@@ -5412,36 +5568,51 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	{
 		if( n->tokenType == ttOpenBracket )
 		{
-			if (isImplicitHandle) // (FOnline Patch)
+			if( isImplicitHandle )
 			{
-				// Make the type a handle
-				if (dt.MakeHandle(true, acceptHandleForScope) < 0)
-					WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+				if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
+				{
+					if( reportError )
+						WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+					if (isValid)
+						*isValid = false;
+					break;
+				}
+
+				isImplicitHandle = false;
 			}
 
 			// Make sure the sub type can be instantiated
 			if( !dt.CanBeInstantiated() )
 			{
-				asCString str;
-				if( dt.IsAbstractClass() )
-					str.Format(TXT_ABSTRACT_CLASS_s_CANNOT_BE_INSTANTIATED, dt.Format(ns).AddressOf());
-				else if( dt.IsInterface() )
-					str.Format(TXT_INTERFACE_s_CANNOT_BE_INSTANTIATED, dt.Format(ns).AddressOf());
-				else
-					// TODO: Improve error message to explain why
-					str.Format(TXT_DATA_TYPE_CANT_BE_s, dt.Format(ns).AddressOf());
+				if (reportError)
+				{
+					asCString str;
+					if (dt.IsAbstractClass())
+						str.Format(TXT_ABSTRACT_CLASS_s_CANNOT_BE_INSTANTIATED, dt.Format(ns).AddressOf());
+					else if (dt.IsInterface())
+						str.Format(TXT_INTERFACE_s_CANNOT_BE_INSTANTIATED, dt.Format(ns).AddressOf());
+					else
+						// TODO: Improve error message to explain why
+						str.Format(TXT_DATA_TYPE_CANT_BE_s, dt.Format(ns).AddressOf());
 
-				WriteError(str, file, n);
+					WriteError(str, file, n);
+				}
+				if (isValid)
+					*isValid = false;
 			}
 
 			// Make the type an array (or multidimensional array)
 			if( dt.MakeArray(engine, module) < 0 )
 			{
-				WriteError(TXT_NO_DEFAULT_ARRAY_TYPE, file, n);
+				if( reportError )
+					WriteError(TXT_NO_DEFAULT_ARRAY_TYPE, file, n);
+				if (isValid)
+					*isValid = false;
 				break;
 			}
 
-			if( dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE ) // (FOnline Patch)
+			if( dt.GetTypeInfo() && (dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE) )
 				isImplicitHandle = true;
 		}
 		else
@@ -5449,12 +5620,18 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			// Make the type a handle
 			if( dt.IsObjectHandle() )
 			{
-				WriteError(TXT_HANDLE_OF_HANDLE_IS_NOT_ALLOWED, file, n);
+				if( reportError )
+					WriteError(TXT_HANDLE_OF_HANDLE_IS_NOT_ALLOWED, file, n);
+				if (isValid)
+					*isValid = false;
 				break;
 			}
 			else if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
 			{
-				WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+				if( reportError )
+					WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+				if (isValid)
+					*isValid = false;
 				break;
 			}
 		}
@@ -5464,8 +5641,13 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	if( isImplicitHandle )
 	{
 		// Make the type a handle
-		if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
-			WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+		if (dt.MakeHandle(true, acceptHandleForScope) < 0)
+		{
+			if( reportError )
+				WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+			if (isValid)
+				*isValid = false;
+		}
 	}
 
 	return dt;
@@ -5485,7 +5667,7 @@ asCObjectType *asCBuilder::GetTemplateInstanceFromNode(asCScriptNode *node, asCS
 	{
 		n = n->next;
 
-		// When parsing function definitions for template registrations (currentType != 0) it is necessary 
+		// When parsing function definitions for template registrations (currentType != 0) it is necessary
 		// to pass in the current template type to the recursive call since it is this ones sub-template types
 		// that should be allowed.
 		asCDataType subType = CreateDataTypeFromNode(n, file, implicitNamespace, false, module ? 0 : (currentType ? currentType : templateType));
@@ -5617,7 +5799,7 @@ asCDataType asCBuilder::ModifyDataTypeFromNode(const asCDataType &type, asCScrip
 	if( n && n->tokenType == ttPlus )
 	{
 		// Autohandles are not supported for types with NOCOUNT
-		// If the type is not a handle then there was an error with building the type, but 
+		// If the type is not a handle then there was an error with building the type, but
 		// this error would already have been reported so no need to report another error here
 		if( dt.IsObjectHandle() && (dt.GetTypeInfo()->flags & asOBJ_NOCOUNT) )
 			WriteError(TXT_AUTOHANDLE_CANNOT_BE_USED_FOR_NOCOUNT, file, node->firstChild);
@@ -5711,17 +5893,17 @@ bool asCBuilder::DoesTypeExist(const asCString &type)
 			for (n = 0; n < module->classTypes.GetLength(); n++)
 				if (!knownTypes.MoveTo(0, module->classTypes[n]->name))
 					knownTypes.Insert(module->classTypes[n]->name, true);
-		
+
 			// Add script enums
 			for (n = 0; n < module->enumTypes.GetLength(); n++)
 				if (!knownTypes.MoveTo(0, module->enumTypes[n]->name))
 					knownTypes.Insert(module->enumTypes[n]->name, true);
-		
+
 			// Add script typedefs
 			for (n = 0; n < module->typeDefs.GetLength(); n++)
 				if (!knownTypes.MoveTo(0, module->typeDefs[n]->name))
 					knownTypes.Insert(module->typeDefs[n]->name, true);
-		
+
 			// Add script funcdefs
 			for (n = 0; n < module->funcDefs.GetLength(); n++)
 				if (!knownTypes.MoveTo(0, module->funcDefs[n]->name))

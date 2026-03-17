@@ -10,6 +10,24 @@ BEGIN_AS_NAMESPACE
 
 // TODO: Allow setting the timezone to use
 
+// TODO: Allow taking the difference of two CDateTimes. Should return the difference in seconds
+// TODO: Allow adding seconds
+// TODO: Allow setting each component year, month, day, hour, minute, second. 
+//       SetDate(y,m,d): year, month and day must be set in a single function to make sure the function can validate the date
+//       SetTime(h,m,s): hour, minute and second shall be set in a single function too for consistency
+
+static tm time_point_to_tm(const std::chrono::time_point<std::chrono::system_clock> &tp)
+{
+	time_t t = system_clock::to_time_t(tp);
+	tm local;
+#ifdef _MSC_VER
+	localtime_s(&local, &t);
+#else
+	local = *localtime(&t);
+#endif
+	return local;
+}
+
 CDateTime::CDateTime() : tp(std::chrono::system_clock::now()) 
 {
 }
@@ -26,49 +44,37 @@ CDateTime &CDateTime::operator=(const CDateTime &o)
 
 asUINT CDateTime::getYear() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_year + 1900;
 }
 
 asUINT CDateTime::getMonth() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_mon + 1;
 }
 
 asUINT CDateTime::getDay() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_mday;
 }
 
 asUINT CDateTime::getHour() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_hour;
 }
 
 asUINT CDateTime::getMinute() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_min;
 }
 
 asUINT CDateTime::getSecond() const
 {
-	time_t t = system_clock::to_time_t(tp);
-	tm local = *localtime(&t);
-
+	tm local = time_point_to_tm(tp);
 	return local.tm_sec;
 }
 

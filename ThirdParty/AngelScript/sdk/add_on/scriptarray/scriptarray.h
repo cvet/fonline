@@ -33,6 +33,7 @@ public:
 	static CScriptArray *Create(asITypeInfo *ot, asUINT length);
 	static CScriptArray *Create(asITypeInfo *ot, asUINT length, void *defaultValue);
 	static CScriptArray *Create(asITypeInfo *ot, void *listBuffer);
+	static CScriptArray *Create(asITypeInfo *ot, const CScriptArray &other);
 
 	// Memory management
 	void AddRef() const;
@@ -83,6 +84,7 @@ public:
 	void SortAsc(asUINT startAt, asUINT count);
 	void SortDesc(asUINT startAt, asUINT count);
 	void Sort(asUINT startAt, asUINT count, bool asc);
+	void Sort(asIScriptFunction *less, asUINT startAt, asUINT count);
 	void Reverse();
 	int  Find(void *value) const;
 	int  Find(asUINT startAt, void *value) const;

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -80,7 +80,7 @@ protected:
 #else
 	asDWORD tlsKey;
 #endif
-	DECLARECRITICALSECTION(criticalSection);
+	DECLARECRITICALSECTION(criticalSection)
 #else
 	asCThreadLocalData *tld;
 #endif
@@ -96,7 +96,6 @@ public:
 	asCArray<asIScriptContext *> activeContexts;
 	asCString string;
 
-//protected: // (FOnline Patch)
 	friend class asCThreadManager;
 
 	asCThreadLocalData();

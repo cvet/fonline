@@ -73,7 +73,7 @@ class Serializator
 
     int SetData(const uint8[] data)
     {
-        dataArray = array<uint8>(data);
+        dataArray = data.clone();
         bufSize = data.length();
         dataSize = data.length();
         return dataSize;
