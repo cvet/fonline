@@ -40,8 +40,6 @@
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ProtoManagerException);
-
 class EngineMetadata;
 
 class ProtoManager final
@@ -56,17 +54,11 @@ public:
 
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
 
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> FO_NON_NULL const ProtoEntity*;
-
-    [[nodiscard]] auto GetProtoItemSafe(hstring proto_id) const noexcept -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritterSafe(hstring proto_id) const noexcept -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMapSafe(hstring proto_id) const noexcept -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocationSafe(hstring proto_id) const noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntitySafe(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*;
 
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _itemProtos; }
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _crProtos; }
@@ -74,6 +66,7 @@ public:
     [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _locProtos; }
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
+    void AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
     void LoadFromResources(const FileSystem& resources);
 
 private:

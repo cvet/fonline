@@ -91,7 +91,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerClientEngine(*_context->BakedFiles);
+            auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
         }));
@@ -99,7 +99,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerMapperEngine(*_context->BakedFiles);
+            auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
         }));
@@ -122,7 +122,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
+auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -153,11 +153,19 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = meta->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
+            else if (meta->IsFixedType(section_name)) {
+                type_name = meta->Hashes.ToHashedString(section_name);
+            }
             else {
                 throw ProtoBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!meta->IsValidEntityType(type_name) || !meta->GetEntityType(type_name).HasProtos) {
+            if (meta->IsValidEntityType(type_name)) {
+                if (!meta->GetEntityType(type_name).HasProtos) {
+                    throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (!meta->IsFixedType(type_name)) {
                 throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
             }
 
@@ -172,6 +180,19 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             }
 
             file_protos.emplace(pid, section_kv);
+        }
+    }
+
+    for (const auto& [type_name, file_protos] : all_file_protos) {
+        if (!meta->IsFixedType(type_name)) {
+            continue;
+        }
+
+        const auto* registrator = meta->GetPropertyRegistrator(type_name);
+
+        for (const auto& pid : file_protos | std::views::keys) {
+            auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+            meta->ProtoMngr.AddProto(type_name, proto);
         }
     }
 

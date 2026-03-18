@@ -340,7 +340,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto& pid = *cast_from_void<hstring*>(gen->GetAddressOfArg(0));
     const auto entity_hname = engine->Hashes.ToHashedString(entity_name);
-    const auto* proto = engine->ProtoMngr.GetProtoEntitySafe(entity_hname, pid);
+    const auto* proto = engine->ProtoMngr.GetProtoEntity(entity_hname, pid);
 
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
@@ -366,8 +366,46 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     result->Reserve(numeric_cast<int32>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {
-        void* ptr = proto.get_no_const();
-        result->InsertLast(static_cast<void*>(&ptr));
+        auto* entity = static_cast<Entity*>(proto.get_no_const());
+        result->InsertLast(cast_to_void(&entity));
+    }
+
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(result);
+}
+
+static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
+    const auto* engine = GetGameEngine(gen->GetEngine());
+    const auto entity_type = engine->Hashes.ToHashedString(entity_name);
+    const auto prop_enum = static_cast<int32>(gen->GetArgDWord(0));
+    const auto& prop_value = *cast_from_void<const any_t*>(gen->GetAddressOfArg(1));
+    const auto* registrator = engine->GetPropertyRegistrator(entity_name);
+    FO_RUNTIME_ASSERT(registrator);
+    const auto* prop = registrator->GetPropertyByIndex(prop_enum);
+
+    if (prop == nullptr) {
+        throw ScriptException("Property invalid enum", prop_enum);
+    }
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property is not a plain-data type");
+    }
+    if (prop->IsDisabled()) {
+        throw ScriptException("Property is disabled");
+    }
+
+    const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+
+    auto* as_engine = gen->GetEngine();
+    auto* result = CreateScriptArray(as_engine, strex("{}[]", entity_type).c_str());
+
+    for (const auto& proto : protos | std::views::values) {
+        if (proto->GetValueAsAny(prop) == prop_value) {
+            auto* entity = static_cast<Entity*>(proto.get_no_const());
+            result->InsertLast(cast_to_void(&entity));
+        }
     }
 
     new (gen->GetAddressOfReturnLocation()) ScriptArray*(result);
@@ -948,6 +986,18 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
     };
 
+    const auto register_fixed_type = [&](const char* name) {
+        register_base_entity(name);
+        register_entity_getset(name, name);
+        register_entity_props(name);
+
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "hstring get_ProtoId() const", FO_SCRIPT_FUNC_THIS(Entity_ProtoId), FO_SCRIPT_FUNC_THIS_CONV));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@+ Get{}(hstring pid)", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntity), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}s()", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntities), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}s({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+    };
+
     const auto register_entity_statics = [&](const char* name, const EntityTypeDesc& desc) {
         const string sub_name = strex("Static{}", name);
         register_base_entity(sub_name.c_str());
@@ -1012,6 +1062,10 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
     }
 
+    for (const auto& type_name : meta->GetFixedTypes() | std::views::keys) {
+        register_fixed_type(type_name.c_str());
+    }
+
     // Register properties
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
         const auto& registrator = type_desc.PropRegistrator;
@@ -1046,10 +1100,10 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
-            const auto is_handle = prop->IsArray() || prop->IsDict();
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeFixedType() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
-                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
@@ -1066,8 +1120,29 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             }
 
             if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), is_handle ? "@+" : "").str();
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), handle_str).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+            }
+        }
+    }
+
+    for (auto&& [type_name, type_desc] : meta->GetFixedTypes()) {
+        const auto& registrator = type_desc.PropRegistrator;
+        const auto& type_name_str = type_name.as_str();
+
+        for (const auto& [name, prop] : registrator->GetComponents()) {
+            const auto component_type = strex("{}{}Component", type_name_str, name).str();
+            FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(type_name_str.c_str(), strex("{}@ get_{}() const", component_type, name).c_str(), FO_SCRIPT_GENERIC(Entity_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
+        }
+
+        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
+            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeFixedType() ? "@+" : "");
+
+            if (!prop->IsDisabled() && !prop->IsComponentItself()) {
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : type_name_str.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
             }
         }
     }

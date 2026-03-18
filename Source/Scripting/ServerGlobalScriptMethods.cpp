@@ -606,6 +606,11 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
     const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
@@ -621,6 +626,11 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
 {
     const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {

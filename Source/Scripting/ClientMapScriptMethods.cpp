@@ -681,7 +681,7 @@ FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, mpos hex)
 {
-    if (self->GetEngine()->ProtoMngr.GetProtoItemSafe(pid) == nullptr) {
+    if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid item pid arg");
     }
     if (!self->GetSize().is_valid_pos(hex)) {

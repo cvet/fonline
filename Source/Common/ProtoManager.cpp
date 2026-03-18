@@ -49,6 +49,29 @@ ProtoManager::ProtoManager(EngineMetadata& meta) :
     FO_STACK_TRACE_ENTRY();
 }
 
+void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(proto);
+
+    if (const auto* loc = dynamic_cast<const ProtoLocation*>(proto.get()); loc != nullptr) {
+        _locProtos[proto->GetProtoId()] = loc;
+    }
+    else if (const auto* map = dynamic_cast<const ProtoMap*>(proto.get()); map != nullptr) {
+        _mapProtos[proto->GetProtoId()] = map;
+    }
+    else if (const auto* cr = dynamic_cast<const ProtoCritter*>(proto.get()); cr != nullptr) {
+        _crProtos[proto->GetProtoId()] = cr;
+    }
+    else if (const auto* item = dynamic_cast<const ProtoItem*>(proto.get()); item != nullptr) {
+        _itemProtos[proto->GetProtoId()] = item;
+    }
+
+    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
+    FO_RUNTIME_ASSERT(it.second);
+}
+
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
 {
     FO_STACK_TRACE_ENTRY();
@@ -83,10 +106,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
     };
 
     auto proto = create_proto();
-
-    const auto inserted = _protos[type_name].emplace(pid, proto).second;
-    FO_RUNTIME_ASSERT(inserted);
-
+    AddProto(type_name, proto);
     return proto.get();
 }
 
@@ -140,7 +160,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                 const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
                 const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
-                FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name));
+                FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name));
 
                 for (uint32 j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16>();
@@ -161,78 +181,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
     }
 }
 
-auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept(false) -> const ProtoItem*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
-
-    if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
-        return it->second.get();
-    }
-
-    throw ProtoManagerException("Item proto not exists", proto_id);
-}
-
-auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept(false) -> const ProtoCritter*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
-
-    if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
-        return it->second.get();
-    }
-
-    throw ProtoManagerException("Critter proto not exists", proto_id);
-}
-
-auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept(false) -> const ProtoMap*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
-
-    if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
-        return it->second.get();
-    }
-
-    throw ProtoManagerException("Map proto not exists", proto_id);
-}
-
-auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept(false) -> const ProtoLocation*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    proto_id = _meta->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
-
-    if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
-        return it->second.get();
-    }
-
-    throw ProtoManagerException("Location proto not exists", proto_id);
-}
-
-auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept(false) -> const ProtoEntity*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    proto_id = _meta->CheckMigrationRule(_migrationRuleName, type_name, proto_id).value_or(proto_id);
-
-    const auto it_type = _protos.find(type_name);
-
-    if (it_type == _protos.end()) {
-        throw ProtoManagerException("Entity type protos not exist", type_name);
-    }
-
-    if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
-        return it->second.get();
-    }
-
-    throw ProtoManagerException("Entity proto not exists", type_name, proto_id);
-}
-
-auto ProtoManager::GetProtoItemSafe(hstring proto_id) const noexcept -> const ProtoItem*
+auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -245,7 +194,7 @@ auto ProtoManager::GetProtoItemSafe(hstring proto_id) const noexcept -> const Pr
     return nullptr;
 }
 
-auto ProtoManager::GetProtoCritterSafe(hstring proto_id) const noexcept -> const ProtoCritter*
+auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -258,7 +207,7 @@ auto ProtoManager::GetProtoCritterSafe(hstring proto_id) const noexcept -> const
     return nullptr;
 }
 
-auto ProtoManager::GetProtoMapSafe(hstring proto_id) const noexcept -> const ProtoMap*
+auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,7 +220,7 @@ auto ProtoManager::GetProtoMapSafe(hstring proto_id) const noexcept -> const Pro
     return nullptr;
 }
 
-auto ProtoManager::GetProtoLocationSafe(hstring proto_id) const noexcept -> const ProtoLocation*
+auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -284,7 +233,7 @@ auto ProtoManager::GetProtoLocationSafe(hstring proto_id) const noexcept -> cons
     return nullptr;
 }
 
-auto ProtoManager::GetProtoEntitySafe(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
+auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -82,6 +82,7 @@ private:
     auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8>;
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
+    void ParseFixedType(TagsParsingContext& ctx) const;
     void ParseEntityHolder(TagsParsingContext& ctx) const;
     void ParseProperty(TagsParsingContext& ctx) const;
     void ParseEvent(TagsParsingContext& ctx) const;
