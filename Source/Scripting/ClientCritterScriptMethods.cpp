@@ -231,6 +231,10 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
 {
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
 
+    if (proto == nullptr) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
     if (proto->GetStackable()) {
         for (auto& item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {

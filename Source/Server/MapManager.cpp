@@ -59,6 +59,10 @@ void MapManager::LoadFromResources()
         const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
 
+        if (map_proto == nullptr) {
+            throw MapManagerException("Map proto not found for static map", map_pid);
+        }
+
         constexpr std::launch async_flags = std::launch::async | std::launch::deferred;
         static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() FO_DEFERRED {
             auto map_file = File::Load(map_file_header);
@@ -108,6 +112,10 @@ void MapManager::LoadFromResources()
                         const auto cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
                         const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
+                        if (cr_proto == nullptr) {
+                            throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
+                        }
+
                         auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
                         const auto props_data_size = reader.Read<uint32>();
                         props_data.resize(props_data_size);
@@ -143,6 +151,10 @@ void MapManager::LoadFromResources()
                         const auto item_pid_hash = reader.Read<hstring::hash_t>();
                         const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
                         const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+
+                        if (item_proto == nullptr) {
+                            throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
+                        }
 
                         auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
                         const auto props_data_size = reader.Read<uint32>();
@@ -402,12 +414,22 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     FO_STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
+
+    if (proto == nullptr) {
+        throw GenericException("Location proto not found", proto_id);
+    }
+
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterLocation(loc.get());
 
     for (const auto map_pid : map_pids) {
         const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+
+        if (map_proto == nullptr) {
+            throw GenericException("Map proto not found", map_pid);
+        }
+
         auto* static_map = GetStaticMap(map_proto);
         auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, map_proto, loc.get(), static_map);
         _engine->EntityMngr.RegisterMap(map.get());
@@ -439,6 +461,11 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     FO_RUNTIME_ASSERT(!loc->IsDestroying());
 
     const auto* map_proto = _engine->ProtoMngr.GetProtoMap(proto_id);
+
+    if (map_proto == nullptr) {
+        throw GenericException("Map proto not found", proto_id);
+    }
+
     auto* static_map = GetStaticMap(map_proto);
     auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), ident_t {}, map_proto, loc, static_map);
 

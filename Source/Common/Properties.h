@@ -143,7 +143,8 @@ public:
     [[nodiscard]] auto IsBaseTypeSingleFloat() const noexcept -> bool { return _baseType.IsSingleFloat; }
     [[nodiscard]] auto IsBaseTypeDoubleFloat() const noexcept -> bool { return _baseType.IsDoubleFloat; }
     [[nodiscard]] auto IsBaseTypeBool() const noexcept -> bool { return _baseType.IsBool; }
-    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString; }
+    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString || _baseType.IsFixedType; }
+    [[nodiscard]] auto IsBaseTypeFixedType() const noexcept -> bool { return _baseType.IsFixedType; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }
@@ -180,6 +181,7 @@ public:
     [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
+    [[nodiscard]] auto IsMaybeNull() const noexcept -> bool { return _isMaybeNull; }
     [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
     [[nodiscard]] auto GetGetter() const noexcept -> auto& { return _getter; }
@@ -242,6 +244,7 @@ private:
     bool _isModifiableByAnyClient {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
+    bool _isMaybeNull {};
     uint16 _regIndex {};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};

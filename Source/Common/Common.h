@@ -413,6 +413,7 @@ struct BaseTypeDesc
 {
     auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
     string Name {};
+    hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
     bool IsEntity {};
     bool IsGlobalEntity {};
@@ -439,6 +440,7 @@ struct BaseTypeDesc
     bool IsComplexStruct {}; // Layout more than one primitive
     bool IsRefType {};
     bool IsSingleton {};
+    bool IsFixedType {};
     raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
     raw_ptr<const StructLayoutDesc> StructLayout {};
     raw_ptr<const RefTypeDesc> RefType {};
@@ -736,6 +738,8 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
 FO_DECLARE_EXCEPTION(TypeResolveException);
 FO_DECLARE_EXCEPTION(EnumResolveException);
 
+class ProtoEntity;
+
 class NameResolver
 {
 public:
@@ -746,6 +750,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
+    [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* = 0;
     virtual ~NameResolver() = default;
 };
 

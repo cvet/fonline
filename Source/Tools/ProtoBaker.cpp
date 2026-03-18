@@ -153,11 +153,19 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = meta->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
+            else if (meta->IsFixedType(section_name)) {
+                type_name = meta->Hashes.ToHashedString(section_name);
+            }
             else {
                 throw ProtoBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!meta->IsValidEntityType(type_name) || !meta->GetEntityType(type_name).HasProtos) {
+            if (meta->IsValidEntityType(type_name)) {
+                if (!meta->GetEntityType(type_name).HasProtos) {
+                    throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (!meta->IsFixedType(type_name)) {
                 throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
             }
 
@@ -172,6 +180,21 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             }
 
             file_protos.emplace(pid, section_kv);
+        }
+    }
+
+    meta->ProtoMngr.Clear();
+
+    for (const auto& [type_name, file_protos] : all_file_protos) {
+        if (!meta->IsFixedType(type_name)) {
+            continue;
+        }
+
+        const auto* registrator = meta->GetPropertyRegistrator(type_name);
+
+        for (const auto& pid : file_protos | std::views::keys) {
+            auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+            meta->ProtoMngr.AddProto(type_name, proto);
         }
     }
 

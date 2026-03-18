@@ -844,7 +844,10 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsEnum) {
+    if (base_type.IsFixedType) {
+        return any_t {GetValue<hstring>(prop).as_str()};
+    }
+    else if (base_type.IsEnum) {
         if (base_type.Size == 1) {
             return any_t {strex("{}", GetValue<uint8>(prop))};
         }
@@ -973,7 +976,10 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsEnum) {
+    if (base_type.IsFixedType) {
+        SetValue<hstring>(prop, _registrator->GetHashResolver()->ToHashedString(value));
+    }
+    else if (base_type.IsEnum) {
         if (base_type.Size == 1) {
             SetValue<uint8>(prop, numeric_cast<uint8>(strvex(value).to_int32()));
         }
@@ -1345,6 +1351,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!type.IsMutable);
     FO_RUNTIME_ASSERT(!type.BaseType.IsEntity);
     FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
+    FO_RUNTIME_ASSERT(!type.BaseType.IsFixedType || type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array);
 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
         FO_RUNTIME_ASSERT(type.KeyType.has_value());
@@ -1504,6 +1511,10 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto);
             prop->_isNullGetterForProto = true;
         }
+        else if (tokens[i] == "MaybeNull") {
+            FO_RUNTIME_ASSERT(!prop->_isMaybeNull);
+            prop->_isMaybeNull = true;
+        }
         else if (tokens[i] == "SharedProperty") {
             // For internal use, skip
         }
@@ -1532,6 +1543,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
     FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
+    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeFixedType());
 
     const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
 
