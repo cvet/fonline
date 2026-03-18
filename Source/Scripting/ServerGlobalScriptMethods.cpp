@@ -726,7 +726,7 @@ FO_SCRIPT_API Player* Server_Game_CreatePlayer(ServerEngine* server, string_view
         throw ScriptException("Player is already loaded");
     }
 
-    if (server->DbStorage.Get(server->PlayersCollectionName, player_id).NotEmpty()) {
+    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).Empty()) {
         throw ScriptException("Player already exists, use GetPlayer");
     }
 
