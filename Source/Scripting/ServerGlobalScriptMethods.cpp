@@ -708,6 +708,40 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unlo
 }
 
 ///@ ExportMethod PassOwnership
+FO_SCRIPT_API Player* Server_Game_CreatePlayer(ServerEngine* server, string_view name)
+{
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+    if (strvex(name).trim() != name) {
+        throw ScriptException("Wrong player name (trimmed space)");
+    }
+    if (!strvex(name).is_valid_utf8()) {
+        throw ScriptException("Wrong player name encoding");
+    }
+
+    const auto player_id = server->MakePlayerId(name);
+
+    if (server->EntityMngr.GetPlayer(player_id) != nullptr) {
+        throw ScriptException("Player is already loaded");
+    }
+
+    if (server->DbStorage.Get(server->PlayersCollectionName, player_id).NotEmpty()) {
+        throw ScriptException("Player already exists, use GetPlayer");
+    }
+
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    auto player = SafeAlloc::MakeRefCounted<Player>(server, player_id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
+    auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, server->Hashes, *server);
+    player_doc.Emplace("_Name", string(name));
+    server->DbStorage.Insert(server->PlayersCollectionName, player_id, player_doc);
+
+    player->SetName(name);
+    player->AddRef();
+    return player.get();
+}
+
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, string_view name)
 {
     if (name.empty()) {
