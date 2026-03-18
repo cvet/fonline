@@ -55,20 +55,21 @@ void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& 
 
     FO_RUNTIME_ASSERT(proto);
 
-    if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-        _locProtos[proto->GetProtoId()] = static_cast<const ProtoLocation*>(proto.get());
+    if (const auto* loc = dynamic_cast<const ProtoLocation*>(proto.get()); loc != nullptr) {
+        _locProtos[proto->GetProtoId()] = loc;
     }
-    else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-        _mapProtos[proto->GetProtoId()] = static_cast<const ProtoMap*>(proto.get());
+    else if (const auto* map = dynamic_cast<const ProtoMap*>(proto.get()); map != nullptr) {
+        _mapProtos[proto->GetProtoId()] = map;
     }
-    else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-        _crProtos[proto->GetProtoId()] = static_cast<const ProtoCritter*>(proto.get());
+    else if (const auto* cr = dynamic_cast<const ProtoCritter*>(proto.get()); cr != nullptr) {
+        _crProtos[proto->GetProtoId()] = cr;
     }
-    else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-        _itemProtos[proto->GetProtoId()] = static_cast<const ProtoItem*>(proto.get());
+    else if (const auto* item = dynamic_cast<const ProtoItem*>(proto.get()); item != nullptr) {
+        _itemProtos[proto->GetProtoId()] = item;
     }
 
-    _protos[type_name][proto->GetProtoId()] = proto;
+    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
+    FO_RUNTIME_ASSERT(it.second);
 }
 
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
@@ -112,8 +113,6 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
 void ProtoManager::LoadFromResources(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
-
-    Clear();
 
     string protos_ext;
 
@@ -264,17 +263,6 @@ auto ProtoManager::GetProtoEntities(hstring type_name) const noexcept -> const u
     }
 
     return it_type->second;
-}
-
-void ProtoManager::Clear() noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    _itemProtos.clear();
-    _crProtos.clear();
-    _mapProtos.clear();
-    _locProtos.clear();
-    _protos.clear();
 }
 
 FO_END_NAMESPACE

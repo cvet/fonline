@@ -143,7 +143,7 @@ public:
     [[nodiscard]] auto IsBaseTypeSingleFloat() const noexcept -> bool { return _baseType.IsSingleFloat; }
     [[nodiscard]] auto IsBaseTypeDoubleFloat() const noexcept -> bool { return _baseType.IsDoubleFloat; }
     [[nodiscard]] auto IsBaseTypeBool() const noexcept -> bool { return _baseType.IsBool; }
-    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString || _baseType.IsFixedType; }
+    [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString; }
     [[nodiscard]] auto IsBaseTypeFixedType() const noexcept -> bool { return _baseType.IsFixedType; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }

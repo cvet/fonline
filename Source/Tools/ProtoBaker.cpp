@@ -91,7 +91,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerClientEngine(*_context->BakedFiles);
+            auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
         }));
@@ -99,7 +99,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerMapperEngine(*_context->BakedFiles);
+            auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
         }));
@@ -122,7 +122,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
+auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -182,8 +182,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             file_protos.emplace(pid, section_kv);
         }
     }
-
-    meta->ProtoMngr.Clear();
 
     for (const auto& [type_name, file_protos] : all_file_protos) {
         if (!meta->IsFixedType(type_name)) {

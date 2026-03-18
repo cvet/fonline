@@ -68,7 +68,6 @@ public:
 
     void AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
     void LoadFromResources(const FileSystem& resources);
-    void Clear() noexcept;
 
 private:
     auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;

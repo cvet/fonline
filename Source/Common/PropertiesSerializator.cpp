@@ -464,7 +464,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
             }
         }
         else {
-            throw PropertySerializationException("Uncable to convert value to number", str);
+            throw PropertySerializationException("Unable to convert value to number", str);
         }
     }
     else {
@@ -495,7 +495,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
                     }
                 }
                 else if (proto == nullptr) {
-                    throw PropertySerializationException("FixedType proto not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                    throw PropertySerializationException("FixedType proto does not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
                 }
             }
 

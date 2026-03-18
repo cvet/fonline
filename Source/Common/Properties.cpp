@@ -241,7 +241,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     };
 
     for (const auto& prop : _registrator->_registeredProperties) {
-        if (prop && !prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
+        if (prop && !prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), *_registrator->_hashResolver, *_registrator->_nameResolver);
 
             if (value.Type() == AnyData::ValueType::String) {
@@ -263,7 +263,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                     }
                 }
 
-                if (prop->IsBaseTypeHash()) {
+                if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType()) {
                     for (const auto& dict_value : dict | std::views::values) {
                         if (dict_value.Type() == AnyData::ValueType::Array) {
                             const auto& dict_arr = dict_value.AsArray();
@@ -623,7 +623,7 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
 
     AnyData::ValueType value_type;
 
-    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
+    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
         value_type = AnyData::ValueType::String;
     }
     else if (prop->IsBaseTypeInt() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsInt)) {

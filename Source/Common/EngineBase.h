@@ -91,7 +91,7 @@ public:
     [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override;
 
     mutable HashStorage Hashes;
-    mutable ProtoManager ProtoMngr;
+    ProtoManager ProtoMngr;
 
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;

@@ -390,7 +390,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
         throw ScriptException("Property invalid enum", prop_enum);
     }
     if (!prop->IsPlainData()) {
-        throw ScriptException("Property in not plain data type");
+        throw ScriptException("Property is not a plain-data type");
     }
     if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled");
