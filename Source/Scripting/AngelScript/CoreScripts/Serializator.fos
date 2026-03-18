@@ -593,7 +593,7 @@ class Serializator
     {
         string str;
         Get(str);
-        value = hstring(str);
+        value = to_hstring(str);
         return this;
     }
 

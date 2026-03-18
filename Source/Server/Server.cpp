@@ -669,9 +669,9 @@ void ServerEngine::Shutdown()
     }
 
     TimeEventMngr.ClearTimeEvents();
-    ShutdownBackends();
     EntityMngr.DestroyInnerEntities(this);
     EntityMngr.DestroyAllEntities();
+    ShutdownBackends();
     DbStorage.CommitChanges(true);
 
     // Logging clients

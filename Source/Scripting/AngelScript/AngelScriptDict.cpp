@@ -170,8 +170,8 @@ static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
     _typeInfo {ti},
-    _keyTypeId {_typeInfo->GetSubTypeId(0)},
-    _valueTypeId {_typeInfo->GetSubTypeId(1)},
+    _keyTypeId {ti->GetSubTypeId(0)},
+    _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, _typeInfo->GetSubType(0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
@@ -185,8 +185,8 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
     _typeInfo {ti},
-    _keyTypeId {_typeInfo->GetSubTypeId(0)},
-    _valueTypeId {_typeInfo->GetSubTypeId(1)},
+    _keyTypeId {ti->GetSubTypeId(0)},
+    _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, _typeInfo->GetSubType(0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
@@ -582,8 +582,8 @@ auto ScriptDict::GetKeys() const -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(0)->GetName());
-    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    const string arr_type_name = strex("{}{}[]", _typeInfo->GetSubType(0)->GetName(), (_keyTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByDecl(arr_type_name.c_str());
     auto* arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
@@ -599,8 +599,8 @@ auto ScriptDict::GetValues() const -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(1)->GetName());
-    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    const string arr_type_name = strex("{}{}[]", _typeInfo->GetSubType(1)->GetName(), (_valueTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByDecl(arr_type_name.c_str());
     auto* arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());

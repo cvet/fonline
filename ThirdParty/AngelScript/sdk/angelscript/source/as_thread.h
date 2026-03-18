@@ -96,6 +96,7 @@ public:
 	asCArray<asIScriptContext *> activeContexts;
 	asCString string;
 
+protected:
 	friend class asCThreadManager;
 
 	asCThreadLocalData();

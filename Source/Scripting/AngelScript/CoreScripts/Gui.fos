@@ -1344,7 +1344,7 @@ class Panel : Object
 
     void _SetImage(Sprite::Sprite& curImage, string imageName, SpriteLayout imageLayout)
     {
-        _SetImage(curImage, hstring(imageName), imageLayout);
+        _SetImage(curImage, to_hstring(imageName), imageLayout);
     }
 
     void _SetImage(Sprite::Sprite& curImage, hstring imageName, SpriteLayout imageLayout)
@@ -2539,8 +2539,8 @@ class MessageBox : Text
         _DisplayedMessages = array<MessageBoxType> = {MessageBoxType::All};
         _IsNotCatchable = true;
 
-        _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
-        _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
+        _ScrollUp = Sprite::Sprite(to_hstring("MiniArrowUp.png"));
+        _ScrollDown = Sprite::Sprite(to_hstring("MiniArrowDown.png"));
     }
 
     void _FixClone() override

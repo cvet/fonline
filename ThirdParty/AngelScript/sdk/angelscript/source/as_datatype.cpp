@@ -294,7 +294,10 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 	asCObjectType *at = engine->GetTemplateInstanceType(engine->defaultArrayObjectType, subTypes, module);
 	isReadOnly = tmpIsReadOnly;
 
-	isObjectHandle = false;
+	// (FOnline Patch) The project relies on default array types behaving as
+	// implicit handles, so [] syntax must preserve handle semantics for the
+	// instantiated array type instead of always materializing it as a value.
+	isObjectHandle = at && (at->flags & asOBJ_IMPLICIT_HANDLE);
 	isConstHandle = false;
 	
 	typeInfo = at;

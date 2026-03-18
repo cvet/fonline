@@ -415,9 +415,15 @@ asCFuncdefType::asCFuncdefType(asCScriptEngine *en, asCScriptFunction *func) : a
 	asASSERT(func->funcType == asFUNC_FUNCDEF);
 	asASSERT(func->funcdefType == 0);
 
-	// A function pointer is a special kind of reference type.
-	// FOnline scripts rely on bare funcdef names behaving like implicit handles.
-	flags       = asOBJ_REF | asOBJ_FUNCDEF | asOBJ_IMPLICIT_HANDLE | (func->IsShared() ? asOBJ_SHARED : 0);
+	// A function pointer is special kind of reference type
+	flags       = asOBJ_REF | asOBJ_FUNCDEF | (func->IsShared() ? asOBJ_SHARED : 0);
+
+	// (FOnline Patch) Treat funcdefs as implicit handles when the engine-level
+	// compatibility flag is enabled, so legacy callback declarations keep using
+	// handle semantics without explicit @ annotations.
+	if( engine->ep.allowImplicitHandleTypes )
+		flags |= asOBJ_IMPLICIT_HANDLE;
+
 	name        = func->name;
 	nameSpace   = func->nameSpace;
 	module      = func->module;

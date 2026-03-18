@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2018 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -29,7 +29,6 @@
 */
 
 
-#include <new>
 #include "as_config.h"
 #include "as_scriptengine.h"
 #include "as_scriptobject.h"
@@ -48,14 +47,14 @@ asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngi
 	ctx = asGetActiveContext();
 	if( ctx )
 	{
-		// It may not always be possible to reuse the current context,
+		// It may not always be possible to reuse the current context, 
 		// in which case we'll have to create a new one any way.
 		if( ctx->GetEngine() == objType->GetEngine() && ctx->PushState() == asSUCCESS )
 			isNested = true;
 		else
 			ctx = 0;
 	}
-
+	
 	if( ctx == 0 )
 	{
 		// Request a context from the engine
@@ -81,7 +80,7 @@ asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngi
 	{
 		r = ctx->Execute();
 
-		// We can't allow this execution to be suspended
+		// We can't allow this execution to be suspended 
 		// so resume the execution immediately
 		if( r != asEXECUTION_SUSPENDED )
 			break;
@@ -114,6 +113,94 @@ asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngi
 	ptr->AddRef();
 
 	if( isNested )
+		ctx->PopState();
+	else
+		engine->ReturnContext(ctx);
+
+	return ptr;
+}
+
+// This helper function will call the copy factory, that is a script function
+// TODO: Clean up: This function is almost identical to ScriptObjectFactory. Should make better use of the identical code.
+asIScriptObject *ScriptObjectCopyFactory(const asCObjectType *objType, void *origObj, asCScriptEngine *engine)
+{
+	asIScriptContext *ctx = 0;
+	int r = 0;
+	bool isNested = false;
+
+	// Use nested call in the context if there is an active context
+	ctx = asGetActiveContext();
+	if (ctx)
+	{
+		// It may not always be possible to reuse the current context, 
+		// in which case we'll have to create a new one any way.
+		if (ctx->GetEngine() == objType->GetEngine() && ctx->PushState() == asSUCCESS)
+			isNested = true;
+		else
+			ctx = 0;
+	}
+
+	if (ctx == 0)
+	{
+		// Request a context from the engine
+		ctx = engine->RequestContext();
+		if (ctx == 0)
+		{
+			// TODO: How to best report this failure?
+			return 0;
+		}
+	}
+
+	r = ctx->Prepare(engine->scriptFunctions[objType->beh.copyfactory]);
+	if (r < 0)
+	{
+		if (isNested)
+			ctx->PopState();
+		else
+			engine->ReturnContext(ctx);
+		return 0;
+	}
+
+	// Let the context handle the case for argument by ref (&) or by handle (@)
+	ctx->SetArgObject(0, origObj);
+
+	for (;;)
+	{
+		r = ctx->Execute();
+
+		// We can't allow this execution to be suspended 
+		// so resume the execution immediately
+		if (r != asEXECUTION_SUSPENDED)
+			break;
+	}
+
+	if (r != asEXECUTION_FINISHED)
+	{
+		if (isNested)
+		{
+			ctx->PopState();
+
+			// If the execution was aborted or an exception occurred,
+			// then we should forward that to the outer execution.
+			if (r == asEXECUTION_EXCEPTION)
+			{
+				// TODO: How to improve this exception
+				ctx->SetException(TXT_EXCEPTION_IN_NESTED_CALL);
+			}
+			else if (r == asEXECUTION_ABORTED)
+				ctx->Abort();
+		}
+		else
+			engine->ReturnContext(ctx);
+		return 0;
+	}
+
+	asIScriptObject *ptr = (asIScriptObject*)ctx->GetReturnAddress();
+
+	// Increase the reference, because the context will release its pointer
+	ptr->AddRef();
+
+	if (isNested)
 		ctx->PopState();
 	else
 		engine->ReturnContext(ctx);
@@ -726,14 +813,19 @@ void asCScriptObject::EnumReferences(asIScriptEngine *engine)
 	{
 		asCObjectProperty *prop = objType->properties[n];
 		void *ptr = 0;
-		if( prop->type.IsObject() )
+		if (prop->type.IsObject())
 		{
-			// TODO: gc: The members of the value type needs to be enumerated
-			//           too, since the value type may be holding a reference.
-			if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
+			if (prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF))
 				ptr = *(void**)(((char*)this) + prop->byteOffset);
 			else
 				ptr = (void*)(((char*)this) + prop->byteOffset);
+
+			// The members of the value type needs to be enumerated
+			// too, since the value type may be holding a reference.
+			if ((prop->type.GetTypeInfo()->flags & asOBJ_VALUE) && (prop->type.GetTypeInfo()->flags & asOBJ_GC))
+			{
+				reinterpret_cast<asCScriptEngine*>(engine)->CallObjectMethod(ptr, engine, CastToObjectType(prop->type.GetTypeInfo())->beh.gcEnumReferences);
+			}
 		}
 		else if (prop->type.IsFuncdef())
 			ptr = *(void**)(((char*)this) + prop->byteOffset);
@@ -749,18 +841,31 @@ void asCScriptObject::ReleaseAllHandles(asIScriptEngine *engine)
 	{
 		asCObjectProperty *prop = objType->properties[n];
 
-		// TODO: gc: The members of the members needs to be released
-		//           too, since they may be holding a reference. Even
-		//           if the member is a value type.
-		if( prop->type.IsObject() && prop->type.IsObjectHandle() )
+		if (prop->type.IsObject())
 		{
-			void **ptr = (void**)(((char*)this) + prop->byteOffset);
-			if( *ptr )
+			if (prop->type.IsObjectHandle())
 			{
-				asASSERT( (prop->type.GetTypeInfo()->flags & asOBJ_NOCOUNT) || prop->type.GetBehaviour()->release );
-				if( prop->type.GetBehaviour()->release )
-					((asCScriptEngine*)engine)->CallObjectMethod(*ptr, prop->type.GetBehaviour()->release);
-				*ptr = 0;
+				void **ptr = (void**)(((char*)this) + prop->byteOffset);
+				if (*ptr)
+				{
+					asASSERT((prop->type.GetTypeInfo()->flags & asOBJ_NOCOUNT) || prop->type.GetBehaviour()->release);
+					if (prop->type.GetBehaviour()->release)
+						((asCScriptEngine*)engine)->CallObjectMethod(*ptr, prop->type.GetBehaviour()->release);
+					*ptr = 0;
+				}
+			}
+			else if ((prop->type.GetTypeInfo()->flags & asOBJ_VALUE) && (prop->type.GetTypeInfo()->flags & asOBJ_GC))
+			{
+				// The members of the members needs to be released
+				// too, since they may be holding a reference. Even
+				// if the member is a value type.
+				void *ptr = 0;
+				if (prop->type.IsReference())
+					ptr = *(void**)(((char*)this) + prop->byteOffset);
+				else
+					ptr = (void*)(((char*)this) + prop->byteOffset);
+
+				reinterpret_cast<asCScriptEngine*>(engine)->CallObjectMethod(ptr, engine, CastToObjectType(prop->type.GetTypeInfo())->beh.gcReleaseAllReferences);
 			}
 		}
 		else if (prop->type.IsFuncdef())
@@ -782,149 +887,157 @@ asCScriptObject &ScriptObject_Assignment(asCScriptObject *other, asCScriptObject
 
 asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 {
-	CopyFromAs(&other, objType);
-
-	return *this;
-}
-
-// FOnline Patch: default script-object assignment must copy inherited base properties
-// and remain available even when no explicit opAssign behaviour was registered.
-int asCScriptObject::CopyFromAs(const asCScriptObject *other, asCObjectType *in_objType)
-{
-	if( other != this )
+	// (FOnline Patch) Default script-object assignment must copy inherited base properties.
+	auto copyFromAs = [&](auto&& selfFn, const asCScriptObject *srcObj, asCObjectType *in_objType) -> int
 	{
-		if( !other->objType->DerivesFrom(in_objType) )
+		if( srcObj != this )
 		{
-			// We cannot allow a value assignment from a type that isn't the same or 
-			// derives from this type as the member properties may not have the same layout
-			asIScriptContext *ctx = asGetActiveContext();
-			ctx->SetException(TXT_MISMATCH_IN_VALUE_ASSIGN);
-			return asERROR;
-		}
-
-		// If the script class implements the opAssign method, it should be called
-		asCScriptEngine *engine = in_objType->engine;
-		asCScriptFunction *func = in_objType->beh.copy ? engine->scriptFunctions[in_objType->beh.copy] : nullptr;
-		if( func == nullptr || func->funcType == asFUNC_SYSTEM )
-		{
-			if( in_objType->derivedFrom )
-				CopyFromAs(other, in_objType->derivedFrom);
-
-			for( asUINT n = in_objType->derivedFrom ? in_objType->derivedFrom->properties.GetLength() : 0;
-			     n < in_objType->properties.GetLength();
-			     n++ )
+			if( !srcObj->objType->DerivesFrom(in_objType) )
 			{
-				asCObjectProperty *prop = in_objType->properties[n];
-				if( prop->type.IsObject() )
-				{
-					void **dst = (void**)(((char*)this) + prop->byteOffset);
-					void **src = (void**)(((char*)other) + prop->byteOffset);
-					if( !prop->type.IsObjectHandle() )
-					{
-						if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
-							CopyObject(*src, *dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
-						else
-							CopyObject(src, dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
-					}
-					else
-						CopyHandle((asPWORD*)src, (asPWORD*)dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
-				}
-				else if( prop->type.IsFuncdef() )
-				{
-					asCScriptFunction **dst = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
-					asCScriptFunction **src = (asCScriptFunction**)(((char*)other) + prop->byteOffset);
-					if( *dst )
-						(*dst)->Release();
-					*dst = *src;
-					if( *dst )
-						(*dst)->AddRef();
-				}
-				else
-				{
-					void *dst = ((char*)this) + prop->byteOffset;
-					void *src = ((char*)other) + prop->byteOffset;
-					memcpy(dst, src, prop->type.GetSizeInMemoryBytes());
-				}
-			}
-		}
-		else
-		{
-			// Reuse the active context or create a new one to call the script class' opAssign method
-			asIScriptContext *ctx = 0;
-			int r = 0;
-			bool isNested = false;
-
-			ctx = asGetActiveContext();
-			if( ctx )
-			{
-				if( ctx->GetEngine() == engine && ctx->PushState() == asSUCCESS )
-					isNested = true;
-				else
-					ctx = 0;
-			}
-
-			if( ctx == 0 )
-			{
-				ctx = engine->RequestContext();
-				if( ctx == 0 )
-					return asERROR;
-			}
-
-			r = ctx->Prepare(engine->scriptFunctions[in_objType->beh.copy]);
-			if( r < 0 )
-			{
-				if( isNested )
-					ctx->PopState();
-				else
-					engine->ReturnContext(ctx);
-				return r;
-			}
-
-			r = ctx->SetArgAddress(0, const_cast<asCScriptObject*>(other));
-			asASSERT( r >= 0 );
-			r = ctx->SetObject(this);
-			asASSERT( r >= 0 );
-
-			for(;;)
-			{
-				r = ctx->Execute();
-
-				// We can't allow this execution to be suspended 
-				// so resume the execution immediately
-				if( r != asEXECUTION_SUSPENDED )
-					break;
-			}
-
-			if( r != asEXECUTION_FINISHED )
-			{
-				if( isNested )
-				{
-					ctx->PopState();
-
-					// If the execution was aborted or an exception occurred,
-					// then we should forward that to the outer execution.
-					if( r == asEXECUTION_EXCEPTION )
-					{
-						ctx->SetException(TXT_EXCEPTION_IN_NESTED_CALL);
-					}
-					else if( r == asEXECUTION_ABORTED )
-						ctx->Abort();
-				}
-				else
-				{
-					engine->ReturnContext(ctx);
-				}
+				// We cannot allow a value assignment from a type that isn't the same or
+				// derives from this type as the member properties may not have the same layout
+				asIScriptContext *ctx = asGetActiveContext();
+				ctx->SetException(TXT_MISMATCH_IN_VALUE_ASSIGN);
 				return asERROR;
 			}
 
-			if( isNested )
-				ctx->PopState();
-			else
-				engine->ReturnContext(ctx);
-		}
-	}
+			// If the script class implements the opAssign method, it should be called
+			asCScriptEngine *engine = in_objType->engine;
+			asCScriptFunction *func = in_objType->beh.copy ? engine->scriptFunctions[in_objType->beh.copy] : nullptr;
+			if( func == nullptr || func->funcType == asFUNC_SYSTEM )
+			{
+				if( in_objType->derivedFrom )
+					selfFn(selfFn, srcObj, in_objType->derivedFrom);
 
-	return asSUCCESS;
+				// Copy properties for this inheritance level only.
+				for( asUINT n = in_objType->derivedFrom ? in_objType->derivedFrom->properties.GetLength() : 0; n < in_objType->properties.GetLength(); n++ )
+				{
+					asCObjectProperty *prop = in_objType->properties[n];
+					if( prop->type.IsObject() )
+					{
+						void **dst = (void**)(((char*)this) + prop->byteOffset);
+						void **src = (void**)(((char*)srcObj) + prop->byteOffset);
+						if( !prop->type.IsObjectHandle() )
+						{
+							if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
+								CopyObject(*src, *dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
+							else
+								CopyObject(src, dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
+						}
+						else
+							CopyHandle((asPWORD*)src, (asPWORD*)dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
+					}
+					else if( prop->type.IsFuncdef() )
+					{
+						asCScriptFunction **dst = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
+						asCScriptFunction **src = (asCScriptFunction**)(((char*)srcObj) + prop->byteOffset);
+						if( *dst )
+							(*dst)->Release();
+						*dst = *src;
+						if( *dst )
+							(*dst)->AddRef();
+					}
+					else
+					{
+						void *dst = ((char*)this) + prop->byteOffset;
+						void *src = ((char*)srcObj) + prop->byteOffset;
+						memcpy(dst, src, prop->type.GetSizeInMemoryBytes());
+					}
+				}
+			}
+			else
+			{
+				// Reuse the active context or create a new one to call the script class' opAssign method
+				asIScriptContext *ctx = 0;
+				int r = 0;
+				bool isNested = false;
+
+				ctx = asGetActiveContext();
+				if( ctx )
+				{
+					if( ctx->GetEngine() == engine && ctx->PushState() == asSUCCESS )
+						isNested = true;
+					else
+						ctx = 0;
+				}
+
+				if( ctx == 0 )
+				{
+					// Request a context from the engine
+					ctx = engine->RequestContext();
+					if( ctx == 0 )
+					{
+						// TODO: How to best report this failure?
+						return asERROR;
+					}
+				}
+
+				r = ctx->Prepare(engine->scriptFunctions[in_objType->beh.copy]);
+				if( r < 0 )
+				{
+					if( isNested )
+						ctx->PopState();
+					else
+						engine->ReturnContext(ctx);
+					// TODO: How to best report this failure?
+					return asERROR;
+				}
+
+				r = ctx->SetArgAddress(0, const_cast<asCScriptObject*>(srcObj));
+				asASSERT( r >= 0 );
+				r = ctx->SetObject(this);
+				asASSERT( r >= 0 );
+
+				for(;;)
+				{
+					r = ctx->Execute();
+
+					// We can't allow this execution to be suspended
+					// so resume the execution immediately
+					if( r != asEXECUTION_SUSPENDED )
+						break;
+				}
+
+				if( r != asEXECUTION_FINISHED )
+				{
+					if( isNested )
+					{
+						ctx->PopState();
+
+						// If the execution was aborted or an exception occurred,
+						// then we should forward that to the outer execution.
+						if( r == asEXECUTION_EXCEPTION )
+						{
+							// TODO: How to improve this exception
+							ctx->SetException(TXT_EXCEPTION_IN_NESTED_CALL);
+						}
+						else if( r == asEXECUTION_ABORTED )
+							ctx->Abort();
+					}
+					else
+					{
+						// Return the context to the engine
+						engine->ReturnContext(ctx);
+					}
+					return asERROR;
+				}
+
+				if( isNested )
+					ctx->PopState();
+				else
+				{
+					// Return the context to the engine
+					engine->ReturnContext(ctx);
+				}
+			}
+		}
+
+		return asSUCCESS;
+	};
+
+	copyFromAs(copyFromAs, &other, objType);
+
+	return *this;
 }
 
 int asCScriptObject::CopyFrom(asIScriptObject *other)
@@ -998,7 +1111,7 @@ void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *in_objType
 		{
 			// Call the script class' opAssign method
 			asASSERT(in_objType->flags & asOBJ_SCRIPT_OBJECT );
-			engine->CallObjectMethod(dst, src, funcIndex);
+			reinterpret_cast<asCScriptObject*>(dst)->CopyFrom(reinterpret_cast<asCScriptObject*>(src));
 		}
 	}
 	else if( in_objType->size && (in_objType->flags & asOBJ_POD) )

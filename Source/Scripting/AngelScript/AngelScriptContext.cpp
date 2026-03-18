@@ -301,7 +301,7 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
     if (exec_result != AngelScript::asEXECUTION_FINISHED) {
         if (exec_result == AngelScript::asEXECUTION_EXCEPTION) {
             const string ex_string = ctx->GetExceptionString();
-            const auto ex = ctx->GetStdException();
+            const auto ex = static_cast<AngelScript::asCContext*>(ctx)->GetStdException();
 
             if (_debuggerStopCallback) {
                 string source_path;
@@ -525,7 +525,7 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
         ctx_iter = ctx_ext->Parent;
     }
 
-    auto& ex = ctx->GetStdException();
+    auto& ex = static_cast<AngelScript::asCContext*>(ctx)->GetStdException();
 
     if (ex) {
         return;

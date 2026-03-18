@@ -47,10 +47,6 @@ BEGIN_AS_NAMESPACE
 // Singleton
 static asCThreadManager *threadManager = 0;
 
-#ifdef AS_CXX_THREADS
-static thread_local asCThreadLocalData threadLocalData;
-#endif
-
 //======================================================================
 
 // Global API functions
@@ -113,7 +109,7 @@ AS_API void asReleaseSharedLock()
 
 //======================================================================
 
-#if !defined(AS_NO_THREADS) && !defined(AS_CXX_THREADS) && defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+#if !defined(AS_NO_THREADS) && defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 __declspec(thread) asCThreadLocalData *asCThreadManager::tld = 0;
 #endif
 
@@ -124,20 +120,16 @@ asCThreadManager::asCThreadManager()
 #ifdef AS_NO_THREADS
 	tld = 0;
 #else
-	#if defined AS_CXX_THREADS
-		// The thread local storage is managed with C++ thread_local.
-	#else
-		// Allocate the thread local storage
-		#if defined AS_POSIX_THREADS
+	// Allocate the thread local storage
+	#if defined AS_POSIX_THREADS
 		pthread_key_t pKey;
 		pthread_key_create(&pKey, 0);
 		tlsKey = (asDWORD)pKey;
-		#elif defined AS_WINDOWS_THREADS
+	#elif defined AS_WINDOWS_THREADS
 		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 			tld = 0;
 		#else
 			tlsKey = (asDWORD)TlsAlloc();
-		#endif
 		#endif
 	#endif
 #endif
@@ -216,9 +208,7 @@ asCThreadManager::~asCThreadManager()
 {
 #ifndef AS_NO_THREADS
 	// Deallocate the thread local storage
-	#if defined AS_CXX_THREADS
-		// Nothing to do, thread_local storage is managed by the runtime.
-	#elif defined AS_POSIX_THREADS
+	#if defined AS_POSIX_THREADS
 		pthread_key_delete((pthread_key_t)tlsKey);
 	#elif defined AS_WINDOWS_THREADS
 		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
@@ -242,24 +232,21 @@ int asCThreadManager::CleanupLocalData()
 		return 0;
 
 #ifndef AS_NO_THREADS
-	#if defined AS_CXX_THREADS
-		asCThreadLocalData *tld = &threadLocalData;
-	#elif defined AS_POSIX_THREADS
+#if defined AS_POSIX_THREADS
 	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
-	#elif defined AS_WINDOWS_THREADS
+#elif defined AS_WINDOWS_THREADS
 	#if !defined(_MSC_VER) || !(WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
 	#endif
-	#endif
+#endif
 
 	if( tld == 0 )
 		return 0;
 
 	if( tld->activeContexts.GetLength() == 0 )
 	{
-		#if defined AS_CXX_THREADS
-			return 0;
-		#elif defined AS_POSIX_THREADS
+		asDELETE(tld,asCThreadLocalData);
+		#if defined AS_POSIX_THREADS
 			pthread_setspecific((pthread_key_t)threadManager->tlsKey, 0);
 		#elif defined AS_WINDOWS_THREADS
 			#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
@@ -294,29 +281,26 @@ asCThreadLocalData *asCThreadManager::GetLocalData()
 		return 0;
 
 #ifndef AS_NO_THREADS
-	asCThreadLocalData *tld = 0;
-	#if defined AS_CXX_THREADS
-		tld = &threadLocalData;
-	#elif defined AS_POSIX_THREADS
-	tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
+#if defined AS_POSIX_THREADS
+	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
 	if( tld == 0 )
 	{
 		tld = asNEW(asCThreadLocalData)();
 		pthread_setspecific((pthread_key_t)threadManager->tlsKey, tld);
 	}
-	#elif defined AS_WINDOWS_THREADS
+#elif defined AS_WINDOWS_THREADS
 	#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 		if( tld == 0 )
 			tld = asNEW(asCThreadLocalData)();
 	#else
-		tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
+		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
 		if( tld == 0 )
 		{
  			tld = asNEW(asCThreadLocalData)();
 			TlsSetValue((DWORD)threadManager->tlsKey, tld);
  		}
 	#endif
-	#endif
+#endif
 
 	return tld;
 #else
@@ -339,7 +323,7 @@ asCThreadLocalData::~asCThreadLocalData()
 
 //=========================================================================
 
-#if !defined(AS_NO_THREADS) && !defined(AS_CXX_THREADS)
+#ifndef AS_NO_THREADS
 asCThreadCriticalSection::asCThreadCriticalSection()
 {
 #if defined AS_POSIX_THREADS

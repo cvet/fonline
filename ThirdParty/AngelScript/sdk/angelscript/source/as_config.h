@@ -1208,9 +1208,7 @@
 // If the form of threads to use hasn't been chosen
 // then the library will be compiled without support
 // for multithreading
-#if defined(AS_WINDOWS_THREADS) || defined(AS_POSIX_THREADS)
-	#define AS_CXX_THREADS
-#elif !defined(AS_CXX_THREADS)
+#if !defined(AS_POSIX_THREADS) && !defined(AS_WINDOWS_THREADS)
 	#define AS_NO_THREADS
 #endif
 

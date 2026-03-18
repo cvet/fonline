@@ -193,7 +193,19 @@ int asCObjectType::GetSubTypeId(asUINT subtypeIndex) const
 	if( subtypeIndex >= templateSubTypes.GetLength() )
 		return asINVALID_ARG;
 
-	return engine->GetTypeIdFromDataType(templateSubTypes[subtypeIndex]);
+	int typeId = engine->GetTypeIdFromDataType(templateSubTypes[subtypeIndex]);
+
+	// (FOnline Patch) Keep legacy implicit-handle compatibility for template
+	// subtype queries so arrays, dicts, and other containers expose subtype ids
+	// with handle semantics without integration-side normalization helpers.
+	if( (typeId & asTYPEID_MASK_OBJECT) != 0 && (typeId & asTYPEID_OBJHANDLE) == 0 )
+	{
+		asCTypeInfo* subType = templateSubTypes[subtypeIndex].GetTypeInfo();
+		if( subType && (subType->flags & asOBJ_IMPLICIT_HANDLE) )
+			typeId |= asTYPEID_OBJHANDLE;
+	}
+
+	return typeId;
 }
 
 // interface
