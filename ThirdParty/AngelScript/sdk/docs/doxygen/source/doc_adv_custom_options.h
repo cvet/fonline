@@ -83,10 +83,20 @@ operator will always perform a handle assignment.
 With this option all enum values must be prefixed with the enum type using the scope operator to qualify.
  
 \ref asEP_PROPERTY_ACCESSOR_MODE
- 
-Some application writers do not want to use \ref doc_script_class_prop "virtual property accessors", or perhaps only 
-wish to use them for registered types. By setting this engine property to 0 the use of property accessors is turned off
-completely, and setting it to 1 only registered types can be allowed to use them.  
+
+By default \ref doc_script_class_prop "virtual property accessors" when declared as individual functions need to be 
+marked as such with the keyword 'property', or else the compiler won't consider the functions as virtual properties.
+This behaviour was introduced in version 2.33.1.
+
+Before this version, the compiler would automatically identify functions with the pre-fix 'get_' or 'set_' as virtual
+property accessors if the function signature was appropriate. This led to undesired behaviour when developers would
+declare such functions without the intention of them being used as virtual properties and yet the compiler used them as such.
+
+For backwards compatibility it is still possible to configure the engine to use this behaviour by setting the engine
+property asEP_PROPERTY_ACCESSOR_MODE to 2. 
+
+If it also possible to disable virtual property accessors all together by setting the engine property to 0. Setting the 
+option to 1 only allows virtual property accessors for registered functions, but still without requiring the keyword 'property'.
  
 \ref asEP_DISALLOW_GLOBAL_VARS
 
@@ -153,14 +163,21 @@ it may be of interest to turn off the bytecode optimization pass by setting this
 If you want to spare some dynamic memory and the script sections passed to the engine is already stored somewhere in memory then you
 can turn off this options. If you do you'll need to be careful not to modify or deallocate the script sections until module has been built.
  
-\ref asEP_MAX_STACK_SIZE
+\ref asEP_MAX_STACK_SIZE, \ref asEP_INIT_STACK_SIZE, \ref asEP_MAX_CALL_STACK_SIZE, \ref asEP_INIT_CALL_STACK_SIZE
 
-The script context's stack grows dynamically as needed during executions. By default there is no limit to how large it may grow, but
-if you wish to set this limit you can do with this option. The limit is given in bytes, but it is only an approximate limit. Setting the 
+The script context's data stack grows dynamically as needed during executions. By default there is no limit to how large it may grow, but
+if you wish to set this limit you can do with the asEP_MAX_STACK_SIZE option. The limit is given in bytes, but it is only an approximate limit. Setting the 
 limit to 1MB doesn't mean the stack will grow exactly to 1MB, but you can be certain that it will not grow much beyond that.
 
 Whenever a context attempts to grow the stack more than it is allowed, it will abort the execution and return a 'stack overflow' script 
 exception.
+
+Similarly the call stack also grows dynamically as needed during executions. The default here is also no limit, with the ability to limit
+maximum size by setting the asEP_MAX_CALL_STACK_SIZE. This limit is set in number of function calls. 
+
+In some cases it may be useful to set the initial stack size too, e.g. if you know beforehand that a large stack is needed, or 
+if you wish to avoid any runtime memory allocations during an execution. In this case you can use the asEP_INIT_STACK_SIZE for the 
+data stack, and asEP_INIT_CALL_STACK_SIZE for the call stack.
  
 \ref asEP_BUILD_WITHOUT_LINE_CUES
  
@@ -200,7 +217,13 @@ CPU can be spared.
 
 Compiler warnings can be turned off or treated as errors by setting this engine property.
 
+\ref asEP_GENERIC_CALL_MODE
 
+By default the \ref doc_generic "generic calling convention" treats the ref counts in the handles the same way that the native calling convention, i.e.
+releases any handles passed to a function if they have been marked as auto handles, and increments the returned handle if it has 
+been marked as auto handle.
+
+If the behaviour used before 2.33.0 is desired for backwards compatibility, then set this property to 0.
 
 
 

@@ -63,11 +63,62 @@ void ExitScript(asIScriptGeneric *)
 	asGetActiveContext()->Abort();
 }
 
+std::string typeFound;
+void CircularRefDetected(asITypeInfo *type, const void *obj, void * /* user param */)
+{
+	if (typeFound != "") typeFound += ",";
+	typeFound += type->GetName();
+}
+
 bool Test()
 {
 	bool fail = false;
 	COutStream out;
 	int r;
+
+	// Test GC callback on detecting circular reference
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetCircularRefDetectedCallback(CircularRefDetected);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class testclass \n"
+			"{ \n"
+			"  testclass @next; \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	testclass a; \n"
+			"   @a.next = testclass(); \n"
+			"   @a.next.next = @a; \n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->GarbageCollect();
+
+		asUINT currentSize;
+		asUINT totalDestroyed;
+		asUINT totalDetected;
+		engine->GetGCStatistics(&currentSize, &totalDestroyed, &totalDetected);
+		if (currentSize != 0 ||
+			totalDestroyed != 2 ||
+			totalDetected != 2)
+			TEST_FAILED;
+
+		if (typeFound != "testclass,testclass")
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test scenario where class destructor aborts the context
 	{

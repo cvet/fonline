@@ -67,6 +67,91 @@ bool Test()
 	asIScriptContext *ctx;
 	asIScriptEngine *engine;
 
+	// Test compiler error with ref
+	// https://www.gamedev.net/forums/topic/698645-version-2330-wip-crash-fix-included/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() { int j=0; \n"
+			"ref@ myRef = j; \n"
+			"@myRef = j; } \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void func()\n"
+						   "test (2, 14) : Error   : Object handle is not supported for this type\n"
+						   "test (3, 10) : Error   : Object handle is not supported for this type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+
+	}
+
+	// Test passing null to ref
+	// https://www.gamedev.net/forums/topic/698628-cscripthandle-null/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A {  }");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A@ obj; \n"
+								  "ref x(@obj); \n"
+								  "ref y(null); \n", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A@ obj; \n"
+			"ref x(obj); \n", mod);   // causes null pointer exception as it tries to do a value copy of obj
+		if (r != asEXECUTION_EXCEPTION)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test circular reference involving ref
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", 
+			"class A { ref @m; }");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// Create the circular reference
+		r = ExecuteString(engine, "A a; @a.m = a;", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->GarbageCollect();
+
+		asUINT currSize, totDestroy, totDetect;
+		engine->GetGCStatistics(&currSize, &totDestroy, &totDetect);
+		if (currSize != 0 || totDestroy != 1 || totDetect != 1)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test that correct type is handled on inheritance
 	// https://www.gamedev.net/forums/topic/694164-scripthandle-addon-doesnt-check-object-type/
 	{

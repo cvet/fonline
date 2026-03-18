@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include "utils.h"
 #include <sstream>
+#include <../../add_on/autowrapper/aswrappedcall.h>
 
 // From the scriptstdstring add-on
 extern void RegisterStdString_Generic(asIScriptEngine *engine);
@@ -178,12 +179,186 @@ void GetCallback(asIScriptGeneric *gen)
 	callback->AddRef();
 }
 
+int idCount = 0;
+std::stringstream log;
+class RefCounted
+{
+public:
+	RefCounted() { id = idCount++; refCount = 1; log << "created " << id << std::endl; }
+	void AddRef() { refCount++; log << "increased ref " << id << ", refCount = " << refCount << std::endl; }
+	void Release() 
+	{ 
+		refCount--; log << "decreased ref " << id << ", refCount = " << refCount << std::endl; 
+		if (refCount == 0)
+		{
+			log << "deleted " << id << std::endl;
+			delete this;
+		}
+	}
+	static RefCounted *Factory() { return new RefCounted(); }
+	int refCount;
+	int id;
+};
+
+void ReceiveHandle(RefCounted *t)
+{
+	// Release the handle that was received
+	if( t ) t->Release();
+}
+
+void ReceiveAutoHandle(RefCounted * /*t*/)
+{
+	// Do not release the handle, as AngelScript will do that afterwards
+}
+
+RefCounted *g_t = 0;
+RefCounted *ReturnHandle()
+{
+	// increase the refcount for the returned handle
+	g_t->AddRef();
+	return g_t;
+}
+
+RefCounted *ReturnAutoHandle()
+{
+	// Do not increase ref count since angelscript will do that afterwards
+	return g_t;
+}
+
+
+
+
+
 bool Test()
 {
 	bool fail = Test2();
 
 	int r;
 	asIScriptEngine *engine;
+	CBufferedOutStream bout;
+
+	// Comparing generic to native functions
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_GENERIC_CALL_MODE, 1);
+
+		engine->RegisterObjectType("type", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("type", asBEHAVE_FACTORY, "type @f()", asFUNCTION(RefCounted::Factory), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("type", asBEHAVE_ADDREF, "void f()", asMETHOD(RefCounted, AddRef), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("type", asBEHAVE_RELEASE, "void f()", asMETHOD(RefCounted, Release), asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void ReceiveHandle(type @)", asFUNCTION(ReceiveHandle), asCALL_CDECL);
+		engine->RegisterGlobalFunction("void ReceiveAutoHandle(type @+)", asFUNCTION(ReceiveAutoHandle), asCALL_CDECL);
+		engine->RegisterGlobalFunction("type @ ReturnHandle()", asFUNCTION(ReturnHandle), asCALL_CDECL);
+		engine->RegisterGlobalFunction("type @+ ReturnAutoHandle()", asFUNCTION(ReturnAutoHandle), asCALL_CDECL);
+
+		engine->RegisterGlobalFunction("void ReceiveHandle_gen(type @)", WRAP_FN(ReceiveHandle), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("void ReceiveAutoHandle_gen(type @+)", WRAP_FN(ReceiveAutoHandle), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("type @ ReturnHandle_gen()", WRAP_FN(ReturnHandle), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("type @+ ReturnAutoHandle_gen()", WRAP_FN(ReturnAutoHandle), asCALL_GENERIC);
+
+		g_t = new RefCounted();
+
+		log << "ReceiveHandle" << std::endl;
+		r = ExecuteString(engine, "type t; ReceiveHandle(t);");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReceiveAutoHandle" << std::endl;
+		r = ExecuteString(engine, "type t; ReceiveAutoHandle(t);");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReturnHandle" << std::endl;
+		r = ExecuteString(engine, "type @t = ReturnHandle();");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReturnAutoHandle" << std::endl;
+		r = ExecuteString(engine, "type @t = ReturnAutoHandle();");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReceiveHandle_gen" << std::endl;
+		r = ExecuteString(engine, "type t; ReceiveHandle_gen(t);");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReceiveAutoHandle_gen" << std::endl;
+		r = ExecuteString(engine, "type t; ReceiveAutoHandle_gen(t);");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReturnHandle_gen" << std::endl;
+		r = ExecuteString(engine, "type @t = ReturnHandle_gen();");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		log << "ReturnAutoHandle_gen" << std::endl;
+		r = ExecuteString(engine, "type @t = ReturnAutoHandle_gen();");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Release the global instance
+		g_t->Release();
+		g_t = 0;
+
+		if (log.str() != "created 0\n"
+			"ReceiveHandle\n"
+			"created 1\n"
+			"increased ref 1, refCount = 2\n"
+			"decreased ref 1, refCount = 1\n"
+			"decreased ref 1, refCount = 0\n"
+			"deleted 1\n"
+			"ReceiveAutoHandle\n"
+			"created 2\n"
+			"increased ref 2, refCount = 2\n"
+			"decreased ref 2, refCount = 1\n"
+			"decreased ref 2, refCount = 0\n"
+			"deleted 2\n"
+			"ReturnHandle\n"
+			"increased ref 0, refCount = 2\n"
+			"decreased ref 0, refCount = 1\n"
+			"ReturnAutoHandle\n"
+			"increased ref 0, refCount = 2\n"
+			"decreased ref 0, refCount = 1\n"
+			"ReceiveHandle_gen\n"
+			"created 3\n"
+			"increased ref 3, refCount = 2\n"
+			"decreased ref 3, refCount = 1\n"
+			"decreased ref 3, refCount = 0\n"
+			"deleted 3\n"
+			"ReceiveAutoHandle_gen\n"
+			"created 4\n"
+			"increased ref 4, refCount = 2\n"
+			"decreased ref 4, refCount = 1\n"
+			"decreased ref 4, refCount = 0\n"
+			"deleted 4\n"
+			"ReturnHandle_gen\n"
+			"increased ref 0, refCount = 2\n"
+			"decreased ref 0, refCount = 1\n"
+			"ReturnAutoHandle_gen\n"
+			"increased ref 0, refCount = 2\n"
+			"decreased ref 0, refCount = 1\n"
+			"decreased ref 0, refCount = 0\n"
+			"deleted 0\n")
+		{
+			PRINTF("%s", log.str().c_str());
+			TEST_FAILED;
+		}
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test passing and returning funcdefs in generic functions
 	{
@@ -193,7 +368,7 @@ bool Test()
 		asIScriptContext *context = engine->CreateContext();
 
 		r = engine->RegisterFuncdef("int Callback()");assert(r >= 0);
-		r = engine->RegisterGlobalFunction("void SetCallback(Callback@ cb)", asFUNCTION(SetCallback), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("void SetCallback(Callback@+ cb)", asFUNCTION(SetCallback), asCALL_GENERIC); assert(r >= 0);
 		r = engine->RegisterGlobalFunction("Callback@ GetCallback()", asFUNCTION(GetCallback), asCALL_GENERIC); assert(r >= 0);
 
 		r = module->AddScriptSection("test", "int main(){ \n"
@@ -274,7 +449,7 @@ bool Test()
 		r = engine->RegisterGlobalProperty("obj o", &obj);
 
 		r = engine->RegisterInterface("intf");
-		r = engine->RegisterGlobalFunction("intf @nullPtr(intf @)", asFUNCTION(nullPtr), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("intf @nullPtr(intf @+)", asFUNCTION(nullPtr), asCALL_GENERIC); assert(r >= 0);
 
 		r = engine->RegisterGlobalFunction("void functor()", asFUNCTION(Generic_Functor), asCALL_GENERIC, &extraValue); assert(r >= 0);
 

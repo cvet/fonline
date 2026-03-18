@@ -47,9 +47,10 @@ void RegisterProperties(asIScriptEngine *engine)
 \endcode
 
 It is also possible to expose properties through \ref doc_script_class_prop "property accessors", which are a pair of functions 
-with the prefixes get_ and set_ for getting and setting the property value. These functions should be registered with registered 
-with \ref doc_register_func "RegisterGlobalFunction". This is especially useful when the offset of the property cannot be 
-determined, or if the type of the property is not registered in the script and some translation must occur, i.e. from char* to string. 
+with the prefixes 'get_' and 'set_' and the function decorator 'property' for getting and setting the property value. These functions
+should be registered with \ref doc_register_func "RegisterGlobalFunction". This is especially useful when the offset of the property
+cannot be determined, or if the type of the property is not registered in the script and some translation must occur, i.e. from 
+<tt>char*</tt> to <tt>string</tt>. 
 
 \see \ref doc_register_type 
 

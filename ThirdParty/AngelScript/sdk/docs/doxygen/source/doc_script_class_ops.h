@@ -46,6 +46,8 @@ When the expression <tt>a <i>op</i></tt> is compiled, the compiler will rewrite 
 <tr><td>&lt;=</td>         <td>opCmp</td>   </tr>
 <tr><td>&gt;</td>          <td>opCmp</td>   </tr>
 <tr><td>&gt;=</td>         <td>opCmp</td>   </tr>
+<tr><td>is</td>            <td>opEquals</td></tr>
+<tr><td>!is</td>           <td>opEquals</td></tr>
 </table>
 
 The <tt>a == b</tt> expression will be rewritten as <tt>a.opEquals(b)</tt> and <tt>b.opEquals(a)</tt> and 
@@ -60,6 +62,10 @@ should return a negative value. If they are supposed to be equal the return valu
 If an equality check is made and the opEquals method is not available the compiler looks for the opCmp method 
 instead. So if the opCmp method is available it is really not necesary to implement the opEquals method, except
 for optimization reasons.
+
+The identity operator, <tt>is</tt>, expects opEquals to take a handle, <tt>\@</tt>, so the addresses can be
+compared to be able to return if it is the same object, in contrast two different objects that have
+the same value.
 
 
 \section doc_script_class_assign_ops Assignment operators
@@ -164,8 +170,8 @@ as <tt>expr.opCall(arglist)</tt> and compile that instead.
 \section doc_script_class_conv Type conversion operators
 
 <table cellspacing=0 cellpadding=0 border=0>
-<tr><td width=150><b>op</b></td><td width=200><b>opfunc</b></td></tr>
-<tr><td><i>type</i>(<i>expr</i>)</td><td>opConv, opImplConv</td></tr>
+<tr><td width=150><b>op</b></td><td width=300><b>opfunc</b></td></tr>
+<tr><td><i>type</i>(<i>expr</i>)</td><td><i>constructor</i>, opConv, opImplConv</td></tr>
 <tr><td>cast&lt;<i>type</i>>(<i>expr</i>)</td><td>opCast, opImplCast</td></tr>
 </table>
 
@@ -173,15 +179,26 @@ When the expression <tt>type(expr)</tt> is compiled and type doesn't have a cons
 the type of the expression, the compiler will try to rewrite it as <tt>expr.opConv()</tt>. The compiler will then chose
 the opConv that returns the desired type. 
 
-By implementing the opImplConv instead of opConv, the compiler will be able to use this
-for implicit conversions too, e.g. when compiling an assignment or a function argument.
+For implicit conversions, the compiler will look for a constructor of the target type that take a 
+matching argument, and isn't flagged as explicit. If it doesn't find one, it will try to call the 
+opImplConv on the source type that returns the target type.
 
 <pre>
   class MyObj
   {
     double myValue;
+
+    // Allow MyObj to be implicitly created from double
+    MyObj(double v)            { myValue = v; }
+
+    // Allow MyObj to be implicitly converted to double
     double opImplConv() const  { return myValue; }
-    int    opConv() const      { return int(myValue); }
+
+    // Allow MyObj to be created from int, but only explicitly
+    MyObj(int v) explicit      { myValue = v; }
+
+    // Allow MyObj to be converted to int, but only explicitly
+    int opConv() const         { return int(myValue); }
   }
 </pre>
 

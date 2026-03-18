@@ -270,5 +270,21 @@ so the type of the arguments and the return type doesn't have to be explicitly d
 It is not yet possible for anonymous functions to access variables declared in the same 
 scope as the function, i.e. they cannot be used as closures.
 
+If there are multiple matching uses for the anonymous function it will be necessary to 
+explicitly inform the parameter types, so the ambiguity can be resolved.
+
+<pre>
+  funcdef void A(int);
+  funcdef void B(float);
+  void func(A@) {}
+  void func(B@) {}
+  
+  void main()
+  {
+    // Explicitly specify the type to tell the compiler that A is wanted
+    func(function(int a) {});
+  }
+</pre>
+
 
 */

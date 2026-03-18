@@ -53,6 +53,32 @@ static bool TestEnum()
 	int                r;
 	bool               fail = false;
 
+	// Report warning on enum values that do not fit in 32bit
+	// https://www.gamedev.net/forums/topic/687053-values-of-enum-constants/
+	{
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum VAL { a = 12345678901, b = -9223372036854775809 }");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 12) : Info    : Compiling VAL a\n"
+						   "test (1, 16) : Warning : Value is too large for data type\n"
+						   "test (1, 29) : Info    : Compiling VAL b\n"
+						   "test (1, 33) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test that enums are properly converted during function overloading
 	// http://www.gamedev.net/topic/678030-enum-type-conversion-to-int-cost-not-calculated-correctly/
 	{
@@ -293,7 +319,7 @@ static bool TestEnum()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "error (1, 17) : Info    : Compiling TEST_ERR ERR1\n"
-			"error (1, 24) : Error   : 'ERR2' is not declared\n"
+			"error (1, 24) : Error   : No matching symbol 'ERR2'\n"
 			"error (1, 30) : Info    : Compiling TEST_ERR ERR2\n"
 			"error (1, 30) : Error   : Use of uninitialized global variable 'ERR1'.\n")
 		{
@@ -465,7 +491,7 @@ static bool TestEnum()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "error (1, 1) : Info    : Compiling void f()\n"
-			"error (1, 18) : Error   : Unknown scope 'UNKNOWN_ENUM'\n")
+			"error (1, 18) : Error   : No matching symbol 'UNKNOWN_ENUM::ENUM1'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -486,7 +512,7 @@ static bool TestEnum()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "error (5, 1) : Info    : Compiling void f()\n"
-			"error (5, 18) : Error   : Unknown scope 'SomeClass'\n")
+			"error (5, 18) : Error   : Cannot access non-static member 'SOMEVALUE' like this\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -506,7 +532,7 @@ static bool TestEnum()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "error (1, 1) : Info    : Compiling void f()\n"
-			"error (1, 18) : Error   : 'ENUM1' is not declared\n")
+			"error (1, 18) : Error   : No matching symbol 'ENUM1'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -578,7 +604,7 @@ static bool TestEnum()
 										"  assert( '' + sineWave + '' == '3' ); \n"
 										"  assert( synth.waveform_type == 3 ); \n"
 										"} \n"
-										"class tone_synth { void set_waveform_type(double v) {prop = v;} double get_waveform_type() {return prop;} double prop; }\n");
+										"class tone_synth { void set_waveform_type(double v) property {prop = v;} double get_waveform_type() property {return prop;} double prop; }\n");
 
 		r = mod->Build();
 		if( r < 0 ) 
@@ -665,7 +691,7 @@ static bool TestEnum()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "script (6, 8) : Info    : Compiling ENUM_1 g_e2\n"
-		                   "script (6, 15) : Error   : 'E2_VAL1' is not declared\n" )
+		                   "script (6, 15) : Error   : No matching symbol 'E2_VAL1'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -335,50 +335,6 @@ bool TestStdString()
 		engine->Release();
 	}
 
-	// Test string methods
-	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
-
-		RegisterStdString(engine);
-		RegisterScriptArray(engine, false);
-		RegisterStdStringUtils(engine);
-		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
-
-		r = ExecuteString(engine,
-			"  string str = 'hello world'; \n"
-			"  assert( str.substr(6, 5) == 'world' ); \n"
-			"  assert( str.findFirst('o') == 4 ); \n"
-			"  assert( str.findLast('o') == 7 ); \n"
-			"  array<string> @arr = 'A|B||D'.split('|'); \n"
-			"  assert( arr.length() == 4 && \n"
-			"      arr[0] == 'A' && \n"
-			"      arr[1] == 'B' && \n"
-			"      arr[2] == ''  && \n"
-			"      arr[3] == 'D' ); \n"
-			"  assert( join(arr, ';') == 'A;B;;D' ); \n"
-			"  assert( formatInt(123456789012345, 'l', 20).length() == 20 ); \n"
-			"  assert( formatFloat(123.456, '', 20, 10).length() == 20 ); \n"
-			"  assert( parseInt('1234') == 1234 ); \n"
-			"  assert( parseInt('-123') == -123 ); \n"
-			"  assert( parseFloat('123.456') == 123.456 ); \n"
-			"  assert( parseUInt('-1') == 0 ); \n"
-			"  assert( parseUInt('ABC', 16) == 0xABC ); \n"
-			"  assert( '12345'.length == 5 ); \n");
-		if (r != asEXECUTION_FINISHED)
-			TEST_FAILED;
-
-		// Test problem with formatInt and condition expression
-		// Reported by neorej16
-		r = ExecuteString(engine,
-			"true ? formatInt(5, ' ', 4) : '';\n"
-			"formatInt(5, ' ', 4);\n");
-		if (r != asEXECUTION_FINISHED)
-			TEST_FAILED;
-
-		engine->Release();
-	}
-
 	return fail;
 }
 

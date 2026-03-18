@@ -24,61 +24,68 @@ namespace TestAssign       { void Test(double *times); }
 namespace TestArray        { void Test(double *times); }
 namespace TestGlobalVar    { void Test(double *time); }
 namespace TestClassProp    { void Test(double *time); }
+namespace TestRetObj       { void Test(double *times); }
 
-const int NUM_TESTS = 22;
+const int NUM_TESTS = 25;
 
-// Times for 2.31.2 (64bit, Intel i7)
+// Times for 2.32.0 (64bit, Intel i7)
 double testTimesOrig[NUM_TESTS] = 
 {
-0.546,  // Basic
-0.142,  // Basic2
-0.317,  // Call
-0.424,  // Call2
-0.867,  // Fib
-0.109,  // Int
-0.366,  // Intf
-0.360,  // Mthd
-0.687,  // String
-0.323,  // String2
-0.348,  // StringPooled
-0.288,  // ThisProp
-0.155,  // Vector3
-0.183,  // Assign.1
-0.428,  // Assign.2
-0.228,  // Assign.3
-0.279,  // Assign.4
+0.544,  // Basic
+0.144,  // Basic2
+0.310,  // Call
+0.420,  // Call2
+0.849,  // Fib
+0.111,  // Int
+0.324,  // Intf
+0.323,  // Mthd
+0.669,  // String
+0.349,  // String2
+0.380,  // StringPooled
+0.292,  // ThisProp
+0.161,  // Vector3
+0.163,  // Assign.1
+0.431,  // Assign.2
+0.236,  // Assign.3
+0.282,  // Assign.4
 0.282,  // Assign.5
-0.541,  // Array.1
-0.227,  // Array.2
+0.551,  // Array.1
+0.231,  // Array.2
 0.139,  // GlobalVar
-0.315   // ClassProp
+0.206,  // ClassProp
+0.845,  // RetObj.1
+0.430,  // RetObj.2
+0.133   // RetObj.3
 };
 
-// Times for 2.32.0 WIP (64bit, Intel i7) (localized optimizations)
+// Times for 2.32.1 WIP (64bit, Intel i7) (localized optimizations)
 double testTimesOrig2[NUM_TESTS] = 
 {
-	0.533,  // Basic
-	0.143,  // Basic2
-	0.304,  // Call
+	0.544,  // Basic
+	0.144,  // Basic2
+	0.308,  // Call
 	0.420,  // Call2
-	0.863,  // Fib
+	0.849,  // Fib
 	0.111,  // Int
-	0.392,  // Intf
-	0.378,  // Mthd
-	0.694,  // String
-	0.323,  // String2
-	0.358,  // StringPooled
-	0.289,  // ThisProp
-	0.156,  // Vector3
-	0.182,  // Assign.1
-	0.430,  // Assign.2
-	0.227,  // Assign.3
-	0.279,  // Assign.4
-	0.279,  // Assign.5
-	0.541,  // Array.1
-	0.232,  // Array.2
-	0.137,  // GlobalVar
-	0.204   // ClassProp
+	0.324,  // Intf
+	0.322,  // Mthd
+	0.669,  // String
+	0.349,  // String2
+	0.380,  // StringPooled
+	0.292,  // ThisProp
+	0.158,  // Vector3
+	0.163,  // Assign.1
+	0.431,  // Assign.2
+	0.236,  // Assign.3
+	0.282,  // Assign.4
+	0.282,  // Assign.5
+	0.551,  // Array.1
+	0.231,  // Array.2
+	0.139,  // GlobalVar
+	0.206,  // ClassProp
+	0.845,  // RetObj.1
+	0.430,  // RetObj.2
+	0.132   // RetObj.3
 };
 
 double testTimesBest[NUM_TESTS];
@@ -127,6 +134,7 @@ int main(int argc, char **argv)
 		TestArray::Test(&testTimes[18]); printf("."); fflush(stdout);
 		TestGlobalVar::Test(&testTimes[20]); printf("."); fflush(stdout);
 		TestClassProp::Test(&testTimes[21]); printf("."); fflush(stdout);
+		TestRetObj::Test(&testTimes[22]); printf("."); fflush(stdout);
 
 		for( int t = 0; t < NUM_TESTS; t++ )
 		{
@@ -159,6 +167,9 @@ int main(int argc, char **argv)
 	printf("Array.2        %.3f    %.3f    %.3f%s\n", testTimesOrig[19], testTimesOrig2[19], testTimesBest[19], testTimesBest[19] < testTimesOrig2[19] ? " +" : " -"); 
 	printf("GlobalVar      %.3f    %.3f    %.3f%s\n", testTimesOrig[20], testTimesOrig2[20], testTimesBest[20], testTimesBest[20] < testTimesOrig2[20] ? " +" : " -"); 
 	printf("ClassProp      %.3f    %.3f    %.3f%s\n", testTimesOrig[21], testTimesOrig2[21], testTimesBest[21], testTimesBest[21] < testTimesOrig2[21] ? " +" : " -");
+	printf("RetObj.1       %.3f    %.3f    %.3f%s\n", testTimesOrig[22], testTimesOrig2[22], testTimesBest[22], testTimesBest[22] < testTimesOrig2[22] ? " +" : " -");
+	printf("RetObj.2       %.3f    %.3f    %.3f%s\n", testTimesOrig[23], testTimesOrig2[23], testTimesBest[23], testTimesBest[23] < testTimesOrig2[23] ? " +" : " -");
+	printf("RetObj.3       %.3f    %.3f    %.3f%s\n", testTimesOrig[24], testTimesOrig2[24], testTimesBest[24], testTimesBest[24] < testTimesOrig2[24] ? " +" : " -");
 
 	printf("--------------------------------------------\n");
 	printf("Press any key to quit.\n");

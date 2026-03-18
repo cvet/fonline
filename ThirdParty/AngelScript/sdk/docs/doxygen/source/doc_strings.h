@@ -48,7 +48,7 @@ engine->SetEngineProperty(asEP_SCRIPT_SCANNER, 0);
 \endcode
 
 If you do use Unicode, then you'll also want to choose the desired encoding for the string literals, either UTF-8 or UTF-16. By
-default the string literals in AngelScript are encoded with UTF-8, but if you're application is better prepared for UTF-16 then
+default the string literals in AngelScript are encoded with UTF-8, but if your application is better prepared for UTF-16 then
 you'll want to change this by setting the engine property \ref asEP_STRING_ENCODING to 1 before compiling your scripts.
 
 \code

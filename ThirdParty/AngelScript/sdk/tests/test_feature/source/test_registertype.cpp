@@ -547,7 +547,7 @@ bool Test()
 
 		engine->Release();
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'Test' and 'Test &opAssign(const Test &)' (Code: -13)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'Test' and 'Test &opAssign(const Test &)' (Code: asALREADY_REGISTERED, -13)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -640,7 +640,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'array<int>' (Code: -13)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'array<int>' (Code: asALREADY_REGISTERED, -13)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -662,7 +662,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "System function (1, 11) : Error   : Identifier 'type' is not a data type in global namespace\n"
-						   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void func(type @+)' (Code: -10)\n" )
+						   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void func(type @+)' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -752,7 +752,7 @@ bool Test()
 	if( r != asILLEGAL_BEHAVIOUR_FOR_TYPE )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: -23)\n" )
+		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -764,11 +764,13 @@ bool Test()
 	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
 	r = engine->RegisterObjectType("gc", 4, asOBJ_REF | asOBJ_GC); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("gc", asBEHAVE_ADDREF, "void func()", asFUNCTION(0), asCALL_GENERIC);
+	r = engine->RegisterObjectBehaviour("gc", asBEHAVE_RELEASE, "void func()", asFUNCTION(0), asCALL_GENERIC);
 	r = ExecuteString(engine, "");
 	if( r >= 0 )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : Type 'gc' is missing behaviours\n"
-		               " (0, 0) : Info    : A garbage collected type must have the addref, release, and all gc behaviours\n"
+		               " (0, 0) : Info    : A garbage collected ref type must have the addref, release, and all gc behaviours\n"
 		               " (0, 0) : Error   : Invalid configuration. Verify the registered application interface.\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
@@ -791,11 +793,11 @@ bool Test()
 	if( r != asILLEGAL_BEHAVIOUR_FOR_TYPE )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'void f()' (Code: -23)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 		               " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'void f()' (Code: -23)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 					   " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'int f()' (Code: -23)\n" )
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'val' and 'int f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -814,8 +816,8 @@ bool Test()
 	r = engine->RegisterGlobalFunction("ref f()", asFUNCTION(0), asCALL_GENERIC);
 	if( r >= 0 )
 		TEST_FAILED;
-	if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(ref)' (Code: -10)\n"
-	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'ref f()' (Code: -10)\n" )
+	if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(ref)' (Code: asINVALID_DECLARATION, -10)\n"
+	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'ref f()' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -870,11 +872,11 @@ bool Test()
 		TEST_FAILED;
 	r = engine->RegisterObjectBehaviour("ref", asBEHAVE_FACTORY, "ref @f()", asFUNCTION(0), asCALL_GENERIC);
 	if( bout.buffer != " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: -23)\n"
+		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 		               " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: -23)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 					   "System function (1, 5) : Error   : Object handle is not supported for this type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'ref @f()' (Code: -10)\n" )
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'ref @f()' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -976,9 +978,9 @@ bool Test()
 	if( r >= 0 )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: -23)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 					   " (0, 0) : Error   : The behaviour is not compatible with the type\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: -23)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'ref' and 'void f()' (Code: asILLEGAL_BEHAVIOUR_FOR_TYPE, -23)\n"
 					   " (0, 0) : Error   : Invalid configuration. Verify the registered application interface.\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
@@ -1010,7 +1012,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'B' and 'A @opImplCast()' (Code: -13)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'B' and 'A @opImplCast()' (Code: asALREADY_REGISTERED, -13)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1090,7 +1092,7 @@ bool Test()
 		if (bout.buffer != "ExecuteString (1, 5) : Error   : Object handle is not supported for this type\n"
 			"ExecuteString (1, 6) : Error   : Data type can't be 'ref'\n"
 			"System function (1, 4) : Error   : Object handle is not supported for this type\n"
-			" (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'ref@ func()' (Code: -10)\n")
+			" (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'ref@ func()' (Code: asINVALID_DECLARATION, -10)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1166,7 +1168,7 @@ bool Test()
 		// TODO: The 'Failed in call' message should show the return code too (and if possible the symbolic name, i.e. asINVALID_DECL)
 		if( bout.buffer != "Property (1, 10) : Error   : Expected identifier\n"
 						   "Property (1, 10) : Error   : Instead found reserved keyword 'int'\n"
-		                   " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'Npc' and 'unsigned int hp' (Code: -10)\n" )
+		                   " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'Npc' and 'unsigned int hp' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1378,7 +1380,7 @@ bool TestRefScoped()
 	r = engine->RegisterGlobalFunction("void f(scoped@)", asFUNCTION(DummyFunc), asCALL_GENERIC);
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "System function (1, 14) : Error   : Object handle is not supported for this type\n"
-	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(scoped@)' (Code: -10)\n" )
+	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(scoped@)' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -1389,7 +1391,7 @@ bool TestRefScoped()
 	r = engine->RegisterGlobalFunction("void f(scoped&)", asFUNCTION(DummyFunc), asCALL_GENERIC);
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "System function (1, 14) : Error   : Only object types that support object handles can use &inout. Use &in or &out instead\n"
-	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(scoped&)' (Code: -10)\n" )
+	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void f(scoped&)' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -2097,6 +2099,9 @@ bool TestIrrTypes()
 
 // http://www.gamedev.net/topic/662178-odd-behavior-with-globally-declared-scoped-reference-types-is-this-normal/
 
+#if defined(_MSC_VER) && _MSC_VER >= 1913 // MSVC 2017 +
+__declspec(align(16))
+#endif
 class vec
 {
 public:
@@ -2106,7 +2111,7 @@ public:
 	vec &operator=(const vec &o) { x = o.x; y = o.y; z = o.z; w = o.w; return *this; }
 
 	union {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSC_VER < 1913 // Before MSVC 2017
 		__m128 v;
 #endif
 		struct {
@@ -2114,7 +2119,7 @@ public:
 		};
 	};
 }
-#if !defined(_MSC_VER)
+#if !defined(_MSC_VER) // gnuc or clang
 __attribute__((aligned(16)))
 #endif
 ;

@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "../../../add_on/scriptany/scriptany.h"
+#include "../../../add_on/scripthandle/scripthandle.h"
 #include "scriptmath3d.h"
 
 namespace TestAny
@@ -89,7 +90,9 @@ static CScriptAny *myAny = 0;
 void SetMyAny(asIScriptGeneric *gen)
 {
 	CScriptAny *a = (CScriptAny *)gen->GetArgObject(0);
-	a->AddRef();
+	// Only call AddRef to hold the ref if the generic calling convention is using the old mode
+	if( gen->GetEngine()->GetEngineProperty(asEP_GENERIC_CALL_MODE) == 0 )
+		a->AddRef();
 	if( myAny ) myAny->Release();
 	myAny = a;
 }
@@ -103,6 +106,28 @@ bool Test()
 	asIScriptEngine *engine;
 	CBufferedOutStream bout;
 	asIScriptModule *mod;
+
+	// Test circular reference between any and ref
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+		RegisterScriptAny(engine);
+
+		// Create the circular reference
+		r = ExecuteString(engine, "any a; ref @r = a; a.store(r);");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->GarbageCollect();
+
+		asUINT currSize, totDestroy, totDetect;
+		engine->GetGCStatistics(&currSize, &totDestroy, &totDetect);
+		if (currSize != 0 || totDestroy != 1 || totDetect != 1)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test initialization from another any
 	// http://www.gamedev.net/topic/678208-scriptany-addon-call-wrong-constructor-in-2310/

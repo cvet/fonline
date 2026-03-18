@@ -396,6 +396,481 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test crash with mismatched shared classes
+	// Reported by Julius Narvilas/MrFloat
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+	
+		CBytecodeStream stream1("a");
+		CBytecodeStream stream2("b");	
+		
+		// Compile script 2
+		{
+			const char* file2 = ""
+				"shared class Test1 { \n"
+				//mismatching functions
+				"	int function2() { return 0; } \n"
+				""
+				"}\n";
+
+			asIScriptModule* mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+			r = mod->AddScriptSection("test2", file2, strlen(file2));
+			r = mod->Build();
+			if( r < 0 )
+				TEST_FAILED;
+			r = mod->SaveByteCode(&stream2);
+			mod->Discard();
+		}
+		
+		// Compile script 1
+		{
+				const char* file1 = ""
+				"shared class Test1 { \n"
+				//mismatching functions
+				"	int function1() { return 0; } \n"
+				""
+				"}\n";
+
+			asIScriptModule* mod = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+			r = mod->AddScriptSection("test1", file1, strlen(file1));
+			r = mod->Build();
+			if( r < 0 )
+				TEST_FAILED;
+			r = mod->SaveByteCode(&stream1);
+			mod->Discard();
+		}
+		
+		// Load the previously saved bytecode over the first module
+		asIScriptModule* mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->LoadByteCode(&stream2);
+		if( r < 0 )
+			TEST_FAILED;
+
+		//invalid bytecode with outdated shared class into a new module
+		asIScriptModule* mod1_1 = engine->GetModule("test1_1", asGM_ALWAYS_CREATE);
+		r = mod1_1->LoadByteCode(&stream1);
+		if( r >= 0 )
+			TEST_FAILED;
+
+		//just need another compilation to trigger "engine->signatureIds" array search
+		asIScriptModule* mod1_2 = engine->GetModule("test1_2", asGM_ALWAYS_CREATE);
+		stream1.Restart();
+		r = mod1_2->LoadByteCode(&stream1);
+		if( r >= 0 )
+			TEST_FAILED;
+		
+		if (bout.buffer != " (0, 0) : Error   : Shared type 'Test1' doesn't match the original declaration in other module\n"
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 90\n"
+						   " (0, 0) : Error   : Shared type 'Test1' doesn't match the original declaration in other module\n"
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 90\n") 
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test same function in different namespaces
+	// https://www.gamedev.net/forums/topic/697445-loadbytecode-fails-when-there-is-a-function-with-the-same-name-in-the-namespace/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(
+			"test",
+			"namespace X { shared float A()  {return 0.f;} }"
+			"namespace Y { shared float A()  {return 0.f;} }"
+			"void test() {"
+			"	float v;"
+			"	v = Y::A();"
+			"}");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1);
+		assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "") 
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test external shared classes in namespaces with virtual methods while loading bytecode
+	// https://www.gamedev.net/forums/topic/697083-loading-bytecode-fails-when-combining-namespace-and-shared-virtual-method/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace X {"
+			"shared class A"
+			"{"
+			"}"
+			"shared class B : A"
+			"{"
+			"  void bar() {}"
+			"}}"
+		);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"namespace X {"
+			"external shared class A;"
+			"external shared class B;"
+			"}"
+			"namespace Y {"
+			"class Test : X::A"
+			"{"
+			"  X::B b;"
+			"  void foo() { b.bar(); }"
+			"}}"
+		);
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc2("test2");
+		r = mod2->SaveByteCode(&bc2); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod2->Discard();
+
+		// game loop
+		for (unsigned i = 0; i < 10; ++i) {
+			engine->GarbageCollect(); // run DeleteDiscardedModules();
+		}
+
+		mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->LoadByteCode(&bc2);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test external shared classes in namespaces while loading bytecode
+	// https://www.gamedev.net/forums/topic/697035-reading-bytecode-fails-when-combining-namespace-and-shared-class/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace X {"
+			"shared class A"
+			"{"
+			"  A()"
+			"    {}"
+			"}};"
+		);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"namespace X {"
+			"external shared class A;"
+			"}"
+			"namespace Y {"
+			"class Test : X::A"
+			"{"
+			"  Test() {}"
+			"}};"
+		);
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc2("test2");
+		r = mod2->SaveByteCode(&bc2); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod2->Discard();
+
+		// game loop
+		for (unsigned i = 0; i < 10; ++i) {
+			engine->GarbageCollect(); // run DeleteDiscardedModules();
+		}
+
+		mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->LoadByteCode(&bc2);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test lambda in shared class
+	// https://www.gamedev.net/forums/topic/696953-using-lambda-function-in-shared-class-fails-to-read-bytecode/
+	// Don't save bytecode for inherited methods, especially if the base class is declared as external
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"shared funcdef void TestFunc(); \n"
+			"shared class TestBase \n"
+			"{ \n"
+			"  void callfn(TestFunc@ fn) \n"
+			"    { \n"
+			"       fn(); \n"
+			"    } \n"
+			"  void test() \n"
+			"    { \n"
+			"      callfn( function() { called = 42; } ); \n"
+			"    } \n"
+			"}; \n"
+			"int called = 0; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"external shared funcdef void TestFunc(); \n"
+			"external shared class TestBase; \n"
+			"class Test : TestBase \n"
+			"{ \n"
+			"}; \n"
+			"class Test2 : TestBase \n" // The second class shares the same base, thus must also work
+			"{ \n"
+			"}; \n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "Test t; t.test();", mod2);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if( *reinterpret_cast<int*>(mod->GetAddressOfGlobalVar(0)) != 42 )
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc2("test2");
+		r = mod2->SaveByteCode(&bc2); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->LoadByteCode(&bc2);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "Test t; t.test();", mod2);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (*reinterpret_cast<int*>(mod->GetAddressOfGlobalVar(0)) != 42)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test loading bytecode with existing shared interfaces with inheritance
+	// reported by Zakhar
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"shared interface ScriptObject {} \n"
+			"shared interface BaseEffect : ScriptObject {} \n"
+			"class A : BaseEffect {} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"shared interface ScriptObject {} \n"
+			"shared interface BaseEffect : ScriptObject {} \n"
+			"class B : BaseEffect {} \n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc2("test2");
+		r = mod2->SaveByteCode(&bc2); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->LoadByteCode(&bc2);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test forever loop where the return instruction is never reached
+	// https://www.gamedev.net/forums/topic/696323-when-using-an-infinite-loop-using-for-statement-and-stopping-with-savebytecode/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() \n"
+			"{ \n"
+			"  for (;;) \n"
+			"  { \n"
+			"  } \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test saving interfaces with inheritance
+	// https://www.gamedev.net/forums/topic/696191-using-interface-inheritance-i-stopped-with-savebytecode/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"interface A \n"
+			"{ \n"
+			"}; \n"
+			"interface B : A \n"
+			"{ \n"
+			"}; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1); assert(r >= 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();
+	}
+
 	// Test saving and loading modules that have shared classes where the
 	// content of the shared class was inherited from the other module
 	// Reported by Phong Ba
@@ -586,7 +1061,7 @@ bool Test()
 		else
 		{
 			asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-			if (crc32 != 0x4B444563)
+			if (crc32 != 0x3DC90FE)
 			{
 				PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 				TEST_FAILED;
@@ -641,7 +1116,7 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-		if (crc32 != 0xCE54454F)
+		if (crc32 != 0x1636A342)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
@@ -703,7 +1178,7 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-		if (crc != 2004935012u)
+		if (crc != 710615252u)
 		{
 			PRINTF("Wrong checksum. Got %u\n", crc);
 			TEST_FAILED;
@@ -766,7 +1241,6 @@ bool Test()
 		// Register additional constructor for test
 		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f(int, const string& in)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
 
-		// TODO: runtime optimize: This code produces unoptimal bytecode with VAR, PshC4, GETREF. Should be transformed to PSF, PshC4
 		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
 			"int main() \n"
@@ -786,19 +1260,12 @@ bool Test()
 		asIScriptFunction *func = mod->GetFunctionByName("main");
 		asBYTE expect[] = 
 			{
-				asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_PGA,                                        asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_PSF,asBC_PopPtr,asBC_VAR,asBC_SetV4,asBC_PshV4,asBC_GETREF,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,
+				// TODO: runtime optimize: Repeated JitEntry, SUSPEND should be removed
+				asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_PGA,asBC_SetV4,asBC_PshV4,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,
 				asBC_SUSPEND,asBC_JitEntry,asBC_SetV4,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_CpyVtoR4,asBC_JMP,asBC_RET
 			};
 		if( !ValidateByteCode(func, expect) )
 			TEST_FAILED;
-
-		// Make sure the asBC_GETREF instruction has the argument == 1
-		{
-			asUINT len;
-			asDWORD *bc = func->GetByteCode(&len);
-			if (asBC_WORDARG0(&bc[12 + sizeof(void*)/4 + 4 * asBCTypeSize[asBCInfo[asBC_JitEntry].type]]) != 1)
-				TEST_FAILED;
-		}
 
 		mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
 		r = mod->LoadByteCode(&bcStream);
@@ -808,14 +1275,6 @@ bool Test()
 		func = mod->GetFunctionByName("main");
 		if( !ValidateByteCode(func, expect) )
 			TEST_FAILED;
-
-		// Make sure the asBC_GETREF instruction has the argument == 1
-		{
-			asUINT len;
-			asDWORD *bc = func->GetByteCode(&len);
-			if (asBC_WORDARG0(&bc[12 + sizeof(void*) / 4 + 4 * asBCTypeSize[asBCInfo[asBC_JitEntry].type]]) != 1)
-				TEST_FAILED;
-		}
 
 		engine->ShutDownAndRelease();
 	}
@@ -832,7 +1291,7 @@ bool Test()
 		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_FACTORY, "dictionary<K, V>@ f(int&in)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
 		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_ADDREF, "void f()", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
 		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_RELEASE, "void f()", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterObjectMethod("dictionary<K, V>", "int get_Count() const", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectMethod("dictionary<K, V>", "int get_Count() const property", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
 
 		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test", "void main(){ dictionary<int,int> d; int cnt = d.Count; }");
@@ -870,7 +1329,7 @@ bool Test()
 		r = engine->RegisterObjectType("type", 0, asOBJ_REF|asOBJ_NOCOUNT); assert( r >= 0 );
 		RegisterScriptArray(engine, false);
 		r = engine->RegisterObjectBehaviour("type", asBEHAVE_FACTORY, "type @f()", asFUNCTION(0), asCALL_GENERIC); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("type", "void func(array<int> @)", asFUNCTION(0), asCALL_GENERIC); assert( r >= 0 );
+		r = engine->RegisterObjectMethod("type", "void func(array<int> @+)", asFUNCTION(0), asCALL_GENERIC); assert( r >= 0 );
 
 		stringstream s;
 		r = WriteConfigToStream(engine, s);
@@ -899,7 +1358,7 @@ bool Test()
 
 		engine->ShutDownAndRelease();
 
-		if( bout.buffer != "config (52, 0) : Warning : Cannot register template callback without the actual implementation\n" )
+		if( bout.buffer != "config (56, 0) : Warning : Cannot register template callback without the actual implementation\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -946,7 +1405,7 @@ bool Test()
 					"ep 11 1\n"
 					"ep 12 0\n"
 					"ep 13 0\n"
-					"ep 14 2\n"
+					"ep 14 3\n" // asEP_PROPERTY_ACCESSOR_MODE
 					"ep 15 0\n"
 					"ep 16 1\n"
 					"ep 17 0\n"
@@ -960,6 +1419,10 @@ bool Test()
 					"ep 25 0\n"
 					"ep 26 1\n"
 					"ep 27 100\n"
+					"ep 28 1\n"
+					"ep 29 4096\n"
+					"ep 30 10\n"
+					"ep 31 0\n"
 					"\n"
 					"// Enums\n"
 					"\n"
@@ -1037,7 +1500,7 @@ bool Test()
 			"void test2(){ @foo = bar;   }";
 
 		engine->RegisterFuncdef( "void MyVoid()" );
-		engine->RegisterGlobalFunction( "void set_foo(MyVoid@)", asFUNCTION(T::set_funcdef_var), asCALL_CDECL );
+		engine->RegisterGlobalFunction( "void set_foo(MyVoid@) property", asFUNCTION(T::set_funcdef_var), asCALL_CDECL );
 
 		asIScriptModule* module = engine->GetModule( "script", asGM_ALWAYS_CREATE );
 		module->AddScriptSection( "script", script );
@@ -1167,7 +1630,7 @@ bool Test()
 			TEST_FAILED;
 		
 		if( bout.buffer != " (0, 0) : Error   : Template type 'typeof' doesn't exist\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 130\n" )
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 120\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1559,26 +2022,26 @@ bool Test()
 		mod->SaveByteCode(&stream2, true);
 
 #ifndef STREAM_TO_FILE
-		if (stream.buffer.size() != 2170)
+		if (stream.buffer.size() != 2115)
 			PRINTF("The saved byte code is not of the expected size. It is %d bytes\n", (int)stream.buffer.size());
 		asUINT zeroes = stream.CountZeroes();
-		if (zeroes != 561)
+		if (zeroes != 499)
 		{
 			PRINTF("The saved byte code contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 			// Mac OS X PPC has more zeroes, probably due to the bool type being 4 bytes
 		}
 		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
-		if( crc32 != 0x9C9AB234)
+		if( crc32 != 0x7983F177)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
 		}
 
 		// Without debug info
-		if (stream2.buffer.size() != 1813)
+		if (stream2.buffer.size() != 1755)
 			PRINTF("The saved byte code without debug info is not of the expected size. It is %d bytes\n", (int)stream2.buffer.size());
 		zeroes = stream2.CountZeroes();
-		if (zeroes != 451)
+		if (zeroes != 389)
 			PRINTF("The saved byte code without debug info contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 #endif
 		// Test loading without releasing the engine first
@@ -1649,7 +2112,7 @@ bool Test()
 		mod->SaveByteCode(&streamTiny, true);
 		engine->Release();
 
-		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x02,0x66,0x00,0x40,0x50,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x02,0x3F,0x0A,0x00,0x00,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x02,0x66,0x00,0x40,0x50,0x00,0x00,0x01,0x00,0x00,0x00,0x02,0x3F,0x0A,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 		bool match = true;
 		for( asUINT n = 0; n < streamTiny.buffer.size(); n++ )
 			if( streamTiny.buffer[n] != expected[n] )
@@ -2486,7 +2949,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Attempting to instantiate invalid template type 'tmpl<int>'\n"
-			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 115\n" )
+			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 111\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

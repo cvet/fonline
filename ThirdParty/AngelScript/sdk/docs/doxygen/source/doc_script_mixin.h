@@ -87,6 +87,35 @@ are not included if the property is already inherited from a base class.
 </pre>
 
 
+A mixin class can inform a list of interfaces that has to be implemented by the script 
+class that includes the mixin class. In this case the methods for the interfaces can optionally 
+be provided by the mixin class itself, or left out to be implemented by the script class directly.
+
+A mixin class cannot inherit from other classes.
+
+<pre>
+  interface I 
+  {
+    void a();
+    void b();	
+  }
+  
+  mixin class M : I
+  {
+	// provide default implementation of a()
+    void a() { print("hello from a");
+
+    // leave the implementation of b() to the script class
+  }
+  
+  class C : M
+  {
+    // a() is implemented by mixin class
+	
+	// b() has to be explicitly implemented by script class
+	void b() { print("hello from b");
+  }
+</pre>
 
 
 */

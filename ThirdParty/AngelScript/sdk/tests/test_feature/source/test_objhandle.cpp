@@ -160,6 +160,43 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptContext *ctx;
 
+	// Test const handles
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A {} \n"
+			"void test(A @const a, const A @const b, const A @const &in c) { \n"
+			"  @a = null; \n" // error. a is read-only
+			"  a = A(); \n" // ok. a refers to modifiable object
+			"  @b = null; \n" // error. b is read-only
+			"  b = A(); \n" // error. b refers to read-only object
+			"  @c = null; \n" // error. c is read-only
+			"  A@const d = a; \n" // ok. both are referring to modifiable objects
+			"  A@const e = b; \n" // error. e refers to modifiable object, but b to read-only object
+			"  const A@ f = a; \n" // ok. f will have a read-only view of the object
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void test(A@const, const A@const, const A@const&in)\n"
+						   "test (3, 3) : Error   : Expression is not an l-value\n"
+						   "test (5, 3) : Error   : Expression is not an l-value\n"
+						   "test (6, 5) : Error   : Reference is read-only\n"
+						   "test (7, 3) : Error   : Expression is not an l-value\n"
+						   "test (9, 15) : Error   : Can't implicitly convert from 'const A@' to 'A@&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}	
+		
+		engine->ShutDownAndRelease();
+	}
+	
 	// Make sure unnecessary use of addref and release is minimized
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

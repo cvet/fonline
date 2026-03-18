@@ -146,30 +146,6 @@ static const char* script =
 "};\n";
 
 
-class hash
-{
-	int ref;
-public:
-	hash();
-	virtual ~hash() {} // must implement virtual method for rtti to work on gnuc
-	void addRef() {}
-	void release() {}
-	virtual void reset() = 0;
-	virtual void update(std::string& data) = 0;
-	virtual std::string compute() = 0;
-};
-class sha512 :public hash
-{
-	//private members removed.
-public:
-	static sha512* factory() {
-		return 0;
-	}
-	sha512() {}
-	void update(std::string& /*data*/) {}
-	std::string compute() {return "";}
-	void reset() {}
-};
 
 template<class A, class B>
 B* scriptRefCast(A* a)
@@ -192,58 +168,6 @@ bool Test()
 	int r = 0;
 	COutStream out;
 	CBufferedOutStream bout;
-
-	// Test error message when registering multiple cast operators for the same target type
-	SKIP_ON_MAX_PORT
-	{
-		asIScriptEngine *engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		RegisterStdString(engine);
-
-		//Hashing.
-		//Base class.
-		r = engine->RegisterObjectType("hash", 0, asOBJ_REF); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("hash", asBEHAVE_ADDREF, "void a()", asMETHOD(hash, addRef), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("hash", asBEHAVE_RELEASE, "void b()", asMETHOD(hash, release), asCALL_THISCALL); assert(r >= 0);
-
-		r = engine->RegisterObjectMethod("hash", "void update(string& in data)", asMETHOD(hash, update), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("hash", "string compute()", asMETHOD(hash, compute), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("hash", "void reset()", asMETHOD(hash, reset), asCALL_THISCALL); assert(r >= 0);
-
-		r = engine->RegisterObjectType("sha512", 0, asOBJ_REF); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("sha512", asBEHAVE_FACTORY, "sha512@ a()", asFUNCTION(sha512::factory), asCALL_CDECL); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("sha512", asBEHAVE_ADDREF, "void b()", asMETHOD(hash, addRef), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("sha512", asBEHAVE_RELEASE, "void c()", asMETHOD(hash, release), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("sha512", "void update(string&in data)", asMETHOD(hash, update), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("sha512", "string compute()", asMETHOD(hash, compute), asCALL_THISCALL); assert(r >= 0);
-		r = engine->RegisterObjectMethod("sha512", "void reset()", asMETHOD(hash, reset), asCALL_THISCALL); assert(r >= 0);
-		//casts.
-		r = engine->RegisterObjectMethod("sha512", "hash@ opCast()", asFUNCTION((scriptRefCast<sha512, hash>)), asCALL_CDECL_OBJLAST); assert(r >= 0);
-		r = engine->RegisterObjectMethod("sha512", "hash@ opImplCast()", asFUNCTION((scriptRefCast<sha512, hash>)), asCALL_CDECL_OBJLAST); assert(r >= 0);
-		r = engine->RegisterObjectMethod("hash", "sha512@ opCast()", asFUNCTION((scriptRefCast<hash, sha512>)), asCALL_CDECL_OBJLAST); assert(r >= 0);
-
-		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false);
-		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"sha512 a; \n"
-			"hash@b = cast <hash>(@a);");
-		r = mod->Build();
-		if (r >= 0)
-			TEST_FAILED;
-
-		if (bout.buffer != "test (2, 6) : Info    : Compiling hash@ b\n"
-			"test (2, 10) : Error   : Multiple matching signatures to 'opCast'\n"
-			"test (2, 10) : Info    : hash@ sha512::opCast()\n"
-			"test (2, 10) : Info    : hash@ sha512::opImplCast()\n")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-
-		engine->ShutDownAndRelease();
-	}
 
 	// Test simple ref cast
 	{

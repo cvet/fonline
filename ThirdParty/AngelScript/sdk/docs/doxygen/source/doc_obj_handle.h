@@ -19,8 +19,8 @@ Whenever the object handle is passed by value from the application to the script
 or vice versa its reference should be accounted for. This means that the application must 
 release any object handles it receives as parameters when it no longer needs them, it also 
 means that the application must increase the reference counter for any object handle being 
-returned to the script engine. Note that this is not the same for the \ref doc_generic 
-"generic calling convention" where AngelScript automatically takes care of most of work.
+returned to the script engine. This also applies to the \ref doc_generic 
+"generic calling convention".
 
 A function that creates an object and returns it to the script engine might look like this:
 
@@ -96,10 +96,6 @@ obj *ChooseObj(obj *a, obj *b)
 }
 \endcode
 
-However, it is not recommended to use this feature unless you can't change the functions you want 
-to register to properly handle the reference counters. When using the auto handles, AngelScript 
-needs to process all of the handles which causes an extra overhead when calling application registered functions.
-
-The auto handles does not affect the behaviour of the handles when the \ref doc_generic "generic calling convention" is used.
+The auto handles works the same way for the \ref doc_generic "generic calling convention".
 
 */

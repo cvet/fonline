@@ -78,25 +78,6 @@ CScriptStream *CScriptStream_Factory()
 	return new CScriptStream;
 }
 
-static const char *script1 =
-"void Test()                       \n"
-"{                                 \n"
-"  stream s;                       \n"
-"  s << \"a\" << \"b\" << \"c\";   \n"
-"}                                 \n";
-
-static const char *script2 =
-"void Test2()                      \n"
-"{                                 \n"
-"  stream s;                       \n"
-"  s << \"a b c\";                 \n"
-"  string a,b,c;                   \n"
-"  s >> a >> b >> c;               \n"
-"  Assert(a == \"a\");             \n"
-"  Assert(b == \"b\");             \n"
-"  Assert(c == \"c\");             \n"
-"}                                 \n";
-
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -119,7 +100,12 @@ bool Test()
 
 	COutStream out;
 	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
+	mod->AddScriptSection(TESTNAME, 
+		"void Test()                       \n"
+		"{                                 \n"
+		"  stream s;                       \n"
+		"  s << 'a' << 'b' << 'c';         \n"
+		"}                                 \n");
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 	r = mod->Build();
 	if( r < 0 )
@@ -150,7 +136,17 @@ bool Test()
 	
 	//-------------------------------
 	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script2, strlen(script2), 0);
+	mod->AddScriptSection(TESTNAME, 
+		"void Test2()                    \n"
+		"{                               \n"
+		"  stream s;                     \n"
+		"  s << 'a b c';                 \n"
+		"  string a,b,c;                 \n"
+		"  s >> a >> b >> c;             \n"
+		"  Assert(a == 'a');             \n"
+		"  Assert(b == 'b');             \n"
+		"  Assert(c == 'c');             \n"
+		"}                               \n");
 	r = mod->Build();
 	if( r < 0 ) TEST_FAILED;
 

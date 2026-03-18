@@ -157,11 +157,11 @@ bool Test()
 	r = mod->Build();
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "TestInterface (5, 7) : Error   : Missing implementation of 'void intf::test()'\n"
-					   "TestInterface (9, 1) : Info    : Compiling void test(intf&inout)\n"
+				/*	   "TestInterface (9, 1) : Info    : Compiling void test(intf&inout)\n"
 					   "TestInterface (11, 9) : Error   : Interface 'intf' cannot be instantiated\n"
 					   "TestInterface (13, 6) : Error   : No appropriate opAssign method found in 'intf' for value assignment\n"
 					   "TestInterface (15, 16) : Error   : Can't implicitly convert from 'myclass&' to 'nointf@&'.\n"
-					   "TestInterface (16, 16) : Error   : Can't implicitly convert from 'intf@&' to 'myclass@&'.\n" )
+					   "TestInterface (16, 16) : Error   : Can't implicitly convert from 'intf@&' to 'myclass@&'.\n" */)
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;

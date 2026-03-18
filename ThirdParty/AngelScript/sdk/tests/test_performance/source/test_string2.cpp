@@ -56,7 +56,7 @@ void Test(double *testTime)
 
 	if( r != 0 )
 	{
-		printf("Execution didn't terminate with asEXECUTION_FINISHED\n", TESTNAME);
+		printf("Execution didn't terminate with asEXECUTION_FINISHED\n");
 		if( r == asEXECUTION_EXCEPTION )
 		{
 			printf("Script exception\n");

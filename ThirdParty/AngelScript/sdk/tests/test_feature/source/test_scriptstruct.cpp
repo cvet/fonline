@@ -156,6 +156,281 @@ bool Test()
 	// object while the asCSriptObject destructor is cleaning up the members
 	fail = ProjectClover::Test_main();
 
+	// Test explicit with save/load
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"	A(int s) explicit {} \n"
+			"	A(float s) {} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asITypeInfo *t = mod->GetTypeInfoByName("A");
+		asIScriptFunction *f = t->GetFactoryByIndex(0);
+		if (!f->IsExplicit())
+			TEST_FAILED;
+		f = t->GetFactoryByIndex(1);
+		if (f->IsExplicit())
+			TEST_FAILED;
+
+		CBytecodeStream bc1("test");
+		r = mod->SaveByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc1);
+		if (r < 0)
+			TEST_FAILED;
+
+		t = mod->GetTypeInfoByName("A");
+		f = t->GetFactoryByIndex(0);
+		if (!f->IsExplicit())
+			TEST_FAILED;
+		f = t->GetFactoryByIndex(1);
+		if (f->IsExplicit())
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+
+	}
+
+	// Test to make sure constructor with default arg isn't used as conversion constructor
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"	A() {} \n"
+			"	A(string s, int i = 0) {} \n" // if no default parameter, no problem
+			"	A(const A &in) {} \n"
+		"} \n"
+			"void f() \n"
+			"{ \n"
+			"	string x; \n"   // if x is primitive type, no problem
+			"	A(x/*,i*/); \n" // if i is excplicit, no problem
+			"	A a = x; \n"    // not a conversion constructor
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (7, 1) : Info    : Compiling void f()\n"
+						   "test (11, 8) : Error   : Can't implicitly convert from 'string' to 'A&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test classes with explicit and implicit conversion constructors from other objects
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { \n"
+			"  A(const B @b) { v = b.v; } \n"
+			"  A() { v = 0; } \n"
+			"  A(const A&in a) { v = a.v; } \n"
+			"  int v; \n"
+			"} \n"
+			"class B { \n"
+			"  B(const A @a) explicit { v = a.v; } \n"
+			"  B() { v = 0; } \n"
+			"  B(const B&in b) { v = b.v; } \n"
+			"  int v; \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	A a = B(); \n"  // ok, the conversion constructor is implicit
+			"   B b = A(); \n"  // fail, the conversion constructor is explicit
+			"   B b2 = B(A()); \n"  // ok. the conversion constructor can be called explicitly
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (13, 1) : Info    : Compiling void main()\n"
+			"test (16, 10) : Error   : Can't implicitly convert from 'A@&' to 'B&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test classes with explicit and implicit conversion constructors from primitives
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { \n"
+			"  A(int a) { v = a; } \n"
+			"  A() { v = 0; } \n"
+			"  A(const A&in a) { v = a.v; } \n"
+			"  int v; \n"
+			"} \n"
+			"class B { \n"
+			"  B(int a) explicit { v = a; } \n"
+			"  B() { v = 0; } \n"
+			"  B(const B&in b) { v = b.v; } \n"
+			"  int v; \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	A a = 42; \n"  // ok, the conversion constructor is implicit
+			"   B b = 42; \n"  // fail, the conversion constructor is explicit
+			"   B b2 = B(42); \n"  // ok. the conversion constructor can be called explicitly
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (13, 1) : Info    : Compiling void main()\n"
+						   "test (16, 10) : Error   : Can't implicitly convert from 'const int' to 'B&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test copy constructors for script classes
+	// https://www.gamedev.net/forums/topic/697718-angelscript-no-copy-construction-for-script-classes/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int copyConstructCount = 0; \n"
+			"void Main() \n"
+			"{ \n"
+			"	TestClass arg; \n"
+			"	TestClass result = copyTest(arg); \n"
+			"} \n"
+			"class TestClass \n"
+			"{ \n"
+			"	TestClass() {} \n"
+			"	TestClass(const TestClass &in other) \n"
+			"	{ \n"
+			"		copyConstructCount++; \n"
+			"	} \n"
+			"} \n"
+			"TestClass copyTest(TestClass a) \n"
+			"{ \n"
+			"	return a; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "Main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		int *count = reinterpret_cast<int*>(mod->GetAddressOfGlobalVar(0));
+		if (*count != 3)
+			TEST_FAILED;
+
+		*count = 0;
+		asITypeInfo *type = mod->GetTypeInfoByName("TestClass");
+		asIScriptObject *obj1 = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(type));
+		// TODO: optimize: CreateScriptObjectCopy should use copy constructor
+		asIScriptObject *obj2 = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObjectCopy(obj1, type));
+		if (*count != 1)
+			TEST_FAILED;
+		obj1->Release();
+		obj2->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test private constructors
+	// https://www.gamedev.net/forums/topic/696251-assigning-c-object-to-the-script-object-in-less-explicit-way/
+	// https://www.gamedev.net/forums/topic/696326-private-and-protected-have-no-effect-on-class-constructors/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("module", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"  private A() {} \n" // cannot be instanciated by default
+			"  A(int) {} \n"      // can be instanciated with a parameter
+			"  protected A(float) {} \n" // cannot be instanciated
+			"  A @create() { return A(); } \n" // valid. class can use the private constructor
+			"} \n"
+			"class B : A \n"
+			"{ \n"
+			"  B() { super(); } \n" // invalid. derived class cannot use private constructor of parent
+			"  A @create() { return A(); } \n" // invalid. derived class cannot use private constructor of parent
+			"  A @create2() { return A(1.4f); } \n" // valid. derived class can use protected constructor of parent
+			"} \n"
+			"void func() { \n"
+			"  A a; \n"       // invalid. constructor is private
+			"  A b(1); \n"    // valid
+			"  A c(1.4f); \n" // invalid. constructor is protected
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (14, 1) : Info    : Compiling void func()\n"
+						   "test (15, 5) : Error   : Illegal call to private method 'A@ A()'\n"
+						   "test (17, 6) : Error   : Illegal call to protected method 'A@ A(float)'\n"
+						   "test (10, 3) : Info    : Compiling B::B()\n"
+						   "test (10, 9) : Error   : Illegal call to private method 'A::A()'\n"
+						   "test (11, 3) : Info    : Compiling A@ B::create()\n"
+						   "test (11, 24) : Error   : Illegal call to private method 'A@ A()'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+
 	// Test protected members
 	// Protected members cannot be access from outside the class
 	// Protected members can be accessed by derived classes
@@ -362,11 +637,11 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != "test (9, 5) : Info    : Compiling ssNode_Float::ssNode_Float(string)\n"
-						   "test (9, 33) : Error   : Base class doesn't have default constructor. Make explicit call to base constructor\n"
-						   "test (11, 1) : Info    : Compiling ssNode ssCreateNode(string)\n"
+		if( bout.buffer != "test (11, 1) : Info    : Compiling ssNode ssCreateNode(string)\n"
 						   "test (14, 12) : Error   : No default constructor for object of type 'ssNode'.\n"
-						   "test (14, 12) : Error   : Previous error occurred while attempting to create a temporary copy of object\n" )
+						   "test (14, 12) : Error   : Previous error occurred while attempting to create a temporary copy of object\n" 
+						   "test (9, 5) : Info    : Compiling ssNode_Float::ssNode_Float(string)\n"
+						   "test (9, 33) : Error   : Base class doesn't have default constructor. Make explicit call to base constructor\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -406,6 +681,8 @@ bool Test()
 	}
 
 	// CreateScriptObject should give proper error when attempting call for class without default constructor
+	// TODO: The message callback must be optional, so that CreateScriptObject can be called without having to 
+	//       worry about a crash or message for invalid objects
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 
@@ -422,7 +699,8 @@ bool Test()
 		if( engine->CreateScriptObject(type) )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'CreateScriptObject' (Code: -6)\n" )
+//		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'CreateScriptObject' (Code: asNO_FUNCTION, -6)\n" )
+		if( bout.buffer != "" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -457,7 +735,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (8, 7) : Info    : Compiling B::B()\n"
-                           "test (10, 26) : Error   : 'en_B' is not declared\n" )
+                           "test (10, 26) : Error   : No matching symbol 'en_B'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -491,7 +769,7 @@ bool Test()
 			"  void _BaseGuiElement(IGuiElement @e) { \n"
 			"    @parent = e; \n"
 			"  } \n"
-			"  void set_parent(IGuiElement @e) { \n"
+			"  void set_parent(IGuiElement @e) property { \n"
 			"    if( e !is null ) \n"
 			"      e.addChild(this); \n"
 			"  } \n"
@@ -674,7 +952,7 @@ bool Test()
 			"  string hello = 'hello'; \n"
 			"  int a = Func(); \n"
 			"  string str = 'again'; \n"
-			"  int Func() { return str.length; } \n"
+			"  int Func() { return str.length(); } \n"
 			"}");
 		r = mod->Build();
 		if( r < 0 )
@@ -912,7 +1190,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "test2 (1, 7) : Info    : Compiling T::T()\n"
-		                   "test (2, 11) : Error   : No matching signatures to 'func()'\n" )
+		                   "test (2, 11) : Error   : No matching symbol 'func'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1235,19 +1513,33 @@ bool Test()
 		// Verify that the struct names cannot conflict with one another
 		const char *script5 =
 			"class A {};                  \n"
-			"class A {};                  \n"
-			"class B                      \n"
-			"{                            \n"
-			"  int a;                     \n"
-			"  float a;                   \n"
-			"};                           \n";
+			"class A {};                  \n";
 		bout.buffer = "";
 		mod->AddScriptSection(TESTNAME, script5, strlen(script5), 0);
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
 		r = mod->Build();
-		if( r >= 0 || bout.buffer != 
-			"TestScriptStruct (2, 7) : Error   : Name conflict. 'A' is a class.\n"
-			"TestScriptStruct (6, 9) : Error   : Name conflict. 'a' is an object property.\n" ) TEST_FAILED;
+		if (r >= 0 || bout.buffer !=
+			"TestScriptStruct (2, 7) : Error   : Name conflict. 'A' is a class.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		mod->AddScriptSection(TESTNAME, 
+			"class B                      \n"
+			"{                            \n"
+			"  int a;                     \n"
+			"  float a;                   \n"
+			"};                           \n");
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = mod->Build();
+		if (r >= 0 || bout.buffer !=
+			"TestScriptStruct (4, 9) : Error   : Name conflict. 'a' is an object property.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 
 		bout.buffer = "";
 

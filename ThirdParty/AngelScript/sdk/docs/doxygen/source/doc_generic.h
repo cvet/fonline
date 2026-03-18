@@ -13,7 +13,7 @@ that take as parameter a pointer to an asIScriptGeneric interface and returns vo
 
 \code
 // The function has been registered with signature:
-//  MyIntf @func(int, float, MyIntf @)
+//  MyIntf @func(int, float, MyIntf @+)
 void MyGenericFunction(asIScriptGeneric *gen)
 {
   // Extract the arguments
@@ -33,7 +33,7 @@ Functions using the generic calling convention can be registered anywhere the sc
 global functions or class methods (except where explicitly written otherwise). 
 
 Writing the functions for the generic calling convention requires extracting each argument from the AngelScript
-stack, and then manually giving the return value back. For that reason it may be a desired to use the 
+stack, and then manually giving the return value back. For that reason it may be desired to use the 
 \ref doc_addon_autowrap "automatic wrapper functions" rather than writing the functions yourself.
 
 \section doc_generic_1 Extracting function arguments
@@ -46,9 +46,8 @@ to a pointer of the correct type so that the value can be read from the address.
 If the function you're implementing represents a class method, the pointer to the object instance should be obtained 
 with a call to \ref asIScriptGeneric::GetObject "GetObject".
 
-Note that the asIScriptGeneric interface is the owner of any references it returns with these calls, so you
-should not release these references manually. If you want to store a reference to an object received from the 
-generic interface, you need to call AddRef on that object to avoid invalidating the reference when the function returns.
+The asIScriptGeneric interfaces treats the ref count the same way as in native calling conventions, i.e. the application
+function is responsible to releasing any handle received as a handle (or \ref doc_obj_handle_4 "register the function with @+").
 
 \section doc_generic_2 Returning values
 
@@ -64,6 +63,7 @@ obtain the address of the memory where the return value will be stored. The memo
 use the placement new operator to initialize this memory with a call to the constructor. This also works for primitive
 types, which makes this ideal for template implementations, such as that in the \ref doc_addon_autowrap "automatic wrapper functions".
 
-
+If the function is registered to return a @+, then the script engine will \ref doc_obj_handle_4 "automatically increment the ref count", just as is
+done for native calling conventions.
 
 */

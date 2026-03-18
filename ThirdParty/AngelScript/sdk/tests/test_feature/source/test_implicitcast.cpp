@@ -283,7 +283,7 @@ bool Test()
 		engine->RegisterObjectBehaviour("String", asBEHAVE_CONSTRUCT, "void f(uint)", asFUNCTION(0), asCALL_GENERIC);
 
 		engine->RegisterObjectType("Texture2D", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		engine->RegisterObjectMethod("Texture2D", "uint get_width() const", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("Texture2D", "uint get_width() const property", asFUNCTION(0), asCALL_GENERIC);
 
 		engine->RegisterGlobalFunction("void Print(const String &in)", asFUNCTION(0), asCALL_GENERIC);
 
@@ -731,8 +731,8 @@ bool Test()
 				"class C \n"
 				"{ \n"
 				"  B b; \n"
-				"  B@ get_a() { return b; } \n"
-				"  void set_a(B@ value) { } \n"
+				"  B@ get_a() property { return b; } \n"
+				"  void set_a(B@ value) property { } \n"
 				"} \n"
 				"void func() \n"
 				"{ \n"

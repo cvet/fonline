@@ -28,7 +28,6 @@
    andreas@angelcode.com
 */
 
-
 #include "as_config.h"
 #include "as_scriptengine.h"
 #include "as_scriptobject.h"
@@ -280,6 +279,21 @@ static void ScriptObject_Construct_Generic(asIScriptGeneric *gen)
 
 #endif
 
+static void ScriptObject_GetWeakRefFlag_GenericCompat(asIScriptGeneric *gen)
+{
+	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
+	*(asILockableSharedBool**)gen->GetAddressOfReturnLocation() = self->GetWeakRefFlag();
+}
+
+static void ScriptObject_Assignment_GenericCompat(asIScriptGeneric *gen)
+{
+	asCScriptObject *other = *(asCScriptObject**)gen->GetAddressOfArg(0);
+	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
+
+	*self = *other;
+	*(asCScriptObject**)gen->GetAddressOfReturnLocation() = self;
+}
+
 void RegisterScriptObject(asCScriptEngine *engine)
 {
 	// Register the default script class behaviours
@@ -292,10 +306,13 @@ void RegisterScriptObject(asCScriptEngine *engine)
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_CONSTRUCT, "void f(int&in)", asFUNCTION(ScriptObject_Construct), asCALL_CDECL_OBJLAST, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ADDREF, "void f()", asMETHOD(asCScriptObject,AddRef), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_RELEASE, "void f()", asMETHOD(asCScriptObject,Release), asCALL_THISCALL, 0); asASSERT( r >= 0 );
-	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in)", asFUNCTION(ScriptObject_Assignment), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
+	// (FOnline Patch) AngelScript 2.34.0 trips over the native registration path for
+	// built-in script-object placeholder signatures on this toolchain. Reuse the
+	// already provided generic wrappers for the internal opAssign/weakref behaviors.
+	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in)", asFUNCTION(ScriptObject_Assignment_GenericCompat), asCALL_GENERIC); asASSERT( r >= 0 );
 
 	// Weakref behaviours
-	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GET_WEAKREF_FLAG, "int &f()", asMETHOD(asCScriptObject,GetWeakRefFlag), asCALL_THISCALL, 0); asASSERT( r >= 0 );
+	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GET_WEAKREF_FLAG, "int &f()", asFUNCTION(ScriptObject_GetWeakRefFlag_GenericCompat), asCALL_GENERIC, 0); asASSERT( r >= 0 );
 	
 	// Register GC behaviours
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(asCScriptObject,GetRefCount), asCALL_THISCALL, 0); asASSERT( r >= 0 );

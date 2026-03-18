@@ -3,6 +3,7 @@
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include "../../../add_on/scriptany/scriptany.h"
 #include "../../../add_on/scriptmath/scriptmath.h"
+#include "../../../add_on/scriptmath/scriptmathcomplex.h"
 #include <iostream>
 
 using namespace std;
@@ -164,6 +165,11 @@ void DoNothing(asIScriptGeneric * /*gen*/)
 {
 }
 
+void *NullFactory()
+{
+	return 0;
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -173,6 +179,270 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
 	asIScriptModule *mod;
+
+	// Test use of virtual property without get accessor causing assert failure
+	// Reported by Patrick Jeeves
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptMathComplex(engine);
+		r = engine->RegisterGlobalFunction("float dot(const complex &in, const complex &in)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+	
+		r = engine->RegisterObjectType("foo", sizeof(int), asOBJ_VALUE|asOBJ_POD);
+		r = engine->RegisterObjectProperty("foo", "complex velocity", 0);
+		r = engine->RegisterObjectMethod("foo", "void set_velocity(const complex &in v) property", asFUNCTION(0), asCALL_GENERIC);
+		
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class TestClass\n"
+			"{\n"
+			"  foo m; \n"
+			"  void onCollision(complex &in col) { \n"
+			"    if( dot(m.velocity, col) > 20 ) {} \n"
+			"  } \n"
+			"}\n");
+		r = mod->Build();
+		if( r >= 0 )
+			TEST_FAILED;
+		
+		if( bout.buffer != "test (4, 3) : Info    : Compiling void TestClass::onCollision(complex&in)\n"
+						   "test (5, 14) : Error   : The property has no get accessor\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}	
+		
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test problem with class having a single contructor taking 1 argument
+	// https://www.gamedev.net/forums/topic/702543-object-handle-and-constructor-with-array-argument-triggers-assert/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class TestClass\n"
+			"{\n"
+			"  TestClass(array<int> arr)\n"
+			"  {\n"
+			"    this.arr = arr;\n"
+			"  }\n"
+			"  private array<int> arr;\n"
+			"}\n"
+			"void main()\n"
+			"{\n"
+			"  TestClass @t = TestClass({});\n"
+			"}\n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+		
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test what happens when a registered factory return null without raising an exception
+	// This is an undefined behaviour, and it is invalid for a factory function to do this
+	// https://www.gamedev.net/forums/topic/701081-question-about-nullptrs/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("foo", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f()", asFUNCTION(NullFactory), asCALL_CDECL);
+		
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "foo f(); foo @f2 = f;", 0, ctx);
+		if( r != 0 )
+		{
+			TEST_FAILED;
+			if( r == asEXECUTION_EXCEPTION && strcmp(ctx->GetExceptionString(), "Null pointer access") != 0 )
+				PRINTF("exception caught: %s\n", ctx->GetExceptionString());
+		}
+		ctx->Release();
+		
+		engine->ShutDownAndRelease();
+	}
+	
+	
+	// Proper error handling on duplicate class methods
+	// https://www.gamedev.net/forums/topic/700394-compiler-crash-on-double-function-compiler-error/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo \n"
+			"{ \n"
+			"	void a() {} \n"
+			"	void a() {} \n"
+			"} \n"
+			"class Bar : Foo \n"
+			"{ \n"
+			"	void a() override {} \n"
+			"} \n"
+			"class FooBar : Bar \n"
+			"{ \n"
+			"} \n"
+			"void Test() \n"
+			"{ \n"
+			"	FooBar@ b = FooBar(); \n"
+			"	b.a(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (4, 2) : Error   : A function with the same name and parameters already exists\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test to make sure no crash occurs when anonymous list is matched against function taking funcdef
+	// https://www.gamedev.net/forums/topic/699951-crash-in-argument-matching/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, false);
+		
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void cb(); \n"
+			"void f(cb @t) {} \n"
+			"void f(array<int> a) {} \n"
+			"void main() { \n"
+			"	f({1}); \n"    // this crashed the compiler before the fix
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test invalid code
+	// https://www.gamedev.net/forums/topic/696243-strange-code-works-normally/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"} \n"
+			"class B \n"
+			"{ \n"
+			"	B() { } \n"
+			"} \n"
+			"int main() \n"
+			"{ \n"
+			"	A a; \n"
+			"	a.B(); \n"
+			"	return 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (8, 1) : Info    : Compiling int main()\n"
+						   "test (11, 4) : Error   : No matching symbol 'B'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test passing object by value where the object is initialized with anonymous list
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("Point2F", 1, asOBJ_VALUE);
+		engine->RegisterObjectBehaviour("Point2F", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("Point2F", asBEHAVE_CONSTRUCT, "void f(const Point2F &in)", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("Point2F", asBEHAVE_LIST_CONSTRUCT, "void f(const int &in) {float, float}", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("Point2F", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("Point2F", "Point2F &opAssign(const Point2F &in)", asFUNCTION(0), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"bool setPosition(Point2F) {return true;} \n"
+			"void main() \n"
+			"{ \n"
+			"  setPosition({ 2800, 5000 }); \n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptFunction *func = mod->GetFunctionByName("main");
+		asBYTE expect[] =
+		{
+			asBC_SUSPEND,asBC_PSF,
+			// Setup the initialization list
+			asBC_AllocMem,asBC_SetV4,asBC_PshListElmnt,asBC_PopRPtr,asBC_WRTV4,asBC_SetV4,asBC_PshListElmnt,asBC_PopRPtr,asBC_WRTV4,
+			// Allocate the Point2F with the initialization list
+			asBC_PshVPtr,asBC_PSF,asBC_CALLSYS,
+			// Free the initialization list
+			asBC_FREE,
+			// Copy the Point2F to a temp Point2F allocated on the heap
+			// TODO: optimize: Avoid this copy by allocating the first object on the heap directly
+			asBC_PSF,asBC_ALLOC,
+			// Free the first Point2F
+			asBC_PSF,asBC_CALLSYS,
+			// Call setPosition with the Point2F allocated on the heap
+			asBC_VAR,asBC_GETOBJ,asBC_CALL,
+			// Exit
+			asBC_SUSPEND,asBC_RET
+		};
+		if (!ValidateByteCode(func, expect))
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test assert failure on implicit conversion of primitive types
 	// https://www.gamedev.net/forums/topic/692729-assert-failure-in-ascexprvaluegetconstantdw/
@@ -540,10 +810,10 @@ bool Test()
 						   "test (2, 17) : Error   : Type 'void' cannot be a reference\n"
 						   "test (2, 25) : Error   : Type 'void' cannot be a reference\n"
 						   "test (2, 35) : Error   : Type 'void' cannot be a reference\n"
-						   "test (2, 1) : Info    : Compiling void func2(void, void, void)\n"
+						/*   "test (2, 1) : Info    : Compiling void func2(void, void, void)\n"
 						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n"
 						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n"
-						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n")
+						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n" */)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -562,8 +832,8 @@ bool Test()
 		asIScriptContext *context = engine->CreateContext();
 
 		r = engine->RegisterFuncdef("int Callback()"); assert(r >= 0);
-		r = engine->RegisterGlobalFunction("void set_TestCallback(Callback@ cb)", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
-		r = engine->RegisterGlobalFunction("Callback@ get_TestCallback()", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("void set_TestCallback(Callback@+ cb) property", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("Callback@ get_TestCallback() property", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
 
 		r = module->AddScriptSection("test", "void main1(){ Callback@ cb = function() {return 123;}; TestCallback = cb; }"); assert(r >= 0);
 		r = module->Build(); // <== Crash Here
@@ -2428,7 +2698,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (3, 3) : Info    : Compiling void Test::Do()\n"
-		                   "test (4, 14) : Error   : No matching signatures to 'Test::DoFail()'\n" )
+		                   "test (4, 14) : Error   : No matching symbol 'DoFail'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2713,8 +2983,8 @@ bool Test()
 		engine->RegisterObjectMethod("Cvar", "void set(double)", asFUNCTION(0), asCALL_GENERIC);
 
 		engine->RegisterObjectType("ElementFormControl", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		engine->RegisterObjectMethod("ElementFormControl", "string@ get_value() const", asFUNCTION(0), asCALL_GENERIC);
-		engine->RegisterObjectMethod("ElementFormControl", "void set_value(const string&in)", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("ElementFormControl", "string@ get_value() const property", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("ElementFormControl", "void set_value(const string&in) property", asFUNCTION(0), asCALL_GENERIC);
 
 		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
@@ -2851,8 +3121,8 @@ bool Test()
 		r = engine->RegisterObjectBehaviour("string", asBEHAVE_DESTRUCT,   "void f()",                    asFUNCTION(DestructStringGeneric),  asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectMethod("string", "string &opAssign(const string &in)", asFUNCTION(AssignStringGeneric),    asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectMethod("string", "uint length() const", asFUNCTION(StringLengthGeneric), asCALL_GENERIC); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "string get_opIndex(uint) const", asFUNCTION(String_get_opIndexGeneric), asCALL_GENERIC); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "void set_opIndex(uint, const string &in)", asFUNCTION(String_set_opIndexGeneric), asCALL_GENERIC); assert( r >= 0 );
+		r = engine->RegisterObjectMethod("string", "string get_opIndex(uint) const property", asFUNCTION(String_get_opIndexGeneric), asCALL_GENERIC); assert( r >= 0 );
+		r = engine->RegisterObjectMethod("string", "void set_opIndex(uint, const string &in) property", asFUNCTION(String_set_opIndexGeneric), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectMethod("string", "string opAdd(int) const", asFUNCTION(AddString2IntGeneric), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", asFUNCTION(StringAddGeneric), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterGlobalFunction("void alert(string &in, string &in)", asFUNCTION(AlertGeneric), asCALL_GENERIC); assert( r >= 0 );
@@ -2957,9 +3227,9 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "TestCompiler (3, 3) : Error   : Identifier 'Car' is not a data type in global namespace\n"
-						   "TestCompiler (4, 3) : Info    : Compiling void AAA::Update()\n"
+						/*   "TestCompiler (4, 3) : Info    : Compiling void AAA::Update()\n"
 						   "TestCompiler (6, 13) : Error   : Both operands must be handles when comparing identity\n"
-						   "TestCompiler (7, 10) : Error   : Illegal operation on 'int&'\n" )
+						   "TestCompiler (7, 10) : Error   : Illegal operation on 'int&'\n" */ )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3121,8 +3391,8 @@ bool Test()
 		                     "  { \n"
 							 "    VehicleInfo = vi; \n" // script writer did a value assign by mistake
 							 "  } \n"
-							 "  TA_VehicleInfo@ get_VehicleInfo() const { return m_VehicleInfo; } \n"
-							 "  void set_VehicleInfo(TA_VehicleInfo@ info) { @m_VehicleInfo = @info; } \n"
+							 "  TA_VehicleInfo@ get_VehicleInfo() const property { return m_VehicleInfo; } \n"
+							 "  void set_VehicleInfo(TA_VehicleInfo@ info) property { @m_VehicleInfo = @info; } \n"
 							 "  private TA_VehicleInfo@ m_VehicleInfo; \n"
 	                         "}; \n";
 
@@ -3267,8 +3537,8 @@ bool Test()
 			TEST_FAILED;
 		}
 		if (bout.buffer != "script (3, 2) : Error   : Identifier 'Sprite' is not a data type in global namespace\n"
-			"script (5, 2) : Info    : Compiling string Ship::GetName()\n"
-			"script (6, 17) : Error   : Illegal operation on 'int&'\n")
+			/*"script (5, 2) : Info    : Compiling string Ship::GetName()\n"
+			"script (6, 17) : Error   : Illegal operation on 'int&'\n"*/)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3279,6 +3549,7 @@ bool Test()
 		bout.buffer = "";
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		const char *script8 =
+			"void Print(const string &in) {} \n"
 			"float calc(float x, float y) { Print(\"GOT THESE NUMBERS: \" + x + \", \" + y + \"\n\"); return x*y; }";
 		mod->AddScriptSection("script", script8, strlen(script8));
 		r = mod->Build();
@@ -3286,9 +3557,8 @@ bool Test()
 		{
 			TEST_FAILED;
 		}
-		if (bout.buffer != "script (1, 1) : Info    : Compiling float calc(float, float)\n"
-			"script (1, 77) : Error   : Multiline strings are not allowed in this application\n"
-			"script (1, 32) : Error   : No matching signatures to 'Print(string)'\n")
+		if (bout.buffer != "script (2, 1) : Info    : Compiling float calc(float, float)\n"
+			"script (2, 77) : Error   : Multiline strings are not allowed in this application\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3357,8 +3627,8 @@ bool Test()
 			TEST_FAILED;
 		}
 		if (bout.buffer != "script (3, 3) : Error   : Identifier 'object' is not a data type in global namespace\n"
-			"script (4, 3) : Info    : Compiling void c::func()\n"
-			"script (5, 18) : Error   : Illegal operation on 'int&'\n")
+			/*"script (4, 3) : Info    : Compiling void c::func()\n"
+			"script (5, 18) : Error   : Illegal operation on 'int&'\n"*/)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3470,7 +3740,7 @@ bool Test()
 		r = mod->Build();
 		if (r >= 0) TEST_FAILED;
 		if (bout.buffer != "script20 (2, 1) : Info    : Compiling void test()\n"
-			"script20 (3, 22) : Error   : No matching signatures to 'A::GetClient()'\n")
+			"script20 (3, 22) : Error   : No matching symbol 'GetClient'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3492,7 +3762,7 @@ bool Test()
 		r = mod->Build();
 		if (r >= 0) TEST_FAILED;
 		if (bout.buffer != "script21 (2, 1) : Info    : Compiling void main()\n"
-			"script21 (4, 28) : Error   : 'SomethingUndefined' is not declared\n")
+			"script21 (4, 28) : Error   : No matching symbol 'SomethingUndefined'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3529,7 +3799,7 @@ bool Test()
 
 		r = ExecuteString(engine, script23);
 		if (r >= 0) TEST_FAILED;
-		if (bout.buffer != "ExecuteString (1, 1) : Error   : 'openHandle' is not declared\n")
+		if (bout.buffer != "ExecuteString (1, 1) : Error   : No matching symbol 'openHandle'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3557,7 +3827,7 @@ bool Test()
 		r = mod->Build();
 		if (r >= 0) TEST_FAILED;
 		if (bout.buffer != "26 (1, 1) : Info    : Compiling void main()\n"
-			"26 (1, 20) : Error   : 'anyWord' is not declared\n")
+			"26 (1, 20) : Error   : No matching symbol 'anyWord'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3584,7 +3854,6 @@ bool Test()
 		mod->AddScriptSection("test", "derp wtf = 32;");
 		r = mod->Build();
 		if( r >= 0 || bout.buffer != "test (1, 6) : Info    : Compiling derp wtf\n"
-		                             "test (1, 12) : Error   : Can't implicitly convert from 'const int' to 'derp&'.\n"
 		                             "test (1, 6) : Error   : No appropriate opAssign method found in 'derp' for value assignment\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -3632,10 +3901,10 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "s (2, 1) : Error   : A function with the same name and parameters already exists\n"
-		                   "s (3, 1) : Info    : Compiling void main()\n"
+		                 /*  "s (3, 1) : Info    : Compiling void main()\n"
 		                   "s (3, 15) : Error   : Multiple matching signatures to 'func()'\n"
 		                   "s (3, 15) : Info    : int func()\n"
-		                   "s (3, 15) : Info    : float func()\n" )
+		                   "s (3, 15) : Info    : float func()\n" */)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3663,7 +3932,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "s (1, 1) : Info    : Compiling void main()\n"
-						   "s (3, 21) : Error   : 'ti' is not declared\n" )
+						   "s (3, 21) : Error   : No matching symbol 'ti'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3748,8 +4017,8 @@ bool Test()
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_FACTORY, "sound @f()", asFUNCTION(0), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_ADDREF, "void f()", asFUNCTION(0), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_RELEASE, "void f()", asFUNCTION(0), asCALL_GENERIC);
-		engine->RegisterObjectMethod("sound", "bool get_playing()", asFUNCTION(0), asCALL_GENERIC);
-		engine->RegisterObjectMethod("sound", "int get_count()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("sound", "bool get_playing() property", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("sound", "int get_count() property", asFUNCTION(0), asCALL_GENERIC);
 
 		const char *script = "void main() \n"
 							 "{ \n"
@@ -3788,7 +4057,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "scriptMain (1, 1) : Info    : Compiling void error()\n"
-						   "scriptMain (1, 20) : Error   : 'a' is not declared\n" )
+						   "scriptMain (1, 20) : Error   : No matching symbol 'a'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -3844,7 +4113,7 @@ bool Test()
 		const char *script =
 			"class Test \n"
 			"{ \n"
-			"  const string @get_id() \n"
+			"  const string @get_id() property \n"
 			"  { \n"
 			"    return @'test'; \n"
 			"  } \n"
@@ -3925,7 +4194,7 @@ bool Test()
 
 		mod = engine->GetModule("", asGM_ALWAYS_CREATE);
 
-		mod->AddScriptSection("test", "class C { int x; int get_x() {return x;} }\n");
+		mod->AddScriptSection("test", "class C { int x; int get_x() property {return x;} }\n");
 		r = mod->Build();
 		if( r < 0 )
 			TEST_FAILED;
@@ -3976,7 +4245,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (1, 1) : Info    : Compiling void my_method()\n"
-		                   "script (4, 12) : Error   : 'unexisting_var' is not declared\n" )
+		                   "script (4, 12) : Error   : No matching symbol 'unexisting_var'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -4028,10 +4297,10 @@ bool Test()
 			"       // apparently the following code will make AngelScript segfault rather than throw an error\n"
 			"		command=params='NULL';\n"
 			"	}\n"
-			"	void set_command(string@[] i)   {command=i;}\n"
-			"	void set_params(string@ i)      {params=i;}\n"
-			"	string@[] get_command() {return command;    }\n"
-			"	string@ get_params()    {return params;     }\n"
+			"	void set_command(string@[] i) property  {command=i;}\n"
+			"	void set_params(string@ i) property     {params=i;}\n"
+			"	string@[] get_command() property {return command;    }\n"
+			"	string@ get_params() property    {return params;     }\n"
 			"	string@[] command;\n"
 			"	string params;\n"
 			"}\n";
@@ -4071,7 +4340,7 @@ bool Test()
 			"} \n"
 			"class tone_synth \n"
 			"{ \n"
-			"  void set_waveform_type(wf_type i) {} \n"
+			"  void set_waveform_type(wf_type i) property {} \n"
 			"} \n"
 			"void main () \n"
 			"{ \n"
@@ -4152,7 +4421,7 @@ bool Test()
 			"x=new_x; \n"
 			"} \n"
 			"} \n"
-			"  \n"
+			"void alert(const string &in, const string &in) {}\n"
 			"void main() \n"
 			"{ \n"
 			"alert('Result', '' + bad.x + ''); \n"
@@ -4164,7 +4433,6 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		RegisterScriptString(engine);
 
-
 		bout.buffer = "";
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("script", script);
@@ -4173,9 +4441,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (10, 1) : Info    : Compiling void main()\n"
-		                   "script (12, 22) : Error   : 'bad' is not declared\n"
-		                   "script (13, 7) : Error   : 'bad' is already declared\n"
-		                   "script (14, 25) : Error   : 'x' is not a member of 'int'\n" )
+		                   "script (12, 22) : Error   : No matching symbol 'bad'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -4418,14 +4684,14 @@ bool Test()
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_FACTORY, "sound @f()", asFUNCTIONPR(CSound::CSound_fact, (), CSound *), asCALL_CDECL);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_ADDREF, "void f()", asMETHODPR(CSound, AddRef, (), void), asCALL_THISCALL);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_RELEASE, "void f()", asMETHODPR(CSound, Release, (), void), asCALL_THISCALL);
-		engine->RegisterObjectMethod("sound", "double get_pan() const", asMETHODPR(CSound, get_pan, () const, double), asCALL_THISCALL);
-		engine->RegisterObjectMethod("sound", "void set_pan(double &in)", asMETHODPR(CSound, set_pan, (double &), void), asCALL_THISCALL);
+		engine->RegisterObjectMethod("sound", "double get_pan() const property", asMETHODPR(CSound, get_pan, () const, double), asCALL_THISCALL);
+		engine->RegisterObjectMethod("sound", "void set_pan(double &in) property", asMETHODPR(CSound, set_pan, (double &), void), asCALL_THISCALL);
 #else
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_FACTORY, "sound @f()", WRAP_FN_PR(CSound::CSound_fact, (), CSound *), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_ADDREF, "void f()", WRAP_MFN_PR(CSound, AddRef, (), void), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("sound", asBEHAVE_RELEASE, "void f()", WRAP_MFN_PR(CSound, Release, (), void), asCALL_GENERIC);
-		engine->RegisterObjectMethod("sound", "double get_pan() const", WRAP_MFN_PR(CSound, get_pan, () const, double), asCALL_GENERIC);
-		engine->RegisterObjectMethod("sound", "void set_pan(double &in)", WRAP_MFN_PR(CSound, set_pan, (double &), void), asCALL_GENERIC);
+		engine->RegisterObjectMethod("sound", "double get_pan() const property", WRAP_MFN_PR(CSound, get_pan, () const, double), asCALL_GENERIC);
+		engine->RegisterObjectMethod("sound", "void set_pan(double &in) property", WRAP_MFN_PR(CSound, set_pan, (double &), void), asCALL_GENERIC);
 #endif
 
 		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
@@ -4621,7 +4887,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (2, 1) : Info    : Compiling void func()\n"
-		                   "script (4, 19) : Error   : 'typo' is not declared\n" )
+		                   "script (4, 19) : Error   : No matching symbol 'typo'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -4811,8 +5077,8 @@ bool Test()
 			"  AS_Left, AS_Right, AS_Top = AS_Left, AS_Bottom = AS_Right \n"
 			"} \n"
 			"class Fault { \n"
-			"  Alignment @get_alignment() {return A;} \n"
-			"  void set_alignment(Alignment@ value) {@A = value;} \n"
+			"  Alignment @get_alignment() property {return A;} \n"
+			"  void set_alignment(Alignment@ value) property {@A = value;} \n"
 			"  Fault() { \n"
 			"    a = 3.14f; \n"
 			"    b = 1.43f; \n"
@@ -5096,8 +5362,8 @@ bool Test6()
 	if( r >= 0 )
 		TEST_FAILED;
 	if( bout.buffer != "script (4, 15) : Info    : Compiling const MyClass foo\n"
-					   "script (4, 28) : Error   : 'bar' is not declared\n"
-					   "script (4, 24) : Error   : 'a' is not declared\n" )
+					   "script (4, 28) : Error   : No matching symbol 'bar'\n"
+					   "script (4, 24) : Error   : No matching symbol 'a'\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -5116,7 +5382,7 @@ bool Test6()
 	if( r >= 0 )
 		TEST_FAILED;
 	if( bout.buffer != "script (1, 1) : Info    : Compiling void main()\n"
-					   "script (2, 9) : Error   : 'i' is not declared\n" )
+					   "script (2, 9) : Error   : No matching symbol 'i'\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -5233,7 +5499,7 @@ bool Test9()
 		TEST_FAILED;
 
 	if( bout.buffer != "sc (1, 1) : Info    : Compiling void Func()\n"
-					   "sc (3, 3) : Error   : 'aaa' is not declared\n" )
+					   "sc (3, 3) : Error   : No matching symbol 'aaa'\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -5346,7 +5612,7 @@ bool TestRetRef()
 	engine->RegisterObjectBehaviour("Node", asBEHAVE_RELEASE, "void f()", asMETHOD(Node, Release), asCALL_THISCALL);
 	engine->RegisterObjectMethod("Node", "Variant GetAttribute() const", asMETHODPR(Node, GetAttribute, (), Variant), asCALL_THISCALL);
 
-	engine->RegisterGlobalFunction("Node@+ get_node()", asFUNCTION(GetGlobalNode), asCALL_CDECL);
+	engine->RegisterGlobalFunction("Node@+ get_node() property", asFUNCTION(GetGlobalNode), asCALL_CDECL);
 #else
 	engine->RegisterObjectBehaviour("Variant", asBEHAVE_CONSTRUCT, "void f()", WRAP_OBJ_LAST(ConstructVariant), asCALL_GENERIC);
 	engine->RegisterObjectBehaviour("Variant", asBEHAVE_CONSTRUCT, "void f(const Variant&in)", WRAP_OBJ_LAST(ConstructVariantCopy), asCALL_GENERIC);
@@ -5364,7 +5630,7 @@ bool TestRetRef()
 	engine->RegisterObjectBehaviour("Node", asBEHAVE_RELEASE, "void f()", WRAP_MFN(Node, Release), asCALL_GENERIC);
 	engine->RegisterObjectMethod("Node", "Variant GetAttribute() const", WRAP_MFN_PR(Node, GetAttribute, (), Variant), asCALL_GENERIC);
 
-	engine->RegisterGlobalFunction("Node@+ get_node()", WRAP_FN(GetGlobalNode), asCALL_GENERIC);
+	engine->RegisterGlobalFunction("Node@+ get_node() property", WRAP_FN(GetGlobalNode), asCALL_GENERIC);
 #endif
 	engine->RegisterObjectProperty("Node", "VariantMap vars", asOFFSET(Node, vars));
 
@@ -5412,11 +5678,8 @@ bool TestRetRef()
 		TEST_FAILED;
 	}
 
-	engine->Release();
-#ifndef AS_MAX_PORTABILITY
-	// When using the generic calling convention, the returned handle is not incremented
+	engine->ShutDownAndRelease();
 	g_node->Release();
-#endif
 
 	return fail;
 }

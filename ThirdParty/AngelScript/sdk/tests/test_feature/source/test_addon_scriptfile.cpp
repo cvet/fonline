@@ -15,6 +15,52 @@ bool Test()
 	int r;
 	asIScriptEngine *engine = 0;
 
+	// Test file and directory manipulation
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptFile(engine);
+		RegisterScriptFileSystem(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() { \n"
+			"  filesystem fs; \n"
+			"  assert( fs.changeCurrentPath('scripts') ); \n"
+			"  assert( fs.makeDir('backup') == 0 ); \n"
+			"  assert( fs.copyFile('TestExecuteScript.as', 'backup/TestExecuteScript.as') == 0 ); \n"
+			"  assert( fs.move('backup/TestExecuteScript.as', 'backup/Test.as') == 0 ); \n"
+			"  assert( fs.getSize('TestExecuteScript.as') == fs.getSize('backup/Test.as') ); \n"
+			"  assert( fs.deleteFile('backup/Test.as') == 0 ); \n"
+			"  assert( fs.removeDir('backup') == 0 ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "main()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION && ctx->GetExceptionLineNumber() == 4)
+				PRINTF("Failed to find the sub directory 'scripts'. Are you running the test from the correct folder?\n");
+			else
+				TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);

@@ -39,7 +39,8 @@ bool Test()
 	mod->Build();
 
 	if( out.buffer != "TestOutput (1, 1) : Info    : Compiling void test()\n"
-		              "TestOutput (4, 7) : Error   : 'a' is not declared\n"
+		              "TestOutput (4, 7) : Error   : No matching symbol 'a'\n"
+		              "TestOutput (4, 3) : Error   : No matching symbol 'a'\n"
 		              "TestOutput (2, 3) : Error   : Expected identifier\n"
 					  "TestOutput (2, 3) : Error   : Instead found '='\n" )
 	{

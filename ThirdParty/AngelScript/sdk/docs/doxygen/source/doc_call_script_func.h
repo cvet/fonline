@@ -72,7 +72,7 @@ int SetArgWord(int arg, asWORD value);
 on 1, and so on. <code>value</code> is the value of the argument. What method to use is 
 determined by the type of the parameter. For primitive types you can use any of these. 
 If the parameter type is a reference to a primitive type it is recommended to use the 
-SetArgDWord() method and pass the pointer as the value. For non-primitive types the 
+SetArgAddress() method and pass the pointer as the value. For non-primitive types the 
 method SetArgObject() should be used, which will be described in the next section.
 
 \code
@@ -189,6 +189,8 @@ void PrintExceptionInfo(asIScriptContext *ctx)
 
 If desired, it is also possible to \ref asIScriptContext::SetExceptionCallback "register a callback function" 
 that will be called at the moment the exception occurred, before the \ref asIScriptContext::Execute "Execute" method returns. 
+The exception callback can then use \ref asIScriptContext::WillExceptionBeCaught "WillExceptionBeCaught" to determine if the exception will be \ref try 
+"caught within the script" or if it will abort the execution.
 
 \see \ref doc_debug for information on examining the callstack, and \ref doc_addon_helpers "GetExceptionInfo" for a helper function to get information on exceptions.
 

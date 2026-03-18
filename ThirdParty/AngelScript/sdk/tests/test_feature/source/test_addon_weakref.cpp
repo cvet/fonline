@@ -194,7 +194,7 @@ bool Test()
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
 		const char *script =
-			"class Test { weakref<Test> friend; } \n"
+			"class Test { weakref<Test> friend(null); } \n"
 			"void main() { \n"
 			"  Test t; \n"
 			"  assert( t.friend is null ); \n"

@@ -257,7 +257,7 @@ bool Test()
 		r = mod->CompileFunction(0, "void func() {\n func(); \n}", -1, 0, 0);
 		if( r >= 0 )
 			TEST_FAILED;
-		if( bout.buffer != " (1, 2) : Error   : No matching signatures to 'func()'\n" )
+		if( bout.buffer != " (1, 2) : Error   : No matching symbol 'func'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

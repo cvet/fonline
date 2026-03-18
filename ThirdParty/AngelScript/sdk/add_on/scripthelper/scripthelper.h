@@ -43,6 +43,11 @@ int ConfigEngineFromStream(asIScriptEngine *engine, std::istream &strm, const ch
 // Format the details of the script exception into a human readable text
 std::string GetExceptionInfo(asIScriptContext *ctx, bool showStack = false);
 
+// Register the exception routines
+//  'void throw(const string &msg)'
+//  'string getExceptionInfo()'
+void RegisterExceptionRoutines(asIScriptEngine *engine);
+
 END_AS_NAMESPACE
 
 #endif

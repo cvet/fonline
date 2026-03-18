@@ -43,7 +43,7 @@ void Assert(asIScriptGeneric *gen)
 				PRINTF("sect: %s\n", function->GetScriptSectionName());
 			}
 			PRINTF("line: %d\n", ctx->GetLineNumber());
-			ctx->SetException("Assert failed");
+			ctx->SetException("Assert failed", false);
 			PRINTF("---------------------\n");
 		}
 	}
@@ -334,6 +334,7 @@ asDWORD ComputeCRC32(const asBYTE *buf, asUINT length)
 
 bool ValidateByteCode(asIScriptFunction *func, asBYTE *expect)
 {
+	if (func == 0) return false;
 	asUINT len;
 	asDWORD *bc = func->GetByteCode(&len);
 	for( asUINT n = 0, i = 0; n < len; )

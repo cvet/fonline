@@ -302,7 +302,7 @@ bool Test()
 			"funcdef void CALLBACK();"
 
 			"class Test {"
-			"	void set_Callback(CALLBACK@ handler)"
+			"	void set_Callback(CALLBACK@ handler) property"
 			"	{"
 			"	}"
 			"}"
@@ -604,7 +604,7 @@ bool Test()
 			TEST_FAILED;
 		if (bout.buffer != "test (6, 11) : Error   : Name conflict. 'a' is a funcdef.\n"
 			"test (4, 3) : Error   : Name conflict. 'b' is a funcdef.\n"
-			"test (3, 7) : Error   : Name conflict. 'a' is a funcdef.\n")
+		/*	"test (3, 7) : Error   : Name conflict. 'a' is a funcdef.\n"*/)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -809,7 +809,7 @@ bool Test()
 		bout.buffer = "";
 		engine->RegisterObjectType("MyType", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		engine->RegisterFuncdef("void MyType::Callback()");
-		engine->RegisterObjectMethod("MyType", "void SetCallback(Callback @)", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("MyType", "void SetCallback(Callback @+)", asFUNCTION(0), asCALL_GENERIC);
 		mod->AddScriptSection("test", "MyType::Callback @cb;\n");
 		r = mod->Build();
 		if (r < 0)
@@ -914,7 +914,7 @@ bool Test()
 			TEST_FAILED;
 		if (bout.buffer != "System function (1, 12) : Error   : Expected data type\n"
 						   "System function (1, 12) : Error   : Instead found '@'\n"
-						   " (0, 0) : Error   : Failed in call to function 'RegisterFuncdef' with 'void array<@>::CB()' (Code: -10)\n")
+						   " (0, 0) : Error   : Failed in call to function 'RegisterFuncdef' with 'void array<@>::CB()' (Code: asINVALID_DECLARATION, -10)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1140,6 +1140,31 @@ bool Test()
 						   "name (3, 23) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
 						   "name (4, 21) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
 						   "name (5, 15) : Error   : No matching signatures to '$func::opCall()'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test multiple options for matching lambda
+		// https://www.gamedev.net/forums/topic/672780-lambda-overload-problem/
+		bout.buffer = "";
+		mod->AddScriptSection("name",
+			"funcdef void A(int); \n"
+			"funcdef void B(float); \n"
+			"void func(A@) {} \n"
+			"void func(B@) {} \n"
+			"void main() { \n"
+			"  func(function(a){}); \n"          // compiler cannot decide
+			"  func(cast<B>(function(a){})); \n" // this one is known
+			"  func(function(float a){}); \n"    // this one is also known
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "name (5, 1) : Info    : Compiling void main()\n"
+						   "name (6, 3) : Error   : Multiple matching signatures to 'func($func@const)'\n"
+						   "name (6, 3) : Info    : void func(A@)\n"
+						   "name (6, 3) : Info    : void func(B@)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1589,7 +1614,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'jjBEHAVIOR' and 'DifferentFunctionPointer@ opImplCast()' (Code: -5)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'jjBEHAVIOR' and 'DifferentFunctionPointer@ opImplCast()' (Code: asINVALID_ARG, -5)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2148,8 +2173,8 @@ bool Test()
 			"{ \n"
 			"    ifuncdef1_2@ _events_; \n"
 			"    cfuncdef1_1() { @this._events_ = cfuncdef1_2(); } \n"
-			"    ifuncdef1_2@ get_events() { return( this._events_ ); } \n"
-			"    void set_events( ifuncdef1_2@ events ) { @this._events_ = events; } \n"
+			"    ifuncdef1_2@ get_events() property { return( this._events_ ); } \n"
+			"    void set_events( ifuncdef1_2@ events ) property { @this._events_ = events; } \n"
 			"    void crashme() \n"
 			"    { \n"
 			"         if( this._events_ !is null && this._events_.f !is null ) \n"
@@ -2163,8 +2188,8 @@ bool Test()
 			"{ \n"
 			"    funcdef1@ ff; \n"
 			"    cfuncdef1_2() { @ff = null; } \n"
-			"    funcdef1@ get_f() { return( @this.ff ); } \n"
-			"    void set_f( funcdef1@ _f ) { @this.ff = _f; } \n"
+			"    funcdef1@ get_f() property { return( @this.ff ); } \n"
+			"    void set_f( funcdef1@ _f ) property { @this.ff = _f; } \n"
 			"} \n"
 			"void start() \n"
 			"{ \n"

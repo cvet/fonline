@@ -34,7 +34,6 @@ bool TestGlobalVar();
 bool TestBStr();
 bool TestSwitch();
 bool TestNegateOperator();
-bool TestException();
 bool TestCDecl_Class();
 bool TestCDecl_ClassA();
 bool TestCDecl_ClassC();
@@ -60,6 +59,7 @@ bool TestOptimize();
 bool TestNotInitialized();
 bool TestVector3();
 
+namespace TestException         { bool Test(); }
 namespace TestCDeclReturn       { bool Test(); }
 namespace TestCustomMem         { bool Test(); }
 namespace TestGeneric           { bool Test(); }
@@ -238,8 +238,8 @@ int allTests()
 	if( Test_Addon_ScriptHandle::Test()  ) goto failed; else PRINTF("-- Test_Addon_ScriptHandle passed\n");
 	if( Test_Addon_ScriptArray::Test()   ) goto failed; else PRINTF("-- Test_Addon_ScriptArray passed\n");
 	if( Test_Addon_Dictionary::Test()    ) goto failed; else PRINTF("-- Test_Addon_Dictionary passed\n");
-	if (Test_Addon_DateTime::Test()      ) goto failed; else PRINTF("-- Test_Addon_DateTime passed\n");
-	if (Test_Addon_StdString::Test()     ) goto failed; else PRINTF("-- Test_Addon_StdString passed\n");
+	if( Test_Addon_DateTime::Test()      ) goto failed; else PRINTF("-- Test_Addon_DateTime passed\n");
+	if( Test_Addon_StdString::Test()     ) goto failed; else PRINTF("-- Test_Addon_StdString passed\n");
 
 	if( TestComposition::Test()         ) goto failed; else PRINTF("-- TestComposition passed\n");
 	if( TestPropIntegerDivision::Test() ) goto failed; else PRINTF("-- TestPropIntegerDivision passed\n");
@@ -294,7 +294,7 @@ int allTests()
 	if( TestArrayHandle::Test()         ) goto failed; else PRINTF("-- TestArrayHandle passed\n");
 	if( TestDict::Test()                ) goto failed; else PRINTF("-- TestDict passed\n");
 	if( TestMultiAssign::Test()         ) goto failed; else PRINTF("-- TestMultiAssign passed\n");
-	if( TestException()                 ) goto failed; else PRINTF("-- TestException passed\n");
+	if( TestException::Test()           ) goto failed; else PRINTF("-- TestException passed\n");
 	if( TestInt8::Test()                ) goto failed; else PRINTF("-- TestInt8 passed\n");
 	if( TestGeneric::Test()             ) goto failed; else PRINTF("-- TestGeneric passed\n");
 	if( TestBStr()                      ) goto failed; else PRINTF("-- TestBStr passed\n");

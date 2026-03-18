@@ -11,7 +11,7 @@ register them for a few types, e.g. generic container classes.
 
 \code
 // Registering the garbage collected reference type
-r = engine->RegisterObjectType("ref", 0, asOBJ_REF | asOBJ_GC); assert( r >= 0 );
+r = engine->RegisterObjectType("ref_type", 0, asOBJ_REF | asOBJ_GC); assert( r >= 0 );
 \endcode
 
 The difference between the garbage collected and non-garbage collected
@@ -71,11 +71,11 @@ void CGCRef::ReleaseAllReferences(asIScriptEngine *engine)
 }
 
 // Register the GC support behaviours
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_SETGCFLAG, "void f()", asMETHOD(CGCRef,SetGCFlag), asCALL_THISCALL); assert( r >= 0 );
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_GETGCFLAG, "bool f()", asMETHOD(CGCRef,GetGCFlag), asCALL_THISCALL); assert( r >= 0 );
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(CGCRef,GetRefCount), asCALL_THISCALL); assert( r >= 0 );
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_ENUMREFS, "void f(int&in)", asMETHOD(CGCRef,EnumReferences), asCALL_THISCALL); assert( r >= 0 );
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(CGCRef,ReleaseAllReferences), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_SETGCFLAG, "void f()", asMETHOD(CGCRef,SetGCFlag), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_GETGCFLAG, "bool f()", asMETHOD(CGCRef,GetGCFlag), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(CGCRef,GetRefCount), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_ENUMREFS, "void f(int&in)", asMETHOD(CGCRef,EnumReferences), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(CGCRef,ReleaseAllReferences), asCALL_THISCALL); assert( r >= 0 );
 \endcode
 
 \section doc_reg_gcref_2 Factory for garbage collection
@@ -127,9 +127,59 @@ void CGCRef::Release()
 }
 
 // Registering the addref/release behaviours
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_ADDREF, "void f()", asMETHOD(CGCRef,AddRef), asCALL_THISCALL); assert( r >= 0 );
-r = engine->RegisterObjectBehaviour("gc", asBEHAVE_RELEASE, "void f()", asMETHOD(CGCRef,Release), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_ADDREF, "void f()", asMETHOD(CGCRef,AddRef), asCALL_THISCALL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("ref_type", asBEHAVE_RELEASE, "void f()", asMETHOD(CGCRef,Release), asCALL_THISCALL); assert( r >= 0 );
 \endcode
+
+\section doc_reg_gcref_value GC behaviours for value types
+
+Value types are normally not thought of as being part of circular references as they themselves cannot be referenced, however
+if a value type can hold a reference to a type, and then that type can have the value type as a member then a circular reference can 
+be established preventing the reference type from being released.
+
+To solve these situations the value types can also be registered with some of the garbage collector behaviours.
+
+\code
+// Registering the value type with garbage collected behaviour
+r = engine->RegisterObjectType("value_type", sizeof(value_type), asOBJ_VALUE | asOBJ_GC | ...); assert( r >= 0 );
+
+// Register the garbage collector behaviours
+r = engine->RegisterObjectBehaviour("ref", asBEHAVE_ENUMREFS, "void f(int&in)", asMETHOD(value_type,EnumReferences), asCALL_THISCALL); assert(r >= 0);
+r = engine->RegisterObjectBehaviour("ref", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(value_type, ReleaseReferences), asCALL_THISCALL); assert(r >= 0);
+\endcode
+
+Only the asBEHAVE_ENUMREFS and asBEHAVE_RELEASEREFS should be registered for value types. These work the same 
+way as for reference types, i.e. the asBEHAVE_ENUMREFS should call the engine's GCEnumCallback for all 
+references held, and asBEHAVE_RELEASEREFS should clear all references held.
+
+Reference types that contain value types that have GC behaviours need to have the
+asBEHAVE_ENUMREFS and asBEHAVE_RELEASEREFS behaviours adapted for this by forwarding the enum and release 
+call to the value type. This forward is done by calling the engine's \ref asIScriptEngine::ForwardGCEnumReferences "ForwardGCEnumReferences"
+or \ref asIScriptEngine::ForwardGCReleaseReferences "ForwardGCReleaseReferences" respectively.
+
+\code
+void CGCRef2::EnumReferences(asIScriptEngine *engine)
+{
+    // Forward the enum call to the member value type
+    engine->ForwardGCEnumReferences(valueObj, valueType);
+}
+
+void CGCRef2::ReleaseAllReferences(asIScriptEngine *engine)
+{
+    // When we receive this call, we are as good as dead, but
+    // the garbage collector will still hold a references to us, so we
+    // cannot just delete ourself yet. Just free all references to other
+    // objects that we hold
+
+    // Forward the release call to the member value type
+    engine->ForwardGCReleaseReferences(valueObj, valueType);
+}
+\endcode
+
+\see The \ref doc_addon_handle for a value type with GC behaviours, and the \ref doc_addon_dict for a ref type that can contain value types with GC behaviours.
+
+
+
 
 \section doc_reg_gcref_4 Garbage collected objects and multi-threading
 

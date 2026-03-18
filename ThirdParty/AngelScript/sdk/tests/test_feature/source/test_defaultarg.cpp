@@ -23,6 +23,43 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// default arg accessing member of global var
+	// Reported by Aaron Baker
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class foo \n"
+			"{ \n"
+			"	int bar() \n"
+			"	{ \n"
+			"		return 5; \n"
+			"	} \n"
+			"} \n"
+			"foo f; \n"
+			"void my_func(int age=f.bar()) \n"
+			"{ \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	my_func(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
 	// default arg with funcdef referring to global function
 	{
 		engine = asCreateScriptEngine();
@@ -225,7 +262,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (8, 2) : Info    : Compiling void monster::act()\n"
-						   "default arg (1, 1) : Error   : 'this' is not declared\n"
+						   "default arg (1, 1) : Error   : No matching symbol 'this'\n"
 						   "test (10, 3) : Error   : Failed while compiling default arg for parameter 0 in function 'void monster::calculate_necessary_experience(int = this . level)'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -510,7 +547,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "System function (1, 1) : Error   : All subsequent parameters after the first default value must have default values in function 'void defarg(bool, int = 34 + 45, int)'\n"
-			               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void defarg(bool, int a = 34+45, int)' (Code: -10)\n" )
+			               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void defarg(bool, int a = 34+45, int)' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -540,7 +577,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (2, 1) : Info    : Compiling void main()\n"
-		                   "default arg (1, 1) : Error   : 'n' is not declared\n"
+		                   "default arg (1, 1) : Error   : No matching symbol 'n'\n"
 		                   "script (5, 3) : Error   : Failed while compiling default arg for parameter 0 in function 'void func(int = n)'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -642,10 +679,10 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (1, 1) : Error   : All subsequent parameters after the first default value must have default values in function 'void myFunc(float, int = 0, int)'\n"
-						   "script (2, 1) : Info    : Compiling void main()\n"
+					/*	   "script (2, 1) : Info    : Compiling void main()\n"
 						   "script (5, 3) : Error   : No matching signatures to 'myFunc(const double, const int)'\n"
 						   "script (5, 3) : Info    : Candidates are:\n"
-						   "script (5, 3) : Info    : void myFunc(float f, int a = 0, int b)\n" )
+						   "script (5, 3) : Info    : void myFunc(float f, int a = 0, int b)\n" */)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

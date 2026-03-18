@@ -1,10 +1,10 @@
 /**
 
-\mainpage Manual
+\mainpage Introduction
 
 \image html aslogo.png 
 
-<center>Version 2.32.0</center>
+<center>Version 2.34.0</center>
 
 \ref doc_overview "AngelScript" is a \ref doc_license "free, open source", flexible, and cross-platform scripting library meant to be
 embedded in applications. The purpose is to provide an easy to use library that is powerful, but that isn't weighed 
@@ -17,12 +17,17 @@ dedicated to the continued improvement and growth of this library.
 The official site for the library is <a href="http://www.angelcode.com/angelscript" target="_blank">http://www.angelcode.com/angelscript</a>.
 
 
-\section main_topics Topics
+\page main_topics Developer manual
 
+ - \subpage doc_license
  - \subpage doc_start
- - \subpage doc_using
- - \subpage doc_script
- - \subpage doc_api 
+ - \subpage doc_understanding_as
+ - \subpage doc_register_api_topic
+ - \subpage doc_compile_script
+ - \subpage doc_call_script_func
+ - \subpage doc_use_script_class
+ - \subpage doc_callbacks
+ - \subpage doc_advanced
  - \subpage doc_samples
  - \subpage doc_addon
 
@@ -37,28 +42,10 @@ The official site for the library is <a href="http://www.angelcode.com/angelscri
 \page doc_start Getting started
 
  - \subpage doc_overview
- - \subpage doc_license
  - \subpage doc_compile_lib
  - \subpage doc_hello_world
  - \subpage doc_good_practice
- - \subpage doc_versions
 
-
-
-
-
-
-
-
-\page doc_using Using AngelScript
-
- - \subpage doc_understanding_as
- - \subpage doc_register_api_topic
- - \subpage doc_compile_script
- - \subpage doc_call_script_func
- - \subpage doc_use_script_class
- - \subpage doc_callbacks
- - \subpage doc_advanced
 
 
 
@@ -89,6 +76,7 @@ The official site for the library is <a href="http://www.angelcode.com/angelscri
  - \subpage doc_adv_var_type
  - \subpage doc_adv_template
  - \subpage doc_adv_weakref
+ - \subpage doc_cpp_exceptions
 
 
 
@@ -140,8 +128,9 @@ This is the reference documentation for the AngelScript scripting language.
  - \subpage doc_script_shared
  - \subpage doc_operator_precedence
  - \subpage doc_reserved_keywords
+ - \subpage doc_script_bnf
+ - \subpage doc_script_stdlib
 
-\todo Add page with the Backus-Naur form of the language
 
 
 \page doc_script_global Global entities

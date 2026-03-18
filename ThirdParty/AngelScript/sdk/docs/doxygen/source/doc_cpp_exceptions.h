@@ -21,23 +21,32 @@ if( r == asEXECUTION_EXCEPTION )
 }
 \endcode
 
-The VM will however not be able to distinguish between different types of exceptions. If the application developer
-wish to be able to do so, it will be necessary to write and register a wrapper that catches the exceptions and translates them into a script exception. 
+By default the VM has no way of distinguishing between different types of exceptions and will just give a standard exception 
+string for all of them. If desired a \ref asIScriptEngine::SetTranslateAppExceptionCallback "callback can be registered" with 
+the engine to provide a translation of the exception type to a more informative exception string.
 
 \code
-void func_wrapper()
+void TranslateException(asIScriptContext *ctx, void* /*userParam*/)
 {
   try 
   {
-    func();
+    // Retrow the original exception so we can catch it again
+    throw;
   }
   catch( std::exception &e )
   {
     // Tell the VM the type of exception that occurred
-    asIScriptContext *ctx = asGetActiveContext();
     ctx->SetException(e.what());
   }
+  catch(...)
+  {
+    // The callback must not allow any exception to be thrown, but it is not necessary 
+    // to explicitly set an exception string if the default exception string is sufficient
+  }
 }
+
+// Register the callback with the engine
+engine->SetTranslateAppExceptionCallback(asFUNCTION(TranslateException), 0, asCALL_CDECL);
 \endcode
 
 \see \ref doc_addon_helpers "GetExceptionInfo" helper function

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2019 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -63,9 +63,9 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-//! Version 2.32.0
-#define ANGELSCRIPT_VERSION        23200
-#define ANGELSCRIPT_VERSION_STRING "2.32.0"
+//! Version 2.34.0
+#define ANGELSCRIPT_VERSION        23400
+#define ANGELSCRIPT_VERSION_STRING "2.34.0"
 
 // Data types
 
@@ -178,7 +178,7 @@ enum asEEngineProp
 	asEP_INCLUDE_JIT_INSTRUCTIONS           = 12,
 	//! Select string encoding for literals: 0 - UTF8/ASCII, 1 - UTF16. Default: 0 (UTF8)
 	asEP_STRING_ENCODING                    = 13,
-	//! Enable or disable property accessors: 0 - no accessors, 1 - app registered accessors, 2 - app and script created accessors
+	//! Enable or disable property accessors: 0 - no accessors, 1 - app registered accessors only, property keyword optional, 2 - app and script created accessors, property keyword optional, 3 - app and script created accesors, property keyword required. Default: 3
 	asEP_PROPERTY_ACCESSOR_MODE             = 14,
 	//! Format default array in template form in messages and declarations. Default: false
 	asEP_EXPAND_DEF_ARRAY_TO_TMPL           = 15,
@@ -192,7 +192,7 @@ enum asEEngineProp
 	asEP_COMPILER_WARNINGS                  = 19,
 	//! Disallow value assignment for reference types to avoid ambiguity. Default: false
 	asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE = 20,
-	//! Change the script syntax for named arguments: 0 - no change, 1 - accept = but warn, 2 - accept = without warning. Default: 0
+	//! Change the script syntax for named arguments: 0 - no change, 1 - accept '=' but warn, 2 - accept '=' without warning. Default: 0
 	asEP_ALTER_SYNTAX_NAMED_ARGS            = 21,
 	//! When true, the / and /= operators will perform floating-point division (i.e. 1/2 = 0.5 instead of 0). Default: false
 	asEP_DISABLE_INTEGER_DIVISION           = 22,
@@ -206,6 +206,14 @@ enum asEEngineProp
 	asEP_HEREDOC_TRIM_MODE                  = 26,
 	//! Define the maximum number of nested calls the script engine will allow. Default: 100
 	asEP_MAX_NESTED_CALLS                   = 27,
+	//! Define how generic calling convention treats handles: 0 - ignore auto handles, 1 - treat them the same way as native calling convention. Default: 1
+	asEP_GENERIC_CALL_MODE                  = 28,
+	//! Initial stack size in bytes for script contexts. Default: 4096
+	asEP_INIT_STACK_SIZE                    = 29,
+	//! Initial call stack size for script contexts. Default: 10
+	asEP_INIT_CALL_STACK_SIZE               = 30,
+	//! Maximum call stack size for script contexts. Default: 0 (no limit)
+	asEP_MAX_CALL_STACK_SIZE                = 31,
 
 	asEP_LAST_PROPERTY
 };
@@ -549,6 +557,12 @@ enum asEFuncType
 
 
 
+//! \typedef asINT8
+//! \brief 8 bit signed integer
+
+//! \typedef asINT16
+//! \brief 16 bit signed integer
+
 //! \typedef asBYTE
 //! \brief 8 bit unsigned integer
 
@@ -577,6 +591,8 @@ enum asEFuncType
 // asQWORD = 64 bits
 // asPWORD = size of pointer
 //
+typedef signed char    asINT8;
+typedef signed short   asINT16;
 typedef unsigned char  asBYTE;
 typedef unsigned short asWORD;
 typedef unsigned int   asUINT;
@@ -633,6 +649,8 @@ typedef void (*asCLEANSCRIPTOBJECTFUNC_t)(asIScriptObject *);
 typedef asIScriptContext *(*asREQUESTCONTEXTFUNC_t)(asIScriptEngine *, void *);
 //! The function signature for the return context callback
 typedef void (*asRETURNCONTEXTFUNC_t)(asIScriptEngine *, asIScriptContext *, void *);
+//! The function signature for the callback used when detecting a circular reference in garbage
+typedef void (*asCIRCULARREFFUNC_t)(asITypeInfo *, const void *, void *);
 
 // Check if the compiler can use C++11 features
 #if !defined(_MSC_VER) || _MSC_VER >= 1700   // MSVC 2012
@@ -649,7 +667,7 @@ typedef void (*asRETURNCONTEXTFUNC_t)(asIScriptEngine *, asIScriptContext *, voi
 // This macro does basically the same thing as offsetof defined in stddef.h, but
 // GNUC should not complain about the usage as I'm not using 0 as the base pointer.
 //! \brief Returns the offset of an attribute in a struct
-#define asOFFSET(s,m) ((size_t)(&reinterpret_cast<s*>(100000)->m)-100000)
+#define asOFFSET(s,m) ((int)(size_t)(&reinterpret_cast<s*>(100000)->m)-100000)
 
 //! \brief Returns an asSFuncPtr representing the function specified by the name
 #define asFUNCTION(f) asFunctionPtr(f)
@@ -1338,14 +1356,13 @@ public:
 	//! \param[in] isCompositeIndirect Set to false if the composite object is inline, and true if it is refered to by pointer.
 	//! \return A negative value on error, or the function id is successful.
 	//! \retval asWRONG_CONFIG_GROUP The object type was registered in a different configuration group.
-	//! \retval asINVALID_ARG \a obj is not set, or a global behaviour is given in \a behaviour.
+	//! \retval asINVALID_ARG \a obj is not set, or a global behaviour is given in \a behaviour, or the \a objForThiscall pointer wasn't set according to calling convention.
 	//! \retval asWRONG_CALLING_CONV The function's calling convention isn't compatible with \a callConv.
 	//! \retval asNOT_SUPPORTED The calling convention or the behaviour signature is not supported.
 	//! \retval asINVALID_TYPE The \a obj parameter is not a valid object name.
 	//! \retval asINVALID_DECLARATION The \a declaration is invalid.
 	//! \retval asILLEGAL_BEHAVIOUR_FOR_TYPE The \a behaviour is not allowed for this type.
 	//! \retval asALREADY_REGISTERED The behaviour is already registered with the same signature.
-	//! \retval asINVALID_ARG The \a objForThiscall pointer wasn't set according to calling convention.
 	//!
 	//! Use this method to register behaviour functions that will be called by
 	//! the virtual machine to perform certain operations, such as memory management,
@@ -1447,10 +1464,9 @@ public:
 	//! \brief Registers an enum type.
 	//! \param[in] type The name of the enum type.
 	//! \return The type id on success, or a negative value on error.
-	//! \retval asINVALID_NAME \a type is null.
+	//! \retval asINVALID_NAME \a type is null, not an identifier, or it is a reserved keyword.
 	//! \retval asALREADY_REGISTERED Another type with this name already exists.
 	//! \retval asERROR The \a type couldn't be parsed.
-	//! \retval asINVALID_NAME The \a type is not an identifier, or it is a reserved keyword.
 	//! \retval asNAME_TAKEN The type name is already taken.
 	//!
 	//! This method registers an enum type in the engine. The enum values should then be registered 
@@ -1515,10 +1531,9 @@ public:
 	//! \param[in] type The name of the new typedef
 	//! \param[in] decl The datatype that the typedef represents
 	//! \return The type id on success, else a negative value on error.
-	//! \retval asINVALID_NAME The \a type is null.
+	//! \retval asINVALID_NAME The \a type is null, is not an identifier, or it is a reserved keyword.
 	//! \retval asALREADY_REGISTERED A type with the same name already exists.
 	//! \retval asINVALID_TYPE The \a decl is not a primitive type.
-	//! \retval asINVALID_NAME The \a type is not an identifier, or it is a reserved keyword.
 	//! \retval asNAME_TAKEN The name is already used elsewhere.
 	//!
 	//! This method registers an alias for a data type.
@@ -1927,11 +1942,41 @@ public:
 	//! \brief Used by the garbage collector to enumerate all references held by an object.
 	//! \param[in] reference A pointer to the referenced object.
 	//!
-	//! When processing the EnumReferences call the called object should call GCEnumCallback 
-	//! for each of the references it holds to other objects.
+	//! When processing the \ref asBEHAVE_ENUMREFS call the called object should call GCEnumCallback 
+	//! for each of the references it holds to other objects. If the object holds a value type
+	//! that may contain references, then use the \ref ForwardGCEnumReferences.
 	//!
 	//! \see \ref doc_gc_object
 	virtual void GCEnumCallback(void *reference) = 0;
+	//! \brief Used to forward GC callback to held value types that may contain references
+	//! \param[in] ref The object pointer
+	//! \param[in] type The type of the object
+	//!
+	//! This should be used by reference types that implement the \ref asBEHAVE_ENUMREFS
+	//! behaviour when the object holds a value type that can in turn contain references.
+	//!
+	//! \see \ref doc_gc_object
+	virtual void ForwardGCEnumReferences(void *ref, asITypeInfo *type) = 0;
+	//! \brief Used to forward GC callback to held value types that may contain references
+	//! \param[in] ref The object pointer
+	//! \param[in] type The type of the object
+	//!
+	//! This should be used by reference types that implement the \ref asBEHAVE_RELEASEREFS
+	//! behaviour when the object holds a value type that can in turn contain references.
+	//!
+	//! \see \ref doc_gc_object
+	virtual void ForwardGCReleaseReferences(void *ref, asITypeInfo *type) = 0;
+	//! \brief Set a callback for capturing more info on circular reference for debugging
+	//! \param[in] callback The callback function
+	//! \param[in] param Optional parameter that will be passed back to the callback function
+	//!
+	//! This callback is meant to be used during development to help identify scripts that are
+	//! creating circular references. As the callback will be invoked when the objects in the circular
+	//! reference are detected, but before they are destroyed, the application can investigate their
+	//! content to get hints where the objects are created from.
+	//!
+	//! \see \ref doc_gc
+	virtual void SetCircularRefDetectedCallback(asCIRCULARREFFUNC_t callback, void *param = 0) = 0;
 	//! \}
 
 	// User data
@@ -2015,6 +2060,34 @@ public:
 	virtual void  SetScriptObjectUserDataCleanupCallback(asCLEANSCRIPTOBJECTFUNC_t callback, asPWORD type = 0) = 0;
 	//! \}
 
+	// Exception handling
+	//! \name Exception handling
+	//! \{
+
+	//! \brief Register the exception translation callback.
+	//! \param[in] callback The callback function/method that should be called upon an exception.
+	//! \param[in] param A user defined parameter, or the object pointer on which the callback is called.
+	//! \param[in] callConv The calling convention of the callback function/method.
+	//! \return A negative value on error.
+	//! \retval asNOT_SUPPORTED Calling convention must not be asCALL_GENERIC, or the routine's calling convention is not supported.
+	//! \retval asINVALID_ARG   \a param must not be null for class methods.
+	//! \retval asWRONG_CALLING_CONV \a callConv isn't compatible with the routines' calling convention.
+	//!
+	//! This callback function will be called by the VM when an application exception is raised, which 
+	//! allow the application to translate the exception into a useful string to inform in \ref asIScriptContext::SetException "SetException".
+	//!
+	//! The callback function signature must be either:
+	//!
+	//! <pre>  void (*)(asIScriptContext *, void *);</pre>
+	//!
+	//! or
+	//!
+	//! <pre>  void (param::*)(asIScriptContext *);</pre>
+	//!
+	//! See \ref doc_cpp_exceptions_1 for an example on how to use this.
+	virtual int SetTranslateAppExceptionCallback(asSFuncPtr callback, void *param, int callConv) = 0;
+	//! \}
+
 protected:
 	virtual ~asIScriptEngine() {}
 };
@@ -2032,8 +2105,14 @@ public:
 	//! \param[in] length The length in bytes of the data buffer
 	//! \return The pointer to the instantiated string constant
 	//!
+	//! The contents of \a data must be copied by the string factory, as the 
+	//! engine will not keep a copy of the original data.
+	//!
 	//! The string factory can cache and return a pointer to the same instance
 	//! multiple times if the same string content is requested multiple times.
+	//! If the same instance is returned multiple times the string factory must
+	//! keep track of the number of instances as \ref ReleaseStringConstant
+	//! will be called for each of them.
 	virtual const void *GetStringConstant(const char *data, asUINT length) = 0;
 	//! \brief Called by engine when the string constant is no longer used.
 	//! \param[in] str The same pointer returned by \ref GetStringConstant
@@ -2050,7 +2129,7 @@ public:
 	//! \param[out] length A pointer to the variable that should be set with the length of the data
 	//! \return A negative value on error.
 	//!
-	//! The engine will first call this with data set to null to retrieve the size of the 
+	//! The engine will first call this with \a data set to null to retrieve the size of the 
 	//! buffer that must be allocated. Then the engine will call the method once more with
 	//! the allocated data buffer to be filled with the content. The length should always be
 	//! informed in number of bytes.
@@ -2672,7 +2751,8 @@ public:
 	virtual asEContextState GetState() const = 0;
 	//! \brief Backups the current state to prepare the context for a nested call.
 	//! \return A negative value on error.
-	//! \retval asERROR The state couldn't be pushed.
+	//! \retval asERROR The current context is not active.
+	//! \retval asOUT_OF_MEMORY Couldn't allocate memory to store state.
 	//!
 	//! This method can be invoked on an active context in order
 	//! to reuse the context for a nested call, e.g. when a function
@@ -2681,11 +2761,15 @@ public:
 	//! shall be invoked to prepare the new execution.
 	//!
 	//! By reusing an active context the application can avoid creating a 
-	//! temporary context, and thus improve the run time performance.
+	//! temporary context, and thus improve the run-time performance.
 	//!
 	//! For each successful call to PushState() the method \ref PopState() must
 	//! be called to return the state in order to resume the previous script 
 	//! execution.
+	//!
+	//! If PushState() fails, the context was not modified, so the application
+	//! can just create a different context instead, and when it is done with it
+	//! the original context can be resumed normally.
 	virtual int             PushState() = 0;
 	//! \brief Restores the state to resume previous script execution
 	//! \return A negative value on error.
@@ -2864,7 +2948,8 @@ public:
 	//! \{
 
 	//! \brief Sets an exception, which aborts the execution.
-	//! \param[in] string A string that describes the exception that occurred.
+	//! \param[in] info A string that describes the exception that occurred.
+	//! \param[in] allowCatch Set to false if the script shouldn't be allowed to catch the exception.
 	//! \return A negative value on error.
 	//! \retval asERROR The context isn't currently calling an application registered function.
 	//!
@@ -2874,7 +2959,7 @@ public:
 	//!
 	//! Note that if your system function sets an exception, it should not return any 
 	//! object references because the engine will not release the returned reference.
-	virtual int                SetException(const char *string) = 0;
+	virtual int                SetException(const char *info, bool allowCatch = true) = 0;
 	//! \brief Returns the line number where the exception occurred.
 	//! \param[out] column The variable will receive the column number.
 	//! \param[out] sectionName The variable will receive the name of the script section.
@@ -2892,6 +2977,13 @@ public:
 	//! \brief Returns the exception string text.
 	//! \return A null terminated string describing the exception that occurred.
 	virtual const char *       GetExceptionString() = 0;
+	//! \brief Determine if the current exception will be caught by the script
+	//! \return True if the exception will be caught by the script.
+	//!
+	//! This method is intended to be used from the \ref SetExceptionCallback "exception callback", 
+	//! where the application can potentially make a different decision depending on whether the 
+	//! script will catch the exception or not.
+	virtual bool               WillExceptionBeCaught() = 0;
 	//! \brief Sets an exception callback function. The function will be called if a script exception occurs.
 	//! \param[in] callback The callback function/method that should be called upon an exception.
 	//! \param[in] obj The object pointer on which the callback is called.
@@ -2905,9 +2997,22 @@ public:
 	//! allow the application to examine the callstack and generate a detailed report before the 
 	//! callstack is cleaned up.
 	//!
-	//! See \ref SetLineCallback for details on the calling convention.
+	//! The callback function can be either a global function or a class method. For a global function 
+	//! the VM will pass two parameters, first the context pointer and then the object pointer specified 
+	//! by the application. For a class method, the VM will call the method using the object pointer 
+	//! as the owner.
+	//!
+	//! \code
+	//! void Callback(asIScriptContext *ctx, void *obj);
+	//! void Object::Callback(asIScriptContext *ctx);
+	//! \endcode
+	//!
+	//! The global function can use either \ref asCALL_CDECL or \ref asCALL_STDCALL, and the class method can use either 
+	//! \ref asCALL_THISCALL, \ref asCALL_CDECL_OBJLAST, or \ref asCALL_CDECL_OBJFIRST.
+	//! 
+	//! \see \ref doc_call_script_4
 	virtual int                SetExceptionCallback(asSFuncPtr callback, void *obj, int callConv) = 0;
-	//! \brief Removes a previously registered callback.
+	//! \brief Removes the registered callback.
 	//!
 	//! Removes a previously registered callback.
 	virtual void               ClearExceptionCallback() = 0;
@@ -2946,7 +3051,7 @@ public:
 	//!
 	//! \see \ref doc_debug
 	virtual int                SetLineCallback(asSFuncPtr callback, void *obj, int callConv) = 0;
-	//! \brief Removes a previously registered callback.
+	//! \brief Removes the registered callback.
 	//!
 	//! Removes a previously registered callback.
 	virtual void               ClearLineCallback() = 0;
@@ -3724,12 +3829,14 @@ public:
 	virtual const char      *GetNamespace() const = 0;
 	//! \brief Returns the function declaration
 	//! \param[in] includeObjectName Indicate whether the object name should be prepended to the function name
-	//! \param[in] includeNamespace Indicates whether the namespace should be prepended to the function name
+	//! \param[in] includeNamespace Indicates whether the namespace should be prepended to the function name and types
 	//! \param[in] includeParamNames Indicates whether parameter names should be added to the declaration
 	//! \return A null terminated string with the function declaration. 
 	//!
 	//! The parameter names are not stored for \ref asFUNC_VIRTUAL "virtual methods". If you want to know the 
 	//! name of parameters to class methods, be sure to get the actual implementation rather than the virtual method.
+	//!
+	//! The namespace will always be included for types that are declared in a different namespace than the function itself.
 	virtual const char      *GetDeclaration(bool includeObjectName = true, bool includeNamespace = false, bool includeParamNames = false) const = 0;
 	//! \brief Returns true if the class method is read-only
 	//! \return True if the class method is read-only
@@ -3749,6 +3856,12 @@ public:
 	//! \brief Returns true if the function is shared.
 	//! \return True if the function is shared.
 	virtual bool             IsShared() const = 0;
+	//! \brief Returns true if the function is declared as 'explicit'.
+	//! \return True if the function is explicit.
+	virtual bool             IsExplicit() const = 0;
+	//! \brief Returns true if the function is declared as 'property'.
+	//! \return True if the function is a property accessor.
+	virtual bool             IsProperty() const = 0;
 	//! \brief Returns the number of parameters for this function.
 	//! \return The number of parameters.
 	virtual asUINT           GetParamCount() const = 0;
@@ -4574,6 +4687,7 @@ enum asEBCInstr
 	asBC_MAXBYTECODE	= 201,
 
 	// Temporary tokens. Can't be output to the final program
+	asBC_TryBlock		= 250,
 	asBC_VarDecl		= 251,
 	asBC_Block			= 252,
 	asBC_ObjInfo		= 253,
@@ -4952,8 +5066,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO_DUMMY(247),
 	asBCINFO_DUMMY(248),
 	asBCINFO_DUMMY(249),
-	asBCINFO_DUMMY(250),
 
+	asBCINFO(TryBlock,		DW_ARG,			0),
 	asBCINFO(VarDecl,		W_ARG,			0),
 	asBCINFO(Block,			INFO,			0),
 	asBCINFO(ObjInfo,		rW_DW_ARG,		0),

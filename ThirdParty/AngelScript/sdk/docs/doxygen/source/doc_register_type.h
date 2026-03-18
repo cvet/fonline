@@ -79,6 +79,11 @@ The factory function must be registered as a global function, but can be
 implemented as a static class method, common global function, or a global
 function following the generic calling convention.
 
+Even though a factory function returns an object handle, it must not return a null handle 
+unless it also sets an exception to signal that the instantiation of the object failed. 
+
+The behaviour is undefined if a factory function returns null without setting an exception.
+
 See also \ref doc_reg_basicref_4.
 
 \section doc_reg_basicref_2 Addref and release behaviours
@@ -237,6 +242,7 @@ r = engine->RegisterObjectType("val", sizeof(val), asOBJ_VALUE); assert( r >= 0 
 
 \see The \ref doc_addon_std_string or the \ref doc_addon_math "complex type in the math add-on" for examples of value types
 \see \ref doc_adv_generic_handle for a more specific example of a value type
+\see \ref doc_gc_object for when the type may form circular references when being a member of another type
 
 
 \section doc_reg_val_1 Constructor and destructor
@@ -549,9 +555,9 @@ the pointer. If the composite member is inlined, then the parameter should be se
 \section doc_reg_objprop_accessor Property accessors
 
 It is also possible to expose properties through \ref doc_script_class_prop "property accessors", 
-which are a pair of class methods with prefixes get_ and set_ for getting and setting the property value. 
-These methods should be registered with \ref doc_register_func "RegisterObjectMethod". This is especially
-useful when the offset of the property cannot be determined, or if the type of the property is 
+which are a pair of class methods with prefixes 'get_' and 'set_' and the function decorator 'property' for
+getting and setting the property value. These methods should be registered with \ref doc_register_func "RegisterObjectMethod". 
+This is especially useful when the offset of the property cannot be determined, or if the type of the property is 
 not registered in the script and some translation must occur, i.e. from <tt>char*</tt> to <tt>string</tt>.
 
 If the application class contains a C++ array as a member, it may be advantageous to expose the array

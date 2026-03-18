@@ -278,7 +278,7 @@ bool TestSwitch()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "script (1, 1) : Info    : Compiling void func()\n"
-						   "script (3, 11) : Error   : 'undeclaredString' is not declared\n"
+						   "script (3, 11) : Error   : No matching symbol 'undeclaredString'\n"
 						   "script (5, 8) : Error   : Switch expressions must be integral numbers\n"
 						   "script (3, 3) : Error   : Empty switch statement\n")
 		{

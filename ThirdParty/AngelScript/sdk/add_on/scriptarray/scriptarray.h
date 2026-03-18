@@ -12,9 +12,14 @@
 //
 //  0 = off
 //  1 = on
-
 #ifndef AS_USE_STLNAMES
 #define AS_USE_STLNAMES 0
+#endif
+
+// Some prefer to use property accessors to get/set the length of the array
+// This option registers the accessors instead of the method length()
+#ifndef AS_USE_ACCESSORS
+#define AS_USE_ACCESSORS 0
 #endif
 
 BEGIN_AS_NAMESPACE
@@ -33,7 +38,6 @@ public:
 	static CScriptArray *Create(asITypeInfo *ot, asUINT length);
 	static CScriptArray *Create(asITypeInfo *ot, asUINT length, void *defaultValue);
 	static CScriptArray *Create(asITypeInfo *ot, void *listBuffer);
-	static CScriptArray *Create(asITypeInfo *ot, const CScriptArray &other);
 
 	// Memory management
 	void AddRef() const;

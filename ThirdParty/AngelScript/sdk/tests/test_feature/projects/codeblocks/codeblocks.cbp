@@ -8,6 +8,7 @@
 		<Build>
 			<Target title="Debug">
 				<Option output="../../bin/testcodeblocks" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../bin/" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -24,6 +25,7 @@
 			</Target>
 			<Target title="Release 64">
 				<Option output="../../bin/testcodeblocks" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../bin/" />
 				<Option object_output="obj/release 64/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -39,6 +41,25 @@
 					<Add library="..\..\..\..\angelscript\lib\libangelscript64.a" />
 				</Linker>
 			</Target>
+			<Target title="Release 32">
+				<Option output="../../bin/testcodeblocks" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../bin/" />
+				<Option object_output="obj/release 32/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-std=c++11" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-m32" />
+					<Add directory="../../../../angelscript/include" />
+				</Compiler>
+				<Linker>
+					<Add option="-m32" />
+					<Add library="..\..\..\..\angelscript\lib\libangelscript.a" />
+				</Linker>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
@@ -47,6 +68,8 @@
 		<Unit filename="../../../../add_on/autowrapper/aswrappedcall.h" />
 		<Unit filename="../../../../add_on/contextmgr/contextmgr.cpp" />
 		<Unit filename="../../../../add_on/contextmgr/contextmgr.h" />
+		<Unit filename="../../../../add_on/datetime/datetime.cpp" />
+		<Unit filename="../../../../add_on/datetime/datetime.h" />
 		<Unit filename="../../../../add_on/debugger/debugger.cpp" />
 		<Unit filename="../../../../add_on/debugger/debugger.h" />
 		<Unit filename="../../../../add_on/scriptany/scriptany.cpp" />
@@ -59,6 +82,7 @@
 		<Unit filename="../../../../add_on/scriptdictionary/scriptdictionary.h" />
 		<Unit filename="../../../../add_on/scriptfile/scriptfile.cpp" />
 		<Unit filename="../../../../add_on/scriptfile/scriptfile.h" />
+		<Unit filename="../../../../add_on/scriptfile/scriptfilesystem.cpp" />
 		<Unit filename="../../../../add_on/scriptgrid/scriptgrid.cpp" />
 		<Unit filename="../../../../add_on/scriptgrid/scriptgrid.h" />
 		<Unit filename="../../../../add_on/scripthandle/scripthandle.cpp" />
@@ -92,14 +116,17 @@
 		<Unit filename="../../source/test2modules.cpp" />
 		<Unit filename="../../source/test_2func.cpp" />
 		<Unit filename="../../source/test_addon_contextmgr.cpp" />
+		<Unit filename="../../source/test_addon_datetime.cpp" />
 		<Unit filename="../../source/test_addon_debugger.cpp" />
 		<Unit filename="../../source/test_addon_dictionary.cpp" />
 		<Unit filename="../../source/test_addon_scriptarray.cpp" />
 		<Unit filename="../../source/test_addon_scriptbuilder.cpp" />
+		<Unit filename="../../source/test_addon_scriptfile.cpp" />
 		<Unit filename="../../source/test_addon_scriptgrid.cpp" />
 		<Unit filename="../../source/test_addon_scripthandle.cpp" />
 		<Unit filename="../../source/test_addon_scriptmath.cpp" />
 		<Unit filename="../../source/test_addon_serializer.cpp" />
+		<Unit filename="../../source/test_addon_stdstring.cpp" />
 		<Unit filename="../../source/test_addon_weakref.cpp" />
 		<Unit filename="../../source/test_any.cpp" />
 		<Unit filename="../../source/test_argref.cpp" />
@@ -117,6 +144,7 @@
 		<Unit filename="../../source/test_cdecl_return.cpp" />
 		<Unit filename="../../source/test_circularimport.cpp" />
 		<Unit filename="../../source/test_compiler.cpp" />
+		<Unit filename="../../source/test_composition.cpp" />
 		<Unit filename="../../source/test_condition.cpp" />
 		<Unit filename="../../source/test_config.cpp" />
 		<Unit filename="../../source/test_configaccess.cpp" />

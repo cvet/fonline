@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2018 Andreas Jonsson
+   Copyright (c) 2003-2019 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -196,6 +196,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			internal->cleanArgs.PushLast(clean);
 		}
 		else
+
 		if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
 		{
 			if (dt.IsFuncdef())
@@ -607,7 +608,6 @@ int CallSystemFunction(int id, asCContext *context)
 	void *secondObj = 0;
 
 #ifdef AS_NO_THISCALL_FUNCTOR_METHOD
-
 	if( callConv >= ICC_THISCALL )
 	{
 		if(sysFunc->auxiliary)
@@ -628,22 +628,22 @@ int CallSystemFunction(int id, asCContext *context)
 				return 0;
 			}
 
-			// Add the base offset for multiple inheritance
-#if (defined(__GNUC__) && (defined(AS_ARM) || defined(AS_MIPS))) || defined(AS_PSVITA)
-			// On GNUC + ARM the lsb of the offset is used to indicate a virtual function
-			// and the whole offset is thus shifted one bit left to keep the original
-			// offset resolution
-			// MIPS also work like ARM in this regard
-			obj = (void*)(asPWORD(obj) + (sysFunc->baseOffset>>1));
-#else
-			obj = (void*)(asPWORD(obj) + sysFunc->baseOffset);
-#endif
-
 			// Skip the object pointer
 			args += AS_PTR_SIZE;
 		}
-	}
+		
+		// Add the base offset for multiple inheritance
+#if (defined(__GNUC__) && (defined(AS_ARM) || defined(AS_MIPS))) || defined(AS_PSVITA)
+		// On GNUC + ARM the lsb of the offset is used to indicate a virtual function
+		// and the whole offset is thus shifted one bit left to keep the original
+		// offset resolution
+		// MIPS also work like ARM in this regard
+		obj = (void*)(asPWORD(obj) + (sysFunc->baseOffset>>1));
 #else
+		obj = (void*)(asPWORD(obj) + sysFunc->baseOffset);
+#endif		
+	}
+#else // !defined(AS_NO_THISCALL_FUNCTOR_METHOD)
 
 	if( callConv >= ICC_THISCALL )
 	{
@@ -662,6 +662,20 @@ int CallSystemFunction(int id, asCContext *context)
 			// This class method is being called as if it is a global function
 			obj = sysFunc->auxiliary;
 			continueCheck = false;
+		}
+		
+		if( obj )
+		{
+			// Add the base offset for multiple inheritance
+#if (defined(__GNUC__) && (defined(AS_ARM) || defined(AS_MIPS))) || defined(AS_PSVITA)
+			// On GNUC + ARM the lsb of the offset is used to indicate a virtual function
+			// and the whole offset is thus shifted one bit left to keep the original
+			// offset resolution
+			// MIPS also work like ARM in this regard
+			obj = (void*)(asPWORD(obj) + (sysFunc->baseOffset>>1));
+#else
+			obj = (void*)(asPWORD(obj) + sysFunc->baseOffset);
+#endif		
 		}
 
 		if( continueCheck )
@@ -756,7 +770,6 @@ int CallSystemFunction(int id, asCContext *context)
 	catch(...)
 	{
 		cppException = true;
-		context->GetStdException() = std::exception_ptr();
 
 		// Convert the exception to a script exception so the VM can
 		// properly report the error to the application and then clean up

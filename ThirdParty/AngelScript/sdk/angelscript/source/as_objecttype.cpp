@@ -200,7 +200,7 @@ int asCObjectType::GetSubTypeId(asUINT subtypeIndex) const
 	// with handle semantics without integration-side normalization helpers.
 	if( (typeId & asTYPEID_MASK_OBJECT) != 0 && (typeId & asTYPEID_OBJHANDLE) == 0 )
 	{
-		asCTypeInfo* subType = templateSubTypes[subtypeIndex].GetTypeInfo();
+		asCTypeInfo *subType = templateSubTypes[subtypeIndex].GetTypeInfo();
 		if( subType && (subType->flags & asOBJ_IMPLICIT_HANDLE) )
 			typeId |= asTYPEID_OBJHANDLE;
 	}

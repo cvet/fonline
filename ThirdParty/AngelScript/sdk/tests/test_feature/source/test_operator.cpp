@@ -181,7 +181,7 @@ bool Test()
 			"class F { \n"
 			"  C c; \n"
 			"  int func() { return c(2,3); } \n"
-			"  C @get_Functor() { return c; } \n"
+			"  C @get_Functor() property { return c; } \n"
 			"} \n");
 		
 		r = mod->Build();

@@ -214,7 +214,7 @@ bool Test()
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "Property (1, 1) : Error   : Expected data type\n"
 		               "Property (1, 1) : Error   : Instead found '?'\n"
-	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalProperty' with '? prop' (Code: -10)\n" ) 
+	                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalProperty' with '? prop' (Code: asINVALID_DECLARATION, -10)\n" ) 
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -230,7 +230,7 @@ bool Test()
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "Property (1, 1) : Error   : Expected data type\n"
 		               "Property (1, 1) : Error   : Instead found '?'\n"
-		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'test' and '? prop' (Code: -10)\n" )
+		               " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'test' and '? prop' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -337,7 +337,7 @@ bool Test()
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "System function (1, 1) : Error   : Expected data type\n"
 					   "System function (1, 1) : Error   : Instead found '?'\n"
-		               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with '? testFunc()' (Code: -10)\n" )
+		               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with '? testFunc()' (Code: asINVALID_DECLARATION, -10)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;

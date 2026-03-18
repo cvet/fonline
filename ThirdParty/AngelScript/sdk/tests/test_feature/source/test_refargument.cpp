@@ -209,7 +209,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "System function (1, 17) : Error   : Only object types that support object handles can use &inout. Use &in or &out instead\n" 
-		                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void func(float &)' (Code: -10)\n" )
+		                   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void func(float &)' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

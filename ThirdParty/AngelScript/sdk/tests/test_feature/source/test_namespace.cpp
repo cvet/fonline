@@ -1,4 +1,4 @@
-#include "utils.h"
+ï»¿#include "utils.h"
 
 namespace TestNamespace
 {
@@ -11,8 +11,364 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Test correct declaration from GetDeclaration when returning class method using types from different namespace
+	// https://www.gamedev.net/forums/topic/698616-version-2330-wip-vs-version-2321-wip/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace A { class B { } }\n"
+			"class C { A::B @func() { return null; } } \n"
+			"namespace A { class D { B @func() { return null; } } } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asITypeInfo *t = mod->GetTypeInfoByName("C");
+		asIScriptFunction *f = t->GetMethodByName("func");
+		if (std::string(f->GetDeclaration()) != "A::B@ C::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(true, false)) != "A::B@ C::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(false, false)) != "A::B@ func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(true, true)) != "A::B@ C::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(false, true)) != "A::B@ func()")
+			TEST_FAILED;
+
+		t = mod->GetTypeInfoByDecl("A::D");
+		f = t->GetMethodByName("func");
+		if (std::string(f->GetDeclaration()) != "B@ D::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(true, false)) != "B@ D::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(false, false)) != "B@ func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(true, true)) != "A::B@ A::D::func()")
+			TEST_FAILED;
+		if (std::string(f->GetDeclaration(false, true)) != "A::B@ func()")
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test a false error in compiler
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class B { \n"
+			"  int get_Number() { return 0; } \n"
+			"} \n"
+			"class A { \n"
+			"  int get_Number() { return 0; } \n"
+			"} \n"
+			"namespace A \n"
+			"{\n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test when class and namespace has the name name
+	// Reported by Phong Ba
+	// TODO: Once it is possible to declare static members, the code should
+	//       change to prohibit namespace with the same name as types
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { int B; void C() {} } \n"
+			"namespace A { int B; void C() {} } \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 18) : Error   : Name conflict. 'A::C' is a global function.\n"
+						 /*  "test (1, 15) : Error   : Name conflict. 'A::B' is a global property.\n" */ )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test error when trying to access virtual class property directly without the object
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { int size { get { return 0; } } } \n"
+			"int test() { \n"
+			"  return A::size; \n"  // wrong usage, should report error
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling int test()\n"
+						   "test (3, 10) : Error   : Cannot access non-static member 'size' like this\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test error when trying to access class method for pointer without the object
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int test() { \n"
+			"  return string::erase; \n"  // wrong usage, should report error
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling int test()\n"
+						   "test (2, 10) : Error   : Cannot access non-static member 'erase' like this\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test error when trying to call class method directly without the object
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int test() { \n"
+			"  return string::length(); \n"  // wrong usage, should report error
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling int test()\n"
+						   "test (2, 10) : Error   : Cannot access non-static member 'length' like this\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test correct symbol lookup when type and variable has same name in different namespaces
+	// https://www.gamedev.net/forums/topic/696791-namespaces-can-not-be-resolved-well-in-some-cases/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace X { \n"
+			"	class A { \n"
+			"		void test() \n"
+			"		{ \n"
+			"		} \n"
+			"	}; \n"
+			"} \n"
+			"X::A A; \n"
+			"namespace X { \n"
+			"	class Test { \n"
+			"		void test() \n"
+			"		{ \n"
+			"			A.test(); \n"   // A refers to X::A so this should fail
+			"			::A.test(); \n" // explicitly identify the global variable
+			"		} \n"
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (11, 3) : Info    : Compiling void Test::test()\n"
+						   "test (13, 4) : Error   : Expression 'A' is a data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Accessing parent class method when from different namespace
+	// https://www.gamedev.net/forums/topic/696791-namespaces-can-not-be-resolved-well-in-some-cases/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace X { \n"
+			"	class A { \n"
+			"		void test() { \n"
+			"		} \n"
+			"	}; \n"
+			"} \n"
+			"namespace Y { \n"
+			"	class B : X::A { \n"
+			"		void test() { \n"
+			"			A::test(); \n"
+			"		} \n"
+			"	}; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test templates and namespaces
+	// https://www.gamedev.net/forums/topic/696071-failed-register-two-iterator-specialization-in-different-namespace/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
+
+		engine->SetDefaultNamespace("A");
+		RegisterScriptArray(engine, false);
+		r = engine->RegisterObjectType("iterator<class T>", 0, asOBJ_REF | asOBJ_NOCOUNT | asOBJ_TEMPLATE);
+		if (r < 0)
+			TEST_FAILED;
+		r = engine->RegisterObjectMethod("array<T>", "iterator<T> @begin()", asFUNCTION(0), asCALL_GENERIC); 
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->SetDefaultNamespace("B");
+		RegisterScriptArray(engine, false);
+		r = engine->RegisterObjectType("iterator<class T>", 0, asOBJ_REF | asOBJ_NOCOUNT | asOBJ_TEMPLATE);
+		if (r < 0)
+			TEST_FAILED;
+		r = engine->RegisterObjectMethod("array<T>", "iterator<T> @begin()", asFUNCTION(0), asCALL_GENERIC);
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"A::array<int> a; \n"
+			"A::iterator<int> @ai = a.begin(); \n"
+			"B::array<int> b; \n"
+			"B::iterator<int> @bi = b.begin(); \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test templates and namespaces
+	// https://www.gamedev.net/forums/topic/696071-failed-register-two-iterator-specialization-in-different-namespace/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetDefaultNamespace("A");
+		RegisterScriptArray(engine, false);
+		r = engine->RegisterObjectType("array<float>", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->SetDefaultNamespace("B");
+		RegisterScriptArray(engine, false);
+		r = engine->RegisterObjectType("array<float>", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"A::array<int> a; \n"
+			"B::array<int> b; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (mod->GetGlobalVarCount() < 2 || std::string(mod->GetGlobalVarDeclaration(0, true)) != "A::array<int> a")
+			TEST_FAILED;
+
+		if (mod->GetGlobalVarCount() < 2 || std::string(mod->GetGlobalVarDeclaration(1, true)) != "B::array<int> b")
+			TEST_FAILED;
+		
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Use of nested namespaces when registering types
-	// Reported by Polyák István
+	// Reported by PolyÃ¡k IstvÃ¡n
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
@@ -332,9 +688,8 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		// TODO: The error message should be better, something like: Cannot call non-static member of class ns2::Base
 		if( bout.buffer != "test (11, 5) : Info    : Compiling void Derived::Setup()\n"
-						   "test (11, 20) : Error   : Namespace 'ns2::Base' doesn't exist.\n" )
+						   "test (11, 20) : Error   : Method 'ns2::Base::Setup' is not part of object 'Derived'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -520,7 +875,7 @@ bool Test()
 
 		// Fully specify the namespace to get the correct object
 		asITypeInfo *type = mod->GetTypeInfoByDecl("net::room::kernel");
-		std::string str = engine->GetTypeDeclaration(type->GetTypeId(), true);
+		std::string str = type ? engine->GetTypeDeclaration(type->GetTypeId(), true) : "";
 		if( str != "net::room::kernel" )
 		{
 			PRINTF("%s", str.c_str());
@@ -852,7 +1207,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != "ExecuteString (1, 9) : Error   : 'A::VALUE' is not declared\n"
+		if( bout.buffer != "ExecuteString (1, 9) : Error   : No matching symbol 'A::VALUE'\n"
 		                   "ExecuteString (1, 28) : Warning : 'a' is not initialized.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -1121,12 +1476,12 @@ bool Test()
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
 		const char *script = 
-			"int get_foo() { return 42; } \n"
-			"namespace nm { int get_foo2() { return 42; } } \n"
+			"int get_foo() property { return 42; } \n"
+			"namespace nm { int get_foo2() property { return 42; } } \n"
 			"void test() { \n"
 			"  assert( foo == 42 ); \n"      // ok
 			"  assert( ::foo == 42 ); \n"    // ok
-			"  assert( nm::foo == 42 ); \n"  // ok. foo is declared in parent namespace
+			"  assert( nm::foo == 42 ); \n"  // should fail to compile
 			"  assert( nm::foo2 == 42 ); \n" // ok
 			"  assert( foo2 == 42 ); \n"     // should fail to compile
 			"} \n"
@@ -1134,7 +1489,7 @@ bool Test()
 			"void test2() { \n"
 			"  ::assert( foo == 42 ); \n"      // ok. foo is declared in parent namespace
 			"  ::assert( ::foo == 42 ); \n"    // ok
-			"  ::assert( nm::foo == 42 ); \n"  // ok. foo is declared in parent namespace
+			"  ::assert( nm::foo == 42 ); \n"  // should fail to compile
 			"  ::assert( nm::foo2 == 42 ); \n" // ok
 			"  ::assert( foo2 == 42 ); \n"     // ok
 			"} \n"
@@ -1148,7 +1503,10 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (3, 1) : Info    : Compiling void test()\n"
-						   "test (8, 11) : Error   : 'foo2' is not declared\n" )
+						   "test (6, 11) : Error   : No matching symbol 'nm::foo'\n"
+						   "test (8, 11) : Error   : No matching symbol 'foo2'\n"
+						   "test (11, 1) : Info    : Compiling void test2()\n"
+						   "test (14, 13) : Error   : No matching symbol 'nm::foo'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1156,12 +1514,12 @@ bool Test()
 
 		// Indexed property accessors
 		script = 
-			"int get_foo(uint) { return 42; } \n"
-			"namespace nm { int get_foo2(uint) { return 42; } } \n"
+			"int get_foo(uint) property { return 42; } \n"
+			"namespace nm { int get_foo2(uint) property { return 42; } } \n"
 			"void test() { \n"
 			"  assert( foo[0] == 42 ); \n"      // ok
 			"  assert( ::foo[0] == 42 ); \n"    // ok
-			"  assert( nm::foo[0] == 42 ); \n"  // ok. foo is declared in parent namespace
+			"  assert( nm::foo[0] == 42 ); \n"  // should fail to compile
 			"  assert( nm::foo2[0] == 42 ); \n" // ok
 			"  assert( foo2[0] == 42 ); \n"     // should fail to compile
 			"} \n"
@@ -1169,7 +1527,7 @@ bool Test()
 			"void test2() { \n"
 			"  ::assert( foo[0] == 42 ); \n"      // ok. foo is declared in parent namespace
 			"  ::assert( ::foo[0] == 42 ); \n"    // ok
-			"  ::assert( nm::foo[0] == 42 ); \n"  // ok. foo is declared in parent namespace
+			"  ::assert( nm::foo[0] == 42 ); \n"  // should fail to compile
 			"  ::assert( nm::foo2[0] == 42 ); \n" // ok
 			"  ::assert( foo2[0] == 42 ); \n"     // ok
 			"} \n"
@@ -1183,7 +1541,10 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (3, 1) : Info    : Compiling void test()\n"
-						   "test (8, 11) : Error   : 'foo2' is not declared\n" )
+						   "test (6, 11) : Error   : No matching symbol 'nm::foo'\n"
+						   "test (8, 11) : Error   : No matching symbol 'foo2'\n"
+						   "test (11, 1) : Info    : Compiling void test2()\n"
+						   "test (14, 13) : Error   : No matching symbol 'nm::foo'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -60,6 +60,8 @@ r = engine->RegisterObjectMethod("object", "void method2(int, int &out)", asMETH
 r = engine->RegisterObjectMethod("object", "int getAttr(int) const", asMETHODPR(Object, getAttr, (int) const, int), asCALL_THISCALL); assert( r >= 0 );
 \endcode
 
+\note asMETHOD doesn't work well for classes with multiple inheritances. On some compilers the method pointer ends up referring to the wrong base class due to a limitation in the C++ compiler. The solution then is to use the asMETHODPR macro.
+
 It is possible to register a class method to be called from the script as if it was a global function. This is commonly done when exposing a singleton 
 to the script interface, as the singleton's methods then look like ordinary global functions. When this is done the application must have a reference to
 the object at the time of the registration and the application must guarantee that the object is alive until it is no longer possible for the scripts

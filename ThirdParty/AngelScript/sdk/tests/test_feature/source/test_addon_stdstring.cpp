@@ -17,11 +17,37 @@ namespace Test_Addon_StdString
 		int r;
 
 		COutStream out;
+		CBufferedOutStream bout;
 
-		// TODO: NEWSTRING: as string constants are known at compile time, the compiler should treat
-		//                  these as safe and avoid copying them when passed to functions expecting
-		//                  const &in. Just as is done for local variables
+		// Test sending a string literal to a function expecting &out
+		// Problem reported by Jordan Verner
+		{
+			asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			bout.buffer = "";
 
+			asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("test",
+				"void handleString(string &out t) {} \n"
+				"void test() { \n"
+				"  handleString('hello'); \n"
+				"} \n");
+			r = mod->Build();
+			if (r >= 0)
+				TEST_FAILED;
+
+			if (bout.buffer != "test (2, 1) : Info    : Compiling void test()\n"
+							   "test (3, 16) : Error   : Output argument expression is not assignable\n")
+			{
+				PRINTF("%s", bout.buffer.c_str());
+				TEST_FAILED;
+			}
+
+			engine->ShutDownAndRelease();
+		}
+
+		// Basic tests
 		{
 			asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 			engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
@@ -53,7 +79,7 @@ namespace Test_Addon_StdString
 				"assert( a.findFirstNotOf('The') == 3); \n"
 				"assert( a.findLast('fox') == 31); \n"
 				"assert( a.findLastOf('fjq') == 31); \n"
-				"assert( a.findLastNotOf('fox') == 33); \n");
+				"assert( a.findLastNotOf('fox') == 30); \n");
 			if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 			if( strstr(asGetLibraryOptions(), "AS_NO_EXCEPTIONS") )
@@ -130,6 +156,50 @@ namespace Test_Addon_StdString
 			if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 			engine->ShutDownAndRelease();
+		}
+
+		// Test string methods
+		{
+			asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+			engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+			RegisterStdString(engine);
+			RegisterScriptArray(engine, false);
+			RegisterStdStringUtils(engine);
+			engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+			r = ExecuteString(engine,
+				"  string str = 'hello world'; \n"
+				"  assert( str.substr(6, 5) == 'world' ); \n"
+				"  assert( str.findFirst('o') == 4 ); \n"
+				"  assert( str.findLast('o') == 7 ); \n"
+				"  array<string> @arr = 'A|B||D'.split('|'); \n"
+				"  assert( arr.length() == 4 && \n"
+				"      arr[0] == 'A' && \n"
+				"      arr[1] == 'B' && \n"
+				"      arr[2] == ''  && \n"
+				"      arr[3] == 'D' ); \n"
+				"  assert( join(arr, ';') == 'A;B;;D' ); \n"
+				"  assert( formatInt(123456789012345, 'l', 20).length() == 20 ); \n"
+				"  assert( formatFloat(123.456, '', 20, 10).length() == 20 ); \n"
+				"  assert( parseInt('1234') == 1234 ); \n"
+				"  assert( parseInt('-123') == -123 ); \n"
+				"  assert( parseFloat('123.456') == 123.456 ); \n"
+				"  assert( parseUInt('-1') == 0 ); \n"
+				"  assert( parseUInt('ABC', 16) == 0xABC ); \n"
+				"  assert( '12345'.length() == 5 ); \n");
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+
+			// Test problem with formatInt and condition expression
+			// Reported by neorej16
+			r = ExecuteString(engine,
+				"true ? formatInt(5, ' ', 4) : '';\n"
+				"formatInt(5, ' ', 4);\n");
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+
+			engine->Release();
 		}
 
 		return fail;

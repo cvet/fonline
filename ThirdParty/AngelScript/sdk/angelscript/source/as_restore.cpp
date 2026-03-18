@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2018 Andreas Jonsson
+   Copyright (c) 2003-2019 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -1829,6 +1829,8 @@ void asCReader::ReadTypeDeclaration(asCTypeInfo *type, int phase, bool *isExtern
 						if( isNew )
 						{
 							// Destroy the function without releasing any references
+							if( func->id == func->signatureId )
+								engine->signatureIds.RemoveValue(func);
 							func->id = 0;
 							if( func->scriptData )
 								func->scriptData->byteCode.SetLength(0);
@@ -3661,7 +3663,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 				 bc == asBC_COPY )
 		{
 			// In this case we know there is only 1 pointer on the stack above
-			asASSERT( offset == 1 );
+			// asASSERT( offset == 1 );
 			return offset - (1 - AS_PTR_SIZE);
 		}
 

@@ -3,6 +3,7 @@
 #include "../../../add_on/weakref/weakref.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include "../../../add_on/scriptstdstring/scriptstdstring.h"
+#include "../../../add_on/scripthandle/scripthandle.h"
 
 namespace Test_Addon_ScriptArray
 {
@@ -214,6 +215,112 @@ bool Test()
 	asIScriptContext *ctx;
 	asIScriptEngine *engine;
 
+	// Test value assign from array holding handles
+	// reported by Aaron Baker
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterScriptArray(engine, true);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class character {} \n"
+			"void main() { \n"
+			"  array<character@> party; \n"
+			"  character copy; \n"
+			"  copy = party[0]; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		mod->AddScriptSection("test",
+			"class character { \n"
+			"  character &opAssign(const character &) { return this; } \n"
+			"} \n"
+			"void main() { \n"
+			"  array<character@> party; \n"
+			"  character copy; \n"
+			"  copy = party[0]; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();		
+	}
+	
+	// Test initialization of array as default arg
+	// https://www.gamedev.net/forums/topic/699878-array-argument-getting-wrong-default-value/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterScriptArray(engine, false);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void f(array<int> a = {9}) { \n"
+			"  assert(a[0] == 9); \n"
+			"}﻿ \n"
+			"void main() { f(); } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test circular reference between array and ref
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+		RegisterScriptArray(engine, false);
+
+		// Create the circular reference
+		r = ExecuteString(engine, "array<ref> a; a.resize(1); @a[0] = a;");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->GarbageCollect();
+
+		asUINT currSize, totDestroy, totDetect;
+		engine->GetGCStatistics(&currSize, &totDestroy, &totDetect);
+		if (currSize != 0 || totDestroy != 1 || totDetect != 1)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test sort through callback
 	{
 		engine = asCreateScriptEngine();
@@ -261,6 +368,68 @@ bool Test()
 		engine->ShutDownAndRelease();
 	}
 
+	// Test sort through callback on array with const handles
+	// https://www.gamedev.net/forums/topic/699740-how-to-pass-global-function-as-callback/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterScriptArray(engine, false);
+
+		engine->RegisterGlobalFunction("void print(const?&in)", asFUNCTION(print), asCALL_GENERIC);
+		printResult.str("");
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Test { \n"
+			"	int x; \n"
+			"	Test() { x = 0; } \n"
+			"	Test(int x1) { x = x1; } \n"
+			"	int value { get const { return x + 10; } } \n"
+			"} \n"
+			"bool less(const Test @&in a, const Test @&in b) { print(a); \n"
+			"		return a.value<b.value; } \n"
+			"void main() { \n"
+			"	array<const Test@> a = { \n"
+			"		Test(8), \n"
+			"		Test(4), \n"
+			"		Test(5), \n"
+			"		Test(), \n"
+			"		Test(7), \n"
+			"		Test(1) \n"
+			"	}; \n"
+			"	print(a[0]); \n"
+			"	print(Test(9)); \n"
+			"	a.sort(less); \n"
+			"	print(a[0]); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		if (printResult.str() != "18\n19\n14\n15\n15\n10\n10\n10\n17\n17\n11\n11\n11\n11\n11\n10\n")
+		{
+			PRINTF("Wrong result, got: \n");
+			PRINTF("%s", printResult.str().c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+
 	// Test sort through callback with objects
 	{
 		engine = asCreateScriptEngine();
@@ -271,6 +440,7 @@ bool Test()
 		RegisterScriptArray(engine, false);
 
 		engine->RegisterGlobalFunction("void print(const?&in)", asFUNCTION(print), asCALL_GENERIC);
+		printResult.str("");
 
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
@@ -278,7 +448,7 @@ bool Test()
 			"	int x; \n"
 			"	Test() { x = 0; } \n"
 			"	Test(int x1) { x = x1; } \n"
-			"	int get_value() const { return x + 10; } \n"
+			"	int value { get const { return x + 10; } } \n"
 			"} \n"
 			"void main() { \n"
 			"	array<Test@> a = { \n"
@@ -435,11 +605,15 @@ bool Test()
 		asBYTE expect[] =
 		{
 			asBC_SUSPEND,
-			asBC_VAR,        // Push offset to the f arg on stack
+			asBC_PshVPtr,
+			asBC_RefCpyV, // The refcpy here is required because the function expects a ref to a handle
+			asBC_PopPtr,
+			asBC_VAR,     // TODO: optimize: The local temporary handle is safe since it cannot be modified by anyone
 			asBC_PshGPtr,
 			asBC_CHKREF,
-			asBC_GETREF,     // Put the reference to the f arg on the stack to form the @&
+			asBC_GETREF,
 			asBC_CALLSYS,
+			asBC_FREE,
 			asBC_SUSPEND,
 			asBC_RET
 		};
@@ -508,7 +682,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "ExecuteString (1, 18) : Error   : Can't implicitly convert from '<null handle>' to 'int&'.\n"
-						   "ExecuteString (1, 25) : Error   : Can't implicitly convert from '<null handle>' to 'const string&'.\n" )
+						   "ExecuteString (1, 25) : Error   : Can't implicitly convert from '<null handle>' to 'string&'.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

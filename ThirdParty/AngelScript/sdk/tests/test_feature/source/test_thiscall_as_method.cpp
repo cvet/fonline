@@ -223,10 +223,10 @@ namespace TestThisCallMethod
 				VirtualPropertyString *funcStr = new VirtualPropertyString(name);
 				registeredVirtualProperties.push_back(funcStr);
 
-				engine->RegisterObjectMethod("Foo", ("void set_" + name + "(const string &in)").c_str(),
+				engine->RegisterObjectMethod("Foo", ("void set_" + name + "(const string &in) property").c_str(),
                     asMETHOD(VirtualPropertyString, Set), asCALL_THISCALL_OBJFIRST, funcStr);
 
-				engine->RegisterObjectMethod("Foo", ("string get_" + name + "()").c_str(),
+				engine->RegisterObjectMethod("Foo", ("string get_" + name + "() property").c_str(),
                     asMETHOD(VirtualPropertyString, Get), asCALL_THISCALL_OBJFIRST, funcStr);
 			}
 
@@ -237,10 +237,10 @@ namespace TestThisCallMethod
 				VirtualPropertyInt *funcInt = new VirtualPropertyInt(name);
 				registeredVirtualProperties.push_back(funcInt);
 
-				engine->RegisterObjectMethod("Foo", ("void set_" + name + "(int)").c_str(),
+				engine->RegisterObjectMethod("Foo", ("void set_" + name + "(int) property").c_str(),
                     asMETHOD(VirtualPropertyInt, Set), asCALL_THISCALL_OBJLAST, funcInt);
 
-				engine->RegisterObjectMethod("Foo", ("int get_" + name + "()").c_str(),
+				engine->RegisterObjectMethod("Foo", ("int get_" + name + "() property").c_str(),
                     asMETHOD(VirtualPropertyInt, Get), asCALL_THISCALL_OBJLAST, funcInt);
 			}
 		}

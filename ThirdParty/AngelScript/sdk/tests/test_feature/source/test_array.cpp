@@ -146,7 +146,39 @@ bool Test()
 	bool fail = Test2();
 	int r;
 	COutStream out;
+	CBufferedOutStream bout;
 	asIScriptContext *ctx;
+	
+	// Test implicit conversion from anonymous init list to array arg with &inout
+	// Reported by Max Waine
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptArray(engine, false);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void StartScript(array<int> & args) \n"
+			"{ \n"
+			"} \n"
+			"void main_anonlist() \n"
+			"{ \n"
+			"	StartScript({1,2,3}); \n"
+			"	StartScript(array<int> = {1,2,3}); \n" // same output as statement above, just more explicit
+			"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+		
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();
+	}
 
 	// Test to make sure opIndex properly catches null pointer access
 	// http://www.gamedev.net/topic/676729-crash-instead-of-null-pointer-exception-on-opindex/
@@ -210,165 +242,167 @@ bool Test()
 		engine->ShutDownAndRelease();
 	}
 
- 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	RegisterScriptArray(engine, true);
-
-	RegisterScriptString_Generic(engine);
-	engine->RegisterGlobalFunction("void Assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
-
-
-	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
-	r = mod->Build();
-	if( r < 0 )
 	{
-		TEST_FAILED;
-		PRINTF("%s: Failed to compile the script\n", TESTNAME);
-	}
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+		RegisterScriptArray(engine, true);
 
-	ctx = engine->CreateContext();
-	r = ExecuteString(engine, "TestArray()", mod, ctx);
-	if( r != asEXECUTION_FINISHED )
-	{
+		RegisterScriptString_Generic(engine);
+		engine->RegisterGlobalFunction("void Assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
+		r = mod->Build();
+		if( r < 0 )
+		{
+			TEST_FAILED;
+			PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		}
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "TestArray()", mod, ctx);
+		if( r != asEXECUTION_FINISHED )
+		{
+			if( r == asEXECUTION_EXCEPTION )
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+
+			PRINTF("%s: Failed to execute script\n", TESTNAME);
+			TEST_FAILED;
+		}
+		if( ctx ) ctx->Release();
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script2, strlen(script2), 0);
+		r = mod->Build();
+		if( r < 0 )
+		{
+			TEST_FAILED;
+			PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		}
+
+		r = ExecuteString(engine, "TestArrayException()", mod);
+		if( r != asEXECUTION_EXCEPTION )
+		{
+			PRINTF("%s: No exception\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script3, strlen(script3), 0);
+		r = mod->Build();
+		if( r < 0 )
+		{
+			TEST_FAILED;
+			PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		}
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "TestArrayMulti()", mod, ctx);
+		if( r != asEXECUTION_FINISHED )
+		{
+			PRINTF("%s: Failure\n", TESTNAME);
+			TEST_FAILED;
+		}
+		if( r == asEXECUTION_EXCEPTION )
+		{
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+		}
+		if( ctx ) ctx->Release();
+		ctx = 0;
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script4, strlen(script4), 0);
+		r = mod->Build();
+		if( r < 0 )
+		{
+			TEST_FAILED;
+			PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		}
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "TestArrayChar()", mod, ctx);
+		if( r != asEXECUTION_FINISHED )
+		{
+			PRINTF("%s: Failure\n", TESTNAME);
+			TEST_FAILED;
+		}
+		if( r == asEXECUTION_EXCEPTION )
+		{
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+		}
+
+		if( ctx ) ctx->Release();
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script5, strlen(script5), 0);
+		r = mod->Build();
+		if( r < 0 ) TEST_FAILED;
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "TestArrayInitList()", mod, ctx);
+		if( r != asEXECUTION_FINISHED ) TEST_FAILED;
 		if( r == asEXECUTION_EXCEPTION )
 			PRINTF("%s", GetExceptionInfo(ctx).c_str());
 
-		PRINTF("%s: Failed to execute script\n", TESTNAME);
-		TEST_FAILED;
-	}
-	if( ctx ) ctx->Release();
+		if( ctx ) ctx->Release();
 
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script2, strlen(script2), 0);
-	r = mod->Build();
-	if( r < 0 )
-	{
-		TEST_FAILED;
-		PRINTF("%s: Failed to compile the script\n", TESTNAME);
-	}
+		CBufferedOutStream bout;
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script6, strlen(script6), 0);
+		r = mod->Build();
+		if( r >= 0 ) TEST_FAILED;
+		if( bout.buffer != "TestArray (1, 1) : Info    : Compiling void Test()\n"
+						   "TestArray (4, 16) : Error   : Initialization lists cannot be used with 'int'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 
-	r = ExecuteString(engine, "TestArrayException()", mod);
-	if( r != asEXECUTION_EXCEPTION )
-	{
-		PRINTF("%s: No exception\n", TESTNAME);
-		TEST_FAILED;
-	}
-
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script3, strlen(script3), 0);
-	r = mod->Build();
-	if( r < 0 )
-	{
-		TEST_FAILED;
-		PRINTF("%s: Failed to compile the script\n", TESTNAME);
-	}
-
-	ctx = engine->CreateContext();
-	r = ExecuteString(engine, "TestArrayMulti()", mod, ctx);
-	if( r != asEXECUTION_FINISHED )
-	{
-		PRINTF("%s: Failure\n", TESTNAME);
-		TEST_FAILED;
-	}
-	if( r == asEXECUTION_EXCEPTION )
-	{
-		PRINTF("%s", GetExceptionInfo(ctx).c_str());
-	}
-	if( ctx ) ctx->Release();
-	ctx = 0;
-
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script4, strlen(script4), 0);
-	r = mod->Build();
-	if( r < 0 )
-	{
-		TEST_FAILED;
-		PRINTF("%s: Failed to compile the script\n", TESTNAME);
-	}
-	ctx = engine->CreateContext();
-	r = ExecuteString(engine, "TestArrayChar()", mod, ctx);
-	if( r != asEXECUTION_FINISHED )
-	{
-		PRINTF("%s: Failure\n", TESTNAME);
-		TEST_FAILED;
-	}
-	if( r == asEXECUTION_EXCEPTION )
-	{
-		PRINTF("%s", GetExceptionInfo(ctx).c_str());
-	}
-
-	if( ctx ) ctx->Release();
-
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script5, strlen(script5), 0);
-	r = mod->Build();
-	if( r < 0 ) TEST_FAILED;
-	ctx = engine->CreateContext();
-	r = ExecuteString(engine, "TestArrayInitList()", mod, ctx);
-	if( r != asEXECUTION_FINISHED ) TEST_FAILED;
-	if( r == asEXECUTION_EXCEPTION )
-		PRINTF("%s", GetExceptionInfo(ctx).c_str());
-
-	if( ctx ) ctx->Release();
-
-	CBufferedOutStream bout;
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script6, strlen(script6), 0);
-	r = mod->Build();
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "TestArray (1, 1) : Info    : Compiling void Test()\n"
-	                   "TestArray (4, 16) : Error   : Initialization lists cannot be used with 'int'\n" )
-	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
-	}
-
-	// Array object must call default constructor of the script classes
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script7, strlen(script7), 0);
-	r = mod->Build();
-	if( r < 0 ) 
-		TEST_FAILED;
-	r = ExecuteString(engine, "Test()", mod);
-	if( r != asEXECUTION_FINISHED )
-		TEST_FAILED;
+		// Array object must call default constructor of the script classes
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script7, strlen(script7), 0);
+		r = mod->Build();
+		if( r < 0 ) 
+			TEST_FAILED;
+		r = ExecuteString(engine, "Test()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+			
+		// Test bool[] on Mac OS X with PPC CPU
+		// Submitted by Edward Rudd
+		const char *script8 =
+		"bool[] f(10);              \n"
+		"for (int i=0; i<10; i++) { \n"
+		"	f[i] = false;           \n"
+		"}                          \n"
+		"Assert(f[0] == false);     \n"
+		"Assert(f[1] == false);     \n"
+		"f[0] = true;               \n"
+		"Assert(f[0] == true);      \n"
+		"Assert(f[1] == false);     \n";
 		
-	// Test bool[] on Mac OS X with PPC CPU
-	// Submitted by Edward Rudd
-	const char *script8 =
-	"bool[] f(10);              \n"
-	"for (int i=0; i<10; i++) { \n"
-	"	f[i] = false;           \n"
-	"}                          \n"
-	"Assert(f[0] == false);     \n"
-	"Assert(f[1] == false);     \n"
-	"f[0] = true;               \n"
-	"Assert(f[0] == true);      \n"
-	"Assert(f[1] == false);     \n";
-	
-	r = ExecuteString(engine, script8);
-	if( r != asEXECUTION_FINISHED )
-		TEST_FAILED;
+		r = ExecuteString(engine, script8);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
 
-	// Make sure it is possible to do multiple assignments with the array type
-	r = ExecuteString(engine, "int[] a, b, c; a = b = c;");
-	if( r < 0 )
-		TEST_FAILED;
+		// Make sure it is possible to do multiple assignments with the array type
+		r = ExecuteString(engine, "int[] a, b, c; a = b = c;");
+		if( r < 0 )
+			TEST_FAILED;
 
-	engine->Release();
+		engine->Release();
+	}
 
 	// Test circular reference between types
 	{
 		// Create the script engine
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		RegisterScriptArray(engine, true);
 
 		// Compile
-		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("script", 
 			"class Hoge"
 			"{"
@@ -389,7 +423,7 @@ bool Test()
 	// Test multidimensional array initialization
 	{
 		// Create the script engine
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 		RegisterScriptArray(engine, true);
 
@@ -403,7 +437,7 @@ bool Test()
 
 	// Test array of void
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 		RegisterScriptArray(engine, false);

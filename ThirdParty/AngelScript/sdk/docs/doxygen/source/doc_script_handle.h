@@ -139,4 +139,30 @@ class can store references to all object types that derive from that class.
 </pre>
 
 
+\section doc_script_handle_4 Const handles
+
+Sometimes it is necessary to hold handles to objects that shouldn't be allowed to be modified.
+This is done by prefixing the type with 'const', e.g.
+
+<pre>
+  obj \@a;                      // handle to modifiable object
+  const obj \@b;                // handle to non-modifiable object
+</pre>
+
+A handle to a non-modifiable object can refer to both modifiable objects and non-modifiable objects, but 
+the script will not allow the object to be modified through that handle, nor allow the handle to be passed
+to another handle that would allow modifications.
+
+This syntax is not to be confused with handles that are themselves read-only, i.e. the handle cannot be 
+re-assigned to refer to a different object. Read-only handles like this are declared by adding the 'const' keyword 
+as a suffix after the '@' symbol.
+
+<pre>
+  obj \@ const c = obj();       // read-only handle to a modifiable object
+  const obj \@ const d = obj(); // read-only handle to a non-modifiable object
+</pre>
+
+A read-only handle can only be initialized when declared. 
+
+
 */

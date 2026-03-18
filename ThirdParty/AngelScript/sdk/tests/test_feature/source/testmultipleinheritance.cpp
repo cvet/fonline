@@ -264,8 +264,8 @@ public:
 	static void asRegister(asIScriptEngine * engine, const char * kClass)
 	{
 		int r;
-		r = engine->RegisterObjectMethod(kClass, "int  get_bar() const", asMETHODPR(kType, get_bar, () const, int), asCALL_THISCALL); assert( r >= 0);
-		r = engine->RegisterObjectMethod(kClass, "void set_bar(int)", asMETHODPR(kType, set_bar, (int), void), asCALL_THISCALL); assert( r >= 0);
+		r = engine->RegisterObjectMethod(kClass, "int  get_bar() const property", asMETHODPR(kType, get_bar, () const, int), asCALL_THISCALL); assert( r >= 0);
+		r = engine->RegisterObjectMethod(kClass, "void set_bar(int) property", asMETHODPR(kType, set_bar, (int), void), asCALL_THISCALL); assert( r >= 0);
 	}
 };
 

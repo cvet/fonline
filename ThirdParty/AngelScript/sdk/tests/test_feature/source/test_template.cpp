@@ -205,6 +205,124 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Template specialization with child funcdef
+	// https://www.gamedev.net/forums/topic/701578-problem-with-child-funcdef-registration/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		// register template with child funcdef
+		engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int&in)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*), MyTmpl*), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL);
+		engine->RegisterFuncdef("void MyTmpl<T>::Func(const T&in if_handle_then_const param)");
+
+		// register template specialization
+		engine->RegisterObjectType("MyTmpl<void>", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("MyTmpl<void>", asBEHAVE_FACTORY, "MyTmpl<void> @f(int&in)", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("MyTmpl<void>", asBEHAVE_ADDREF, "void f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("MyTmpl<void>", asBEHAVE_RELEASE, "void f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterFuncdef("void MyTmpl<void>::Func(void)");
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->Release();	
+	}
+	
+	// Test template bug when using multiple modules
+	// https://www.gamedev.net/forums/topic/699909-template-factory-return-type-bug/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int&in)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*), MyTmpl*), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL);
+
+		asIScriptModule *mod1 = engine->GetModule("m1", asGM_ALWAYS_CREATE);
+		asIScriptModule *mod2 = engine->GetModule("m2", asGM_ALWAYS_CREATE);	
+
+		const char* script_text = "void main() { MyTmpl<int> s; }";
+
+		mod1->AddScriptSection("test1", script_text);
+		mod1->Build();
+
+		mod2->AddScriptSection("test2", script_text);
+		mod2->Build();
+
+		mod1->Discard(); // this must not release the MyTmpl<int> type as it is still used by the other module
+
+		asIScriptContext *ctx = engine->CreateContext();
+		asIScriptFunction *func = mod2->GetFunctionByDecl("void main()");
+		ctx->Prepare(func);
+		ctx->Execute();
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->Release();		
+	}
+	
+	// When unsafe reference is turned on it should still be allowed to instantiate template
+	// for value subtypes even though a method takes the subtype by ref
+	// https://www.gamedev.net/forums/topic/695957-can-not-create-a-value-type-template/
+	{
+		// First without asEP_ALLOW_UNSAFE_REFERENCES
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("Template<class T>", 0, asOBJ_REF | asOBJ_NOCOUNT | asOBJ_TEMPLATE);
+		engine->RegisterObjectMethod("Template<T>", "void func(T&)", asFUNCTION(0), asCALL_GENERIC);
+
+		r = engine->RegisterGlobalProperty("Template<int> t", (void*)1);
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "Property (1, 10) : Error   : Attempting to instantiate invalid template type 'Template<int>'\n"
+						   " (0, 0) : Error   : Failed in call to function 'RegisterGlobalProperty' with 'Template<int> t' (Code: asINVALID_DECLARATION, -10)\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+		
+		// Now with asEP_ALLOW_UNSAFE_REFERNCES
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+
+		engine->RegisterObjectType("Template<class T>", 0, asOBJ_REF | asOBJ_NOCOUNT | asOBJ_TEMPLATE);
+		engine->RegisterObjectMethod("Template<T>", "void func(T&)", asFUNCTION(0), asCALL_GENERIC);
+
+		r = engine->RegisterGlobalProperty("Template<int> t", (void*)1);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Template callbacks must only be invoked after the types are fully constructed
 	// http://www.gamedev.net/topic/658982-funcdef-error/
 	{
@@ -358,7 +476,7 @@ bool Test()
 		engine->RegisterObjectBehaviour("Tmpl1<T>", asBEHAVE_FACTORY, "Tmpl1<T> @f(int &in, Tmpl1<T> @+)", asFUNCTION(0), asCALL_GENERIC);
 
 		if( bout.buffer != " (0, 0) : Error   : First parameter to template factory must be a reference. This will be used to pass the object type of the template\n"
-						   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'Tmpl1' and 'Tmpl1<T> @f()' (Code: -10)\n" )
+						   " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'Tmpl1' and 'Tmpl1<T> @f()' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -439,7 +557,7 @@ bool Test()
 		engine->Release();
 	}
 
-	// Test passing templates are arguments
+	// Test passing templates as arguments
 	// http://www.gamedev.net/topic/639597-how-to-pass-arraystring-to-a-function/
 	{
 		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
@@ -686,7 +804,7 @@ bool Test()
 	r = engine->RegisterObjectMethod("MyTmpl<T>", "const T &GetVal() const", asMETHOD(MyTmpl, GetVal), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("MyTmpl<T>", "void SetVal(const T& in)", asMETHOD(MyTmpl, SetVal), asCALL_THISCALL); assert( r >= 0 );
 
-	// Test that it is possible to instanciate the template type for different sub types
+	// Test that it is possible to instantiate the template type for different sub types
 	r = ExecuteString(engine, "MyTmpl<int> i;    \n"
 								 "MyTmpl<string> s; \n"
 								 "assert( i.GetNameOfType() == 'MyTmpl<int>' ); \n"
@@ -703,6 +821,13 @@ bool Test()
 	{
 		TEST_FAILED;
 	}
+
+	// Test that the method of the template that has no template subtype is also getting a unique function with the correct object type
+	// https://www.gamedev.net/forums/topic/695691-subtypes-not-always-resolved-in-generic-call/
+	asITypeInfo *type = engine->GetTypeInfoByDecl("MyTmpl<int>");
+	asIScriptFunction *func = type->GetMethodByDecl("string GetNameOfType()");
+	if (func->GetObjectType() != type)
+		TEST_FAILED;
 
 	// Test that the template sub type works
 	r = ExecuteString(engine, "MyTmpl<int> i; \n"
@@ -770,9 +895,9 @@ bool Test()
 	if( r != asALREADY_REGISTERED )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : Cannot register. The template type instance 'MyTmpl<int>' has already been generated.\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'MyTmpl<int>' (Code: -7)\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'NoTmpl<int>' (Code: -8)\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'MyTmpl<float>' (Code: -13)\n" )
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'MyTmpl<int>' (Code: asNOT_SUPPORTED, -7)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'NoTmpl<int>' (Code: asINVALID_NAME, -8)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'MyTmpl<float>' (Code: asALREADY_REGISTERED, -13)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -789,9 +914,9 @@ bool Test()
 	r = engine->RegisterObjectProperty("MyTmpl<int>", "int p", 0);
 	if( r != asINVALID_TYPE )
 		TEST_FAILED;
-	if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'MyTmpl<int>' and 'MyTmpl<int> @f()' (Code: -12)\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl<int>' and 'void f()' (Code: -12)\n"
-					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'MyTmpl<int>' and 'int p' (Code: -12)\n" )
+	if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectBehaviour' with 'MyTmpl<int>' and 'MyTmpl<int> @f()' (Code: asINVALID_TYPE, -12)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl<int>' and 'void f()' (Code: asINVALID_TYPE, -12)\n"
+					   " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'MyTmpl<int>' and 'int p' (Code: asINVALID_TYPE, -12)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -888,8 +1013,8 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl' and 'void SetVal(T)' (Code: -7)\n"
-		                   " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl' and 'T GetVal()' (Code: -7)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl' and 'void SetVal(T)' (Code: asNOT_SUPPORTED, -7)\n"
+		                   " (0, 0) : Error   : Failed in call to function 'RegisterObjectMethod' with 'MyTmpl' and 'T GetVal()' (Code: asNOT_SUPPORTED, -7)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

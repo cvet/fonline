@@ -60,10 +60,10 @@ void Get(asIScriptGeneric *gen)
 	gen->SetReturnDWord(false);
 }
 
+static CScriptString *g_test = new CScriptString("test");
 void GetConstStringRef(asIScriptGeneric *gen)
 {
-	static string test("test");
-	gen->SetReturnAddress(&test);
+	gen->SetReturnAddress(g_test);
 }
 
 // void TestFunc(int, string&)
@@ -177,7 +177,7 @@ bool Test()
 
 		mod->AddScriptSection("test",
 			"class C { \n"
-			"  string @get_member() { \n"
+			"  string @get_member() property { \n"
 			"    return test; \n"
 			"  } \n"
 			"  string test = 'hello'; \n"
@@ -210,7 +210,7 @@ bool Test()
 		RegisterScriptStringUtils(engine);
 
 		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(PrintString), asCALL_GENERIC);
-		engine->RegisterGlobalFunction("void set(string@)", asFUNCTION(SetString), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("void set(string@+)", asFUNCTION(SetString), asCALL_GENERIC);
 		engine->RegisterGlobalFunction("void set2(string@&in)", asFUNCTION(SetString2), asCALL_GENERIC);
 		engine->RegisterGlobalFunction("const string &getconststringref()", asFUNCTION(GetConstStringRef), asCALL_GENERIC);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
@@ -244,6 +244,8 @@ bool Test()
 		r = ExecuteString(engine, "string tst(getconststringref()); print(tst);");
 		if (r != asEXECUTION_FINISHED) TEST_FAILED;
 		if (printOutput != "test") TEST_FAILED;
+		g_test->Release();
+		g_test = 0;
 
 
 		// This script tests that variables are created and destroyed in the correct order

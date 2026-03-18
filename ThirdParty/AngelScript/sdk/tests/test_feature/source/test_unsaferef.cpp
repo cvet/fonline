@@ -1,6 +1,8 @@
 #include "utils.h"
 #include "scriptmath3d.h"
 
+void RegisterStdString_Generic(asIScriptEngine *engine);
+
 namespace TestUnsafeRef
 {
 
@@ -10,7 +12,7 @@ struct Str
 {
 public:
 	Str() {};
-	Str(const Str &o) {str = o.str;}
+	Str(const Str &o) { str = o.str; }
 
 	static void StringConstruct(Str *p) { new(p) Str(); }
 	static void StringCopyConstruct(const Str &o, Str *p) { new(p) Str(o); }
@@ -18,6 +20,8 @@ public:
 
 	bool opEquals(const Str &o) { return str == o.str; }
 	Str &opAssign(const Str &o) { str = o.str; return *this; }
+	Str &opShl(int val) { std::stringstream s; s << str << val; str = s.str(); return *this; }
+	Str &opShl(const Str &val) { std::stringstream s; s << str << val.str; str = s.str(); return *this; }
 
 	std::string str;
 };
@@ -54,6 +58,70 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 	asIScriptEngine *engine;
+
+	// Test chained operations with global variables and with unsafe ref turned on
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
+		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, 1);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterStdString_Generic(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"const string \n"
+			"  sep_g = ';', \n"
+			"  row2_g = sep_g + sep_g + sep_g + sep_g; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( row2_g == ';;;;' );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test stream operator on value type with unsafe ref turned on
+	// Observe, without unsafe references, the stream operator won't work due to the need to make copies of the value for each expression in order to guarantee safe references
+	// https://www.gamedev.net/forums/topic/685927-tepm-object-on-multiple-sub-expression/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
+		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, 0);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		r = engine->RegisterObjectType("string", sizeof(Str), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK); assert(r >= 0);
+		r = engine->RegisterStringFactory("string", &strFactory); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(Str::StringConstruct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(Str::StringCopyConstruct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(Str::StringDestruct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("string", "bool opEquals(const string &in)", asMETHOD(Str, opEquals), asCALL_THISCALL);
+		r = engine->RegisterObjectMethod("string", "string &opShl(const string &in)", asMETHODPR(Str, opShl, (const Str &), Str&), asCALL_THISCALL);
+		r = engine->RegisterObjectMethod("string", "string &opShl(int)", asMETHODPR(Str, opShl, (int), Str&), asCALL_THISCALL);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void test(string& lhs) \n"
+			"{ \n"
+			"	lhs << 'abc' << 456; \n" // chained operators, all working on the same original object
+			"} \n");
+ 		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "string s = '123'; test(s); assert( s == '123abc456' );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Basic tests
 	{
@@ -173,7 +241,7 @@ bool Test()
 		engine->RegisterObjectType("UIElement", 0, asOBJ_REF);
 		engine->RegisterObjectBehaviour("UIElement", asBEHAVE_ADDREF, "void f()", asFUNCTION(0), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("UIElement", asBEHAVE_RELEASE, "void f()", asFUNCTION(0), asCALL_GENERIC);
-		engine->RegisterObjectMethod("UIElement", "VariantMap& get_vars()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("UIElement", "VariantMap& get_vars() property", asFUNCTION(0), asCALL_GENERIC);
 
 		asIScriptModule* module = engine->GetModule("Test", asGM_ALWAYS_CREATE);
 
@@ -344,7 +412,7 @@ bool Test()
 			TEST_FAILED;
 		}
 
-		engine->Release();		
+		engine->Release();
 	}
 
 	// http://www.gamedev.net/topic/624722-bug-with/

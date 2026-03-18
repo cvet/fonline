@@ -75,8 +75,8 @@ bool Test()
 	mod->AddScriptSection("script", script, strlen(script));
 	r = mod->Build();
 	if( r >= 0 || bout.buffer != "script (1, 1) : Error   : Data type can't be 'Object'\n"
-		                         "script (1, 8) : Info    : Compiling Object obj2\n"
-		  					     "script (1, 8) : Error   : No default constructor for object of type 'Object'.\n" )
+		                      /*   "script (1, 8) : Info    : Compiling Object obj2\n"
+		  					     "script (1, 8) : Error   : No default constructor for object of type 'Object'.\n" */)
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
@@ -87,7 +87,7 @@ bool Test()
 	bout.buffer = "";
 	r = ExecuteString(engine, "Object[] obj;");
 	if( r >= 0 || bout.buffer != "ExecuteString (1, 7) : Error   : Data type can't be 'Object'\n"
-							     "array (0, 0) : Error   : The subtype has no default factory\n" )
+							  /*   "array (0, 0) : Error   : The subtype has no default factory\n" */)
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;

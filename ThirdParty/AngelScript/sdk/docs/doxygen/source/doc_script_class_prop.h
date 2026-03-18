@@ -38,13 +38,14 @@ In AngelScript property accessors are declared with the following syntax:
 </pre>
 
 Behind the scene the compiler transforms this into two methods with the name of the property and the prefixes 
-<tt>get_</tt> and <tt>set_</tt>. The following generates the equivalent code, and is perfectly valid too:
+<tt>get_</tt> and <tt>set_</tt>, and with the function decorator 'property'. The following generates the equivalent 
+code, and is perfectly valid too:
 
 <pre>
   class MyObj
   {
-    int get_prop() const { return realProp; }
-    void set_prop(int value) { realProp = value; }
+    int get_prop() const property { return realProp; }
+    void set_prop(int value) property { realProp = value; }
     private int realProp;
   }
 </pre>
@@ -90,8 +91,8 @@ and the compiler will automatically expand the expressions to the appropriate fu
 
 Observe that as property accessors are actually a pair of methods rather than direct access to the value, 
 some restrictions apply as to how they can be used in expressions that inspect and mutate in the same operation. 
-Compound assignments can be used on property accessors, if the owning object is a reference type, but not if 
-the owning object is a value type, this is because the compiler must be able to guarantee that the object stays 
+Compound assignments can be used on property accessors if the owning object is a reference type, but not if 
+the owning object is a value type. This is because the compiler must be able to guarantee that the object stays 
 alive between the two calls to the get accessor and set accessor.
 
 The increment and decrement operators are currently not supported. 
@@ -117,7 +118,7 @@ should take the index argument as the first argument, and the new value as the s
   string secondString;
 
   // A global indexed get accessor
-  string get_stringArray(int idx)
+  string get_stringArray(int idx) property
   {
     switch( idx )
     {
@@ -128,7 +129,7 @@ should take the index argument as the first argument, and the new value as the s
   }
 
   // A global indexed set accessor
-  void set_stringArray(int idx, const string &in value)
+  void set_stringArray(int idx, const string &in value) property
   {
     switch( idx )
     {

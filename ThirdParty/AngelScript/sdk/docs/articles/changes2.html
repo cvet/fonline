@@ -15,6 +15,174 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
+<h2>Version 2.34.0 - 2019/09/22</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed problem in compiler with bool property returned as reference in conditions (Thanks Miss)
+<li>Fixed problem with catching exceptions in functions with multiple try-catch blocks (Thanks johannesg)
+<li>Fixed read from unallocated memory in compiler when compiling default args (Thanks Patrick Jeeves)
+<li>Fixed problem with doing a value assign from array holding handles (Thanks Aaron Baker)
+<li>Fixed crash in compiler when there are multiple matching global functions for set accessors (Thanks Aaron Baker)
+<li>Fixed crash that could happen when loading bytecode with shared classes that doesn't match current declared shared classes (Thanks MrFloat)
+<li>Fixed assert failure when compiling a construct call with an anonymous initialization list (Thanks perost86)
+<li>Fixed incorrect bytecode sequence when doing value assignment from handles for script classes using default assignment operator (Thanks Aaron Baker)
+<li>Fixed problem with default arg not being able to access members in expression (Thanks Aaron Baker)
+<li>Fixed crash when releasing engine with template specialization containing child funcdefs (Thanks BertS)
+<li>Fixed asCALL_THISCALL_ASGLOBAL to function correctly with multiple inheritance (Thanks stalker#3829)
+<li>Compiler now identifies match for functions taking object as inout ref when passing anonymous init list (Thanks Max Waine)
+<li>Compiler now interrupts compilation after identifying error while compiling use of get property accessor (Thanks Patric Jeeves)
+<li>Compiler no longer identifies global script functions as property accessors when this is turned off with asEP_PROPERTY_ACCESSOR_MODE (Thanks Aaron Baker)
+<li>Fixed config for FreeBSD on non-x86 64bit targets (Thanks Greg V)
+</ul>
+<li>Library
+<ul>
+<li>asEP_PROPERTY_ACCESSOR_MODE has a new mode (3) to require property accessors to be flagged with 'property'
+<li>Property accessors are validated upon declaration when flagged with 'property'
+<li>asEP_PROPERTY_ACCESSOR_MODE is now set to 3 by default
+</ul>
+<li>Script language
+<ul>
+<li>Handles can now be declared read-only (Thanks Max Waine)
+<li>Functions and methods intended to be used as virtual property should now be declared with a 'property' decorator
+<li>Added non-reserved keyword 'property'
+</ul>
+<li>Library interface
+<ul>
+<li>Added asIScriptFunction::IsProperty
+</ul>
+<li>Add-ons &amp; Samples
+<ul>
+<li>Removed an invalid assert() statement in ExecuteString (Thanks Pto)
+<li>Debugger commands 'n' and 'o' no longer prints 'No script is running' when used as first command
+<li>Debugger command 'p' prints 'Invalid expression. No matching symbol' when the symbol doesn't exist in the current context
+<li>Fixed missing check for failed memory allocation in CScriptArray::Precache (Thanks Zelerin)
+<li>The string factory in the std::string add-on is now thread safe
+<li>Enabled Virtual Terminal Processing in asrun for colored text on Windows console
+</ul>
+</ul>
+
+<h2>Version 2.33.0 - 2018/12/22</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed crash when compiling is null comparison with ASHANDLE object without any opEquals operator (Thanks Boost113)
+<li>Fixed bug with anonymous initialization lists when used to initialize value type passed by value to function (Thanks Patrick Jeeves)
+<li>Loading bytecode that included use of template value types with a template type as argument crashed
+<li>Compiler would crash on compiling ternary operator with anonymous list in one of the conditions (Thanks doctorgester)
+<li>Fixed error when saving bytecode for scripts containing interfaces that derives from interfaces (Thanks y18a)
+<li>Saving bytecode for a never returning function would cause assert failure (Thanks y18a)
+<li>Fixed an error when compiling a class method call as post-op and the name matches a type name (Thanks y18a)
+<li>Template types are now properly identified in separate namespaces (Thanks ASBai)
+<li>Fixed memory build-up due to delayed cleanup when discarding modules with shared entities (Thanks y18a)
+<li>opImplCast with variable type won't be used for non-ref types
+<li>Fixed compiler error when both opConv and opImplConv are implemented (Thanks Ali Gerami)
+<li>Fixed bug when loading bytecode containing shared interfaces with inheritance (Thanks Zakhar)
+<li>auto declarations now works correctly with implicit handle types (Thanks y18a)
+<li>Initializing an ASHANDLE type with overloaded opHndlAssign taking a var type as a handle wasn't done correctly
+<li>Fixed loading byte code that uses external shared classes in namespace (Thanks y18a)
+<li>The bytecode for external shared entities is no longer saved in the module when inherited from (Thanks y18a)
+<li>Bytecode with external shared classes with virtual methods failed to load from bytecode (Thanks y18a)
+<li>Fixed assert failure on call to opCast(?&out) with a non-variable expression (Thanks Miss)
+<li>Passing a string literal to function expecting &out will now give compiler error (Thanks Jordan Verner)
+<li>Fixed problem in compiler that didn't release a temporary variable when passing anonymous object to function expecting ?&in (Thanks y18a)
+<li>Fixed a bug when loading bytecode having identical shared functions in different namespaces (Thanks y18a)
+<li>Compiler will now detect name conflict between property and function
+<li>asIScriptFunction::GetDeclaration(false, true) no longer includes the namespace before the function name for class methods (Thanks IronHawk)
+<li>Fixed assert failure in asIScriptEngine::RefCastObject when object has multiple opCast methods (Thanks gjl)
+<li>Compiler no longer accepts primitives in the right hand expression for handle assignments (Thanks gjl)
+<li>Fixed compiler warning with use of asOFFSET on 64bit platforms (Thanks Miss)
+<li>Fixed crash caused by CreateScriptObjectCopy when script class' constructor takes argument by handle (Thanks Boost113)
+<li>Child funcdefs in templates will no longer convert parameter types to @const& (Thanks Dinkleberg)
+<li>Fixed problem when compiling anonymous initialization list from default arg (Thanks Dinkleberg)
+<li>Ownership of shared template instances wasn't correctly transferred when discarding modules (Thanks Jason Goepel)
+<li>Fixed crash in compiler when matching anonymous list to function taking funcdef (Thanks Miss)
+<li>Fixed assert failure in builder when compiling external shared interfaces with inheritance (Thanks Chisser98)
+<li>Fixed crash in compiler when invalid script has inheritance from class with duplicate methods (Thanks Miss)
+</ul>
+<li>Library
+<ul>
+<li>Changed the compiler to do less copies of objects and especially string constants
+<li>Engine error messages now include the symbol name for the error code for easier interpretation
+<li>All methods for template instances now get unique functions to show the template instance as the object type (Thanks Miss)
+<li>Template types can now be registered with methods taking parameters as &inout (Thanks ASBai)
+<li>Implemented engine property asEP_GENERIC_CALL_MODE to make the generic calling convention treat handles the same way that the native calling convention do
+<li>By default asEP_GENERIC_CALL_MODE is set to use the new behaviour
+<li>Registered value types can now register GC behaviours to solve circular references involving these types
+<li>Reduced the size of the saved byte code, especially when there are lots of functions without parameters
+<li>AssignScriptObject will now set a script exception for ref types if asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE is used
+<li>The copy constructor of script classes are now used properly by the compiler (Thanks MrFloat)
+<li>Refactored how he compiler does symbol lookups to better handle namespace hierarchies and child types. (Thanks y18a)
+<li>Added engine property asEP_INIT_STACK_SIZE to set the initial data stack size for contexts (Thanks Karoly Pinter)
+<li>Added engine properties asEP_INIT_CALL_STACK_SIZE and asEP_MAX_CALL_STACK_SIZE to set initial and max call stack size for nested calls (Thanks Karoly Pinter)
+<li>asIScriptContext::PushState will return an error if the call stack is already too big
+<li>context's GetExceptionString, GetExceptionFunction, GetExceptionLineNumber will now return the last exception even if it has been caught
+<li>CreateScriptObject no longer writes to the message callback if the object type doesn't have constructor/factory
+</ul>
+<li>Library interface
+<ul>
+<li>Implemented a callback to allow application to translate C++ exceptions thrown by registered functions (Thanks Boost113)
+<li>Added the engine methods ForwardGCEnumReferences and ForwardGCReleaseAllReferences
+<li>Included SetCircularRefDetectedCallback to allow application developers to easier identify the origin of circular references (Thanks baiyang)
+<li>SetException now has an optional argument to allow exception to be caught or not
+<li>Added WillExceptionBeCaught that the exception callback can use while inspecting the exception
+<li>Added IsExplicit to asIScriptFunction
+</ul>
+<li>Script language
+<ul>
+<li>Now it is possible to resolve ambiguity with lambda functions by explicitly specifying the parameter types (Thanks Miss)
+<li>The compiler will now give an error on bitwise operator with floats instead of silently converting to integer (Thanks Jason Goepel)
+<li>Class constructors can now be declared with private and protected too (Thanks noizex)
+<li>The correct resolution is now done for types implementing both opCast and opImplCast and the const overloads. The same for opConv and opImplConv
+<li>Initialization lists will implicitly assume objects by handle if asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE is used (Thanks y18a)
+<li>When unsafe references is allowed the stream operator (&lt;&lt;) can now be implemented on value types with correct behaviour for chained expressions (Thanks ASBai)
+<li>Virtual property accessors must not have the same name as real property or function in the same scope
+<li>Namespace and class with the same name must not have name conflicts between members as it would cause ambiguity in the symbol lookup (Thanks Phong Ba)
+<li>Added support for try/catch statements
+<li>Implemented support for flagging constructors as explicit
+<li>Factories for ref types with only one argument can now be used for implicit type conversion too
+<li>'auto' declarations will now always prefer handle if the type allows it (Thanks Miss)
+</ul>
+<li>Virtual machine
+<ul>
+<li>The asBC_REFCPY and asBC_RefCpyV instructions can now be used with value types too
+</ul>
+<li>Add-ons &amp; Samples
+<ul>
+<li>Added the methods isLink and getSize to filesystem add-on
+<li>Added methods setDate and setTime to datetime add-on and operators to add seconds, compare, and determine difference in seconds
+<li>The asrun sample now waits for user input before closing on any error when executed from file explorer on Windows
+<li>filesystem's changeCurrentPath doesn't modify anything if the new path is invalid
+<li>Implemented the methods makeDir, removeDir, deleteFile, copyFile, and move on the filesystem add-on
+<li>Changed the clean-up of the string factory in the stdstring add-on to avoid crash if the script engine is stored in global singleton (Thanks howie_007)
+<li>Fixed incorrect use of setlocale in parseFloat (Thanks Miss)
+<li>Implemented a #pragma callback in the builder add-on
+<li>asrun can now turn on debugging with #pragma debug (works the same as -d command arg)
+<li>Fixed crash in debugger add-on when printing call stack in template function
+<li>weakref now properly identifies different object instance when the address is the same as the previously freed object (Thanks y18a)
+<li>meta data is now correctly extracted for class methods with decorators (Thanks Patrick Jeeves)
+<li>CScriptBuilder now supports having multiple meta data blocks for each entity (Thanks noizex)
+<li>CScriptHandle registers the ENUMREFS and RELEASEREFS gc behaviours
+<li>CScriptArray, CScriptDictionary, CScriptGrid, and CScriptAny now support forwarding gc enum callbacks to value types with gc behaviour
+<li>The array's and string's length property accessors is now only registered if AS_USE_ACCESSORS is defined to avoid conflict with the length() method
+<li>Implemented the functions throw() and getExceptionInfo() that can be registered with RegisterExceptionRoutines
+<li>dictionary add-on is better prepared to work with string type registered as reference type (Thanks Wracky)
+<li>dictionary get method didn't always return true/false to indicate success or failure (Thanks Miss)
+<li>Fixed a problem in filesystem's CopyFile on non-Windows platforms (Thanks cvet)
+<li>Fixed string's findLastNotOf
+<li>The datetime add-on now has a constructor to initialize date and time directly
+<li>dictionary raises script exception if it cannot create a copy of a value being assigned
+<li>array<T>::less will now take const handles when T is a handle
+</ul>
+<li>Project
+<ul>
+<li>Updated the cmake project for better usability (Thanks Solokiller)
+<li>Added MSVC 2017 projects
+</ul>
+</ul>
+
 <h2>Version 2.32.0 - 2017/12/16</h2>
 
 <ul>

@@ -3,37 +3,6 @@
 namespace TestImplicitHandle
 {
 
-
-static const char *script1 =
-"class@ MyClass                              \n" // Define the class to be an implicit handle type
-"{                                           \n"
-"    MyClass() { print('Created\\n'); }      \n"
-"    int func() { return 7; }                \n"
-"    string x;                               \n"
-"};                                          \n"
-"                                            \n"
-"void testClass(MyClass x)                   \n" // Parameter pass by handles
-"{                                           \n"
-"    print(x.func()+'\\n');                  \n"
-"}                                           \n"
-"                                            \n"
-"void main()                                 \n"
-"{                                           \n"
-"    MyClass p,p2;                           \n"
-"                                            \n"
-"    p = p2;                                 \n"
-"                                            \n"
-"    if (p is null) { print('Hello!\\n'); }  \n"
-"                                            \n"
-"    p = MyClass();                          \n"
-"                                            \n"
-"    print('---\\n');                        \n"
-"    testClass(p);                           \n"
-"    print('---\\n');                        \n"
-"                                            \n"
-"    print(p.func()+'\\n');                  \n"
-"}                                           \n";
-
 std::string output;
 void print(std::string &str)
 {
@@ -48,52 +17,118 @@ bool Test()
 	int r;
 	COutStream out;
 
- 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
-	RegisterScriptString(engine);
-
-	r = engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_CDECL); assert( r >= 0 );
-
-	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection("script", script1, strlen(script1), 0);
-	r = mod->Build();
-	if( r < 0 )
+	// Test implicit handle types with auto declarations
+	// https://www.gamedev.net/forums/topic/696366-there-seem-to-be-cases-where-implicit-handle-does-not-work-well/
 	{
-		TEST_FAILED;
-		PRINTF("Failed to compile the script\n");
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
+
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script",
+			"class@ A \n"
+			"{ \n"
+			"  A(A@ a) {  } \n"
+			"} \n"
+			"class@ B : A \n"
+			"{ \n"
+			"  B(A@ a) { super(a); } \n"
+			"} \n"
+			"class@ C : B \n"
+			"{ \n"
+			"  C(A@ a) { super(a); } \n"
+			"} \n"
+			"int main() \n"
+			"{ \n"
+			"  auto a = A(null); \n"
+			"  auto c = C(a); \n"
+			"  auto b = B(c); \n"
+			"  return 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
 	}
 
-	r = ExecuteString(engine, "main()", mod);
-	if( r != asEXECUTION_FINISHED )
+	// Declaring and using implicit handle types
 	{
-		TEST_FAILED;
-		PRINTF("Execution failed\n");
-	}
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
+		RegisterScriptString(engine);
 
-	if( output != "Hello!\nCreated\n---\n7\n---\n7\n" )
-	{
-		TEST_FAILED;
-		PRINTF("Got: \n%s", output.c_str());
-	}
+		r = engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_CDECL); assert(r >= 0);
 
-	
-	// TODO: The equality operator shouldn't perform handle comparison
-	/*
-	r = engine->ExecuteString(0, "MyClass a; assert( a == null );");
-	if( r >= 0 )
-	{
-		TEST_FAILED;
-	}
-	*/
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script", 
+			"class@ MyClass                              \n" // Define the class to be an implicit handle type
+			"{                                           \n"
+			"    MyClass() { print('Created\\n'); }      \n"
+			"    int func() { return 7; }                \n"
+			"    string x;                               \n"
+			"};                                          \n"
+			"                                            \n"
+			"void testClass(MyClass x)                   \n" // Parameter pass by handles
+			"{                                           \n"
+			"    print(x.func()+'\\n');                  \n"
+			"}                                           \n"
+			"                                            \n"
+			"void main()                                 \n"
+			"{                                           \n"
+			"    MyClass p,p2;                           \n"
+			"                                            \n"
+			"    p = p2;                                 \n"
+			"                                            \n"
+			"    if (p is null) { print('Hello!\\n'); }  \n"
+			"                                            \n"
+			"    p = MyClass();                          \n"
+			"                                            \n"
+			"    print('---\\n');                        \n"
+			"    testClass(p);                           \n"
+			"    print('---\\n');                        \n"
+			"                                            \n"
+			"    print(p.func()+'\\n');                  \n"
+			"}                                           \n");
+		r = mod->Build();
+		if (r < 0)
+		{
+			TEST_FAILED;
+			PRINTF("Failed to compile the script\n");
+		}
 
-	engine->Release();
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+		{
+			TEST_FAILED;
+			PRINTF("Execution failed\n");
+		}
+
+		if (output != "Hello!\nCreated\n---\n7\n---\n7\n")
+		{
+			TEST_FAILED;
+			PRINTF("Got: \n%s", output.c_str());
+		}
+
+
+		// TODO: The equality operator shouldn't perform handle comparison
+		/*
+		r = engine->ExecuteString(0, "MyClass a; assert( a == null );");
+		if( r >= 0 )
+		{
+			TEST_FAILED;
+		}
+		*/
+
+		engine->Release();
+	}
 
 	// It should be possible to register types with asOBJ_IMPLICIT_HANDLE when the engine property is turned on
 	// http://www.gamedev.net/topic/679183-asep-allow-implicit-handle-types-asobj-implicit-handle/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		CBufferedOutStream bout;
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
@@ -121,7 +156,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'test2' (Code: -5)\n" )
+		if( bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectType' with 'test2' (Code: asINVALID_ARG, -5)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

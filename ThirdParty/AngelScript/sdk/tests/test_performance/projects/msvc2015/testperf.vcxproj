@@ -178,6 +178,7 @@
     <ClCompile Include="..\..\source\test_int.cpp" />
     <ClCompile Include="..\..\source\test_intf.cpp" />
     <ClCompile Include="..\..\source\test_mthd.cpp" />
+    <ClCompile Include="..\..\source\test_retobj.cpp" />
     <ClCompile Include="..\..\source\test_string.cpp" />
     <ClCompile Include="..\..\source\test_string2.cpp" />
     <ClCompile Include="..\..\source\test_string_pooled.cpp" />

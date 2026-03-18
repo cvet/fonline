@@ -244,7 +244,7 @@ bool Test()
 		mod = engine->GetModule("1", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("t", 
 			"interface ITest {}; \n"
-			"import ITest@ get_globalAccessor() from 'any_module'; \n"
+			"import ITest@ get_globalAccessor() property from 'any_module'; \n"
 			"class Crash : ITest { \n"
 			"  ITest@ ptr; \n"
 			"  Crash() { \n"

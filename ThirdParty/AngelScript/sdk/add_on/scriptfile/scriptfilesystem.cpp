@@ -3,6 +3,10 @@
 #if defined(_WIN32)
 #include <direct.h> // _getcwd
 #include <Windows.h> // FindFirstFile, GetFileAttributes
+
+#undef DeleteFile
+#undef CopyFile
+
 #else
 #include <unistd.h> // getcwd
 #include <dirent.h> // opendir, readdir, closedir
@@ -13,6 +17,9 @@
 using namespace std;
 
 BEGIN_AS_NAMESPACE
+
+// TODO: The file system should have a way to allow the application to define in
+//       which sub directories it is allowed to make changes and/or read
 
 CScriptFileSystem *ScriptFileSystem_Factory()
 {
@@ -30,9 +37,16 @@ void RegisterScriptFileSystem_Native(asIScriptEngine *engine)
 	
 	r = engine->RegisterObjectMethod("filesystem", "bool changeCurrentPath(const string &in)", asMETHOD(CScriptFileSystem, ChangeCurrentPath), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("filesystem", "string getCurrentPath() const", asMETHOD(CScriptFileSystem, GetCurrentPath), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("filesystem", "array<string> @getDirs()", asMETHOD(CScriptFileSystem, GetDirs), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("filesystem", "array<string> @getFiles()", asMETHOD(CScriptFileSystem, GetFiles), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("filesystem", "bool isDir(const string &in)", asMETHOD(CScriptFileSystem, IsDir), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("filesystem", "array<string> @getDirs() const", asMETHOD(CScriptFileSystem, GetDirs), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("filesystem", "array<string> @getFiles() const", asMETHOD(CScriptFileSystem, GetFiles), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("filesystem", "bool isDir(const string &in) const", asMETHOD(CScriptFileSystem, IsDir), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("filesystem", "bool isLink(const string &in) const", asMETHOD(CScriptFileSystem, IsLink), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int64 getSize(const string &in) const", asMETHOD(CScriptFileSystem, GetSize), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int makeDir(const string &in)", asMETHOD(CScriptFileSystem, MakeDir), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int removeDir(const string &in)", asMETHOD(CScriptFileSystem, RemoveDir), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int deleteFile(const string &in)", asMETHOD(CScriptFileSystem, DeleteFile), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int copyFile(const string &in, const string &in)", asMETHOD(CScriptFileSystem, CopyFile), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("filesystem", "int move(const string &in, const string &in)", asMETHOD(CScriptFileSystem, Move), asCALL_THISCALL); assert(r >= 0);
 }
 
 void RegisterScriptFileSystem(asIScriptEngine *engine)
@@ -48,6 +62,7 @@ CScriptFileSystem::CScriptFileSystem()
 	refCount = 1;
 
 	// Gets the application's current working directory as the starting point
+	// TODO: Replace backslash with slash to keep a unified naming convention
 	char buffer[1000];
 #if defined(_WIN32)
 	currentPath = _getcwd(buffer, 1000);
@@ -214,18 +229,27 @@ CScriptArray *CScriptFileSystem::GetDirs() const
 	return array;
 }
 
+// Doesn't change anything if the new path is not valid
 bool CScriptFileSystem::ChangeCurrentPath(const string &path)
 {
+	string newPath;
 	if( path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0 )
-		currentPath = path;
+		newPath = path;
 	else
-		currentPath += "/" + path;
+		newPath = currentPath + "/" + path;
+
+	// TODO: Resolve internal /./ and /../
+	// TODO: Replace backslash with slash to keep a unified naming convention
 
 	// Remove trailing slashes from the path
-	while( currentPath.length() && (currentPath[currentPath.length()-1] == '/' || currentPath[currentPath.length()-1] == '\\') )
-		currentPath.resize(currentPath.length()-1);
+	while(newPath.length() && (newPath[newPath.length()-1] == '/' || newPath[newPath.length()-1] == '\\') )
+		newPath.resize(newPath.length()-1);
 
-	return IsDir(currentPath);
+	if (!IsDir(newPath))
+		return false;
+
+	currentPath = newPath;
+	return true;
 }
 
 bool CScriptFileSystem::IsDir(const string &path) const
@@ -256,6 +280,223 @@ bool CScriptFileSystem::IsDir(const string &path) const
 #endif
 
 	return true;
+}
+
+bool CScriptFileSystem::IsLink(const string &path) const
+{
+	string search;
+	if (path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0)
+		search = path;
+	else
+		search = currentPath + "/" + path;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search.c_str(), -1, bufUTF16, 10000);
+
+	// Check if the path exists and is a link
+	DWORD attrib = GetFileAttributesW(bufUTF16);
+	if (attrib == INVALID_FILE_ATTRIBUTES ||
+		!(attrib & FILE_ATTRIBUTE_REPARSE_POINT))
+		return false;
+#else
+	// Check if the path exists and is a link
+	struct stat st;
+	if (stat(search.c_str(), &st) == -1)
+		return false;
+	if ((st.st_mode & S_IFLNK) == 0)
+		return false;
+#endif
+
+	return true;
+}
+
+asINT64 CScriptFileSystem::GetSize(const string &path) const
+{
+	string search;
+	if (path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0)
+		search = path;
+	else
+		search = currentPath + "/" + path;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search.c_str(), -1, bufUTF16, 10000);
+
+	// Get the size of the file
+	LARGE_INTEGER largeInt;
+	HANDLE file = CreateFileW(bufUTF16, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	BOOL success = GetFileSizeEx(file, &largeInt);
+	CloseHandle(file);
+	if( !success )
+		return -1;
+	return asINT64(largeInt.QuadPart);
+#else
+	// Get the size of the file
+	struct stat st;
+	if (stat(search.c_str(), &st) == -1)
+		return -1;
+	return asINT64(st.st_size);
+#endif
+}
+
+// TODO: Should be able to return different codes for
+//       - directory exists
+//       - path not found
+//       - access denied
+// TODO: Should be able to define the permissions for the directory
+int CScriptFileSystem::MakeDir(const string &path)
+{
+	string search;
+	if (path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0)
+		search = path;
+	else
+		search = currentPath + "/" + path;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search.c_str(), -1, bufUTF16, 10000);
+
+	// Create the directory
+	BOOL success = CreateDirectoryW(bufUTF16, 0);
+	return success ? 0 : -1;
+#else
+	// Create the directory
+	int failure = mkdir(search.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	return !failure ? 0 : -1;
+#endif
+}
+
+// TODO: Should be able to return different codes for 
+//       - directory doesn't exist
+//       - directory is not empty
+//       - access denied
+// TODO: Should have an option to remove the directory and all content recursively
+int CScriptFileSystem::RemoveDir(const string &path)
+{
+	string search;
+	if (path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0)
+		search = path;
+	else
+		search = currentPath + "/" + path;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search.c_str(), -1, bufUTF16, 10000);
+
+	// Remove the directory
+	BOOL success = RemoveDirectoryW(bufUTF16);
+	return success ? 0 : -1;
+#else
+	// Remove the directory
+	int failure = rmdir(search.c_str());
+	return !failure ? 0 : -1;
+#endif
+}
+
+int CScriptFileSystem::DeleteFile(const string &path)
+{
+	string search;
+	if (path.find(":") != string::npos || path.find("/") == 0 || path.find("\\") == 0)
+		search = path;
+	else
+		search = currentPath + "/" + path;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search.c_str(), -1, bufUTF16, 10000);
+
+	// Remove the file
+	BOOL success = DeleteFileW(bufUTF16);
+	return success ? 0 : -1;
+#else
+	// Remove the file
+	int failure = unlink(search.c_str());
+	return !failure ? 0 : -1;
+#endif
+}
+
+int CScriptFileSystem::CopyFile(const string &source, const string &target)
+{
+	string search1;
+	if (source.find(":") != string::npos || source.find("/") == 0 || source.find("\\") == 0)
+		search1 = source;
+	else
+		search1 = currentPath + "/" + source;
+
+	string search2;
+	if (target.find(":") != string::npos || target.find("/") == 0 || target.find("\\") == 0)
+		search2 = target;
+	else
+		search2 = currentPath + "/" + target;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16_1[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search1.c_str(), -1, bufUTF16_1, 10000);
+
+	wchar_t bufUTF16_2[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search2.c_str(), -1, bufUTF16_2, 10000);
+
+	// Copy the file
+	BOOL success = CopyFileW(bufUTF16_1, bufUTF16_2, TRUE);
+	return success ? 0 : -1;
+#else
+	// Copy the file manually as there is no posix function for this
+	bool failure = false;
+	FILE *src = 0, *tgt = 0;
+	src = fopen(search1.c_str(), "r");
+	if (src == 0) failure = true;
+	if( !failure ) tgt = fopen(search2.c_str(), "w");
+	if (tgt == 0) failure = true;
+	char buf[1024];
+	size_t n;
+	while (!failure && (n = fread(buf, sizeof(char), sizeof(buf), src)) > 0)
+	{
+		if (fwrite(buf, sizeof(char), n, tgt) != n)
+			failure = true;
+	}
+	if (src) fclose(src);
+	if (tgt) fclose(tgt);
+	return !failure ? 0 : -1;
+#endif
+}
+
+int CScriptFileSystem::Move(const string &source, const string &target)
+{
+	string search1;
+	if (source.find(":") != string::npos || source.find("/") == 0 || source.find("\\") == 0)
+		search1 = source;
+	else
+		search1 = currentPath + "/" + source;
+
+	string search2;
+	if (target.find(":") != string::npos || target.find("/") == 0 || target.find("\\") == 0)
+		search2 = target;
+	else
+		search2 = currentPath + "/" + target;
+
+#if defined(_WIN32)
+	// Windows uses UTF16 so it is necessary to convert the string
+	wchar_t bufUTF16_1[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search1.c_str(), -1, bufUTF16_1, 10000);
+
+	wchar_t bufUTF16_2[10000];
+	MultiByteToWideChar(CP_UTF8, 0, search2.c_str(), -1, bufUTF16_2, 10000);
+
+	// Move the file or directory
+	BOOL success = MoveFileW(bufUTF16_1, bufUTF16_2);
+	return success ? 0 : -1;
+#else
+	// Move the file or directory
+	int failure = rename(search1.c_str(), search2.c_str());
+	return !failure ? 0 : -1;
+#endif
 }
 
 string CScriptFileSystem::GetCurrentPath() const

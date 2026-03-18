@@ -39,6 +39,8 @@
 #ifndef AS_CONTEXT_H
 #define AS_CONTEXT_H
 
+#include <exception>
+
 #include "as_config.h"
 #include "as_atomic.h"
 #include "as_array.h"

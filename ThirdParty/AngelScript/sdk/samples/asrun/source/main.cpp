@@ -20,6 +20,11 @@
 
 #ifdef _WIN32
 #include <Windows.h> // WriteConsoleW
+#include <TlHelp32.h> // CreateToolhelp32Snapshot, Process32First, Process32Next
+
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
 #endif
 
 #if defined(_MSC_VER)
@@ -32,7 +37,7 @@ using namespace std;
 int               ConfigureEngine(asIScriptEngine *engine);
 void              InitializeDebugger(asIScriptEngine *engine);
 int               CompileScript(asIScriptEngine *engine, const char *scriptFile);
-int               ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug);
+int               ExecuteScript(asIScriptEngine *engine, const char *scriptFile);
 void              MessageCallback(const asSMessageInfo *msg, void *param);
 asIScriptContext *RequestContextCallback(asIScriptEngine *engine, void *param);
 void              ReturnContextCallback(asIScriptEngine *engine, asIScriptContext *ctx, void *param);
@@ -41,6 +46,8 @@ string            GetInput();
 int               ExecSystemCmd(const string &cmd);
 CScriptArray     *GetCommandLineArgs();
 void              SetWorkDir(const string &file);
+void              WaitForUser();
+int               PragmaCallback(const string &pragmaText, CScriptBuilder &builder, void *userParam);
 
 // The command line arguments
 CScriptArray *g_commandLineArgs = 0;
@@ -51,6 +58,7 @@ char        **g_argv = 0;
 CContextMgr *g_ctxMgr = 0;
 
 // The debugger is used to debug the script
+bool       g_doDebug = false;
 CDebugger *g_dbg = 0;
 
 // Context pool
@@ -67,6 +75,23 @@ int main(int argc, char **argv)
 	// Use _CrtSetBreakAlloc(n) to find a specific memory leak
 #endif
 
+#if defined(_WIN32)
+	// Turn on support for virtual terminal sequences to add support for colored text in the console
+	// Ref: https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+	// Ref: https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE)
+		return -1;
+
+    DWORD dwMode = 0;
+    if (!GetConsoleMode(hOut, &dwMode))
+		return -1;
+
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    if (!SetConsoleMode(hOut, dwMode))
+		return -1;
+#endif
+
 	int r;
 
 	// Validate the command line arguments
@@ -78,11 +103,14 @@ int main(int argc, char **argv)
 
 	if( !argsValid )
 	{
+		cout << "AngelScript command line runner. Version " << ANGELSCRIPT_VERSION_STRING << endl << endl;
 		cout << "Usage: " << endl;
 		cout << "asrun [-d] <script file> [<args>]" << endl;
 		cout << " -d             inform if the script should be runned with debug" << endl;
 		cout << " <script file>  is the script file that should be runned" << endl;
 		cout << " <args>         zero or more args for the script" << endl;
+
+		WaitForUser();
 		return -1;
 	}
 
@@ -100,12 +128,11 @@ int main(int argc, char **argv)
 	if( r < 0 ) return -1;
 	
 	// Check if the script is to be debugged
-	bool debug = false;
 	if( strcmp(argv[1], "-d") == 0 )
-		debug = true;
+		g_doDebug = true;
 
 	// Store the command line arguments for the script
-	int scriptArg = debug ? 2 : 1;
+	int scriptArg = g_doDebug ? 2 : 1;
 	g_argc = argc - (scriptArg + 1);
 	g_argv = argv + (scriptArg + 1);
 
@@ -114,16 +141,22 @@ int main(int argc, char **argv)
 
 	// Compile the script code
 	r = CompileScript(engine, argv[scriptArg]);
-	if( r < 0 ) return -1;
+	if (r < 0)
+	{
+		WaitForUser();
+		return -1;
+	}
 
 	// Execute the script
-	r = ExecuteScript(engine, argv[scriptArg], debug);
+	r = ExecuteScript(engine, argv[scriptArg]);
 	
 	// Shut down the engine
 	if( g_commandLineArgs )
 		g_commandLineArgs->Release();
 	engine->ShutDownAndRelease();
 
+	if (r < 0)
+		WaitForUser();
 	return r;
 }
 
@@ -155,6 +188,7 @@ int ConfigureEngine(asIScriptEngine *engine)
 	RegisterScriptFile(engine);
 	RegisterScriptFileSystem(engine);
 	RegisterScriptDateTime(engine);
+	RegisterExceptionRoutines(engine);
 
 	// Register a couple of extra functions for the scripts
 	r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(PrintString), asCALL_CDECL); assert( r >= 0 );
@@ -285,6 +319,11 @@ int CompileScript(asIScriptEngine *engine, const char *scriptFile)
 	engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false);
 
 	CScriptBuilder builder;
+
+	// Set the pragma callback so we can detect if the script needs debugging
+	builder.SetPragmaCallback(PragmaCallback, 0);
+
+	// Compile the script
 	r = builder.StartNewModule(engine, "script");
 	if( r < 0 ) return -1;
 
@@ -302,7 +341,7 @@ int CompileScript(asIScriptEngine *engine, const char *scriptFile)
 }
 
 // Execute the script by calling the main() function
-int ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug)
+int ExecuteScript(asIScriptEngine *engine, const char *scriptFile)
 {
 	asIScriptModule *mod = engine->GetModule("script", asGM_ONLY_IF_EXISTS);
 	if( !mod ) return -1;
@@ -321,7 +360,7 @@ int ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug)
 		return -1;
 	}
 
-	if( debug )
+	if(g_doDebug)
 		InitializeDebugger(engine);
 
 	// Once we have the main function, we first need to initialize the global variables
@@ -549,4 +588,87 @@ void SetWorkDir(const string &file)
 {
 	_chdir(file.c_str());
 }
+
+// This function is used to allow the user to read the output to the console before exiting 
+// when the process is initiated from the file explorer on Windows.
+void WaitForUser()
+{
+#ifdef _WIN32
+	// Check if the script is initiated directly from the file explorer in which
+	// case it is necessary to wait for some user input before exiting so the
+	// user has time to check the compiler error messages.
+	// Ref: https://msdn.microsoft.com/en-us/library/windows/desktop/ms686701(v=vs.85).aspx
+	DWORD parentPid = 0;
+	DWORD  myPid = GetCurrentProcessId();
+
+	HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32W procEntry;
+	procEntry.dwSize = sizeof(PROCESSENTRY32W);
+
+	// Find the pid of the parent process
+	Process32FirstW(hSnapShot, &procEntry);
+	do
+	{
+		if (myPid == procEntry.th32ProcessID)
+		{
+			parentPid = procEntry.th32ParentProcessID;
+			break;
+		}
+	} while (Process32NextW(hSnapShot, &procEntry));
+
+	// Find the name of the parent process
+	wstring name;
+	Process32FirstW(hSnapShot, &procEntry);
+	do
+	{
+		if (parentPid == procEntry.th32ProcessID)
+		{
+			name = procEntry.szExeFile;
+			break;
+		}
+	} while (Process32NextW(hSnapShot, &procEntry));
+
+	CloseHandle(hSnapShot);
+
+	if (name == L"explorer.exe")
+	{
+		PrintString("\nPress enter to exit\n");
+		GetInput();
+	}
+#endif
+}
+
+int PragmaCallback(const string &pragmaText, CScriptBuilder &builder, void * /*userParam*/)
+{
+	asIScriptEngine *engine = builder.GetEngine();
+
+	// Filter the pragmaText so only what is of interest remains 
+	// With this the user can add comments and use different whitespaces without affecting the result
+	asUINT pos = 0;
+	asUINT length = 0;
+	string cleanText;
+	while( pos < pragmaText.size() )
+	{
+		asETokenClass tokenClass = engine->ParseToken(pragmaText.c_str() + pos, 0, &length);
+		if (tokenClass == asTC_IDENTIFIER || tokenClass == asTC_KEYWORD || tokenClass == asTC_VALUE)
+		{
+			string token = pragmaText.substr(pos, length);
+			cleanText += " " + token;
+		}
+		if (tokenClass == asTC_UNKNOWN)
+			return -1;
+		pos += length;
+	}
+
+	// Interpret the result
+	if (cleanText == " debug")
+	{
+		g_doDebug = true;
+		return 0;
+	}
+
+	// The #pragma directive was not accepted
+	return -1;
+}
+
 

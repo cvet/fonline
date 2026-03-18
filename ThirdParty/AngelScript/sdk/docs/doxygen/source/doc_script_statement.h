@@ -9,6 +9,7 @@
  - \ref break
  - \ref return
  - \ref block
+ - \ref try
 
 
 
@@ -244,6 +245,34 @@ data type as the function return type. Functions declared as <code>void</code> c
 A statement block is a collection of statements. Each statement block has its own scope of
 visibility, so variables declared within a statement block are not visible outside the block.
 
+
+
+\section try Try-catch blocks
+
+<pre>
+ {
+   try
+   {
+     DoSomethingThatMightThrowException();
+  
+     // This is not executed if an exception was thrown
+   }
+   catch
+   {
+     // This is executed if an exception was thrown
+   }
+  }
+</pre>
+
+A try-catch block can be used if you're executing some code that might throw an exception 
+and you want to catch that exception and continue with the exception rather than just abort 
+the script.
+
+Exceptions can occur for various reasons, some examples include, accessing null pointers in 
+uninitialized handles, division by zero, or exceptions raised from application registered functions.
+In some cases exceptions are intentionally raised by the script to interrupt some execution.
+
+\see \ref doc_script_stdlib_exception
 
 
 

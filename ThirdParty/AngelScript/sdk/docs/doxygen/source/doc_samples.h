@@ -12,8 +12,8 @@ This page gives a brief description of the samples that you'll find in the /sdk/
  - \subpage doc_samples_events
  - \subpage doc_samples_incl
  - \subpage doc_samples_asbuild
- - \subpage doc_samples_asrun
  - \subpage doc_samples_game
+ - \subpage doc_samples_asrun
 
 
 
@@ -152,15 +152,15 @@ the application interface has been fully registered.
 
 
 
-\page doc_samples_asrun Commandline runner
+\page doc_samples_asrun Command line runner
 
 <b>Path:</b> /sdk/samples/asrun/
 
-This samples gives a very basic commandline executer for AngelScripts. It currently doesn't
+This samples gives a very basic command line runner for AngelScripts. It currently doesn't
 allow the user to do very much as it is just a sample, but serves as a good foundation for
-building a useful commandline tool.
+building a useful command line tool.
 
-It also implements a fully functional commandline debugger, with support for setting 
+It also implements a fully functional command line debugger, with support for setting 
 breakpoints, stepping through the code, examining variables, etc.
 
  - \ref doc_debug
@@ -173,41 +173,115 @@ breakpoints, stepping through the code, examining variables, etc.
  - \ref doc_addon_datetime
  - \ref doc_addon_ctxmgr
  - \ref doc_addon_build
+ - \ref doc_addon_helpers_try
  - \ref asIScriptEngine::SetContextCallbacks
- - Passing commandline arguments to script
+ - Passing command line arguments to script
  - Executing system commands from script
- 
-\section doc_samples_asrun_funcs Global functions available to scripts
+ - Implementing a \#pragma callback
 
-Besides the add-ons listed above, the following functions are also exposed to the scripts.
+\see \subpage doc_samples_asrun_manual
 
- - void print(const string &in line)
+
+\page doc_samples_asrun_manual asrun manual
+
+asrun is a simple command-line tool that supports executing AngelScript files directly in order 
+to perform simple batch tasks. The API provided by the tool allow the script to interact with 
+the system to read and write files, and execute other system commands.
+
+On Windows it can be associated, for example with the file extension .as, to allow scripts to be 
+executed directly from the file browser with a double click. This makes it a handy tool even without
+a terminal for command-line input.
+
+
+
+
+\section doc_samples_asrun_usage Usage
+
+<pre>
+asrun [-d] \<script file> [\<args>]
+ -d             inform if the script should be runned with debug
+ \<script file>  is the script file that should be runned
+ \<args>         zero or more args for the script
+</pre>
+
+These usage instructions are also presented if the tool is executed without any arguments.
+
+
+
+\section doc_samples_asrun_script Scripts
+
+As entry point for executing the scripts, asrun looks for one of the functions <tt>int main()</tt> or 
+<tt>void main()</tt>. If neither of these functions are found an error will be reported.
+
+The scripts can use the full set of the script language and standard library described in 
+\ref doc_script "the script language" section of this manual. In addition to that a few functions 
+specific to asrun are available as described in \ref doc_samples_asrun_funcs "the next section".
+
+The script file informed as input on the command line may include additional files with the include
+directive <tt>\#include "<file name>"</tt>, so that the script files can be better organized and common
+logic shared between multiple scripts. 
+
+
+
+
+
+
+
+
+\subsection doc_samples_asrun_funcs Global functions available to scripts
+
+Besides the \ref doc_script_stdlib "standard library", the following functions are also exposed to the scripts.
+
+<b>void print(const string &in line)</b>
 
 Prints a line to the standard output.
  
- - string getInput()
+<b>string getInput()</b>
 
 Gets a line from the standard input.
  
- - array<string> \@getCommandLineArgs()
+<b>array<string> \@getCommandLineArgs()</b>
 
 Gets the command line arguments as an array.
  
- - int exec(const string &in)
+<b>int exec(const string &in)</b>
 
 Executes a system command.
 
 
 
- \page doc_samples_game Game
- 
- <b>Path:</b> /sdk/samples/game/
- 
- This sample shows one way of integrating the scripting library in a game engine. It is a 
- simple game where the player is trying to avoid getting eaten by zombies. Each game object type
- has it's own script that controls its behaviour, these are loaded independently into separately
- modules. 
- 
+
+\section doc_samples_asrun_debug How to debug scripts
+
+To run a script with the debugger, either add the command line argument -d 
+or include <tt>\#pragma debug</tt> in the script. When this is done, the 
+debugger will show a prompt like this:
+
+<pre>
+Debugging, waiting for commands. Type 'h' for help.
+[dbg]>
+</pre>
+
+This will then let you set up breakpoints, step through the code, inspect 
+variables, etc. Type <tt>h</tt> on the prompt to get the list of commands available.
+
+
+
+
+
+
+
+
+
+\page doc_samples_game Game
+
+<b>Path:</b> /sdk/samples/game/
+
+This sample shows one way of integrating the scripting library in a game engine. It is a 
+simple game where the player is trying to avoid getting eaten by zombies. Each game object type
+has it's own script that controls its behaviour, these are loaded independently into separately
+modules. 
+
  - \ref asIScriptModule
  - \ref asITypeInfo::SetUserData
  - \ref doc_global_interface

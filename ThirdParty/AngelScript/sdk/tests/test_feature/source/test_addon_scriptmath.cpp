@@ -67,6 +67,10 @@ bool Test()
 	if( r != asEXECUTION_FINISHED )
 		TEST_FAILED;
 
+	// Test implicit conversion from float to complex
+	r = ExecuteString(engine, "complex c = 3.14f; assert( c.r == 3.14f && c.i == 0 );");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	// Test initialization list for value type in local variable
 	r = ExecuteString(engine, 

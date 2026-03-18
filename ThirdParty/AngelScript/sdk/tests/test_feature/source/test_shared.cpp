@@ -10,6 +10,89 @@ bool Test()
 	asIScriptEngine *engine;
 	int r;
 
+	// Test external shared interface with inheritance
+	// https://www.gamedev.net/forums/topic/700203-asccontextcallscriptfunction-called-with-null/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule *mod = engine->GetModule("Module1", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("Script1", 
+			"shared interface Interface1 \n"
+			"{ \n"
+			"    void test(); \n"
+			"} \n"
+			"shared interface Interface2 : Interface1 \n"
+			"{ \n"
+			"} \n"
+			"class Object : Interface2 \n"
+			"{ \n"
+			"    void test() \n"
+			"    { \n"
+			"    } \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"    Object@ object = Object(); \n"
+			"    object.test(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0) TEST_FAILED;
+
+		mod = engine->GetModule("Module2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("Script2",
+			"external shared interface Interface2; \n");
+		r = mod->Build();
+		if (r < 0) TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();		
+	}
+	
+	// Test memory clean up
+	// https://www.gamedev.net/forums/topic/696396-leak-occurs-when-shared-class-exists/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule *mod = engine->GetModule("Module1", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("Script1", 
+			"shared class X { } \n"
+			"X@ x = X();        \n");
+		r = mod->Build();
+		if (r < 0) TEST_FAILED;
+
+		mod = engine->GetModule("Module2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("Script2",
+			"shared class X { };  \n"
+			"void test() {}       \n");
+		r = mod->Build();
+		if (r < 0) TEST_FAILED;
+
+		int currAlloc = GetAllocedMem();
+
+		// discard `Module2`
+		mod->Discard();
+
+		if (currAlloc <= GetAllocedMem())
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// external shared entities should be saved specifically as external in bytecode to avoid increase in file size
 	// TODO: as_restore should only populate externalTypes and externalFunctions if not def AS_NO_COMPILER
 	{
@@ -49,14 +132,14 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc32 = ComputeCRC32(&bc1.buffer[0], asUINT(bc1.buffer.size()));
-		if (crc32 != 0x283B95BD)
+		if (crc32 != 0x433EF007)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
 		}
 
 		crc32 = ComputeCRC32(&bc2.buffer[0], asUINT(bc2.buffer.size()));
-		if (crc32 != 0xDCC2E57D)
+		if (crc32 != 0xC1DD769E)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
@@ -146,10 +229,7 @@ bool Test()
 						   "test (2, 1) : Error   : Missing definition of 'B'\n"
 						   "test (3, 1) : Error   : External shared entity 'C' not found\n"
 						   "test (4, 1) : Error   : External shared entity 'D' not found\n"
-						   "test (4, 1) : Error   : External shared entity 'D' cannot redefine the original entity\n"
-						// TODO: Shouldn't try to compile the variable since the declaration had errors
-						   "test (1, 6) : Info    : Compiling void A\n"
-						   "test (1, 7) : Error   : Only objects have constructors\n")
+						   "test (4, 1) : Error   : External shared entity 'D' cannot redefine the original entity\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -593,8 +673,8 @@ bool Test()
 			TEST_FAILED;
 		if( bout.buffer != "A (3, 13) : Error   : Identifier 'B' is not a data type in global namespace\n"
 		                   "A (3, 3) : Error   : Shared type 'A' doesn't match the original declaration in other module\n"
-		                   "A (2, 3) : Error   : Identifier 'B' is not a data type in global namespace\n"
-		                   "A (2, 6) : Error   : Shared type 'A' doesn't match the original declaration in other module\n" )
+		                 /*  "A (2, 3) : Error   : Identifier 'B' is not a data type in global namespace\n"
+		                   "A (2, 6) : Error   : Shared type 'A' doesn't match the original declaration in other module\n" */)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -677,7 +757,9 @@ bool Test()
 			TEST_FAILED;
 		if( bout.buffer != "a (3, 25) : Error   : Shared type cannot implement non-shared interface 'badIntf'\n"
 						   "a (32, 3) : Error   : Shared code cannot use non-shared type 'badIntf'\n"
-						   "a (35, 3) : Error   : Shared code cannot use non-shared type 'ENOTSHARED'\n"
+					/*	   "a (35, 3) : Error   : Shared code cannot use non-shared type 'ENOTSHARED'\n"
+						   "a (43, 1) : Info    : Compiling void sfunc()\n"
+						   "a (45, 3) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n"
 						   "a (5, 3) : Info    : Compiling void T::test()\n"
 						   "a (7, 5) : Error   : Shared code cannot access non-shared global variable 'var'\n"
 						   "a (8, 5) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n"
@@ -688,9 +770,7 @@ bool Test()
 						   "a (18, 5) : Error   : Shared code cannot use non-shared type 'nonShared'\n"
 						   "a (19, 5) : Error   : Shared code cannot call non-shared function 'void impfunc()'\n"
 						   "a (28, 3) : Info    : Compiling T::T(int)\n"
-						   "a (30, 6) : Error   : Shared code cannot access non-shared global variable 'var'\n"
-						   "a (43, 1) : Info    : Compiling void sfunc()\n"
-						   "a (45, 3) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n" )
+						   "a (30, 6) : Error   : Shared code cannot access non-shared global variable 'var'\n" */)
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

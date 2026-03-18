@@ -11,7 +11,7 @@ namespace Test_Addon_ScriptBuilder
 
 const char *script =
 // Global functions can have meta data
-"[ my meta data test ] void func1() {} \n"
+"[ my meta data test ] /* separated by comment */ [second data] void func1() {} \n"
 // meta data strings can contain any tokens, and can use nested []
 "[ test['hello'] ] void func2() {} \n"
 // global variables can have meta data
@@ -76,6 +76,37 @@ bool Test()
 
 	// TODO: Preprocessor directives should be alone on the line
 
+	// Test gathering metadata for class methods with decorators
+	// (reported by Patrick Jeeves)
+#if AS_PROCESS_METADATA == 1
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, 0);
+		builder.AddSectionFromMemory("test",
+			"class GameObject { \n"
+			"   [metadata] \n"
+			"   private void onActivate1(int id, GameObject@ from) {} \n"
+			"   [metadata] \n"
+			"   void onActivate2(int id, GameObject@ from) final {} \n"
+			"} \n");
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+#endif
+
 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	RegisterScriptArray(engine, true);
 	{
@@ -101,41 +132,43 @@ bool Test()
 			TEST_FAILED;
 
 		asIScriptFunction *func = engine->GetModule(0)->GetFunctionByName("func1");
-		string metadata = builder.GetMetadataStringForFunc(func);
-		if (metadata != " my meta data test ")
+		vector<string> metadata = builder.GetMetadataForFunc(func);
+		if (metadata[0] != " my meta data test ")
+			TEST_FAILED;
+		if (metadata[1] != "second data")
 			TEST_FAILED;
 
 		func = engine->GetModule(0)->GetFunctionByName("func2");
-		metadata = builder.GetMetadataStringForFunc(func);
-		if (metadata != " test['hello'] ")
+		metadata = builder.GetMetadataForFunc(func);
+		if (metadata[0] != " test['hello'] ")
 			TEST_FAILED;
 
 		engine->GetModule(0)->SetDefaultNamespace("NS");
 		func = engine->GetModule(0)->GetFunctionByName("func");
-		metadata = builder.GetMetadataStringForFunc(func);
-		if (metadata != "func")
+		metadata = builder.GetMetadataForFunc(func);
+		if (metadata[0] != "func")
 			TEST_FAILED;
 		engine->GetModule(0)->SetDefaultNamespace("");
 
 		int typeId = engine->GetModule(0)->GetTypeIdByDecl("MyClass");
-		metadata = builder.GetMetadataStringForType(typeId);
-		if (metadata != " myclass ")
+		metadata = builder.GetMetadataForType(typeId);
+		if (metadata[0] != " myclass ")
 			TEST_FAILED;
 
 		typeId = engine->GetModule(0)->GetTypeIdByDecl("NS::Class");
-		metadata = builder.GetMetadataStringForType(typeId);
-		if (metadata != "class")
+		metadata = builder.GetMetadataForType(typeId);
+		if (metadata[0] != "class")
 			TEST_FAILED;
 
 		typeId = engine->GetModule(0)->GetTypeIdByDecl("MyClass2");
-		metadata = builder.GetMetadataStringForTypeProperty(typeId, 0);
-		if (metadata != " edit ")
+		metadata = builder.GetMetadataForTypeProperty(typeId, 0);
+		if (metadata[0] != " edit ")
 			TEST_FAILED;
-		metadata = builder.GetMetadataStringForTypeProperty(typeId, 1);
-		if (metadata != " noedit ")
+		metadata = builder.GetMetadataForTypeProperty(typeId, 1);
+		if (metadata[0] != " noedit ")
 			TEST_FAILED;
-		metadata = builder.GetMetadataStringForTypeProperty(typeId, 2);
-		if (metadata != " edit,c ")
+		metadata = builder.GetMetadataForTypeProperty(typeId, 2);
+		if (metadata[0] != " edit,c ")
 			TEST_FAILED;
 
 		asITypeInfo *type = engine->GetTypeInfoById(typeId);
@@ -143,27 +176,27 @@ bool Test()
 			TEST_FAILED;
 		else
 		{
-			metadata = builder.GetMetadataStringForTypeMethod(typeId, type->GetMethodByName("get_prop"));
-			if (metadata != " prop ")
+			metadata = builder.GetMetadataForTypeMethod(typeId, type->GetMethodByName("get_prop"));
+			if (metadata[0] != " prop ")
 				TEST_FAILED;
-			metadata = builder.GetMetadataStringForTypeMethod(typeId, type->GetMethodByName("set_prop"));
-			if (metadata != " prop ")
+			metadata = builder.GetMetadataForTypeMethod(typeId, type->GetMethodByName("set_prop"));
+			if (metadata[0] != " prop ")
 				TEST_FAILED;
 		}
 
 		typeId = engine->GetModule(0)->GetTypeIdByDecl("MyIntf");
-		metadata = builder.GetMetadataStringForType(typeId);
-		if (metadata != " myintf ")
+		metadata = builder.GetMetadataForType(typeId);
+		if (metadata[0] != " myintf ")
 			TEST_FAILED;
 
 		int varIdx = engine->GetModule(0)->GetGlobalVarIndexByName("g_var");
-		metadata = builder.GetMetadataStringForVar(varIdx);
-		if (metadata != " init ")
+		metadata = builder.GetMetadataForVar(varIdx);
+		if (metadata[0] != " init ")
 			TEST_FAILED;
 
 		varIdx = engine->GetModule(0)->GetGlobalVarIndexByName("g_obj");
-		metadata = builder.GetMetadataStringForVar(varIdx);
-		if (metadata != " var of type myclass ")
+		metadata = builder.GetMetadataForVar(varIdx);
+		if (metadata[0] != " var of type myclass ")
 			TEST_FAILED;
 #endif
 	}
@@ -212,21 +245,21 @@ bool Test()
 		else
 		{
 			int typeId = type->GetTypeId();
-			string metadata = builder.GetMetadataStringForType(typeId);
-			if (metadata != "external test")
+			vector<string> metadata = builder.GetMetadataForType(typeId);
+			if (metadata[0] != "external test")
 				TEST_FAILED;
 		}
 
-		string metadata = builder.GetMetadataStringForFunc(engine->GetModule("mod")->GetFunctionByName("func"));
-		if (metadata != "external func")
+		vector<string> metadata = builder.GetMetadataForFunc(engine->GetModule("mod")->GetFunctionByName("func"));
+		if (metadata[0] != "external func")
 			TEST_FAILED;
 
-		metadata = builder.GetMetadataStringForType(engine->GetModule("mod")->GetTypeInfoByName("boo")->GetTypeId());
-		if (metadata != "external boo")
+		metadata = builder.GetMetadataForType(engine->GetModule("mod")->GetTypeInfoByName("boo")->GetTypeId());
+		if (metadata[0] != "external boo")
 			TEST_FAILED;
 
-		metadata = builder.GetMetadataStringForType(engine->GetModule("mod")->GetTypeInfoByName("intf")->GetTypeId());
-		if (metadata != "external intf")
+		metadata = builder.GetMetadataForType(engine->GetModule("mod")->GetTypeInfoByName("intf")->GetTypeId());
+		if (metadata[0] != "external intf")
 			TEST_FAILED;
 	}
 #endif
@@ -264,13 +297,13 @@ bool Test()
 		else
 		{
 			int typeId = type->GetTypeId();
-			string metadata = builder.GetMetadataStringForTypeMethod(typeId, type->GetMethodByName("func"));
-			if (metadata != "some meta data for func")
+			vector<string> metadata = builder.GetMetadataForTypeMethod(typeId, type->GetMethodByName("func"));
+			if (metadata[0] != "some meta data for func")
 				TEST_FAILED;
 		}
 
-		string metadata = builder.GetMetadataStringForFunc(engine->GetModule("mod")->GetFunctionByName("glob"));
-		if (metadata != "some meta data for global")
+		vector<string> metadata = builder.GetMetadataForFunc(engine->GetModule("mod")->GetFunctionByName("glob"));
+		if (metadata[0] != "some meta data for global")
 			TEST_FAILED;
 	}
 #endif

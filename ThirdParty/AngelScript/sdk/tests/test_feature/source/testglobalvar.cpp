@@ -318,7 +318,7 @@ bool TestGlobalVar()
 			TEST_FAILED;
 		if( bout.buffer != "Property (1, 17) : Error   : Expected '<end of file>'\n"
 			               "Property (1, 17) : Error   : Instead found '='\n"
-			               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalProperty' with 'const int value = 3345;' (Code: -10)\n" )
+			               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalProperty' with 'const int value = 3345;' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

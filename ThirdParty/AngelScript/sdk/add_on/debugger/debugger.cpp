@@ -327,23 +327,13 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 		break;
 
 	case 'n':
-		if( ctx == 0 )
-		{
-			Output("No script is running\n");
-			return false;
-		}
 		m_action = STEP_OVER;
-		m_lastCommandAtStackLevel = ctx->GetCallstackSize();
+		m_lastCommandAtStackLevel = ctx ? ctx->GetCallstackSize() : 1;
 		break;
 
 	case 'o':
-		if( ctx == 0 )
-		{
-			Output("No script is running\n");
-			return false;
-		}
 		m_action = STEP_OUT;
-		m_lastCommandAtStackLevel = ctx->GetCallstackSize();
+		m_lastCommandAtStackLevel = ctx ? ctx->GetCallstackSize() : 0;
 		break;
 
 	case 'b':
@@ -368,8 +358,8 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 			else
 			{
 				Output("Incorrect format for setting break point, expected one of:\n"
-				       "b <file name>:<line number>\n"
-				       "b <function name>\n");
+				       " b <file name>:<line number>\n"
+				       " b <function name>\n");
 			}
 		}
 		// take more commands
@@ -397,7 +387,7 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 			else
 			{
 				Output("Incorrect format for removing break points, expected:\n"
-				       "r <all|number of break point>\n");
+				       " r <all|number of break point>\n");
 			}
 		}
 		// take more commands
@@ -406,6 +396,7 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 	case 'l':
 		{
 			// List something
+			bool printHelp = false;
 			size_t p = cmd.find_first_not_of(" \t", 1);
 			if( p != string::npos )
 			{
@@ -431,18 +422,26 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 				}
 				else
 				{
-					Output("Unknown list option, expected one of:\n"
-					       "b - breakpoints\n"
-					       "v - local variables\n"
-						   "m - member properties\n"
-					       "g - global variables\n"
-						   "s - statistics\n");
+					Output("Unknown list option.\n");
+					printHelp = true;
 				}
 			}
-			else 
+			else
 			{
-				Output("Incorrect format for list, expected:\n"
-				       "l <list option>\n");
+				Output("Incorrect format for list command.\n");
+				printHelp = true;
+			}
+
+			if( printHelp )
+			{
+				Output("Expected format: \n"
+					   " l <list option>\n"
+					   "Available options: \n"
+					   " b - breakpoints\n"
+					   " v - local variables\n"
+					   " m - member properties\n"
+					   " g - global variables\n"
+					   " s - statistics\n");
 			}
 		}
 		// take more commands
@@ -464,7 +463,7 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 			else
 			{
 				Output("Incorrect format for print, expected:\n"
-					   "p <expression>\n");
+					   " p <expression>\n");
 			}
 		}
 		// take more commands
@@ -630,6 +629,10 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 			s << ToString(ptr, typeId, 3, engine) << endl;
 			Output(s.str());
 		}
+		else
+		{
+			Output("Invalid expression. No matching symbol\n");
+		}
 	}
 	else
 	{
@@ -757,7 +760,7 @@ void CDebugger::PrintCallstack(asIScriptContext *ctx)
 	for( asUINT n = 0; n < ctx->GetCallstackSize(); n++ )
 	{
 		lineNbr = ctx->GetLineNumber(n, 0, &file);
-		s << file << ":" << lineNbr << "; " << ctx->GetFunction(n)->GetDeclaration() << endl;
+		s << (file ? file : "{unnamed}") << ":" << lineNbr << "; " << ctx->GetFunction(n)->GetDeclaration() << endl;
 	}
 	Output(s.str());
 }
@@ -802,17 +805,17 @@ void CDebugger::AddFileBreakPoint(const string &file, int lineNbr)
 
 void CDebugger::PrintHelp()
 {
-	Output("c - Continue\n"
-	       "s - Step into\n"
-	       "n - Next step\n"
-	       "o - Step out\n"
-	       "b - Set break point\n"
-	       "l - List various things\n"
-	       "r - Remove break point\n"
-	       "p - Print value\n"
-	       "w - Where am I?\n"
-	       "a - Abort execution\n"
-	       "h - Print this help text\n");
+	Output(" c - Continue\n"
+	       " s - Step into\n"
+	       " n - Next step\n"
+	       " o - Step out\n"
+	       " b - Set break point\n"
+	       " l - List various things\n"
+	       " r - Remove break point\n"
+	       " p - Print value\n"
+	       " w - Where am I?\n"
+	       " a - Abort execution\n"
+	       " h - Print this help text\n");
 }
 
 void CDebugger::Output(const string &str)

@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
+#include "../../../add_on/scriptany/scriptany.h"
 
 namespace TestCastOp
 {
@@ -131,6 +132,28 @@ void addListener(EventSource* source, int /*mask*/)
 //	PRINTF("\n");
 }
 
+class base
+{
+public:
+	base() { refCount = 1; }
+	static void *factory() { return new base(); }
+	void addref() { /*printf("addref\n");*/ refCount++; }
+	void release() { /*printf("release\n");*/ if (--refCount == 0) delete this; }
+	void opCast(void **ref, int typeId) {
+		*ref = 0; 
+		asIScriptContext *ctx = asGetActiveContext();
+		asIScriptEngine *engine = ctx->GetEngine();
+		asITypeInfo *type = engine->GetTypeInfoById(typeId);
+		if (std::string(type->GetName()) == "CControlBase")
+		{
+			addref();
+			*ref = this;
+		}
+	}
+
+	int refCount;
+};
+
 bool Test()
 {
 	bool fail = false;
@@ -143,6 +166,152 @@ bool Test()
 	// TODO: What should the compiler do when the class has both a valid opCast method 
 	//       and a related class in a class hierarchy? Should prefer calling opCast, right?
 	//       How does C++ do it?
+
+	// Test opCast(?&out) with CScriptAny
+	// https://www.gamedev.net/forums/topic/697067-refcounting-in-opcast/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false);
+
+		RegisterScriptAny(engine);
+		r = engine->RegisterObjectMethod("any", "void opCast(?&out)", asFUNCTION(0), asCALL_GENERIC);
+		r = engine->RegisterGlobalFunction("any@ GetA()", asFUNCTION(0), asCALL_GENERIC);
+		
+		asIScriptModule *mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"shared class A {}"
+			"A@ a = cast<A>(GetA());"
+		);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test void opCast(?&out) in complex expression
+	// https://www.gamedev.net/forums/topic/697067-refcounting-in-opcast/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)\n", asFUNCTION(Assert), asCALL_GENERIC);
+
+		engine->RegisterObjectType("base", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("base", asBEHAVE_FACTORY, "base @f()", asFUNCTION(base::factory), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("base", asBEHAVE_ADDREF, "void f()", asMETHOD(base, addref), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("base", asBEHAVE_RELEASE, "void f()", asMETHOD(base, release), asCALL_THISCALL);
+		engine->RegisterObjectMethod("base", "void opCast(?&out)", asMETHOD(base, opCast), asCALL_THISCALL);
+
+		engine->RegisterObjectType("CControlBase", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("CControlBase", asBEHAVE_ADDREF, "void f()", asMETHOD(base, addref), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("CControlBase", asBEHAVE_RELEASE, "void f()", asMETHOD(base, release), asCALL_THISCALL);
+
+		RegisterScriptArray(engine, false);
+		
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class scene { \n"
+			"  array<base@> Mobils = { base() }; \n"
+			"} \n"
+			"scene g_scene; \n"
+			"void test() { \n"
+			"  auto b = cast<CControlBase>(g_scene.Mobils[0]); \n"
+			//"  auto a = g_scene.Mobils[0]; \n"
+			//"  auto b = cast<CControlBase>(a); \n"
+			"  assert( b !is null ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "test()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test both opCast and opImplCast
+	// https://www.gamedev.net/forums/topic/696449-implicitly-assign-handle-by-overloading-opimplconv-operator/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)\n", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int op = 0; \n"
+			"class A { B @opCast() { op = 1; return null; } \n"
+			" B @opImplCast() { op = 2; return null; } \n"
+			" const B @opCast() const { op = 3; return null; } \n"
+			" const B @opImplCast() const { op = 4; return null; } } \n"
+			"class B {} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A a; B @b = a; assert( op == 2 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A a; B @b = cast<B>(a); assert( op == 1 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "const A a; const B @b = cast<B>(a); assert( op == 3 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "const A a; const B @b = a; assert( op == 4 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test both opConv and opImplConv
+	// https://www.gamedev.net/forums/topic/696449-implicitly-assign-handle-by-overloading-opimplconv-operator/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)\n", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int op = 0; \n"
+			"class A { B opConv() { op = 1; return B(); } \n"
+			" B opImplConv() { op = 2; return B(); } \n"
+			" B opConv() const { op = 3; return B(); } \n"
+			" B opImplConv() const { op = 4; return B(); } } \n"
+			"class B {} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A a; B b = a; assert( op == 2 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "A a; B b = B(a); assert( op == 1 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "const A a; B b = B(a); assert( op == 3 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "const A a; B b = a; assert( op == 4 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test opCast(?&out) on null handle (should be allowed)
 	// http://www.gamedev.net/topic/683804-void-opcastout-on-null-handle/
@@ -400,13 +569,13 @@ bool Test()
 	if( r < 0 )
 		TEST_FAILED;
 		
-	// Use of constructor is not permitted to implicitly cast to a reference type 
+	// Since the constructor is not 'explicit' it can be used implicitly too
 	engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 	bout.buffer = "";
 	r = ExecuteString(engine, "type t; string a = \"a\" + t + \"b\";"); 
-	if( r >= 0 )
+	if( r < 0 )
 		TEST_FAILED;
-	if (bout.buffer != "ExecuteString (1, 24) : Error   : No matching operator that takes the types 'const string' and 'type' found\n")
+	if (bout.buffer != "")
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
