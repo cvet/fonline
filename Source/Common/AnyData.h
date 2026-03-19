@@ -185,6 +185,7 @@ class StringEscaping final
 public:
     StringEscaping() = delete;
 
+    static void AppendCodeString(string& result, string_view str);
     [[nodiscard]] static auto CodeString(string_view str) -> string;
     [[nodiscard]] static auto DecodeString(string_view str) -> string;
 };

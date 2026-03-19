@@ -385,13 +385,8 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
     return str[pos] != 0 ? &str[pos + 1] : &str[pos];
 }
 
-auto StringEscaping::CodeString(string_view str) -> string
+void StringEscaping::AppendCodeString(string& result, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    string result;
-    result.reserve(str.length() * 2);
-
     const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
 
     if (protect) {
@@ -431,6 +426,15 @@ auto StringEscaping::CodeString(string_view str) -> string
     if (protect) {
         result.append(1, '\"');
     }
+}
+
+auto StringEscaping::CodeString(string_view str) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string result;
+    result.reserve(str.length() * 2);
+    AppendCodeString(result, str);
 
     return result;
 }

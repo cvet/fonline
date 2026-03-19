@@ -1793,7 +1793,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
         entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
     }
     else {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
     }
 
     entity->RestoreData(data);

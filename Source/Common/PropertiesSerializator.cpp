@@ -141,6 +141,348 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     return SavePropertyToValue(prop, raw_data, hash_resolver, name_resolver);
 }
 
+static auto NormalizeTopLevelCodedString(string str) -> string
+{
+    if (str.length() >= 2 && str.front() == '"' && str.back() == '"') {
+        if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
+            str = StringEscaping::DecodeString(str);
+        }
+    }
+
+    return str;
+}
+
+static auto ReadTextTokenView(const char* str, string_view& result) -> const char*
+{
+    if (str[0] == 0) {
+        return nullptr;
+    }
+
+    size_t pos = 0;
+    size_t length = utf8::DecodeStrNtLen(&str[pos]);
+    utf8::Decode(&str[pos], length);
+
+    while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+        pos++;
+
+        length = utf8::DecodeStrNtLen(&str[pos]);
+        utf8::Decode(&str[pos], length);
+    }
+
+    if (str[pos] == 0) {
+        return nullptr;
+    }
+
+    size_t begin;
+
+    if (length == 1 && str[pos] == '"') {
+        pos++;
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                if (str[pos] != 0) {
+                    length = utf8::DecodeStrNtLen(&str[pos]);
+                    utf8::Decode(&str[pos], length);
+
+                    pos += length;
+                }
+            }
+            else if (length == 1 && str[pos] == '"') {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
+        }
+    }
+    else {
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                length = utf8::DecodeStrNtLen(&str[pos]);
+                utf8::Decode(&str[pos], length);
+
+                pos += length;
+            }
+            else if (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
+        }
+    }
+
+    result = string_view {&str[begin], pos - begin};
+    return str[pos] != 0 ? &str[pos + 1] : &str[pos];
+}
+
+static void AppendRawBytes(vector<uint8>& data, const void* value, size_t size)
+{
+    const auto old_size = data.size();
+    data.resize(old_size + size);
+    MemCopy(data.data() + old_size, value, size);
+}
+
+static void AppendRawString(vector<uint8>& data, string_view str)
+{
+    const auto str_len = numeric_cast<uint32>(str.length());
+    AppendRawBytes(data, &str_len, sizeof(str_len));
+
+    if (!str.empty()) {
+        AppendRawBytes(data, str.data(), str.length());
+    }
+}
+
+static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> string_view
+{
+    if (text.find_first_of("\\\"") == string_view::npos) {
+        return text;
+    }
+
+    decoded_storage = StringEscaping::DecodeString(text);
+    return decoded_storage;
+}
+
+static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
+
+static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& primitive_type, string_view text)
+{
+    if (primitive_type.IsInt8) {
+        const auto value = numeric_cast<int8>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsInt16) {
+        const auto value = numeric_cast<int16>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsInt32) {
+        const auto value = numeric_cast<int32>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsInt64) {
+        const auto value = numeric_cast<int64>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsUInt8) {
+        const auto value = numeric_cast<uint8>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsUInt16) {
+        const auto value = numeric_cast<uint16>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsUInt32) {
+        const auto value = numeric_cast<uint32>(strvex(text).to_int64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsSingleFloat) {
+        const auto value = numeric_cast<float32>(strvex(text).to_float64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsDoubleFloat) {
+        const auto value = numeric_cast<float64>(strvex(text).to_float64());
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else if (primitive_type.IsBool) {
+        const auto value = strvex(text).to_bool();
+        AppendRawBytes(data, &value, sizeof(value));
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
+static void AppendComplexStructFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+{
+    const auto decoded = StringEscaping::DecodeString(text);
+    const char* s = decoded.c_str();
+    string_view token;
+
+    for (const auto& field : base_type.StructLayout->Fields) {
+        s = ReadTextTokenView(s, token);
+        if (s == nullptr) {
+            throw PropertySerializationException("Wrong struct size (from text)");
+        }
+
+        AppendBaseTypeFromText(data, field.Type, token, hash_resolver, name_resolver);
+    }
+
+    if (ReadTextTokenView(s, token) != nullptr) {
+        throw PropertySerializationException("Wrong struct size (from text)");
+    }
+}
+
+static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+{
+    if (base_type.IsString) {
+        string decoded_storage;
+        AppendRawString(data, DecodeTextIfNeeded(text, decoded_storage));
+    }
+    else if (base_type.IsHashedString) {
+        string decoded_storage;
+        const auto hash = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage)).as_hash();
+        AppendRawBytes(data, &hash, sizeof(hash));
+    }
+    else if (base_type.IsEnum) {
+        string decoded_storage;
+        const auto decoded = DecodeTextIfNeeded(text, decoded_storage);
+        int32 enum_value = 0;
+
+        if (strvex(decoded).is_number()) {
+            enum_value = numeric_cast<int32>(strvex(decoded).to_int64());
+            ignore_unused(name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
+        }
+        else {
+            enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);
+        }
+
+        if (base_type.Size == sizeof(uint8)) {
+            const auto value = numeric_cast<uint8>(enum_value);
+            AppendRawBytes(data, &value, sizeof(value));
+        }
+        else if (base_type.Size == sizeof(uint16)) {
+            const auto value = numeric_cast<uint16>(enum_value);
+            AppendRawBytes(data, &value, sizeof(value));
+        }
+        else {
+            AppendRawBytes(data, &enum_value, base_type.Size);
+        }
+    }
+    else if (base_type.IsPrimitive || base_type.IsSimpleStruct) {
+        const auto& primitive_type = base_type.IsSimpleStruct ? base_type.StructLayout->Fields.front().Type : base_type;
+        AppendPrimitiveFromText(data, primitive_type, text);
+    }
+    else if (base_type.IsComplexStruct) {
+        AppendComplexStructFromText(data, base_type, text, hash_resolver, name_resolver);
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
+static auto ParseArrayFromText(const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8>
+{
+    const auto decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
+    const char* s = decoded.c_str();
+    string_view token;
+    vector<uint8> data;
+    data.reserve(std::max<size_t>(decoded.length() + sizeof(uint32), 32));
+    uint32 arr_size = 0;
+
+    if (is_array_of_string) {
+        data.resize(sizeof(uint32));
+    }
+
+    while ((s = ReadTextTokenView(s, token)) != nullptr) {
+        AppendBaseTypeFromText(data, base_type, token, hash_resolver, name_resolver);
+        arr_size++;
+    }
+
+    if (is_array_of_string) {
+        MemCopy(data.data(), &arr_size, sizeof(arr_size));
+    }
+
+    return data;
+}
+
+static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& primitive_type, const uint8*& pdata)
+{
+    if (primitive_type.IsInt8) {
+        result += strex("{}", *reinterpret_cast<const int8*>(pdata));
+    }
+    else if (primitive_type.IsInt16) {
+        result += strex("{}", *reinterpret_cast<const int16*>(pdata));
+    }
+    else if (primitive_type.IsInt32) {
+        result += strex("{}", *reinterpret_cast<const int32*>(pdata));
+    }
+    else if (primitive_type.IsInt64) {
+        result += strex("{}", *reinterpret_cast<const int64*>(pdata));
+    }
+    else if (primitive_type.IsUInt8) {
+        result += strex("{}", *reinterpret_cast<const uint8*>(pdata));
+    }
+    else if (primitive_type.IsUInt16) {
+        result += strex("{}", *reinterpret_cast<const uint16*>(pdata));
+    }
+    else if (primitive_type.IsUInt32) {
+        result += strex("{}", *reinterpret_cast<const uint32*>(pdata));
+    }
+    else if (primitive_type.IsSingleFloat) {
+        result += strex("{:f}", *reinterpret_cast<const float32*>(pdata)).rtrim("0").rtrim(".");
+    }
+    else if (primitive_type.IsDoubleFloat) {
+        result += strex("{:f}", *reinterpret_cast<const float64*>(pdata)).rtrim("0").rtrim(".");
+    }
+    else if (primitive_type.IsBool) {
+        result += *reinterpret_cast<const bool*>(pdata) ? "True" : "False";
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+
+    pdata += primitive_type.Size;
+}
+
+static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata)
+{
+    if (base_type.IsString) {
+        const uint32 str_len = *reinterpret_cast<const uint32*>(pdata);
+        pdata += sizeof(str_len);
+        StringEscaping::AppendCodeString(result, {reinterpret_cast<const char*>(pdata), str_len});
+        pdata += str_len;
+    }
+    else if (base_type.IsHashedString) {
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        pdata += sizeof(hstring::hash_t);
+        StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
+    }
+    else if (base_type.IsEnum) {
+        int32 enum_value = 0;
+        MemCopy(&enum_value, pdata, base_type.Size);
+        pdata += base_type.Size;
+        StringEscaping::AppendCodeString(result, name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
+    }
+    else if (base_type.IsPrimitive || base_type.IsSimpleStruct) {
+        const auto& primitive_type = base_type.IsSimpleStruct ? base_type.StructLayout->Fields.front().Type : base_type;
+        AppendPrimitiveToCodedString(result, primitive_type, pdata);
+    }
+    else if (base_type.IsComplexStruct) {
+        string struct_str;
+        struct_str.reserve(128);
+        bool next_iteration = false;
+
+        for (const auto& field : base_type.StructLayout->Fields) {
+            if (next_iteration) {
+                struct_str.append(" ");
+            }
+            else {
+                next_iteration = true;
+            }
+
+            AppendBaseTypeToCodedString(struct_str, field.Type, hash_resolver, name_resolver, pdata);
+        }
+
+        StringEscaping::AppendCodeString(result, struct_str);
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
 static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata) -> AnyData::Value
 {
     if (base_type.IsString) {
@@ -314,7 +656,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     return strex("{}", *reinterpret_cast<const float64*>(p));
                 }
                 else if (dict_key_type.IsBool) {
-                    return strex("{}", *reinterpret_cast<const bool*>(p));
+                    return *reinterpret_cast<const bool*>(p) ? "True" : "False";
                 }
                 else {
                     FO_UNREACHABLE_PLACE();
@@ -468,6 +810,141 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     else {
         throw PropertySerializationException("Wrong value type (not string, int, float or bool)", value.Type());
     }
+}
+
+auto PropertiesSerializator::SavePropertyToText(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+
+    props->ValidateForRawData(prop);
+
+    return SavePropertyToText(prop, props->GetRawData(prop), hash_resolver, name_resolver);
+}
+
+auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+
+    const BaseTypeDesc& base_type = prop->GetBaseType();
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+    string result;
+    result.reserve(std::max<size_t>(raw_data.size() * 2, 64));
+
+    if (prop->IsString()) {
+        StringEscaping::AppendCodeString(result, {reinterpret_cast<const char*>(raw_data.data()), raw_data.size()});
+        pdata += raw_data.size();
+    }
+    else if (prop->IsPlainData()) {
+        AppendBaseTypeToCodedString(result, base_type, hash_resolver, name_resolver, pdata);
+    }
+    else if (prop->IsArray()) {
+        string arr_str;
+        arr_str.reserve(std::max<size_t>(raw_data.size() * 2, 64));
+        bool next_iteration = false;
+
+        if (!raw_data.empty()) {
+            uint32 arr_size;
+
+            if (prop->IsArrayOfString()) {
+                MemCopy(&arr_size, pdata, sizeof(arr_size));
+                pdata += sizeof(uint32);
+            }
+            else {
+                arr_size = numeric_cast<uint32>(raw_data.size() / base_type.Size);
+            }
+
+            for (uint32 i = 0; i < arr_size; i++) {
+                if (next_iteration) {
+                    arr_str.append(" ");
+                }
+                else {
+                    next_iteration = true;
+                }
+
+                AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+            }
+        }
+
+        StringEscaping::AppendCodeString(result, arr_str);
+    }
+    else if (prop->IsDict()) {
+        string dict_str;
+        dict_str.reserve(std::max<size_t>(raw_data.size() * 2, 128));
+        bool next_iteration = false;
+        const auto& dict_key_type_ = prop->GetDictKeyType();
+        const auto& dict_key_type = dict_key_type_.IsSimpleStruct ? dict_key_type_.StructLayout->Fields.front().Type : dict_key_type_;
+
+        const auto append_key_to_dict = [&](string& str, const uint8*& key_pdata) {
+            if (dict_key_type.IsString) {
+                const uint32 str_len = *reinterpret_cast<const uint32*>(key_pdata);
+                key_pdata += sizeof(str_len);
+                StringEscaping::AppendCodeString(str, {reinterpret_cast<const char*>(key_pdata), str_len});
+                key_pdata += str_len;
+            }
+            else if (dict_key_type.IsHashedString) {
+                const auto hash = *reinterpret_cast<const hstring::hash_t*>(key_pdata);
+                key_pdata += sizeof(hstring::hash_t);
+                StringEscaping::AppendCodeString(str, hash_resolver.ResolveHash(hash).as_str());
+            }
+            else if (dict_key_type.IsEnum) {
+                int32 enum_value = 0;
+                MemCopy(&enum_value, key_pdata, dict_key_type.Size);
+                key_pdata += dict_key_type.Size;
+                StringEscaping::AppendCodeString(str, name_resolver.ResolveEnumValueName(dict_key_type.Name, enum_value));
+            }
+            else {
+                AppendPrimitiveToCodedString(str, dict_key_type, key_pdata);
+            }
+        };
+
+        while (pdata < pdata_end) {
+            if (next_iteration) {
+                dict_str.append(" ");
+            }
+            else {
+                next_iteration = true;
+            }
+
+            append_key_to_dict(dict_str, pdata);
+            dict_str.append(" ");
+
+            if (prop->IsDictOfArray()) {
+                string arr_str;
+                arr_str.reserve(64);
+                uint32 arr_size;
+                MemCopy(&arr_size, pdata, sizeof(arr_size));
+                pdata += sizeof(arr_size);
+
+                for (uint32 i = 0; i < arr_size; i++) {
+                    if (i != 0) {
+                        arr_str.append(" ");
+                    }
+
+                    AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+                }
+
+                StringEscaping::AppendCodeString(dict_str, arr_str);
+            }
+            else {
+                AppendBaseTypeToCodedString(dict_str, base_type, hash_resolver, name_resolver, pdata);
+            }
+        }
+
+        StringEscaping::AppendCodeString(result, dict_str);
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+
+    FO_RUNTIME_ASSERT(pdata == pdata_end);
+    return NormalizeTopLevelCodedString(std::move(result));
 }
 
 static void ConvertFixedValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
@@ -724,7 +1201,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
             else if (prop->IsDictOfString()) {
-                data_size += ConvertToString(dict_value, str_buf).length();
+                data_size += sizeof(uint32) + ConvertToString(dict_value, str_buf).length();
             }
             else {
                 data_size += base_type.Size;
@@ -757,7 +1234,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                     *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
                 }
                 else {
-                    MemCopy(pdata, &enum_value, base_type.Size);
+                    MemCopy(pdata, &enum_value, dict_key_type.Size);
                 }
             }
             else if (dict_key_type.IsInt8) {
@@ -838,6 +1315,90 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
     else {
         FO_UNREACHABLE_PLACE();
     }
+}
+
+void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Property* prop, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+
+    const auto set_data = [props, prop](span<const uint8> raw_data) { props->SetRawData(prop, raw_data); };
+    vector<uint8> data;
+
+    if (prop->IsString()) {
+        const auto decoded = StringEscaping::DecodeString(text);
+        data.assign(decoded.begin(), decoded.end());
+    }
+    else if (prop->IsPlainData()) {
+        if (prop->IsBaseTypeComplexStruct()) {
+            data.reserve(prop->GetBaseSize());
+            const string source_text {text};
+            const char* s = source_text.c_str();
+            string_view token;
+
+            for (const auto& field : prop->GetBaseTypeLayout().Fields) {
+                s = ReadTextTokenView(s, token);
+                if (s == nullptr) {
+                    throw PropertySerializationException("Wrong struct size (from text)");
+                }
+
+                AppendBaseTypeFromText(data, field.Type, token, hash_resolver, name_resolver);
+            }
+
+            if (ReadTextTokenView(s, token) != nullptr) {
+                throw PropertySerializationException("Wrong struct size (from text)");
+            }
+        }
+        else {
+            data.reserve(prop->GetBaseSize());
+            AppendBaseTypeFromText(data, prop->GetBaseType(), text, hash_resolver, name_resolver);
+        }
+    }
+    else if (prop->IsArray()) {
+        data = ParseArrayFromText(prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
+    }
+    else if (prop->IsDict()) {
+        const string source_text {text};
+        const char* s = source_text.c_str();
+        string_view key_token;
+        string_view value_token;
+        data.reserve(std::max<size_t>(text.length() * 2, 64));
+
+        while ((s = ReadTextTokenView(s, key_token)) != nullptr && (s = ReadTextTokenView(s, value_token)) != nullptr) {
+            AppendBaseTypeFromText(data, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
+
+            if (prop->IsDictOfArray()) {
+                const auto arr_data = ParseArrayFromText(prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
+
+                if (prop->IsDictOfArrayOfString()) {
+                    const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32*>(arr_data.data());
+                    AppendRawBytes(data, &arr_count, sizeof(arr_count));
+
+                    if (arr_data.size() > sizeof(uint32)) {
+                        AppendRawBytes(data, arr_data.data() + sizeof(uint32), arr_data.size() - sizeof(uint32));
+                    }
+                }
+                else {
+                    const auto arr_count = numeric_cast<uint32>(prop->GetBaseSize() == 0 ? 0 : arr_data.size() / prop->GetBaseSize());
+                    AppendRawBytes(data, &arr_count, sizeof(arr_count));
+
+                    if (!arr_data.empty()) {
+                        AppendRawBytes(data, arr_data.data(), arr_data.size());
+                    }
+                }
+            }
+            else {
+                AppendBaseTypeFromText(data, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
+            }
+        }
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+
+    set_data(data);
 }
 
 FO_END_NAMESPACE

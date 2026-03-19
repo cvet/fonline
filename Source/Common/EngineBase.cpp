@@ -930,7 +930,7 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
 BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
     ScriptSystem(),
-    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr),
+    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr, nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Resources {std::move(resources)},

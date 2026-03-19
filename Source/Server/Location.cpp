@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
