@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -131,7 +131,7 @@ static asQWORD __attribute__((noinline)) CallX64(const asQWORD *args, const asQW
 
  		: // no output
 		: "m" (ret), "r" (args), "r" (floatArgs), "r" (paramSize), "r" (func)
-		: "rdi", "rsi", "rsp", "rbx", "r10", "r11", "%r12", "r13", "r14", "r15"
+		: "rdi", "rsi", "rbx", "r10", "r11", "%r12", "r13", "r14", "r15"
 	);
 
 	return ret;

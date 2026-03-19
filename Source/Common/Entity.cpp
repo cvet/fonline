@@ -124,6 +124,20 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
     }
 }
 
+void Entity::UnsubscribeAllEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _events.reset();
+}
+
+void Entity::ClearAllTimeEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _timeEvents.reset();
+}
+
 auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();

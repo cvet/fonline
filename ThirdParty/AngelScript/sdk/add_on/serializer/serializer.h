@@ -28,9 +28,11 @@ class CSerializedValue;
 struct CUserType
 {
 	virtual ~CUserType() {};
-	virtual void Store(CSerializedValue *val, void *ptr) = 0;
-	virtual void Restore(CSerializedValue *val, void *ptr) = 0;
-	virtual void CleanupUserData(CSerializedValue * /*val*/) {}
+
+	virtual void *AllocateUnitializedMemory(CSerializedValue* val) = 0;
+	virtual void  Store(CSerializedValue *val, void *ptr) = 0;
+	virtual void  Restore(CSerializedValue *val, void *ptr) = 0;
+	virtual void  CleanupUserData(CSerializedValue * /*val*/) {}
 };
 
 
@@ -112,6 +114,7 @@ protected:
 	// For non-primitives the typeId may change if the module is reloaded so 
 	// it is necessary to store the type name to determine the new type id
 	std::string m_typeName;
+	std::string m_typeDecl;
 	
 	// Name of variable or property
 	std::string m_name;
@@ -152,6 +155,9 @@ class CSerializer
 public:
 	CSerializer();
 	~CSerializer();
+
+	// Clear the serializer to free references held internally
+	void Clear();
 	
 	// Add implementation for serializing user types
 	void AddUserType(CUserType *ref, const std::string &name);

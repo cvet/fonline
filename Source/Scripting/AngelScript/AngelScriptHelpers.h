@@ -97,6 +97,7 @@ auto MakeScriptArgName(const ComplexTypeDesc& type) -> string;
 auto MakeScriptArgsName(const_span<ArgDesc> args) -> string;
 auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership = false) -> string;
 auto MakeScriptPropertyName(const Property* prop) -> string;
+auto NormalizeScriptPropertyDecl(string_view decl) -> string;
 auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*;
 auto CreateScriptDict(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptDict*;
 auto CalcConstructAddrSpace(const Property* prop) -> size_t;

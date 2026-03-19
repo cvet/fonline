@@ -345,7 +345,9 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
         FO_RUNTIME_ASSERT(casted_proto);
-        new (gen->GetAddressOfReturnLocation()) Entity*(const_cast<ProtoCustomEntity*>(casted_proto));
+        auto* mutable_proto = const_cast<ProtoCustomEntity*>(casted_proto);
+        auto* entity = static_cast<Entity*>(mutable_proto);
+        new (gen->GetAddressOfReturnLocation()) Entity*(entity);
     }
     else {
         new (gen->GetAddressOfReturnLocation()) Entity*(nullptr);
@@ -362,7 +364,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
 
     auto* as_engine = gen->GetEngine();
-    auto* result = CreateScriptArray(as_engine, strex("{}[]", entity_type).c_str());
+    auto* result = CreateScriptArray(as_engine, strex("Proto{}[]", entity_type).c_str());
     result->Reserve(numeric_cast<int32>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {
@@ -578,7 +580,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     if (func->GetReturnTypeId() == AngelScript::asTYPEID_VOID) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
-    if (MakeScriptPropertyName(prop) != strex(as_engine->GetTypeDeclaration(func->GetReturnTypeId())).replace("[]@", "[]").str()) {
+    if (MakeScriptPropertyName(prop) != NormalizeScriptPropertyDecl(as_engine->GetTypeDeclaration(func->GetReturnTypeId()))) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
@@ -665,7 +667,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
     if (func->GetParamCount() > 1) {
         FO_AS_VERIFY(func->GetParam(1, &type_id, &flags));
 
-        if (MakeScriptPropertyName(prop) == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == AngelScript::asTM_INOUTREF) {
+        if (MakeScriptPropertyName(prop) == NormalizeScriptPropertyDecl(as_engine->GetTypeDeclaration(type_id)) && flags == AngelScript::asTM_INOUTREF) {
             has_value_ref = true;
             if (func->GetParamCount() == 3) {
                 throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
@@ -681,7 +683,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         if (func->GetParamCount() == 3) {
             FO_AS_VERIFY(func->GetParam(2, &type_id, &flags));
 
-            if (MakeScriptPropertyName(prop) == strex(as_engine->GetTypeDeclaration(type_id)).replace("[]@", "[]").str() && flags == AngelScript::asTM_INOUTREF) {
+            if (MakeScriptPropertyName(prop) == NormalizeScriptPropertyDecl(as_engine->GetTypeDeclaration(type_id)) && flags == AngelScript::asTM_INOUTREF) {
                 has_value_ref = true;
             }
             else {
@@ -982,7 +984,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
         if (!desc.Exported) {
             FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@+ Get{}(hstring pid)", sub_name, sub_name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntity), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}s()", sub_name, sub_name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntities), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("array<{}@>@ Get{}s()", sub_name, sub_name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntities), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
         }
     };
 
@@ -1033,7 +1035,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             if (backend->HasEntityMngr() && !desc.Exported) {
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@+ Get{}(ident id)", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetEntity), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy({}@+ {})", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyOne), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy({}@[]@+ {}s)", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void Destroy(array<{}@>@+ {}s)", name, name, strex(name).lower()).c_str(), FO_SCRIPT_GENERIC(Game_DestroyAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
             }
 
             if (desc.HasAbstract) {
@@ -1231,7 +1233,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             }
 
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("bool Has{}s() const", entry_name).c_str(), FO_SCRIPT_GENERIC(CustomEntity_HasAny), FO_SCRIPT_GENERIC_CONV, cast_to_void(&entry_name)));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@[]@ Get{}s()", entry_type, entry_name).c_str(), FO_SCRIPT_GENERIC(CustomEntity_GetAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(&entry_name)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("array<{}@>@ Get{}s()", entry_type, entry_name).c_str(), FO_SCRIPT_GENERIC(CustomEntity_GetAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(&entry_name)));
 
             if (type_name.as_str() != "Game") {
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@+ Get{}(ident id)", entry_type, entry_name).c_str(), FO_SCRIPT_GENERIC(CustomEntity_GetOne), FO_SCRIPT_GENERIC_CONV, cast_to_void(&entry_name)));

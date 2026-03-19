@@ -439,7 +439,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
             }
 
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }

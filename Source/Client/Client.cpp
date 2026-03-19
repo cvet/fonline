@@ -201,14 +201,18 @@ void ClientEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    TimeEventMngr.ClearTimeEvents();
-    ShutdownBackends();
+    OnFinish.Fire();
 
-    App->Render.SetRenderTarget(nullptr);
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
+    TimeEventMngr.ClearTimeEvents();
 
     _conn.SetConnectHandler(nullptr);
     _conn.SetDisconnectHandler(nullptr);
     _conn.Disconnect();
+
+    App->Render.SetRenderTarget(nullptr);
 
     _chosen = nullptr;
 
@@ -234,6 +238,8 @@ void ClientEngine::Shutdown()
     _globalMapCritters.clear();
 
     DestroyInnerEntities();
+
+    ShutdownBackends();
 
     FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }

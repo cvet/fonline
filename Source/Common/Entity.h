@@ -207,6 +207,8 @@ public:
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAllEvent(string_view event_name) noexcept;
+    void UnsubscribeAllEvents() noexcept;
+    void ClearAllTimeEvents() noexcept;
     auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool;
     void AddInnerEntity(hstring entry, Entity* entity);
     void RemoveInnerEntity(hstring entry, Entity* entity);

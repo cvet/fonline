@@ -328,7 +328,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             }
         }
         else {
-            throw ScriptCoreException("Remote call function not found", func_decl);
+            throw ScriptCallException("Remote call function not found", func_decl);
         }
     }
 }

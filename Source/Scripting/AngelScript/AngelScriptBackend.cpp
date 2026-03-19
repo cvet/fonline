@@ -96,14 +96,20 @@ AngelScriptBackend::~AngelScriptBackend()
         cb();
     }
 
+    _contextMngr.reset();
+
     _meta.reset();
     _scriptSys.reset();
     _engine.reset();
     _entityMngr.reset();
 
     if (_asEngine) {
-        _asEngine->SetUserData(nullptr);
-        _asEngine->ShutDownAndRelease();
+        const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
+        FO_STRONG_ASSERT(as_engine_ref_count == 0);
+    }
+
+    for (const auto& cb : _postCleanupCallbacks) {
+        cb();
     }
 }
 
@@ -157,7 +163,10 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_REQUIRE_ENUM_SCOPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_PROPERTY_ACCESSOR_MODE, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_INIT_GLOBAL_VARS_AFTER_BUILD, true));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2));
 
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, false));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false));
@@ -215,29 +224,37 @@ public:
         FO_STACK_TRACE_ENTRY();
     }
 
-    void Write(const void* ptr, AngelScript::asUINT size) override
+    auto Write(const void* ptr, AngelScript::asUINT size) -> int override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
         if (ptr == nullptr || size == 0) {
-            return;
+            return 0;
         }
 
         _binBuf.resize(_binBuf.size() + size);
         MemCopy(&_binBuf[_writePos], ptr, size);
         _writePos += size;
+
+        return 0;
     }
 
-    void Read(void* ptr, AngelScript::asUINT size) override
+    auto Read(void* ptr, AngelScript::asUINT size) -> int override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
         if (ptr == nullptr || size == 0) {
-            return;
+            return 0;
+        }
+
+        if (_readPos + size > _binBuf.size()) {
+            return -1;
         }
 
         MemCopy(ptr, &_binBuf[_readPos], size);
         _readPos += size;
+
+        return 0;
     }
 
     auto GetBuf() const -> vector<AngelScript::asBYTE>&
@@ -565,6 +582,13 @@ void AngelScriptBackend::AddCleanupCallback(function<void()> callback)
     FO_STACK_TRACE_ENTRY();
 
     _cleanupCallbacks.emplace_back(std::move(callback));
+}
+
+void AngelScriptBackend::AddPostCleanupCallback(function<void()> callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _postCleanupCallbacks.emplace_back(std::move(callback));
 }
 
 FO_END_NAMESPACE

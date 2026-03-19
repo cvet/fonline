@@ -269,7 +269,7 @@ void CContextMgr::AbortAll()
 
 asIScriptContext *CContextMgr::AddContext(asIScriptEngine *engine, asIScriptFunction *func, bool keepCtxAfterExec)
 {
-	// Use RequestContext instead of CreateContext so we can take 
+	// Use RequestContext instead of CreateContext so we can take
 	// advantage of possible context pooling configured with the engine
 	asIScriptContext *ctx = engine->RequestContext();
 	if( ctx == 0 )
@@ -377,7 +377,7 @@ void CContextMgr::RegisterThreadSupport(asIScriptEngine *engine)
 
 void CContextMgr::RegisterCoRoutineSupport(asIScriptEngine *engine)
 {
-	int r; 
+	int r;
 
 	// The dictionary add-on must have been registered already
 	assert( engine->GetTypeInfoByDecl("dictionary") );
@@ -389,7 +389,7 @@ void CContextMgr::RegisterCoRoutineSupport(asIScriptEngine *engine)
 #else
 	r = engine->RegisterGlobalFunction("void yield()", asFUNCTION(ScriptYield_generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterFuncdef("void coroutine(dictionary@)");
-	r = engine->RegisterGlobalFunction("void createCoRoutine(coroutine @, dictionary @)", asFUNCTION(ScriptCreateCoRoutine_generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction("void createCoRoutine(coroutine @+, dictionary @+)", asFUNCTION(ScriptCreateCoRoutine_generic), asCALL_GENERIC); assert( r >= 0 );
 #endif
 }
 
