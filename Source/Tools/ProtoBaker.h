@@ -64,7 +64,7 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    auto BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>;
+    auto BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>;
 };
 
 FO_END_NAMESPACE

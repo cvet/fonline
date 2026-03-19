@@ -33,6 +33,8 @@
 
 #include "PropertiesSerializator.h"
 
+#include "EntityProtos.h"
+
 FO_BEGIN_NAMESPACE
 
 auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
@@ -150,7 +152,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         pdata += str_len;
         return string(pstr, str_len);
     }
-    else if (base_type.IsHashedString) {
+    else if (base_type.IsHashedString || base_type.IsFixedType) {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
         pdata += sizeof(hstring::hash_t);
         return hash_resolver.ResolveHash(hash).as_str();
@@ -462,7 +464,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
             }
         }
         else {
-            throw PropertySerializationException("Uncable to convert value to number", str);
+            throw PropertySerializationException("Unable to convert value to number", str);
         }
     }
     else {
@@ -470,15 +472,34 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     }
 }
 
-static void ConvertFixedValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
+static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (base_type.IsHashedString) {
+    if (base_type.IsHashedString || base_type.IsFixedType) {
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
-            hash = hash_resolver.ToHashedString(value.AsString()).as_hash();
+            auto resolved_value = hash_resolver.ToHashedString(value.AsString());
+
+            if (base_type.IsFixedType) {
+                const auto* proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
+
+                if (proto != nullptr) {
+                    resolved_value = proto->GetProtoId();
+                }
+
+                if (!resolved_value) {
+                    if (!prop->IsMaybeNull()) {
+                        throw PropertySerializationException("FixedType property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+                    }
+                }
+                else if (proto == nullptr) {
+                    throw PropertySerializationException("FixedType proto does not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                }
+            }
+
+            hash = resolved_value.as_hash();
         }
         else {
             throw PropertySerializationException("Wrong hash value type");
@@ -565,7 +586,7 @@ static void ConvertFixedValue(const BaseTypeDesc& base_type, HashResolver& hash_
             for (size_t i = 0; i < struct_layout.Fields.size(); i++) {
                 const auto& field = struct_layout.Fields[i];
                 const auto& field_value = struct_value[i];
-                ConvertFixedValue(field.Type, hash_resolver, name_resolver, field_value, pdata);
+                ConvertFixedValue(prop, field.Type, hash_resolver, name_resolver, field_value, pdata);
             }
         }
         else if (value.Type() == AnyData::ValueType::String) {
@@ -579,7 +600,7 @@ static void ConvertFixedValue(const BaseTypeDesc& base_type, HashResolver& hash_
             for (size_t i = 0; i < struct_layout.Fields.size(); i++) {
                 const auto& field = struct_layout.Fields[i];
                 const auto& field_value = struct_value[i];
-                ConvertFixedValue(field.Type, hash_resolver, name_resolver, field_value, pdata);
+                ConvertFixedValue(prop, field.Type, hash_resolver, name_resolver, field_value, pdata);
             }
         }
         else {
@@ -607,7 +628,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             struct_data.Alloc(base_type.Size);
             auto* pdata = struct_data.GetPtrAs<uint8>();
 
-            ConvertFixedValue(base_type, hash_resolver, name_resolver, value, pdata);
+            ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, value, pdata);
 
             set_data({struct_data.GetPtrAs<uint8>(), base_type.Size});
         }
@@ -615,7 +636,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             uint8 primitive_data[sizeof(size_t)];
             auto* pdata = primitive_data;
 
-            ConvertFixedValue(base_type, hash_resolver, name_resolver, value, pdata);
+            ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, value, pdata);
 
             set_data({primitive_data, base_type.Size});
         }
@@ -671,7 +692,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             auto* pdata = data.get();
 
             for (const auto& arr_entry : arr) {
-                ConvertFixedValue(base_type, hash_resolver, name_resolver, arr_entry, pdata);
+                ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, arr_entry, pdata);
             }
 
             FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
@@ -816,7 +837,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
                 else {
                     for (const auto& arr_entry : arr) {
-                        ConvertFixedValue(base_type, hash_resolver, name_resolver, arr_entry, pdata);
+                        ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, arr_entry, pdata);
                     }
                 }
             }
@@ -828,7 +849,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += str.length();
             }
             else {
-                ConvertFixedValue(base_type, hash_resolver, name_resolver, dict_value, pdata);
+                ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, dict_value, pdata);
             }
         }
 

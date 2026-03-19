@@ -116,6 +116,14 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
         meta->RegisterEntityType(name, false, is_global, has_protos, has_statics, has_abstract);
     }
 
+    // Fixed types
+    for (const auto& tokens : engine_data["FixedType"]) {
+        FO_RUNTIME_ASSERT(!tokens.empty());
+        const auto name = tokens[0];
+
+        meta->RegisterFixedType(name, false);
+    }
+
     // Entity holders
     for (const auto& tokens : engine_data["EntityHolder"]) {
         FO_RUNTIME_ASSERT(tokens.size() >= 4);

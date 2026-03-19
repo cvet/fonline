@@ -1436,6 +1436,11 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
     WriteLog(LogType::Info, "Create critter {}", pid);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Critter proto not found", pid);
+    }
+
     auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto);
 
     EntityMngr.RegisterCritter(cr.get());
@@ -3114,6 +3119,10 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
 
     const auto add_item = [&]() -> Item* {
         auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);

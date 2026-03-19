@@ -795,6 +795,8 @@ void ClientEngine::Net_OnAddCritter()
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
+        FO_RUNTIME_ASSERT(proto);
+
         const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
 
         if (it != _globalMapCritters.end()) {
@@ -828,6 +830,8 @@ void ClientEngine::Net_OnAddCritter()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
@@ -1043,6 +1047,8 @@ void ClientEngine::Net_OnCritterAction()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
@@ -1085,6 +1091,8 @@ void ClientEngine::Net_OnCritterMoveItem()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
 
@@ -1132,6 +1140,8 @@ void ClientEngine::Net_OnCritterMoveItem()
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
             const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+            FO_RUNTIME_ASSERT(proto);
+
             auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
@@ -1311,6 +1321,8 @@ void ClientEngine::Net_OnChosenAddItem()
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+    FO_RUNTIME_ASSERT(proto);
+
     auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
@@ -1593,10 +1605,13 @@ void ClientEngine::Net_OnLoadMap()
 
     if (map_pid) {
         const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
+        FO_RUNTIME_ASSERT(loc_proto);
+        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
+        FO_RUNTIME_ASSERT(map_proto);
+
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
         _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto);
         _curMap->RestoreData(_tempPropertiesData);
         _curMap->LoadStaticData();
@@ -1630,6 +1645,8 @@ void ClientEngine::Net_OnSomeItems()
         FO_RUNTIME_ASSERT(item_id);
 
         const auto* proto = ProtoMngr.GetProtoItem(pid);
+        FO_RUNTIME_ASSERT(proto);
+
         auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
@@ -1694,6 +1711,7 @@ void ClientEngine::Net_OnAddCustomEntity()
     }
 
     auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
+    FO_RUNTIME_ASSERT(entity);
 
     OnCustomEntityIn.Fire(entity);
 }
@@ -1761,6 +1779,7 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
 
             if (holder != nullptr) {
                 auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
+                FO_RUNTIME_ASSERT(entity);
 
                 ReceiveCustomEntities(entity);
             }
@@ -1812,9 +1831,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
     }
 
     entity->SetCustomHolderEntry(entry);
-
     holder->AddInnerEntity(entry, entity.get());
-
     return entity.get();
 }
 

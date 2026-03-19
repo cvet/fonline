@@ -40,6 +40,7 @@
 #include "AngelScriptCall.h"
 #include "AngelScriptDict.h"
 #include "EngineBase.h"
+#include "EntityProtos.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -372,7 +373,10 @@ auto CalcConstructAddrSpace(const Property* prop) -> size_t
     FO_STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
+        if (prop->IsBaseTypeFixedType()) {
+            return sizeof(Entity*);
+        }
+        else if (prop->IsBaseTypeHash()) {
             return sizeof(hstring);
         }
         else if (prop->IsBaseTypeEnum()) {
@@ -431,9 +435,29 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *cast_from_void<const hstring::hash_t*>(hptr);
-        const auto* hash_resolver = prop->GetRegistrator()->GetHashResolver();
-        return hash_resolver->ResolveHash(hash);
+        return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
+
+    const auto resolve_fixed_type = [prop, as_engine, &resolve_hash](const void* hptr) -> Entity* {
+        const auto pid = resolve_hash(hptr);
+
+        if (!pid) {
+            return nullptr;
+        }
+
+        const auto* engine = GetGameEngine(as_engine);
+        const auto type_name = engine->Hashes.ToHashedString(prop->GetBaseTypeName());
+        const auto* proto = engine->ProtoMngr.GetProtoEntity(type_name, pid);
+
+        if (proto == nullptr) {
+            throw ScriptException("Unable to resolve proto", prop->GetName(), pid);
+        }
+
+        const auto* custom_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
+        FO_RUNTIME_ASSERT(custom_proto);
+        return const_cast<ProtoCustomEntity*>(custom_proto);
+    };
+
     const auto resolve_enum = [](const void* eptr, size_t elen) -> int32 {
         int32 result = 0;
         MemCopy(&result, eptr, elen);
@@ -444,7 +468,11 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
     const auto data_size = prop_data.GetSize();
 
     if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
+        if (prop->IsBaseTypeFixedType()) {
+            FO_RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            new (construct_addr) Entity*(resolve_fixed_type(data));
+        }
+        else if (prop->IsBaseTypeHash()) {
             FO_RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
             new (construct_addr) hstring(resolve_hash(data));
         }
@@ -489,6 +517,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     arr->SetValue(numeric_cast<int32>(i), cast_to_void(&str));
 
                     data += str_size;
+                }
+            }
+        }
+        else if (prop->IsBaseTypeFixedType()) {
+            if (data_size != 0) {
+                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32>(arr_size));
+
+                for (uint32 i = 0; i < arr_size; i++) {
+                    auto* fixed_type = resolve_fixed_type(data);
+                    arr->SetValue(numeric_cast<int32>(i), cast_to_void(&fixed_type));
+
+                    data += sizeof(hstring::hash_t);
                 }
             }
         }
@@ -583,6 +624,16 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                                 string str(reinterpret_cast<const char*>(data), str_size);
                                 arr->SetValue(numeric_cast<int32>(i), cast_to_void(&str));
                                 data += str_size;
+                            }
+                        }
+                        else if (prop->IsBaseTypeFixedType()) {
+                            arr->Resize(numeric_cast<int32>(arr_size));
+
+                            for (uint32 i = 0; i < arr_size; i++) {
+                                auto* fixed_type = resolve_fixed_type(data);
+                                arr->SetValue(numeric_cast<int32>(i), cast_to_void(&fixed_type));
+
+                                data += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
@@ -707,7 +758,11 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         const uint32 key_len = *reinterpret_cast<const uint32*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
 
-                        if (prop->IsBaseTypeHash()) {
+                        if (prop->IsBaseTypeFixedType()) {
+                            auto* fixed_type = resolve_fixed_type(data);
+                            dict->Set(cast_to_void(&key_str), cast_to_void(&fixed_type));
+                        }
+                        else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
                             dict->Set(cast_to_void(&key_str), cast_to_void(&hvalue));
                         }
@@ -718,7 +773,11 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
 
-                        if (prop->IsBaseTypeHash()) {
+                        if (prop->IsBaseTypeFixedType()) {
+                            auto* fixed_type = resolve_fixed_type(data);
+                            dict->Set(cast_to_void(&hkey), cast_to_void(&fixed_type));
+                        }
+                        else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
                             dict->Set(cast_to_void(&hkey), cast_to_void(&hvalue));
                         }
@@ -729,7 +788,11 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeyTypeSize());
 
-                        if (prop->IsBaseTypeHash()) {
+                        if (prop->IsBaseTypeFixedType()) {
+                            auto* fixed_type = resolve_fixed_type(data);
+                            dict->Set(cast_to_void(&ekey), cast_to_void(&fixed_type));
+                        }
+                        else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
                             dict->Set(cast_to_void(&ekey), cast_to_void(&hvalue));
                         }
@@ -738,7 +801,11 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         }
                     }
                     else {
-                        if (prop->IsBaseTypeHash()) {
+                        if (prop->IsBaseTypeFixedType()) {
+                            auto* fixed_type = resolve_fixed_type(data);
+                            dict->Set(cast_to_void(key), cast_to_void(&fixed_type));
+                        }
+                        else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = resolve_hash(data);
                             dict->Set(cast_to_void(key), cast_to_void(&hvalue));
                         }
@@ -766,7 +833,21 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
     PropertyRawData prop_data;
 
     if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
+        if (prop->IsBaseTypeFixedType()) {
+            const auto* entity = *cast_from_void<Entity**>(as_obj);
+            const auto* entity_with_proto = entity != nullptr ? dynamic_cast<const EntityWithProto*>(entity) : nullptr;
+
+            if (entity != nullptr) {
+                FO_RUNTIME_ASSERT(entity_with_proto);
+                const auto expected_type = prop->GetRegistrator()->GetHashResolver()->ToHashedString(prop->GetBaseTypeName());
+                FO_RUNTIME_ASSERT(entity->GetTypeName() == expected_type);
+            }
+
+            const auto pid = entity_with_proto != nullptr ? entity_with_proto->GetProtoId().as_hash() : hstring::hash_t {};
+            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(pid));
+            prop_data.SetAs<hstring::hash_t>(pid);
+        }
+        else if (prop->IsBaseTypeHash()) {
             const auto hash = cast_from_void<const hstring*>(as_obj)->as_hash();
             FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
@@ -819,7 +900,25 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
             const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
             if (data_size != 0) {
-                if (prop->IsBaseTypeHash()) {
+                if (prop->IsBaseTypeFixedType()) {
+                    auto* buf = prop_data.Alloc(data_size);
+
+                    for (uint32 i = 0; i < arr_size; i++) {
+                        const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32>(i)));
+                        const auto* entity_with_proto = entity != nullptr ? dynamic_cast<const EntityWithProto*>(entity) : nullptr;
+
+                        if (entity != nullptr) {
+                            FO_RUNTIME_ASSERT(entity_with_proto);
+                            const auto expected_type = prop->GetRegistrator()->GetHashResolver()->ToHashedString(prop->GetBaseTypeName());
+                            FO_RUNTIME_ASSERT(entity->GetTypeName() == expected_type);
+                        }
+
+                        const auto pid = entity_with_proto != nullptr ? entity_with_proto->GetProtoId().as_hash() : hstring::hash_t {};
+                        MemCopy(buf, &pid, sizeof(hstring::hash_t));
+                        buf += prop->GetBaseSize();
+                    }
+                }
+                else if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
                     for (uint32 i = 0; i < arr_size; i++) {
@@ -938,6 +1037,22 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                                     MemCopy(buf, str.c_str(), str_size);
                                     buf += str_size;
                                 }
+                            }
+                        }
+                        else if (prop->IsBaseTypeFixedType()) {
+                            for (uint32 i = 0; i < arr_size; i++) {
+                                const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32>(i)));
+                                const auto* entity_with_proto = entity != nullptr ? dynamic_cast<const EntityWithProto*>(entity) : nullptr;
+
+                                if (entity != nullptr) {
+                                    FO_RUNTIME_ASSERT(entity_with_proto);
+                                    const auto expected_type = prop->GetRegistrator()->GetHashResolver()->ToHashedString(prop->GetBaseTypeName());
+                                    FO_RUNTIME_ASSERT(entity->GetTypeName() == expected_type);
+                                }
+
+                                const auto pid = entity_with_proto != nullptr ? entity_with_proto->GetProtoId().as_hash() : hstring::hash_t {};
+                                MemCopy(buf, &pid, sizeof(hstring::hash_t));
+                                buf += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
@@ -1064,7 +1179,20 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     MemCopy(buf, key_str.c_str(), key_len);
                     buf += key_len;
 
-                    if (prop->IsBaseTypeHash()) {
+                    if (prop->IsBaseTypeFixedType()) {
+                        const auto* entity = *cast_from_void<Entity**>(value);
+                        const auto* entity_with_proto = entity != nullptr ? dynamic_cast<const EntityWithProto*>(entity) : nullptr;
+
+                        if (entity != nullptr) {
+                            FO_RUNTIME_ASSERT(entity_with_proto);
+                            const auto expected_type = prop->GetRegistrator()->GetHashResolver()->ToHashedString(prop->GetBaseTypeName());
+                            FO_RUNTIME_ASSERT(entity->GetTypeName() == expected_type);
+                        }
+
+                        const auto pid = entity_with_proto != nullptr ? entity_with_proto->GetProtoId().as_hash() : hstring::hash_t {};
+                        MemCopy(buf, &pid, value_element_size);
+                    }
+                    else if (prop->IsBaseTypeHash()) {
                         const auto hash = cast_from_void<const hstring*>(value)->as_hash();
                         MemCopy(buf, &hash, value_element_size);
                     }
@@ -1100,7 +1228,20 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 
                     buf += key_element_size;
 
-                    if (prop->IsBaseTypeHash()) {
+                    if (prop->IsBaseTypeFixedType()) {
+                        const auto* entity = *cast_from_void<Entity**>(value);
+                        const auto* entity_with_proto = entity != nullptr ? dynamic_cast<const EntityWithProto*>(entity) : nullptr;
+
+                        if (entity != nullptr) {
+                            FO_RUNTIME_ASSERT(entity_with_proto);
+                            const auto expected_type = prop->GetRegistrator()->GetHashResolver()->ToHashedString(prop->GetBaseTypeName());
+                            FO_RUNTIME_ASSERT(entity->GetTypeName() == expected_type);
+                        }
+
+                        const auto pid = entity_with_proto != nullptr ? entity_with_proto->GetProtoId().as_hash() : hstring::hash_t {};
+                        MemCopy(buf, &pid, value_element_size);
+                    }
+                    else if (prop->IsBaseTypeHash()) {
                         const auto hash = cast_from_void<const hstring*>(value)->as_hash();
                         MemCopy(buf, &hash, value_element_size);
                     }

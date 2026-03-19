@@ -300,7 +300,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
         vector<raw_ptr<const ProtoItem>> protos;
 
         for (const auto item_pid : itemPids) {
-            const auto* proto = mapper->ProtoMngr.GetProtoItemSafe(item_pid);
+            const auto* proto = mapper->ProtoMngr.GetProtoItem(item_pid);
 
             if (proto != nullptr) {
                 protos.emplace_back(proto);
