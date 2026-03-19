@@ -140,15 +140,15 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
-        if (Settings.DisableNetworking) {
-            WriteLog("Skip networking startup");
-            return std::nullopt;
-        }
-
         WriteLog("Start networking");
 
         if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
+        }
+
+        if (Settings.DisableNetworking) {
+            WriteLog("Skip remote networking startup");
+            return std::nullopt;
         }
 
 #if FO_HAVE_ASIO

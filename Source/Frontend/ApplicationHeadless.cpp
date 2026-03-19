@@ -35,8 +35,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32 MAX_ATLAS_WIDTH_ = 1024;
-static constexpr int32 MAX_ATLAS_HEIGHT_ = 1024;
+static unique_ptr<Null_Renderer> HeadlessRenderer {};
+static raw_ptr<RenderTexture> HeadlessRenderTarget {};
+static vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
+
+static constexpr int32 MAX_ATLAS_WIDTH_ = 2048;
+static constexpr int32 MAX_ATLAS_HEIGHT_ = 2048;
 static constexpr int32 MAX_BONES_ = 32;
 const int32& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
 const int32& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
@@ -59,8 +63,11 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_imguiDrawBuf);
     ignore_unused(_imguiEffect);
     ignore_unused(_nonConstHelper);
-    ignore_unused(MainWindow._windowHandle);
     ignore_unused(MainWindow._grabbed);
+
+    HeadlessRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
+    HeadlessRenderer->Init(Settings, nullptr);
+    MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
 }
 
 void Application::OpenLink(string_view link)
@@ -98,9 +105,13 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(size);
+    auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+    handle->Size = size;
 
-    return nullptr;
+    auto* ptr = handle.get();
+    HeadlessWindowStubs.emplace_back(std::move(handle));
+
+    return reinterpret_cast<WindowInternalHandle*>(ptr);
 }
 
 #if FO_IOS
@@ -158,10 +169,7 @@ auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto width = 1000;
-    constexpr auto height = 1000;
-
-    return {width, height};
+    return ResolveWindowStub()->Size;
 }
 
 void AppWindow::SetSize(isize32 size)
@@ -170,14 +178,15 @@ void AppWindow::SetSize(isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(size);
+    ResolveWindowStub()->Size = size;
+    _onWindowSizeChangedDispatcher();
 }
 
 auto AppWindow::GetScreenSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {1000, 1000};
+    return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -186,17 +195,19 @@ void AppWindow::SetScreenSize(isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(size);
+    if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
+        App->Settings.ScreenWidth = size.width;
+        App->Settings.ScreenHeight = size.height;
+
+        _onScreenSizeChangedDispatcher();
+    }
 }
 
 auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto x = 0;
-    constexpr auto y = 0;
-
-    return {x, y};
+    return ResolveWindowStub()->Position;
 }
 
 void AppWindow::SetPosition(ipos32 pos)
@@ -205,7 +216,7 @@ void AppWindow::SetPosition(ipos32 pos)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(pos);
+    ResolveWindowStub()->Position = pos;
 }
 
 auto AppWindow::IsFocused() const -> bool
@@ -220,13 +231,15 @@ void AppWindow::Minimize()
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    ResolveWindowStub()->Minimized = true;
 }
 
 auto AppWindow::IsFullscreen() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return false;
+    return ResolveWindowStub()->Fullscreen;
 }
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
@@ -235,9 +248,11 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(enable);
+    auto* window = ResolveWindowStub();
+    const bool changed = window->Fullscreen != enable;
+    window->Fullscreen = enable;
 
-    return false;
+    return changed;
 }
 
 void AppWindow::Blink()
@@ -253,7 +268,7 @@ void AppWindow::AlwaysOnTop(bool enable)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(enable);
+    ResolveWindowStub()->AlwaysOnTop = enable;
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -270,6 +285,27 @@ void AppWindow::Destroy()
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_windowHandle && this != &App->MainWindow) {
+        std::erase_if(HeadlessWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
+        _windowHandle = nullptr;
+    }
+}
+
+auto AppWindow::ResolveWindowHandle() const -> WindowInternalHandle*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_windowHandle);
+
+    return _windowHandle.get_no_const();
+}
+
+auto AppWindow::ResolveWindowStub() const -> HeadlessWindowStub*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return static_cast<HeadlessWindowStub*>(ResolveWindowHandle());
 }
 
 auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
@@ -278,11 +314,7 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(size);
-    ignore_unused(linear_filtered);
-    ignore_unused(with_depth);
-
-    return nullptr;
+    return HeadlessRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
@@ -291,7 +323,8 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(tex);
+    HeadlessRenderTarget = tex;
+    HeadlessRenderer->SetRenderTarget(tex);
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
@@ -300,7 +333,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return nullptr;
+    return HeadlessRenderTarget.get();
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -309,9 +342,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(color);
-    ignore_unused(depth);
-    ignore_unused(stencil);
+    HeadlessRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(irect32 rect)
@@ -320,7 +351,7 @@ void AppRender::EnableScissor(irect32 rect)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(rect);
+    HeadlessRenderer->EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
@@ -328,6 +359,8 @@ void AppRender::DisableScissor()
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    HeadlessRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
@@ -336,9 +369,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(is_static);
-
-    return nullptr;
+    return HeadlessRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
@@ -347,11 +378,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(usage);
-    ignore_unused(name);
-    ignore_unused(file_loader);
-
-    return nullptr;
+    return HeadlessRenderer->CreateEffect(usage, name, file_loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
@@ -360,14 +387,7 @@ auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, f
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(left);
-    ignore_unused(right);
-    ignore_unused(bottom);
-    ignore_unused(top);
-    ignore_unused(nearp);
-    ignore_unused(farp);
-
-    return {};
+    return HeadlessRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
@@ -376,7 +396,7 @@ auto AppRender::IsRenderTargetFlipped() -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    return false;
+    return HeadlessRenderer->IsRenderTargetFlipped();
 }
 
 auto AppInput::GetMousePosition() const -> ipos32

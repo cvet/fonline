@@ -362,9 +362,10 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto entity_type = engine->Hashes.ToHashedString(entity_name);
     const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+    const bool is_fixed_type = engine->IsFixedType(entity_type);
 
     auto* as_engine = gen->GetEngine();
-    auto* result = CreateScriptArray(as_engine, strex("Proto{}[]", entity_type).c_str());
+    auto* result = CreateScriptArray(as_engine, strex(is_fixed_type ? "array<{}>" : "array<Proto{}>", entity_type).c_str());
     result->Reserve(numeric_cast<int32>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {
@@ -401,7 +402,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
 
     auto* as_engine = gen->GetEngine();
-    auto* result = CreateScriptArray(as_engine, strex("{}[]", entity_type).c_str());
+    auto* result = CreateScriptArray(as_engine, strex("array<{}>", entity_type).c_str());
 
     for (const auto& proto : protos | std::views::values) {
         if (proto->GetValueAsAny(prop) == prop_value) {
@@ -533,7 +534,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
             result_entities.emplace_back(entity.get());
         }
 
-        auto* arr = CreateScriptArray(as_engine, strex("{}[]", holder_entry.TargetType).c_str());
+        auto* arr = CreateScriptArray(as_engine, strex("array<{}>", holder_entry.TargetType).c_str());
         arr->Reserve(numeric_cast<int32>(result_entities.size()));
 
         for (auto* result_entity : result_entities) {
@@ -543,7 +544,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
         new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
     }
     else {
-        auto* arr = CreateScriptArray(as_engine, strex("{}[]", holder_entry.TargetType).c_str());
+        auto* arr = CreateScriptArray(as_engine, strex("array<{}>", holder_entry.TargetType).c_str());
         new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
     }
 }
@@ -995,9 +996,9 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "hstring get_ProtoId() const", FO_SCRIPT_FUNC_THIS(Entity_ProtoId), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@+ Get{}(hstring pid)", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntity), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}s()", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntities), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{}@[]@ Get{}s({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("array<{}@>@ Get{}s()", name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntities), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("array<{}@>@ Get{}({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("array<{}@>@ Get{}s({}Property property, any propertyValue)", name, name, name).c_str(), FO_SCRIPT_GENERIC(Game_GetProtoCustomEntitiesByProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
     };
 
     const auto register_entity_statics = [&](const char* name, const EntityTypeDesc& desc) {

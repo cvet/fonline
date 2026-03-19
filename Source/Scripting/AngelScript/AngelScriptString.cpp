@@ -721,7 +721,7 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     const auto* ctx = AngelScript::asGetActiveContext();
     FO_RUNTIME_ASSERT(ctx);
     auto* as_engine = ctx->GetEngine();
-    auto* array = CreateScriptArray(as_engine, "string[]");
+    auto* array = CreateScriptArray(as_engine, "array<string>");
 
     size_t pos = 0;
     size_t prev = 0;

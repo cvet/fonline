@@ -610,7 +610,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
-                    auto* arr = CreateScriptArray(as_engine, strex("{}[]", prop->GetBaseTypeName()).c_str());
+                    auto* arr = CreateScriptArray(as_engine, strex("array<{}>", prop->GetBaseTypeName()).c_str());
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
