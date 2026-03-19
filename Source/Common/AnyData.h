@@ -37,6 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(AnyDataException);
+
 class AnyData final
 {
 public:

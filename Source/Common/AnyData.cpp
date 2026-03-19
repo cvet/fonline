@@ -35,6 +35,47 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType value_type) -> AnyData::Value
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto value_str = string(raw_value);
+    auto value = strvex(raw_value);
+    value.trim();
+
+    switch (value_type) {
+    case AnyData::ValueType::Int64:
+        if (!value.is_number()) {
+            throw AnyDataException("Invalid int64 value", value_str);
+        }
+        return value.to_int64();
+    case AnyData::ValueType::Float64:
+        if (!value.is_number()) {
+            throw AnyDataException("Invalid float64 value", value_str);
+        }
+        return value.to_float64();
+    case AnyData::ValueType::Bool:
+        if (!value.is_explicit_bool() && !value.is_number()) {
+            throw AnyDataException("Invalid bool value", value_str);
+        }
+
+        if (value.is_number()) {
+            const auto int_value = value.to_int64();
+            const auto float_value = value.to_float64();
+
+            if (!is_float_equal(float_value, static_cast<float64>(int_value)) || (int_value != 0 && int_value != 1)) {
+                throw AnyDataException("Invalid bool numeric value", value_str);
+            }
+        }
+
+        return value.to_bool();
+    case AnyData::ValueType::String:
+        return StringEscaping::DecodeString(raw_value);
+    default:
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
 auto AnyData::Value::operator==(const Value& other) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -210,7 +251,15 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         string dict_key_entry;
         string dict_value_entry;
 
-        while ((s = ReadToken(s, dict_key_entry)) != nullptr && (s = ReadToken(s, dict_value_entry)) != nullptr) {
+        while ((s = ReadToken(s, dict_key_entry)) != nullptr) {
+            s = ReadToken(s, dict_value_entry);
+
+            if (s == nullptr) {
+                throw AnyDataException("Invalid dict value, missing entry for key", dict_key_entry);
+            }
+
+            auto dict_key = StringEscaping::DecodeString(dict_key_entry);
+
             if (as_array) {
                 Array dict_arr;
 
@@ -219,42 +268,22 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 string arr_entry;
 
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
-                    switch (value_type) {
-                    case ValueType::Int64:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_int64());
-                        break;
-                    case ValueType::Float64:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_float64());
-                        break;
-                    case ValueType::Bool:
-                        dict_arr.EmplaceBack(strex("{}", arr_entry).to_bool());
-                        break;
-                    case ValueType::String:
-                        dict_arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
-                        break;
-                    default:
-                        FO_UNREACHABLE_PLACE();
-                    }
+                    dict_arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
                 }
 
-                dict.Emplace(dict_key_entry, std::move(dict_arr));
+                if (!dict.Contains(dict_key)) {
+                    dict.Emplace(std::move(dict_key), std::move(dict_arr));
+                }
+                else {
+                    throw AnyDataException("Invalid dict value, duplicate key", dict_key_entry);
+                }
             }
             else {
-                switch (value_type) {
-                case ValueType::Int64:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_int64());
-                    break;
-                case ValueType::Float64:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_float64());
-                    break;
-                case ValueType::Bool:
-                    dict.Emplace(dict_key_entry, strex("{}", dict_value_entry).to_bool());
-                    break;
-                case ValueType::String:
-                    dict.Emplace(dict_key_entry, StringEscaping::DecodeString(dict_value_entry));
-                    break;
-                default:
-                    FO_UNREACHABLE_PLACE();
+                if (!dict.Contains(dict_key)) {
+                    dict.Emplace(std::move(dict_key), ParseValidatedScalarValue(dict_value_entry, value_type));
+                }
+                else {
+                    throw AnyDataException("Invalid dict value, duplicate key", dict_key_entry);
                 }
             }
         }
@@ -268,39 +297,13 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         string arr_entry;
 
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
-            switch (value_type) {
-            case ValueType::Int64:
-                arr.EmplaceBack(strex("{}", arr_entry).to_int64());
-                break;
-            case ValueType::Float64:
-                arr.EmplaceBack(strex("{}", arr_entry).to_float64());
-                break;
-            case ValueType::Bool:
-                arr.EmplaceBack(strex("{}", arr_entry).to_bool());
-                break;
-            case ValueType::String:
-                arr.EmplaceBack(StringEscaping::DecodeString(arr_entry));
-                break;
-            default:
-                FO_UNREACHABLE_PLACE();
-            }
+            arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
         }
 
         return arr;
     }
     else {
-        switch (value_type) {
-        case ValueType::Int64:
-            return strex("{}", str).to_int64();
-        case ValueType::Float64:
-            return strex("{}", str).to_float64();
-        case ValueType::Bool:
-            return strex("{}", str).to_bool();
-        case ValueType::String:
-            return StringEscaping::DecodeString(str);
-        default:
-            break;
-        }
+        return ParseValidatedScalarValue(str, value_type);
     }
 
     FO_UNREACHABLE_PLACE();
@@ -331,7 +334,8 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
 
     size_t begin;
 
-    if (length == 1 && str[pos] == '\"') {
+    if (length == 1 && str[pos] == '"') {
+        bool quote_closed = false;
         pos++;
         begin = pos;
 
@@ -339,14 +343,17 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
             if (length == 1 && str[pos] == '\\') {
                 pos++;
 
-                if (str[pos] != 0) {
-                    length = utf8::DecodeStrNtLen(&str[pos]);
-                    utf8::Decode(&str[pos], length);
-
-                    pos += length;
+                if (str[pos] == 0) {
+                    throw AnyDataException("Invalid escape sequence in quoted token", string(str));
                 }
+
+                length = utf8::DecodeStrNtLen(&str[pos]);
+                utf8::Decode(&str[pos], length);
+
+                pos += length;
             }
-            else if (length == 1 && str[pos] == '\"') {
+            else if (length == 1 && str[pos] == '"') {
+                quote_closed = true;
                 break;
             }
             else {
@@ -356,6 +363,14 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
             length = utf8::DecodeStrNtLen(&str[pos]);
             utf8::Decode(&str[pos], length);
         }
+
+        if (!quote_closed) {
+            throw AnyDataException("Unterminated quoted token", string(str));
+        }
+
+        if (str[pos + 1] != 0 && str[pos + 1] != ' ' && str[pos + 1] != '\t') {
+            throw AnyDataException("Invalid quoted token delimiter", string(str));
+        }
     }
     else {
         begin = pos;
@@ -363,6 +378,10 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
         while (str[pos] != 0) {
             if (length == 1 && str[pos] == '\\') {
                 pos++;
+
+                if (str[pos] == 0) {
+                    throw AnyDataException("Invalid escape sequence in token", string(str));
+                }
 
                 length = utf8::DecodeStrNtLen(&str[pos]);
                 utf8::Decode(&str[pos], length);
@@ -451,14 +470,28 @@ auto StringEscaping::DecodeString(string_view str) -> string
     utf8::Decode(s, length);
 
     const auto is_protected = length == 1 && *s == '\"';
+    bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
         s = str.data() + i;
         length = str.length() - i;
         utf8::Decode(s, length);
 
+        if (is_protected && length == 1 && *s == '"') {
+            if (i != str.length() - 1) {
+                throw AnyDataException("Unexpected closing quote inside protected string", string(str));
+            }
+
+            closing_quote_found = true;
+            break;
+        }
+
         if (length == 1 && *s == '\\') {
             i++;
+
+            if (i >= str.length()) {
+                throw AnyDataException("Invalid escape sequence in string", string(str));
+            }
 
             s = str.data() + i;
             length = str.length() - i;
@@ -489,8 +522,8 @@ auto StringEscaping::DecodeString(string_view str) -> string
         i += length;
     }
 
-    if (is_protected && length == 1 && result.back() == '\"') {
-        result.pop_back();
+    if (is_protected && !closing_quote_found) {
+        throw AnyDataException("Unterminated protected string", string(str));
     }
 
     return result;
