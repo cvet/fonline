@@ -4,6 +4,7 @@
 #include "../../../add_on/scriptstdstring/scriptstdstring.h"
 #include "../../../add_on/scriptarray/scriptarray.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
+#include "../../../add_on/scriptany/scriptany.h"
 
 namespace TestFunctionPtr
 {
@@ -34,6 +35,45 @@ public:
 	asIScriptFunction *func;
 };
 
+asIScriptFunction *cb = 0;
+void *cbo = 0;
+asITypeInfo *cbot = 0;
+void SetCB(asIScriptGeneric *gen)
+{
+	if( cb )
+		cb->Release();
+	if( cbo )
+	{
+		gen->GetEngine()->ReleaseScriptObject(cbo, cbot);
+		cbo = cbot = 0;
+	}
+	asIScriptFunction *f = (asIScriptFunction*)gen->GetArgAddress(0);
+	
+	// For 2.32.2 and earlier, the generic calling convention automatically released all 
+	// handles received, so to compensate for that it would be necessary to add a ref if 
+	// the handle should be kept
+	if( gen->GetEngine()->GetEngineProperty(asEP_GENERIC_CALL_MODE) == 0 )
+		f->AddRef();
+
+	if( f && f->GetFuncType() == asFUNC_DELEGATE )
+	{
+		cbo = f->GetDelegateObject();
+		cbot = f->GetDelegateObjectType();
+		cb = f->GetDelegateFunction();
+		
+		// Hold on to the objects
+		gen->GetEngine()->AddRefScriptObject(cbo, cbot);
+		cb->AddRef();
+		
+		// Release the delegate, which we don't need
+		f->Release();
+	}
+	else
+	{
+		cb = f;
+	}
+}
+
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -45,6 +85,563 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptContext *ctx;
 	CBufferedOutStream bout;
+
+	// Test instantiating delegate from global function (no delegate object is actually created)
+	// https://github.com/anjo76/angelscript/issues/43
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+			void startnew(CoroutineFunc@ func) {}
+			funcdef void CoroutineFunc();
+			void Thing() {}
+			void Main() {
+				startnew(Thing); // OK
+				startnew(CoroutineFunc(Thing)); // identical (just more explicit)
+				CoroutineFunc @f1 = Thing;
+				CoroutineFunc @f2 = CoroutineFunc(Thing); 
+				assert( f1 is f2 );
+			} )");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "Main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		engine->ShutDownAndRelease();
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test anon function taking a parameter with the same name as a type
+	// Reported by Aaron Baker
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+			class person
+			{
+
+			}
+			funcdef void callback_type(string);
+
+			// This works correctly:
+			/*
+			void callback_no_error()
+			{
+				callback_type@ callback;
+				@callback=function(p)
+				{
+//					alert("Name", "My name is "+p);
+				};
+
+				callback("Henry");
+			}
+			*/
+			// But this compile errors:
+			void callback_error()
+			{
+				callback_type@ callback;
+				@callback=function(person)
+				{
+//					alert("Name", "My name is "+person);
+				};
+
+				callback("Henry");
+			} )");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (22, 4) : Info    : Compiling void callback_error()\n"
+						   "test (26, 5) : Error   : Can't implicitly convert from '<auto> lambda(person)' to 'callback_type@'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test declaring a function to take funcdef by value must give error
+	// Reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+funcdef void func_callback();
+void set_callback(func_callback cb) { }
+)");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (3, 1) : Info    : Compiling void set_callback(func_callback)\n"
+						   "test (3, 1) : Error   : Parameter type can't be 'func_callback', because the type cannot be instantiated.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test cast from non-handle (should implicitly add the handle)
+	// Reported by Paril
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptAny(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+funcdef bool test_function_f(int);
+
+void test()
+{
+    any st_any;
+    st_any.store(cast<test_function_f>(function(v) { return false; }));
+
+    test_function_f @func;
+    st_any.retrieve(@func);
+
+    func(1);
+}
+)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "test()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test storing anonymous functions in dictionary
+	// Reported by Paril
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+const dictionary st_fields = {
+    { "lip", function(v) { return false; } }
+};
+
+void test()
+{
+    dictionary @x;
+    st_fields.get("lip", @x);
+}
+)");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != 
+			"test (2, 18) : Info    : Compiling const dictionary st_fields\n"
+			"test (3, 26) : Error   : Invalid expression: stand-alone anonymous function\n"
+			"test (2, 30) : Error   : Previous error occurred while attempting to compile initialization list for type 'const dictionary'\n"
+			"test (6, 1) : Info    : Compiling void test()\n"
+			"test (9, 5) : Error   : Use of uninitialized global variable 'st_fields'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test storing anonymous functions in any
+	// Reported by Paril
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptAny(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+funcdef bool test_function_f(int);
+
+void test()
+{
+    any st_any;
+    st_any.store(@function(v) { return false; });
+
+    test_function_f @func;
+    st_any.retrieve(@func);
+}
+)");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != 
+			"test (4, 1) : Info    : Compiling void test()\n"
+			"test (7, 31) : Error   : Invalid expression: stand-alone anonymous function\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test dynamically compiling new functions containing lambda's multiple times
+	// Reported by gmp3 labs
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("blah", "array<int> myArray;");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		const char* script =
+			"void myDynamicallyCompiledFunction()\n"
+			"{\n"
+			"	myArray.sort(function(a, b) { return a < b; }); \n"
+			"}\n";
+
+		r = mod->CompileFunction("test", script, 0, asCOMP_ADD_TO_MODULE, 0);
+		if (r < 0)
+			TEST_FAILED;
+		mod->RemoveFunction(mod->GetFunctionByName("myDynamicallyCompiledFunction"));
+
+		// Since the dynamically function was removed it must now be possible to build it again without changing any code
+		r = mod->CompileFunction("test", script, 0, asCOMP_ADD_TO_MODULE, 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test anonymous functions (lambda) with nameless parameter
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void f(int,int); \n"
+			"void func() {\n"
+			"  f@ f1 = function(int arg1, int ) {}; \n" // omitting the name of the arg should work
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test anonymous functions (lambda) with complex types in parameters
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace UI { enum MouseEvent {} }\n"
+			"namespace GUI {\n"
+			"  interface CallbackContext {} \n"
+			"  funcdef void boolMouseEventCallback(CallbackContext@,const UI::MouseEvent &in);\n"
+			"  void OnMouseButton(boolMouseEventCallback @) {}\n"
+			"}\n"
+			"void func() {\n"
+			"  GUI::OnMouseButton( function(GUI::CallbackContext@ ctx, const UI::MouseEvent &in event) { /*etc */} ); \n"
+			"  GUI::OnMouseButton( function(GUI::CallbackContext@ ctx, UI::MouseEvent &in event) { /*etc */} ); \n"
+			"  GUI::OnMouseButton( function(GUI::CallbackContext@ ctx, UI::MouseEvent event) { /*etc */} ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != 
+			"test (7, 1) : Info    : Compiling void func()\n"
+			"test (9, 3) : Error   : No matching signatures to 'GUI::OnMouseButton(<auto> lambda(GUI::CallbackContext@, UI::MouseEvent&))'\n"
+			"test (9, 3) : Info    : Candidates are:\n"
+			"test (9, 3) : Info    : void GUI::OnMouseButton(GUI::boolMouseEventCallback@)\n"
+			"test (9, 3) : Info    : Rejected due to type mismatch at positional parameter 1\n"
+			"test (10, 3) : Error   : No matching signatures to 'GUI::OnMouseButton(<auto> lambda(GUI::CallbackContext@, UI::MouseEvent))'\n"
+			"test (10, 3) : Info    : Candidates are:\n"
+			"test (10, 3) : Info    : void GUI::OnMouseButton(GUI::boolMouseEventCallback@)\n"
+			"test (10, 3) : Info    : Rejected due to type mismatch at positional parameter 1\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test compiling funcdefs within a namespace with same name as function in global scope
+	// https://www.gamedev.net/forums/topic/713472-crash-at-building-new-module-after-existing-one/5453276/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() {} \n"
+			"namespace a { \n"
+			"  funcdef void func(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptFunction* func = mod->GetFunctionByName("func");
+		func->AddRef();
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() {} \n"
+			"namespace a { \n"
+			"  funcdef void func(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		func->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test declaring funcdef with same name in two different classes
+	// https://www.gamedev.net/forums/topic/713057-bug-with-funcdef-behavior/5451080/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class ClassA { \n"
+			"	funcdef void CALLBACK(int); \n"
+			"	CALLBACK@ func; \n"
+			"} \n"
+			"class ClassB { \n"
+			"	funcdef void CALLBACK(int); \n"
+			"	CALLBACK@ func; \n"
+			" } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test anonymous functions in delegate
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		asIScriptModule* shareMod = NULL;
+
+		//Module 1 
+		shareMod = engine->GetModule("shared", asGM_ALWAYS_CREATE); assert(shareMod != NULL);
+
+		r = shareMod->AddScriptSection("main",
+			"funcdef void SimpleCallback(); \n"
+
+			"//shared void Simple() {} \n"
+
+			"void InvokeSimple() { \n"
+			"	//SimpleCallback@ cb = SimpleCallback(Simple); \n" //No error
+			"	SimpleCallback@ cb = SimpleCallback(function() {}); \n" //Error caused by the anonymous function
+
+			"	cb(); \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	InvokeSimple(); \n"
+			"} \n"); assert(r >= 0);
+		r = shareMod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ctx->Prepare(shareMod->GetFunctionByDecl("void main()")); assert(r >= 0);
+		r = ctx->Execute(); assert(r == asEXECUTION_FINISHED);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		ctx->Release();
+
+		shareMod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test member funcdefs
+	// Reported by Polyak Istvan
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class C \n"
+			"{ \n"
+			"    funcdef void fd (); \n"
+			"    void f1 () \n"
+			"    { \n"
+			"    } \n"
+			"    void f2 () \n"
+			"    { \n"
+			"        fd @ fd1 = C::fd(f1); \n"
+			"        fd @ fd2 = fd(f1);  \n" // <- bug: without C:: the compiler don't find the funcdef
+			"    } \n"
+			"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test delegates as callbacks
+	// https://www.gamedev.net/forums/topic/705573-asassert-abort-on-delegate-early-destruction-after-release/5420521/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_GENERIC_CALL_MODE, 1);
+		
+		engine->RegisterFuncdef("void CB()");
+		engine->RegisterGlobalFunction("void SetCB(CB @)", asFUNCTION(SetCB), asCALL_GENERIC);
+		
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+		"class Test { \n"
+		"  void cb() { \n"
+		"  } \n"
+		"  int cbCount = 0; \n"
+		"  Test() { \n"
+		"    SetCB(CB(cb)); \n"
+		"  } \n"
+		"} \n"
+		"Test t; \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+		
+		if( cb == 0 || cbo == 0 || cbot == 0 )
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		ctx->Prepare(cb);
+		ctx->SetObject(cbo);
+		r = ctx->Execute();
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+		ctx->Release();
+
+		if( cb )
+		{
+			cb->Release();
+			cb = 0;
+		}
+		
+		if( cbo )
+		{
+			engine->ReleaseScriptObject(cbo, cbot);
+			cbo = cbot = 0;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test funcdef and shared entitites
 	// http://www.gamedev.net/topic/681021-crash-on-closing-modules-with-shared-and-funcdef/
@@ -457,7 +1054,7 @@ bool Test()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "test (5, 1) : Info    : Compiling void main2()\n"
-						   "array (0, 0) : Error   : The subtype has no default factory\n"
+						   "array (0, 0) : Error   : The subtype 'FD' has no default factory\n"
 						   "test (7, 8) : Error   : Attempting to instantiate invalid template type 'array<FD>'\n"
 						   "test (8, 3) : Warning : 'a' is not initialized.\n"
 						   "test (8, 3) : Error   : Illegal operation on 'int'\n")
@@ -505,8 +1102,7 @@ bool Test()
 			TEST_FAILED;
 
 		if (bout.buffer != "test (4, 1) : Info    : Compiling void f()\n"
-						   "test (5, 9) : Error   : Can't implicitly convert from 'g@' to 'f@&'.\n"
-						   "test (5, 2) : Error   : Both expressions must have the same type\n")
+						   "test (5, 2) : Error   : Can't find unambiguous implicit conversion to make both expressions have the same type\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -588,6 +1184,12 @@ bool Test()
 		r = ExecuteString(engine, "main()", mod);
 		if (r != asEXECUTION_FINISHED)
 			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 
 		// Test name conflict within class (funcdef vs funcdef, funcdef vs property, funcdef vs method)
 		bout.buffer = "";
@@ -1087,7 +1689,7 @@ bool Test()
 			TEST_FAILED;
 		if (bout.buffer != "glob (1, 1) : Error   : Identifier 'NotDeclared' is not a data type in global namespace\n"
 						   "glob (1, 14) : Info    : Compiling int nd\n"
-						   "glob (1, 28) : Error   : Can't implicitly convert from '$func@const' to 'int&'.\n")
+						   "glob (1, 31) : Error   : Can't implicitly convert from '<auto> lambda(<auto>)' to 'int&'.\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1135,10 +1737,9 @@ bool Test()
 		r = mod->Build();
 		if( r >= 0 )
 			TEST_FAILED;
-		// TODO: The error messages should be more more explicit
 		if( bout.buffer != "name (2, 1) : Info    : Compiling void func()\n"
-						   "name (3, 23) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
-						   "name (4, 21) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
+						   "name (3, 23) : Error   : Can't implicitly convert from '<auto> lambda()' to 'CB1@&'.\n"
+						   "name (4, 26) : Error   : Can't implicitly convert from '<auto> lambda(<auto>, <auto>)' to 'CB1@&'.\n"
 						   "name (5, 15) : Error   : No matching signatures to '$func::opCall()'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -1162,7 +1763,7 @@ bool Test()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "name (5, 1) : Info    : Compiling void main()\n"
-						   "name (6, 3) : Error   : Multiple matching signatures to 'func($func@const)'\n"
+						   "name (6, 3) : Error   : Multiple matching signatures to 'func(<auto> lambda(<auto>))'\n"
 						   "name (6, 3) : Info    : void func(A@)\n"
 						   "name (6, 3) : Info    : void func(B@)\n")
 		{
@@ -1813,6 +2414,12 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		// Must not be possible to create delegate with const object and non-const method
 		bout.buffer = "";
 		mod->AddScriptSection("test",
@@ -1828,9 +2435,10 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		// TODO: Error message should be better, so it is understood that the error is because of const object
 		if( bout.buffer != "test (5, 1) : Info    : Compiling void main()\n"
-		                   "test (7, 9) : Error   : No matching signatures to 'void F()'\n" )
+		                   "test (7, 9) : Error   : Can't create delegate\n"
+						   "test (7, 9) : Info    : No matching signatures to 'void F()'\n"
+			               "test (7, 9) : Info    : Potentially matching non-const method is hidden on read-only object reference\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

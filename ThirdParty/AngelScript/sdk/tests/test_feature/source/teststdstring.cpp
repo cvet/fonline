@@ -165,11 +165,17 @@ bool TestStdString()
 		PRINTF("%s: Failed to print the correct string\n", TESTNAME);
 	}
 
-	ExecuteString(engine, "string s = \"test\\\\test\\\\\"", mod);
+	r = ExecuteString(engine, "string s = \"test\\\\test\\\\\"", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	// Verify that it is possible to use the string in constructor parameters
-	ExecuteString(engine, "obj a; a = obj(\"test\")");
-	ExecuteString(engine, "obj a(\"test\")");
+	r = ExecuteString(engine, "obj a; a = obj(\"test\")");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+	r = ExecuteString(engine, "obj a(\"test\")");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	// Verify that it is possible to pass strings by value
 	printOutput = "";
@@ -220,14 +226,14 @@ bool TestStdString()
 	ExecuteString(engine, "print(formatUInt(18446744073709551615, ''))");
 	if (printOutput != "18446744073709551615") TEST_FAILED;
 
-	ExecuteString(engine, "StringByVal(\"test\", \"test\")");
+	r = ExecuteString(engine, "StringByVal(\"test\", \"test\")");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 	mod->AddScriptSection(TESTNAME, script3);
 	if (mod->Build() < 0)
-	{
 		TEST_FAILED;
-	}
 
 	//--> new: object method string argument test
 	printOutput = "";
@@ -237,9 +243,13 @@ bool TestStdString()
 
 	engine->RegisterObjectType("Http", sizeof(Http), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);
 	engine->RegisterObjectMethod("Http", "bool get(const string &in,string &out)", asMETHOD(Http, Get), asCALL_THISCALL);
-	ExecuteString(engine, "Http h; string str; h.get(\"string\", str);");
-	ExecuteString(engine, "Http h; string str; string a = \"a\"; h.get(\"string\"+a, str);");
+	r = ExecuteString(engine, "Http h; string str; h.get(\"string\", str);");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
+	r = ExecuteString(engine, "Http h; string str; string a = \"a\"; h.get(\"string\"+a, str);");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	// Make sure the return value is kept intact, even though there are objects that needs to be cleaned up
 	mod->AddScriptSection("mod",

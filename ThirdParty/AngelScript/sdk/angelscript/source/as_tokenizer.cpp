@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -52,49 +52,67 @@ asCTokenizer::asCTokenizer()
 	engine = 0;
 	memset(keywordTable, 0, sizeof(keywordTable));
 
+	InitJumpTable();
+}
+
+asCTokenizer::~asCTokenizer()
+{
+	FreeJumpTable();
+}
+
+void asCTokenizer::FreeJumpTable()
+{
+	// Deallocate the jump table
+	for (asUINT n = 0; n < 256; n++)
+	{
+		if (keywordTable[n])
+			asDELETEARRAY(keywordTable[n]);
+	}
+	memset(keywordTable, 0, sizeof(keywordTable));
+}
+
+void asCTokenizer::InitJumpTable()
+{
+	FreeJumpTable();
+
 	// Initialize the jump table
-	for( asUINT n = 0; n < numTokenWords; n++ )
+	for (asUINT n = 0; n < numTokenWords; n++)
 	{
 		const sTokenWord& current = tokenWords[n];
+
+		// Check if a token must be skipped due to engine properties
+		if (current.tokenType == ttForEach && engine && !engine->ep.foreachSupport)
+			continue;
+
 		unsigned char start = current.word[0];
 
 		// Create new jump table entry if none exists
-		if( !keywordTable[start] )
+		if (!keywordTable[start])
 		{
 			// Surely there won't ever be more than 32 keywords starting with
 			// the same character. Right?
 			keywordTable[start] = asNEWARRAY(const sTokenWord*, 32);
-			memset(keywordTable[start], 0, sizeof(sTokenWord*)*32);
+			memset(keywordTable[start], 0, sizeof(sTokenWord*) * 32);
 		}
 
 		// Add the token sorted from longest to shortest so
 		// we check keywords greedily.
 		const sTokenWord** tok = keywordTable[start];
 		unsigned insert = 0, index = 0;
-		while( tok[index] )
+		while (tok[index])
 		{
-			if(tok[index]->wordLength >= current.wordLength)
+			if (tok[index]->wordLength >= current.wordLength)
 				++insert;
 			++index;
 		}
 
-		while( index > insert )
+		while (index > insert)
 		{
 			tok[index] = tok[index - 1];
 			--index;
 		}
 
 		tok[insert] = &current;
-	}
-}
-
-asCTokenizer::~asCTokenizer()
-{
-	// Deallocate the jump table
-	for( asUINT n = 0; n < 256; n++ )
-	{
-		if( keywordTable[n] )
-			asDELETEARRAY(keywordTable[n]);
 	}
 }
 
@@ -249,6 +267,18 @@ bool asCTokenizer::IsComment(const char *source, size_t sourceLength, size_t &to
 	return false;
 }
 
+bool asCTokenizer::IsValidSeparatorDigitInRadix(const char* source, size_t sourceLength, size_t n, int radix) const
+{
+	if (source[n] != '\'')
+		return false;
+	if ((n + 1) >= sourceLength || n == 0)
+		return false;
+	else if (!IsDigitInRadix(source[n + 1], radix) || !IsDigitInRadix(source[n - 1], radix))
+		return false;
+
+	return true;
+}
+
 bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &tokenLength, eTokenType &tokenType) const
 {
 	// Starting with number
@@ -271,7 +301,7 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 			{
 				size_t n;
 				for( n = 2; n < sourceLength; n++ )
-					if( !IsDigitInRadix(source[n], radix) )
+					if( !IsDigitInRadix(source[n], radix) && !IsValidSeparatorDigitInRadix(source, sourceLength, n, radix) )
 						break;
 
 				tokenType   = ttBitsConstant;
@@ -283,7 +313,7 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 		size_t n;
 		for( n = 0; n < sourceLength; n++ )
 		{
-			if( source[n] < '0' || source[n] > '9' )
+			if( (source[n] < '0' || source[n] > '9') && !IsValidSeparatorDigitInRadix(source, sourceLength, n, 10) )
 				break;
 		}
 
@@ -294,7 +324,7 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 				n++;
 				for( ; n < sourceLength; n++ )
 				{
-					if( source[n] < '0' || source[n] > '9' )
+					if( (source[n] < '0' || source[n] > '9') && !IsValidSeparatorDigitInRadix(source, sourceLength, n, 10) )
 						break;
 				}
 			}
@@ -307,7 +337,7 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 
 				for( ; n < sourceLength; n++ )
 				{
-					if( source[n] < '0' || source[n] > '9' )
+					if( (source[n] < '0' || source[n] > '9') && !IsValidSeparatorDigitInRadix(source, sourceLength, n, 10) )
 						break;
 				}
 			}
@@ -346,12 +376,16 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 			size_t n;
 			for( n = 3; n < sourceLength-2; n++ )
 			{
-				if( source[n] == '"' && source[n+1] == '"' && source[n+2] == '"' )
-					break;
+				if (source[n] == '"' && source[n + 1] == '"' && source[n + 2] == '"')
+				{
+					tokenType = ttHeredocStringConstant;
+					tokenLength = n + 3;
+					return true;
+				}
 			}
 
-			tokenType   = ttHeredocStringConstant;
-			tokenLength = n+3;
+			tokenType   = ttNonTerminatedStringConstant;
+			tokenLength = n+2;
 		}
 		else
 		{

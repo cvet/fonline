@@ -192,8 +192,9 @@ static void StringSplit_Generic(asIScriptGeneric *gen)
     CScriptString *delim = *(CScriptString**)gen->GetAddressOfArg(1);
 
     // Find the existence of the delimiter in the input string
-    int pos = 0, prev = 0, count = 0;
-    while( (pos = (int)str->buffer.find(delim->buffer, prev)) != (int)std::string::npos )
+    size_t pos = 0, prev = 0;
+    asUINT count = 0;
+    while( (pos = str->buffer.find(delim->buffer, prev)) != std::string::npos )
     {
         // Add the part to the array
         CScriptString *part = new CScriptString();
@@ -203,7 +204,7 @@ static void StringSplit_Generic(asIScriptGeneric *gen)
 
         // Find the next part
         count++;
-        prev = pos + (int)delim->buffer.length();
+        prev = pos + delim->buffer.length();
     }
 
     // Add the remaining part

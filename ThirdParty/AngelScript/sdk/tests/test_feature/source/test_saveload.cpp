@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "../../../add_on/scriptarray/scriptarray.h"
 #include "../../../add_on/scripthandle/scripthandle.h"
+#include "../../../add_on/scriptfile/scriptfile.h"
 
 
 namespace TestSaveLoad
@@ -396,6 +397,495 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test error handling when loading bogus data
+	// https://www.gamedev.net/forums/topic/710972-recover-from-assertion-in-loadbytecode/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		mod = engine->GetModule("DynamicModule", asGM_ALWAYS_CREATE);
+		const unsigned char bogusData[] = "This is not valid bytecode";
+		CBytecodeStream stream("test");
+		stream.buffer.assign(sizeof(bogusData), *(&bogusData[0]));
+		r = mod->LoadByteCode(&stream);
+		if( r >= 0 )
+			TEST_FAILED;
+		const unsigned char bogusData2[] = { 0x00, 0x01 };
+		stream.buffer.assign(sizeof(bogusData2), *(&bogusData2[0]));
+		stream.Restart();
+		r = mod->LoadByteCode(&stream);
+		if (r >= 0)
+			TEST_FAILED;		
+		engine->ShutDownAndRelease();
+		if (bout.buffer != " (0, 0) : Error   : Unexpected end of file\n"
+						   " (0, 0) : Error   : Unexpected end of file\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test saving bytecode loaded from precompiled bytecode
+	// Reported by Aleksander Jaronik
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CBytecodeStream stream((string("AS_DEBUG/bc_") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+
+		{
+			mod = engine->GetModule("DynamicModule", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("script", 
+				"int test = 0;\n"
+				"void TestFunc(int i)\n"
+				"{\n"
+				"	test += i; \n"
+				"}\n"
+				"class Test\n"
+				"{\n"
+				"	private int t = 0; \n"
+				"	void T()\n"
+				"	{\n"
+				"		t++; \n"
+				"	}\n"
+				"	private void T2()\n"
+				"	{\n"
+				"		t += 2; \n"
+				"	}\n"
+				"}\n");
+			r = mod->Build();
+			if( r < 0 )
+				TEST_FAILED;
+
+			mod->SaveByteCode(&stream);
+		}
+		engine->ShutDownAndRelease();
+
+
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		{
+			mod = engine->GetModule("DynamicModule", asGM_ALWAYS_CREATE);
+			r = mod->LoadByteCode(&stream);
+			if( r < 0 )
+				TEST_FAILED;
+		}
+
+		// Save the bytecode again to verify that it can be saved multiple times
+		{
+			CBytecodeStream stream2((string("AS_DEBUG/bc_2") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+			mod->SaveByteCode(&stream2);
+
+			asDWORD crc32_1 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
+			asDWORD crc32_2 = ComputeCRC32(&stream2.buffer[0], asUINT(stream2.buffer.size()));
+			if( crc32_1 != crc32_2 )
+			{
+				//PRINTF("The saved byte code has different checksum in the two saves\n");
+
+				// TODO: Investigate if this is really a bug. It might just be that the data is ordered differently
+				// TEST_FAILED;
+			}
+			if(stream.buffer.size() != stream2.buffer.size())
+			{
+				PRINTF("The saved byte code has different size in the two saves\n");
+				TEST_FAILED;
+			}
+		}
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test saving / loading bytecode with class that cannot generate copy constructor containing other class that cannot generate copy constructor
+	// Problem reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptFile(engine);
+
+		CBytecodeStream stream((string("AS_DEBUG/bc_") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+
+		// The order was important for this test. If they had been declared in the other order the test would have succeeded
+		const char* script =
+			"class message_history { \n"
+			"  reader rd; \n"  // auto generated copy constructor is not generated, because reader is not copyable
+			"} \n"
+			"class reader { \n"
+			"  file f; \n"  // auto generated copy constructor is not generated, because file is not copyable
+			"} \n";
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->AddScriptSection("main", script); assert(r >= 0);
+		r = mod->Build(); assert(r >= 0);
+		r = mod->SaveByteCode(&stream); assert(r >= 0);
+		mod->Discard();
+
+		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
+		if (crc32 != 0xAC4FC084)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+		r = mod->LoadByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+		mod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test saving / loading byte code when there are multiple variables in different scope occupying the same stack position
+	// Problem reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		CBytecodeStream stream((string("AS_DEBUG/bc_") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+
+		const char* script =
+			"void main() { \n"
+			"  if (true) {	\n"
+			"    int a = 1; \n"
+			"    if (a == 2) { \n"
+			"      string c = 'test'; \n"
+			"    } \n"
+			"  } \n"
+			"  string b = 'this is broken'; \n"
+			"} \n";
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->AddScriptSection("main", script); assert(r >= 0);
+		r = mod->Build(); assert(r >= 0);
+		r = mod->SaveByteCode(&stream); assert(r >= 0);
+		mod->Discard();
+
+		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
+		if (crc32 != 0x3FCFEE5C)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+		r = mod->LoadByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+		mod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// test 32bit and 64bit compatibility for function returning a handle
+	// https://www.gamedev.net/forums/topic/710948-crash-on-running-bytecode-from-32bit-on-64bit/
+	{
+		engine = asCreateScriptEngine();
+//		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
+//		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, 1);
+//		engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, 1);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		CBytecodeStream stream((string("AS_DEBUG/bc_") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+
+		const char* script =
+			"class TestClass  { \n"
+			"	TestClass @test() { \n"
+			"		return TestClass(); \n"
+			"	} \n"
+			"} \n";
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->AddScriptSection("main", script); assert(r >= 0);
+		r = mod->Build(); assert(r >= 0);
+		r = mod->SaveByteCode(&stream); assert(r >= 0);
+		mod->Discard();
+
+		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
+		if (crc32 != 0x6600FCF5)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+		
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+		r = mod->LoadByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+		mod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// test 32bit and 64bit compatibility when using unsafe references and the bytecode has a local temporary reference to a value type
+	// https://www.gamedev.net/forums/topic/710948-crash-on-running-bytecode-from-32bit-on-64bit/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
+		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, 1);
+		engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, 1);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		CBytecodeStream stream((string("AS_DEBUG/bc_") + (sizeof(void*) == 4 ? "32" : "64")).c_str());
+
+		const char *script = 
+			"class ProductCoins : Purchase, ProductInfo, Purcheseable, PurchaseUpdate, ProductUILinkImpl { \n"
+			"	uint count; \n"
+			"	string _token; \n"
+			"	ProductCoins(uint c) { \n"
+			"		count = c; \n"
+			"		_sku = \"coins\" + c; \n"
+			"	} \n"
+			"} \n"
+			"mixin class Purchase { \n"
+			"	string _sku; \n"
+			"	bool purchased = false; \n"
+			"	bool _isSubs = false; \n"
+			"	PurchaseData@ info; \n"
+			"} \n"
+			"interface ProductInfo { \n"
+			"} \n"
+			"interface Purcheseable { \n"
+			"} \n"
+			"interface PurchaseUpdate { \n"
+			"} \n"
+			"mixin class ProductUILinkImpl : ProductUILink { \n"
+			"	ProductItem@ _pi; \n"
+			"} \n"
+			"interface ProductUILink { \n"
+			"} \n"
+			"class PurchaseData {} \n"
+			"class ProductItem {} \n"
+			"ProductCoins coins(100); \n";
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->AddScriptSection("main", script); assert(r >= 0);
+		r = mod->Build(); assert(r >= 0);
+		r = mod->SaveByteCode(&stream); assert(r >= 0);
+		mod->Discard();
+
+		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
+		if (crc32 != 0x4882EA56)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+		r = mod->LoadByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+		mod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// test loading bytecode with function returning string by value
+	// reported by Quentin Cosendey
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		CBytecodeStream stream(__FILE__);
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->AddScriptSection("main", 
+				"class C { \n"
+				"		string m() { \n"
+				"		return 'yes'; \n"
+				"	} \n"
+				"} \n"
+				"void main() { \n"
+				"	//print('OK'); \n"
+				"} \n"); assert(r >= 0);
+			r = mod->Build(); assert(r >= 0);
+			r = mod->SaveByteCode(&stream); assert(r >= 0);
+			mod->Discard();
+		}
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->LoadByteCode(&stream);
+			if (r < 0)
+				TEST_FAILED;
+			mod->Discard();
+		}
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// test loading bytecode with function returning object by value
+	// reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CBytecodeStream stream(__FILE__);
+
+		r = engine->RegisterObjectType("vObj", sizeof(int), asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("vObj", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC);
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->AddScriptSection("main", "class vClass { vObj abc() {return vObj();} }"); assert(r >= 0);
+			r = mod->Build(); assert(r >= 0);
+			r = mod->SaveByteCode(&stream); assert(r >= 0);
+			mod->Discard();
+		}
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->LoadByteCode(&stream);
+			if (r < 0)
+				TEST_FAILED;
+			mod->Discard();
+		}
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test loading bytecode with invalid stream
+	// https://www.gamedev.net/forums/topic/709287-crash-when-loading-bytecode/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		class CBrokenStream : public asIBinaryStream
+		{
+			int Write(const void* /*ptr*/, asUINT /*size*/)
+			{
+				return 0;
+			}
+
+			int Read(void* /*ptr*/, asUINT /*size*/)
+			{
+				// noop, we don't write anything to ptr at all
+				return 0;
+			}
+		};
+
+		CBrokenStream stream;
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->LoadByteCode(&stream);
+		if (r >= 0)
+			TEST_FAILED;
+		mod->Discard();
+
+		if( bout.buffer != " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 9\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease();
+	}
+
+	// Test bytecode loading with value type and list constructor
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+	
+		CBytecodeStream stream(__FILE__);
+
+		r = engine->RegisterObjectType("vObj", 1, asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("vObj", asBEHAVE_LIST_CONSTRUCT, "void f(int &in) {repeat int}", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->AddScriptSection("main", "void main() {vObj t = {1, 2, 3};}"); assert(r >= 0);
+			r = mod->Build(); assert(r >= 0);
+			r = mod->SaveByteCode(&stream); assert(r >= 0);
+			mod->Discard();
+		}
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->LoadByteCode(&stream); assert(r >= 0);
+			mod->Discard();
+		}
+
+		if (bout.buffer != "") 
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);		
+	}
+
 	// Test crash with mismatched shared classes
 	// Reported by Julius Narvilas/MrFloat
 	{
@@ -415,7 +905,7 @@ bool Test()
 				""
 				"}\n";
 
-			asIScriptModule* mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+			mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
 			r = mod->AddScriptSection("test2", file2, strlen(file2));
 			r = mod->Build();
 			if( r < 0 )
@@ -433,7 +923,7 @@ bool Test()
 				""
 				"}\n";
 
-			asIScriptModule* mod = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+			mod = engine->GetModule("test1", asGM_ALWAYS_CREATE);
 			r = mod->AddScriptSection("test1", file1, strlen(file1));
 			r = mod->Build();
 			if( r < 0 )
@@ -461,10 +951,10 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		
-		if (bout.buffer != " (0, 0) : Error   : Shared type 'Test1' doesn't match the original declaration in other module\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 90\n"
-						   " (0, 0) : Error   : Shared type 'Test1' doesn't match the original declaration in other module\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 90\n") 
+		if (bout.buffer != " (0, 0) : Error   : Shared type 'Test1' doesn't match the declaration in module 'test2'\n"
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 174\n"
+						   " (0, 0) : Error   : Shared type 'Test1' doesn't match the declaration in module 'test2'\n"
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 174\n") 
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -657,6 +1147,9 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 
+		int called = 0;
+		engine->RegisterGlobalProperty("int called", &called);
+
 		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
 			"shared funcdef void TestFunc(); \n"
@@ -670,8 +1163,7 @@ bool Test()
 			"    { \n"
 			"      callfn( function() { called = 42; } ); \n"
 			"    } \n"
-			"}; \n"
-			"int called = 0; \n");
+			"}; \n");
 		r = mod->Build();
 		if (r < 0)
 			TEST_FAILED;
@@ -694,8 +1186,9 @@ bool Test()
 		if (r != asEXECUTION_FINISHED)
 			TEST_FAILED;
 
-		if( *reinterpret_cast<int*>(mod->GetAddressOfGlobalVar(0)) != 42 )
+		if( called != 42 )
 			TEST_FAILED;
+		called = 0;
 
 		CBytecodeStream bc1("test");
 		r = mod->SaveByteCode(&bc1); assert(r >= 0);
@@ -710,6 +1203,7 @@ bool Test()
 		engine->ShutDownAndRelease();
 		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalProperty("int called", &called);
 
 		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		r = mod->LoadByteCode(&bc1);
@@ -731,7 +1225,7 @@ bool Test()
 		if (r != asEXECUTION_FINISHED)
 			TEST_FAILED;
 
-		if (*reinterpret_cast<int*>(mod->GetAddressOfGlobalVar(0)) != 42)
+		if( called != 42 )
 			TEST_FAILED;
 
 		engine->ShutDownAndRelease();
@@ -1061,7 +1555,7 @@ bool Test()
 		else
 		{
 			asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-			if (crc32 != 0x3DC90FE)
+			if (crc32 != 0x4774DE3A)
 			{
 				PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 				TEST_FAILED;
@@ -1105,7 +1599,7 @@ bool Test()
 		asIScriptFunction *func = mod->GetFunctionByName("main");
 		asBYTE expect[] =
 		{
-			asBC_SUSPEND,asBC_PshVPtr,asBC_PshVPtr,asBC_ChkNullS,asBC_ChkNullS,asBC_CALL,asBC_SUSPEND,asBC_FREE, asBC_RET
+			asBC_PshVPtr,asBC_PshVPtr,asBC_ChkNullS,asBC_ChkNullS,asBC_CALL,asBC_SUSPEND,asBC_FREE, asBC_RET
 		};
 		if (!ValidateByteCode(func, expect))
 			TEST_FAILED;
@@ -1116,7 +1610,7 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-		if (crc32 != 0x1636A342)
+		if (crc32 != 0x6B6BC20F)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
@@ -1178,7 +1672,7 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
-		if (crc != 710615252u)
+		if (crc != 1836292807u)
 		{
 			PRINTF("Wrong checksum. Got %u\n", crc);
 			TEST_FAILED;
@@ -1358,7 +1852,7 @@ bool Test()
 
 		engine->ShutDownAndRelease();
 
-		if( bout.buffer != "config (56, 0) : Warning : Cannot register template callback without the actual implementation\n" )
+		if( bout.buffer != "config (65, 0) : Warning : Cannot register template callback without the actual implementation\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1423,6 +1917,15 @@ bool Test()
 					"ep 29 4096\n"
 					"ep 30 10\n"
 					"ep 31 0\n"
+					"ep 32 0\n"
+					"ep 33 0\n"
+					"ep 34 0\n"
+					"ep 35 1\n"
+					"ep 36 0\n"
+					"ep 37 0\n"
+					"ep 38 1\n"
+					"ep 39 0\n"
+					"ep 40 1\n"
 					"\n"
 					"// Enums\n"
 					"\n"
@@ -1519,7 +2022,8 @@ bool Test()
 		r = ctx->Execute();
 		if( r != asEXECUTION_EXCEPTION ) // should fail since the imported function is not bound
 			TEST_FAILED;
-		if( string(ctx->GetExceptionString()) == "Unbound function called" )
+		if (string(ctx->GetExceptionString()) != "Unbound function called")
+			TEST_FAILED;
 		ctx->Release();
 
 		CBytecodeStream bytecode("");
@@ -1549,7 +2053,7 @@ bool Test()
 			g_func = 0;
 		}
 
-		engine->Release();
+		engine->ShutDownAndRelease();
 	}
 
 	// Test saving and loading with template in a namespace
@@ -1630,7 +2134,7 @@ bool Test()
 			TEST_FAILED;
 		
 		if( bout.buffer != " (0, 0) : Error   : Template type 'typeof' doesn't exist\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 120\n" )
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 244\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2022,26 +2526,26 @@ bool Test()
 		mod->SaveByteCode(&stream2, true);
 
 #ifndef STREAM_TO_FILE
-		if (stream.buffer.size() != 2115)
+		if (stream.buffer.size() != 2469)
 			PRINTF("The saved byte code is not of the expected size. It is %d bytes\n", (int)stream.buffer.size());
 		asUINT zeroes = stream.CountZeroes();
-		if (zeroes != 499)
+		if (zeroes != 651)
 		{
 			PRINTF("The saved byte code contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 			// Mac OS X PPC has more zeroes, probably due to the bool type being 4 bytes
 		}
 		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
-		if( crc32 != 0x7983F177)
+		if( crc32 != 0x7E58AAF1)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
 		}
 
 		// Without debug info
-		if (stream2.buffer.size() != 1755)
+		if (stream2.buffer.size() != 2058)
 			PRINTF("The saved byte code without debug info is not of the expected size. It is %d bytes\n", (int)stream2.buffer.size());
 		zeroes = stream2.CountZeroes();
-		if (zeroes != 389)
+		if (zeroes != 479)
 			PRINTF("The saved byte code without debug info contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 #endif
 		// Test loading without releasing the engine first
@@ -2049,9 +2553,10 @@ bool Test()
 		if( mod->LoadByteCode(&stream) != 0 )
 			TEST_FAILED;
 
+		const char* section = 0;
 		if( mod->GetFunctionCount() != 6 )
 			TEST_FAILED;
-		else if( string(mod->GetFunctionByIndex(0)->GetScriptSectionName()) != ":1" )
+		else if( mod->GetFunctionByIndex(0)->GetDeclaredAt(&section, 0, 0) >= 0 && string(section) != ":1" )
 			TEST_FAILED;
 
 		// Make sure the parameter names were loaded
@@ -2112,7 +2617,7 @@ bool Test()
 		mod->SaveByteCode(&streamTiny, true);
 		engine->Release();
 
-		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x02,0x66,0x00,0x40,0x50,0x00,0x00,0x01,0x00,0x00,0x00,0x02,0x3F,0x0A,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x02,0x66,0x00,0x40,0x52,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x01,0x0A,0x00,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 		bool match = true;
 		for( asUINT n = 0; n < streamTiny.buffer.size(); n++ )
 			if( streamTiny.buffer[n] != expected[n] )
@@ -2125,11 +2630,11 @@ bool Test()
 			PRINTF("Tiny module gave a different result than expected:\n");
 			PRINTF("got     : ");
 			for( asUINT n = 0; n < streamTiny.buffer.size(); n++ )
-				PRINTF("%0.2X", streamTiny.buffer[n]);
+				PRINTF("%.2X", streamTiny.buffer[n]);
 			PRINTF("\n");
 			PRINTF("expected: ");
 			for( asUINT m = 0; m < sizeof(expected); m++ )
-				PRINTF("%0.2X", expected[m]);
+				PRINTF("%.2X", expected[m]);
 			PRINTF("\n");
 			TEST_FAILED;
 		}
@@ -2242,7 +2747,8 @@ bool Test()
 		
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->LoadByteCode(&stream3);
-		ExecuteString(engine, "Test(3)", mod);
+		r = ExecuteString(engine, "Test(3)", mod);
+		if (r != asEXECUTION_FINISHED) TEST_FAILED;
 		
 		engine->Release();
 	}
@@ -2949,7 +3455,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Attempting to instantiate invalid template type 'tmpl<int>'\n"
-			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 111\n" )
+			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 105\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

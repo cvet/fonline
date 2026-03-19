@@ -70,6 +70,39 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptEngine *engine;
 
+	// Test value-assigning null to the weakref
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptWeakRef(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		const char* script =
+			"class GameObject {} \n"
+			"weakref<GameObject> m_connect; \n"
+			"void main() \n"
+			"{ \n"
+			"	m_connect = null; \n"
+			"} \n";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script);
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "Test_Addon_WeakRef (3, 1) : Info    : Compiling void main()\n"
+			"Test_Addon_WeakRef (5, 14) : Error   : Can't implicitly convert from '<null handle>' to 'weakref<GameObject>&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	// Ordinary tests
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
@@ -130,7 +163,7 @@ bool Test()
 			"class Foo {} \n"
 			"void main() \n"
 			"{ \n"
-			"  weakref<Foo> a = Foo(); \n"
+			"  weakref<Foo> @a = Foo(); \n"
 			"  weakref<Foo> b; \n"
 			"  b = a; \n"
 			"  assert( a.get() is b.get() ); \n"
@@ -152,6 +185,29 @@ bool Test()
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
 		}
+
+		// It is not allowed to do a value assign directly to the weakref on declaration
+		bout.buffer = "";
+		mod->Discard();
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo {} \n"
+			"void main() \n"
+			"{ \n"
+			"  weakref<Foo> a = Foo(); \n"
+			"} \n"
+		);
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void main()\n"
+						   "test (4, 20) : Error   : Can't implicitly convert from 'Foo@&' to 'weakref<Foo>'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 
 		engine->ShutDownAndRelease();
 	}

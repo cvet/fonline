@@ -1074,8 +1074,8 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in key, const T2&in defVal) const", FO_SCRIPT_METHOD(ScriptDict, GetDefault), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetKey), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetValue), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T1[]@ getKeys() const", FO_SCRIPT_METHOD(ScriptDict, GetKeys), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T2[]@ getValues() const", FO_SCRIPT_METHOD(ScriptDict, GetValues), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "array<T1>@ getKeys() const", FO_SCRIPT_METHOD(ScriptDict, GetKeys), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "array<T2>@ getValues() const", FO_SCRIPT_METHOD(ScriptDict, GetValues), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Exists), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", FO_SCRIPT_METHOD(ScriptDict, IsEmpty), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", FO_SCRIPT_FUNC_THIS(ScriptDict_Clone), FO_SCRIPT_FUNC_THIS_CONV));

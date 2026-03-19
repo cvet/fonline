@@ -38,6 +38,11 @@
 #define AS_USE_ACCESSORS 0
 #endif
 
+// This option disables the implicit operators with primitives
+#ifndef AS_NO_IMPL_OPS_WITH_STRING_AND_PRIMITIVE
+#define AS_NO_IMPL_OPS_WITH_STRING_AND_PRIMITIVE 0
+#endif
+
 BEGIN_AS_NAMESPACE
 
 void RegisterStdString(asIScriptEngine *engine);

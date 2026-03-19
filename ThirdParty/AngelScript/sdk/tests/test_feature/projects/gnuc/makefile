@@ -2,6 +2,7 @@
 
 CXX ?= g++
 CXXFLAGS += -ggdb -I../../../../angelscript/include -Wno-missing-field-initializers
+CXXFLAGS_ADDON = $(CXXFLAGS) -Wall -Wcast-qual
 SRCDIR = ../../source
 OBJDIR = obj
 
@@ -14,6 +15,7 @@ SRCNAMES = \
   bstr.cpp \
   main.cpp \
   test_2func.cpp \
+  test_addon_autowrapper.cpp \
   test_addon_contextmgr.cpp \
   test_addon_datetime.cpp \
   test_addon_scriptarray.cpp \
@@ -22,6 +24,7 @@ SRCNAMES = \
   test_addon_scriptgrid.cpp \
   test_addon_scripthandle.cpp \
   test_addon_scriptmath.cpp \
+  test_addon_scriptsocket.cpp \
   test_addon_serializer.cpp \
   test_addon_dictionary.cpp \
   test_addon_debugger.cpp \
@@ -48,6 +51,7 @@ SRCNAMES = \
   test_constproperty.cpp \
   test_constructor.cpp \
   test_constructor2.cpp \
+  test_context.cpp \
   test_conversion.cpp \
   test_custommem.cpp \
   test_debug.cpp \
@@ -63,6 +67,7 @@ SRCNAMES = \
   test_exceptionmemory.cpp \
   test_float.cpp \
   test_for.cpp \
+  test_foreach.cpp \
   test_funcoverload.cpp \
   test_functionptr.cpp \
   test_garbagecollect.cpp \
@@ -76,10 +81,12 @@ SRCNAMES = \
   test_import2.cpp \
   test_inheritance.cpp \
   test_interface.cpp \
+  test_literal.cpp \
   test_mixin.cpp \
   test_module.cpp \
   test_multiassign.cpp \
   test_namespace.cpp \
+  test_native_defaultfunc.cpp \
   test_nested.cpp \
   test_nevervisited.cpp \
   test_notinitialized.cpp \
@@ -182,6 +189,7 @@ OBJ = $(addprefix $(OBJDIR)/, $(notdir $(SRCNAMES:.cpp=.o))) \
   obj/scriptany.o \
   obj/scriptmath.o \
   obj/scriptmathcomplex.o \
+  obj/scriptsocket.o \
   obj/scriptdictionary.o \
   obj/scriptfile.o \
   obj/scriptfilesystem.o \
@@ -207,58 +215,61 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 obj/scriptarray.o: ../../../../add_on/scriptarray/scriptarray.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptgrid.o: ../../../../add_on/scriptgrid/scriptgrid.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scripthandle.o: ../../../../add_on/scripthandle/scripthandle.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scripthelper.o: ../../../../add_on/scripthelper/scripthelper.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptstdstring.o: ../../../../add_on/scriptstdstring/scriptstdstring.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptstdstringutil.o: ../../../../add_on/scriptstdstring/scriptstdstring_utils.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptdictionary.o: ../../../../add_on/scriptdictionary/scriptdictionary.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptmath.o: ../../../../add_on/scriptmath/scriptmath.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptmathcomplex.o: ../../../../add_on/scriptmath/scriptmathcomplex.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
+
+obj/scriptsocket.o: ../../../../add_on/scriptsocket/scriptsocket.cpp
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptany.o: ../../../../add_on/scriptany/scriptany.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptfile.o: ../../../../add_on/scriptfile/scriptfile.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptfilesystem.o: ../../../../add_on/scriptfile/scriptfilesystem.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptbuilder.o: ../../../../add_on/scriptbuilder/scriptbuilder.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/serializer.o: ../../../../add_on/serializer/serializer.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/debugger.o: ../../../../add_on/debugger/debugger.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/weakref.o: ../../../../add_on/weakref/weakref.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/contextmgr.o: ../../../../add_on/contextmgr/contextmgr.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/datetime.o: ../../../../add_on/datetime/datetime.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 clean:
 	$(DELETER) $(OBJ) $(BIN)

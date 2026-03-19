@@ -17,6 +17,41 @@ bool Test()
 	int r;
 	COutStream out;
 
+	// Test implicit handle with default array
+	// reported by Quentin Cosendey
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
+		engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
+
+		RegisterScriptArray(engine, true);
+
+		asIScriptModule* mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script",
+			"class @SomeClass { } \n"
+			"SomeClass[] someArray; \n"          // should be the same as array<SomeClass@>
+			"array<SomeClass> someArray2; \n");  // should be the same as array<SomeClass@>
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		int typeId;
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("someArray"), 0, 0, &typeId);
+		asITypeInfo *typeInfo = engine->GetTypeInfoById(typeId);
+		typeId = typeInfo->GetSubTypeId();
+		if (!(typeId & asTYPEID_OBJHANDLE))
+			TEST_FAILED;
+
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("someArray2"), 0, 0, &typeId);
+		typeInfo = engine->GetTypeInfoById(typeId);
+		typeId = typeInfo->GetSubTypeId();
+		if (!(typeId & asTYPEID_OBJHANDLE))
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test implicit handle types with auto declarations
 	// https://www.gamedev.net/forums/topic/696366-there-seem-to-be-cases-where-implicit-handle-does-not-work-well/
 	{

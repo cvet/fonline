@@ -3,6 +3,7 @@
 #include <sstream>   // stringstream
 #include <stdlib.h>  // atoi
 #include <assert.h>  // assert
+#include <cstring>   // strlen
 
 using namespace std;
 
@@ -13,6 +14,7 @@ CDebugger::CDebugger()
 	m_action = CONTINUE;
 	m_lastFunction = 0;
 	m_engine = 0;
+	m_useSectionFileNameOnly = true;
 }
 
 CDebugger::~CDebugger()
@@ -73,9 +75,9 @@ string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScr
 			asITypeInfo *t = engine->GetTypeInfoById(typeId);
 			for( int n = t->GetEnumValueCount(); n-- > 0; )
 			{
-				int enumVal;
+				asINT64 enumVal;
 				const char *enumName = t->GetEnumValueByIndex(n, &enumVal);
-				if( enumVal == *(int*)value )
+				if( enumVal == *(asINT64*)value )
 				{
 					s << ", " << enumName;
 					break;
@@ -226,11 +228,14 @@ bool CDebugger::CheckBreakPoint(asIScriptContext *ctx)
 	const char *tmp = 0;
 	int lineNbr = ctx->GetLineNumber(0, 0, &tmp);
 
-	// Consider just filename, not the full path
 	string file = tmp ? tmp : "";
-	size_t r = file.find_last_of("\\/");
-	if( r != string::npos )
-		file = file.substr(r+1);
+	if( m_useSectionFileNameOnly )
+	{
+		// Consider just filename, not the full path
+		size_t r = file.find_last_of("\\/");
+		if( r != string::npos )
+			file = file.substr(r+1);
+	}
 
 	// Did we move into a new function?
 	asIScriptFunction *func = ctx->GetFunction();
@@ -259,18 +264,66 @@ bool CDebugger::CheckBreakPoint(asIScriptContext *ctx)
 			else if( m_breakPoints[n].needsAdjusting &&
 					 m_breakPoints[n].name == file )
 			{
-				int line = func->FindNextLineWithCode(m_breakPoints[n].lineNbr);
-				if( line >= 0 )
+				// Use GetLineEntryCount and GetLineEntry to build a list of valid lines
+				// This will also work for functions compiled from multiple sections, e.g. inlined functions, injected code, etc.
+				int lowestLine = m_breakPoints[n].lineNbr + 1;
+				int nextLine = m_breakPoints[n].lineNbr - 1;
+
+				// The function may be declared earlier than the breakpoint even though the first line of code is only after it
+				int row;
+				const char* sectionName;
+				func->GetDeclaredAt(&sectionName, &row, 0);
+
+				// Only consider lines in the same section as the breakpoint
+				string entryFile = sectionName ? sectionName : "";
+				if (m_useSectionFileNameOnly)
+				{
+					// Consider just filename, not the full path
+					size_t r = entryFile.find_last_of("\\/");
+					if (r != string::npos)
+						entryFile = entryFile.substr(r + 1);
+				}
+				if (entryFile == file)
+				{
+					if (row < lowestLine)
+						lowestLine = row;
+				}
+
+				int lineEntries = func->GetLineEntryCount();
+				for( int i = 0; i < lineEntries; i++ )
+				{
+					func->GetLineEntry(i, &row, 0, &sectionName, 0);
+
+					// Only consider lines in the same section as the breakpoint
+					entryFile = sectionName ? sectionName : "";
+					if( m_useSectionFileNameOnly )
+					{
+						// Consider just filename, not the full path
+						size_t r = entryFile.find_last_of("\\/");
+						if( r != string::npos )
+							entryFile = entryFile.substr(r+1);
+					}
+					if (entryFile == file)
+					{
+						if( row < lowestLine )
+							lowestLine = row;
+						if (row >= m_breakPoints[n].lineNbr && (row < nextLine || nextLine < m_breakPoints[n].lineNbr))
+							nextLine = row;
+					}
+				}
+
+				// Only adjust the breakpoint if the currenct function has code before/on and after/on the breakpoint line in the same section
+				if( lowestLine <= m_breakPoints[n].lineNbr && nextLine >= m_breakPoints[n].lineNbr )
 				{
 					m_breakPoints[n].needsAdjusting = false;
-					if( line != m_breakPoints[n].lineNbr )
+					if( nextLine != m_breakPoints[n].lineNbr )
 					{
 						stringstream s;
-						s << "Moving break point " << n << " in file '" << file << "' to next line with code at line " << line << endl;
+						s << "Moving break point " << n << " in file '" << file << "' to next line with code at line " << nextLine << endl;
 						Output(s.str());
 
 						// Move the breakpoint to the next line
-						m_breakPoints[n].lineNbr = line;
+						m_breakPoints[n].lineNbr = nextLine;
 					}
 				}
 			}
@@ -339,8 +392,9 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 	case 'b':
 		{
 			// Set break point
+			size_t p = cmd.find_first_not_of(" \t", 1);
 			size_t div = cmd.find(':'); 
-			if( div != string::npos && div > 2 )
+			if( div != string::npos && div > 2 && p > 1 )
 			{
 				string file = cmd.substr(2, div-2);
 				string line = cmd.substr(div+1);
@@ -349,9 +403,9 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 
 				AddFileBreakPoint(file, nbr);
 			}
-			else if( div == string::npos && (div = cmd.find_first_not_of(" \t", 1)) != string::npos )
+			else if( div == string::npos && p != string::npos && p > 1 )
 			{
-				string func = cmd.substr(div);
+				string func = cmd.substr(p);
 
 				AddFuncBreakPoint(func);
 			}
@@ -368,7 +422,8 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 	case 'r':
 		{
 			// Remove break point
-			if( cmd.length() > 2 )
+			size_t p = cmd.find_first_not_of(" \t", 1);
+			if( cmd.length() > 2 && p != string::npos && p > 1 )
 			{
 				string br = cmd.substr(2);
 				if( br == "all" )
@@ -398,7 +453,7 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 			// List something
 			bool printHelp = false;
 			size_t p = cmd.find_first_not_of(" \t", 1);
-			if( p != string::npos )
+			if( p != string::npos && p > 1 )
 			{
 				if( cmd[p] == 'b' )
 				{
@@ -456,7 +511,7 @@ bool CDebugger::InterpretCommand(const string &cmd, asIScriptContext *ctx)
 		{
 			// Print a value 
 			size_t p = cmd.find_first_not_of(" \t", 1);
-			if( p != string::npos )
+			if( p != string::npos && p > 1 )
 			{
 				PrintValue(cmd.substr(p), ctx);
 			}
@@ -511,7 +566,7 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 	string name;
 	string str = expr;
 	asETokenClass t = engine->ParseToken(str.c_str(), 0, &len);
-	while( t == asTC_IDENTIFIER || (t == asTC_KEYWORD && len == 2 && str.compare("::")) )
+	while( t == asTC_IDENTIFIER || (t == asTC_KEYWORD && len == 2 && str.compare(0, 2, "::") == 0) )
 	{
 		if( t == asTC_KEYWORD )
 		{
@@ -546,10 +601,11 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 			// We start from the end, in case the same name is reused in different scopes
 			for( asUINT n = func->GetVarCount(); n-- > 0; )
 			{
-				if( ctx->IsVarInScope(n) && name == ctx->GetVarName(n) )
+				const char* varName = 0;
+				ctx->GetVar(n, 0, &varName, &typeId);
+				if( ctx->IsVarInScope(n) && varName != 0 && name == varName )
 				{
 					ptr = ctx->GetAddressOfVar(n);
-					typeId = ctx->GetVarTypeId(n);
 					break;
 				}
 			}
@@ -622,12 +678,18 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 		{
 			// TODO: If there is a . after the identifier, check for members
 			// TODO: If there is a [ after the identifier try to call the 'opIndex(expr) const' method 
-
-			stringstream s;
-			// TODO: Allow user to set if members should be expanded
-			// Expand members by default to 3 recursive levels only
-			s << ToString(ptr, typeId, 3, engine) << endl;
-			Output(s.str());
+			if( str != "" )
+			{
+				Output("Invalid expression. Expression doesn't end after symbol\n");
+			}
+			else
+			{
+				stringstream s;
+				// TODO: Allow user to set if members should be expanded
+				// Expand members by default to 3 recursive levels only
+				s << ToString(ptr, typeId, 3, engine) << endl;
+				Output(s.str());
+			}
 		}
 		else
 		{
@@ -685,11 +747,20 @@ void CDebugger::ListLocalVariables(asIScriptContext *ctx)
 	stringstream s;
 	for( asUINT n = 0; n < func->GetVarCount(); n++ )
 	{
+		// Skip temporary variables
+		// TODO: Should there be an option to view temporary variables too?
+		const char* name;
+		func->GetVar(n, &name);
+		if (name == 0 || strlen(name) == 0)
+			continue;
+
 		if( ctx->IsVarInScope(n) )
 		{
 			// TODO: Allow user to set if members should be expanded or not
 			// Expand members by default to 3 recursive levels only
-			s << func->GetVarDecl(n) << " = " << ToString(ctx->GetAddressOfVar(n), ctx->GetVarTypeId(n), 3, ctx->GetEngine()) << endl;
+			int typeId;
+			ctx->GetVar(n, 0, 0, &typeId);
+			s << func->GetVarDecl(n) << " = " << ToString(ctx->GetAddressOfVar(n), typeId, 3, ctx->GetEngine()) << endl;
 		}
 	}
 	Output(s.str());
@@ -782,18 +853,19 @@ void CDebugger::AddFuncBreakPoint(const string &func)
 
 void CDebugger::AddFileBreakPoint(const string &file, int lineNbr)
 {
-	// Store just file name, not entire path
-	size_t r = file.find_last_of("\\/");
-	string actual;
-	if( r != string::npos )
-		actual = file.substr(r+1);
-	else
-		actual = file;
-
-	// Trim the file name
-	size_t b = actual.find_first_not_of(" \t");
-	size_t e = actual.find_last_not_of(" \t");
-	actual = actual.substr(b, e != string::npos ? e-b+1 : string::npos);
+	string actual = file;
+	if( m_useSectionFileNameOnly )
+	{
+		// Store just file name, not entire path
+		size_t r = file.find_last_of("\\/");
+		if( r != string::npos )
+			actual = file.substr(r+1);
+		
+		// Trim the file name
+		size_t b = actual.find_first_not_of(" \t");
+		size_t e = actual.find_last_not_of(" \t");
+		actual = actual.substr(b, e != string::npos ? e-b+1 : string::npos);
+	}
 
 	stringstream s;
 	s << "Setting break point in file '" << actual << "' at line " << lineNbr << endl;
@@ -839,6 +911,16 @@ void CDebugger::SetEngine(asIScriptEngine *engine)
 asIScriptEngine *CDebugger::GetEngine()
 {
 	return m_engine;
+}
+
+bool CDebugger::GetUseSectionFileNameOnly() const
+{
+	return m_useSectionFileNameOnly;
+}
+
+void CDebugger::SetUseSectionFileNameOnly(bool useSectionFileNameOnly)
+{
+	m_useSectionFileNameOnly = useSectionFileNameOnly;
 }
 
 END_AS_NAMESPACE

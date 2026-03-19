@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -65,6 +65,10 @@ protected:
 	asCThreadManager();
 	~asCThreadManager();
 
+#ifdef AS_WINDOWS_USEFLS
+	static void NTAPI WinFLSCallback(PVOID lpFlsData);
+#endif
+
 	// No need to use the atomic int here, as it will only be
 	// updated within the thread manager's critical section
 	int refCount;
@@ -78,7 +82,7 @@ protected:
 	// ref: http://msdn.microsoft.com/en-us/library/9w1sdazb.aspx
 	__declspec(thread) static asCThreadLocalData *tld;
 #else
-	asDWORD tlsKey;
+	asDWORD mtlsKey; //Multi-thread local storage key
 #endif
 	DECLARECRITICALSECTION(criticalSection)
 #else

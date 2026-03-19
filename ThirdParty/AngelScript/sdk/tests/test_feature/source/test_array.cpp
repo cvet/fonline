@@ -1,145 +1,175 @@
 #include "utils.h"
 
+// From scriptstdstring.cpp
+BEGIN_AS_NAMESPACE
+class CStdStringFactory;
+extern CStdStringFactory* GetStdStringFactorySingleton();
+END_AS_NAMESPACE
+using namespace std;
+#ifdef AS_USE_NAMESPACE
+using namespace AngelScript;
+#endif
+
 namespace TestArray
 {
 
-static const char * const TESTNAME = "TestArray";
+static const char* const TESTNAME = "TestArray";
 
-static const char *script1 =
-"string[] b;                                     \n"
-"int[] g_a(3);                                   \n"
-"void TestArray()                                \n"
-"{                                               \n"
-"   string[] a(5);                               \n"
-"   Assert(a.length() == 5);                     \n"
-"   a.resize(10);                                \n"
-"   a.resize(5);                                 \n"
-"   a[0] = \"Hello\";                            \n"
-"   Assert(a[0] == \"Hello\");                   \n"
-"   uint n = 0;                                  \n"
-"   Assert(a[n] == \"Hello\");                   \n"
-"   n++;                                         \n"
-"   Assert(a[n] == \"\");                        \n"
-"   b = a;                                       \n"
-"   Assert(b.length() == 5);                     \n"
-"   Assert(b[0] == \"Hello\");                   \n"
-"   b[0] = \"Goodbye\";                          \n"
-"   Assert(a[0] != \"Goodbye\");                 \n"
-"   int[] ia = TestArray4();                     \n"
-"   TestArray2(ia);                              \n"
-"   TestArray3(ia);                              \n"
-"   ia = int[](3);                               \n"
-"   Assert(ia.length() == 3);                    \n"
-"   ia[0] = 1;                                   \n"
-"   int[] ib = ia;                               \n"
-"   Assert(ib.length() == ia.length());          \n"
-"   Assert(ib[0] == ia[0]);                      \n"
-"}                                               \n"
-"void TestArray2(int[] &inout a)                 \n"
-"{                                               \n"
-"   Assert(a[0] == 1);                           \n"
-"   Assert(a[1] == 2);                           \n"
-"   Assert(a[2] == 3);                           \n"
-"}                                               \n"
-"void TestArray3(int[] a)                        \n"
-"{                                               \n"
-"   Assert(a[0] == 1);                           \n"
-"   Assert(a[1] == 2);                           \n"
-"   Assert(a[2] == 3);                           \n"
-"}                                               \n"
-"int[] TestArray4()                              \n"
-"{                                               \n"
-"   int[] ia(3);                                 \n"
-"   ia[0] = 1;                                   \n"
-"   ia[1] = 2;                                   \n"
-"   ia[2] = 3;                                   \n"
-"   return ia;                                   \n"
-"}                                               \n";
+static const char* script1 =
+	"string[] b;                                     \n"
+	"int[] g_a(3);                                   \n"
+	"void TestArray()                                \n"
+	"{                                               \n"
+	"   string[] a(5);                               \n"
+	"   Assert(a.length() == 5);                     \n"
+	"   a.resize(10);                                \n"
+	"   a.resize(5);                                 \n"
+	"   a[0] = \"Hello\";                            \n"
+	"   Assert(a[0] == \"Hello\");                   \n"
+	"   uint n = 0;                                  \n"
+	"   Assert(a[n] == \"Hello\");                   \n"
+	"   n++;                                         \n"
+	"   Assert(a[n] == \"\");                        \n"
+	"   b = a;                                       \n"
+	"   Assert(b.length() == 5);                     \n"
+	"   Assert(b[0] == \"Hello\");                   \n"
+	"   b[0] = \"Goodbye\";                          \n"
+	"   Assert(a[0] != \"Goodbye\");                 \n"
+	"   int[] ia = TestArray4();                     \n"
+	"   TestArray2(ia);                              \n"
+	"   TestArray3(ia);                              \n"
+	"   ia = int[](3);                               \n"
+	"   Assert(ia.length() == 3);                    \n"
+	"   ia[0] = 1;                                   \n"
+	"   int[] ib = ia;                               \n"
+	"   Assert(ib.length() == ia.length());          \n"
+	"   Assert(ib[0] == ia[0]);                      \n"
+	"}                                               \n"
+	"void TestArray2(int[] &inout a)                 \n"
+	"{                                               \n"
+	"   Assert(a[0] == 1);                           \n"
+	"   Assert(a[1] == 2);                           \n"
+	"   Assert(a[2] == 3);                           \n"
+	"}                                               \n"
+	"void TestArray3(int[] a)                        \n"
+	"{                                               \n"
+	"   Assert(a[0] == 1);                           \n"
+	"   Assert(a[1] == 2);                           \n"
+	"   Assert(a[2] == 3);                           \n"
+	"}                                               \n"
+	"int[] TestArray4()                              \n"
+	"{                                               \n"
+	"   int[] ia(3);                                 \n"
+	"   ia[0] = 1;                                   \n"
+	"   ia[1] = 2;                                   \n"
+	"   ia[2] = 3;                                   \n"
+	"   return ia;                                   \n"
+	"}                                               \n";
 
-static const char *script2 = 
-"void TestArrayException()                       \n"
-"{                                               \n"
-"   string[] a;                                  \n"
-"   a[0] == \"Hello\";                           \n"
-"}                                               \n";
+static const char* script2 =
+	"void TestArrayException()                       \n"
+	"{                                               \n"
+	"   string[] a;                                  \n"
+	"   a[0] == \"Hello\";                           \n"
+	"}                                               \n";
 
-static const char *script3 = 
-"void TestArrayMulti()                           \n"
-"{                                               \n"
-"   int[][] a(2);                                \n"
-"   int[] b(2);                                  \n"
-"   a[0] = b;                                    \n"
-"   a[1] = b;                                    \n"
-"                                                \n"
-"   a[0][0] = 0;                                 \n"
-"   a[0][1] = 1;                                 \n"
-"   a[1][0] = 2;                                 \n"
-"   a[1][1] = 3;                                 \n"
-"                                                \n"
-"   Assert(a[0][0] == 0);                        \n"
-"   Assert(a[0][1] == 1);                        \n"
-"   Assert(a[1][0] == 2);                        \n"
-"   Assert(a[1][1] == 3);                        \n"
-"}                                               \n";
+static const char* script3 =
+	"void TestArrayMulti()                           \n"
+	"{                                               \n"
+	"   int[][] a(2);                                \n"
+	"   int[] b(2);                                  \n"
+	"   a[0] = b;                                    \n"
+	"   a[1] = b;                                    \n"
+	"                                                \n"
+	"   a[0][0] = 0;                                 \n"
+	"   a[0][1] = 1;                                 \n"
+	"   a[1][0] = 2;                                 \n"
+	"   a[1][1] = 3;                                 \n"
+	"                                                \n"
+	"   Assert(a[0][0] == 0);                        \n"
+	"   Assert(a[0][1] == 1);                        \n"
+	"   Assert(a[1][0] == 2);                        \n"
+	"   Assert(a[1][1] == 3);                        \n"
+	"}                                               \n";
 
-static const char *script4 = 
-"void TestArrayChar()                            \n"
-"{                                               \n"
-"   int8[] a(2);                                 \n"
-"   a[0] = 13;                                   \n"
-"   a[1] = 19;                                   \n"
-"                                                \n"
-"   int8 a0 = a[0];                              \n"
-"   int8 a1 = a[1];                              \n"
-"   Assert(a[0] == 13);                          \n"
-"   Assert(a[1] == 19);                          \n"
-"}                                               \n";
+static const char* script4 =
+	"void TestArrayChar()                            \n"
+	"{                                               \n"
+	"   int8[] a(2);                                 \n"
+	"   a[0] = 13;                                   \n"
+	"   a[1] = 19;                                   \n"
+	"                                                \n"
+	"   int8 a0 = a[0];                              \n"
+	"   int8 a1 = a[1];                              \n"
+	"   Assert(a[0] == 13);                          \n"
+	"   Assert(a[1] == 19);                          \n"
+	"}                                               \n";
 
-static const char *script5 = 
-"int[] g = {1,2,3};                              \n"
-"void TestArrayInitList()                        \n"
-"{                                               \n"
-"   Assert(g.length() == 3);                     \n"
-"   Assert(g[2] == 3);                           \n"
-"   int[] a = {,2,};                             \n"
-"   Assert(a.length() == 3);                     \n"
-"   Assert(a[1] == 2);                           \n"
-"   string[] b = {\"test\", \"3\"};              \n"
-"   Assert(b.length() == 2);                     \n"
-"   Assert(b[0] == \"test\");                    \n"
-"   Assert(b[1] == \"3\");                       \n"
-"   int[][] c = {,{23},{23,4},};                 \n"
-"   Assert(c.length() == 4);                     \n"
-"   Assert(c[2].length() == 2);                  \n"
-"   Assert(c[2][1] == 4);                        \n"
-"   const int[] d = {0,1,2};                     \n"
-"   Assert(d.length() == 3);                     \n"
-"   Assert(d[2] == 2);                           \n"
-"}                                               \n";
+static const char* script5 =
+	"int[] g = {1,2,3};                              \n"
+	"void TestArrayInitList()                        \n"
+	"{                                               \n"
+	"   Assert(g.length() == 3);                     \n"
+	"   Assert(g[2] == 3);                           \n"
+	"   int[] a = {,2,};                             \n"
+	"   Assert(a.length() == 3);                     \n"
+	"   Assert(a[1] == 2);                           \n"
+	"   string[] b = {\"test\", \"3\"};              \n"
+	"   Assert(b.length() == 2);                     \n"
+	"   Assert(b[0] == \"test\");                    \n"
+	"   Assert(b[1] == \"3\");                       \n"
+	"   int[][] c = {,{23},{23,4},};                 \n"
+	"   Assert(c.length() == 4);                     \n"
+	"   Assert(c[2].length() == 2);                  \n"
+	"   Assert(c[2][1] == 4);                        \n"
+	"   const int[] d = {0,1,2};                     \n"
+	"   Assert(d.length() == 3);                     \n"
+	"   Assert(d[2] == 2);                           \n"
+	"}                                               \n";
 
-static const char *script6 =
-"void Test()                                     \n"
-"{                                               \n"
-"   int[]@ e = {2,5};                            \n"
-"   int[] f = {,{23}};                           \n"
-"}                                               \n";
+static const char* script6 =
+	"void Test()                                     \n"
+	"{                                               \n"
+	"   int[]@ e = {2,5};                            \n"
+	"   int[] f = {,{23}};                           \n"
+	"}                                               \n";
 
-static const char *script7 =
-"class TestC                                     \n"
-"{                                               \n"
-"  TestC() {count++; s = \"test\";}              \n"
-"  string s;                                     \n"
-"}                                               \n"
-"int count = 0;                                  \n"
-"void Test()                                     \n"
-"{                                               \n"
-"  TestC t;                                      \n"
-"  Assert(count == 1);                           \n"
-"  TestC[] arr(5);                               \n"
-"  Assert(count == 6);                           \n"
-"}                                               \n";
+static const char* script7 =
+	"class TestC                                     \n"
+	"{                                               \n"
+	"  TestC() {count++; s = \"test\";}              \n"
+	"  string s;                                     \n"
+	"}                                               \n"
+	"int count = 0;                                  \n"
+	"void Test()                                     \n"
+	"{                                               \n"
+	"  TestC t;                                      \n"
+	"  Assert(count == 1);                           \n"
+	"  TestC[] arr(5);                               \n"
+	"  Assert(count == 6);                           \n"
+	"}                                               \n";
 
 bool Test2();
+
+static void ConstructString(string* thisPointer)
+{
+	new(thisPointer) string();
+}
+
+static void CopyConstructString(const string& other, string* thisPointer)
+{
+	new(thisPointer) string(other);
+}
+
+static void DestructString(string* thisPointer)
+{
+	thisPointer->~string();
+}
+
+static void AssignString(string &thisPointer, const string &other)
+{
+	thisPointer = other;
+}
 
 bool Test()
 {
@@ -148,6 +178,123 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 	asIScriptContext *ctx;
+
+	// Test conversion of list elements in initialization lists
+	// https://github.com/anjo76/angelscript/issues/44
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptArray(engine, true);
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class X {} \n"
+			"class Y { \n"
+			"  Y() {} \n"
+			"  Y(const X& in) {} \n"
+			"} \n"
+			"void Main() { \n"
+			"  X x; \n"
+			"  Y[] arr = { x }; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod->AddScriptSection("test",
+			"class Y { \n"
+			"	Y() {} \n"
+			"	Y(const int) {} \n"
+			" } \n"
+			"void Main() { \n"
+			"	Y[] arr = {1}; \n"
+			" } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod->AddScriptSection("test",
+			"class Foo {} \n"
+			"void Main() { \n"
+			"  Foo[] arr = {1}; \n"
+			" } \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void Main()\n"
+			"test (3, 16) : Error   : Can't implicitly convert from 'const int' to 'Foo'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test anonymous initialization list with short hand version of array type
+	// Reported by Phong Ba
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptArray(engine, true);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func(int[]@ arr) {} \n"
+			"void main() \n"
+			"{ \n"
+			"   func(array<int> = {1,2,3}); \n"
+			"	func(int[] = {1,2,3}); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test initializing list with value type and opAssign returning void
+	// https://www.gamedev.net/forums/topic/709865-build-a-script-containing-array-of-string-failed-with-corrupted-vm-stack/
+	SKIP_ON_MAX_PORT
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptArray(engine, false);
+		
+		// Register a string type but with opAssign returning null
+		r = engine->RegisterObjectType("string", sizeof(string), asOBJ_VALUE); assert(r >= 0);
+		r = engine->RegisterStringFactory("string", reinterpret_cast<asIStringFactory*>(GetStdStringFactorySingleton()));
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructString), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(CopyConstructString), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructString), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("string", "void opAssign(const string &in)", asFUNCTION(AssignString), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() \n"
+			"{ \n"
+			"	array<string> b = { 'foo', 'bar', 'baz' }; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 	
 	// Test implicit conversion from anonymous init list to array arg with &inout
 	// Reported by Max Waine
@@ -346,8 +493,8 @@ bool Test()
 
 		if( ctx ) ctx->Release();
 
-		CBufferedOutStream bout;
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->AddScriptSection(TESTNAME, script6, strlen(script6), 0);
 		r = mod->Build();

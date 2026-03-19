@@ -52,6 +52,7 @@ As the scripting engine has been optimized for 32 bit datatypes, using the small
 
 <code>int32</code> is an alias for <code>int</code>, and <code>uint32</code> is an alias for <code>uint</code>.
 
+\todo Use the ' as number separator as the code now supports it
 
 
 
@@ -70,7 +71,7 @@ Rounding errors may occur if more digits than the maximum number of digits are u
 <b>Curiousity</b>: Real numbers may also have the additional values of positive and negative 0 or 
 infinite, and NaN (Not-a-Number). For <code>float</code> NaN is represented by the 32 bit data word 0x7fc00000.
 
-
+\todo Reference the standard library functions do how to determine inf, nan
 
 
 
@@ -221,6 +222,20 @@ passing the class method as the argument.
   }
 </pre>
 
+If a delegate is instantiated for a global function no new object is actually created, instead the actual function will be used as the delegate.
+
+<pre>
+  bool global(int a ,int b) { return a == b; };
+
+  void main()
+  {
+    // A delegate for a global function is the same as taking the function pointer directly;
+    CALLBACK \@f1 = CALLBACK(global);
+    CALLBACK \@f2 = global;
+
+    assert( f1 is f2 );
+  }
+</pre>
 
 
 
@@ -238,7 +253,7 @@ There are two types of string constants supported in the AngelScript
 language, the normal quoted string, and the documentation strings,
 called heredoc strings.
 
-The normal strings are written between double quotation marks (<code>"</code>) or single quotation marks (<code>'</code>).
+The normal strings are written between double quotation marks (<code>\"</code>) or single quotation marks (<code>'</code>).
 Inside the constant strings some escape sequences can be used to write exact
 byte values that might not be possible to write in your normal editor.
 
@@ -257,7 +272,7 @@ byte values that might not be possible to write in your normal editor.
 <tr><td width=80 valign=top><code>\\'</code>&nbsp;  </td>
 <td valign=top width=50>39</td>
 <td valign=top>single quotation mark (apostrophe)</td></tr>
-<tr><td width=80 valign=top><code>\\"</code>&nbsp;  </td>
+<tr><td width=80 valign=top><code>\\\"</code>&nbsp;  </td>
 <td valign=top width=50>34</td>
 <td valign=top>double quotation mark</td></tr>
 <tr><td width=80 valign=top><code>\\n</code>&nbsp;  </td>
@@ -289,7 +304,7 @@ byte values that might not be possible to write in your normal editor.
 
 The heredoc strings are designed for inclusion of large portions of text
 without processing of escape sequences. A heredoc string is surrounded by
-triple double-quotation marks (<code>"""</code>), and can span multiple lines
+triple double-quotation marks (<code>\"\"\"</code>), and can span multiple lines
 of code. If the characters following the start of the string until the first
 linebreak only contains white space, it is automatically removed by the
 compiler. Likewise if the characters following the last line break until the

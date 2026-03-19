@@ -118,4 +118,6 @@ The following shows how to retrieve the internals of the delegate:
   }
 \endcode
 
+\note Although delegates use the asIScriptFunction interface, they are not actual functions. Because of this they are not owned by any module, i.e. \ref asIScriptFunction::GetModule "GetModule" will always return null. Likewise they do not have a specific function id, i.e. \ref asIScriptFunction::GetId "GetId" will return 0. 
+
 */

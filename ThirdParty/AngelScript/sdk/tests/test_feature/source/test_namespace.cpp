@@ -1,5 +1,7 @@
 ﻿#include "utils.h"
 
+using namespace std;
+
 namespace TestNamespace
 {
 
@@ -11,6 +13,404 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Test default namespace in opCast
+	// https://www.gamedev.net/forums/topic/719264-default-namespaces-in-opcast/5472016/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("io_channel", 0, asOBJ_REF);
+		r = engine->SetDefaultNamespace("visa");
+		r = engine->RegisterObjectType("connection", 0, asOBJ_REF);
+		r = engine->RegisterObjectMethod("connection", "connection @opCast(io_channel @)", asFUNCTION(0), asCALL_GENERIC);
+		if( r < 0 )
+			TEST_FAILED;
+
+		asIScriptFunction *func = engine->GetFunctionById(r);
+		if( func == 0 )
+			TEST_FAILED;
+		else if( string(func->GetDeclaration(true, true, false)) != "visa::connection@ visa::connection::opCast(io_channel@)" )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test GetGlobalFunctionByDecl and namespace
+	// https://www.gamedev.net/forums/topic/718946-getglobalfunctionbydecl-ignores-namespace/5471124/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetDefaultNamespace("Foo");
+		engine->RegisterGlobalFunction("void Bar()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectType("Type", 0, asOBJ_REF);
+
+		engine->SetDefaultNamespace("");
+
+		asIScriptFunction* func = engine->GetGlobalFunctionByDecl("void Foo::Bar()");
+		if (func == 0)
+			TEST_FAILED;
+
+		engine->SetDefaultNamespace("Foo");
+		func = engine->GetGlobalFunctionByDecl("void Bar()");
+		if (func == 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test using namespace with nested namespaces
+	// https://github.com/anjo76/angelscript/issues/1
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int value = 0; \n"
+			"namespace A { \n"
+			"	void fn_a() { \n"
+			"		value = 1; \n"
+			"	} \n"
+			"} \n"
+			" \n"
+			"namespace A { \n"
+			"	namespace B { \n"
+			"		void fn_b() { \n"
+			"			value = 2; \n"
+			"		} \n"
+			"	} \n"
+			"} \n"
+			" \n"
+			"void main() { \n"
+			"	using namespace A; \n"
+			"	fn_a(); // OK \n"
+			"   assert( value == 1 ); \n"
+			" \n"
+			"	B::fn_b(); // OK \n"
+			"   assert( value == 2 ); \n"
+			" \n"
+			"	using namespace A::B; \n"
+			"   value = 0; \n"
+			"	fn_b(); // [error] No matching symbol 'fn_b' \n"
+			"   assert( value == 2 ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test subclasses and using namespaces
+	// Reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"using namespace legacy; \n"
+			"class t1 { \n"
+			"	t2@ test; \n"
+			"}\n"
+			"class t2 : t1 {}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Child funcdefs should first look for matching type names in parent object
+	// Reported by Rémy Stivani
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("array<T>", 0, asOBJ_REF | asOBJ_TEMPLATE);
+		r = engine->SetDefaultNamespace("IO");
+		r = engine->RegisterFuncdef("bool array<T>::less(const T&in, const T&in)");
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test using namespace
+	// https://www.gamedev.net/forums/topic/717687-using-namespace-support/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(0), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void g_func() {} \n"
+			" \n"
+			"namespace App \n"
+			"{ \n"
+			"    class Class{}; \n"
+			"    void func() { print('APP::FOO'); } \n"
+			"    enum Enum {}; \n"
+			" \n"
+			"    void g_func() {} \n" // hides the g_func in the global scope
+			"} \n"
+			" \n"
+			"namespace Foo \n"
+			"{ \n"
+			"    void foo_example() {}; \n"
+			"} \n"
+			" \n"
+			"namespace Bar \n"
+			"{ \n"
+			"    using namespace App; \n"
+			" \n"
+			"    class Class{}; \n"
+			"    void func() { print('BAR::FOO'); } \n"
+			"    enum Enum {}; \n"
+			" \n"
+			"    void example1() \n"
+			"    { \n"
+			"        func();  \n" // Error, multiple declaration (Bar::func and App::func)
+			"        g_func();  \n" // OK. App::g_func hides the ::g_func
+			" \n"
+			"        Enum a;  \n"// Error, multiple declarations (Bar::Enum and App::Enum)
+			"        App::Enum b;  \n"// Ok, using App::Enum
+			" \n"
+			"    }  \n"
+			" \n"
+			"    void example2() \n"
+			"    { \n"
+			"        { \n"
+			"            using namespace Foo; \n"
+			"            foo_example();  \n"// Ok, called Foo::foo_example();
+			"        } \n"
+			"        foo_example();  \n"// Error, foo_example is not visible here;
+			"    } \n"
+			"} \n"
+			" \n"
+			" \n"
+			"using namespace App;  \n"
+			"class A : Class {};  \n"// Ok, parent is App::Class
+			);
+		r = mod->Build();
+		if (r > 0)
+			TEST_FAILED;
+
+		mod->AddScriptSection("test2",
+			"namespace App \n"
+			"{ \n"
+			"    class Class{}; \n"
+			"} \n"
+			"namespace Bar \n"
+			"{ \n"
+			"    using namespace App; \n"
+			" \n"
+			"    class Class{}; \n"
+			"}  \n"
+			"namespace Test \n"
+			"{ \n"
+			"  using namespace Bar; \n"
+			"  class B : Class {}; \n" // Error, both Bar::Class and App::Class are visible
+			"  class C : Bar::Class {}; \n" // OK. explicitly say which to use
+			"} \n");
+		r = mod->Build();
+		if (r > 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (25, 5) : Info    : Compiling void example1()\n"
+						   "test (27, 9) : Error   : Multiple matching signatures to 'func()'\n"
+						   "test (27, 9) : Info    : void Bar::func()\n"
+						   "test (27, 9) : Info    : void App::func()\n"
+						   "test (35, 5) : Info    : Compiling void example2()\n"
+						   "test (41, 9) : Error   : No matching symbol 'foo_example'\n"
+						   "test2 (14, 13) : Error   : Ambiguous symbol name 'Class'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test use of partial scope within a namespce
+	// https://www.gamedev.net/forums/topic/712496-bug-with-namespaces/5448593/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", 
+			"class DictOfChallenge_WriteLog : _DictOfChallenge_WriteLog::DictOfChallenge_WriteLog {} \n"
+			"namespace _DictOfChallenge_WriteLog { \n"
+			"  class DictOfChallenge_WriteLog {} \n"
+			"} \n"
+			"namespace DictOfChallenge_WriteLog { \n"
+			"  class KvPair : _KvPair::KvPair {} \n"
+			"  namespace _KvPair {	\n"
+			"    class KvPair {} \n"
+			"  }\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test multiple nested namespaces in same statement
+	// Contributed by Stefan Koch
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "namespace A::B::C { void foo() {} }");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByDecl("void A::B::C::foo()");
+		if (func == 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test GetGlobalPropertyIndexByName with namespaces
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetDefaultNamespace("A");
+		r = engine->RegisterGlobalProperty("int var", (void*)1);
+		if( r < 0 ) TEST_FAILED;
+		engine->SetDefaultNamespace("B");
+		r = engine->RegisterGlobalProperty("int var", (void*)1);
+		if( r < 0 ) TEST_FAILED;
+		engine->SetDefaultNamespace("");
+
+		const char *name = 0, *ns = 0;
+		int v = engine->GetGlobalPropertyIndexByName("A::var");
+		if( v < 0 ) TEST_FAILED;
+		r = engine->GetGlobalPropertyByIndex(v, &name, &ns, 0, 0);
+		if( r < 0 || string(name) != "var" || string(ns) != "A" )
+			TEST_FAILED;
+			
+		v = engine->GetGlobalPropertyIndexByName("B::var");
+		if( v < 0 ) TEST_FAILED;
+		r = engine->GetGlobalPropertyByIndex(v, &name, &ns, 0, 0);
+		if( r < 0 || string(name) != "var" || string(ns) != "B" )
+			TEST_FAILED;
+						
+		engine->SetDefaultNamespace("B");
+		v = engine->GetGlobalPropertyIndexByName("var");
+		if( v < 0 ) TEST_FAILED;
+		r = engine->GetGlobalPropertyByIndex(v, &name, &ns, 0, 0);
+		if( r < 0 || string(name) != "var" || string(ns) != "B" )
+			TEST_FAILED;
+
+		v = engine->GetGlobalPropertyIndexByName("::A::var");
+		if( v < 0 ) TEST_FAILED;
+		r = engine->GetGlobalPropertyByIndex(v, &name, &ns, 0, 0);
+		if( r < 0 || string(name) != "var" || string(ns) != "A" )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test GetTypeInfoByName with namespaces
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetDefaultNamespace("A");
+		r = engine->RegisterEnum("Foo");
+		if( r < 0 ) TEST_FAILED;
+		engine->SetDefaultNamespace("B");
+		r = engine->RegisterEnum("Foo");
+		if( r < 0 ) TEST_FAILED;
+		engine->SetDefaultNamespace("");
+
+		asITypeInfo *info = engine->GetTypeInfoByName("A::Foo");
+		if( info == 0 || string(info->GetName()) != "Foo" || string(info->GetNamespace()) != "A" )
+			TEST_FAILED;
+
+		info = engine->GetTypeInfoByName("B::Foo");
+		if( info == 0 || string(info->GetName()) != "Foo" || string(info->GetNamespace()) != "B" )
+			TEST_FAILED;
+
+		engine->SetDefaultNamespace("B");
+		info = engine->GetTypeInfoByName("Foo");
+		if( info == 0 || string(info->GetName()) != "Foo" || string(info->GetNamespace()) != "B" )
+			TEST_FAILED;
+
+		info = engine->GetTypeInfoByName("::A::Foo");
+		if( info == 0 || string(info->GetName()) != "Foo" || string(info->GetNamespace()) != "A" )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();	
+	}
+	
 	// Test correct declaration from GetDeclaration when returning class method using types from different namespace
 	// https://www.gamedev.net/forums/topic/698616-version-2330-wip-vs-version-2321-wip/
 	{
@@ -905,26 +1305,26 @@ bool Test()
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test1", 
 			"namespace nsTestTwo {\n"
-			"::array<int> arrgh; \n"
-			"shared interface nsIface\n"
-			"{\n"
-			"    nsIface@ parent { get; }\n"
-			"}\n"
+			"  ::array<int> arrgh; \n"
+			"  shared interface nsIface\n"
+			"  {\n"
+			"      nsIface@ parent { get; }\n"
+			"  }\n"
 			"}\n");
 		mod->AddScriptSection("test2",
 			"namespace nsTestTwo {\n"
-			"class nsClass : nsIface\n"
-			"{\n"
-			"    nsIface@ mommy;\n"
-			"    nsClass( nsIface@ parent )\n"
-			"    {\n"
-			"        @this.mommy = parent;\n"
-			"    }\n"
-			"    nsIface@ get_parent()\n"
-			"    {\n"
-			"        return( @this.mommy );\n"
-			"    }\n"
-			"}\n"
+			"  class nsClass : nsIface\n"
+			"  {\n"
+			"      nsIface@ mommy;\n"
+			"      nsClass( nsIface@ parent )\n"
+			"      {\n"
+			"          @this.mommy = parent;\n"
+			"      }\n"
+			"      nsIface@ get_parent()\n"
+			"      {\n"
+			"          return( @this.mommy );\n"
+			"      }\n"
+			"  }\n"
 			"}\n");
 		r = mod->Build();
 		if( r < 0 )
@@ -933,6 +1333,7 @@ bool Test()
 		engine->Release();
 	}
 
+	// Test namespace 
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);

@@ -67,7 +67,8 @@ bool Test()
 		
 		if (bout.buffer != "ExecuteString (1, 20) : Error   : Illegal operation on 'float'\n"
 						   "ExecuteString (1, 21) : Error   : Illegal operation on 'double'\n"
-						   "ExecuteString (1, 22) : Error   : No conversion from 'bool' to 'int' available.\n")
+						   "ExecuteString (1, 22) : Error   : No conversion from 'bool' to 'int' available.\n"
+			               "ExecuteString (1, 20) : Error   : Can't implicitly convert from 'const int' to 'bool'.\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -2,16 +2,16 @@
 
 \page doc_adv_inheritappclass Inheriting from application registered class
 
-A script class cannot directly inherit from an application registered class, 
+A script class cannot directly inherit from an application registered class,
 as the script classes are not compiled into native machine code like the
 application classes are.
 
 It is however possible to emulate the inheritance by using a proxy class
 to hide the underlying differences in an abstract layer. The proxy class has
-two parts, one is the C++ side that the application sees, and the other is 
+two parts, one is the C++ side that the application sees, and the other is
 the script side that the scripts can see and inherit from.
 
-The following is an example implementation of such a proxy class. 
+The following is an example implementation of such a proxy class.
 
 \code
 // On the C++ side
@@ -24,21 +24,29 @@ public:
     // If the script side is still alive, then call the scripted function
     if( !m_isDead->Get() )
     {
-      asIScriptEngine *engine = m_obj->GetEngine();
-      asIScriptContext *ctx = engine->RequestContext();
+      // Check that it isn't our script class instance that is makng the call, in 
+      // which case we do not callback to the script to avoid endless recursiveness
+      asIScriptContext* ctx = asGetActiveContext();
+      asIScriptFunction* func = ctx ? ctx->GetFunction(0) : 0;
+      if (!func || strcmp(func->GetName(), "CallMe") != 0 || !ctx || ctx->GetThisPointer(0) != m_obj)
+      {
+        // Call the script function CallMe so the script can provide the overloaded behavior
+        asIScriptEngine* engine = m_obj->GetEngine();
+        ctx = engine->RequestContext();
 
-      // GetMethodByDecl returns the virtual function on the script class
-      // thus when calling it, the VM will execute the derived method
-      ctx->Prepare(m_obj->GetObjectType()->GetMethodByDecl("void CallMe()"));
-      ctx->SetObject(m_obj);
-      ctx->Execute();
+        // GetMethodByDecl returns the virtual function on the script class
+        // thus when calling it, the VM will execute the derived method
+        ctx->Prepare(m_obj->GetObjectType()->GetMethodByDecl("void CallMe()"));
+        ctx->SetObject(m_obj);
+        ctx->Execute();
 
-      engine->ReturnContext(ctx);
+        engine->ReturnContext(ctx);
+      }
     }
   }
-  
+
   int m_value;
-   
+
   // A factory function that can be used by the script side to create
   static FooScripted *Factory()
   {
@@ -58,24 +66,32 @@ public:
 
     return new FooScripted(obj);
   }
-  
-  // Reference counting
-  void AddRef() 
-  { 
-    m_refCount++; 
 
-    // Increment also the reference counter to the script side so 
+  // Reference counting
+  void AddRef()
+  {
+    m_refCount++;
+
+    // Increment also the reference counter to the script side so
     // it isn't accidentally destroyed before the C++ side
     if( !m_isDead->Get() )
       m_obj->AddRef();
   }
-  void Release() 
+  void Release()
   { 
     // Release the script instance too
     if( !m_isDead->Get() )
       m_obj->Release();
 
-    if( --m_refCount == 0 ) delete this; 
+    if( --m_refCount == 0 ) delete this;
+  }
+
+  // Assignment operator
+  FooScripted &operator=(const FooScripted &o)
+  {
+    // Copy only the content, not the script proxy class
+    m_value = o.m_value;
+    return *this;
   }
 
 protected:
@@ -83,25 +99,25 @@ protected:
   // The constructor and destructor are indirectly called
   FooScripted(asIScriptObject *obj) : m_obj(0), m_isDead(0), m_value(0), m_refCount(1)
   {
-    // Get the weak ref flag for the script object to 
+    // Get the weak ref flag for the script object to
     // avoid holding a strong reference to the script class
     m_isDead = obj->GetWeakRefFlag();
     m_isDead->AddRef();
 
     m_obj = obj;
   }
-  
+
   ~FooScripted()
   {
     // Release the weak ref flag
     m_isDead->Release();
   }
-  
+
   // Reference count
   int m_refCount;
-  
-  // The C++ side holds a weak link to the script side to 
-  // avoid a circular reference between the C++ side and 
+
+  // The C++ side holds a weak link to the script side to
+  // avoid a circular reference between the C++ side and
   // script side
   asILockableSharedBool *m_isDead;
   asIScriptObject *m_obj;
@@ -117,6 +133,7 @@ void RegisterFooScripted(asIScriptEngine *engine)
   engine->RegisterObjectBehaviour("FooScripted_t", asBEHAVE_FACTORY, "FooScripted_t @f()", asFUNCTION(FooScripted::Factory), asCALL_CDECL);
   engine->RegisterObjectBehaviour("FooScripted_t", asBEHAVE_ADDREF, "void f()", asMETHOD(FooScripted, AddRef), asCALL_THISCALL);
   engine->RegisterObjectBehaviour("FooScripted_t", asBEHAVE_RELEASE, "void f()", asMETHOD(FooScripted, Release), asCALL_THISCALL);
+  engine->RegisterObjectMethod("FooScripted_t", "FooScripted_t &opAssign(const FooScripted_t &in)", asMETHOD(FooScripted, operator=), asCALL_THISCALL);
   engine->RegisterObjectMethod("FooScripted_t", "void CallMe()", asMETHOD(FooScripted, CallMe), asCALL_THISCALL);
   engine->RegisterObjectProperty("FooScripted_t", "int m_value", asOFFSET(FooScripted, m_value));
 }
@@ -134,12 +151,28 @@ all the modules that should be able to derive from the FooScripted class.
   shared abstract class FooScripted
   {
     // Allow scripts to create instances
-    FooScripted() 
+    FooScripted()
     {
       // Create the C++ side of the proxy
       \@m_obj = FooScripted_t();  
     }
- 
+
+    // The copy constructor performs a deep copy
+    FooScripted(const FooScripted &o)
+    {
+      // Create a new C++ instance and copy content
+      \@m_obj = FooScripted_t();
+      m_obj = o.m_obj;
+    }
+
+    // Do a deep a copy of the C++ object
+    FooScripted &opAssign(const FooScripted &o)
+    {
+      // copy content of C++ instance
+      m_obj = o.m_obj;
+      return this;
+    }
+
     // The script side forwards the call to the C++ side
     void CallMe() { m_obj.CallMe(); }
 
@@ -157,7 +190,7 @@ all the modules that should be able to derive from the FooScripted class.
     private FooScripted_t \@m_obj;
   }
 </pre>
-  
+
 Now the scripts classes can derive from the FooScripted class  
 and access the properties and methods of the parent class normally.
 
@@ -170,7 +203,7 @@ and access the properties and methods of the parent class normally.
        m_value += 1;
     }
   }
-  
+
   void main()
   {
     // When newly created the m_value is 0
@@ -178,7 +211,7 @@ and access the properties and methods of the parent class normally.
     assert( d.m_value == 0 );
 
     // When calling the method the m_value is incremented with 1
-    d.CallMe(); 
+    d.CallMe();
     assert( d.m_value == 1 );
   }
 </pre>
@@ -193,14 +226,14 @@ FooScripted *CreateFooDerived(asIScriptEngine *engine)
 {
   // Create an instance of the FooDerived script class that inherits from the FooScripted C++ class
   asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetTypeInfoByName("FooDerived")));
-  
+
   // Get the pointer to the C++ side of the FooScripted class
   FooScripted *obj2 = *reinterpret_cast<FooScripted**>(obj->GetAddressOfProperty(0));
-  
+
   // Increase the reference count to the C++ object, as this is what will 
   // be used to control the life time of the object from the application side 
   obj2->AddRef();
-  
+
   // Release the reference to the script side
   obj->Release();
 
@@ -214,7 +247,7 @@ void Foo(asIScriptEngine *engine)
   // Once the object is created the application can access it normally through
   // the FooScripted pointer, without having to know that the implementation
   // is actually done in the script.
-  
+
   // When newly created the m_value is 0
   assert( obj->m_value == 0 );
 

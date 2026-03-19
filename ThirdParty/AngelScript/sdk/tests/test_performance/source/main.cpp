@@ -28,64 +28,64 @@ namespace TestRetObj       { void Test(double *times); }
 
 const int NUM_TESTS = 25;
 
-// Times for 2.32.0 (64bit, Intel i7)
+// Times for 2.36.1 (64bit, Intel i7)
 double testTimesOrig[NUM_TESTS] = 
 {
-0.544,  // Basic
-0.144,  // Basic2
-0.310,  // Call
-0.420,  // Call2
-0.849,  // Fib
-0.111,  // Int
-0.324,  // Intf
-0.323,  // Mthd
-0.669,  // String
-0.349,  // String2
-0.380,  // StringPooled
-0.292,  // ThisProp
-0.161,  // Vector3
-0.163,  // Assign.1
-0.431,  // Assign.2
-0.236,  // Assign.3
+0.577,  // Basic
+0.156,  // Basic2
+0.319,  // Call
+0.458,  // Call2
+1.000,  // Fib
+0.119,  // Int
+0.371,  // Intf
+0.364,  // Mthd
+0.731,  // String
+0.376,  // String2
+0.297,  // StringPooled
+0.321,  // ThisProp
+0.159,  // Vector3
+0.166,  // Assign.1
+0.451,  // Assign.2
+0.239,  // Assign.3
 0.282,  // Assign.4
 0.282,  // Assign.5
-0.551,  // Array.1
-0.231,  // Array.2
-0.139,  // GlobalVar
-0.206,  // ClassProp
-0.845,  // RetObj.1
-0.430,  // RetObj.2
-0.133   // RetObj.3
+0.616,  // Array.1
+0.257,  // Array.2
+0.153,  // GlobalVar
+0.217,  // ClassProp
+1.000,  // RetObj.1
+0.462,  // RetObj.2
+0.134   // RetObj.3
 };
 
-// Times for 2.32.1 WIP (64bit, Intel i7) (localized optimizations)
+// Times for 2.36.2 WIP (64bit, Intel i7) (optimizations in context)
 double testTimesOrig2[NUM_TESTS] = 
 {
-	0.544,  // Basic
-	0.144,  // Basic2
-	0.308,  // Call
-	0.420,  // Call2
-	0.849,  // Fib
-	0.111,  // Int
-	0.324,  // Intf
-	0.322,  // Mthd
-	0.669,  // String
-	0.349,  // String2
-	0.380,  // StringPooled
-	0.292,  // ThisProp
-	0.158,  // Vector3
-	0.163,  // Assign.1
-	0.431,  // Assign.2
+	0.509,  // Basic
+	0.156,  // Basic2
+	0.321,  // Call
+	0.439,  // Call2
+	0.842,  // Fib
+	0.099,  // Int
+	0.305,  // Intf
+	0.284,  // Mthd
+	0.725,  // String
+	0.388,  // String2
+	0.293,  // StringPooled
+	0.300,  // ThisProp
+	0.166,  // Vector3
+	0.168,  // Assign.1
+	0.452,  // Assign.2
 	0.236,  // Assign.3
 	0.282,  // Assign.4
-	0.282,  // Assign.5
-	0.551,  // Array.1
-	0.231,  // Array.2
-	0.139,  // GlobalVar
-	0.206,  // ClassProp
-	0.845,  // RetObj.1
+	0.279,  // Assign.5
+	0.596,  // Array.1
+	0.246,  // Array.2
+	0.156,  // GlobalVar
+	0.213,  // ClassProp
+	0.927,  // RetObj.1
 	0.430,  // RetObj.2
-	0.132   // RetObj.3
+	0.118   // RetObj.3
 };
 
 double testTimesBest[NUM_TESTS];
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 	for( n = 0; n < NUM_TESTS; n++ )
 		testTimesBest[n] = 1000;
 
-	for( n = 0; n < 3; n++ )
+	for( n = 0; n < 10; n++ )
 	{
 		TestBasic::Test(&testTimes[0]); printf("."); fflush(stdout);
 		TestBasic2::Test(&testTimes[1]); printf("."); fflush(stdout);

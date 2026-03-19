@@ -2,12 +2,19 @@
 #include "../../../add_on/scriptarray/scriptarray.h"
 #include "../../../add_on/serializer/serializer.h"
 #include "../../../add_on/scriptmath/scriptmathcomplex.h"
+#include <iostream>
 
 namespace Test_Addon_Serializer
 {
 
 struct CStringType : public CUserType
 {
+	void *AllocateUnitializedMemory(CSerializedValue* /*value*/)
+	{
+		// This must not be done for strings
+		assert(false);
+		return 0;
+	}
 	void Store(CSerializedValue *val, void *ptr)
 	{
 		val->SetUserData(new std::string(*(std::string*)ptr));
@@ -26,6 +33,11 @@ struct CStringType : public CUserType
 
 struct CArrayType : public CUserType
 {
+	void* AllocateUnitializedMemory(CSerializedValue* value)
+	{
+		CScriptArray* arr = CScriptArray::Create(value->GetType());
+		return arr;
+	}
 	void Store(CSerializedValue *val, void *ptr)
 	{
 		CScriptArray *arr = (CScriptArray*)ptr;
@@ -52,6 +64,175 @@ public:
 	int refCount;
 };
 
+struct CppObj
+{
+	CppObj(asIScriptEngine* /* engine*/) : refCount(1), gcFlag(0) // FIX: Need to initialize the members
+	{
+
+	}
+	CppObj(CppObj& other) : refCount(1), gcFlag(0), myString(other.myString) // FIX: Need appropriate copy constructor
+	{
+	}
+
+	void AddRef()
+	{
+		// Increase counter and clear flag set by GC
+		gcFlag = false;
+		asAtomicInc(refCount);
+	}
+
+	void Release()
+	{
+		// Decrease the ref counter
+		gcFlag = false;
+		if (asAtomicDec(refCount) == 0)
+		{
+			// Delete this object as no more references to it exists
+			delete this;
+		}
+	}
+	mutable asBYTE gcFlag : 1;
+	mutable int refCount;
+
+
+	std::string myString;
+	std::string getString() { return myString; }
+	void setString(std::string & in) { myString = in; }
+};
+
+static void CppObjFactory(asIScriptGeneric* gen)
+{
+	asIScriptEngine* engine = gen->GetEngine();
+	*(CppObj**)gen->GetAddressOfReturnLocation() = new CppObj(engine);
+}
+
+void RegisterCppObjType(asIScriptEngine* engine)
+{
+	int r;
+	r = engine->RegisterObjectType("CppObj", sizeof(CppObj), asOBJ_REF);
+
+	r = engine->RegisterObjectBehaviour("CppObj", asBEHAVE_FACTORY, "CppObj@ f()", asFUNCTION(CppObjFactory), asCALL_GENERIC);
+	r = engine->RegisterObjectMethod("CppObj", "string str()", asMETHODPR(CppObj, CppObj::getString, (void), std::string), asCALL_THISCALL);
+	r = engine->RegisterObjectMethod("CppObj", "void setStr(string& in)", asMETHODPR(CppObj, CppObj::setString, (std::string&), void), asCALL_THISCALL);
+	r = engine->RegisterObjectBehaviour("CppObj", asBEHAVE_ADDREF, "void f()", asMETHOD(CppObj, AddRef), asCALL_THISCALL);
+	r = engine->RegisterObjectBehaviour("CppObj", asBEHAVE_RELEASE, "void f()", asMETHOD(CppObj, Release), asCALL_THISCALL);
+}
+
+// This serializes the std::string type
+struct CppObjType : public CUserType
+{
+	void* AllocateUnitializedMemory(CSerializedValue* val) // FIX: Needed a way to create new instances
+	{
+		return new CppObj(val->GetType()->GetEngine());
+	}
+	void Store(CSerializedValue* val, void* ptr)
+	{
+		val->SetUserData(new CppObj(*(CppObj*)ptr));
+	}
+	void Restore(CSerializedValue* val, void* ptr)
+	{
+		CppObj* buffer = (CppObj*)val->GetUserData();
+		*(CppObj*)ptr = *buffer;
+	}
+	void CleanupUserData(CSerializedValue* val) // FIX: Since data is stored in user data it needs to be cleaned up
+	{
+		CppObj* obj = (CppObj*)val->GetUserData();
+		obj->Release();
+	}
+};
+
+
+void printString(const std::string &msg) // FIX: The function was declared to take the string by value, but registered to take by ref
+{
+//	std::cout << "Script says: " << msg << "\n";
+};
+
+int buildModule(asIScriptEngine* engine, asIScriptContext* /* ctx */)
+{
+	asIScriptModule *mod = engine->GetModule("TestModule", asGM_ALWAYS_CREATE);
+	mod->AddScriptSection("test",
+		"class Main \n"
+		"{ \n"
+		"	private string m_string; \n"
+		"	private CppObj@ m_obj; \n"
+		"	Main() \n"
+		"	{ \n"
+		"		m_string = 'Hello, '; \n"
+		
+		"		CppObj aux; \n"
+		"		aux.setStr('world!'); \n"
+
+		"		@m_obj = @aux; \n"
+		"	} \n"
+		"	void Update() \n"
+		"	{ \n"
+		"		print(m_string); \n"
+		"		print(m_obj.str()); \n"
+		"	} \n"
+		"}; \n");
+	int r = mod->Build();
+
+	return r;
+}
+
+int buildModule2(asIScriptEngine* engine, asIScriptContext* /* ctx */)
+{
+	asIScriptModule* mod = engine->GetModule("TestModule", asGM_ALWAYS_CREATE);
+	mod->AddScriptSection("test",
+		"class Main \n"
+		"{ \n"
+		"	private string m_string; \n"
+		"	private string[]@ m_array; \n"
+		"	Main() \n"
+		"	{ \n"
+		"		print('CTOR'); \n"
+		"		m_string = 'Hello, world!'; \n"
+		"		string aux = 'Goodbye, cruel world'; \n"
+		"		string[] somearray; \n"
+		"		somearray.insertLast(aux); \n"
+		"		@m_array = @somearray; \n"
+		"		print(m_array[0]); \n"
+
+		"		print('CTOR END'); \n"
+		"	} \n"
+		"	void Update() \n"
+		"	{ \n"
+		"		print(m_string); \n"
+		"		print(m_array[0]); \n"
+		"	} \n"
+		"}; \n");
+	int r = mod->Build();
+
+	return r;
+}
+
+asIScriptObject* instantializeClass(bool initMembers, asIScriptEngine* engine, asIScriptContext* ctx)
+{
+	asIScriptModule* module = engine->GetModule("TestModule");
+	asITypeInfo* type = module->GetTypeInfoByDecl("Main");
+
+	asIScriptObject* mainObj;
+	if (initMembers)
+	{
+		asIScriptFunction* factory = type->GetFactoryByDecl("Main @Main()");
+		std::string test = "Hello ";
+
+		ctx->SetArgAddress(0, &test);
+		ctx->Prepare(factory);
+		ctx->Execute();
+
+		mainObj = *(asIScriptObject**)ctx->GetAddressOfReturnValue();
+		mainObj->AddRef();
+	}
+	else
+	{
+		mainObj = reinterpret_cast<asIScriptObject*>(engine->CreateUninitializedScriptObject(type));
+		// FIX: Don't call AddRef for this
+	}
+
+	return mainObj;
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -60,7 +241,170 @@ bool Test()
 	CBufferedOutStream bout;
  	asIScriptEngine *engine;
 	asIScriptModule *mod;
-	
+
+	// Test serializing a script object with a handle holding the only reference to a script array
+	// https://www.gamedev.net/forums/topic/712813-serializing-an-object-handle-holding-the-only-reference-to-an-object/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, true);
+		r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(printString), asCALL_CDECL); assert(r >= 0);
+
+		asIScriptContext* ctx = engine->CreateContext();
+
+		r = buildModule2(engine, ctx);
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptObject* mainObj = instantializeClass(true, engine, ctx);
+
+		///////////////////////////////////Simulate app running for some time
+		for (int i = 0; i < 100; i++)
+		{
+			asIScriptModule* module = engine->GetModule("TestModule");
+			asITypeInfo* type = module->GetTypeInfoByDecl("Main");
+
+			asIScriptFunction* func = type->GetMethodByDecl("void Update()");
+
+			ctx->Prepare(func);
+			ctx->SetObject(mainObj);
+			r = ctx->Execute();
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+		}
+
+		///////////////////////////////////Hot reload part
+		asIScriptModule* module = engine->GetModule("TestModule");
+		CSerializer serializer;
+
+		serializer.AddUserType(new CStringType(), "string"); // FIX: Need to know how to serialize string type too
+		serializer.AddUserType(new CArrayType(), "array");
+
+		serializer.AddExtraObjectToStore(mainObj);
+		auto cpy = mainObj;
+		serializer.Store(module);
+
+		mainObj->Release();
+		module->Discard();
+		r = buildModule2(engine, ctx);
+		if (r < 0)
+			TEST_FAILED;
+
+		// mainObj = instantializeClass(false, engine, ctx); // FIX: Don't do this, let the serializer do it
+
+		module = engine->GetModule("TestModule");
+		serializer.Restore(module);
+		mainObj = static_cast<asIScriptObject*>(serializer.GetPointerToRestoredObject(cpy));
+		mainObj->AddRef(); // FIX: Need to add the ref, as the serializer will release its reference when destroyed
+//		std::cout << "Post restore\n";
+
+		///////////////////////////////////Simulate app running for some time
+		for (int i = 0; i < 4; i++)
+		{
+			module = engine->GetModule("TestModule");
+			asITypeInfo* type = module->GetTypeInfoByDecl("Main");
+
+			asIScriptFunction* func = type->GetMethodByDecl("void Update()");
+
+			ctx->Prepare(func);
+			ctx->SetObject(mainObj);
+			r = ctx->Execute();
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+		}
+
+		mainObj->Release(); // FIX: Release the main object when done
+		ctx->Release();
+		serializer.Clear(); // FIX: Release references held by serializer
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test serializing a script object with a handle holding the only reference to a registered type
+	// https://www.gamedev.net/forums/topic/712813-serializing-an-object-handle-holding-the-only-reference-to-an-object/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, true);
+		RegisterCppObjType(engine);
+		r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(printString), asCALL_CDECL);
+
+		asIScriptContext* ctx = engine->CreateContext();
+
+		r = buildModule(engine, ctx);
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptObject* mainObj = instantializeClass(true, engine, ctx);
+
+		///////////////////////////////////Simulate app running for some time
+		for (int i = 0; i < 100; i++)
+		{
+			asIScriptModule* module = engine->GetModule("TestModule");
+			asITypeInfo* type = module->GetTypeInfoByDecl("Main");
+
+			asIScriptFunction* func = type->GetMethodByDecl("void Update()");
+
+			ctx->Prepare(func);
+			ctx->SetObject(mainObj);
+			r = ctx->Execute();
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+		}
+
+		///////////////////////////////////Hot reload part
+		asIScriptModule* module = engine->GetModule("TestModule");
+		CSerializer serializer;
+
+		serializer.AddUserType(new CArrayType(), "array");
+		serializer.AddUserType(new CStringType(), "string");
+		serializer.AddUserType(new CppObjType(), "CppObj");
+
+		serializer.AddExtraObjectToStore(mainObj);
+		auto cpy = mainObj;
+		serializer.Store(module);
+
+		mainObj->Release();
+		module->Discard();
+		r = buildModule(engine, ctx);
+		if (r < 0)
+			TEST_FAILED;
+
+		// mainObj = instantializeClass(false, engine, ctx); // FIX: Don't do this, let the serializer do it
+
+		module = engine->GetModule("TestModule");
+		serializer.Restore(module);
+		mainObj = static_cast<asIScriptObject*>(serializer.GetPointerToRestoredObject(cpy));
+		mainObj->AddRef(); // FIX: Need to add the ref, as the serializer will release its reference when destroyed
+//		std::cout << "Post restore\n";
+
+		///////////////////////////////////Simulate app running for some time
+		for (int i = 0; i < 4; i++)
+		{
+			module = engine->GetModule("TestModule");
+			asITypeInfo* type = module->GetTypeInfoByDecl("Main");
+
+			asIScriptFunction* func = type->GetMethodByDecl("void Update()");
+
+			ctx->Prepare(func);
+			ctx->SetObject(mainObj);
+			r = ctx->Execute();
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+		}
+
+		mainObj->Release(); // FIX: Release the main object when done
+		ctx->Release();
+		serializer.Clear(); // FIX: Release references held by serializer
+		engine->ShutDownAndRelease();
+	}
+
 	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

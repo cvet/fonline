@@ -11,12 +11,18 @@ static const char * const TESTNAME = "TestConstructor2";
 class CMyObj {
 public :
 	CMyObj() {};
+	CMyObj(const CMyObj &) {};
 	virtual ~CMyObj() {};
 };
 
 void ConstrMyObj(CMyObj &obj)
 {
 	new(&obj) CMyObj();
+}
+
+void ConstrMyObjCopy(CMyObj& obj, const CMyObj &other)
+{
+	new(&obj) CMyObj(other);
 }
 
 void DestrMyObj(CMyObj &obj)
@@ -81,9 +87,12 @@ bool Test()
 	asIScriptEngine *engine;
 	int r;
 	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	CBufferedOutStream bout;
+	engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 	r = engine->RegisterObjectType("MyObj", sizeof(CMyObj), asOBJ_VALUE | asOBJ_APP_CLASS); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MyObj", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstrMyObj), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("MyObj", asBEHAVE_CONSTRUCT, "void f(const MyObj &in)", asFUNCTION(ConstrMyObjCopy), asCALL_CDECL_OBJFIRST); assert(r >= 0);
 	r = engine->RegisterObjectBehaviour("MyObj", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestrMyObj), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 
 	r = engine->RegisterObjectType("MySecondObj", sizeof(CMySecondObj), asOBJ_VALUE | asOBJ_APP_CLASS); assert( r >= 0 );
@@ -91,8 +100,17 @@ bool Test()
 	r = engine->RegisterObjectBehaviour("MySecondObj", asBEHAVE_CONSTRUCT, "void f(MyObj &in)", asFUNCTIONPR(ConstrMySecondObj, (CMyObj &, CMySecondObj &), void), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MySecondObj", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestrMySecondObj), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 
-	ExecuteString(engine, "MyObj obj; {MySecondObj secObj(obj);}");
+	r = ExecuteString(engine, "MyObj obj; {MySecondObj secObj(obj);}");
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+
 	engine->Release();
+
+	if (bout.buffer != "")
+	{
+		PRINTF("%s", bout.buffer.c_str());
+		TEST_FAILED;
+	}
 
 
 	// test to make sure default constructors of script classes are called

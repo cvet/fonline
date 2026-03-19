@@ -17,6 +17,8 @@ static float  t2 = 0;
 static double t3 = 0;
 static char   t4 = 0;
 
+static int i[6] = { 0 };
+
 static void cfunction(int f1, float f2, double f3, int f4)
 {
 	called = true;
@@ -126,6 +128,21 @@ static CComplex cfunction5(int f1, double f3, float f2, int f4)
 	return CComplex();
 }
 
+static void cfunction6(int a, void* a1, int ti1, void* a2, int ti2, void* a3, int ti3, void* a4, int ti4, void* a5, int ti5)
+{
+	called = true;
+
+	i[0] = a;
+	i[1] = *(int*)a1;
+	i[2] = *(int*)a2;
+	i[3] = *(int*)a3;
+	i[4] = *(int*)a4;
+	i[5] = *(int*)a5;
+
+	testVal = (ti1 == asTYPEID_INT32) && (ti2 == asTYPEID_INT32) && (ti3 == asTYPEID_INT32) && (ti4 == asTYPEID_INT32) && (ti5 == asTYPEID_INT32) &&
+		(a == 42) && (*(int*)a1 == 1) && (*(int*)a2 == 2) && (*(int*)a3 == 3) && (*(int*)a4 == 4) && (*(int*)a5 == 5);
+}
+
 
 bool TestExecuteMixedArgs()
 {
@@ -208,6 +225,26 @@ bool TestExecuteMixedArgs()
 		}
 		else if (!testVal) {
 			PRINTF("\n%s: testVal is not of expected value. Got (%d, %f, %f, %c), expected (%d, %f, %f, %c)\n\n", TESTNAME, t1, t2, t3, t4, 10, 1.92f, 3.88, 97);
+			TEST_FAILED;
+		}
+	}
+
+	// Test with multiple ?&in to ensure they are properly split across registers
+	// https://www.gamedev.net/forums/topic/715485-arm64-and-amp-parameters/
+	SKIP_ON_MAX_PORT
+	{
+		engine->RegisterGlobalFunction("void cfunction6(int, ?&in, ?&in, ?&in, ?&in, ?&in)", asFUNCTION(cfunction6), asCALL_CDECL);
+
+		called = false;
+		testVal = false;
+		ExecuteString(engine, "cfunction6(42, 1, 2, 3, 4, 5)");
+		if (!called)
+		{
+			PRINTF("%s: cfunction6 not called\n", TESTNAME);
+			TEST_FAILED;
+		}
+		else if (!testVal) {
+			PRINTF("\n%s: testVal is not of expected value. Got (%d, %d, %d, %d, %d, %d), expected (%d, %d, %d, %d, %d, %d)\n\n", TESTNAME, i[0], i[1], i[2], i[3], i[4], i[5], 42, 1, 2, 3, 4, 5);
 			TEST_FAILED;
 		}
 	}

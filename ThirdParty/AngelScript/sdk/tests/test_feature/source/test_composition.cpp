@@ -4,15 +4,25 @@
 namespace TestComposition
 {
 
+	// Add virtual method for Thing::DoSomething so there is a baseOffset too 
 	class Thing
 	{
 	public:
 		Thing() : someProperty(10) {}
-		void DoSomething() 
+		virtual void DoSomething() 
 		{ 
 			someProperty += 100; 
 		}
 		int someProperty;
+	};
+	class A
+	{
+	public:
+		virtual void dummy() {}
+		int a;
+	};
+	class B : public A, public Thing
+	{
 	};
 
 	class OwnerDirect
@@ -20,16 +30,16 @@ namespace TestComposition
 	public:
 		OwnerDirect() : thing(), filler(0) {}
 		asINT64 filler;
-		Thing thing;
+		B thing;
 	};
 
 	class OwnerIndirect
 	{
 	public:
-		OwnerIndirect() : thing(new Thing()), filler(0) {}
+		OwnerIndirect() : thing(new B()), filler(0) {}
 		~OwnerIndirect() { delete thing; }
 		asINT64 filler;
-		Thing *thing;
+		B *thing;
 	};
 
 	bool Test()
@@ -47,9 +57,9 @@ namespace TestComposition
 			r = engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC); assert(r >= 0);
 
 			r = engine->RegisterObjectType("owner", 0, asOBJ_REF | asOBJ_NOHANDLE); assert(r >= 0);
-			r = engine->RegisterObjectMethod("owner", "void DoSomething()", asMETHOD(Thing, DoSomething), asCALL_THISCALL, 0, asOFFSET(OwnerDirect, thing), false); assert(r >= 0);
+			r = engine->RegisterObjectMethod("owner", "void DoSomething()", asMETHOD(B, DoSomething), asCALL_THISCALL, 0, asOFFSET(OwnerDirect, thing), false); assert(r >= 0);
 
-			r = engine->RegisterObjectProperty("owner", "int someProperty", asOFFSET(Thing, someProperty), asOFFSET(OwnerDirect, thing), false); assert(r >= 0);
+			r = engine->RegisterObjectProperty("owner", "int someProperty", asOFFSET(B, someProperty), asOFFSET(OwnerDirect, thing), false); assert(r >= 0);
 
 			OwnerDirect owner;
 			r = engine->RegisterGlobalProperty("owner o", &owner); assert(r >= 0);
@@ -100,9 +110,9 @@ namespace TestComposition
 			r = engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC); assert(r >= 0);
 
 			r = engine->RegisterObjectType("owner", 0, asOBJ_REF | asOBJ_NOHANDLE); assert(r >= 0);
-			r = engine->RegisterObjectMethod("owner", "void DoSomething()", asMETHOD(Thing, DoSomething), asCALL_THISCALL, 0, asOFFSET(OwnerDirect, thing), true); assert(r >= 0);
+			r = engine->RegisterObjectMethod("owner", "void DoSomething()", asMETHOD(B, DoSomething), asCALL_THISCALL, 0, asOFFSET(OwnerDirect, thing), true); assert(r >= 0);
 
-			r = engine->RegisterObjectProperty("owner", "int someProperty", asOFFSET(Thing, someProperty), asOFFSET(OwnerDirect, thing), true); assert(r >= 0);
+			r = engine->RegisterObjectProperty("owner", "int someProperty", asOFFSET(B, someProperty), asOFFSET(OwnerDirect, thing), true); assert(r >= 0);
 
 			OwnerIndirect owner;
 			r = engine->RegisterGlobalProperty("owner o", &owner); assert(r >= 0);

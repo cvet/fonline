@@ -152,6 +152,7 @@
 		<Unit filename="../../source/test_constproperty.cpp" />
 		<Unit filename="../../source/test_constructor.cpp" />
 		<Unit filename="../../source/test_constructor2.cpp" />
+		<Unit filename="../../source/test_context.cpp" />
 		<Unit filename="../../source/test_conversion.cpp" />
 		<Unit filename="../../source/test_cstring.cpp" />
 		<Unit filename="../../source/test_custommem.cpp" />

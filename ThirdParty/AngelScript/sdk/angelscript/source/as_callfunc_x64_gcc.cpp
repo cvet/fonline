@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -64,7 +64,12 @@ typedef asQWORD ( *funcptr_t )( void );
 // Note to self: Always remember to inform the used registers on the clobber line, 
 // so that the gcc optimizer doesn't try to use them for other things
 
-static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, int cnt, funcptr_t func, asQWORD &retQW2, bool returnFloat) 
+static asQWORD __attribute__((noinline)) 
+#ifndef __clang__
+    // On GNUC this code doesn't work properly when optimized, so disable optimization for this function	
+    __attribute__((optimize(0)))
+#endif
+    X64_CallFunction(const asQWORD *args, int cnt, funcptr_t func, asQWORD &retQW2, bool returnFloat) 
 {
 	// Need to flag the variable as volatile so the compiler doesn't optimize out the variable
 	volatile asQWORD retQW1 = 0;
@@ -79,7 +84,7 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 
 	// Backup stack pointer in R15 that is guaranteed to maintain its value over function calls
 		"  movq %%rsp, %%r15 \n"
-#ifdef __OPTIMIZE__
+#if defined(__clang__) && defined(__OPTIMIZE__)
 	// Make sure the stack unwind logic knows we've backed up the stack pointer in register r15
 	// This should only be done if any optimization is done. If no optimization (-O0) is used,
 	// then the compiler already backups the rsp before entering the inline assembler code
@@ -101,17 +106,17 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 	// Push the stack parameters, i.e. the arguments that won't be loaded into registers
 		"  movq %%rcx, %%rsi \n"
 		"  testl %%esi, %%esi \n"
-		"  jle endstack \n"
+		"  jle Lendstack \n"
 		"  subl $1, %%esi \n"
 		"  xorl %%edx, %%edx \n"
 		"  leaq 8(, %%rsi, 8), %%rcx \n"
-		"loopstack: \n"
+		"Lloopstack: \n"
 		"  movq 112(%%r10, %%rdx), %%rax \n"
 		"  pushq %%rax \n"
 		"  addq $8, %%rdx \n"
 		"  cmpq %%rcx, %%rdx \n"
-		"  jne loopstack \n"
-		"endstack: \n"
+		"  jne Lloopstack \n"
+		"Lendstack: \n"
 
 	// Populate integer and floating point parameters
 		"  movq %%r10, %%rax \n"
@@ -136,7 +141,7 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 
 	// Restore stack pointer
 		"  mov %%r15, %%rsp \n"
-#ifdef __OPTIMIZE__
+#if defined(__clang__) && defined(__OPTIMIZE__)
 	// Inform the stack unwind logic that the stack pointer has been restored
 	// This should only be done if any optimization is done. If no optimization (-O0) is used,
 	// then the compiler already backups the rsp before entering the inline assembler code
@@ -146,16 +151,16 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 	// Put return value in retQW1 and retQW2, using either RAX:RDX or XMM0:XMM1 depending on type of return value
 		"  movl %5, %%ecx \n"
 		"  testb %%cl, %%cl \n"
-		"  je intret \n"
+		"  je Lintret \n"
 		"  lea %3, %%rax \n"
 		"  movq %%xmm0, (%%rax) \n"
 		"  lea %4, %%rdx \n"
 		"  movq %%xmm1, (%%rdx) \n"
-		"  jmp endcall \n"
-		"intret: \n"
+		"  jmp Lendcall \n"
+		"Lintret: \n"
 		"  movq %%rax, %3 \n"
 		"  movq %%rdx, %4 \n"
-		"endcall: \n"
+		"Lendcall: \n"
 
 		: : "g" ((asQWORD)cnt), "g" (args), "g" (func), "m" (retQW1), "m" (retQW2), "m" (returnFloat)
 		: "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7", 
@@ -210,6 +215,8 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 	asQWORD  paramBuffer[X64_CALLSTACK_SIZE] = { 0 };
 	asBYTE	 argsType[X64_CALLSTACK_SIZE] = { 0 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 	switch ( callConv ) 
 	{
 		case ICC_CDECL_RETURNINMEM:
@@ -226,6 +233,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		case ICC_THISCALL_OBJLAST:
 		case ICC_VIRTUAL_THISCALL_OBJLAST:
 			param_post = 2;
+			// fall through
 #endif
 		case ICC_THISCALL:
 		case ICC_VIRTUAL_THISCALL:
@@ -242,6 +250,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		case ICC_THISCALL_OBJLAST_RETURNINMEM:
 		case ICC_VIRTUAL_THISCALL_OBJLAST_RETURNINMEM:
 			param_post = 2;
+			// fall through
 #endif
 		case ICC_THISCALL_RETURNINMEM:
 		case ICC_VIRTUAL_THISCALL_RETURNINMEM:
@@ -296,6 +305,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			break;
 		}
 	}
+#pragma GCC diagnostic pop
 
 	int argumentCount = ( int )descr->parameterTypes.GetLength();
 	for( int a = 0; a < argumentCount; ++a ) 

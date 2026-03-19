@@ -7,8 +7,605 @@ bool Test()
 {
 	bool fail = false;
 	CBufferedOutStream bout;
-	asIScriptEngine *engine;
+	asIScriptEngine* engine;
 	int r;
+
+	// Test memory management on shared entities
+	// https://www.gamedev.net/forums/topic/718724-shared-types-refcounting-bug/5470582/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		RegisterScriptArray(engine, false);
+
+		// 2 has a dependency on 3
+		const char* script2 =
+			"shared interface IMedal {}\n"
+			"import void setMedal(IMedal@ medal) from \"test3\";\n"
+			"class MyMedal : IMedal {}\n"
+			"MyMedal@ g_medal;\n"
+			"void Main() {\n"
+			"  @g_medal = MyMedal();\n"
+			"  setMedal(g_medal);\n"
+			"}\n"
+			"namespace Bar {\n" // If `Foo` is not in the `Bar` namespace, the error doesn't reproduce
+			"  shared class Foo {\n" // `Foo` is only defined and used here
+			"    Foo(int) {}\n"
+			"  }\n"
+			"}\n"
+			"void Test() {\n" // Test() is actually never called
+			"  Bar::Foo(2);\n"
+			"}";
+
+		// 3 has no dependencies
+		const char* script3 =
+			"shared interface IMedal {}\n"
+			"IMedal@ g_foo;\n"
+			"void setMedal(IMedal@ medal) {\n"
+			"  @g_foo = medal;\n"
+			"}";
+
+		asIScriptModule* mod;
+		asIScriptContext* ctx;
+
+		// Build 3 before 2
+		mod = engine->GetModule("test3", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test3", script3);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// Build 2
+		mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test2", script2);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		r = mod->BindAllImportedFunctions();
+		if (r < 0)
+			TEST_FAILED;
+
+		//asITypeInfo* barFooTypeInfo = mod->GetTypeInfoByDecl("Bar::Foo"); // At this point, there are 8 internal references
+
+		// Execute test2 Main()
+		mod = engine->GetModule("test2");
+		ctx = engine->CreateContext();
+		ctx->Prepare(mod->GetFunctionByName("Main"));
+		r = ctx->Execute();  // Main calls the setMedal function on module test3, which will store a handle to MyMedal, thus keeping module test2 alive
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		ctx->Release();
+
+		// It's time to reload 2
+		// We do this twice, as it only happens after the second reload
+		for (int i = 0; i < 2; i++) 
+		{
+			// Unload 2
+			engine->GarbageCollect(); // On the second iteration this releases the Bar::Foo type since now the test2 module was truly destroyed. Ownership of Bar::Foo is transfered to the newly compiled test2
+			engine->DiscardModule("test2"); // The module isn't deleted on the first run, because module test3 holds a handle to MyMedal.
+
+			// Rebuild 2 before 1
+			mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("test2", script2);
+			r = mod->Build(); // Adds 3 internal references, since Bar::Foo was still existing. 
+			if (r < 0)
+				TEST_FAILED;
+			r = mod->BindAllImportedFunctions();
+			if (r < 0)
+				TEST_FAILED;
+
+			// Execute test2 Main()
+			mod = engine->GetModule("test2");
+			ctx = engine->CreateContext();
+			ctx->Prepare(mod->GetFunctionByName("Main"));
+			r = ctx->Execute(); // Now the handle to MyMedal in the discarded "test2" will be released, as the handle to MyMedal in the newly built "test2" replaces it
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+			ctx->Release();
+		}
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test duplicate declaration of shared class (allowed with engine property)
+	// https://www.gamedev.net/forums/topic/707753-bug-when-importing-an-external-interface/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		engine->SetEngineProperty(asEP_IGNORE_DUPLICATE_SHARED_INTF, true);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"shared interface i {} \n"
+			"shared interface i {} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test discarding a shared class with default factory
+	// https://www.gamedev.net/forums/topic/709671-shared-class-invalidates-when-1-of-the-modules-is-discarded/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod1 = engine->GetModule("mod1", asGM_ALWAYS_CREATE);
+		mod1->AddScriptSection("test",
+			"shared class Foo\n"
+			"{\n"
+			"	void MethodInFoo(int b) { bar = b; }\n"
+			"	int bar;\n"
+			"}\n"
+			"void Main()\n"
+			"{\n"
+			"	Foo@ f = Foo(); \n"
+			"}\n");
+		r = mod1->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule* mod2 = engine->GetModule("mod2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"shared class Foo\n"
+			"{\n"
+			"	void MethodInFoo(int b) { bar = b; }\n"
+			"	int bar;\n"
+			"}\n"
+			"void Main()\n"
+			"{\n"
+			"}\n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod1->Discard();
+		mod1 = engine->GetModule("mod1", asGM_ALWAYS_CREATE);
+		mod1->AddScriptSection("test",
+			"shared class Foo\n"
+			"{\n"
+			"	void MethodInFoo(int b) { bar = b; }\n"
+			"	int bar;\n"
+			"}\n"
+			"void Main()\n"
+			"{\n"
+			"	Foo@ f = Foo(); \n"
+			"}\n");
+		r = mod1->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test using shared class after the original module has been discarded
+	// https://www.gamedev.net/forums/topic/709671-shared-class-invalidates-when-1-of-the-modules-is-discarded/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod1 = engine->GetModule("mod1", asGM_ALWAYS_CREATE);
+		mod1->AddScriptSection("test",
+			"shared class Foo\n"
+			"{\n"
+			"	void MethodInFoo(int b) { bar = b; }\n"
+			"	int bar;\n"
+			"}\n"
+			"void Main()\n"
+			"{\n"
+			"	Foo@ f = Foo(); \n"
+			"}\n");
+		r = mod1->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule* mod2 = engine->GetModule("mod2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"shared class Foo\n"
+			"{\n"
+			"	void MethodInFoo(int b) { bar = b; }\n"
+			"	int bar;\n"
+			"}\n"
+			"void Main()\n"
+			"{\n"
+			"	while (true) {\n"
+			"		Foo@ f = Foo();\n"
+			"		break;\n"
+			"	}\n"
+			"}\n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod1->Discard();
+
+		asIScriptContext* ctx = engine->CreateContext();
+		ctx->Prepare(mod2->GetFunctionByName("Main"));
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test anonymous functions within shared functions
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		asIScriptModule* shareMod = NULL;
+
+		{ //Module 1 (Build this module as shared module)
+			shareMod = engine->GetModule("shared", asGM_ALWAYS_CREATE); assert(shareMod != NULL);
+
+			r = shareMod->AddScriptSection("main",
+				"shared funcdef void SimpleCallback(); \n"
+
+				"//shared void Simple() {} \n"
+
+				"shared void InvokeSimple() { \n"
+				"	//SimpleCallback@ cb = Simple; \n" //No error
+				"	SimpleCallback@ cb = function() {}; \n" //Error caused by the anonymous function
+
+				"	cb(); \n"
+				"} \n"); assert(r >= 0);
+			r = shareMod->Build();
+			if (r < 0)
+				TEST_FAILED;
+		}
+
+		{ //Module 2 (Build this module and discard) <== No error
+			asIScriptModule* mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+
+			r = mod->AddScriptSection("main",
+				"external shared void InvokeSimple(); \n"
+
+				"void main() \n"
+				"{ \n"
+				"	InvokeSimple(); \n"
+				"} \n"); assert(r >= 0);
+			r = mod->Build();
+			if (r < 0)
+				TEST_FAILED;
+
+			mod->Discard();
+		}
+
+		{ //Module 3 (Build this module and execute the main function) <== Error here
+			asIScriptModule* mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+			asIScriptContext* ctx = engine->CreateContext(); assert(ctx != NULL);
+
+			r = mod->AddScriptSection("main",
+				"external shared void InvokeSimple(); \n"
+
+				"void main() \n"
+				"{ \n"
+				"	InvokeSimple(); \n"
+				"} \n"); assert(r >= 0);
+			r = mod->Build();
+			if (r < 0)
+				TEST_FAILED;
+
+			r = ctx->Prepare(engine->GetModule(0)->GetFunctionByDecl("void main()")); assert(r >= 0);
+			r = ctx->Execute();
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+
+			ctx->Release();
+			mod->Discard();
+		}
+
+		shareMod->Discard();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+	}
+
+	// Test with external shared interface and inheriting from shared interface
+	// https://www.gamedev.net/forums/topic/707753-bug-when-importing-an-external-interface/5430255/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", 
+			"shared interface ITest {} \n"
+			"shared interface ITest2 : ITest {} \n"
+			"external shared interface ITest2; \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (3, 27) : Error   : Name conflict. 'ITest2' is an interface.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test inheriting from shared base class, and then discard the module that compiled the base class
+	// https://www.gamedev.net/forums/topic/706321-angelscript-crash-using-disposed-script-function-that-was-loaded-from-bytecode/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+const char* file1 = "					\
+	class Test1 : Test0 {						\
+		int function1() { return Test0::function1(); }	\
+	}									\
+	shared class Test0 {				\
+		int function1() { return 1; }	\
+	}									\
+	";
+
+const char* file2 = "					\
+	class Test2 : Test0 {				\
+	}									\
+	shared class Test0 {				\
+		int function1() { return 1; }	\
+	}									\
+	";
+	
+		asIScriptModule* mod1 = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+		r = mod1->AddScriptSection("test1", file1, strlen(file1));
+		r = mod1->Build();
+		if( r < 0 )
+			TEST_FAILED;
+	
+		asIScriptModule* mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod2->AddScriptSection("test2", file2, strlen(file2));
+		r = mod2->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		mod1->Discard();
+		engine->GarbageCollect();
+
+		auto testTypeInfo = mod2->GetTypeInfoByName("Test2");
+		auto test1Func = testTypeInfo->GetMethodByDecl("int function1()");
+		auto factoryFunc = testTypeInfo->GetFactoryByIndex(0);
+
+		engine->GarbageCollect();
+
+		auto context = engine->RequestContext();
+		context->Prepare(factoryFunc);
+		context->Execute();
+		asIScriptObject* scriptObj = (asIScriptObject*)context->GetReturnObject();
+		scriptObj->AddRef();
+
+		context->Prepare(test1Func);
+		context->SetObject(scriptObj);
+		int funcCall = context->Execute();
+		if( funcCall != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		scriptObj->Release();
+		engine->ReturnContext(context);
+
+		mod2->Discard();
+		engine->GarbageCollect();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	// Test multiple modules with shared objects and inheritance
+	// https://www.gamedev.net/forums/topic/706321-angelscript-crash-using-disposed-script-function-that-was-loaded-from-bytecode/5424084/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		CBytecodeStream stream1("1");
+		CBytecodeStream stream2("2");
+		CBytecodeStream stream3("3");
+		CBytecodeStream stream4("4");
+
+			//file for loading in some functions and disposing them to make room
+			//in the front of the script engine's function array
+			const char* file4 = " \
+			shared class Test4 { \
+				int function1() { return 0; }	\
+				int function2() { return 0; }	\
+				int function3() { return 0; }	\
+				int function4() { return 0; }	\
+				int function5() { return 0; }	\
+				int function6() { return 0; }	\
+				int function7() { return 0; }	\
+				int function8() { return 0; }	\
+				int function9() { return 0; }	\
+				int function10() { return 0; }	\
+			} \
+			";
+			asIScriptModule* mod4 = engine->GetModule("test4", asGM_ALWAYS_CREATE);
+			r = mod4->AddScriptSection("test4", file4, strlen(file4));
+			assert(r >= 0);
+			r = mod4->Build();
+			assert(r >= 0);
+
+			r = mod4->SaveByteCode(&stream4);
+			assert(r >= 0);
+
+			mod4->Discard();
+			engine->GarbageCollect();
+
+			//file for the first derived class
+			const char* file2 = " \
+				shared class Test2 : Test0 { \
+				} \
+				shared class Test0 { \
+					int function1() { return 0; } \
+				} \
+				";
+		
+			asIScriptModule* mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+			r = mod2->AddScriptSection("test2", file2, strlen(file2));
+			assert(r >= 0);
+			r = mod2->Build();
+			assert(r >= 0);
+
+			r = mod2->SaveByteCode(&stream2);
+			assert(r >= 0);
+
+			mod2->Discard();
+			engine->GarbageCollect();
+
+			//file for the base class
+			const char* file1 = " \
+			shared class Test0 { \
+			int function1() { return 0; } \
+			} \
+			";
+			
+			asIScriptModule* mod1 = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+			r = mod1->AddScriptSection("test1", file1, strlen(file1));
+			assert(r >= 0);
+			r = mod1->Build();
+			assert(r >= 0);
+			r = mod1->SaveByteCode(&stream1);
+			assert(r >= 0);
+
+			//! module1 is not discarded before saving bytecode for module3 to produce a different bytecode !
+
+			//file for the second derived class
+			const char* file3 = " \
+			shared class Test3 : Test0 { \
+				int function1() { Test0::function1(); return 1; } \
+			} \
+			shared class Test0 { \
+				int function1() { return 0; } \
+			} \
+			";
+			
+			asIScriptModule* mod3 = engine->GetModule("test3", asGM_ALWAYS_CREATE);
+			r = mod3->AddScriptSection("test3", file3, strlen(file3));
+			assert(r >= 0);
+			r = mod3->Build(); // 4 m_scriptFunctions, 2 m_classTypes (int Test3::function1(), constructor Test3::Test3(), factory Test3 @Test3(), virtual Test0::function1())
+			assert(r >= 0);
+
+			r = mod3->SaveByteCode(&stream3);
+			assert(r >= 0);
+
+
+			mod1->Discard();
+			mod3->Discard();
+			engine->GarbageCollect();
+		
+
+		//load some functions to reserve thr front spaces of the script engine function array
+		mod4 = engine->GetModule("test4", asGM_ALWAYS_CREATE);
+		r = mod4->LoadByteCode(&stream4);
+		assert(r == 0);
+
+		//load a module with the base script class that should be the owning module of the shared base class functions
+		mod1 = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+		r = mod1->LoadByteCode(&stream1);
+		assert(r == 0);
+
+		//make the front of the script engine function array available for use
+		mod4->Discard();
+		engine->GarbageCollect();
+
+		//load a derived class module with the base class definition being included afterthe derived class (important!)
+		//this will force new base class shared function creation
+		mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		//mod2->AddScriptSection("test2", file2, strlen(file2));
+		//r = mod2->Build();
+		r = mod2->LoadByteCode(&stream2);
+		assert( r >= 0 );
+
+		//load a derived class module that was compiled while another module that owned the base class existed (important!)
+		//this will result in slightly different bytecode that will do a function search in the script engine's function array
+		//(rather than the module's function array) and locate the new duplicate base class shared function introduced by module2
+		mod3 = engine->GetModule("test3", asGM_ALWAYS_CREATE);
+		r = mod3->LoadByteCode(&stream3);
+		assert(r == 0);
+
+		//get rid of module2. This will dispose the duplicate shared function because a new owner could not be located
+		mod2->Discard();
+		engine->GarbageCollect();
+
+		//try executing a function in module3 that calls a base class virtual function.
+		//this will crash doe to trying to use the function pointer from module2 rather than module1
+		auto test1TypeInfo = mod3->GetTypeInfoByName("Test3");
+		auto test1Func = test1TypeInfo->GetMethodByDecl("int function1()");
+		auto factoryFunc = test1TypeInfo->GetFactoryByIndex(0);
+		
+		auto context = engine->RequestContext();
+		context->Prepare(factoryFunc);
+		context->Execute();
+
+		asIScriptObject* scriptObj = (asIScriptObject*)context->GetReturnObject();
+		scriptObj->AddRef();
+		context->Prepare(test1Func);
+		context->SetObject(scriptObj);
+		context->Execute();   // <-- crashes here when calling function1 which is a shared function with id 37. 
+		                      // It should have objType set to Test0 as well as scriptData, but does not
+
+		scriptObj->Release();
+		engine->ReturnContext(context);
+
+
+		mod3->Discard();
+		engine->GarbageCollect();
+
+
+
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test external shared interface with inheritance
 	// https://www.gamedev.net/forums/topic/700203-asccontextcallscriptfunction-called-with-null/
@@ -132,14 +729,14 @@ bool Test()
 			TEST_FAILED;
 
 		asDWORD crc32 = ComputeCRC32(&bc1.buffer[0], asUINT(bc1.buffer.size()));
-		if (crc32 != 0x433EF007)
+		if (crc32 != 0x59B3E29)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
 		}
 
 		crc32 = ComputeCRC32(&bc2.buffer[0], asUINT(bc2.buffer.size()));
-		if (crc32 != 0xC1DD769E)
+		if (crc32 != 0x504D4243)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
@@ -593,8 +1190,8 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != "B (3, 13) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n"
-		                   "B (3, 18) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n" )
+		if( bout.buffer != "B (3, 13) : Error   : Shared type 'ielement' doesn't match the declaration in module 'A'\n"
+		                   "B (3, 18) : Error   : Shared type 'ielement' doesn't match the declaration in module 'A'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -639,15 +1236,15 @@ bool Test()
 		engine->Release();
 	}
 
-	// Compiling a script with a shared class that refers to other non declared entities must give
-	// error even if the shared class is already existing in a previous module
+	// Compiling a script with a shared class that refers to other non declared entities must not give
+	// error if the shared class is already existing in a previous module
 	// http://www.gamedev.net/topic/632922-huge-problems-with-precompilde-byte-code/
 	{
 		const char *script1 = 
 			"shared class A { \n"
 			"  B @b; \n"
 			"  void setB(B@) {} \n"
-			"  void func() {B@ l;} \n" // TODO: The method isn't compiled so this error isn't seen. Should it be?
+			"  void func() {B@ l;} \n" // The method isn't compiled so this error isn't seen
 			"  string c; \n"
 			"} \n";
 
@@ -672,9 +1269,7 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "A (3, 13) : Error   : Identifier 'B' is not a data type in global namespace\n"
-		                   "A (3, 3) : Error   : Shared type 'A' doesn't match the original declaration in other module\n"
-		                 /*  "A (2, 3) : Error   : Identifier 'B' is not a data type in global namespace\n"
-		                   "A (2, 6) : Error   : Shared type 'A' doesn't match the original declaration in other module\n" */)
+		                   "A (3, 3) : Error   : Shared type 'A' doesn't match the declaration in module 'A'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -809,7 +1404,7 @@ bool Test()
 		if( t1 >= 0 )
 		{
 			asIScriptFunction *fact1 = engine->GetTypeInfoById(t1)->GetFactoryByIndex(0);
-			if( fact1 < 0 )
+			if( fact1 == 0 )
 				TEST_FAILED;
 		
 			asIScriptModule *mod2 = engine->GetModule("2", asGM_ALWAYS_CREATE);

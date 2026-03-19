@@ -60,7 +60,7 @@ void Get(asIScriptGeneric *gen)
 	gen->SetReturnDWord(false);
 }
 
-static CScriptString *g_test = new CScriptString("test");
+static CScriptString *g_test = 0;
 void GetConstStringRef(asIScriptGeneric *gen)
 {
 	gen->SetReturnAddress(g_test);
@@ -94,6 +94,32 @@ bool Test()
 	asIScriptEngine *engine = 0;
 	asIScriptModule *mod = 0;
 	int r;
+
+	// Test non-terminated heredoc string
+	// https://www.gamedev.net/forums/topic/714946-crash-parsing-non-terminated-heredoc-string/5459282/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"string str = \"\"\"\n"
+			"This is a heredoc string that has not been terminated\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 14) : Error   : Non-terminated string literal\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test heredoc engine properties
 	// idea from discussion with Scott Bean
@@ -241,6 +267,7 @@ bool Test()
 
 
 		// Test string copy constructor
+		g_test = new CScriptString("test");
 		r = ExecuteString(engine, "string tst(getconststringref()); print(tst);");
 		if (r != asEXECUTION_FINISHED) TEST_FAILED;
 		if (printOutput != "test") TEST_FAILED;
@@ -271,7 +298,8 @@ bool Test()
 			PRINTF("%s: Failed to print the correct string\n", "TestScriptString");
 		}
 
-		ExecuteString(engine, "string s = \"test\\\\test\\\\\"");
+		r = ExecuteString(engine, "string s = \"test\\\\test\\\\\"");
+		if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 		// Verify that it is possible to use the string in constructor parameters
 		printOutput = "";
@@ -403,7 +431,8 @@ bool Test()
 		if (bout.buffer != "TestScriptString (1, 1) : Info    : Compiling void Main()\n"
 						   "TestScriptString (4, 4) : Error   : No matching signatures to 'test(const string@&)'\n"
 						   "TestScriptString (4, 4) : Info    : Candidates are:\n"
-						   "TestScriptString (4, 4) : Info    : void test(string@ s)\n")
+						   "TestScriptString (4, 4) : Info    : void test(string@ s)\n"
+						   "TestScriptString (4, 4) : Info    : Rejected due to type mismatch on parameter 's'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -485,14 +514,14 @@ bool Test()
 
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		const char *script8 =
-			"void test()                    \n"
-			"{                              \n"
-			"   Func('test');               \n"
-			"}                              \n"
-			"string Func(string & str)      \n"
-			"{                              \n"
-			"  return str;                  \n"
-			"}                              \n";
+			"void test()                      \n"
+			"{                                \n"
+			"   Func('test');                 \n"
+			"}                                \n"
+			"string Func(const string & str)  \n"
+			"{                                \n"
+			"  return str;                    \n"
+			"}                                \n";
 		mod->AddScriptSection("test", script8, strlen(script8), 0);
 		mod->Build();
 		r = ExecuteString(engine, "test()", mod);
@@ -504,10 +533,41 @@ bool Test()
 	//---------------------------------------
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptString(engine);
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		const char* script8 =
+			"void test()                      \n"
+			"{                                \n"
+			"   Func('test');                 \n"
+			"}                                \n"
+			"string Func(string & str)        \n" // not allowed
+			"{                                \n"
+			"  return str;                    \n"
+			"}                                \n";
+		mod->AddScriptSection("test", script8, strlen(script8), 0);
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void test()\n"
+						   "test (3, 9) : Error   : Not a valid reference\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
+	//---------------------------------------
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
 		RegisterScriptString(engine);
 
-		engine->RegisterGlobalFunction("void TestFunc(int, string&)", asFUNCTION(TestFunc), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("void TestFunc(int, const string&)", asFUNCTION(TestFunc), asCALL_GENERIC);
 
 		// CHKREF was placed incorrectly
 		r = ExecuteString(engine, "TestFunc(0, 'test');");

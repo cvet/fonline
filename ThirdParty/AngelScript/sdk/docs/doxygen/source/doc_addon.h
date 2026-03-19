@@ -29,7 +29,48 @@ This page gives a brief description of the add-ons that you'll find in the /sdk/
  - \subpage doc_addon_math
  - \subpage doc_addon_grid
  - \subpage doc_addon_datetime
+ - \subpage doc_addon_socket
  - \subpage doc_addon_helpers_try
+
+
+
+
+
+\page doc_addon_socket socket object
+
+<b>Path:</b> /sdk/add_on/scriptsocket/
+
+The <code>CScriptSocket</code> provides an easy to use TCP socket for the scripts.
+
+\note Currently this add-on only works on Windows.
+
+\section doc_addon_socket_1 Public C++ interface
+
+\code
+class CScriptSocket
+{
+public:
+  CScriptSocket();
+
+  // Memory management
+  void AddRef() const;
+  void Release() const;
+
+  // Methods
+  int            Listen(asWORD port);
+  int            Close();
+  CScriptSocket* Accept(asINT64 timeoutMicrosec = 0);
+  int            Connect(asUINT ipv4Address, asWORD port);
+  int            Send(const std::string& data);
+  std::string    Receive(asINT64 timeoutMicrosec = 0);
+  bool           IsActive() const;
+};
+\endcode
+
+\section doc_addon_socket_2 Public script interface
+
+\see \ref doc_script_stdlib_socket "socket in the script language"
+
 
 
 
@@ -64,6 +105,7 @@ public:
   asUINT getHour() const;
   asUINT getMinute() const;
   asUINT getSecond() const;
+  asUINT getWeekDay() const;
   
   // Setters
   // Returns true if valid
@@ -98,8 +140,10 @@ public:
 The <code>CSerializer</code> implements support for serializing the values of global variables in a 
 module, for example in order to reload a slightly modified version of the script without reinitializing
 everything. It will resolve primitives and script classes automatically, including references and handles.
+
 For application registered types, the application needs to implement callback objects to show how
-these should be serialized.
+these should be serialized. The exception is for pod types, as the serializer will simply keep a bitwise copy. 
+Registered reference types without factories will not be serialized, i.e. the object will be kept as-is.
 
 The implementation currently has some limitations:
 
@@ -112,13 +156,6 @@ The implementation currently has some limitations:
  - If the module holds references to objects from another module it will probably fail in 
    restoring the values.
 
-
-\todo Show how to serialize extra objects too. And explain about memory management for restored objects
-
-\todo Explain that handles to registered types without factories will be kept as-is
-
-\todo Registered pod-types do not need a special user type as the serializer will simply keep a bitwise copy
-
 \section doc_addon_serializer_1 Public C++ interface
 
 \code
@@ -128,6 +165,9 @@ public:
   CSerializer();
   ~CSerializer();
 
+  // Clear the serializer to free references held internally
+  void Clear();
+
   // Add implementation for serializing user types
   void AddUserType(CUserType *ref, const std::string &name);
 
@@ -136,7 +176,7 @@ public:
 
   // Restore all global variables after reloading script
   int Restore(asIScriptModule *mod);
-  
+
   // Store extra objects that are not seen from the module's global variables
   void AddExtraObjectToStore(asIScriptObject *object);
 
@@ -146,6 +186,8 @@ public:
 \endcode
 
 \section doc_addon_serializer_2 Example usage
+
+This first example shows how to serialize a script module that uses application registered types.
 
 \code
 struct CStringType;
@@ -175,6 +217,12 @@ void RecompileModule(asIScriptEngine *engine, asIScriptModule *mod)
 // This serializes the std::string type
 struct CStringType : public CUserType
 {
+  void *AllocateUnitializedMemory(CSerializedValue* value)
+  {
+    // This must not be done for strings
+    assert(false);
+    return 0;
+  }	
   void Store(CSerializedValue *val, void *ptr)
   {
     val->SetUserData(new std::string(*(std::string*)ptr));
@@ -194,6 +242,11 @@ struct CStringType : public CUserType
 // This serializes the CScriptArray type
 struct CArrayType : public CUserType
 {
+  void* AllocateUnitializedMemory(CSerializedValue* value)
+  {
+    CScriptArray* arr = CScriptArray::Create(value->GetType());
+    return arr;
+  }
   void Store(CSerializedValue *val, void *ptr)
   {
     CScriptArray *arr = (CScriptArray*)ptr;
@@ -210,6 +263,40 @@ struct CArrayType : public CUserType
       val->m_children[i]->Restore(arr->At(asUINT(i)), arr->GetElementTypeId());
   }
 };
+\endcode
+
+The following example shows how to serialize additional objects, not stored in the module itself.
+
+\code
+// This object is stored outside of the module, so it has to be explicitly informed to the serializer
+asIScriptObject *scriptObj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetTypeInfoByName("CTest")));
+
+void RecompileModule(asIScriptEngine *engine, asIScriptModule *mod)
+{
+  string modName = mod->GetName();
+  
+  // Tell the serializer about the additional object stored outside of the module
+  CSerializer backup;
+  backup.AddExtraObjectToStore(scriptObj);
+
+  // Backup the values of the global variables and the additional object
+  r = backup.Store(mod);
+  if( r < 0 )
+    TEST_FAILED;
+
+  // Application can now recompile the module
+  CompileModule(modName);
+
+  // Restore the values of the global variables in the new module
+  mod = engine->GetModule(modName.c_str(), asGM_ONLY_IF_EXISTS);
+  backup.Restore(mod);
+
+  // Restore the extra object by looking up the new instance using the address of the old instance as key
+  asIScriptObject *obj2 = (asIScriptObject*)backup.GetPointerToRestoredObject(scriptObj);
+  scriptObj->Release();
+  scriptObj = obj2;
+  scriptObj->AddRef();
+}
 \endcode
 
 
@@ -283,6 +370,11 @@ public:
   // by callbacks that need it. This will hold a reference to the engine.
   virtual void SetEngine(asIScriptEngine *engine);
   virtual asIScriptEngine *GetEngine();
+  
+  // Sets the flag to decide if section name should be converted to just filename (true)
+  // or should not be converted and full path should be used instead (false).
+  virtual bool GetUseSectionFileNameOnly() const;
+  virtual void SetUseSectionFileNameOnly(bool useSectionFileNameOnly);
 };
 \endcode
 
@@ -418,6 +510,9 @@ the methods have the same significance. Not all methods from STL is implemented 
 so a port from script to C++ and vice versa might be easier if STL names are used.
 
 Compile the add-on with the pre-processor define AS_USE_ACCESSORS=1 to register length as a virtual property instead of the method length().
+
+Compile the add-on with the pre-processor define AS_NO_IMPL_OPS_WITH_STRING_AND_PRIMITIVE=1 to disable the implicit operations with 
+primitives that automatically formats the primitive values to strings.
 
 \section doc_addon_array_1 Public C++ interface
 
@@ -888,8 +983,48 @@ doesn't match the stored handle the returned pointer will be null.
 To retrieve an object of an unknown type use the GetType() or GetTypeId() to
 determine the type stored in the handle, then use the Cast() method.
 
+\section doc_addon_handle_5 Example on how to return a newly registered function from C++
 
+The following is a bit more practical example of using the CScriptHandle to return a recently registered function. The 
+function could for example have been loaded from a shared library, based on informed function and name from the script.
 
+\code
+// This C++ function would be called from script, register a new C++ function and then return it to the script as a function pointer
+// Register with engine->RegisterGlobalFunction("ref @getDynamicFunction()", asFUNCTION(getDynamicFunction), asCALL_CDECL);
+CScriptHandle getDynamicFunction()
+{
+  // Get the active context and engine to register the function with
+  asIScriptContext* ctx = asGetActiveContext();
+  asIScriptEngine *engine = ctx->GetEngine();
+
+  // Register the function. The actual function could be dynamically loaded from a shared library
+  int funcId = engine->RegisterGlobalFunction("void dynamicFunction()", asFUNCTION(dynamicFunction), asCALL_CDECL);
+
+  // Create the CScriptHandle and put the function pointer in it for return to script
+  asIScriptFunction* func = engine->GetFunctionById(funcId);
+  CScriptHandle ref;
+  ref.Set(func, engine->GetTypeInfoById(func->GetTypeId()));
+
+  return ref;
+}
+\endcode
+
+In the script the this would be used in the following way:
+
+<pre>
+  funcdef void func();
+  void main()
+  {
+    // Get the function pointer as a generic ref
+    ref \@r = getDynamicFunction();
+
+    // Cast the ref to the expected function pointer
+    func \@f = cast<func>(r);
+
+    // Call the function
+    f();
+  }
+</pre>
 
 
 
@@ -1092,6 +1227,30 @@ public:
 
 \see \ref doc_datatypes_dictionary "Dictionaries in the script language"
 
+\section doc_addon_dict_3 Example usage from C++
+
+Here's a skeleton for iterating over the entries in the dictionary. For brevity the code doesn't show how to interpret the values, 
+for more information on that see \ref asETypeIdFlags and \ref asIScriptEngine::GetTypeInfoById.
+
+\code
+void iterateDictionary(CScriptDictionary *dict)
+{
+	// Iterate over each entry
+	for (auto it : *dict)
+	{
+		// Determine the name of the key
+		std::string keyName = it.GetKey();
+		cout << "\"" << keyName << "\"" << " = ";
+		
+		// Get the type and address of the value
+		int typeId = it.GetTypeId();
+		const void *addressOfValue = it.GetAddressOfValue();
+
+		// Cast the value to the correct C++ type according to the typeId and then print it
+		...
+	}
+}
+\endcode
 
 
 
@@ -1235,6 +1394,12 @@ public:
 
   // Moves or renames a file or directory. Returns 0 on success
   int Move(const std::string &source, const std::string &target);
+  
+  // Gets the date and time of the file/dir creation
+  CDateTime GetCreateDateTime(const std::string &path) const;
+  
+  // Gets the date and time of the file/dir modification
+  CDateTime GetModifyDateTime(const std::string &path) const; 
 };
 \endcode
 
@@ -1439,7 +1604,7 @@ Swizzle operators return a complex value with the ordering of the real and imagi
 <b>Path:</b> /sdk/add_on/scriptbuilder/
 
 This class is a helper class for loading and building scripts, with a basic pre-processor 
-that supports conditional compilation, include directives, and metadata declarations.
+that supports conditional compilation, include directives, pragma directives, and metadata declarations.
 
 By default the script builder resolves include directives by loading the included file 
 from the relative directory of the file it is included from. If you want to do this in another
@@ -1447,6 +1612,13 @@ way, then you should implement the \ref doc_addon_build_1_1 "include callback" w
 let you process the include directive in a custom way, e.g. to load the included file from 
 memory, or to support multiple search paths. The include callback should call the AddSectionFromFile or
 AddSectionFromMemory to include the section in the current build.
+
+If the application should to support pragma directives, it must register the \ref doc_addon_build_1_2 "pragma callback"
+to process the text provided for the pragma directive. Without the callback the script builder will give an error 
+when encountering a pragma directive.
+
+The script builder will also remove any lines that start with <tt>#!</tt> as comments. This is done 
+to support shebang interpreter directives often used on Linux and UNIX based operative systems.
 
 If you do not want process metadata then you can compile the add-on with the define 
 AS_PROCESS_METADATA 0, which will exclude the code for processing this. This define
@@ -1513,6 +1685,7 @@ public:
 
   // Get metadata declared for a class method
   // Each metadata block, i.e. [...], is returned as a separate string
+  // Use the asIScriptFunction for the virtual method for lookup
   std::vector<std::string> GetMetadataStringForTypeMethod(int typeId, asIScriptFunction *method);
 
   // Get metadata declared for a class property
@@ -1676,6 +1849,10 @@ The macros are defined as:
 #define WRAP_MFN(ClassType, name)
 #define WRAP_MFN_PR(ClassType, name, Parameters, ReturnType)
 
+// Wrap a class method that will emulate a global function
+#define WRAP_MFN_GLOBAL(ClassType, name)
+#define WRAP_MFN_GLOBAL_PR(ClassType, name, Parameters, ReturnType)
+
 // Wrap a global function that will emulate a class method and receives the 'this' pointer as the first argument
 #define WRAP_OBJ_FIRST(name)
 #define WRAP_OBJ_FIRST_PR(name, Parameters, ReturnType)
@@ -1779,7 +1956,7 @@ int CompareEquality(asIScriptEngine *engine, void *leftObj, void *rightObj, int 
 int ExecuteString(asIScriptEngine *engine, const char *code, asIScriptModule *mod = 0, asIScriptContext *ctx = 0);
 
 // Compile and execute simple statements with option of return value.
-// The module is optional. If given the statements can access the entitites compiled in the module.
+// The module is optional. If given the statements can access the entities compiled in the module.
 // The caller can optionally provide its own context, for example if a context should be reused.
 int ExecuteString(asIScriptEngine *engine, const char *code, void *ret, int retTypeId, asIScriptModule *mod = 0, asIScriptContext *ctx = 0);
 

@@ -52,6 +52,8 @@ should be registered with \ref doc_register_func "RegisterGlobalFunction". This 
 cannot be determined, or if the type of the property is not registered in the script and some translation must occur, i.e. from 
 <tt>char*</tt> to <tt>string</tt>. 
 
+\note The behaviour of virtual properties can be customized with the engine property \ref doc_adv_custom_options_lang_mod "asEP_PROPERTY_ACCESSOR_MODE".
+
 \see \ref doc_register_type 
 
 */

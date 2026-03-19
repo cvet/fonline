@@ -18,6 +18,77 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 	
+	// Test auto with default array
+	// Reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, true);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"auto[] my_array;");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 5) : Error   : Data type can't be '<auto>'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test auto and constness
+	// Reported by Istvan Polyak
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void test1 () \n"
+			"{ \n"
+			"    const array<int> @ a1 = {3,2,1}; \n"
+			"    a1.sortAsc(); \n" // ok, compiler error
+
+			"    array<int> @ a2 = {3,2,1}; \n"
+			"    a2.sortAsc(); \n"
+
+			"    const auto @ a3 = a1; \n"
+			"	 a3.sortAsc(); \n" // ok, compiler error
+
+			"    const auto @ a4 = a2; \n"
+			"    a4.sortAsc(); \n" // ok, compiler error
+
+			"    const array<int> @ a5 = a2; \n"
+			"    a5.sortAsc(); \n" // ok, compiler error
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void test1()\n"
+						   "test (4, 8) : Error   : No matching signatures to 'array::sortAsc() const'\n"
+						   "test (8, 6) : Error   : No matching signatures to 'array::sortAsc() const'\n"
+						   "test (10, 8) : Error   : No matching signatures to 'array::sortAsc() const'\n"
+						   "test (12, 8) : Error   : No matching signatures to 'array::sortAsc() const'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+	
+	
 	// Test auto for classes without copy constructor or default constructor + assignment
 	// https://www.gamedev.net/forums/topic/699952-auto-keyword-behavior-was-changed/
 	{

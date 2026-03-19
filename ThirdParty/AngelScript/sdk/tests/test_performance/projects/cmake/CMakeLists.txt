@@ -1,4 +1,10 @@
+cmake_minimum_required(VERSION 3.4)
+
 project(test_performance)
+
+find_package(Threads)
+
+find_package(Angelscript CONFIG REQUIRED)
 
 add_executable(
         test_performance
@@ -33,5 +39,6 @@ add_executable(
         ../../../../add_on/scriptstdstring/scriptstdstring_utils.cpp
         ../../../../add_on/serializer/serializer.cpp
         )
-target_link_libraries(test_performance Angelscript)
+target_link_libraries(test_performance angelscript)
 set_target_properties(test_performance PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
+target_include_directories(test_performance PRIVATE angelscript)

@@ -7,17 +7,102 @@ This pages describes the standard library provided by the AngelScript SDK. The a
 use AngelScript may or may not expose the standard library to the scripts. Always consult the application's
 manual for information on the API it exposes.
 
- - \subpage doc_script_stdlib_exception
  - \subpage doc_script_stdlib_string
  - \subpage doc_datatypes_arrays
  - \subpage doc_datatypes_dictionary
  - \subpage doc_datatypes_ref
  - \subpage doc_datatypes_weakref
  - \subpage doc_script_stdlib_datetime
- - \subpage doc_script_stdlib_coroutine
  - \subpage doc_script_stdlib_file
  - \subpage doc_script_stdlib_filesystem
- 
+ - \subpage doc_script_stdlib_socket
+ - \subpage doc_script_stdlib_exception
+ - \subpage doc_script_stdlib_coroutine
+ - \subpage doc_script_stdlib_system
+
+
+
+
+\page doc_script_stdlib_socket socket
+
+\note The socket is only available in the scripts if the application \ref doc_addon_socket "registers the support".
+
+The socket object can be used to establish client-server connections using TCP.
+
+The socket works with queues and buffers so even a single threaded script will be able to successfully communicate with remote systems.
+
+<pre>
+  // Start listening for incoming connections
+  socket server;
+  server.listen(39000);
+  
+  // Wait for a client to connect
+  socket \@client = server.accept(10*1000000); // Timeout of 10 seconds
+  if( client !is null )
+  {
+    // Receive a message
+    string pkg = client.receive(1*1000000); // 1 second time out
+    
+    // Return the same message to the client
+    client.send(pkg);
+  }
+</pre>
+
+
+\section doc_datatypes_socket_addon Supporting socket object
+
+\subsection doc_datatypes_socket_addon_mthd Methods
+
+<b>int listen(uint16 port)</b>
+
+Starts listening to incoming connections on the requested port.
+
+Returns a negative value if the action failed, e.g. if the port is already in use.
+
+<b>int close()</b>
+
+Closes the socket if it is open.
+
+Returns a negative value if the action failed, e.g. if the socket wasn't open to begin with.
+
+<b>socket \@accept(int64 timeout = 0)</b>
+
+This method can be used on sockets that are listening for incoming connections. If a client is trying to connect the 
+method will return a new socket object with the connection established.
+
+If timeout is given as zero, the function will return immediately if there is no incoming connection, otherwise it 
+will wait for as long as the given timeout before returning if no connection comes. The timeout is given in microseconds.
+
+Returns a new socket object if a connection could be established, or null if no connection was established.
+
+<b>int connect(uint ipv4address, uint16 port)</b>
+
+Connect to a remote socket at the given ip address and port.
+
+The ip address is represented as a 32bit unsigned integer, e.g. ip address 127.0.0.1 is given as <tt>(127<<24)|(0<<16)|(0<<8)|(1)</tt>, or simply as <tt>0x7F000001</tt>.
+
+Returns a negative value if the action failed, e.g. no connection could be established.
+
+<b>int send(const string &in data)</b>
+
+Sends data over an already established connection.
+
+Returns the number of bytes that was sent, or a negative value if the action failed.
+
+<b>string receive(int64 timeout = 0)</b>
+
+Receives data that was sent over the connection.
+
+If timeout is given as zero, the function will return immediately if there is no incoming data, otherwise it 
+will wait for as long as the given timeout before returning if no data comes. The timeout is given in microseconds.
+
+Returns a string with the bytes that was received.
+
+<b>bool isActive() const</b>
+
+Returns true if the socket is active, i.e. either listening or is connected.
+
+
 
 
 
@@ -41,7 +126,8 @@ Get the exception string for the last exception thrown.
 
 \page doc_datatypes_arrays array
 
-\note Arrays are only available in the scripts if the application \ref doc_addon_array "registers the support for them". 
+\note Arrays are only available in the scripts if the application \ref doc_addon_array "registers the support for them".
+
 The syntax for using arrays may differ for the application you're working with so consult the application's manual
 for more details.
 
@@ -94,7 +180,7 @@ When the array stores \ref doc_script_handle "handles" the elements are assigned
   \@arr[0] = Foo();
 </pre>
 
-Arrays can also be created and initialized within expressions as \ref anonobj "anonymous objects". 
+Arrays can also be created and initialized within expressions as \ref anonobj "anonymous objects".
 
 <pre>
   // Call a function that expects an array of integers as input
@@ -105,9 +191,25 @@ Arrays can also be created and initialized within expressions as \ref anonobj "a
   foo2(array<int> = {1,2,3,4});
 </pre>
 
+The array object supports \ref while "foreach loops" to easily iterate over all contained elements.
+
+<pre>
+  array<int> arr = {1,2,3,4,5,6};
+  int sum = 0;
+  
+  // sum the values and invert the array
+  foreach( auto value, auto index : arr ) // The index variable can be omitted if not needed
+  {
+    sum += value;
+    arr[index] = -value; // use the index to modify the current element in the array
+  }
+</pre>
+
+
+
 \section doc_datatypes_arrays_addon Supporting array object
 
-The array object supports a number of operators and has several class methods to facilitate the manipulation of strings.
+The array object supports a number of operators and has several class methods to facilitate the manipulation of arrays.
 
 The array object is a \ref doc_datatypes_obj "reference type" even if the elements are not, so it's possible
 to use handles to the array object when passing it around to avoid costly copies.
@@ -197,7 +299,7 @@ Here's another example where the callback function is declared explicitly:
   {
     return a < b;
   }
-  bool lessForHandle(const obj \@&in a, const obj \@&in b)
+  bool lessForHandle(const obj \@ const &in a, const obj \@ const &in b)
   {
     return a < b;
   }
@@ -236,8 +338,8 @@ If no match is found the methods will return a negative value.
     arr.sortAsc();            // 0,1,3,4
   
     int sum = 0;
-    for( uint n = 0; n < arr.length(); n++ )
-      sum += arr[n];
+    foreach( auto value : arr )
+      sum += value;
       
     return sum;
   }
@@ -306,6 +408,20 @@ Dictionaries of dictionaries are created using \ref anonobj "anonymous objects" 
 <pre>
   dictionary d2 = {{'a', dictionary = {{'aa', 1}, {'ab', 2}}}, 
                    {'b', dictionary = {{'ba', 1}, {'bb', 2}}}};
+</pre>
+
+The dictionary object supports \ref while "foreach loops" to easily iterate over all contained elements.
+
+<pre>
+  dictionary dict = {{'a',1},{'b',2},{'c',3}};
+  int sum = 0;
+  
+  // sum the values and clear the entries
+  foreach( auto value, auto key : dict ) // The key variable can be omitted if not needed
+  {
+    sum += int(value);
+    dict[key] = 0; // use the key to modify the current element in the dictionary
+  }
 </pre>
 
 
@@ -414,6 +530,9 @@ for more details.
 The string object supports a number of operators, and has several class methods and supporting 
 global functions to facilitate the manipulation of strings.
 
+Unless otherwise stated, all methods and functions work on the individual bytes in the string. 
+They do not attempt to understand encoded characters, e.g. UTF-8 encoded characters that can take up to 4 bytes.
+
 \subsection doc_datatypes_strings_addon_ops Operators
 
 <b>=            assignment</b><br>
@@ -484,7 +603,22 @@ The first variant finds the first character in the string that matches on of the
 
 The second variant finds the first character that doesn't match any of those in \a chars. The third and last variant are the same except they start the search from the end of the string.
 
-\note These functions work on the individual bytes in the strings. They do not attempt to understand encoded characters, e.g. UTF-8 encoded characters that can take up to 4 bytes.
+<b>int regexFind(const string &in regex, uint start = 0, uint &out lengthOfMatch = void) const</b><br>
+
+This function uses the popular ECMAscript syntax to find matches using regular expressions. To learn 
+about the exact syntax do a search for C++ ECMAScript syntax on the internet.
+
+The search works on a byte-by-byte basis, so UTF-8 characters above the standard ASCII aren't classified 
+as letters, since they occupy multple bytes. However, since all bytes in the multibyte sequence are above 
+127 there is at least no risk of unexpected matches.
+
+Here's an example of how to match a word that potentially contains characters beyond the standard ASCII:
+
+<pre>
+  string str = 'Jönsson';
+  uint length;
+  int pos = str.regexFind('[[:alpha:]\\x80-\\xff]+', 0, length);
+</pre>
 
 <b>array<string>@ split(const string &in delimiter) const</b><br>
 
@@ -495,7 +629,19 @@ Splits the string in smaller strings where the delimiter is found.
 <b>string join(const array<string> &in arr, const string &in delimiter)</b><br>
 
 Concatenates the strings in the array into a large string, separated by the delimiter.
- 
+
+<b>uint scan(const string&in str, ?&out ...)</b>
+
+Parses the string for subsequent values of the type matching the type of each argument. All primitive types and the string type are supported.
+
+Returns the number of values that were successfully parsed.
+
+<pre>
+  uint scanned = scan('123 3.14 hello', i, f, s);
+</pre>
+
+
+
 <b>int64  parseInt(const string &in str, uint base = 10, uint &out byteCount = 0)</b><br>
 <b>uint64 parseUInt(const string &in str, uint base = 10, uint &out byteCount = 0)</b><br>
 
@@ -507,6 +653,15 @@ considered as part of the integer value.
 
 Parses the string for a floating point value. If \a byteCount is provided it will be set to the 
 number of bytes that were considered as part of the value.
+
+<b>string format(const string&in fmt, const ?&in ...)</b>
+
+Formats a string with multiple values. The logic will replace each {} found in the fmt string with the 
+corresponding argument. Arguments can be given as any of the primitive types or the the string type. 
+
+<pre>
+  string result = format('{} {} {}', 123, true, 'hello');
+</pre>
 
 <b>string formatInt(int64 val, const string &in options = '', uint width = 0)</b><br>
 <b>string formatUInt(uint64 val, const string &in options = '', uint width = 0)</b><br>
@@ -636,7 +791,12 @@ can be used in place of the handle where the reference to the object is needed b
 
 \section doc_datatypes_weakref_addon Supporting weakref object
 
+\subsection doc_datatypes_weakref_addon_construct Constructors
 
+<b>weakref<T></b>()<br>
+<b>weakref<T></b>(T@) explicit<br>
+<b>const_weakref<T></b>()<br>
+<b>const_weakref<T></b>(const T@) explicit<br>
 
 \subsection doc_datatypes_weakref_addon_ops Operators
 
@@ -691,7 +851,9 @@ a rather low precision of seconds only.
 <b>datetime(const datetime &in other)</b><br>
 <b>datetime(uint y, uint m, uint d, uint h = 0, uint mi = 0, uint s = 0)</b><br>
  
-The default constructor initializes the object with the current system time.
+The default constructor initializes the object with the current system time in the universal time zone (UTC). If you need 
+to consider a specific timezone with or without daylight savings then remember to adjust the time accordingly by
+adding the number of seconds for the difference.
 
 The copy constructor copíes the content of the other object.
 
@@ -727,6 +889,10 @@ Returns the second of the time stored in the object. The range is 0 to 59.
 <b>bool setTime(uint hour, uint minute, uint second)</b>
 
 Sets the date or time. Returns true if the specified date or time is valid. Does not modify the object if not valid.
+
+<b>uint get_weekDay() const property</b>
+
+Returns the day of the week for the date stored in the object. The range is 0 to 6, where 0 represents Sunday, 1 represents Monday, and so on.
 
 \subsection doc_addon_datetime_2_ops Operators
 
@@ -936,6 +1102,8 @@ Returns true if the given path is a link.
 
 Returns the size of a file.
 
+Returns -1 if the file doesn't exist or cannot be accessed.
+
 <b>int makeDir(const string &in)</b>
 
 Creates a new directory. Returns 0 on success.
@@ -955,5 +1123,73 @@ Copies a file. Returns 0 on success.
 <b>int move(const string &in, const string &in)</b>
 
 Moves or renames a file or directory. Returns 0 on success.
+
+<b>datetime getCreateDateTime(const string &in)</b>
+
+Returns the date and time of the file creation in UTC. 
+
+Raises an exception if the file doesn't exist or cannot be accessed.
+
+<b>datetime getModifyDateTime(const string &in)</b>
+
+Returns the date and time of the last modification of the file in UTC. 
+
+Raises an exception if the file doesn't exist or cannot be accessed.
+
+
+
+
+
+\page doc_script_stdlib_system System functions
+
+\note The system functions are only available in the scripts if the application \ref doc_samples_asrun "registers support for it".
+
+\section doc_script_stdlib_system_1 Functions
+
+<b>void print(const string &in line)</b>
+
+Prints a line to the standard output. No line feed is added at the end, so the caller must include that in the argument if desired.
+
+On systems that support it, e.g. Windows, the virtual terminal processing is enabled. This allows to change the color of the text 
+that is written to the output, controlling the movement of the cursor, enable line drawing, etc. The commands are given by starting
+an escape sequence with the character <i>ESC</i>, i.e. character 27 in the ASCII table, or 1B in hexadecimal. Following the <i>ESC</i> 
+is a sequence of bytes that is interpreted by the terminal while rendering the text.
+
+Heres an example on how to change the text color.
+
+<pre>
+  const string YELLOW_ON_RED = "\x1b[101;93m";
+  const string STRONG_YELLOW = "\x1b[93m";
+  const string RESET_STYLE = "\x1b[0m";
+  
+  void main()
+  {
+	  print("This " + STRONG_YELLOW + " is yellow. " + YELLOW_ON_RED + "Now on red background." + RESET_STYLE + "\n");
+  }
+</pre>
+
+To learn the possible commands that can be given this way, do a search for "Console Virtual Terminal Sequences" on the internet.
+
+ 
+<b>string getInput()</b>
+
+Gets a line from the standard input.
+ 
+<b>array<string> \@getCommandLineArgs()</b>
+
+Gets the command line arguments as an array.
+ 
+<b>int exec(const string &in cmd)</b><br>
+<b>int exec(const string &in cmd, string &out output)</b>
+
+Executes a system command. 
+
+Returns -1 on error or raises an exception. On success returns the exit code from the system commmand.
+
+The second alternative allows to capture the stdout into a string, to be further processed.
+
+
+
+
 
 */

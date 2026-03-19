@@ -4,7 +4,7 @@
 
 \image html aslogo.png 
 
-<center>Version 2.34.0</center>
+<center>Version 2.39.0</center>
 
 \ref doc_overview "AngelScript" is a \ref doc_license "free, open source", flexible, and cross-platform scripting library meant to be
 embedded in applications. The purpose is to provide an easy to use library that is powerful, but that isn't weighed 
@@ -74,9 +74,12 @@ The official site for the library is <a href="http://www.angelcode.com/angelscri
  - \subpage doc_adv_single_ref_type
  - \subpage doc_adv_class_hierarchy
  - \subpage doc_adv_var_type
+ - \subpage doc_adv_variadic
  - \subpage doc_adv_template
+ - \subpage doc_adv_template_func
  - \subpage doc_adv_weakref
  - \subpage doc_cpp_exceptions
+
 
 
 
@@ -89,6 +92,7 @@ The official site for the library is <a href="http://www.angelcode.com/angelscri
  - \subpage doc_adv_multithread
  - \subpage doc_adv_concurrent
  - \subpage doc_adv_coroutine
+ - \subpage doc_adv_import
  - \subpage doc_adv_dynamic_build
  - \subpage doc_adv_precompile
  - \subpage doc_finetuning
@@ -97,11 +101,9 @@ The official site for the library is <a href="http://www.angelcode.com/angelscri
  - \subpage doc_adv_dynamic_config
  - \subpage doc_adv_custom_options
  - \subpage doc_adv_reflection
+ - \subpage doc_serialization
  - \subpage doc_adv_inheritappclass
  - \subpage doc_adv_jit_topic
-
-\todo Add page about imports and function binding
-
 
 
 
@@ -204,21 +206,18 @@ easy way of grouping properties and methods into logical units. The syntax
 for classes is similar to C++ and Java.
 
  - \subpage doc_script_class_desc
+ - \subpage doc_script_class_construct
+ - \subpage doc_script_class_memberinit
+ - \subpage doc_script_class_destruct
+ - \subpage doc_script_class_methods
  - \subpage doc_script_class_inheritance
  - \subpage doc_script_class_private
  - \subpage doc_script_class_ops
  - \subpage doc_script_class_prop
- - \subpage doc_script_class_memberinit
 
 
 
 
 
-\page doc_api The API reference
-
-This is the reference documentation for the AngelScript application programming interface.
-
- - \subpage doc_api_functions
- - \subpage doc_api_interfaces
 
 */

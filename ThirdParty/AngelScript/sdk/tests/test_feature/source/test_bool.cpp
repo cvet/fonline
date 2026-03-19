@@ -102,6 +102,156 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Test explicit conv from bool to uint
+	// https://github.com/anjo76/angelscript/issues/27
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		r = ExecuteString(engine, "bool f = false; assert( uint(f) == 0 );");
+		if (r >= 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( uint(true) == 1 );");
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "ExecuteString (1, 25) : Error   : No conversion from 'bool' to 'const uint' available.\n"
+						   "ExecuteString (1, 9) : Error   : No conversion from 'const bool' to 'const uint' available.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test use of explicit opConv to bool in conditions, since it is known it will always be a boolean
+	// https://www.gamedev.net/forums/topic/717477-feature-request-automatically-use-bool-opconv-in-a-if-statement/
+	// Code submitted by HenryAWE
+	// ref: https://en.cppreference.com/w/cpp/language/implicit_conversion (see Contextual conversions)
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_BOOL_CONVERSION_MODE, 1);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		const char* script =
+			"class TestConv\n"
+			"{\n"
+			"  bool opConv() const\n"
+			"  {\n"
+			"    return false;\n"
+			"  }\n"
+			"} \n"
+			"void func(bool arg) {} \n";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", script);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// test while, do-while, for, and ternary conditions as well
+		r = ExecuteString(engine, "TestConv t; if(t) assert(false);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; while(t) assert(false);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "for( TestConv t; t; ) assert(false);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; do {} while(t);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; assert( t ? false : true );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Test operators on boolean values, !/not, &&/and, ||/or, ^^/xor
+		r = ExecuteString(engine, "TestConv t; \n assert( !t ); \n assert( t || true ); \n assert( !(t && true) ); \n assert( t ^^ true ); \n", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Test that it still fails with other operations, for example calling a function that expects a bool
+		r = ExecuteString(engine, "TestConv t; func(t);", mod);
+		if (r > 0)
+			TEST_FAILED;
+
+		// Test that null pointer exception is thrown for handles
+		asIScriptContext* ctx = engine->CreateContext();
+		r = ExecuteString(engine, "TestConv @t; if( t ) {}", mod, ctx);
+		if (r != asEXECUTION_EXCEPTION)
+			TEST_FAILED;
+		else if( std::string(ctx->GetExceptionString()) != "Null pointer access" )
+		{
+			PRINTF("got exception: %s\n", ctx->GetExceptionString());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (bout.buffer != 
+			"ExecuteString (1, 13) : Error   : No matching signatures to 'func(TestConv&)'\n"
+			"ExecuteString (1, 13) : Info    : Candidates are:\n"
+			"ExecuteString (1, 13) : Info    : void func(bool arg)\n"
+			"ExecuteString (1, 13) : Info    : Rejected due to type mismatch on parameter 'arg'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test the same without the explicit bool conversion
+		bout.buffer = "";
+		engine->SetEngineProperty(asEP_BOOL_CONVERSION_MODE, 0);
+
+		r = ExecuteString(engine, "TestConv t; if(t) assert(false);", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; if(t) assert(false);", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; while(t) assert(false);", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "for( TestConv t; t; ) assert(false);", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; do {} while(t);", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; assert( t ? false : true );", mod);
+		if (r >= 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "TestConv t; \n assert( !t ); \n assert( t || true ); \n assert( !(t && true) ); \n assert( t ^^ true ); \n", mod);
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != 
+			"ExecuteString (1, 16) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (1, 16) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (1, 19) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (1, 18) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (1, 16) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (1, 21) : Error   : Expression must be of boolean type, instead found 'TestConv&'\n"
+			"ExecuteString (2, 10) : Error   : Illegal operation on this datatype\n"
+			"ExecuteString (3, 12) : Error   : No conversion from 'TestConv&' to 'bool' available.\n"
+			"ExecuteString (4, 14) : Error   : No conversion from 'TestConv&' to 'bool' available.\n"
+			"ExecuteString (5, 12) : Error   : No conversion from 'TestConv&' to 'bool' available.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	// Safe bool issue (where a value with boolean conversion is accidentally used for other purpose)
 	// ref: http://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Safe_bool
 
@@ -135,8 +285,8 @@ bool Test()
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != "ExecuteString (3, 7) : Error   : Expression must be of boolean type\n"
-						   "ExecuteString (7, 7) : Error   : No conversion from 'const int' to 'const bool' available.\n"
+		if( bout.buffer != "ExecuteString (3, 7) : Error   : Expression must be of boolean type, instead found 'int'\n"
+						   "ExecuteString (7, 7) : Error   : No conversion from 'int' to 'const bool' available.\n"
 						   "ExecuteString (11, 9) : Error   : No conversion from 'int' to 'bool' available.\n"
 						   "ExecuteString (15, 7) : Error   : Illegal operation on this datatype\n" )
 		{
@@ -165,7 +315,7 @@ bool Test()
 		engine->RegisterObjectBehaviour("MyBool", asBEHAVE_CONSTRUCT, "void f(bool)", asFUNCTION(ConstructFromBool), asCALL_CDECL_OBJLAST);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
-		r = ExecuteString(engine, 
+		r = ExecuteString(engine,
 			"MyBool b = false; \n"
 			"assert( !b ); \n"
 			"b = true; \n"
@@ -295,17 +445,23 @@ bool Test()
 	ExecuteString(engine, "Set()", mod);
 	if( *flag != true )
 		TEST_FAILED;
-	ExecuteString(engine, "Assert(gFlag == true)", mod);
+	r = ExecuteString(engine, "Assert(gFlag == true)", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	ExecuteString(engine, "gFlag = false; DoNothing()", mod);
 	if( *flag != false )
 		fail = false;
-	ExecuteString(engine, "Assert(gFlag == false)", mod);
+	r = ExecuteString(engine, "Assert(gFlag == false)", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	ExecuteString(engine, "gFlag = true; DoNothing()", mod);
 	if( *flag != true )
 		fail = false;
-	ExecuteString(engine, "Assert(gFlag == true)", mod);
+	r = ExecuteString(engine, "Assert(gFlag == true)", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	// TEST 3
 	// It was reported that if( t.test_f() ) would always be true, even though the method returns false

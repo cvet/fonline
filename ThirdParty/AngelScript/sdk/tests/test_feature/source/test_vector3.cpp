@@ -200,7 +200,6 @@ bool TestVector3()
 		{
 			TEST_FAILED;
 		}
-		// TODO: the function signature for the constructors/factories should carry the name of the object instead of $beh0
 		if (bout.buffer != "ExecuteString (1, 13) : Error   : No matching signatures to 'vector3(const int, const int, const int, const int)'\n"
 			"ExecuteString (1, 13) : Info    : Candidates are:\n"
 			"ExecuteString (1, 13) : Info    : vector3::vector3()\n"

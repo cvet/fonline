@@ -32,6 +32,7 @@ public:
 	asUINT getHour() const;
 	asUINT getMinute() const;
 	asUINT getSecond() const;
+	asUINT getWeekDay() const;
 
 	// Setters
 	// Returns true if valid

@@ -22,7 +22,9 @@ bool TestLongToken()
 	memset(&str[0], 'a', 400);
 	str += " = 1";
 
-	ExecuteString(engine, str.c_str());
+	int r = ExecuteString(engine, str.c_str());
+	if (r >= 0)
+		TEST_FAILED;
 
 	engine->Release();
 

@@ -83,13 +83,345 @@ bool StringEquals(const std::string& lhs, const std::string& rhs)
     return lhs == rhs;
 }
 
+static int newId_ = 0;
+static int countValueDestruct = 0;
+
 bool TestCondition()
 {
 	bool fail = false;
 	int r;
 	COutStream out;
 	CBufferedOutStream bout;
-	asIScriptEngine *engine;
+	asIScriptEngine* engine;
+
+	// Test assert in condition
+	// https://github.com/anjo76/angelscript/issues/37
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int f(int x) { \n"
+			"  return x; \n"
+			"} \n"
+			"int main() { \n"
+			"  f((true ? -1.0f : -1)); \n"
+			"  return 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (4, 1) : Info    : Compiling int main()\n"
+						   "test (5, 6) : Warning : Float value truncated in implicit conversion to integer\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test crash on condition
+	// https://www.gamedev.net/forums/topic/718945-ternary-operator-with-global-assignment-causes-crash/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+//		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int a = -1; \n"
+			"int b = -1; \n"
+			"void Main() { \n"
+			"	int i = true ? (a = 1) : (b = 0); \n" // TODO: issue is SetV4, LDG, WRTV4 is replaced with SetG4 which doesn't load the address of the global var into the value register. Should make it SetG4, LDG if the value register is used afterwards
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "Main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test crash on condition
+	// https://www.gamedev.net/forums/topic/718891-ternary-operator-crash-when-using-auto/5470948/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+//		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class test \n"
+			"{ \n"
+			"} \n"
+			"void test_function(const test & in value) \n"
+			"{ \n"
+			"} \n"
+			"void failing_test() \n"
+			"{ \n"
+			"	auto test_a = test(); \n"
+			"	auto test_b = test(); \n"
+			"   test copy; \n"
+			"	copy = true ? test_a : test_b; \n"
+			"	test_function(true ? test_a : test_b); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "failing_test()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test proper conversion of null in condition
+	// https://www.gamedev.net/forums/topic/717777-opimplconv-with-different-return-types-crashes-application-in-ternary-operator-assignment/5467648/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Thing {\n"
+			"    int opImplConv() { return 0; }\n"
+			"    float opImplConv() { return 0; }\n"
+			"} \n"
+			"void Main() {\n"
+			"    auto foo = true ? Thing() : null;\n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test condition with objects. Should return handle for better efficiency. TODO: Can this be done in all scenarios?
+	// https://www.gamedev.net/forums/topic/711022-ternary-operators-stopped-paying-attention-to-expected-return-type/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class foo { \n"
+			"	foo(int) {} \n"
+			"} \n"
+			"void main() { \n"
+			"	foo@ bar = true ? foo(0) : foo(0); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test condition with different primitive types. Should follow the same cast priority as for function overrides
+	// https://www.gamedev.net/forums/topic/711022-ternary-operators-stopped-paying-attention-to-expected-return-type/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+/*
+		// C++ code for comparison
+		auto a = true ? 1 : 1.;
+		auto b = true ? 1 : asUINT(1);
+		auto c = true ? 1 : asINT16(1);
+		auto d = true ? 1 : 1.f;
+*/
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"auto a = true ? 1 : 1.; \n"
+			"auto b = true ? 1 : uint(1); \n"
+			"auto c = true ? 1 : int16(1); \n"
+			"auto d = true ? 1 : 1.f; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		int typeId = 0;
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("a"), 0, 0, &typeId, 0);
+		if (typeId != asTYPEID_DOUBLE)
+			TEST_FAILED;
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("b"), 0, 0, &typeId, 0);
+		if (typeId != asTYPEID_UINT32)
+			TEST_FAILED;
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("c"), 0, 0, &typeId, 0);
+		if (typeId != asTYPEID_INT32)
+			TEST_FAILED;
+		mod->GetGlobalVar(mod->GetGlobalVarIndexByName("d"), 0, 0, &typeId, 0);
+		if (typeId != asTYPEID_FLOAT)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test condition with enum and int as operands. Should convert the enum to int
+	// ref: for c++ https://stackoverflow.com/questions/32251419/c-ternary-operator-conditional-operator-and-its-implicit-type-conversion-r
+	// https://www.gamedev.net/forums/topic/708198-implicit-conversion-from-enum-to-int-in-ternary-op/5431934/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum A { VALUE = 1 } \n"
+			"void test() \n"
+			"{ \n"
+			"	int val = true ? VALUE : 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test condition with float and int as operands
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"float a = 3.1; \n"
+			"int b = 3; \n"
+			"void test() \n"
+			"{ \n"
+			"	int val = true ? a : b; \n"
+			"} \n");
+ 		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (3, 1) : Info    : Compiling void test()\n"
+						   "test (5, 12) : Warning : Float value truncated in implicit conversion to integer\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test that temporary objects allocated as arguments that are then deferred in ternary operands are properly handled
+	// Reported by Polyak Istvan
+	SKIP_ON_MAX_PORT
+	{
+		class Value
+		{
+		public:
+			Value(void) : id_(++newId_)
+			{
+			//	printf("Value (void)\n");
+			}
+			~Value()
+			{
+				countValueDestruct++;
+			//	printf("~Value ():%d\n", id_);
+			}
+			static void constructor(Value* val) {
+				new(val) Value();
+			}
+			static void destructor(Value* val) {
+				val->~Value();
+			}
+		private:
+			int id_;
+		};
+
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+		engine->RegisterObjectType("Value", sizeof(Value), asOBJ_VALUE | asOBJ_APP_CLASS);
+		engine->RegisterObjectBehaviour("Value", asBEHAVE_CONSTRUCT, "void f ()", asFUNCTIONPR(Value::constructor, (Value*), void), asCALL_CDECL_OBJFIRST);
+		engine->RegisterObjectBehaviour("Value", asBEHAVE_DESTRUCT, "void f ()", asFUNCTIONPR(Value::destructor, (Value*), void), asCALL_CDECL_OBJFIRST);
+		engine->RegisterObjectMethod("Value", "Value & opAssign (const Value &in)", asMETHODPR(Value, operator=, (const Value&), Value&), asCALL_THISCALL);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int gi = 0; \n"
+			"int& f3(const Value & in v) \n"
+			"{ \n"
+			"	return gi; \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	int i3 = false ? f3(Value()) : f3(Value()); \n"  // The temporary Value() must be destroyed within the operand itself
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (countValueDestruct != 1)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test anonymous initialization lists in conditional operator
 	// Reported by doctorgester
@@ -229,7 +561,7 @@ bool TestCondition()
 		asIScriptFunction *func = mod->GetFunctionByName("func");
 		asBYTE expect[] =
 		{
-			asBC_SUSPEND,asBC_FREE,asBC_RET
+			asBC_FREE,asBC_RET
 		};
 		if (!ValidateByteCode(func, expect))
 			TEST_FAILED;
@@ -456,7 +788,6 @@ bool TestCondition()
 	}
 
 	// Test condition operator and implicit cast
-	// Observe that AngelScript does NOT follow the same rules as C++ for this operator
 	// http://www.gamedev.net/topic/648406-implicit-conversion-of-value-is-not-exact/
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
@@ -476,11 +807,22 @@ bool TestCondition()
 		}
 
 		bout.buffer = "";
-		r = ExecuteString(engine, "float ret = false ? 1 : 0.1; \n"       // 1 is not implicitly converted
-			                      "assert( abs(ret - 0) < 0.0001 );");
-		if( r != asEXECUTION_FINISHED )
+		r = ExecuteString(engine, "float ret = true ? 0.1 : 0; \n"       // 0 is implicitly converted to the other type
+			"assert( abs(ret - 0.1) < 0.0001 );");
+		if (r != asEXECUTION_FINISHED)
 			TEST_FAILED;
-		if( bout.buffer != "ExecuteString (1, 21) : Warning : Implicit conversion of value is not exact\n" )
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		r = ExecuteString(engine, "float ret = false ? 1 : 0.1; \n"       // 1 is implicitly converted
+			                      "assert( abs(ret - 0.1) < 0.0001 );");
+		if( r < 0 )
+			TEST_FAILED;
+		if( bout.buffer != "")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -502,11 +844,11 @@ bool TestCondition()
 		bout.buffer = "";
 		r = ExecuteString(engine, "float f = 0.1;\n"
 								  "float ret = 0.2;\n"
-								  "ret += false ? 1 : f * 15;\n"           // 1 is not implicitly converted to the other type
-								  "assert( abs(ret - 1.2) < 0.0001 );\n");
-		if( r != asEXECUTION_FINISHED )
+								  "ret += false ? 1 : f * 15;\n"           // 1 is implicitly converted to the other type
+								  "assert( abs(ret - 1.7) < 0.0001 );\n");
+		if( r != asEXECUTION_FINISHED)
 			TEST_FAILED;
-		if( bout.buffer != "ExecuteString (3, 16) : Warning : Float value truncated in implicit conversion to integer\n" )
+		if( bout.buffer != "" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -108,9 +108,6 @@ the members and set their values or references according to the backed up data.
  - \ref doc_script_shared "Shared script entities" will not be recompiled if some module or existing object 
    (including those pending destruction in the garbage collector) still refers to the code. It's recommended
    that you minimize the use of shared entities to where necessary so as to minimize the need to modify them.
- - The \ref asIScriptContext cannot be serialized so avoid reloading scripts that may still be referred to by
-   a context, e.g. in a suspended state. It is quite likely that the application will crash if the module is
-   reloaded while a context has one of the functions on the callstack.
  - Before discarding the original objects, consider doing a test compilation of the modified scripts in a 
    temporary module first, and only go ahead with the hot reloading if the test compilation is successful. That
    way you can catch compilation errors that would otherwise cause the recreation of the new objects to fail.
@@ -123,7 +120,12 @@ the members and set their values or references according to the backed up data.
    can have a special event handler to provide the initial value of the new member?
  - The \ref doc_addon_serializer "Serializer" add-on has been implemented to aid the implementation of hot reloading
    scripts, though it may not suit all types of applications.
-   
-\see \ref doc_addon_serializer, \ref doc_adv_reflection
+ - Although it is possible to \ref doc_serialization_contexts "serialize a script context", if any function on the 
+   context's call stack is modified the program position cannot be reliably restored. Therefore it is recommended 
+   that you design your application so that contexts can be aborted when hot reloading and any long running scripts 
+   restarted, or avoid scripts that run over multiple frames all together so that it is guaranteed that no contexts 
+   are active when hot reloading.
+
+\see \ref doc_addon_serializer, \ref doc_serialization
 
 */

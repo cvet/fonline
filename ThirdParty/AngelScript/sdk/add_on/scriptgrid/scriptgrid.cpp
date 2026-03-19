@@ -108,7 +108,7 @@ static bool ScriptGridTemplateCallback(asITypeInfo *ti, bool &dontGarbageCollect
 	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) )
 	{
 		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
-		asDWORD flags = subtype->GetFlags();
+		asQWORD flags = subtype->GetFlags();
 		if( (flags & asOBJ_VALUE) && !(flags & asOBJ_POD) )
 		{
 			// Verify that there is a default constructor
@@ -182,7 +182,7 @@ static bool ScriptGridTemplateCallback(asITypeInfo *ti, bool &dontGarbageCollect
 		// that can potentially form a circular reference with the array then it is not 
 		// necessary to make the array garbage collected.
 		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
-		asDWORD flags = subtype->GetFlags();
+		asQWORD flags = subtype->GetFlags();
 		if( !(flags & asOBJ_GC) )
 		{
 			if( (flags & asOBJ_SCRIPT_OBJECT) )

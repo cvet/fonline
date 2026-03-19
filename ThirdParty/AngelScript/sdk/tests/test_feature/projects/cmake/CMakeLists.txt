@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.10)
 project(test_feature)
 
 add_executable(
@@ -9,13 +10,21 @@ add_executable(
         ../../source/scriptstring_utils.cpp
         ../../source/test2modules.cpp
         ../../source/test_2func.cpp
+        ../../source/test_addon_autowrapper.cpp
+        ../../source/test_addon_contextmgr.cpp
+        ../../source/test_addon_datetime.cpp
         ../../source/test_addon_debugger.cpp
         ../../source/test_addon_dictionary.cpp
         ../../source/test_addon_scriptarray.cpp
         ../../source/test_addon_scriptbuilder.cpp
+        ../../source/test_addon_scriptfile.cpp
+        ../../source/test_addon_scriptgrid.cpp
         ../../source/test_addon_scripthandle.cpp
         ../../source/test_addon_scriptmath.cpp
+        ../../source/test_addon_scriptsocket.cpp
         ../../source/test_addon_serializer.cpp
+        ../../source/test_addon_stdstring.cpp
+        ../../source/test_addon_weakref.cpp
         ../../source/test_any.cpp
         ../../source/test_argref.cpp
         ../../source/test_array.cpp
@@ -23,6 +32,7 @@ add_executable(
         ../../source/test_arrayintf.cpp
         ../../source/test_arrayobject.cpp
         ../../source/test_assign.cpp
+        ../../source/test_auto.cpp
         ../../source/test_autohandle.cpp
         ../../source/test_bits.cpp
         ../../source/test_bool.cpp
@@ -31,6 +41,7 @@ add_executable(
         ../../source/test_cdecl_return.cpp
         ../../source/test_circularimport.cpp
         ../../source/test_compiler.cpp
+        ../../source/test_composition.cpp
         ../../source/test_condition.cpp
         ../../source/test_config.cpp
         ../../source/test_configaccess.cpp
@@ -38,6 +49,7 @@ add_executable(
         ../../source/test_constproperty.cpp
         ../../source/test_constructor.cpp
         ../../source/test_constructor2.cpp
+        ../../source/test_context.cpp
         ../../source/test_conversion.cpp
         ../../source/test_cstring.cpp
         ../../source/test_custommem.cpp
@@ -52,9 +64,9 @@ add_executable(
         ../../source/test_exception.cpp
         ../../source/test_exceptionmemory.cpp
         ../../source/test_factory.cpp
-        ../../source/test_file.cpp
         ../../source/test_float.cpp
         ../../source/test_for.cpp
+        ../../source/test_foreach.cpp
         ../../source/test_funcoverload.cpp
         ../../source/test_functionptr.cpp
         ../../source/test_garbagecollect.cpp
@@ -68,10 +80,13 @@ add_executable(
         ../../source/test_inheritance.cpp
         ../../source/test_int8.cpp
         ../../source/test_interface.cpp
+		../../source/test_literal.cpp
         ../../source/test_mixin.cpp
         ../../source/test_module.cpp
         ../../source/test_multiassign.cpp
+        ../../source/test_namedargs.cpp
         ../../source/test_namespace.cpp
+        ../../source/test_native_defaultfunc.cpp
         ../../source/test_nested.cpp
         ../../source/test_nevervisited.cpp
         ../../source/test_notinitialized.cpp
@@ -109,6 +124,8 @@ add_executable(
         ../../source/test_structintf.cpp
         ../../source/test_suspend.cpp
         ../../source/test_template.cpp
+        ../../source/test_thiscall_as_method.cpp
+        ../../source/test_thiscall_as_method_config.cpp
         ../../source/test_thiscall_class.cpp
         ../../source/test_thiscall_asglobal.cpp
         ../../source/test_typedef.cpp
@@ -152,19 +169,28 @@ add_executable(
         ../../source/testvirtualinheritance.cpp
         ../../source/testvirtualmethod.cpp
         ../../source/utils.cpp
+        ../../../../add_on/contextmgr/contextmgr.cpp
+        ../../../../add_on/datetime/datetime.cpp
         ../../../../add_on/debugger/debugger.cpp
         ../../../../add_on/scriptany/scriptany.cpp
         ../../../../add_on/scriptarray/scriptarray.cpp
         ../../../../add_on/scriptbuilder/scriptbuilder.cpp
         ../../../../add_on/scriptdictionary/scriptdictionary.cpp
         ../../../../add_on/scriptfile/scriptfile.cpp
+        ../../../../add_on/scriptfile/scriptfilesystem.cpp
+        ../../../../add_on/scriptgrid/scriptgrid.cpp
         ../../../../add_on/scripthandle/scripthandle.cpp
         ../../../../add_on/scripthelper/scripthelper.cpp
         ../../../../add_on/scriptmath/scriptmath.cpp
         ../../../../add_on/scriptmath/scriptmathcomplex.cpp
+        ../../../../add_on/scriptsocket/scriptsocket.cpp
         ../../../../add_on/scriptstdstring/scriptstdstring.cpp
         ../../../../add_on/scriptstdstring/scriptstdstring_utils.cpp
         ../../../../add_on/serializer/serializer.cpp
+        ../../../../add_on/weakref/weakref.cpp
         )
-target_link_libraries(test_feature Angelscript)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../angelscript/projects/cmake angelscript)
+target_link_libraries(test_feature ${ANGELSCRIPT_LIBRARY_NAME})
+target_include_directories(test_feature PRIVATE ../../../../angelscript/include)
 set_target_properties(test_feature PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
+set_target_properties(test_feature PROPERTIES CXX_STANDARD 11)

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -193,12 +193,8 @@ int asCObjectType::GetSubTypeId(asUINT subtypeIndex) const
 	if( subtypeIndex >= templateSubTypes.GetLength() )
 		return asINVALID_ARG;
 
-	int typeId = engine->GetTypeIdFromDataType(templateSubTypes[subtypeIndex]);
-
-	// (FOnline Patch) Keep legacy implicit-handle compatibility for template
-	// subtype queries so arrays, dicts, and other containers expose subtype ids
-	// with handle semantics without integration-side normalization helpers.
-	if( (typeId & asTYPEID_MASK_OBJECT) != 0 && (typeId & asTYPEID_OBJHANDLE) == 0 )
+	int typeId = engine->GetTypeIdFromDataType(templateSubTypes[subtypeIndex]); // (FOnline Patch)
+	if( (typeId & asTYPEID_MASK_OBJECT) != 0 && (typeId & asTYPEID_OBJHANDLE) == 0 ) // (FOnline Patch)
 	{
 		asCTypeInfo *subType = templateSubTypes[subtypeIndex].GetTypeInfo();
 		if( subType && (subType->flags & asOBJ_IMPLICIT_HANDLE) )
@@ -349,7 +345,7 @@ asUINT asCObjectType::GetPropertyCount() const
 }
 
 // interface
-int asCObjectType::GetProperty(asUINT index, const char **out_name, int *out_typeId, bool *out_isPrivate, bool *out_isProtected, int *out_offset, bool *out_isReference, asDWORD *out_accessMask, int *out_compositeOffset, bool *out_isCompositeIndirect) const
+int asCObjectType::GetProperty(asUINT index, const char **out_name, int *out_typeId, bool *out_isPrivate, bool *out_isProtected, int *out_offset, bool *out_isReference, asDWORD *out_accessMask, int *out_compositeOffset, bool *out_isCompositeIndirect, bool *out_isConst) const
 {
 	if( index >= properties.GetLength() )
 		return asINVALID_ARG;
@@ -373,6 +369,8 @@ int asCObjectType::GetProperty(asUINT index, const char **out_name, int *out_typ
 		*out_compositeOffset = prop->compositeOffset;
 	if (out_isCompositeIndirect)
 		*out_isCompositeIndirect = prop->isCompositeIndirect;
+	if (out_isConst)
+		*out_isConst = prop->type.IsReadOnly();
 
 	return 0;
 }

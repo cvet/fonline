@@ -443,7 +443,7 @@ bool Test()
 	any->Retrieve(&o, engine->GetTypeIdByDecl("mytype@"));
 	if( o == 0 )
 		TEST_FAILED;
-	if( --(*o) != 1 )
+	else if( --(*o) != 1 )
 		TEST_FAILED;
 
 	// The mytype variable is still stored in the any variable so we shouldn't be allowed to remove it's configuration group

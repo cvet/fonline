@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2018 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -87,6 +87,7 @@ public:
 	void DebugOutput(const char *name, asCScriptFunction *func);
 #endif
 
+	asCByteInstruction *GetFirstInstr();
 	int  GetLastInstr();
 	int  RemoveLastInstr();
 	asDWORD GetLastInstrValueDW();
@@ -104,9 +105,9 @@ public:
 	void TryBlock(short catchLabel);
 
 	void VarDecl(int varDeclIdx);
-	void Call(asEBCInstr bc, int funcID, int pop);
-	void CallPtr(asEBCInstr bc, int funcPtrVar, int pop);
-	void Alloc(asEBCInstr bc, void *objID, int funcID, int pop);
+	void Call(asEBCInstr bc, int funcID, int pop, asWORD argCount);
+	void CallPtr(asEBCInstr bc, int funcPtrVar, int pop, asWORD argCount);
+	void Alloc(asEBCInstr bc, void *objID, int funcID, int pop, asWORD argCount);
 	void Ret(int pop);
 	void JmpP(int var, asDWORD max);
 
@@ -188,7 +189,7 @@ public:
 	asCByteInstruction *prev;
 
 	asEBCInstr op;
-	asQWORD arg;
+	asQWORD arg[2];
 	short wArg[3];
 	int size;
 	int stackInc;

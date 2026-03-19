@@ -4,33 +4,19 @@
 \page doc_script_class_desc Script class overview
 
 With classes the script writer can declare new data types that hold groups
-of properties and methods to manipulate them. 
+of properties and \ref doc_script_class_methods "methods" to manipulate them. 
 
 Script classes are reference types, which means that multiple references 
 or \ref doc_script_handle "handles" can be held for the same object instance.
 The classes uses automatic memory management so the object instances are only
 destroyed when the last reference to the instance is cleared.
 
-The class methods are implemented the same way as \ref doc_script_func "global functions", 
-with the addition that the class method can access the class instance properties through either
-directly or through the 'this' keyword in the case a local variable has the same name.
-
 <pre>
   // The class declaration
   class MyClass
   {
     // A class method
-    void DoSomething()
-    {
-      // The class properties can be accessed directly
-      a *= 2;
-
-      // The declaration of a local variable may hide class properties
-      int b = 42;
-
-      // In this case the class property have to be accessed explicitly
-      this.b = b;
-    }
+    void DoSomething() {}
 
     // Class properties
     int a;
@@ -52,11 +38,11 @@ implement \ref doc_global_interface "interfaces".
 
 
 
-\section doc_script_class_construct Class constructors
+\page doc_script_class_construct Class constructors
 
 Class constructors are specific methods that will be used to create new instances
 of the class. It is not required for a class to declare constructors, but doing
-so may make it easier to use the class as it will not be necessary to first instanciate
+so may make it easier to use the class as it will not be necessary to first instantiate
 the class and then manually set the properties.
 
 The constructors are declared without a return type, and must have the same name as
@@ -72,7 +58,7 @@ implemented for different forms of initializations.
     }
 
     // Implement the copy constructor
-    MyClass(const MyClass &in other)
+    MyClass(const MyClass &inout other)
     {
       // Copy the value of the other instance
     }
@@ -80,35 +66,70 @@ implemented for different forms of initializations.
     // Implement other constructors with different parameter lists
     MyClass(int a, string b) {}
     MyClass(float x, float y, float z) {}
+
+    // Implement conversion constructors 
+    // The second can only be used explicitly
+    MyClass(int a) {}
+    MyClass(string a) explicit {}
   }
 </pre>
 
 The copy constructor is a specific constructor that the compiler can use to build
 more performatic code when copies of an object must be made. Without the copy 
-constructor the compiler will be forced to first instanciate the copy using the 
+constructor the compiler will be forced to first instantiate the copy using the 
 default constructor, and then copy the attributes with the 
 \ref doc_script_class_prop "opAssign" method.
 
+A constructor that takes a single argument can be used in \ref conversion "type conversions". 
+By default the compiler can use these to perform the conversion implicitly when necessary. 
+If that is not desired, then it is possible to prohibit this by adding the <tt>explicit</tt> 
+decorator after the constructor. 
+
 One constructor cannot call another constructor. If you wish to share 
 implementations in the constructors you should use a specific method for that.
-
-If a class isn't explicitly declared with any constructor, the compiler will automatically
-provide a default constructor for the class. This automatically generated constructor will
-simply call the default constructor for all object members, and set all handles to null. 
-If a member cannot be initialized with a default constructor, then a compiler error will be
-emitted.
 
 How the members shall be initialized can also be defined directly in the declaration of the 
 members. When this is done the initialization expression will automatically be compiled in the 
 constructor without the need to write the initialization again. 
 
-\see \ref doc_script_class_memberinit
+\see \ref doc_script_class_memberinit, \ref doc_script_class_conv
+
+
+
+\section doc_script_class_construct_auto Auto-generated constructors
+
+The compiler will automatically generate a default constructor and copy constructor in some cases.
+
+The default constructor will be generated automatically if no other constructor is explicitly declared. 
+This constructor will simply call the default constructor for all object members and set all handles to null, 
+unless \ref doc_script_class_memberinit "members have explicit initializations" in which case those are executed. 
+Any compilation error in the member initialization will be reported as usual.
+
+The copy constructor will be generated automatically if no copy constructor is explicitly declared. This 
+constructor will attempt to do a copy construct for each member, or if no copy constructor is available it 
+will first do a default construct followed by an assignment. If any compilation error is encountered, e.g. if a 
+member cannot be copied, then the copy constructor will not be generated and the error message surpressed.
+
+If the auto generated constructors are not desired, then they can be explicitly excluded by flagging them as deleted.
+
+<pre>
+  class MyClass
+  {
+	MyClass() delete;
+	MyClass(const MyClass &inout) delete;
+  }
+</pre>
 
 
 
 
 
-\section doc_script_class_destruct Class destructor
+
+
+
+
+
+\page doc_script_class_destruct Class destructor
 
 It is normally not necessary to implement the class destructor as AngelScript
 will by default free up any resources the objects holds when it is destroyed. 
@@ -139,6 +160,35 @@ directly invoke the cleanup, then you should implement a public method for that.
 
 
 
+
+\page doc_script_class_methods Class methods
+
+The class methods are implemented the same way as \ref doc_script_func "global functions", 
+with the addition that the class method can access the class instance properties either
+directly or through the 'this' keyword in the case a local variable has the same name.
+
+<pre>
+  // The class declaration
+  class MyClass
+  {
+    // A class method
+    void DoSomething()
+    {
+      // The class properties can be accessed directly
+      a *= 2;
+
+      // The declaration of a local variable may hide class properties
+      int b = 42;
+
+      // In this case the class property have to be accessed explicitly
+      this.b = b;
+    }
+
+    // Class properties
+    int a;
+    int b;
+  }
+</pre>
 
 \section doc_script_class_const Const methods
 
@@ -371,14 +421,14 @@ properties or methods are inappropriately used.
 
 \page doc_script_class_memberinit Initialization of class members
 
-The order in which the class members are initialized during the construction of an object becomes 
+The order in which the class members are initialized during the construction of an object becomes
 important when using inheritance, or when defining the initialization of the members directly in
-the declaration. If a member is accessed before it has been initialized the script may cause a null 
+the declaration. If a member is accessed before it has been initialized the script may cause a null
 handle access exception, which will abort the execution of the script.
 
-For a simple class, the order in which the members are initialized is the same as the order in which 
-they were declared. When explicit initializations are given in the declaration of the members, these 
-members will be initialized last. 
+For a simple class, the order in which the members are initialized is the same as the order in which
+they were declared. When explicit initializations are given in the declaration of the members, these
+members will be initialized last.
 
 <pre>
   // The order of this class will be: a, c, b, d
@@ -391,8 +441,8 @@ members will be initialized last.
   }
 </pre>
 
-When \ref doc_script_class_inheritance "inheritance" is used, the derived class' members without 
-explicit initialization will be initialized before the base class' members, and the members with 
+When \ref doc_script_class_inheritance "inheritance" is used, the derived class' members without
+explicit initialization will be initialized before the base class' members, and the members with
 explicit initialization will be initialized after the base class' members.
 
 <pre>
@@ -412,12 +462,12 @@ explicit initialization will be initialized after the base class' members.
 </pre>
 
 This order of initialization has been chosen to avoid most problems with accessing members before they
-have been initialized. 
+have been initialized.
 
 All members are initialized immediately in the beginning of the defined constructor, so the rest of the 
 code in the constructor can access members without worry. The exception is when the constructor explicitly
-initializes a base class by calling super(), in this case the members with explicit initialization will
-remain uninitialized until after the base class has been fully constructed.
+initializes a base class by calling super(), or overrides the initialization of a member within the body of the constructor.
+In this case the members explicitly initialized within the body will remain uninitialized until that statement is reached.
 
 <pre>
   class Bar
@@ -430,11 +480,13 @@ remain uninitialized until after the base class has been fully constructed.
   {
     Foo()
     {
-      // b is already initialized here
+      // b is initialized first
+      // If not explicitly initialized later, c would be initialized here, leading 
+      // to a null pointer exception since super() has not been called yet.
 
-      super(b); // a will be initialized in this call
+      super(b); // a will only be initialized in this call
 
-      // c is initialized right after super() returns
+      c = a; // explicitly initialize c after the base class to avoid the null pointer exception
     }
     
     string b;
@@ -442,14 +494,31 @@ remain uninitialized until after the base class has been fully constructed.
   }
 </pre>
 
+Members can also be initialized in conditions. If they are, then both cases must initialize the members.
+
+<pre>
+  class Foo
+  {
+    Foo(int a)
+    {
+      if( a == 0 ) // If a member is initialized in a condition, then both possibilities must initialize the member
+        d = 'foo';
+      else
+        d = 'bar';
+    }
+    
+    string d = 'default';
+  }
+</pre>
+
 Be wary about cases where a constructor or member initialization calls class methods. As class methods can
-be overridden by derived classes it is possible for a base class to unwittingly access a member of the derived 
+be overridden by derived classes it is possible for a base class to unwittingly access a member of the derived
 class before it has been initialized.
 
 <pre>
   class Bar
   {
-    Bar() 
+    Bar()
     {
       DoSomething();
     }
@@ -457,14 +526,14 @@ class before it has been initialized.
     void DoSomething() {}
   }
   
-  // This class will cause a null handle exception, because the Bar's constructor calls 
-  // the DoSomething() method that accesses the member msg before it has been initialized. 
+  // This class will cause a null handle exception, because the Bar's constructor calls
+  // the DoSomething() method that accesses the member msg before it has been initialized.
   class Foo : Bar
   {
     string msg = 'hello';
-    void DoSomething() 
-    { 
-      print(msg); 
+    void DoSomething()
+    {
+      print(msg);
     }
   }
 </pre>

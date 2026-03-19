@@ -468,6 +468,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     # AngelScript core
     set(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
     set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
+    set(AS_DISABLE_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
     target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     target_compile_definitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)

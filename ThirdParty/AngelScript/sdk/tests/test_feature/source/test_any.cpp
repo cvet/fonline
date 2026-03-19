@@ -102,10 +102,63 @@ bool Test()
 	bool fail = false;
 	int r;
 	COutStream out;
-	asIScriptContext *ctx;
-	asIScriptEngine *engine;
+	asIScriptContext* ctx;
+	asIScriptEngine* engine;
 	CBufferedOutStream bout;
-	asIScriptModule *mod;
+	asIScriptModule* mod;
+
+	// Test setting any with script function from c++
+	// https://www.gamedev.net/forums/topic/707596-dynamic-import-of-native-functions/5429530/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptAny(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "void func() {}");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByName("func");
+		if (func == 0)
+			TEST_FAILED;
+
+		CScriptAny* any = new CScriptAny(engine);
+		any->Store(&func, func->GetTypeId() | asTYPEID_OBJHANDLE);
+
+		func = 0;
+		any->Retrieve(&func, any->GetTypeId());
+
+		if (func == 0 || std::string(func->GetName()) != "func")
+			TEST_FAILED;
+		if( func )
+			func->Release();
+		any->Release();
+
+		engine->ShutDownAndRelease();
+
+	}
+
+	// Test setting content of any from C++
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptAny(engine);
+		CScriptAny* any = new CScriptAny(engine);
+
+		asINT64 someValue = 32;
+		any->Store(&someValue, asTYPEID_INT64);
+
+		someValue = 0;
+		any->Retrieve(&someValue, asTYPEID_INT64);
+
+		if (someValue != 32)
+			TEST_FAILED;
+		any->Release();
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test circular reference between any and ref
 	{

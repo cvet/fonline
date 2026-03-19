@@ -20,8 +20,36 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptEngine *engine;
 
+	// Test odd behaviour with 'datetime dt(2019,01,01);'
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterScriptDateTime(engine);
+		
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"datetime dt(2019,01,01); \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CDateTime* dt = reinterpret_cast<CDateTime*>(mod->GetAddressOfGlobalVar(0));
+		if (dt->getYear() != 2019 || dt->getMonth() != 1 || dt->getDay() != 1)
+		{
+			PRINTF("%d/%d/%d\n", dt->getYear(), dt->getMonth(), dt->getDay());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "assert(dt.year == 2019 && dt.month == 1 && dt.day == 1);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->Release();
+	}
+
 	// Test returning the datetime object from script function
-	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
@@ -48,7 +76,6 @@ bool Test()
 	}
 
 	// Test the datetime object
-	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);

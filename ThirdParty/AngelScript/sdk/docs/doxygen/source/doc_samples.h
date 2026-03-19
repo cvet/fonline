@@ -156,9 +156,7 @@ the application interface has been fully registered.
 
 <b>Path:</b> /sdk/samples/asrun/
 
-This samples gives a very basic command line runner for AngelScripts. It currently doesn't
-allow the user to do very much as it is just a sample, but serves as a good foundation for
-building a useful command line tool.
+This samples gives a very basic command line runner for AngelScripts.
 
 It also implements a fully functional command line debugger, with support for setting 
 breakpoints, stepping through the code, examining variables, etc.
@@ -171,12 +169,12 @@ breakpoints, stepping through the code, examining variables, etc.
  - \ref doc_addon_file
  - \ref doc_addon_filesystem
  - \ref doc_addon_datetime
+ - \ref doc_addon_socket
  - \ref doc_addon_ctxmgr
  - \ref doc_addon_build
  - \ref doc_addon_helpers_try
  - \ref asIScriptEngine::SetContextCallbacks
- - Passing command line arguments to script
- - Executing system commands from script
+ - \ref doc_script_stdlib_system
  - Implementing a \#pragma callback
 
 \see \subpage doc_samples_asrun_manual
@@ -190,7 +188,8 @@ the system to read and write files, and execute other system commands.
 
 On Windows it can be associated, for example with the file extension .as, to allow scripts to be 
 executed directly from the file browser with a double click. This makes it a handy tool even without
-a terminal for command-line input.
+a terminal for command-line input. On Linux and UNIX based systems the shebang interpreter directive 
+can be added as the first line on the script to make the script files executable.
 
 
 
@@ -214,8 +213,7 @@ As entry point for executing the scripts, asrun looks for one of the functions <
 <tt>void main()</tt>. If neither of these functions are found an error will be reported.
 
 The scripts can use the full set of the script language and standard library described in 
-\ref doc_script "the script language" section of this manual. In addition to that a few functions 
-specific to asrun are available as described in \ref doc_samples_asrun_funcs "the next section".
+\ref doc_script "the script language" section of this manual.
 
 The script file informed as input on the command line may include additional files with the include
 directive <tt>\#include "<file name>"</tt>, so that the script files can be better organized and common
@@ -223,30 +221,6 @@ logic shared between multiple scripts.
 
 
 
-
-
-
-
-
-\subsection doc_samples_asrun_funcs Global functions available to scripts
-
-Besides the \ref doc_script_stdlib "standard library", the following functions are also exposed to the scripts.
-
-<b>void print(const string &in line)</b>
-
-Prints a line to the standard output.
- 
-<b>string getInput()</b>
-
-Gets a line from the standard input.
- 
-<b>array<string> \@getCommandLineArgs()</b>
-
-Gets the command line arguments as an array.
- 
-<b>int exec(const string &in)</b>
-
-Executes a system command.
 
 
 

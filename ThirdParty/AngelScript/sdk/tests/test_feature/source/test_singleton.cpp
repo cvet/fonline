@@ -47,10 +47,15 @@ bool Test()
 	r = engine->RegisterObjectMethod("SoundMgr", "void Test()", asFUNCTION(TestMethod), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalProperty("SoundMgr SMgr", (void*)&SoundMgr); assert(r >= 0);
 
-	ExecuteString(engine, "Game.Test()", mod);
-	ExecuteString(engine, "SMgr.Test()", mod);
-	
-	ExecuteString(engine, "TestSingleton()", mod);
+	r = ExecuteString(engine, "Game.Test()", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+	r = ExecuteString(engine, "SMgr.Test()", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+	r = ExecuteString(engine, "TestSingleton()", mod);
+	if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
 	engine->Release();
 

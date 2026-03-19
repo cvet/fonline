@@ -1,7 +1,7 @@
 #ifndef SCRIPTHANDLE_H
 #define SCRIPTHANDLE_H
 
-#ifndef ANGELSCRIPT_H 
+#ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
 #endif
@@ -9,7 +9,7 @@
 
 BEGIN_AS_NAMESPACE
 
-class CScriptHandle 
+class CScriptHandle
 {
 public:
 	// Constructors
@@ -53,7 +53,7 @@ protected:
 	void ReleaseHandle();
 	void AddRefHandle();
 
-	// These shouldn't be called directly by the 
+	// These shouldn't be called directly by the
 	// application as they requires an active context
 	CScriptHandle(void *ref, int typeId);
 	CScriptHandle &Assign(void *ref, int typeId);

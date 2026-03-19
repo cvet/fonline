@@ -1,14 +1,18 @@
 #include "utils.h"
 #include "../../../add_on/scriptfile/scriptfile.h"
 #include "../../../add_on/scriptfile/scriptfilesystem.h"
+#include "../../../add_on/datetime/datetime.h"
+#if defined(_WIN32)
+#include <direct.h> // _getcwd
+#else
+#include <unistd.h> // getcwd
+#endif
 
 namespace Test_Addon_ScriptFile
 {
 
 bool Test()
 {
-	RET_ON_MAX_PORT
-
 	bool fail = false;
 	COutStream out;
 	CBufferedOutStream bout;
@@ -21,6 +25,7 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
 		RegisterStdString(engine);
 		RegisterScriptArray(engine, false);
+		RegisterScriptDateTime(engine);
 		RegisterScriptFile(engine);
 		RegisterScriptFileSystem(engine);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
@@ -45,8 +50,18 @@ bool Test()
 		r = ExecuteString(engine, "main()", mod, ctx);
 		if (r != asEXECUTION_FINISHED)
 		{
-			if (r == asEXECUTION_EXCEPTION && ctx->GetExceptionLineNumber() == 4)
-				PRINTF("Failed to find the sub directory 'scripts'. Are you running the test from the correct folder?\n");
+			if (r == asEXECUTION_EXCEPTION && ctx->GetExceptionLineNumber() == 3)
+			{
+				char buffer[1000];
+				PRINTF("Failed to find the sub directory 'scripts'. Are you running the test from the correct folder? cwd: %s\n",
+#if defined(_WIN32)
+					_getcwd(buffer, 1000)
+#else
+					getcwd(buffer, 1000)
+#endif				
+				);
+				assert(buffer[0] != 0);
+			}
 			else
 				TEST_FAILED;
 		}
@@ -66,6 +81,7 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 		RegisterStdString(engine);
 		RegisterScriptArray(engine, false);
+		RegisterScriptDateTime(engine);
 		RegisterScriptFile(engine);
 		RegisterScriptFileSystem(engine);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
@@ -78,7 +94,7 @@ bool Test()
 			"  assert( dirs.find('scripts') >= 0 ); \n"
 			"  fs.changeCurrentPath('scripts'); \n"						// move to the sub directory
 			"  array<string> files = fs.getFiles(); \n"					// get the script files in the directory
-			"  assert( files.length() == 2 ); \n"
+			"  assert( files.length() == 3 ); \n"
 			"  file f; \n"
 			"  f.open('scripts/include.as', 'r'); \n"
 			"  string str = f.readLine(); \n"

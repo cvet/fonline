@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -57,7 +57,7 @@ asCString::asCString(const asCString &str)
 }
 
 #ifdef AS_CAN_USE_CPP11
-asCString::asCString(asCString &&str)
+asCString::asCString(asCString &&str) noexcept
 {
 	if( str.length <= 11 )
 	{
@@ -204,7 +204,7 @@ asCString &asCString::operator =(const asCString &str)
 }
 
 #ifdef AS_CAN_USE_CPP11
-asCString &asCString::operator =(asCString &&str)
+asCString &asCString::operator =(asCString &&str) noexcept
 {
 	if( this != &str )
 	{

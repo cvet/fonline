@@ -160,6 +160,45 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptContext *ctx;
 
+	// Test handle by reference
+	// https://www.gamedev.net/forums/topic/713283-crash-with-ref-to-handle/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo {} \n"
+			"class Bar { \n"
+			"  Foo@ m_foo; \n"
+			"  Bar(Foo@& in foo, Foo @f2) { \n"
+			"    @m_foo = foo; \n"
+			"    @m_foo = f2; \n"
+			"    set(foo, f2); \n"
+			"  } \n"
+			"  void set(Foo @a, Foo @b) {} \n"
+			"} \n"
+			"void Main() { \n"
+			"  Bar(Foo(), Foo()); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "Main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test const handles
 	{
 		engine = asCreateScriptEngine();
@@ -238,7 +277,7 @@ bool Test()
 		asIScriptFunction *func = mod->GetTypeInfoByName("TestClass")->GetMethodByName("TestAccessToMemberOfMember", false);
 		asBYTE expect[] =
 		{
-			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_Thiscall1,asBC_RDR4,asBC_CpyVtoV4,
+			asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_Thiscall1,asBC_RDR4,asBC_CpyVtoV4,
 			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_RefCpyV,asBC_Thiscall1,asBC_RDR4,asBC_ADDi,asBC_FREE,
 			asBC_SUSPEND,asBC_RET
 		};
@@ -248,7 +287,7 @@ bool Test()
 		func = mod->GetFunctionByName("TestGlobalAccessToMemberOfMember");
 		asBYTE expect2[] =
 		{
-			asBC_SUSPEND,asBC_CALL,asBC_STOREOBJ,
+			asBC_CALL,asBC_STOREOBJ,
 			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_Thiscall1,asBC_RDR4,asBC_CpyVtoV4,
 			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_RefCpyV,asBC_Thiscall1,asBC_RDR4,asBC_ADDi,asBC_FREE,
 			asBC_SUSPEND,asBC_FREE,asBC_RET
@@ -259,7 +298,7 @@ bool Test()
 		func = mod->GetFunctionByName("TestHandleAccessToMemberOfMember");
 		asBYTE expect3[] =
 		{
-			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_RefCpyV,asBC_Thiscall1,asBC_RDR4,asBC_CpyVtoV4,asBC_FREE,
+			asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_RefCpyV,asBC_Thiscall1,asBC_RDR4,asBC_CpyVtoV4,asBC_FREE,
 			asBC_SUSPEND,asBC_PshC4,asBC_PshVPtr,asBC_ADDSi,asBC_RDSPtr,asBC_RefCpyV,asBC_Thiscall1,asBC_RDR4,asBC_ADDi,asBC_FREE,
 			asBC_SUSPEND,asBC_FREE,asBC_RET
 		};

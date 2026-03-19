@@ -233,6 +233,68 @@ bool Test()
  	asIScriptEngine *engine;
 	asIScriptModule *mod;
 	asIScriptContext *ctx;
+
+	// Test setting breakpoint with full path
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("a/file",
+			"void main() { another(); } \n");
+		mod->AddScriptSection("b/file",
+			"void another() { \n"
+			" string a = 'this is another file'; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CMyDebugger2 debug;
+		debug.SetUseSectionFileNameOnly(false); // Set full path usage
+		debug.SetEngine(engine);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("string"), StringToString);
+
+		ctx = engine->CreateContext();
+		ctx->SetLineCallback(asMETHOD(CMyDebugger, LineCallback), &debug, asCALL_THISCALL);
+
+		ctx->Prepare(mod->GetFunctionByName("main"));
+
+		// Set a break point on a line in the second file
+		debug.InterpretCommand("b b/file:1", ctx);
+
+		r = ctx->Execute();
+		if (r != asEXECUTION_SUSPENDED)
+			TEST_FAILED;
+
+		// Now we should be in the second file
+		const char* section;
+		ctx->GetFunction()->GetDeclaredAt(&section, 0, 0);
+		if( std::string(section) != "b/file" )
+			TEST_FAILED;
+		if (ctx->GetLineNumber() != 2 )  // breakpoint was moved to the second line
+			TEST_FAILED;
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (debug.output != 
+			"Setting break point in file 'b/file' at line 1\n"
+			"Moving break point 0 in file 'b/file' to next line with code at line 2\n"
+			"Reached break point 0 in file 'b/file' at line 2\n"
+			"b/file:2; void another()\n")
+		{
+			PRINTF("%s", debug.output.c_str());
+			TEST_FAILED;
+		}
+
+		ctx->Release();
+
+		engine->Release();
+	}
 	
 	// Test expanding a dictionary
 	{
@@ -319,7 +381,7 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
-		if( debug.output != "ExecuteString:1; void ExecuteString()\n"
+		if( debug.output !=	"type t = <null>\n" // The variable is declared, but not yet initialized
 							"ExecuteString:1; void ExecuteString()\n"
 							"string glob = (len=4) \"test\"\n"
 							"script:0; type@ type()\n"
@@ -334,15 +396,7 @@ bool Test()
 							"type@ e = {XXXXXXXX}\n"
 							"type& f = {XXXXXXXX}\n"
 							"type@& g = {XXXXXXXX}\n"
-							"string glob = (len=4) \"test\"\n"
-							"script:3; void func(int, const int&in, string, const string&in, type@, type&inout, type@&in)\n"
-							"int a = 1\n"
-							"const int& b = 2\n"
-							"string c = (len=1) \"c\"\n"
-							"const string& d = (len=1) \"d\"\n"
-							"type@ e = {XXXXXXXX}\n"
-							"type& f = {XXXXXXXX}\n"
-							"type@& g = {XXXXXXXX}\n"
+							"int[] arr = <null>\n" // The variable is declared, but not yet initialized
 							"string glob = (len=4) \"test\"\n"
 							"script:3; void func(int, const int&in, string, const string&in, type@, type&inout, type@&in)\n"
 							"{unnamed}:0; int[]@ $list(int&in) { repeat int }\n"
@@ -412,9 +466,8 @@ bool Test()
 		if( ctx->GetAddressOfVar(0) )
 			TEST_FAILED;
 
-		// It will break twice on line 8. Once when setting up the function stack frame, and then on the first line that is executed
-		// TODO: The first SUSPEND in the bytecode should be optimized away as it is unnecessary
-		for( int n = 0; n < 2; n++ )
+		// It will no longer break twice on entry
+		for( int n = 0; n < 1; n++ )
 		{
 			r = ctx->Execute();
 			if( r != asEXECUTION_SUSPENDED )
@@ -459,9 +512,6 @@ bool Test()
 
 		if( debug.output != "Setting break point in file 'test' at line 9\n"
 							"Setting break point in file 'test' at line 10\n"
-							"Reached break point 0 in file 'test' at line 9\n"
-							"test:9; void Func()\n"
-							"24\n"
 							"Reached break point 0 in file 'test' at line 9\n"
 							"test:9; void Func()\n"
 							"24\n"

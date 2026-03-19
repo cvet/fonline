@@ -14,6 +14,26 @@ bool ComplexTest( const Complex& c1, const Complex& c2 )
 	return true;
 }
 
+void *factory(int value, int offset) 
+{
+	assert(value == 123);
+	assert(offset == 5000);
+
+	return NULL;
+}
+
+int get_opIndex(int /*obj*/, int index)
+{
+	assert(index == 10);
+
+	return 123;
+}
+
+int get_None(int /*obj*/)
+{
+	return 123;
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -22,6 +42,60 @@ bool Test()
 	COutStream out;
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
+
+	// Test default arg after expression with index property accessor
+	// Reported by Phong Ba
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("vObj", sizeof(int), asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
+		r = engine->RegisterObjectMethod("vObj", "int get_opIndex(int) const property", asFUNCTION(get_opIndex), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("vObj", "int get_Prop(int) const property", asFUNCTION(get_opIndex), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("vObj", "int get_None() const property", asFUNCTION(get_None), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("vObj", "int getValue(int) const", asFUNCTION(get_opIndex), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+
+		r = engine->RegisterObjectType("rObj", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("rObj", asBEHAVE_FACTORY, "rObj@ f(int value, int offset = 5000)", asFUNCTION(factory), asCALL_CDECL); assert(r >= 0);
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+			asIScriptContext *ctx = engine->CreateContext(); assert(ctx != NULL);
+
+			r = mod->AddScriptSection("main", "void main() {vObj plain; rObj@ obj = rObj(plain.Prop[10]);}"); assert(r >= 0);
+			r = mod->Build(); assert(r >= 0);
+
+			r = ctx->Prepare(engine->GetModule(0)->GetFunctionByDecl("void main()")); assert(r >= 0);
+			r = ctx->Execute(); assert(r == asEXECUTION_FINISHED);
+
+			ctx->Release();
+			mod->Discard();
+		}
+
+		{
+			mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+			asIScriptContext *ctx = engine->CreateContext(); assert(ctx != NULL);
+
+			r = mod->AddScriptSection("main", "void main() {vObj plain; rObj@ obj = rObj(plain[10]);}"); assert(r >= 0);
+			r = mod->Build(); assert(r >= 0); 
+
+			r = ctx->Prepare(engine->GetModule(0)->GetFunctionByDecl("void main()")); assert(r >= 0);
+			r = ctx->Execute(); assert(r == asEXECUTION_FINISHED);
+
+			ctx->Release();
+			mod->Discard();
+		}
+
+		r = engine->ShutDownAndRelease(); assert(r >= 0);
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
 
 	// default arg accessing member of global var
 	// Reported by Aaron Baker
@@ -263,7 +337,7 @@ bool Test()
 
 		if( bout.buffer != "test (8, 2) : Info    : Compiling void monster::act()\n"
 						   "default arg (1, 1) : Error   : No matching symbol 'this'\n"
-						   "test (10, 3) : Error   : Failed while compiling default arg for parameter 0 in function 'void monster::calculate_necessary_experience(int = this . level)'\n" )
+						   "test (10, 3) : Error   : Failed while compiling default arg for parameter 0 in function 'void monster::calculate_necessary_experience(int = this.level)'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -546,7 +620,7 @@ bool Test()
 		r = engine->RegisterGlobalFunction("void defarg(bool, int a = 34+45, int)", asFUNCTION(0), asCALL_GENERIC);
 		if( r >= 0 )
 			TEST_FAILED;
-		if( bout.buffer != "System function (1, 1) : Error   : All subsequent parameters after the first default value must have default values in function 'void defarg(bool, int = 34 + 45, int)'\n"
+		if( bout.buffer != "System function (1, 1) : Error   : All subsequent parameters after the first default value must have default values in function 'void defarg(bool, int = 34+45, int)'\n"
 			               " (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'void defarg(bool, int a = 34+45, int)' (Code: asINVALID_DECLARATION, -10)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -762,9 +836,9 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "script (4, 1) : Info    : Compiling void main()\n"
-						   "default arg (1, 17) : Error   : Expected ']'\n"
-						   "default arg (1, 17) : Error   : Instead found '<end of file>'\n"
-						   "script (6, 3) : Error   : Failed while compiling default arg for parameter 1 in function 'void my_function(int, int = my_array [ i [ ])'\n" )
+						   "default arg (1, 13) : Error   : Expected ']'\n"
+						   "default arg (1, 13) : Error   : Instead found '<end of file>'\n"
+						   "script (6, 3) : Error   : Failed while compiling default arg for parameter 1 in function 'void my_function(int, int = my_array[i[])'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -500,6 +500,7 @@
     <ClCompile Include="..\..\source\test_module.cpp" />
     <ClCompile Include="..\..\source\test_multiassign.cpp" />
     <ClCompile Include="..\..\source\test_namespace.cpp" />
+    <ClCompile Include="..\..\source\test_native_defaultfunc.cpp" />
     <ClCompile Include="..\..\source\test_nested.cpp" />
     <ClCompile Include="..\..\source\test_nevervisited.cpp" />
     <ClCompile Include="..\..\source\test_notinitialized.cpp" />

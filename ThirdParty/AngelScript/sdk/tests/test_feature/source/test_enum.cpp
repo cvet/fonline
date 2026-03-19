@@ -53,6 +53,73 @@ static bool TestEnum()
 	int                r;
 	bool               fail = false;
 
+	// Test enum with underlying type
+	{
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum A : int8 { a = 1, b = 256 } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream stream(__FILE__"1");
+		r = mod->SaveByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		mod = engine->GetModule("2", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( a == 1 ); assert( b == 0 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer !=
+			"test (1, 24) : Info    : Compiling A b\n"
+			"test (1, 28) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test invalid enum usage
+	// https://www.gamedev.net/forums/topic/715661-crash-on-invalid-enum-usage/5461971/
+	{
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum A {} \n"
+			"A a = {}; \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != 
+			"test (2, 3) : Info    : Compiling A a\n"
+			"test (2, 7) : Error   : Initialization lists cannot be used with 'A'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Report warning on enum values that do not fit in 32bit
 	// https://www.gamedev.net/forums/topic/687053-values-of-enum-constants/
 	{

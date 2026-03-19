@@ -59,14 +59,20 @@ bool Test()
 
 	COutStream out;
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	ExecuteString(engine, "obj o");
+	r = ExecuteString(engine, "obj o");
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
-	if( !strstr(asGetLibraryOptions(),"AS_MAX_PORTABILITY") )
-		ExecuteString(engine, "retObj()");
+	if (!strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY"))
+	{
+		r = ExecuteString(engine, "retObj()");
+		if (r != asEXECUTION_FINISHED) TEST_FAILED;
+	}
 
-	ExecuteString(engine, "obj o; retObj2(o)");
+	r = ExecuteString(engine, "obj o; retObj2(o)");
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
-	ExecuteString(engine, "obj[] o(2)");
+	r = ExecuteString(engine, "obj[] o(2)");
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 	mod->AddScriptSection(0, script, strlen(script));

@@ -139,6 +139,45 @@ static bool Test3();
 static bool Test4();
 static bool Test5();
 
+int blah(int) { return 1; }
+int blah(unsigned int) { return 2; }
+
+class BigInt
+{
+public:
+	// If the value can be stored in i32, it is stored here. Otherwise, this field is -1 or +1.
+	int signOrShortValue_;
+
+public:
+	BigInt(int value = 0)
+		: signOrShortValue_(value)
+	{
+	}
+
+	BigInt(asUINT )
+		: signOrShortValue_(+1)
+	{
+	}
+};
+
+// BigInt::BigInt(i32 value = 0)
+static void BigInt__BigInt_i32(BigInt* _ptr, asINT32 value)
+{
+	new(_ptr) BigInt(value);
+}
+// BigInt::BigInt(u32 value)
+static void BigInt__BigInt_u32(BigInt* _ptr, asUINT value)
+{
+	new(_ptr) BigInt(value);
+}
+
+std::string printBuf = "";
+static void Print(asIScriptGeneric* gen)
+{
+	const std::string& i = *(const std::string*)gen->GetArgAddress(0);
+	printBuf += i;
+}
+
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -151,12 +190,429 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
 
-	// Test implicit cast in arg using the constructor
-	// TODO: Add this support (only for value types for now)
-	// http://www.gamedev.net/topic/660695-passing-strings-inline/
-/*	{
+	// Test bitshift with implicit conv
+	// https://www.gamedev.net/forums/topic/711021-opimplconv-not-respected-by-shift-operators/5442910/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(Print), asCALL_GENERIC);
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+			class foo {
+			    uint opImplConv() const { return 0; }
+			}
+			void Main()
+			{
+				foo f;
+				int b = f + 1;
+				int a = f >> 1;
+			}	)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		engine->ShutDownAndRelease();
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test implicit conv with &inout ref
+	// https://www.gamedev.net/forums/topic/716940-no-constructor-called-on-implicit-construction-with-inout-parameter-reference/5464209/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(Print), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+			class Test
+			{
+				int32 Val;
+    
+				Test() { Val = 0; print("ctor: " + Val + "\n"); }
+				Test(int32 x) { Val = x;  print("ctor(int32): " + Val + "\n"); }
+
+				void Set(const Test& test) 
+				{
+					print("Set\n");
+					print(" - Old Val: " + Val + "\n");
+					print(" - Parameter test.Val: " + test.Val + "\n");
+					Val = test.Val;
+					print(" - New Val: " + Val + "\n");
+				}
+			}
+
+			void Main()
+			{
+				{
+					print("TestA\n");
+					Test test;
+					int32 val = 1;
+					test.Set(val); // Fails even though implicit int32 constructor exist. The construction of the temporary Test object is not done because the parameter is a reference
+				}
+				{
+					print("TestB\n");
+					Test test;
+					test.Set(1); // Does not compile: "Error: Not a valid reference"
+				}
+				{
+					print("TestC\n");
+					Test test;
+					test.Set(Test(1)); // Constructing Test explicitly using int32 constructor
+				}
+				{
+					print("TestD\n");
+					Test test;
+					test.Set(cast<Test>(1)); // Explicitly casting from int32 to Test. Identical to TestC
+				}
+			}	)");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (19, 4) : Info    : Compiling void Main()\n"
+						   "test (25, 11) : Error   : No matching signatures to 'Test::Set(int)'\n"
+						   "test (25, 11) : Info    : Candidates are:\n"
+						   "test (25, 11) : Info    : void Test::Set(const Test&inout test)\n"
+						   "test (25, 11) : Info    : Rejected due to type mismatch on parameter 'test'\n"
+						   "test (30, 11) : Error   : No matching signatures to 'Test::Set(const int)'\n"
+						   "test (30, 11) : Info    : Candidates are:\n"
+						   "test (30, 11) : Info    : void Test::Set(const Test&inout test)\n"
+						   "test (30, 11) : Info    : Rejected due to type mismatch on parameter 'test'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test implicit conv on member with opImplConv
+	// Reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(Print), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class special_property { \n"
+			"	int some_id; \n"
+			"	string col; \n"
+			"	bool modified = false; \n"
+			"	int number = 10; \n"
+			"	special_property(const string&in col) { \n"
+			"		some_id = 1; \n"
+			"		number = 11; \n"
+			"		this.col = col; \n"
+			"	} \n"
+			"	special_property(special_property@ other) { \n"
+			"		some_id = other.some_id; \n"
+			"		col = other.col; \n"
+			"	} \n"
+			"} \n"
+			"class special_string : special_property { \n"
+			"	private string val; \n"
+			"	special_string(const string&in col, const string&in val) { \n"
+			"		super(col); \n"
+			"		this.val = val; \n"
+			"	} \n"
+			"	special_string(special_string@ other) { \n"
+			"		super(cast < special_property@ > (other)); \n"
+			"		val = other.val; \n"
+			"	} \n"
+			"	string opAssign(string v) { \n"
+			"		modified = true; \n"
+			"		number = v.length(); \n"
+			"		return val = v; \n"
+			"	} \n"
+			"	string opAssign(special_string@ other) { \n"
+			"		modified = true; \n"
+			"		return val = other.val; \n"
+			"	} \n"
+			"	void test() { \n"
+			"		print('from test: s.s.modified=' + this.modified + '\\n'); \n"
+			"	} \n"
+			"	string opImplConv() { \n"
+			"		test(); \n"
+			"		if(!modified) print('not modified! and ' + number + '\\n'); \n"
+			"		return val; \n"
+			"	} \n"
+			"} \n"
+			"class storage { \n"
+			"	special_string s('unneeded', 'this is a test'); \n"
+			"} \n"
+			"void main() { \n"
+			"	storage s; \n"
+			"	s.s = 'hello there'; \n"
+			"	print('from main: s.s.modified=' + s.s.modified + '\\n'); \n" 
+			"	print(s.s); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		printBuf = "";
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (printBuf != "from main: s.s.modified=true\n"
+						"from test: s.s.modified=true\n"
+						"hello there")
+		{
+			PRINTF("%s\n", printBuf.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test opImplCast doesn't allow returning object by value
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(Print), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class special_string { \n"
+			"	private string val; \n"
+			"	special_string(const string&in col, const string&in val) { \n"
+			"		this.val = val; \n"
+			"	} \n"
+			// This should not be allowed as it returns object by value
+			"	string opImplCast() { \n"
+			"		return val; \n"
+			"	} \n"
+			"} \n"
+			"class storage { \n"
+			"	special_string s('unneeded', 'this is a test'); \n"
+			"} \n"
+			"void main() { \n"
+			"	storage s; \n"
+			"	print(s.s); \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (13, 1) : Info    : Compiling void main()\n"
+						   "test (15, 8) : Error   : Illegal return by value for 'string special_string::opImplCast()' in type cast\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test opImplConv to bool in conditions for value types
+	// https://www.gamedev.net/forums/topic/713122-opimplconv-to-bool-doesnt-work-in-a-ternary-operator-condition/
+	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("Test", 1, asOBJ_VALUE | asOBJ_POD);
+		engine->RegisterObjectMethod("Test", "bool opImplConv() const", asFUNCTION(0), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() \n"
+			"{ \n"
+			"	Test t; \n"
+			"   int a = 0; \n"
+			"   if( t ) a = 1; else a = 0; \n"
+			"   int b = 0; \n"
+			"   b = t ? 1 : 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s\n", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test opImplConv to bool in conditions is not allowed for reference types (when context conversion is not turned on)
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_BOOL_CONVERSION_MODE, 0);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Test { \n"
+			"  bool opImplConv() const { return true; } \n"
+			"} \n"
+			"void main() \n"
+			"{ \n"
+			"	Test t; \n"
+			"   int a = 0; \n"
+			"   if( t ) a = 1; else a = 0; \n"
+			"   int b = 0; \n"
+			"   b = t ? 1 : 0; \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (4, 1) : Info    : Compiling void main()\n"
+						   "test (8, 8) : Error   : Expression must be of boolean type, instead found 'Test&'\n"
+						   "test (10, 8) : Error   : Expression must be of boolean type, instead found 'Test&'\n")
+		{
+			PRINTF("%s\n", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test implicit conv for constant while matching function calls
+	// https://www.gamedev.net/forums/topic/712254-vs-as-type-detection/5447679/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		engine->RegisterObjectType("BigInt", sizeof(BigInt), asOBJ_VALUE | asOBJ_POD);
+		engine->RegisterObjectBehaviour("BigInt", asBEHAVE_CONSTRUCT, "void f(int = 0)", asFUNCTION(BigInt__BigInt_i32), asCALL_CDECL_OBJFIRST);
+		engine->RegisterObjectBehaviour("BigInt", asBEHAVE_CONSTRUCT, "void f(uint)", asFUNCTION(BigInt__BigInt_u32), asCALL_CDECL_OBJFIRST);
+		engine->RegisterObjectProperty("BigInt", "int signOrShortValue_", asOFFSET(BigInt, signOrShortValue_));
+/*
+		BigInt i1(2147483647);
+		BigInt u1(2147483648);
+		BigInt i2(0xFF);
+		BigInt u2(0xFFFFFFFF);
+*/
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void Start() \n"
+			"{ \n"
+			"	BigInt i1(2147483647); \n"
+			"	assert(i1.signOrShortValue_ == 2147483647); \n" // print 2147483647 (used int constructor)
+//			"	BigInt u1(2147483648); \n"
+//			"	assert(u1.signOrShortValue_ == -2147483648); \n" // print -2147483648 (used int constructor)
+			"	BigInt i2(0xFF); \n"
+			"	assert(i2.signOrShortValue_ == 1); \n" // print 1 (used uint constructor)
+			"	BigInt u2(0xFFFFFFFF); \n"
+			"	assert(u2.signOrShortValue_ == 1); \n"  // print 1 (used uint constructor)
+			"} \n");
+		mod->Build();
+
+		r = ExecuteString(engine, "Start();", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// This does not fail to compile with multiple matching constructors, it choses the BigInt(int)
+		mod->AddScriptSection("test",
+			"void Start2() \n"
+			"{ \n"
+			"	BigInt u1(2147483648); \n"
+			"	assert(u1.signOrShortValue_ == -2147483648); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void Start2()\n"
+						   "test (3, 12) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s\n", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
+	// Test implicit conv for constant while matching function calls
+	// https://www.gamedev.net/forums/topic/712254-vs-as-type-detection/5447679/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int test(int ) { return 1; } \n"
+			"int test(uint ) { return 2; } \n");
+		mod->Build();
+
+		/*  The behaviour in C++ is different, i.e. 
+			blah(2147483647);
+			blah(2147483648);  // fails to compile with multiple matching functions
+			blah(12147483647); // fails to compile with multiple matching functions
+		*/
+
+		r = ExecuteString(engine, "assert( test(2147483647) == 1 );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( test(2147483648) == 1 );", mod);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( test(12147483647) == 1 );", mod);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( test(uint64(2147483648)) == 2 );", mod);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( test(uint64(12147483647)) == 2 );", mod);
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer !=
+			"ExecuteString (1, 14) : Warning : Value is too large for data type\n"
+			"ExecuteString (1, 14) : Warning : Value is too large for data type\n"
+			"ExecuteString (1, 14) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s\n", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
+	// Test implicit cast in arg using the constructor
+	// http://www.gamedev.net/topic/660695-passing-strings-inline/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
 
 		RegisterStdString(engine);
 
@@ -175,14 +631,21 @@ bool Test()
 			"  sendEvent(123, 'string', 1.234f); \n"
 			"  string str = 'string'; \n"
 			"  sendEvent(123, str, 1.234f); \n"
-			"  EventArg a = 'string'; \n"
+			"  EventArg a = 'string'; \n" // TODO: This should be compiled as EventArg a('string');
 			"} \n");
 		r = mod->Build();
-		if( r < 0 )
+		if( r >= 0 )
 			TEST_FAILED;
 
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void main()\n"
+						   "test (5, 12) : Error   : No appropriate opAssign method found in 'EventArg' for value assignment\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		engine->Release();
-	} */
+	}
 
 	// Test implicit conv/cast when function is expecting &in  (ref arg, but as input only, thus allow object to be transformed)
 	// problem reported by Thomas Grip
@@ -365,18 +828,9 @@ bool Test()
 
 	// Test 2
 	// A class won't be converted to primitive if there is no obvious target type
-	// ex: t << 1 - It is not known what type t should be converted to
 	// ex: t + t - It is not known what type t should be converted to
 	// ex: t < t - It is not known what type t should be converted to
-	bout.buffer = "";
 	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "type t(5); t << 1; ");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 14) : Error   : Illegal operation on 'type'\n" )
-	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
-	}
 
 	bout.buffer = "";
 	r = ExecuteString(engine, "type t(5); t + t; ");
@@ -504,9 +958,8 @@ bool Test()
 		asIScriptFunction *func = mod->GetFunctionByDecl("void func()");
 		asBYTE expect[] = 
 			{
-				asBC_SUSPEND, asBC_PSF, asBC_CALLSYS, 
-				// TODO: optimize: The string object should be constructed before asBC_TYPEID, thus allow asBC_VAR and asBC_GETREF to be optimized to asBC_PSF
-				asBC_SUSPEND, asBC_TYPEID, asBC_VAR, asBC_PSF, asBC_PSF, asBC_CALLSYS, asBC_GETREF, asBC_CALLSYS, asBC_PSF, asBC_CALLSYS, 
+				asBC_PSF, asBC_CALLSYS,
+				asBC_SUSPEND, asBC_TYPEID, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_CALLSYS, 
 				asBC_SUSPEND, asBC_RET
 			};
 		if( !ValidateByteCode(func, expect) )
@@ -730,6 +1183,7 @@ bool Test()
 			mod->AddScriptSection("script", 
 				"class C \n"
 				"{ \n"
+				"  C() {}\n" // explicitly define default constructor to avoid auto generated copy constructor
 				"  B b; \n"
 				"  B@ get_a() property { return b; } \n"
 				"  void set_a(B@ value) property { } \n"

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -103,8 +103,44 @@ void asCConfigGroup::AddReferencesForType(asCScriptEngine *engine, asCTypeInfo *
 	RefConfigGroup(engine->FindConfigGroupForTypeInfo(type));
 
 	// Keep track of which generated template instances the config group uses
-	if( type->flags & asOBJ_TEMPLATE && engine->generatedTemplateTypes.Exists(CastToObjectType(type)) && !generatedTemplateInstances.Exists(CastToObjectType(type)) )
+	if ((type->flags & asOBJ_TEMPLATE) && engine->generatedTemplateTypes.Exists(CastToObjectType(type)) && !generatedTemplateInstances.Exists(CastToObjectType(type)))
+	{
 		generatedTemplateInstances.PushLast(CastToObjectType(type));
+
+		// Enumerate through the members of the template instance and register other template instances also used.
+		// This is needed when a template instance refers to another template instance, and thus is created at the same time.
+		// Without adding the reference to the referred template instance, it may be deleted when the module deletes the top template instance.
+		asCObjectType* ot = CastToObjectType(type);
+		for (asUINT n = 0; n < ot->beh.constructors.GetLength(); n++)
+		{
+			asCScriptFunction* f = engine->scriptFunctions[ot->beh.constructors[n]];
+			if (!f) continue;
+
+			for (asUINT p = 0; p < f->parameterTypes.GetLength(); p++)
+			{
+				asCTypeInfo* ti = f->parameterTypes[p].GetTypeInfo();
+				if (ti && (ti->flags & asOBJ_TEMPLATE) && engine->generatedTemplateTypes.Exists(CastToObjectType(ti)) && !generatedTemplateInstances.Exists(CastToObjectType(ti)))
+					AddReferencesForType(engine, ti);
+			}
+		}
+
+		for (asUINT n = 0; n < ot->methods.GetLength(); n++)
+		{
+			asCScriptFunction* f = engine->scriptFunctions[ot->methods[n]];
+			if (!f) continue;
+
+			asCTypeInfo* ti = f->returnType.GetTypeInfo();
+			if (ti && (ti->flags & asOBJ_TEMPLATE) && engine->generatedTemplateTypes.Exists(CastToObjectType(ti)) && !generatedTemplateInstances.Exists(CastToObjectType(ti)))
+				AddReferencesForType(engine, ti);
+
+			for (asUINT p = 0; p < f->parameterTypes.GetLength(); p++)
+			{
+				ti = f->parameterTypes[p].GetTypeInfo();
+				if (ti && (ti->flags & asOBJ_TEMPLATE) && engine->generatedTemplateTypes.Exists(CastToObjectType(ti)) && !generatedTemplateInstances.Exists(CastToObjectType(ti)))
+					AddReferencesForType(engine, ti);
+			}
+		}
+	}
 }
 
 bool asCConfigGroup::HasLiveObjects()
@@ -130,7 +166,6 @@ void asCConfigGroup::RemoveConfiguration(asCScriptEngine *engine, bool notUsed)
 		{
 			globalProps[n]->Release();
 
-			// TODO: global: Should compact the registeredGlobalProps array
 			engine->registeredGlobalProps.Erase(index);
 		}
 	}
@@ -160,6 +195,7 @@ void asCConfigGroup::RemoveConfiguration(asCScriptEngine *engine, bool notUsed)
 		for( n = asUINT(types.GetLength()); n-- > 0; )
 		{
 			asCTypeInfo *t = types[n];
+			if (!t) continue;
 			asSMapNode<asSNameSpaceNamePair, asCTypeInfo*> *cursor;
 			if( engine->allRegisteredTypes.MoveTo(&cursor, asSNameSpaceNamePair(t->nameSpace, t->name)) &&
 				cursor->value == t )

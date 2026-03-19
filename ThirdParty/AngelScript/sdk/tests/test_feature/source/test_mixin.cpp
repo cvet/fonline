@@ -155,6 +155,25 @@ bool Test()
 			}
 		}
 
+		// Mixin classes cannot be declared as 'external' or 'abstract'
+		// Reported by Dantrell B
+		{
+			script =
+				"mixin external abstract class Test {} \n";
+			mod->AddScriptSection("", script);
+
+			bout.buffer = "";
+			r = mod->Build();
+			if (r >= 0)
+				TEST_FAILED;
+			if (bout.buffer != " (1, 7) : Error   : Mixin class cannot be declared as 'external'\n"
+				" (1, 16) : Error   : Mixin class cannot be declared as 'abstract'\n")
+			{
+				PRINTF("%s", bout.buffer.c_str());
+				TEST_FAILED;
+			}
+		}
+
 		// mixin classes can implement interfaces
 		{
 			script = 

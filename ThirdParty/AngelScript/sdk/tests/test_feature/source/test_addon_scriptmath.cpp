@@ -126,7 +126,7 @@ bool Test()
 	{
 		// Internal return
 		r = ExecuteString(engine, "v = TestComplex();", mod);
-		if( r < 0 )
+		if( r != 0 )
 		{
 			PRINTF("%s: ExecuteString() failed %d\n", TESTNAME, r);
 			TEST_FAILED;
@@ -229,7 +229,6 @@ bool Test()
 	{
 		TEST_FAILED;
 	}
-	// TODO: the function signature for the constructors/factories should carry the name of the object instead of $beh0
 	if( bout.buffer != "ExecuteString (1, 13) : Error   : No matching signatures to 'complex(const int, const int, const int, const int)'\n"
 					   "ExecuteString (1, 13) : Info    : Candidates are:\n"
 					   "ExecuteString (1, 13) : Info    : complex::complex()\n"

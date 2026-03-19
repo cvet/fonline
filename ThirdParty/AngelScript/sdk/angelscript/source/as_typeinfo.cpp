@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -200,7 +200,7 @@ const char *asCTypeInfo::GetNamespace() const
 }
 
 // interface
-asDWORD asCTypeInfo::GetFlags() const
+asQWORD asCTypeInfo::GetFlags() const
 {
 	return flags;
 }
@@ -251,7 +251,7 @@ asDWORD asCTypeInfo::GetAccessMask() const
 }
 
 // interface
-int asCTypeInfo::GetProperty(asUINT index, const char **out_name, int *out_typeId, bool *out_isPrivate, bool *out_isProtected, int *out_offset, bool *out_isReference, asDWORD *out_accessMask, int *out_compositeOffset, bool *out_isCompositeIndirect) const
+int asCTypeInfo::GetProperty(asUINT index, const char **out_name, int *out_typeId, bool *out_isPrivate, bool *out_isProtected, int *out_offset, bool *out_isReference, asDWORD *out_accessMask, int *out_compositeOffset, bool *out_isCompositeIndirect, bool *out_isConst) const
 {
 	UNUSED_VAR(index);
 	if (out_name) *out_name = 0;
@@ -263,6 +263,7 @@ int asCTypeInfo::GetProperty(asUINT index, const char **out_name, int *out_typeI
 	if (out_accessMask) *out_accessMask = 0;
 	if (out_compositeOffset) *out_compositeOffset = 0;
 	if (out_isCompositeIndirect) *out_isCompositeIndirect = false;
+	if (out_isConst) *out_isConst = false;
 	return -1;
 }
 
@@ -361,7 +362,7 @@ asUINT asCEnumType::GetEnumValueCount() const
 }
 
 // interface
-const char *asCEnumType::GetEnumValueByIndex(asUINT index, int *outValue) const
+const char *asCEnumType::GetEnumValueByIndex(asUINT index, asINT64 *outValue) const
 {
 	if (outValue)
 		*outValue = 0;
@@ -373,6 +374,12 @@ const char *asCEnumType::GetEnumValueByIndex(asUINT index, int *outValue) const
 		*outValue = enumValues[index]->value;
 
 	return enumValues[index]->name.AddressOf();
+}
+
+// interface
+int asCEnumType::GetUnderlyingTypeId() const 
+{ 
+	return engine->GetTypeIdFromDataType(enumType); 
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -403,10 +410,19 @@ void asCTypedefType::DestroyInternal()
 }
 
 // interface
+int asCTypedefType::GetUnderlyingTypeId() const
+{
+	return engine->GetTypeIdFromDataType(aliasForType);
+}
+
+#ifdef AS_DEPRECATED
+// deprecated since 2025-09-13, 2.39.0
+// interface
 int asCTypedefType::GetTypedefTypeId() const
 {
 	return engine->GetTypeIdFromDataType(aliasForType);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -416,14 +432,10 @@ asCFuncdefType::asCFuncdefType(asCScriptEngine *en, asCScriptFunction *func) : a
 	asASSERT(func->funcdefType == 0);
 
 	// A function pointer is special kind of reference type
-	flags       = asOBJ_REF | asOBJ_FUNCDEF | (func->IsShared() ? asOBJ_SHARED : 0);
-
-	// (FOnline Patch) Treat funcdefs as implicit handles when the engine-level
-	// compatibility flag is enabled, so legacy callback declarations keep using
-	// handle semantics without explicit @ annotations.
-	if( engine->ep.allowImplicitHandleTypes )
+	// It must be possible to garbage collect, as funcdefs can form circular references if used as delegates
+	flags       = asOBJ_REF | asOBJ_GC | asOBJ_FUNCDEF | (func->IsShared() ? asQWORD(asOBJ_SHARED) : 0);
+	if( engine->ep.allowImplicitHandleTypes ) // (FOnline Patch)
 		flags |= asOBJ_IMPLICIT_HANDLE;
-
 	name        = func->name;
 	nameSpace   = func->nameSpace;
 	module      = func->module;

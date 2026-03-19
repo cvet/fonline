@@ -679,6 +679,21 @@ FO_SCRIPT_API Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
+{
+    vector<Critter*> critters;
+    critters.reserve(server->EntityMngr.GetCritters().size());
+
+    for (auto& cr : server->EntityMngr.GetCritters() | std::views::values) {
+        if (cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
 {
     if (name.empty()) {

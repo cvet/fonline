@@ -81,7 +81,8 @@ bool Test()
 		TEST_FAILED;
 	}
 	
-	ExecuteString(engine, "Assert(RetInt8(1) == 1)");
+	r = ExecuteString(engine, "Assert(RetInt8(1) == 1)");
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 	
 	// Test to make sure bools can be passed to member functions properly

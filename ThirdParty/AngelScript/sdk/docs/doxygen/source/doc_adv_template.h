@@ -117,6 +117,24 @@ both with read only handles and non-read only handles.
 
 
 
+\section doc_adv_template_1_child Child funcdefs of templates
+
+If you want to implement a callback method on the template type that takes a funcdef, and that funcdef itself 
+depends on the template subtypes, then you must register the funcdef as a child of the template type.
+
+\code
+// Register a child funcdef by informing the template as the scope
+r = engine->RegisterFuncdef("bool myTemplate<T>::callback(const T &in)"); assert( r >= 0 );
+
+// Register the method taking the funcdef as reference or handle for making the callback
+r = engine->RegisterObjectMethod("myTemplate<T>", "void doCallback(const callback &in)", asFUNCTION(...), asCALL_GENERIC); assert(r >= 0);
+\endcode
+
+The callback itself is used normally, as in \ref doc_callbacks.
+
+\see The sort method on the \ref doc_addon_array "script array add-on"
+
+
 
 \section doc_adv_template_4 Validating template instantiations at compile time
 
@@ -174,6 +192,7 @@ the template specialization is registered so that to the script writer it is tra
 having different method names or behaviours for the template type and template specializations.
 
 With the exception of the type name, a template specialization is registered exactly like a \ref doc_register_type "normal type". 
+The template specialization must be registered in the same namespace as the template itself.
 
 \code
 // Register a template specialization for the float subtype
@@ -188,7 +207,17 @@ r = engine->RegisterObjectBehaviour("myTemplate<float>", asBEHAVE_FACTORY, "myTe
 
 
 
- 
+\page doc_adv_template_func Template functions
 
+Template functions can be implemented with the \ref doc_generic "generic calling convention" and registered with the engine either as \ref asIScriptEngine::RegisterGlobalFunction "global functions" or as \ref asIScriptEngine::RegisterObjectMethod "class methods".
+
+Once the template function is called, the function can determine the type of the arguments using the \ref asIScriptGeneric::GetArgTypeId, or alternatively with \ref asIScriptFunction::GetSubTypeId.
+
+\code
+// Register a global template function
+r = engine->RegisterGlobalFunction("T Test<T, U>(T t, U u)", asFUNCTION(ScriptTestGen), asCALL_GENERIC); assert( r >= 0 );
+\endcode
+
+\note Template functions do not yet support template specializations, so it is not possible to use ordinary functions that have the same function signature.
 
 */

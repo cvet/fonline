@@ -9,12 +9,37 @@ To use JIT compilation, the scripts must be compiled with a few extra instructio
 and also entry points so that the VM will know when to pass control to the JIT compiled function. By default this is 
 turned off, and must thus be turned on by setting the engine property \ref asEP_INCLUDE_JIT_INSTRUCTIONS.
 
-If the application sets the \ref asIJITCompiler "JIT compiler" with \ref asIScriptEngine::SetJITCompiler "SetJITCompiler" 
-AngelScript will automatically invoke it to provide the \ref asJITFunction "JIT functions" with each compilation or 
-\ref doc_adv_precompile "loading of pre-compiled bytecode".
+Two distinct versions for the JIT compiler interface is supported. By default version 1 is used, but if version 2 is desired
+it must be explicitly set with \ref asIScriptEngine::SetEngineProperty "SetEngineProperty" using \ref asEP_JIT_INTERFACE_VERSION.
 
+\section doc_adv_jit_v1 The JIT interface version 1
 
+With version 1, if the application sets the \ref asIJITCompiler with \ref asIScriptEngine::SetJITCompiler "SetJITCompiler" 
+AngelScript will automatically invoke the \ref asIJITCompiler::CompileFunction "CompileFunction" with each new script function that is compiled or 
+\ref doc_adv_precompile "loaded from pre-compiled bytecode". The \ref asJITFunction that is produced will be linked with the script 
+function as long as the script function is valid. When the script function is destroyed AngelScript will invoke 
+\ref asIJITCompiler::ReleaseJITFunction "ReleaseJITFunction" for cleanup.
 
+With this interface version there is no way for the JIT compiler to do global optimizations, as it is forced to compile the JIT 
+function with only the knowledge of the currently compiled script function and cannot go back to update the JIT functions afterwards.
+
+\section doc_adv_jit_v2 The JIT interface version 2
+
+With version 2, if the application sets the \ref asIJITCompilerV2 with \ref asIScriptEngine::SetJITCompiler "SetJITCompiler"
+AngelScript will also automatically invoke the \ref asIJITCompilerV2::NewFunction "NewFunction" with each new script function that is compiled or
+\ref doc_adv_precompile "loaded from pre-compiled bytecode". 
+
+The difference is that for version 2 it is optional to provide the JIT function at this time. The JIT compiler can opt to defer the 
+compilation until the full script has been compiled or loaded. This will allow it to see all functions and can make global 
+optimizations, e.g. do inlining, etc. When the \ref asJITFunction is compiled the JIT compiler must link it with the script function using 
+\ref asIScriptFunction::SetJITFunction "SetJITFunction".
+
+Should the JIT compiler not want to build a map of all script functions with the call to NewFunction it is also possible to iterate over 
+all existing script functions with \ref asIScriptEngine::GetLastFunctionId "GetLastFunctionId" and \ref asIScriptEngine::GetFunctionById "GetFunctionById".
+
+AngelScript will call \ref asIJITCompilerV2::CleanFunction "CleanFunction" any time the JIT function is replaced on the script function, or when the 
+script function is destroyed. \ref asIJITCompilerV2::CleanFunction "CleanFunction" will be called for all script functions even if \ref asIScriptFunction::SetJITFunction "SetJITFunction"
+was never called on it, this allow the JIT compiler to clean up any data stored during the call to \ref asIJITCompilerV2::NewFunction "NewFunction".
 
 \section doc_adv_jit_3 The structure of the JIT function
 

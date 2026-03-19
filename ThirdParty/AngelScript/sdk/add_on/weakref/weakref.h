@@ -3,15 +3,14 @@
 
 // The CScriptWeakRef class was originally implemented by vroad in March 2013
 
-#ifndef ANGELSCRIPT_H 
+#ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
 #endif
 
-
 BEGIN_AS_NAMESPACE
 
-class CScriptWeakRef 
+class CScriptWeakRef
 {
 public:
 	// Constructors

@@ -37,12 +37,11 @@ static void cfunction2(double f1, double f2, double f3, double f4)
 
 static void cfunction_gen(asIScriptGeneric *gen)
 {
-	called = true;
-	t1 = gen->GetArgFloat(0);
-	t2 = gen->GetArgFloat(1);
-	t3 = gen->GetArgDouble(2);
-	t4 = gen->GetArgFloat(3);
-	testVal = (t1 == 9.2f) && (t2 == 13.3f) && (t3 == 18.8) && (t4 == 3.1415f);
+	float f1 = gen->GetArgFloat(0);
+	float f2 = gen->GetArgFloat(1);
+	double f3 = gen->GetArgDouble(2);
+	float f4 = gen->GetArgFloat(3);
+	cfunction(f1, f2, f3, f4);
 }
 
 

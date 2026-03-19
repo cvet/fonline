@@ -97,13 +97,13 @@ A mixin class cannot inherit from other classes.
   interface I 
   {
     void a();
-    void b();	
+    void b();
   }
-  
+
   mixin class M : I
   {
-	// provide default implementation of a()
-    void a() { print("hello from a");
+    // provide default implementation of a()
+    void a() { print("hello from a"); }
 
     // leave the implementation of b() to the script class
   }
@@ -111,9 +111,9 @@ A mixin class cannot inherit from other classes.
   class C : M
   {
     // a() is implemented by mixin class
-	
-	// b() has to be explicitly implemented by script class
-	void b() { print("hello from b");
+
+    // b() has to be explicitly implemented by script class
+    void b() { print("hello from b"); }
   }
 </pre>
 

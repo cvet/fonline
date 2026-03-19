@@ -61,6 +61,8 @@ execution and only switch to the other fiber when the context's \ref asIScriptCo
 must switch fibers while executing a script, then make sure the second fiber initiates and concludes its own
 script execution before switching back to the original fiber.
 
+Fiber Local Storage can be enabled on Windows to hold the context stack so multiple fibers can call script
+functions interchangably. This is enabled by compiling the library with the precompiler flag AS_WINDOWS_USEFLS defined.
 
 
 */

@@ -61,7 +61,7 @@ public:
 
 bool TestVirtualInheritance()
 {
-#if defined(__GNUC__) || defined(__psp2__)
+#if defined(__GNUC__) || defined(__psp2__) || defined(__clang__)
 	PRINTF("%s: GNUC: AngelScript cannot detect virtual inheritance thus this test doesn't apply\n", TESTNAME);
 	return false;
 #else

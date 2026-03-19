@@ -56,6 +56,7 @@ public:
 class A {
 public:
 	int SomeWorkA(int a) {
+		UNUSED_VAR(a);
 	//	printf("A::SomeWorkA | %lx | %i\n", this, aa);
 		return aa;
 	}
@@ -64,6 +65,7 @@ public:
 class B {
 public:
 	int SomeWorkB(int b) {
+		UNUSED_VAR(b);
 	//	printf("B::SomeWorkB | %lx | %i\n", this, bb);
 		return bb;
 	}
@@ -75,8 +77,6 @@ class C: public A, public B {
 
 bool Test()
 {
-	RET_ON_MAX_PORT
-
 	bool fail = false;
 	int r;
 	asIScriptEngine *engine;
@@ -85,6 +85,7 @@ bool Test()
 
 	// THISCALL_ASGLOBAL with multiple inheritance
 	// https://www.gamedev.net/forums/topic/702126-angelscript-2331-bugs-features/
+	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
@@ -108,7 +109,11 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 
 		Class1 c1;
+#ifdef AS_MAX_PORTABILITY
+		engine->RegisterGlobalFunction("void TestMe(uint val)", WRAP_MFN_GLOBAL(Class1, TestMe), asCALL_GENERIC, &c1);
+#else
 		engine->RegisterGlobalFunction("void TestMe(uint val)", asMETHOD(Class1, TestMe), asCALL_THISCALL_ASGLOBAL, &c1);
+#endif
 
 		c1.a = 0;
 		r = ExecuteString(engine, "TestMe(0xDEADC0DE);");
@@ -126,7 +131,11 @@ bool Test()
 
 		// Register and call a derived method
 		Base *obj = new Derived();
-		engine->RegisterGlobalFunction("void Print()", asMETHOD(Base, Print), asCALL_THISCALL_ASGLOBAL, obj);
+#ifdef AS_MAX_PORTABILITY
+		engine->RegisterGlobalFunction("void Print()", WRAP_MFN_GLOBAL_PR(Base, Print, (), void), asCALL_GENERIC, obj);
+#else
+		engine->RegisterGlobalFunction("void Print()", asMETHODPR(Base, Print, (), void), asCALL_THISCALL_ASGLOBAL, obj);
+#endif
 
 		r = ExecuteString(engine, "Print()");
 		if( r < 0 )
@@ -140,8 +149,9 @@ bool Test()
 	}
 
 	// It must not be possible to register without the object pointer
+	SKIP_ON_MAX_PORT
 	{
-		asIScriptEngine *engine = asCreateScriptEngine();
+		engine = asCreateScriptEngine();
 		bout.buffer = "";
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		r = engine->RegisterGlobalFunction("void Fail()", asMETHOD(Class1, TestMe), asCALL_THISCALL_ASGLOBAL, 0);
@@ -157,6 +167,7 @@ bool Test()
 
 	// Test proper clean-up args passed by value
 	// http://www.gamedev.net/topic/670017-weird-crash-in-userfree-on-android/
+	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		bout.buffer = "";

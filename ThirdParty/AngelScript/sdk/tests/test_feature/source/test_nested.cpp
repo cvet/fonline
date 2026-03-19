@@ -4,18 +4,16 @@ using namespace std;
 
 static const char * const TESTNAME = "TestNested";
 
-static const char *script1 =
-"void TestNested()                         \n"
-"{                                         \n"
-"  CallExecuteString(\"i = 2\");           \n"
-"  i = i + 2;                              \n"
-"}                                         \n";
-
 static void CallExecuteString(string &str)
 {
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
-	if( ExecuteString(engine, str.c_str()) < 0 )
+	ctx->PushState();
+	int r = ExecuteString(engine, str.c_str(), 0, ctx);
+	ctx->Unprepare(); // explicitly calling Unprepare is allowed but not necessary
+	ctx->PopState();
+
+	if( r < 0)
 		ctx->SetException("ExecuteString() failed\n");
 }
 
@@ -47,9 +45,63 @@ CScriptHandle CreateObject(const string &s)
 	return ref;
 }
 
+string WhoIsCalling()
+{
+	asIScriptContext* ctx = asGetActiveContext();
+	string callingFunction;
+
+	// Test calling GetThisPointer at each level, including the ones indicating nested states
+	for (asUINT n = 0; n < ctx->GetCallstackSize(); n++)
+	{
+		asIScriptFunction *func = ctx->GetFunction(n);
+		callingFunction = func ? func->GetName() : "";
+
+		void *obj = ctx->GetThisPointer(n);
+		assert(obj == 0);
+		void* var = ctx->GetAddressOfVar(0, n);
+	}
+	return callingFunction;
+}
+
 bool TestNested()
 {
 	bool fail = false;
+
+	// Test using GetThisPointer on context with nested states
+	// Reported by Patrick Jeeves
+	SKIP_ON_MAX_PORT
+	{
+		asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		COutStream out;
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+	
+		engine->RegisterObjectType("Dummy", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectMethod("Dummy", "void CallExecuteString(string &in)", asFUNCTION(CallExecuteString_gen), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("string WhoIsCalling()", asFUNCTION(WhoIsCalling), asCALL_CDECL);
+		engine->RegisterGlobalProperty("Dummy dummy", &fail);
+
+		asIScriptModule* mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, 
+			"void TestNested()                         \n"
+			"{                                         \n"
+			"  dummy.CallExecuteString(\"assert(WhoIsCalling() == 'TestNested');\");           \n"
+			"}                                         \n");
+		mod->Build();
+
+		// Make the call with a separate context (should work)
+		asIScriptContext* ctx = engine->CreateContext();
+		ctx->Prepare(engine->GetModule(0)->GetFunctionByIndex(0));
+		int r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test calling another script function from a registered function called from a script
 	{
@@ -63,10 +115,15 @@ bool TestNested()
 		else
 			engine->RegisterGlobalFunction("void CallExecuteString(string &in)", asFUNCTION(CallExecuteString), asCALL_CDECL);
 
-		COutStream out;	
+		COutStream out;
 
 		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-		mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
+		mod->AddScriptSection(TESTNAME, 
+			"void TestNested()                         \n"
+			"{                                         \n"
+			"  CallExecuteString(\"i = 2\");           \n"
+			"  i = i + 2;                              \n"
+			"}                                         \n");
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 		mod->Build();
 

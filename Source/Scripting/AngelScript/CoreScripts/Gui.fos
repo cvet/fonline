@@ -3642,6 +3642,61 @@ void EngineCallback_Start()
     GuiScreens::InitializeScreens();
 }
 
+void CleanupObjectGraph(Object obj)
+{
+    for (int i = obj._Children.length() - 1; i >= 0; i--) {
+        CleanupObjectGraph(obj._Children[i]);
+    }
+
+    Grid grid = cast<Grid>(obj);
+    if (grid != null) {
+        grid._Cells.clear();
+    }
+
+    Screen screen = cast<Screen>(obj);
+    if (screen != null) {
+        screen._AvailableCursors.clear();
+        screen._InputKeyPressed.clear();
+        screen._InputMousePressed.clear();
+        screen._IsRegistered = false;
+    }
+
+    obj._Grid = null;
+    obj._CellIndex = 0;
+    obj._Parent = null;
+    obj._Children.clear();
+    obj._ActiveSelf = false;
+}
+
+void EngineCallback_Finish()
+{
+    EngineCallback_InputLost();
+
+    DropMenu = null;
+    CurConsole = null;
+    DragAndDropHandlers.clear();
+    ScreenCreators = {};
+
+    if (CursorScreen != null) {
+        CursorScreen.Remove();
+        CleanupObjectGraph(CursorScreen);
+        CursorScreen = null;
+    }
+
+    for (int i = Screens.length() - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        screen.Remove();
+        CleanupObjectGraph(screen);
+    }
+
+    Screens.clear();
+    FocusedObjects.clear();
+    PressedObject = null;
+    LastPressedObject = null;
+    HoveredObject = null;
+    FindNextTextInputSkipObj = null;
+}
+
 void EngineCallback_Draw()
 {
     for (int i = 0; i < Screens.length(); i++) {

@@ -77,6 +77,12 @@ declared in. No positional arguments may follow any named arguments.
   func(flagB: true, flagA: true);
 </pre>
 
+For function templates it is necessary to explicitly inform the subtypes so the 
+compiler can evaluate the correct function template instance to call.
+
+<pre>
+  templ<int,float>(arg1, arg2);
+</pre>
 
 
 
@@ -275,15 +281,14 @@ object type, the expression between the <code>[]</code> needs to be of different
 </pre>
 
 If the value of <code>choose</code> is <code>true</code> then the expression returns <code>a</code>
-otherwise it will return <code>b</code>. Both <code>a</code> and <code>b</code> must be of the same 
-type.
+otherwise it will return <code>b</code>. 
 
-If they are not of the same type the compiler will attempt an implicit conversion using the following
-rules. If the <code>a</code> expression is 0 or null, then the compiler will attempt to convert it 
-to the type of <code>b</code>, otherwise it will attempt to convert <code>b</code> to the type of 
-<code>a</code>. 
+Both <code>a</code> and <code>b</code> must be of the same type. If they are not, the compiler will 
+attempt an implicit conversion by following the principle of least cost, i.e. the expression that 
+will be converted is the one that cost less to convert. This cost is determined the same way as is 
+done for \ref doc_script_func_overload "matching arguments in function calls".
 
-If the conversion doesn't work, then the compiler will give an error.
+If the conversion doesn't work, or the conversion of either expression cost the same, then the compiler will give an error.
 
 The conditional expression can be used as an lvalue, i.e. on the left value of an assignment expression,
 if both <code>a</code> and <code>b</code> are lvalues of the same type.
@@ -429,6 +434,12 @@ For types that support it, the anonymous objects can also be initialized with in
   // When there is only one possible type that support initialization lists it is possible  
   // to omit the type and let the compiler implicitly determine it based on the use
   funcExpectsAnArrayOfInts({1,2,3,4});
+</pre>
+
+If the desired type for the anonymous object is a template, it may be necessary to explicitly inform the template type;
+
+<pre>
+  funcExpectsAnArray(array<int> = {1,2,3,4});
 </pre>
 
 */

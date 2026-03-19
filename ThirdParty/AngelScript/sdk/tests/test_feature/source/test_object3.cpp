@@ -133,26 +133,26 @@ float  __cdecl OpMulFR(float self,  cFloat* other)
 
 bool Register(asIScriptEngine*  pSE)
 {
-	pSE->RegisterObjectType("Float", sizeof(cFloat), asOBJ_VALUE | asOBJ_APP_CLASS);
+	pSE->RegisterObjectType("Float", sizeof(cFloat), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);
 
-	if(pSE->RegisterObjectMethod("Float","Float& opAssign(float )",asFUNCTION(AssignFloat2Float),asCALL_CDECL_OBJLAST))
+	if(pSE->RegisterObjectMethod("Float","Float& opAssign(float )",asFUNCTION(AssignFloat2Float),asCALL_CDECL_OBJLAST) < 0)
 		return false;
 
 
 	// asBEHAVE_ADD
-	if(pSE->RegisterObjectMethod("Float","float  opAdd(Float &in)",asFUNCTION(OpPlusRR),  asCALL_CDECL_OBJFIRST))
+	if(pSE->RegisterObjectMethod("Float","float  opAdd(Float &in)",asFUNCTION(OpPlusRR),  asCALL_CDECL_OBJFIRST) < 0)
 		return false;
-	if(pSE->RegisterObjectMethod("Float","float  opAdd(float)",asFUNCTION(OpPlusRF),  asCALL_CDECL_OBJFIRST))
+	if(pSE->RegisterObjectMethod("Float","float  opAdd(float)",asFUNCTION(OpPlusRF),  asCALL_CDECL_OBJFIRST) < 0)
 		return false;
-	if(pSE->RegisterObjectMethod("Float","float  opAdd_r(float)",asFUNCTION(OpPlusFR),  asCALL_CDECL_OBJLAST))
+	if(pSE->RegisterObjectMethod("Float","float  opAdd_r(float)",asFUNCTION(OpPlusFR),  asCALL_CDECL_OBJLAST) < 0)
 		return false;
 
 	// asBEHAVE_MULTIPLY
-	if(pSE->RegisterObjectMethod("Float", "float  opMul(Float &in)",asFUNCTION(OpMulRR),  asCALL_CDECL_OBJFIRST))
+	if(pSE->RegisterObjectMethod("Float", "float  opMul(Float &in)",asFUNCTION(OpMulRR),  asCALL_CDECL_OBJFIRST) < 0)
 		return false;
-	if(pSE->RegisterObjectMethod("Float", "float  opMul(float)",asFUNCTION(OpMulRF),  asCALL_CDECL_OBJFIRST))
+	if(pSE->RegisterObjectMethod("Float", "float  opMul(float)",asFUNCTION(OpMulRF),  asCALL_CDECL_OBJFIRST) < 0)
 		return false;
-	if(pSE->RegisterObjectMethod("Float", "float  opMul_r(float)",asFUNCTION(OpMulFR),  asCALL_CDECL_OBJLAST))
+	if(pSE->RegisterObjectMethod("Float", "float  opMul_r(float)",asFUNCTION(OpMulFR),  asCALL_CDECL_OBJLAST) < 0)
 		return false;
 
 	return true;
@@ -171,25 +171,36 @@ void Print(float f)
 
 bool Test()
 {
+	RET_ON_MAX_PORT;
+
+	bool fail = false;
+
 	asIScriptEngine*        pSE;
+	CBufferedOutStream bout;
 	pSE=asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	pSE->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 	Register(pSE);
 	pSE->RegisterGlobalFunction("Float& Get(int32)",asFUNCTION(Get),asCALL_CDECL);
 	pSE->RegisterGlobalFunction("void Print(float)",asFUNCTION(Print),asCALL_CDECL);
 
-	const char script[]="\
-						   float ret=10;\n\
-						   Get(0)=10.0f;\n\
-						   Get(1)=10.0f;\n\
-						   Get(2)=10.0f;\n\
-						   ret=Get(0)+(Get(1)*2.0f);\n\
-						   Print(ret);\n\
-						   \n";
-	ExecuteString(pSE, script);
+	const char script[] = "float ret = 10;\n"
+						  "Get(0) = 10.0f; \n"
+						  "Get(1) = 10.0f; \n"
+						  "Get(2) = 10.0f; \n"
+						  "ret = Get(0) + (Get(1) * 2.0f); \n"
+						  "Print(ret); \n";
+	int r = ExecuteString(pSE, script);
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 	pSE->Release();
 
-	return false;
+	if (bout.buffer != "")
+	{
+		PRINTF("%s", bout.buffer.c_str());
+		TEST_FAILED;
+	}
+
+	return fail;
 }
 
 

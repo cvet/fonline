@@ -587,14 +587,14 @@ void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine)
     RegisterTypeMethod(as_engine, "int get_propertiesCount() const", FO_SCRIPT_METHOD(ScriptType, GetPropertiesCount));
     RegisterTypeMethod(as_engine, "string getPropertyDeclaration(int index, bool includeNamespace = false) const", FO_SCRIPT_METHOD(ScriptType, GetPropertyDeclaration));
     RegisterTypeMethod(as_engine, "int get_enumLength() const", FO_SCRIPT_METHOD(ScriptType, GetEnumLength));
-    RegisterTypeMethod(as_engine, "string[]@ get_enumNames() const", FO_SCRIPT_METHOD(ScriptType, GetEnumNames));
-    RegisterTypeMethod(as_engine, "int[]@ get_enumValues() const", FO_SCRIPT_METHOD(ScriptType, GetEnumValues));
+    RegisterTypeMethod(as_engine, "array<string>@ get_enumNames() const", FO_SCRIPT_METHOD(ScriptType, GetEnumNames));
+    RegisterTypeMethod(as_engine, "array<int>@ get_enumValues() const", FO_SCRIPT_METHOD(ScriptType, GetEnumValues));
 
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string[]@ getLoadedModules()", FO_SCRIPT_FUNC(GetAngelScriptLoadedModules), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("array<string>@ getLoadedModules()", FO_SCRIPT_FUNC(GetAngelScriptLoadedModules), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string getCurrentModule()", FO_SCRIPT_FUNC(GetCurrentModule), FO_SCRIPT_FUNC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getGlobalEnums()", FO_SCRIPT_FUNC(GetGlobalEnums), FO_SCRIPT_FUNC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getEnums()", FO_SCRIPT_FUNC(GetEnums), FO_SCRIPT_FUNC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("type@[]@ getEnums(string moduleName)", FO_SCRIPT_FUNC(GetEnumsModule), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("array<type@>@ getGlobalEnums()", FO_SCRIPT_FUNC(GetGlobalEnums), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("array<type@>@ getEnums()", FO_SCRIPT_FUNC(GetEnums), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("array<type@>@ getEnums(string moduleName)", FO_SCRIPT_FUNC(GetEnumsModule), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int getCallstack(string[]& modules, string[]& names, int[]& lines, int[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", FO_SCRIPT_FUNC(GetCallstack), FO_SCRIPT_FUNC_CONV));
 
     FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));

@@ -62,6 +62,10 @@ the derived classes, which may lead to a bit of duplicate code. However, you may
 the duplication through a bit of clever thinking. Here is an example of registering the methods and 
 properties for a base class and the derived class (registration of behaviours has been omitted for briefness):
 
+Observe that this way of doing it is not possible if the derived type hides members of the base type. 
+If this is the case, then there is no option but to register each visible member in the derived type explicitly, 
+excluding the hidden members of the base type.
+
 \code
 // The base class
 class base
@@ -105,7 +109,7 @@ void RegisterDerivedMembers(asIScriptEngine *engine, const char *type)
   // Now register the new members
   r = engine->RegisterObjectMethod(type, "void aNewMethod()", asMETHOD(T, aNewMethod), asCALL_THISCALL); assert( r >= 0 );
 
-  r = engine->RegisterObjectProperty(type, "int aProperty", asOFFSET(T, aProperty)); assert( r >= 0 );
+  r = engine->RegisterObjectProperty(type, "int aNewProperty", asOFFSET(T, aNewProperty)); assert( r >= 0 );
 }
 
 void RegisterTypes(asIScriptEngine *engine)
@@ -121,5 +125,6 @@ void RegisterTypes(asIScriptEngine *engine)
   RegisterDerivedMembers<derived>(engine, "derived");
 }
 \endcode
-   
+
+
 */

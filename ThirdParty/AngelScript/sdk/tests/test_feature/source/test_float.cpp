@@ -87,7 +87,8 @@ bool Test()
 	r = mod->Build();
 	if( r < 0 ) TEST_FAILED;
 
-	ExecuteString(engine, "start()", mod);
+	r = ExecuteString(engine, "start()", mod);
+	if (r != asEXECUTION_FINISHED) TEST_FAILED;
 
 #if !defined(__psp2__)
 	// The locale affects the way the compiler reads float values
@@ -129,18 +130,10 @@ bool Test()
 								  "assert( s == '2e-308' ); \n"
 								  "float f = 3.402823466e+38f; \n"
 								  "s = formatFloat(f, 'e'); \n"
-#if defined(__GNUC__) && !defined(_WIN32) || _MSC_VER >= 1900
-								  "assert( s == '3e+38' ); \n"
-#else
-								  "assert( s == '3e+038' ); \n"
-#endif
+								  "assert( s == '3e+38' || s == '3e+038' ); \n" // The formatting varies from compiler to compiler, and version too
 								  "f = 1.175494351e-38f; \n"
 								  "s = formatFloat(f, 'e'); \n"
-#if defined(__GNUC__) && !defined(_WIN32) || _MSC_VER >= 1900
-								  "assert( s == '1e-38' ); \n"
-#else
-								  "assert( s == '1e-038' ); \n"
-#endif
+								  "assert( s == '1e-38' || s == '1e-038' ); \n" // The formatting varies from compiler to compiler, and version too
 						);
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;

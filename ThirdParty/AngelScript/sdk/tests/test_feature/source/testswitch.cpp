@@ -28,6 +28,216 @@ static void Log(asIScriptGeneric *gen)
 bool TestSwitch()
 {
 	bool fail = false;
+	int r;
+
+	// Test switch with large 32bit values and values far apart (especially the last case, so it is optimized into a jump table)
+	// Reported by power_mcu
+	{
+		CBufferedOutStream bout;
+		asIScriptEngine* engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void start(int state, int expectedResult) \n"
+			"{ \n"
+			"	int result = -1; \n"
+			"	if (state == 0) { result = 0; } \n"
+			"	else if (state == 1) { result = 1; } \n"
+			"	else if (state == 2) { result = 2; } \n"
+			"	else if (state == 3) { result = 3; } \n"
+			"	else if (state == 2147483642) { result = 4; } \n"
+			"	else if (state == 2147483643) { result = 5; } \n"
+			"	else if (state == 2147483647) { result = 6; } \n"
+			"	else if (state == int(2147483648)) { result = 7; } \n" // without int() it will attempt a int64 comparison which will not match the incoming value of -2147483648
+			"	else { result = 8; } \n"
+			"	assert(result == expectedResult); \n"
+			" \n"
+			"	result = -1; \n"
+			"	switch (state) \n"
+			"	{ \n"
+			"	case 0: result = 0; break; \n"
+			"	case 1: result = 1; break; \n"
+			"	case 2: result = 2; break; \n"
+			"	case 3: result = 3; break; \n"
+			"	case 2147483642: result = 4; break; \n"
+			"	case 2147483643: result = 5; break; \n"
+			"	case 2147483647: result = 6; break; \n" // 0x7FFFFFFF. highest number is 
+			"	case 2147483648: result = 7; break; \n" // 0x80000000. gets implicitly converted to int (with a warning), i.e. -2147483648
+			"	default: result = 8; break; \n"
+			"	} \n"
+			"	assert(result == expectedResult); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "start(2147483642, 4)", mod); // 0x7FFFFFFA
+		if( r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "start(2147483643, 5)", mod); // 0x7FFFFFFB
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "start(2147483647, 6)", mod); // 0x7FFFFFFF
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "start(2147483648, 7)", mod); // 0x80000000. gets implicitly converted to int (with a warning), i.e. -2147483648
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		r = ExecuteString(engine, "start(2147483649, 8)", mod); // 0x80000001. gets implicitly converted to int (with a warning), i.e. -2147483647
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void start(int, int)\n"
+						   "test (25, 7) : Warning : Value is too large for data type\n"
+						   "ExecuteString (1, 7) : Warning : Value is too large for data type\n"
+						   "ExecuteString (1, 7) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test switch with typedef and enums
+	// Reported by 1vanK from Urho3D
+	{
+		CBufferedOutStream bout;
+
+		asIScriptEngine* engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum FOO { BAR } \n"
+			"typedef int HI; \n"
+			"void func1() { \n"
+			"  FOO f; switch( f ) { case BAR: } \n"
+			"  HI h; switch( h ) { case 0: } \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test case with declared global constants
+	{
+		asIScriptEngine* engine;
+		CBufferedOutStream bout;
+
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"const int B = 0; \n"
+			// when compiled together it works
+			"void func1() { int i; switch( i ) { case B: } } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// TODO: This currently fails, because when compiled separately the global B isn't interpreted as a literal constant
+		r = ExecuteString(engine, "int i; switch( i ) { case B: }", mod);
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "ExecuteString (1, 27) : Error   : Case expressions must be literal constants\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test attempt to use register global const property as switch case
+	{
+		asIScriptEngine* engine;
+		CBufferedOutStream bout;
+
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		int B;
+		r = engine->RegisterGlobalProperty("const int B", (void*)&B);
+
+		r = ExecuteString(engine, "int i; switch( i ) { case B: }");
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "ExecuteString (1, 27) : Error   : Case expressions must be literal constants\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test that compiler is able to detect if all paths in a switch has return statement
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		CBufferedOutStream bout;
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		asIScriptModule* mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int a; \n"
+			"int hasReturn() { \n"
+			"  switch(a) { \n"
+			"    case 0: \n"  // has return
+			"      if(true) return 0; else return 0; \n"
+			"      break; \n" // unreachable code
+			"    case 1: \n"  // no return, but falls through to next case
+			"    case 2: \n"  // has return 
+			"      return 0;"
+			"    default: \n"
+			"      return 0; \n"
+			"  } \n"
+			"  return 0; \n" // unreachable code
+			"} \n"
+			"int noReturn1() { \n"
+			"  switch(a) { \n"
+			"    case 0: \n"  // no return and ends
+			"      break; \n"
+			"  } \n"
+			"} \n"
+			"int noReturn2() { \n"
+			"  switch(a) { \n"
+			"    case 0: \n"  // has return but no default
+			"      return 0; \n"
+			"  } \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test (2, 1) : Info    : Compiling int hasReturn()\n"
+						   "test (6, 7) : Warning : Unreachable code\n"
+						   "test (12, 3) : Warning : Unreachable code\n"
+						   "test (14, 1) : Info    : Compiling int noReturn1()\n"
+						   "test (14, 17) : Error   : Not all paths return a value\n"
+						   "test (20, 1) : Info    : Compiling int noReturn2()\n"
+						   "test (20, 17) : Error   : Not all paths return a value\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+
 
 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 
@@ -64,7 +274,7 @@ bool TestSwitch()
 		"}                               \n"; // 22
 
 	mod->AddScriptSection("switch", script);
-	int r = mod->Build();
+	r = mod->Build();
 	if( r < 0 )
 	{
 		PRINTF("%s: Failed to build script\n", TESTNAME);

@@ -58,6 +58,48 @@ void print(asIScriptGeneric *gen)
 	g_buf += "\n";
 }
 
+//Registered as array<ref@>@ getEntities(uint i) //I have tried both ref and ref@
+CScriptArray* getEntities(unsigned int a)
+{
+	asIScriptEngine *engine = asGetActiveContext()->GetEngine();
+	asITypeInfo* entityType = engine->GetModule("test")->GetTypeInfoByName("Entity");
+
+	asITypeInfo* t = engine->GetTypeInfoByDecl("array<ref@>"); //Here too, have tried both ref and ref@
+	CScriptArray* arr = CScriptArray::Create(t, a);
+	for (unsigned int i = 0; i < a; i++)
+	{
+		asIScriptObject* entity = (asIScriptObject*)engine->CreateScriptObject(entityType);
+#if 1
+		// Alternative 1 (less efficient)
+		CScriptHandle handle;
+		handle.Set(entity, entityType);
+		arr->SetValue(i, &handle);
+#else
+		// Alternative 2 (more efficient)
+		reinterpret_cast<CScriptHandle*>(arr->At(i))->Set(entity, entityType);
+#endif
+		entity->Release();
+	}
+	return arr;
+}
+
+bool called = false;
+void dynamicFunction()
+{
+	called = true;
+}
+
+CScriptHandle getDynamicFunction()
+{
+	asIScriptContext* ctx = asGetActiveContext();
+	asIScriptEngine *engine = ctx->GetEngine();
+	int funcId = engine->RegisterGlobalFunction("void dynamicFunction()", asFUNCTION(dynamicFunction), asCALL_CDECL);
+	asIScriptFunction* func = engine->GetFunctionById(funcId);
+	CScriptHandle ref;
+	ref.Set(func, engine->GetTypeInfoById(func->GetTypeId()));
+	return ref;
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -66,6 +108,140 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptContext *ctx;
 	asIScriptEngine *engine;
+
+	// Test passing a function pointer to a function expecting a ref@
+	// https://www.gamedev.net/forums/topic/717716-registering-a-function-to-handle-a-script-specific-class/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		RegisterScriptHandle(engine);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void ReceiveRefByVal(ref@)", asFUNCTION(ReceiveRefByValue), asCALL_CDECL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() { \n"
+			"  ReceiveRefByVal(main); \n"
+			"  ReceiveRefByVal(@main); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test returning a newly registered function 
+	// https://www.gamedev.net/forums/topic/715598-calling-a-dll-function/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		RegisterScriptHandle(engine);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("ref @getDynamicFunction()", asFUNCTION(getDynamicFunction), asCALL_CDECL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void func(); \n"
+			"void main() { \n"
+			"  func @f = cast<func>(getDynamicFunction()); \n"
+			"  f(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (!called)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test that AssignScriptObject correctly fails for CScriptHandle
+	{
+		engine = asCreateScriptEngine();
+		RegisterScriptHandle(engine);
+
+		CScriptHandle a, b;
+		r = engine->AssignScriptObject(&b, &a, engine->GetTypeInfoByName("ref"));
+		if (r != asNOT_SUPPORTED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test returning array of ref from application
+	// Reported by Cyprinus Carpio
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptHandle(engine);
+		RegisterScriptArray(engine, false);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+#ifndef AS_MAX_PORTABILITY
+		engine->RegisterGlobalFunction("array<ref@> @getEntities(uint a)", asFUNCTION(getEntities), asCALL_CDECL);
+#else
+		engine->RegisterGlobalFunction("array<ref@> @getEntities(uint a)", WRAP_FN(getEntities), asCALL_GENERIC);
+#endif
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Entity {} \n"
+			"void testArray() \n"
+			"{ \n"
+			"	array<ref@> entities = getEntities(6); \n" // copying the array is inefficient, but must be allowed
+			"	assert(entities.length() == 6); \n" //length is correct
+			"	for (uint i = 0; i < entities.length(); i++) \n"
+			"	{ \n"
+			"		ref@ e = entities[i]; \n"
+			"		assert( e !is null ); \n" //the elements must not be empty
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "testArray()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test compiler error with ref
 	// https://www.gamedev.net/forums/topic/698645-version-2330-wip-crash-fix-included/

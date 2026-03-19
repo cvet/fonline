@@ -91,7 +91,7 @@ The assignment expressions <tt>a <i>op</i> b</tt> are rewritten as <tt>a.<i>opfu
 best matching method is used. An assignment operator can for example be implemented like this:
 
 <pre>
-  obj@ opAssign(const obj &in other)
+  obj &opAssign(const obj &inout other)
   {
     // Do the proper assignment
     ...
@@ -101,8 +101,23 @@ best matching method is used. An assignment operator can for example be implemen
   }
 </pre>
 
-All script classes have a default assignment operator that does a bitwise copy of the content of the class,
-so if that is all you want to do, then there is no need to implement this method. 
+
+
+
+\subsection doc_script_class_assign_ops_auto Auto-generated assignment operator
+
+The compiler will automatically generate an opAssign to copy the content of an instance of the same type 
+in case no opAssign method with a single parameter is explicitly declared. The generated opAssign will simply copy each member.
+
+If the auto generated opAssign is not desired, then it can be explicitly excluded by flagging it as deleted.
+
+<pre>
+  class MyClass
+  {
+	MyClass &opAssign(const MyClass &inout) delete;
+  }
+</pre>
+
 
 
 
@@ -146,8 +161,8 @@ parameters, the first is for the indexing, and the second for the new value.
 <pre>
   class MyObj
   {
-    float get_opIndex(int idx) const       { return 0; }
-    void set_opIndex(int idx, float value) { }
+    float get_opIndex(int idx) const property { return 0; }
+    void set_opIndex(int idx, float value) property { }
   }
 </pre>
 
@@ -175,11 +190,11 @@ as <tt>expr.opCall(arglist)</tt> and compile that instead.
 <tr><td>cast&lt;<i>type</i>>(<i>expr</i>)</td><td>opCast, opImplCast</td></tr>
 </table>
 
-When the expression <tt>type(expr)</tt> is compiled and type doesn't have a constructor that take an argument with 
+When the expression <tt>type(expr)</tt> is compiled and type doesn't have a \ref doc_script_class_construct "conversion constructor" that take an argument with 
 the type of the expression, the compiler will try to rewrite it as <tt>expr.opConv()</tt>. The compiler will then chose
 the opConv that returns the desired type. 
 
-For implicit conversions, the compiler will look for a constructor of the target type that take a 
+For implicit conversions, the compiler will look for a conversion constructor of the target type that take a 
 matching argument, and isn't flagged as explicit. If it doesn't find one, it will try to call the 
 opImplConv on the source type that returns the target type.
 
@@ -205,6 +220,10 @@ opImplConv on the source type that returns the target type.
 This should only be used for value conversions and not reference casts. That is, the methods are expected to return
 a new instance of the value with the new type.
 
+\note When compiling the boolean expressions in conditions the compiler will not use the <tt>bool opImplConv</tt> on 
+reference types even if the class method is implemented. This is because it is ambigous if it is the handle 
+that is verified or the actual object.
+
 If a reference cast is desired, i.e. a different type of handle to the same object instance, then the opCast 
 method should be implemented instead. The compiler will attempt to rewrite an expression <tt>cast&lt;type>(expr)</tt>
 as <tt>expr.opCast()</tt>, and chose the opCast overload that returns a handle of the desired type. Here too the 
@@ -227,5 +246,42 @@ An example where the opCast/opImplCast operator overloads come in handy is when 
 
 \see \ref conversion, \ref doc_adv_inheritappclass
 
+\section doc_script_class_foreach_ops Foreach loop operators
+
+<table cellspacing=0 cellpadding=0 border=0>
+<tr><td width=150><b>op</b></td><td width=400><b>opfunc</b></td></tr>
+<tr><td><i>begin foreach</i></td><td>opForBegin</td></tr>
+<tr><td><i>end foreach</i></td><td>opForEnd</td></tr>
+<tr><td><i>next foreach iteration</i></td><td>opForNext</td></tr>
+<tr><td><i>foreach value</i></td><td>opForValue, opForValue0, opForValue1, opForValue2...</td></tr>
+</table>
+
+When the compiler tries to compile a <code>foreach</code> loop it will need a use a set of methods on the container type.
+
+<pre>
+  foreach( auto val, auto key : <i>expr</i> )
+  {
+    ...
+  }
+</pre>
+
+The above will be compiled as if it was written as
+
+<pre>
+  for( auto \@container = <i>expr</i>, auto \@it = container.opForBegin(); !container.opForEnd(it); \@it = container.opForNext(it) )
+  {
+    auto val = container.opForValue0(it);
+    auto key = container.opForValue1(it);
+    ...
+  }
+</pre>
+
+Where the types support handles the compiler will use handle assignments, otherwise it will use value assignments.
+
+The iterator type returned by <code>opForBegin</code>, can be a simple integer for indexing, or an iterator class if more complex operations are needed for keeping track of the iterations.
+
+If the container only supports a single value, then the operator <code>opForValue</code> can be used, otherwise multiple numbered <code>opForValue#</code> operators must be used.
+
+\see \ref while
 
 */

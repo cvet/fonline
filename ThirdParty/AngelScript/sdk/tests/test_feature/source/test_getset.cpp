@@ -109,6 +109,268 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test get with const string&
+	// https://www.gamedev.net/forums/topic/684375-angelscript-problem-returning-a-const-reference-from-a-class-property/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"	private string m_Name; \n"
+			"	const string& Name \n"
+			"	{ \n"
+			"		get \n"
+			"		{ \n"
+			"			return this.m_Name; \n"
+			"		} \n"
+			"	} \n"
+			"	A() \n"
+			"	{ \n"
+			"		m_Name = 'a'; \n"
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine,
+			"A@ a = A(); \n"
+			"assert( a.Name == 'a' ); \n", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test getset with string& (not allowed without unsafe references, but allowed with unsafe references)
+	// https://github.com/anjo76/angelscript/issues/23
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"	private string m_Name; \n"
+			"	string& Name \n"
+			"	{ \n"
+			"		get \n"
+			"		{ \n"
+			"			return this.m_Name; \n"
+			"		} \n"
+			"		set \n" // without unsafe references this is not allowed, since it would be 'void set_Name(string&inout value)'
+			"		{ \n"
+			"			this.m_Name = value; \n"
+			"		} \n"
+			"	} \n"
+			"	A() \n"
+			"	{ \n"
+			"		m_Name = 'a'; \n"
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test (10, 3) : Error   : Only object types that support object handles can use &inout. Use &in or &out instead\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		bout.buffer = "";
+
+		// Now enable unsafe references and try again
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod->AddScriptSection("test",
+			"class A \n"
+			"{ \n"
+			"	private string m_Name; \n"
+			"	string& Name \n"
+			"	{ \n"
+			"		get \n"
+			"		{ \n"
+			"			return this.m_Name; \n"
+			"		} \n"
+			"		set \n" // now it is allowed
+			"		{ \n"
+			"			this.m_Name = value; \n"
+			"		} \n"
+			"	} \n"
+			"	A() \n"
+			"	{ \n"
+			"		m_Name = 'a'; \n"
+			"	} \n"
+			"} \n"
+			"void MapInit() \n"
+			"{ \n"
+			"	A@ a = A(); \n"
+			"	assert( a.Name == 'a' ); \n"
+
+			"   string t = 'New Name'; \n"
+			"   a.set_Name(t); \n" // work because the local variable is a valid reference
+			"   a.Name = t; \n" // work because the local variable is a valid reference
+			"	assert( a.Name == 'New Name' ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "MapInit()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = mod->CompileFunction("test", 
+			"void Test() \n"
+			"{ \n"
+			"	A@ a = A(); \n"
+			"	a.Name = 'New Name'; \n" // doesn't work because the literal string constant is not a valid reference
+			"   a.set_Name('New Name'); \n" // doesn't work because the literal string constant is not a valid reference
+			"} \n", 0, 0, 0);
+		if (r >= 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (4, 11) : Error   : Not a valid reference\n"
+						   "test (5, 15) : Error   : Not a valid reference\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test compound assignment with getset and unsafe references
+	// Problem reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod->AddScriptSection("test",
+			"class obj { \n"
+			"  int v = 0; \n"
+			"  int get_v() property { return v; } \n"
+			"  void set_v(int n) property { v = n; } \n"
+			"  int get_number(int n) { return n; } \n"
+			"} \n"
+			"void main() { \n"
+			"  obj@ o = obj(); \n" // Declare without handle to compile.
+			"  o.v = 10; \n"
+			"  o.v += o.get_number(20); \n" // Not just +=, other assigns too.
+			"  assert( o.v == 30 ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test virtual properties and shared classes. It must work when loading from bytecode too
+	// Problem reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod->AddScriptSection("test",
+			"shared class my_obj { \n"
+			"  int get_var() property { return 1; } \n"
+	        "} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// Save module to bytecode, then reload
+		CBytecodeStream stream1("test");
+		r = mod->SaveByteCode(&stream1);
+		if (r < 0)
+			TEST_FAILED;
+
+		asDWORD crc32 = ComputeCRC32(&stream1.buffer[0], asUINT(stream1.buffer.size()));
+		if (crc32 != 0x9B760D54)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();
+
+		// Recreate the engine and reload bytecode
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->LoadByteCode(&stream1);
+		if (r < 0)
+			TEST_FAILED;
+
+		// Build a second module referring to the shared class with virtual properties
+		asIScriptModule* mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE); assert(mod != NULL);
+		mod2->SetAccessMask(3);
+		mod2->AddScriptSection("test",
+			"external shared class my_obj; \n"
+			"void main() { \n"
+			"  my_obj o; \n"
+			"  assert(o.var == 1); \n"
+			"} \n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod2);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test validations of virtual properties upon declaration in scripts
 	{
 		engine = asCreateScriptEngine();
@@ -408,19 +670,30 @@ bool Test()
 			"{ \n"
 			"//  alert('hello!', x); \n"
 			"} \n"
+			"void set_current_value2(int x) \n"
+			"{ \n"
+			"  string str=''+x; \n"
+			"  set_current_value(str); \n"
+			"} \n"
+			"void set_current_value2(string x) \n"
+			"{ \n"
+			"//  alert('hello!', x); \n"
+			"} \n"
 			"void main() \n"
 			"{ \n"
 			"  set_current_value(35); \n"
 			"  set_current_value('I will kill you!'); \n"
 			"  current_value(); \n"
+			"  current_value2 = 23; \n"
 			"} \n");
-		r = mod->Build(); // TODO: Symbol lookup should identify current_value as a property accessor, even though there are multiple ones. asCCompiler::FindPropertyAccessor needs to have separate error codes for different situations, so SymbolLookup can properly interpret the result.
+		r = mod->Build();
 		if (r >= 0)
 			TEST_FAILED;
-		if (bout.buffer != "test (16, 1) : Info    : Compiling void main()\n"
-						   "test (20, 3) : Error   : Found multiple set accessors for property 'current_value'\n"
-						   "test (20, 3) : Info    : void set_current_value(int x)\n"
-						   "test (20, 3) : Info    : void set_current_value(string x)\n")
+		if (bout.buffer != "test (25, 1) : Info    : Compiling void main()\n"
+						   "test (29, 3) : Error   : Ambiguous symbol name 'current_value'\n"
+						   "test (30, 3) : Error   : Found multiple set accessors for property 'current_value2'\n"
+						   "test (30, 3) : Info    : void set_current_value2(int x)\n"
+						   "test (30, 3) : Info    : void set_current_value2(string x)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1649,27 +1922,30 @@ bool Test()
 	}
 
 	// Test accessor with property of the same name
-	const char *script19 = 
-		"int direction; \n"
-		"void set_direction(int val) property { direction = val; } \n"
-		"void test_set() \n"
-		"{ \n"
-		"  direction = 9; \n" // calls the set_direction property accessor
-		"} \n"
-		"void test_get() \n"
-		"{ \n"
-		"  assert( direction == 9 ); \n" // fails, since there is no get accessor
-		"} \n";
-	mod->AddScriptSection("script", script19);
-	bout.buffer = "";
-	r = mod->Build();
-	if( r >= 0 )
-		TEST_FAILED;
-	if( bout.buffer != "script (7, 1) : Info    : Compiling void test_get()\n"
-	                   "script (9, 21) : Error   : The property has no get accessor\n" )
+	// The accessor hides the real property
 	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
+		const char* script19 =
+			"int direction; \n"
+			"void set_direction(int val) property { direction = val; } \n"
+			"void test_set() \n"
+			"{ \n"
+			"  direction = 9; \n" // calls the set_direction property accessor
+			"} \n"
+			"void test_get() \n"
+			"{ \n"
+			"  assert( direction == 9 ); \n" // fails, since there is no get accessor
+			"} \n";
+		mod->AddScriptSection("script", script19);
+		bout.buffer = "";
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "script (7, 1) : Info    : Compiling void test_get()\n"
+						   "script (9, 21) : Error   : The property has no get accessor\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 	}
 
 	const char *script20 = 

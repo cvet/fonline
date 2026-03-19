@@ -169,7 +169,11 @@ protected:
 class CBytecodeStream : public asIBinaryStream
 {
 public:
-	CBytecodeStream(const char * /*name*/) {wpointer = 0;rpointer = 0;}
+	CBytecodeStream(const char * /*name*/) 
+	{
+		wpointer = 0;
+		rpointer = 0;
+	}
 
 	int Write(const void *ptr, asUINT size) 
 	{
@@ -249,6 +253,8 @@ asDWORD ComputeCRC32(const asBYTE *buf, asUINT length);
 #define RET_ON_MAX_PORT if( strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") ) { PRINTF("Test on line %d in %s skipped\n", __LINE__, __FILE__); return false; }
 
 #define SKIP_ON_MAX_PORT if( strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") ) { PRINTF("Test on line %d in %s skipped\n", __LINE__, __FILE__); } else
+
+#define SKIP_KNOWN_BUG if( true ) { PRINTF("Test on line %d in %s skipped due to known bug\n", __LINE__, __FILE__); } else
 
 std::string GetCurrentDir();
 

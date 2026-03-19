@@ -140,14 +140,14 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 
     if (type.Kind == ComplexTypeKind::DictOfArray) {
         FO_RUNTIME_ASSERT(type.KeyType);
-        result = strex("dict<{},{}[]>", MakeScriptTypeName(type.KeyType.value()), MakeScriptTypeName(type.BaseType));
+        result = strex("dict<{},array<{}>>", MakeScriptTypeName(type.KeyType.value()), MakeScriptTypeName(type.BaseType));
     }
     else if (type.Kind == ComplexTypeKind::Dict) {
         FO_RUNTIME_ASSERT(type.KeyType);
         result = strex("dict<{},{}>", MakeScriptTypeName(type.KeyType.value()), MakeScriptTypeName(type.BaseType));
     }
     else if (type.Kind == ComplexTypeKind::Array) {
-        result = strex("{}[]", MakeScriptTypeName(type.BaseType));
+        result = strex("array<{}>", MakeScriptTypeName(type.BaseType));
     }
     else if (type.Kind == ComplexTypeKind::Callback) {
         result = "callback";
@@ -267,20 +267,76 @@ auto MakeScriptPropertyName(const Property* prop) -> string
 
     if (prop->IsDict()) {
         if (prop->IsDictOfArray()) {
-            result = strex("dict<{},{}[]>", MakeScriptTypeName(prop->GetDictKeyType()), MakeScriptTypeName(prop->GetBaseType()));
+            result = strex("dict<{},array<{}>>", MakeScriptTypeName(prop->GetDictKeyType()), MakeScriptTypeName(prop->GetBaseType()));
         }
         else {
             result = strex("dict<{},{}>", MakeScriptTypeName(prop->GetDictKeyType()), MakeScriptTypeName(prop->GetBaseType()));
         }
     }
     else if (prop->IsArray()) {
-        result = strex("{}[]", MakeScriptTypeName(prop->GetBaseType()));
+        result = strex("array<{}>", MakeScriptTypeName(prop->GetBaseType()));
     }
     else {
         result = MakeScriptTypeName(prop->GetBaseType());
     }
 
     return result;
+}
+
+// Normalize script type declarations to the canonical form used by MakeScriptPropertyName
+// Example: "dict<string, Critter@[]@>@" becomes "dict<string,array<Critter@>>"
+auto NormalizeScriptPropertyDecl(string_view decl) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string fixed_decl = strex(decl).replace("[]@", "[]").str();
+
+    while (true) {
+        const auto array_pos = fixed_decl.find("[]");
+
+        if (array_pos == string::npos) {
+            break;
+        }
+
+        size_t element_begin = array_pos;
+
+        if (element_begin > 0 && fixed_decl[element_begin - 1] == '>') {
+            int32 nested_level = 1;
+            element_begin--;
+
+            while (element_begin > 0) {
+                element_begin--;
+
+                if (fixed_decl[element_begin] == '>') {
+                    nested_level++;
+                }
+                else if (fixed_decl[element_begin] == '<') {
+                    nested_level--;
+
+                    if (nested_level == 0) {
+                        while (element_begin > 0 && (std::isalnum(static_cast<unsigned char>(fixed_decl[element_begin - 1])) != 0 || fixed_decl[element_begin - 1] == '_' || fixed_decl[element_begin - 1] == ':' || fixed_decl[element_begin - 1] == '@')) {
+                            element_begin--;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        else {
+            while (element_begin > 0 && (std::isalnum(static_cast<unsigned char>(fixed_decl[element_begin - 1])) != 0 || fixed_decl[element_begin - 1] == '_' || fixed_decl[element_begin - 1] == ':' || fixed_decl[element_begin - 1] == '@')) {
+                element_begin--;
+            }
+        }
+
+        const auto element_decl = fixed_decl.substr(element_begin, array_pos - element_begin);
+        fixed_decl = strex("{}array<{}>{}", fixed_decl.substr(0, element_begin), element_decl, fixed_decl.substr(array_pos + 2)).str();
+    }
+
+    if ((fixed_decl.starts_with("array<") || fixed_decl.starts_with("dict<")) && !fixed_decl.empty() && fixed_decl.back() == '@') {
+        fixed_decl.pop_back();
+    }
+
+    return fixed_decl;
 }
 
 auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*
@@ -1141,7 +1197,7 @@ auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string
         }
 
         for (AngelScript::asUINT i = 0; i < enum_value_count; i++) {
-            int32 check_enum_value = 0;
+            AngelScript::asINT64 check_enum_value = 0;
             const char* enum_value_name = as_type_info->GetEnumValueByIndex(i, &check_enum_value);
 
             if (check_enum_value == enum_value) {

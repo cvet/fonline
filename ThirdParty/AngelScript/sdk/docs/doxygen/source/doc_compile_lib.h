@@ -202,7 +202,7 @@ of AngelScript that are included. However, to give an idea of how much space the
 I've compiled the \ref doc_samples_asrun "asrun sample" in a few different ways and noted down the size.
 
 <table>
-<tr><td><b>Options</b></td><td><b>Size of binary on disk</b></td></tr>
+<tr><th>Options</th><th>Size of binary on disk</th></tr>
 <tr><td>32 bit / multithreaded dll / optimize for speed<br>Without including AngelScript</td><td>14KB</td></tr>
 <tr><td>32 bit / multithreaded dll / optimize for speed<br>Using AngelScript and add-ons</td><td>796KB</td></tr>
 <tr><td>32 bit / multithreaded dll / optimize for speed<br>AngelScript without compiler (AS_NO_COMPILER) and add-ons</td><td>453KB</td></tr>

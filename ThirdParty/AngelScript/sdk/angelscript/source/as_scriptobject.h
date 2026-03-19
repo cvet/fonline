@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2018 Andreas Jonsson
+   Copyright (c) 2003-2023 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -94,7 +94,7 @@ public:
 
 	// Miscellaneous
 	asIScriptEngine *GetEngine() const;
-	int              CopyFrom(asIScriptObject *other);
+	int              CopyFrom(const asIScriptObject *other);
 
 	// User data
 	void *SetUserData(void *data, asPWORD type = 0);
@@ -119,18 +119,21 @@ public:
 	// Used for properties
 	void *AllocateUninitializedObject(asCObjectType *objType, asCScriptEngine *engine);
 	void FreeObject(void *ptr, asCObjectType *objType, asCScriptEngine *engine);
-	void CopyObject(void *src, void *dst, asCObjectType *objType, asCScriptEngine *engine);
+	void CopyObject(const void *src, void *dst, asCObjectType *objType, asCScriptEngine *engine);
 	void CopyHandle(asPWORD *src, asPWORD *dst, asCObjectType *objType, asCScriptEngine *engine);
+	int  CopyFromAs(const asCScriptObject *other, asCObjectType *objType);
 
 	void CallDestructor();
 
 //=============================================
 // Properties
 //=============================================
-protected:
-	friend class asCContext;
-	asCObjectType    *objType;
+public:
+	// This is public to allow external code (e.g. JIT compiler) to do asOFFSET to 
+	// access the members directly without having to modify the code to add friend
+	asCObjectType* objType;
 
+protected:
 	mutable asCAtomic refCount;
 	mutable asBYTE    gcFlag:1;
 	mutable asBYTE    hasRefCountReachedZero:1;

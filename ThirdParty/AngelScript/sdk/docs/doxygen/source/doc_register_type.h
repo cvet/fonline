@@ -44,6 +44,10 @@ r = engine->RegisterObjectType("ref", 0, asOBJ_REF); assert( r >= 0 );
 \see \ref doc_gc_object, \ref doc_adv_class_hierarchy, \ref doc_adv_scoped_type, and \ref doc_adv_single_ref_type for more advanced types.
 
 
+
+
+
+
 \section doc_reg_basicref_1 Factory function
 
 The factory function is the one that AngelScript will use to instantiate
@@ -84,7 +88,104 @@ unless it also sets an exception to signal that the instantiation of the object 
 
 The behaviour is undefined if a factory function returns null without setting an exception.
 
-See also \ref doc_reg_basicref_4.
+
+
+
+
+
+\subsection doc_reg_basicref_1_1 Factory function with auxiliary object
+
+Also factory functions are supposed to be global functions it is possible to use an auxiliary object, 
+e.g. a factory singleton, to aid in the construction of the objects. To do this the application must 
+use the calling convention asCALL_CDECL_OBJFIRST or asCALL_CDECL_OBJLAST and inform the address of the 
+auxiliary object when registering the factory function.
+
+The factory function will then receive the address of the auxiliary object as the first or last parameter 
+depending on the calling convention informed.
+
+\code
+// A helper object used by factory functions
+class HelperObject {...} aux;
+
+// The factory function receives the address of the helper object as the last argument
+CRef *Ref_Factory(int arg, HelperObject *aux) {...}
+
+// Registering the factory behaviour with auxiliary object. The helper object is not part of the function signature
+r = engine->RegisterObjectBehaviour("ref", asBEHAVE_FACTORY, "ref@ f(int)", asFUNCTION(Ref_Factory), asCALL_CDECL_OBJLAST, &aux); assert( r >= 0 );
+\endcode
+
+
+
+
+
+
+\subsection doc_reg_basicref_4 List factory function
+
+The list factory function is a special \ref doc_reg_basicref_1 "factory function" that 
+can be registered to allow a type to be created from an initialization list. The list factory
+function takes only a single pointer as argument. AngelScript will pass a pointer to the 
+initialization list buffer in that argument. The buffer will contain all the values necessary
+to create and initialize the object. 
+
+In order for the script engine to know what information must be placed in the buffer the
+application must provide the list pattern when registering the list factory. The list pattern
+is declared with a special syntax involving datatypes and the following tokens: {, }, ?, repeat, and repeat_same.
+
+The tokens { } are used to declare that the list pattern expects a list of values or a sublist of values. 
+The repeat token is used to signal that the next type or sub list can be repeated 0 or more times. 
+The repeat_same token is similar to repeat except that it also tells the compiler that every time the same
+list is repeated it should have the same length. Any data type can be used in the list pattern, as long 
+as it can be passed by value. When a variable type is desired the token ? can be used.
+
+Here's a couple of examples for registering list factories with list patterns:
+
+\code
+// The array type can be initialized for example with: intarray a = {1,2,3};
+engine->RegisterObjectBehaviour("intarray", asBEHAVE_LIST_FACTORY, 
+  "intarray@ f(int &in) {repeat int}", ...);
+
+// The dictionary type can be initialized with: dictionary d = {{'a',1}, {'b',2}, {'c',3}};
+engine->RegisterObjectBehaviour("dictionary", asBEHAVE_LIST_FACTORY, 
+  "dictionary @f(int &in) {repeat {string, ?}}", ...);
+  
+// The grid type can be initialized with: grid a = {{1,2},{3,4}};
+engine->RgisterObjectBehaviour("grid", asBEHAVE_LIST_FACTORY,
+  "grid @f(int &in) {repeat {repeat_same int}}", ...);
+\endcode
+
+The list buffer passed to the factory function will be populated using the following rules:
+
+- Whenever the pattern expects a repeat, the buffer will contain a 32bit integer with the 
+  number of repeated values that will come afterwards
+- Whenever the pattern expects a ?, then the buffer will contain a 32bit integer representing 
+  the typeId of the value that comes after.
+- Whenever the pattern expects a reference type, the buffer will contain a pointer to the object
+- Whenever the pattern expects a value type, the buffer will contain the object itself
+- All values in the buffer will be aligned to a 32bit boundary, unless the size of the value placed
+  in the buffer is smaller than 32bits.
+
+The compiler will prepare the buffer with temporary values that can be moved into the
+storage space of the object. Reference types will be stored as pointers, while value types will be 
+stored inline. For reference types the ownership is handed over to the application object, so the 
+application must not increase the reference counter for the objects in the buffer.
+
+\todo What of value types in the buffer? Must they be destroyed by the application?
+
+\see \ref doc_addon_array and \ref doc_addon_dict for example implementations of list factories.
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \section doc_reg_basicref_2 Addref and release behaviours
 
@@ -136,56 +237,6 @@ that can eventually store a reference to the object type. This can be done by
 \ref asIScriptModule::GetGlobalVarCount "enumerating the compiled global variables" after script has
 been built and giving an error to the user in case he includes a variable he shouldn't. 
 
-
-
-
-\section doc_reg_basicref_4 List factory function
-
-The list factory function is a special \ref doc_reg_basicref_1 "factory function" that 
-can be registered to allow a type to be created from an initialization list. The list factory
-function takes only a single pointer as argument. AngelScript will pass a pointer to the 
-initialization list buffer in that argument. The buffer will contain all the values necessary
-to create and initialize the object. 
-
-In order for the script engine to know what information must be placed in the buffer the
-application must provide the list pattern when registering the list factory. The list pattern
-is declared with a special syntax involving datatypes and the following tokens: {, }, ?, repeat, and repeat_same.
-
-The tokens { } are used to declare that the list pattern expects a list of values or a sublist of values. 
-The repeat token is used to signal that the next type or sub list can be repeated 0 or more times. 
-The repeat_same token is similar to repeat except that it also tells the compiler that every time the same
-list is repeated it should have the same length. Any data type can be used in the list pattern, as long 
-as it can be passed by value. When a variable type is desired the token ? can be used.
-
-Here's a couple of examples for registering list factories with list patterns:
-
-\code
-// The array type can be initialized for example with: intarray a = {1,2,3};
-engine->RegisterObjectBehaviour("intarray", asBEHAVE_LIST_FACTORY, 
-  "intarray@ f(int &in) {repeat int}", ...);
-
-// The dictionary type can be initialized with: dictionary d = {{'a',1}, {'b',2}, {'c',3}};
-engine->RegisterObjectBehaviour("dictionary", asBEHAVE_LIST_FACTORY, 
-  "dictionary @f(int &in) {repeat {string, ?}}", ...);
-  
-// The grid type can be initialized with: grid a = {{1,2},{3,4}};
-engine->RgisterObjectBehaviour("grid", asBEHAVE_LIST_FACTORY,
-  "grid @f(int &in) {repeat {repeat_same int}}", ...);
-\endcode
-
-The list buffer passed to the factory function will be populated using the following rules:
-
-- Whenever the pattern expects a repeat, the buffer will contain a 32bit integer with the 
-  number of repeated values that will come afterwards
-- Whenever the pattern expects a ?, then the buffer will contain a 32bit integer representing 
-  the typeId of the value that comes after.
-- Whenever the pattern expects a reference type, the buffer will contain a pointer to the object
-- Whenever the pattern expects a value type, the buffer will contain the object itself
-- All values in the buffer will be aligned to a 32bit boundary, unless the size of the value placed
-  in the buffer is smaller than 32bits.
-
-\see \ref doc_addon_array and \ref doc_addon_dict for example implementations of list factories.
-  
 
 
 
@@ -275,94 +326,14 @@ the wrapper with AngelScript, which is sure to result in unexpected behaviours.
 Note that you may need to include the &lt;new&gt; header to declare the placement new operator that is used 
 to initialize a preallocated memory block.
 
-\see \ref doc_reg_val_3.
-
-
-
-
-\section doc_reg_val_2 Value types and native calling conventions
-
-If the type will be passed to or from the application by value using native calling conventions it is important to inform
-AngelScript of its real type in C++, otherwise AngelScript won't be able to determine exactly how C++ is treating the type in
-a parameter or return value. 
-
-To inform AngelScript of actual type in C++ the template function \ref asGetTypeTraits should preferably be used as it
-will automatically determine the correct flags to pass to \ref asIScriptEngine::RegisterObjectType "RegisterObjectType" 
-together with the asOBJ_VALUE flag. 
-
-\code
-// With C++11 the type can be registered with GetTypeTraits
-r = engine->RegisterObjectType("complex", sizeof(complex), asOBJ_VALUE | asGetTypeTraits<complex>()); assert( r >= 0 );
-\endcode
-
-On some platforms the native calling convention may require further knowledge about the class members that \ref asGetTypeTraits
-cannot determine in order to work properly; most notable are the Linux 64bit and Mac OSX 64bit systems with the GNUC compiler.
-On these systems small classes that do not have a destructor or a copy constructor will have different behaviours depending 
-on the type and order of their members.
-
-AngelScript lets the application give information that cover the most common variants, e.g. the class should be treated as 
-if all members are integers, or it should be treated as if all members are floats. 
-
-<table border=0 cellspacing=0 cellpadding=0>
-<tr><td>\ref asOBJ_APP_CLASS_ALLINTS   &nbsp; </td><td>The C++ class members can be treated as if all integers</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_ALLFLOATS &nbsp; </td><td>The C++ class members can be treated as if all floats or doubles</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_ALIGN8    &nbsp; </td><td>The C++ class contains members that may require 8byte alignment, e.g. a double.</td></tr>
-</table>
-
-If these flags are not informed and AngelScript needs them on the platform, you'll get an error message like 
-"Don't support passing/returning type 'MyType' by value to application in native calling convention on this platform". 
-
-It is difficult to explain when one or the other should be used as it requires in-depth knowledge of the ABI for the 
-respective system, so if you find that you really need to use these flags, make sure you perform adequate testing 
-to guarantee that your functions are called correctly by the script engine. If neither of these flags work, and you're 
-not able to change the class to work without them, then the only other option is to use the generic calling convention,
-preferably with the \ref doc_addon_autowrap "auto wrappers".
-
-\subsection doc_reg_val_2_nocpp11 For compilers that don't support C++11
-
-If your compiler doesn't support C++11 features the \ref asGetTypeTraits function will not be available. In this case you 
-have no option but to inform the correct flags manually. Be careful to inform the correct flags, because if the wrong flags
-are used you may get unexpected behaviour when calling registered functions that passes or returns these types by value. 
-Common problems are stack corruptions or invalid memory accesses. In some cases you may face more silent errors that
-may be difficult to detect, e.g. the function is not returning the expected values.
-
-There are a few different flags:
-
-<table border=0 cellspacing=0 cellpadding=0>
-<tr><td>\ref asOBJ_APP_CLASS                  &nbsp; </td><td>The C++ type is a class, struct, or union</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_CONSTRUCTOR      &nbsp; </td><td>The C++ type has a default constructor</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_DESTRUCTOR       &nbsp; </td><td>The C++ type has a destructor</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_ASSIGNMENT       &nbsp; </td><td>The C++ type has a copy assignment operator</td></tr>
-<tr><td>\ref asOBJ_APP_CLASS_COPY_CONSTRUCTOR &nbsp; </td><td>The C++ type has a copy constructor</td></tr>
-<tr><td>\ref asOBJ_APP_PRIMITIVE              &nbsp; </td><td>The C++ type is a C++ primitive, but not a float or double</td></tr>
-<tr><td>\ref asOBJ_APP_FLOAT                  &nbsp; </td><td>The C++ type is a float or double</td></tr>
-<tr><td>\ref asOBJ_APP_ARRAY                  &nbsp; </td><td>The C++ type is an array</td></tr>
-</table>
-
-Note that these don't represent how the type will behave in the script language, only what the real type is in the host 
-application. So if you want to register a C++ class that you want to behave as a primitive type in the script language
-you should still use the flag \ref asOBJ_APP_CLASS. The same thing for the flags to identify that the class has a constructor, 
-destructor, assignment operator, or copy constructor. These flags tell AngelScript that the class has the respective function, 
-but not that the type in the script language should have these behaviours.
-
-Observe that the C++ compiler may provide these functions automatically if one of the members of the class is of a type that 
-requires it. So even if the type you want to register doesn't have a declared default constructor it may still be necessary to
-register the type with the flag asOBJ_APP_CLASS_CONSTRUCTOR. The same for the other functions.
-
-For class types there is also a shorter form of the flags for each combination of the 5 flags. They are of the form \ref asOBJ_APP_CLASS_CDAK, 
-where the existence of the last letters determine if the constructor, destructor, and/or assignment behaviour are available. For example
-\ref asOBJ_APP_CLASS_CDAK is defined as \ref asOBJ_APP_CLASS | \ref asOBJ_APP_CLASS_CONSTRUCTOR | \ref asOBJ_APP_CLASS_DESTRUCTOR | \ref asOBJ_APP_CLASS_ASSIGNMENT | \ref asOBJ_APP_CLASS_COPY_CONSTRUCTOR.
-
-\code
-// Register a complex type that will be passed by value to the application
-r = engine->RegisterObjectType("complex", sizeof(complex), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK); assert( r >= 0 );
-\endcode
 
 
 
 
 
-\section doc_reg_val_3 List constructor
+
+
+\subsection doc_reg_val_3 List constructor
 
 The list constructor is similar to \ref doc_reg_basicref_4 "the list factory function" for reference types. 
 The constructor will receive a pointer to the initialization list buffer in the exact same way, and the
@@ -376,6 +347,138 @@ engine->RegisterObjectBehaviour("vector3", asBEHAVE_LIST_CONSTRUCT, "void f(int 
 \endcode
 
 \see \ref doc_addon_math "The complex math add-on" for an example value type with a list constructor.
+
+
+
+
+
+
+\section doc_reg_val_2 Value types and native calling conventions
+
+If the type will be passed to or from the application by value using native calling conventions it is important to inform
+AngelScript of its real type in C++, otherwise AngelScript won't be able to determine exactly how C++ is treating the type in
+a parameter or return value. 
+
+If the flags that inform about the actual type are not informed and AngelScript needs them on the platform, you'll get an error message like 
+"Don't support passing/returning type 'MyType' by value to application in native calling convention on this platform". 
+
+To inform AngelScript of the actual type in C++ the template function \ref asGetTypeTraits should preferably be used as it
+will automatically determine most of the flags to pass to \ref asIScriptEngine::RegisterObjectType "RegisterObjectType" 
+together with the asOBJ_VALUE flag. 
+
+\code
+// With C++11 the type can be registered with GetTypeTraits
+r = engine->RegisterObjectType("complex", sizeof(complex), asOBJ_VALUE | asGetTypeTraits<complex>()); assert( r >= 0 );
+\endcode
+
+The following flags are covered by asGetTypeTraits:
+
+<table border=0 cellspacing=0 cellpadding=0>
+<tr><td>\ref asOBJ_APP_CLASS                  &nbsp; </td><td>The C++ type is a class, struct, or union</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_CONSTRUCTOR      &nbsp; </td><td>The C++ type has a default constructor</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_DESTRUCTOR       &nbsp; </td><td>The C++ type has a destructor</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_ASSIGNMENT       &nbsp; </td><td>The C++ type has a copy assignment operator</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_COPY_CONSTRUCTOR &nbsp; </td><td>The C++ type has a copy constructor</td></tr>
+<tr><td>\ref asOBJ_APP_PRIMITIVE              &nbsp; </td><td>The C++ type is a C++ primitive, but not a float or double</td></tr>
+<tr><td>\ref asOBJ_APP_FLOAT                  &nbsp; </td><td>The C++ type is a float or double</td></tr>
+<tr><td>\ref asOBJ_APP_ARRAY                  &nbsp; </td><td>The C++ type is an array</td></tr>
+</table>
+
+Don't include the flags for constructor, destructor, assignment, and/or copy constructor if they have been declared as '= default' in the C++ class.
+
+On some platforms the native calling convention may require further knowledge about the class and its members that \ref asGetTypeTraits
+cannot determine in order to work properly. Whether or not the flags are needed depends on the compiler and target platform, but if the flags
+are not needed AngelScript will simply ignore them so there is no harm in informing them.
+
+Be careful to inform the correct flags, because if the wrong flags are used you may get unexpected behaviour when calling registered 
+functions that passes or returns these types by value. Common problems are stack corruptions or invalid memory accesses. In some cases 
+you may face more silent errors that may be difficult to detect, e.g. the function is not returning the expected values.
+
+AngelScript lets the application give information that cover the most common variants, e.g. the class should be treated as 
+if all members are integers (or non-float primitives), or it should be treated as if all members are floats. It is also possible to inform if the class
+has more constructors than the traditional default and copy constructors. This last one normally only has importance if the default and copy constructors 
+are defaulted. 
+
+<table border=0 cellspacing=0 cellpadding=0>
+<tr><td>\ref asOBJ_APP_CLASS_MORE_CONSTRUCTORS &nbsp; </td><td>The C++ class has additional constructors beyond the default and copy constructors</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_ALLINTS           &nbsp; </td><td>The C++ class members can be treated as if all integers</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_ALLFLOATS         &nbsp; </td><td>The C++ class members can be treated as if all floats or doubles</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_ALIGN8            &nbsp; </td><td>The C++ class contains members that may require 8byte alignment, e.g. a double.</td></tr>
+<tr><td>\ref asOBJ_APP_CLASS_UNION             &nbsp; </td><td>The C++ class contains unions as members.</td></tr>
+</table>
+
+Here's some examples to better illustrate the use of the flags:
+
+\code
+// The presence of the constructor with parameters indicates that the flag asOBJ_APP_CLASS_MORE_CONSTRUCTORS should be used
+struct A
+{
+	A() = default;
+	A(const A& o) = default;
+	A(float x, float y) { this->x = x; this->y = y; }
+};
+
+// The structure only contains non-float primitives so asOBJ_APP_CLASS_ALLINTS should be used
+struct B
+{
+	int a;
+	void *b;
+};
+
+// The structure only contains floats so asOBJ_APP_CLASS_ALLFLOATS should be used
+struct C
+{
+	float x,y,z;
+};
+
+// The structure only contains doubles so the flags asOBJ_APP_CLASS_ALLFLOATS and asOBJ_APP_CLASS_ALIGN8 should be used
+struct D
+{
+	double x,y;
+};
+
+// The structure contains union of floats so the flags asOBJ_APP_CLASS_ALLFLOATS and asOBJ_APP_CLASS_UNION should be used
+struct E
+{
+	union {
+		float x, s;
+	};
+	union {
+		float y, t;
+	};
+};
+\endcode
+
+It is difficult to explain exactly when one or the other should be used as it requires in-depth knowledge of the ABI for the 
+respective system, so if you find that you really need to use these flags, make sure you perform adequate testing 
+to guarantee that your functions are called correctly by the script engine. If neither of these flags work, and you're 
+not able to change the class to work without them, then the only other option is to use the generic calling convention,
+preferably with the \ref doc_addon_autowrap "auto wrappers".
+
+\subsection doc_reg_val_2_nocpp11 For compilers that don't support C++11 and asGetTypeTraits
+
+If your compiler doesn't support C++11 features the \ref asGetTypeTraits function will not be available. In this case you 
+have no option but to inform the correct flags manually. 
+
+Note that the flags don't represent how the type will behave in the script language, only what the real type is in the host 
+application. So if you want to register a C++ class that you want to behave as a primitive type in the script language
+you should still use the flag \ref asOBJ_APP_CLASS. The same thing for the flags to identify that the class has a constructor, 
+destructor, assignment operator, or copy constructor. These flags tell AngelScript that the class has the respective function, 
+but not that the type in the script language should have these behaviours.
+
+Observe that the C++ compiler may provide some functions automatically if one of the members of the class is of a type that 
+requires it. So even if the type you want to register doesn't have a declared default constructor it may still be necessary to
+register the type with the flag asOBJ_APP_CLASS_CONSTRUCTOR. The same for the other functions.
+
+For class types there is also a shorter form of the flags for each combination of the 5 flags. They are of the form \ref asOBJ_APP_CLASS_CDAK, 
+where the existence of the last letters determine if the constructor, destructor, and/or assignment behaviour are available. For example
+\ref asOBJ_APP_CLASS_CDAK is defined as \ref asOBJ_APP_CLASS | \ref asOBJ_APP_CLASS_CONSTRUCTOR | \ref asOBJ_APP_CLASS_DESTRUCTOR | \ref asOBJ_APP_CLASS_ASSIGNMENT | \ref asOBJ_APP_CLASS_COPY_CONSTRUCTOR.
+
+\code
+// Register a complex type that will be passed by value to the application
+r = engine->RegisterObjectType("complex", sizeof(complex), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK); assert( r >= 0 );
+\endcode
+
 
 
 
@@ -500,7 +603,7 @@ the pointer. If the composite member is inlined, then the parameter should be se
 
 \page doc_reg_objprop Registering object properties
 
-Class member variables can be registered so that they can be directly
+Class member variables can be registered with \ref asIScriptEngine::RegisterObjectProperty "RegisterObjectProperty" so that they can be directly
 accessed by the script without the need for any method calls.
 
 \code
@@ -514,7 +617,7 @@ r = engine->RegisterObjectProperty("mytype", "int a", asOFFSET(MyStruct,a)); ass
 
 If a class member is indirect, i.e. the class holds a pointer to the member that is 
 allocated on the heap, then it is possible to registered the property using & to tell
-the script engine that an dereference is needed to access the member.
+the script engine that a dereference is needed to access the member.
 
 \code
 struct MyStruct
@@ -527,6 +630,12 @@ r = engine->RegisterObjectProperty("mytype", "othertype &a", asOFFSET(MyStruct,a
 
 Of course, the application must make sure the pointer is valid during the whole time 
 that it may be accessed from the script.
+
+Remember, in C++ it is not possible to take the address of class members declared as references, because 
+the & operator in this case gives the actual reference that the member is referring to. For this reason
+it is not possible to use asOFFSET to determine the offset of members declared as references. Instead the
+offset can be manually calculated relative to an adjacent member. Remember to verify the byte alignment 
+and possible padding added by the compiler.
 
 \section doc_reg_objprop_composite Composite members
 
@@ -552,6 +661,8 @@ the pointer. If the composite member is inlined, then the parameter should be se
 
 
 
+
+
 \section doc_reg_objprop_accessor Property accessors
 
 It is also possible to expose properties through \ref doc_script_class_prop "property accessors", 
@@ -564,6 +675,8 @@ If the application class contains a C++ array as a member, it may be advantageou
 through \ref doc_script_class_prop "indexed property accessors" rather than attempting to matching the
 C++ array type to a registered type in AngelScript. To do this you can create a couple of simple proxy functions
 that will translate to the array access.
+
+\note The behaviour of virtual properties can be customized with the engine property \ref doc_adv_custom_options_lang_mod "asEP_PROPERTY_ACCESSOR_MODE".
 
 \code
 struct MyStruct
@@ -585,8 +698,8 @@ void MyStruct_set_array(unsigned int idx, int value, MyStruct *o)
 }
 
 // Register the proxy functions as member methods
-r = engine->RegisterObjectMethod("mytype", "int get_array(uint)", asFUNCTION(MyStruct_get_array), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-r = engine->RegisterObjectMethod("mytype", "void set_array(uint, int)", asFUNCTION(MyStruct_set_array), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+r = engine->RegisterObjectMethod("mytype", "int get_array(uint) property", asFUNCTION(MyStruct_get_array), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+r = engine->RegisterObjectMethod("mytype", "void set_array(uint, int) property", asFUNCTION(MyStruct_set_array), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 \endcode
 
 

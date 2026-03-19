@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include "../../../add_on/scriptany/scriptany.h"
+#include "../../../add_on/scripthandle/scripthandle.h"
 
 namespace TestCastOp
 {
@@ -154,6 +155,55 @@ public:
 	int refCount;
 };
 
+class GenericClass
+{
+public:
+	int refCount;
+	int type;
+	GenericClass() : refCount(1), type(1) {}
+	virtual ~GenericClass() {}
+	static void* factory() { return new GenericClass(); }
+	void addref() { /*printf("addref\n");*/ refCount++; }
+	void release() { /*printf("release\n");*/ if (--refCount == 0) delete this; }
+	virtual void opCast(void** out, int typeId)
+	{
+		*out = 0;
+		asIScriptContext* ctx = asGetActiveContext();
+		asIScriptEngine* engine = ctx->GetEngine();
+		asITypeInfo* type = engine->GetTypeInfoById(typeId);
+		if (std::string(type->GetName()) == "Generic")
+		{
+			addref();
+			*out = this;
+		}
+	}
+};
+
+class GenericClass2 : public GenericClass
+{
+public:
+	GenericClass2() : GenericClass() { type = 2; }
+	static void* factory() { return new GenericClass2(); }
+	virtual void opCast(void** out, int typeId)
+	{
+		*out = 0;
+		asIScriptContext* ctx = asGetActiveContext();
+		asIScriptEngine* engine = ctx->GetEngine();
+		asITypeInfo* type = engine->GetTypeInfoById(typeId);
+		if (std::string(type->GetName()) == "Generic")
+		{
+			addref();
+			*out = this;
+		}
+		else if( std::string(type->GetName()) == "Generic2" )
+		{
+			addref();
+			*out = this;
+		}
+	}
+};
+
+
 bool Test()
 {
 	bool fail = false;
@@ -166,6 +216,72 @@ bool Test()
 	// TODO: What should the compiler do when the class has both a valid opCast method 
 	//       and a related class in a class hierarchy? Should prefer calling opCast, right?
 	//       How does C++ do it?
+
+
+	// Test double cast with void opCast(?&out)
+	// https://github.com/anjo76/angelscript/issues/24
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		engine->RegisterObjectType("Generic", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("Generic", asBEHAVE_FACTORY, "Generic @f()", asFUNCTION(GenericClass::factory), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("Generic", asBEHAVE_ADDREF, "void f()", asMETHOD(GenericClass, addref), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("Generic", asBEHAVE_RELEASE, "void f()", asMETHOD(GenericClass, release), asCALL_THISCALL);
+		engine->RegisterObjectProperty("Generic", "int type", offsetof(GenericClass, type));
+		engine->RegisterObjectMethod("Generic", "void opCast(?&out)", asMETHOD(GenericClass, opCast), asCALL_THISCALL);
+		engine->RegisterObjectType("Generic2", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("Generic2", asBEHAVE_FACTORY, "Generic2 @f()", asFUNCTION(GenericClass2::factory), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("Generic2", asBEHAVE_ADDREF, "void f()", asMETHOD(GenericClass2, addref), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("Generic2", asBEHAVE_RELEASE, "void f()", asMETHOD(GenericClass2, release), asCALL_THISCALL);
+		engine->RegisterObjectProperty("Generic2", "int type", offsetof(GenericClass2, type));
+		engine->RegisterObjectMethod("Generic2", "void opCast(?&out)", asMETHOD(GenericClass2, opCast), asCALL_THISCALL);
+
+		r = ExecuteString(engine, 
+			"Generic2 @g2 = Generic2(); \n"
+			"assert( g2.type == 2 ); \n"
+			"auto @a1 = cast<Generic>(g2); \n"
+			"auto @a2 = cast<Generic2>(a1); \n"
+			"assert( a2 !is null ); \n"
+			"assert( a2.type == 2 ); \n"
+			"assert( a2 is g2 ); \n"
+			"auto @a = cast<Generic2>(cast<Generic>(g2)); \n" // This should do the exact same thing, but in a single expression
+			"assert( a !is null ); \n"
+			"assert( a.type == 2 ); \n"
+			"assert( a is g2 ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		engine->ShutDownAndRelease();
+	}
+
+	// Test cast of anonymous array to function expecting ?. Should give an error about ambigous cast
+	// https://www.gamedev.net/forums/topic/713693-assertion-failure-when-doing-funky-stuff-with-refs/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptHandle(engine);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"ref @r = cast<ref>({1,2,3});\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 6) : Info    : Compiling ref r\n"
+						   "test (1, 10) : Error   : No conversion from '<anonymous initialization list>' to 'ref' available.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test opCast(?&out) with CScriptAny
 	// https://www.gamedev.net/forums/topic/697067-refcounting-in-opcast/

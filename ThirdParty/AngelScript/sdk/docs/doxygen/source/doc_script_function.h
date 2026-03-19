@@ -145,7 +145,7 @@ Primitive values can be used though, as these do not require cleanup upon exit.
 
 Function overloading happens when more than one function with the same name is declared with
 different parameters. This is a useful feature when an operation needs to be able to work with
-different types of input, yet produce similar result. 
+different types of input, yet produce similar result.
 
 The compiler is able to resolve which function to call by matching the type of each argument 
 expression to the function parameter, and eliminating the functions where there is no possible 
@@ -159,17 +159,20 @@ type of conversion compares to another.
 
  - no conversion needed
  - conversion to const
- - size of primitive changes 
- - integer type to float type and vice versa
+ - conversion of enum to integer of same size
+ - conversion of enum to integer of different size
+ - size of primitive type increases
+ - size of primitive type decreases
+ - signed integer to unsigned integer conversion
+ - unsigned integer to signed integer conversion
+ - integer type to float type
+ - float type to integer type
  - reference cast
  - object to primitive conversion
  - conversion to object
  - variable argument type
 
-Observe that it is not possible to create overloads where the only difference is the return
-type. This is because the return type is not part of the selection criteria that the compiler
-uses to determine which function to call, the return type is just the result of the called 
-function.
+Example:
 
 <pre>
   void Function(int a, float b, string c) {}
@@ -183,6 +186,32 @@ function.
     Function(2.5f, 'a', 1);  // Will call the third overload
   }  
 </pre>
+
+For functions with output parameters, <tt>&out</tt>, the compiler will follow the same order. The exception 
+is when the conversion from the argument type to the expression type is not possible, in which case 
+that match is discarded. Example:
+
+<pre>
+  void get(int &out val) {}
+  void get(? &out val) {} // Note, functions with variable type can only be registered from the application
+  enum e { eval }
+  void func()
+  {
+     e v;
+     get(v);  // This will match the get(? &out val), because int cannot be implicitly converted to enum
+  }
+</pre>
+
+Observe that it is not possible to create overloads where the only difference is the return
+type. This is because the return type is not part of the selection criteria that the compiler
+uses to determine which function to call, the return type is just the result of the called 
+function.
+
+The exceptions are \ref doc_script_class_conv "opConv and opCast" where the compiler looks 
+specifically at the return type to determine the match.
+
+Functions with variadic argument list, ..., will not match if there is another matching function without 
+variadic argument list. 
 
 
 

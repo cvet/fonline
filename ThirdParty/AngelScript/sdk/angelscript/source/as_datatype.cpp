@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2017 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -95,6 +95,41 @@ asCDataType asCDataType::CreateType(asCTypeInfo *ti, bool isConst)
 	return dt;
 }
 
+asCDataType asCDataType::CreateById(asCScriptEngine* engine, int typeId, bool isConst)
+{
+	if (typeId & asTYPEID_OBJHANDLE)
+	{
+		return CreateObjectHandle((asCTypeInfo*)engine->GetTypeInfoById(typeId), isConst);
+	}
+	else if (typeId & ~asTYPEID_MASK_SEQNBR)
+	{
+		return CreateType((asCTypeInfo*)engine->GetTypeInfoById(typeId), isConst);
+	}
+	else
+	{
+		eTokenType tt;
+
+		switch (typeId)
+		{
+		case asTYPEID_VOID: tt = ttVoid; break;
+		case asTYPEID_BOOL: tt = ttBool; break;
+		case asTYPEID_INT8: tt = ttInt8; break;
+		case asTYPEID_INT16: tt = ttInt16; break;
+		case asTYPEID_INT32: tt = ttInt; break;
+		case asTYPEID_INT64: tt = ttInt64; break;
+		case asTYPEID_UINT8: tt = ttUInt8; break;
+		case asTYPEID_UINT16: tt = ttUInt16; break;
+		case asTYPEID_UINT32: tt = ttUInt; break;
+		case asTYPEID_UINT64: tt = ttUInt64; break;
+		case asTYPEID_FLOAT: tt = ttFloat; break;
+		case asTYPEID_DOUBLE: tt = ttDouble; break;
+		default: tt = ttInt; break;
+		}
+
+		return CreatePrimitive(tt, isConst);
+	}
+}
+
 asCDataType asCDataType::CreateAuto(bool isConst)
 {
 	asCDataType dt;
@@ -173,7 +208,8 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 	{
 		// If funcDef->nameSpace is null it means the funcDef was declared as member of 
 		// another type, in which case the scope should be built with the name of that type
-		str += CastToFuncdefType(typeInfo)->parentClass->name + "::";
+		asCDataType dt = asCDataType::CreateType(CastToFuncdefType(typeInfo)->parentClass, false);
+		str += dt.Format(currNs, includeNamespace) + "::";
 	}
 
 	if( tokenType != ttIdentifier )
@@ -189,7 +225,10 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 	}
 	else if(typeInfo)
 	{
-		str += typeInfo->name;
+		if (typeInfo->name == "$func")
+			str += "<function>"; // use a more friendly name for funcdefs and lambdas
+		else
+			str += typeInfo->name;
 		asCObjectType *ot = CastToObjectType(typeInfo);
 		if( ot && ot->templateSubTypes.GetLength() > 0 )
 		{
@@ -292,12 +331,12 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 	asCArray<asCDataType> subTypes;
 	subTypes.PushLast(*this);
 	asCObjectType *at = engine->GetTemplateInstanceType(engine->defaultArrayObjectType, subTypes, module);
+	if (at == 0)
+		return asNOT_SUPPORTED;
+
 	isReadOnly = tmpIsReadOnly;
 
-	// (FOnline Patch) The project relies on default array types behaving as
-	// implicit handles, so [] syntax must preserve handle semantics for the
-	// instantiated array type instead of always materializing it as a value.
-	isObjectHandle = at && (at->flags & asOBJ_IMPLICIT_HANDLE);
+	isObjectHandle = at && (at->flags & asOBJ_IMPLICIT_HANDLE); // (FOnline Patch)
 	isConstHandle = false;
 	
 	typeInfo = at;
@@ -543,8 +582,14 @@ bool asCDataType::IsIntegerType() const
 		tokenType == ttInt64 )
 		return true;
 
-	// Enums are also integer types
-	return IsEnumType();
+	// Enums can also be integer types
+	if (IsEnumType())
+	{
+		asCEnumType * enumType = CastToEnumType(typeInfo);
+		return enumType->enumType.IsIntegerType();
+	}
+	
+	return false;
 }
 
 bool asCDataType::IsUnsignedType() const
@@ -555,6 +600,13 @@ bool asCDataType::IsUnsignedType() const
 		tokenType == ttUInt64 )
 		return true;
 
+	// Enums can also be unsigned integer types
+	if (IsEnumType())
+	{
+		asCEnumType * enumType = CastToEnumType(typeInfo);
+		return enumType->enumType.IsUnsignedType();
+	}
+	
 	return false;
 }
 
@@ -605,6 +657,9 @@ bool asCDataType::IsFuncdef() const
 
 int asCDataType::GetSizeInMemoryBytes() const
 {
+	if( isObjectHandle )
+		return 4 * AS_PTR_SIZE;
+
 	if( typeInfo != 0 )
 		return typeInfo->size;
 
@@ -626,6 +681,10 @@ int asCDataType::GetSizeInMemoryBytes() const
 
 	if( tokenType == ttBool )
 		return AS_SIZEOF_BOOL;
+
+	// ?& is actually a reference + an int 
+	if (tokenType == ttQuestion)
+		return AS_PTR_SIZE * 4 + 4;
 
 	// null handle
 	if( tokenType == ttUnrecognizedToken )
@@ -653,6 +712,10 @@ int asCDataType::GetSizeOnStackDWords() const
 	int size = tokenType == ttQuestion ? 1 : 0;
 
 	if( isReference ) return AS_PTR_SIZE + size;
+
+	// TODO: bug: Registered value types are also stored on the stack. Before changing though, check how GetSizeOnStackDWords is used
+	//            When called to determine size of type as parameter then it is correct, as objects are implicitly passed by reference in AngelScript
+	//            To correct this it would be necessary to know if the method is called for a parameter, or for a local variable
 	if( typeInfo && !IsEnumType() ) return AS_PTR_SIZE + size;
 
 	return GetSizeInMemoryDWords() + size;

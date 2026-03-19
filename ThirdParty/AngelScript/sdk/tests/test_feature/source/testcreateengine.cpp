@@ -8,29 +8,50 @@
 
 bool TestCreateEngine()
 {
-	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	bool fail = false;
+	asIScriptEngine *engine = asCreateScriptEngine();
 	if( engine == 0 )
 	{
 		// Failure
 		PRINTF("TestCreateEngine: asCreateScriptEngine() failed\n");
-		return true;
+		TEST_FAILED;
 	}
 	else
 	{
+		// Set a message callback
+		CBufferedOutStream bout;
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
 		// Although it's not recommended that two engines are created, it shouldn't be a problem
-		asIScriptEngine *engine2 = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asIScriptEngine *engine2 = asCreateScriptEngine();
 		if( engine2 == 0 )
 		{
 			// Failure
 			PRINTF("TestCreateEngine: asCreateScriptEngine() failed for 2nd engine\n");
-			return true;
+			TEST_FAILED;
 		}
 		else
-			engine2->Release();
+		{
+			// Attempt to reuse the message callback from the first engine
+			asSFuncPtr msgCallback;
+			void* obj;
+			asDWORD callConv;
+			engine->GetMessageCallback(&msgCallback, &obj, &callConv);
+			engine2->SetMessageCallback(msgCallback, obj, callConv);
 
-		engine->Release();
+			engine2->WriteMessage("test", 0, 0, asMSGTYPE_INFORMATION, "Hello from engine2");
+
+			engine2->ShutDownAndRelease();
+		}
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "test (0, 0) : Info    : Hello from engine2\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 	}
 	
-	// Success
-	return false;
+	return fail;
 }

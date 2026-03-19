@@ -15,7 +15,7 @@ static void print(asIScriptGeneric *gen)
 class ExceptionHandler
 {
 public:
-	ExceptionHandler() : ok(false) {}
+	ExceptionHandler() : ok(false), firstStackPointer(0xFFFFFFFF) {}
 
 	void Callback(asIScriptContext *ctx)
 	{
@@ -25,9 +25,18 @@ public:
 		// Type of exception is what was expected?
 		if( string(ctx->GetExceptionString()) != "Null pointer access" )
 			ok = false;
+
+		// Check that the stack pointer is on the same location for every iteration
+		asDWORD stackPointer = 0;
+		ctx->GetCallStateRegisters(0, 0, 0, 0, &stackPointer, 0);
+		if (firstStackPointer == 0xFFFFFFFF)
+			firstStackPointer = stackPointer;
+		else if (firstStackPointer != stackPointer)
+			ok = false;
 	}
 
 	bool ok;
+	asDWORD firstStackPointer;
 };
 
 void TranslateException(asIScriptContext *ctx, void * /*param*/)
@@ -52,6 +61,45 @@ void ThrowException()
 	throw std::exception();
 }
 
+class foo
+{
+	public:
+	int *opIndex_ThrowException(int) { throw std::exception(); }
+};
+
+class Dummy
+{
+public:
+	Dummy() {refCount = 1;}
+	~Dummy() {};
+	void AddRef() {refCount++;}
+	void Release() { if( --refCount == 0 ) delete this; }
+	int refCount;
+	static Dummy *Factory() { asGetActiveContext()->SetException("...", true); return new Dummy(); }
+};
+
+class ClassValue
+{
+public:
+	ClassValue() {}
+	~ClassValue() {}
+
+	void exception()
+	{
+		asGetActiveContext()->SetException("Crash.");
+	}
+};
+
+void Constructor(void* mem)
+{
+	new(mem) ClassValue();
+}
+
+void Destructor(void* mem)
+{
+	((ClassValue*)mem)->~ClassValue();
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -59,9 +107,173 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Skip these tests if the library is not build to support exceptions
+	if (strstr(asGetLibraryOptions(), "AS_NO_EXCEPTIONS"))
+	{
+		PRINTF("Tests in %s skipped due to AS_NO_EXCEPTIONS\n", __FILE__);
+		return false;
+	}
+
+	// Test crash due to exception, with object variable declared just after the end of a block. 
+	// The asIScriptContext::IsVarInScope didn't work properly, leading to the crash in the DetermineLiveObjects
+	// https://www.gamedev.net/forums/topic/715075-context-crash-during-exception-handling-in-determineliveobjects/
+	SKIP_ON_MAX_PORT
+	{
+		asIScriptEngine * engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->RegisterObjectType("ClassValue", sizeof(ClassValue),
+			asOBJ_VALUE | asOBJ_APP_CLASS_CD);
+		engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+
+		engine->RegisterObjectBehaviour("ClassValue", asBEHAVE_CONSTRUCT,
+			"void f()", asFUNCTION(Constructor), asCALL_CDECL_OBJLAST);
+		engine->RegisterObjectBehaviour("ClassValue", asBEHAVE_DESTRUCT,
+			"void f()", asFUNCTION(Destructor), asCALL_CDECL_OBJLAST);
+		engine->RegisterObjectMethod("ClassValue", "void exception()",
+			asMETHOD(ClassValue, exception), asCALL_THISCALL);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			R"(
+            void main() {
+                if (true)
+                {
+                    int dummy = 1;
+                }
+                ClassValue a;
+                a.exception();
+            }
+            )");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext* ctx = engine->CreateContext();
+		ctx->Prepare(mod->GetFunctionByName("main"));
+		r = ctx->Execute();
+		if (r != asEXECUTION_EXCEPTION)
+			TEST_FAILED;
+		ctx->Release();
+		engine->ShutDownAndRelease();
+	}
+
+	// Test crash due to exception
+	// https://www.gamedev.net/forums/topic/718122-more-crashes-with-trycatch/
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Bar {}\n"
+			"class Foo { Bar@ Bar; }\n"
+			"void Main() {	\n"
+			"	Foo@ f; \n"
+			"	for (int i = 0; i < 1000; i++) {\n"
+			"		try {\n"
+			"			auto foo = f.Bar; \n"
+			"		} catch { }\n"
+			"	}\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext* ctx = engine->CreateContext();
+		ExceptionHandler handler;
+		ctx->SetExceptionCallback(asMETHOD(ExceptionHandler, Callback), &handler, asCALL_THISCALL);
+		ctx->Prepare(mod->GetFunctionByDecl("void Main()"));
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (!handler.ok)
+			TEST_FAILED;
+
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test crash due to exception
+	// https://www.gamedev.net/forums/topic/714882-crash-in-trycatch-blocks/5458952/
+	// https://github.com/openplanet-nl/issues/issues/359
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo { void Bar() {} }\n"
+			"void Main() {\n"
+			"	Foo@ f;\n"
+			"	for (int i = 0; i < 5; i++) {\n"
+			"		try {\n"
+			"			f.Bar();\n"
+			"		}\n"
+			"		catch {}\n"
+			"	}\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext* ctx = engine->CreateContext();
+		ExceptionHandler handler;
+		ctx->SetExceptionCallback(asMETHOD(ExceptionHandler, Callback), &handler, asCALL_THISCALL);
+		ctx->Prepare(mod->GetFunctionByDecl("void Main()"));
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (!handler.ok)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test script exception in registered factory function
+	// https://www.gamedev.net/forums/topic/704577-throwing-script-exception-from-factory-function/
+	SKIP_ON_MAX_PORT
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->RegisterObjectType("Dummy", 0, asOBJ_REF);
+		engine->RegisterObjectBehaviour("Dummy", asBEHAVE_FACTORY, "Dummy @f()", asFUNCTION(Dummy::Factory), asCALL_CDECL);
+		engine->RegisterObjectBehaviour("Dummy", asBEHAVE_ADDREF, "void f()", asMETHOD(Dummy, AddRef), asCALL_THISCALL);
+		engine->RegisterObjectBehaviour("Dummy", asBEHAVE_RELEASE, "void f()", asMETHOD(Dummy, Release), asCALL_THISCALL);
+
+		r = ExecuteString(engine, "Dummy D();");
+		if( r != asEXECUTION_EXCEPTION )
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}	
+		
+		engine->ShutDownAndRelease();
+	}
+
 	// Test to make sure catching two exceptions in a row works
 	// https://www.gamedev.net/forums/topic/700622-catching-two-in-a-row/
-	SKIP_ON_MAX_PORT
 	{
 		asIScriptEngine *engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
@@ -141,7 +353,6 @@ bool Test()
 	
 	// Test to make sure stack unwind to catch block doesn't clean-up objects created before the try block
 	// Identified by Polyak Istvan
-	SKIP_ON_MAX_PORT
 	{
 		asIScriptEngine *engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
@@ -284,7 +495,6 @@ bool Test()
 	// Test catching an exception
 	// TODO: Test rethrowing exception in catch block
 	// TODO: Test use of try/catch in constructor to call base class' constructor
-	SKIP_ON_MAX_PORT
 	{
 		asIScriptEngine *engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
@@ -378,6 +588,36 @@ bool Test()
 
 		asIScriptContext *ctx = engine->CreateContext();
 		r = ExecuteString(engine, "ThrowException()", 0, ctx);
+		if (r != asEXECUTION_EXCEPTION)
+		{
+			TEST_FAILED;
+		}
+		if (ctx->GetExceptionString() == 0 || 
+			(string(ctx->GetExceptionString()) != "Unknown exception" && // msvc
+			 string(ctx->GetExceptionString()) != "std::exception"))      // gnuc
+		{
+			PRINTF("Exception: '%s'\n", ctx->GetExceptionString());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test exception translation in opIndex(int) (asBC_Thiscall1)
+	// Reported by Quentin Cosendey
+	SKIP_ON_MAX_PORT
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetTranslateAppExceptionCallback(asFUNCTION(TranslateException), 0, asCALL_CDECL);
+
+		engine->RegisterObjectType("foo", sizeof(foo), asOBJ_VALUE | asOBJ_POD);
+		engine->RegisterObjectMethod("foo", "int &opIndex(int)", asMETHOD(foo, opIndex_ThrowException), asCALL_THISCALL);
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "foo bar; bar[0]", 0, ctx);
 		if (r != asEXECUTION_EXCEPTION)
 		{
 			TEST_FAILED;

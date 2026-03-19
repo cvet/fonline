@@ -15,6 +15,42 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test issue with named args and factories
+	// reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterStdString(engine);
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int called = 0;\n"
+			"class FieldLabel { \n"
+			"  FieldLabel(const string &in material) {called = 1;}\n"
+			"  FieldLabel(const string &in field_name, const string &in material) {called = 2;}\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "called = 0; FieldLabel('size', material: 'NumberInCorner'); assert(called == 2);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "called = 0; FieldLabel(field_name: 'size', material: 'NumberInCorner'); assert(called == 2);", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test invalid use of named args
 	{
 		engine = asCreateScriptEngine();
@@ -58,7 +94,8 @@ bool Test()
 		if (bout.buffer != "test (3, 1) : Info    : Compiling void test()\n"
 						   "test (3, 16) : Error   : No matching signatures to 'func(b: const int)'\n"
 						   "test (3, 16) : Info    : Candidates are:\n"
-						   "test (3, 16) : Info    : void func(int a)\n")
+						   "test (3, 16) : Info    : void func(int a)\n"
+						   "test (3, 16) : Info    : Rejected due to named parameter 'b' missing\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -336,7 +373,8 @@ bool Test()
 						   "test (5, 16) : Error   : No matching signatures to 'func(const int, a: const int)'\n"
 						   "test (5, 16) : Info    : Candidates are:\n"
 						   "test (5, 16) : Info    : bool func(int a, int b, int c)\n"
-						   )
+						   "test (5, 16) : Info    : Rejected due to not enough parameters\n"
+		  )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -366,7 +404,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (5, 1) : Info    : Compiling void test()\n"
-						   "test (5, 23) : Error   : Duplicate named argument\n"
+						   "test (5, 23) : Error   : Duplicate named argument 'a'\n"
 						   )
 		{
 			PRINTF("%s", bout.buffer.c_str());

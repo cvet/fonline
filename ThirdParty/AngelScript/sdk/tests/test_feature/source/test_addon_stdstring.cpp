@@ -11,6 +11,13 @@ using namespace std;
 
 namespace Test_Addon_StdString
 {
+	std::string g_buf;
+	void print(asIScriptGeneric *gen)
+	{
+		std::string* s = (std::string*)gen->GetArgAddress(0);
+		g_buf += *s + "\n";
+	}
+
 	bool Test()
 	{
 		bool fail = false;
@@ -18,6 +25,271 @@ namespace Test_Addon_StdString
 
 		COutStream out;
 		CBufferedOutStream bout;
+
+		// Test StringFormat with uint8
+		// Reported by li zhuang
+		{
+			asIScriptEngine* engine = asCreateScriptEngine();
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_GENERIC);
+
+			bout.buffer = "";
+
+			engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+			g_buf = "";
+			asIScriptContext* ctx = engine->CreateContext();
+			r = ExecuteString(engine,
+				"uint8 test = 65;\n"
+				"string s = format('{}', test);\n"
+				"print(s);\n"
+				"assert(s == '65');\n"
+			);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			if (g_buf != "65\n")
+			{
+				TEST_FAILED;
+				PRINTF("%s\n", g_buf.c_str());
+			}
+			ctx->Release();
+
+			engine->ShutDownAndRelease();
+
+			if (bout.buffer != "")
+			{
+				PRINTF("%s", bout.buffer.c_str());
+				TEST_FAILED;
+			}
+		}
+		
+		// scan
+		{
+			asIScriptEngine* engine = asCreateScriptEngine();
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_GENERIC);
+
+			bout.buffer = "";
+
+			engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+			g_buf = "";
+			asIScriptContext* ctx = engine->CreateContext();
+			r = ExecuteString(engine,
+				"int i; float f; string s;\n"
+				"uint scanned = scan('123 3.14 hello', i, f, s);\n"
+				"print('Scanned ' +  scanned + ' result(s): ' + i + ', ' + f + ', ' + s);\n"
+				"assert(i == 123);\n"
+				"float diff = f - 3.14f; assert(diff * diff < 0.00001f);\n"
+				"assert(s == 'hello');"
+			);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			if (g_buf != "Scanned 3 result(s): 123, 3.14, hello\n")
+			{
+				TEST_FAILED;
+				PRINTF("%s\n", g_buf.c_str());
+			}
+			ctx->Release();
+
+			engine->ShutDownAndRelease();
+		}
+
+		// format
+		{
+			asIScriptEngine* engine = asCreateScriptEngine();
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_GENERIC);
+
+			bout.buffer = "";
+
+			engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+			g_buf = "";
+			asIScriptContext* ctx = engine->CreateContext();
+			r = ExecuteString(engine,
+				"string result = format('{} {} {}', 123, true, 'hello');\n"
+				"print(result);"
+			);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			if (g_buf != "123 true hello\n")
+			{
+				TEST_FAILED;
+				PRINTF("%s\n", g_buf.c_str());
+			}
+			ctx->Release();
+
+			engine->ShutDownAndRelease();
+		}
+
+		// Test regexFind
+#if AS_CAN_USE_CPP11
+		{
+			asIScriptEngine* engine = asCreateScriptEngine();
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			bout.buffer = "";
+
+			engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+			asIScriptContext* ctx = engine->CreateContext();
+			r = ExecuteString(engine,
+				"string s = '0Jonsson9';\n"
+				"uint length;\n"
+				"int pos = s.regexFind('[[:alpha:]]+', 0, length);\n"
+				"assert( pos == 1 );\n"
+				"assert( length == 7 );\n", 0, ctx);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			ctx->Release();
+
+			// Test regexFind with utf8 characters. The regex doesn't really understand
+			// the utf8 encoding so each byte is matched individually
+			ctx = engine->CreateContext();
+			r = ExecuteString(engine, 
+				"string s = '0J\\xc3\\xb6nsson9';\n" // \xc3\xb6 is utf-8 for ö
+				"uint length;\n"
+				"int pos = s.regexFind('[[:alpha:]]+[\\x80-\\xff]+[[:alpha:]]+', 0, length);\n"
+				"assert( pos == 1 );\n"
+				"assert( length == 8 );\n", 0, ctx);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			ctx->Release();
+
+			// Test regexFind with utf8 characters. The regex doesn't really understand
+			// the utf8 encoding so each byte is matched individually
+			ctx = engine->CreateContext();
+			r = ExecuteString(engine,
+				"string s = '0J\\xc3\\xb6nsson9';\n" // \xc3\xb6 is utf-8 for ö
+				"uint length;\n"
+				"int pos = s.regexFind('[[:alpha:]\\x80-\\xff]+', 0, length);\n"
+				"assert( pos == 1 );\n"
+				"assert( length == 8 );\n", 0, ctx);
+			if (r != asEXECUTION_FINISHED)
+			{
+				TEST_FAILED;
+				if (r == asEXECUTION_EXCEPTION)
+				{
+					PRINTF("%s\n", GetExceptionInfo(ctx).c_str());
+				}
+			}
+			ctx->Release();
+
+
+			engine->ShutDownAndRelease();
+		}
+#endif
+
+		// Test const string with int value assignment
+		// https://www.gamedev.net/forums/topic/715649-assertion-failure-const-string-asdf-10/5461912/
+		{
+			asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			bout.buffer = "";
+
+			asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("test",
+				"const string ASDF = 10;\n");
+			r = mod->Build();
+			if (r < 0)
+				TEST_FAILED;
+
+			if (bout.buffer != "")
+			{
+				PRINTF("%s", bout.buffer.c_str());
+				TEST_FAILED;
+			}
+
+			std::string *var = (std::string*)mod->GetAddressOfGlobalVar(0);
+			if (var == 0 || *var != "10")
+				TEST_FAILED;
+
+			engine->ShutDownAndRelease();
+		}
+
+		// Test concatenation with constants
+		// https://www.gamedev.net/forums/topic/709682-failed-assertion-due-to-implicit-cast-with-overloaded-functions/
+		{
+			asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+			engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+			RegisterStdString(engine);
+			engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_GENERIC);
+			bout.buffer = "";
+
+			asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("test", 
+				"void test(uint8 x) { print('test 8: ' + x); }\n"
+				"void test(uint16 x) { print('test 16: ' + x); }\n"
+				"void test(uint32 x) { print('test 32: ' + x); }\n"
+				"void test(uint64 x) { print('test 64: ' + x); }\n"
+				"void Main()\n"
+				"{ \n"
+				"	test(uint8(0xFF)); \n"
+				"	test(uint16(0xFFFF)); \n"
+				"	test(uint32(0xFFFFFFFF)); \n"
+				"	test(uint64(0xFFFFFFFFFFFFFFFF)); \n"
+				"}\n");
+			r = mod->Build();
+			if (r < 0)
+				TEST_FAILED;
+
+			if (bout.buffer != "")
+			{
+				PRINTF("%s", bout.buffer.c_str());
+				TEST_FAILED;
+			}
+
+			g_buf = "";
+			r = ExecuteString(engine, "Main()", mod);
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+
+			if (g_buf != "test 8: 255\n"
+						 "test 16: 65535\n"
+						 "test 32: 4294967295\n"
+						 "test 64: 18446744073709551615\n")
+			{
+				PRINTF("%s", g_buf.c_str());
+				TEST_FAILED;
+			}
+
+			engine->ShutDownAndRelease();
+		}
 
 		// Test sending a string literal to a function expecting &out
 		// Problem reported by Jordan Verner

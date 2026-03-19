@@ -32,7 +32,6 @@ bool Test()
 {
 	bool fail = false;
 	CBufferedOutStream bout;
-	COutStream out;
 	int r;
 	asIScriptEngine *engine = 0;
 	asIScriptModule *mod = 0;
@@ -41,7 +40,8 @@ bool Test()
 	// http://www.gamedev.net/topic/658983-opcall-access-violation/
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		RegisterScriptArray(engine, false);
 		RegisterStdString(engine);
 
@@ -62,13 +62,20 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		engine->Release();
 	}
 
 	// opCall for global variable
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
@@ -88,13 +95,20 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		engine->Release();
 	}
 
 	// opCall on property accessor
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
@@ -154,13 +168,20 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		engine->Release();
 	}
 
 	// opCall
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 		RegisterStdString(engine);
@@ -222,13 +243,20 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		engine->Release();
 	}
 
 	// opIndex with multiple values
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 		RegisterStdString(engine);
@@ -264,6 +292,12 @@ bool Test()
 		r = ExecuteString(engine, "E e; assert( e[] == 42 ); \n", mod);
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 
 		engine->Release();
 	}
@@ -342,6 +376,7 @@ bool Test()
 	//
 	{
  		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		bout.buffer = "";
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
@@ -424,9 +459,11 @@ bool Test()
 		{
 			TEST_FAILED;
 		}
-		if( bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int' available.\n" )
+		if( bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int64' available.\n" &&
+			bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int' available.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
 		}
 
 		engine->Release();
@@ -480,6 +517,7 @@ bool Test()
 		if( bout.buffer != "" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
 		}
 
 		r = ExecuteString(engine, "main()", mod);
@@ -578,9 +616,11 @@ bool Test()
 		{
 			TEST_FAILED;
 		}
-		if( bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int' available.\n" )
+		if( bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int64' available.\n" &&
+			bout.buffer != "ExecuteString (1, 38) : Error   : No conversion from 'const Test@&' to 'int' available.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
 		}
 
 		engine->Release();
@@ -771,6 +811,7 @@ bool Test()
 		if( bout.buffer != "" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
 		}
 		
 		r = ExecuteString(engine, "main()", mod);
@@ -791,6 +832,7 @@ bool Test()
 		                   "ExecuteString (1, 61) : Error   : Function 'opPreDec() const' not found\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
 		}
 
 		engine->Release();

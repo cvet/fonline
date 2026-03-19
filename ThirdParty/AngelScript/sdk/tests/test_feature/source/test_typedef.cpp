@@ -99,15 +99,71 @@ static int testTypedef(CBytecodeStream &codeStream, bool save)
 bool Test()
 {
 	int r;
-	CBytecodeStream	stream(__FILE__"1");
+	bool fail = false;
 
-	r = testTypedef(stream, true);
-	if(r >= 0) 
+	// Test typedefs in switch cases
+	// Reported by Ivan K
 	{
-		r = testTypedef(stream, false);
+		asIScriptEngine* engine;
+		CBufferedOutStream bout;
+
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		r = engine->RegisterTypedef("float32", "float");
+		//float A;
+		//r = engine->RegisterGlobalProperty("const float32 A", (void*)&A);
+		r = engine->RegisterTypedef("regular", "int");
+		//int B;
+		//r = engine->RegisterGlobalProperty("const regular B", (void*)&B);
+		r = engine->RegisterTypedef("small", "uint8");
+		//unsigned char C;
+		//r = engine->RegisterGlobalProperty("const small C", (void*)&C);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"const regular B = 0; \n"
+			"const small C = 0; \n"
+			// typedefs for int should work just as ordinary int
+			"void func1() { regular i; switch( i ) { case B: } } \n" 
+			"void func2() { small i; switch( i ) { case C: } } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod->AddScriptSection("test",
+			"const float32 A = 0; \n"
+			// typedefs for float should fail just as for ordinary float
+			"void func3() { float32 f; switch( f ) { case A: } } \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void func3()\n"
+						   "test (2, 35) : Error   : Switch expressions must be integral numbers\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
 	}
 
-	return (r < 0);
+	// Test saving and loading bytecode with typedefs
+	{
+		CBytecodeStream	stream(__FILE__"1");
+
+		r = testTypedef(stream, true);
+		if (r >= 0)
+		{
+			r = testTypedef(stream, false);
+		}
+		
+		if (r < 0)
+			TEST_FAILED;
+	}
+
+	return fail;
 }
 
 } // namespace

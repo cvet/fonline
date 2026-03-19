@@ -1,12 +1,107 @@
 #include "utils.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include "../../../add_on/scriptmath/scriptmathcomplex.h"
+#ifndef __clang__
 #include <malloc.h> // gnuc: memalign
+#else
+#include <stdlib.h>
+#endif
+
+// olc::vX2d - A generic 2D vector type
+// https://github.com/OneLoneCoder/olcPixelGameEngine/blob/master/olcPixelGameEngine.h#L608-L671
+namespace olc
+{
+	template <class T>
+	struct v2d_generic
+	{
+		T x = 0;
+		T y = 0;
+		v2d_generic() : x(0), y(0) {}
+		v2d_generic(T _x, T _y) : x(_x), y(_y) {}
+		v2d_generic(const v2d_generic& v) : x(v.x), y(v.y) {}
+		v2d_generic& operator=(const v2d_generic& v) = default;
+		T mag() const { return T(std::sqrt(x * x + y * y)); }
+		T mag2() const { return x * x + y * y; }
+		v2d_generic  norm() const { T r = 1 / mag(); return v2d_generic(x * r, y * r); }
+		v2d_generic  perp() const { return v2d_generic(-y, x); }
+		v2d_generic  floor() const { return v2d_generic(std::floor(x), std::floor(y)); }
+		v2d_generic  ceil() const { return v2d_generic(std::ceil(x), std::ceil(y)); }
+		v2d_generic  max(const v2d_generic& v) const { return v2d_generic(std::max(x, v.x), std::max(y, v.y)); }
+		v2d_generic  min(const v2d_generic& v) const { return v2d_generic(std::min(x, v.x), std::min(y, v.y)); }
+		v2d_generic  cart() { return { std::cos(y) * x, std::sin(y) * x }; }
+		v2d_generic  polar() { return { mag(), std::atan2(y, x) }; }
+		T dot(const v2d_generic& rhs) const { return this->x * rhs.x + this->y * rhs.y; }
+		T cross(const v2d_generic& rhs) const { return this->x * rhs.y - this->y * rhs.x; }
+		v2d_generic  operator +  (const v2d_generic& rhs) const { return v2d_generic(this->x + rhs.x, this->y + rhs.y); }
+		v2d_generic  operator -  (const v2d_generic& rhs) const { return v2d_generic(this->x - rhs.x, this->y - rhs.y); }
+		v2d_generic  operator *  (const T& rhs)           const { return v2d_generic(this->x * rhs, this->y * rhs); }
+		v2d_generic  operator *  (const v2d_generic& rhs) const { return v2d_generic(this->x * rhs.x, this->y * rhs.y); }
+		v2d_generic  operator /  (const T& rhs)           const { return v2d_generic(this->x / rhs, this->y / rhs); }
+		v2d_generic  operator /  (const v2d_generic& rhs) const { return v2d_generic(this->x / rhs.x, this->y / rhs.y); }
+		v2d_generic& operator += (const v2d_generic& rhs) { this->x += rhs.x; this->y += rhs.y; return *this; }
+		v2d_generic& operator -= (const v2d_generic& rhs) { this->x -= rhs.x; this->y -= rhs.y; return *this; }
+		v2d_generic& operator *= (const T& rhs) { this->x *= rhs; this->y *= rhs; return *this; }
+		v2d_generic& operator /= (const T& rhs) { this->x /= rhs; this->y /= rhs; return *this; }
+		v2d_generic& operator *= (const v2d_generic& rhs) { this->x *= rhs.x; this->y *= rhs.y; return *this; }
+		v2d_generic& operator /= (const v2d_generic& rhs) { this->x /= rhs.x; this->y /= rhs.y; return *this; }
+		v2d_generic  operator +  () const { return { +x, +y }; }
+		v2d_generic  operator -  () const { return { -x, -y }; }
+		bool operator == (const v2d_generic& rhs) const { return (this->x == rhs.x && this->y == rhs.y); }
+		bool operator != (const v2d_generic& rhs) const { return (this->x != rhs.x || this->y != rhs.y); }
+		const std::string str() const { return std::string("(") + std::to_string(this->x) + "," + std::to_string(this->y) + ")"; }
+		friend std::ostream& operator << (std::ostream& os, const v2d_generic& rhs) { os << rhs.str(); return os; }
+		operator v2d_generic<int32_t>() const { return { static_cast<int32_t>(this->x), static_cast<int32_t>(this->y) }; }
+		operator v2d_generic<float>() const { return { static_cast<float>(this->x), static_cast<float>(this->y) }; }
+		operator v2d_generic<double>() const { return { static_cast<double>(this->x), static_cast<double>(this->y) }; }
+	};
+
+	// Note: joshinils has some good suggestions here, but they are complicated to implement at this moment, 
+	// however they will appear in a future version of PGE
+	template<class T> inline v2d_generic<T> operator * (const float& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs * (float)rhs.x), (T)(lhs * (float)rhs.y));
+	}
+	template<class T> inline v2d_generic<T> operator * (const double& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs * (double)rhs.x), (T)(lhs * (double)rhs.y));
+	}
+	template<class T> inline v2d_generic<T> operator * (const int& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs * (int)rhs.x), (T)(lhs * (int)rhs.y));
+	}
+	template<class T> inline v2d_generic<T> operator / (const float& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs / (float)rhs.x), (T)(lhs / (float)rhs.y));
+	}
+	template<class T> inline v2d_generic<T> operator / (const double& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs / (double)rhs.x), (T)(lhs / (double)rhs.y));
+	}
+	template<class T> inline v2d_generic<T> operator / (const int& lhs, const v2d_generic<T>& rhs)
+	{
+		return v2d_generic<T>((T)(lhs / (int)rhs.x), (T)(lhs / (int)rhs.y));
+	}
+
+	// To stop dandistine crying...
+	template<class T, class U> inline bool operator < (const v2d_generic<T>& lhs, const v2d_generic<U>& rhs)
+	{
+		return lhs.y < rhs.y || (lhs.y == rhs.y && lhs.x < rhs.x);
+	}
+	template<class T, class U> inline bool operator > (const v2d_generic<T>& lhs, const v2d_generic<U>& rhs)
+	{
+		return lhs.y > rhs.y || (lhs.y == rhs.y && lhs.x > rhs.x);
+	}
+
+	typedef v2d_generic<int32_t> vi2d;
+	typedef v2d_generic<uint32_t> vu2d;
+	typedef v2d_generic<float> vf2d;
+	typedef v2d_generic<double> vd2d;
+}
 
 namespace TestRegisterType
 {
 
-void DummyFunc(asIScriptGeneric *) {}
+void DummyFunc(asIScriptGeneric*) {}
 
 bool TestHandleType();
 bool TestIrrTypes();
@@ -15,7 +110,7 @@ bool TestAlignedScoped();
 bool TestHelper();
 
 int g_widget;
-int *CreateWidget()
+int* CreateWidget()
 {
 	return &g_widget;
 }
@@ -23,28 +118,28 @@ int *CreateWidget()
 class CVariant
 {
 public:
-	CVariant(asIScriptEngine *engine) { m_engine = engine; m_typeId = 0; m_valueObj = 0; }
-	CVariant(const CVariant &o) { m_engine = o.m_engine; m_typeId = 0; m_valueObj = 0; Set(const_cast<void**>(&o.m_valueObj), o.m_typeId); }
+	CVariant(asIScriptEngine* engine) { m_engine = engine; m_typeId = 0; m_valueObj = 0; }
+	CVariant(const CVariant& o) { m_engine = o.m_engine; m_typeId = 0; m_valueObj = 0; Set(const_cast<void**>(&o.m_valueObj), o.m_typeId); }
 	~CVariant() { Clear(); }
-	CVariant &operator=(const CVariant &o)
+	CVariant& operator=(const CVariant& o)
 	{
 		Set(const_cast<void**>(&o.m_valueObj), o.m_typeId);
 		return *this;
 	}
 
 	// AngelScript: used as var = expr
-	CVariant &opAssign(void *val, int typeId)
+	CVariant& opAssign(void* val, int typeId)
 	{
 		Set(val, typeId);
 		return *this;
 	}
 
 	// AngelScript: used as @var = expr
-	CVariant &opHandleAssign(void *hndl, int typeId)
+	CVariant& opHandleAssign(void* hndl, int typeId)
 	{
-		if( (typeId & asTYPEID_OBJHANDLE) == 0 )
+		if ((typeId & asTYPEID_OBJHANDLE) == 0)
 		{
-			void **tmp = &hndl;
+			void** tmp = &hndl;
 			Set(tmp, typeId | asTYPEID_OBJHANDLE);
 			return *this;
 		}
@@ -54,52 +149,52 @@ public:
 	}
 
 	// AngelScript: used as @obj = cast<obj>(var)
-	void opCast(void **outRef, int outTypeId)
+	void opCast(void** outRef, int outTypeId)
 	{
 		// If we don't hold an object, then just return null
-		if( (m_typeId & asTYPEID_MASK_OBJECT) == 0 )
+		if ((m_typeId & asTYPEID_MASK_OBJECT) == 0)
 		{
 			*outRef = 0;
 			return;
 		}
 
 		// It is expected that the outRef is always a handle
-		assert( outTypeId & asTYPEID_OBJHANDLE );
+		assert(outTypeId & asTYPEID_OBJHANDLE);
 
 		// Compare the type id of the actual object
-		asITypeInfo *wantedType = m_engine->GetTypeInfoById(outTypeId);
-		asITypeInfo *heldType = m_engine->GetTypeInfoById(m_typeId);
+		asITypeInfo* wantedType = m_engine->GetTypeInfoById(outTypeId);
+		asITypeInfo* heldType = m_engine->GetTypeInfoById(m_typeId);
 
 		*outRef = 0;
 
 		// Attempt a dynamic cast of the stored handle to the requested handle type
-		m_engine->RefCastObject(m_valueObj, heldType, m_engine->GetTypeInfoById(outTypeId), outRef);
+		m_engine->RefCastObject(m_valueObj, heldType, wantedType, outRef);
 	}
 
 	// AngelScript: used as int(var)
-	void opConv(void *outRef, int outTypeId)
+	void opConv(void* outRef, int outTypeId)
 	{
 		// Return the value
-		if( outTypeId & asTYPEID_OBJHANDLE )
+		if (outTypeId & asTYPEID_OBJHANDLE)
 		{
 			// A handle can be retrieved if the stored type is a handle of same or compatible type
 			// or if the stored type is an object that implements the interface that the handle refer to.
-			if( (m_typeId & asTYPEID_MASK_OBJECT) )
+			if ((m_typeId & asTYPEID_MASK_OBJECT))
 			{
 				m_engine->RefCastObject(m_valueObj, m_engine->GetTypeInfoById(m_typeId), m_engine->GetTypeInfoById(outTypeId), (void**)outRef);
 
 				return;
 			}
 		}
-		else if( outTypeId & asTYPEID_MASK_OBJECT )
+		else if (outTypeId & asTYPEID_MASK_OBJECT)
 		{
 			// Verify that the copy can be made
 			bool isCompatible = false;
-			if( m_typeId == outTypeId )
+			if (m_typeId == outTypeId)
 				isCompatible = true;
 
 			// Copy the object into the given reference
-			if( isCompatible )
+			if (isCompatible)
 			{
 				m_engine->AssignScriptObject(outRef, m_valueObj, m_engine->GetTypeInfoById(outTypeId));
 
@@ -108,7 +203,7 @@ public:
 		}
 		else
 		{
-			if( m_typeId == outTypeId )
+			if (m_typeId == outTypeId)
 			{
 				int size = m_engine->GetSizeOfPrimitiveType(outTypeId);
 				memcpy(outRef, &m_valueInt, size);
@@ -116,12 +211,12 @@ public:
 			}
 
 			// We know all numbers are stored as either int64 or double, since we register overloaded functions for those
-			if( m_typeId == asTYPEID_INT64 && outTypeId == asTYPEID_DOUBLE )
+			if (m_typeId == asTYPEID_INT64 && outTypeId == asTYPEID_DOUBLE)
 			{
 				*(double*)outRef = double(m_valueInt);
 				return;
 			}
-			else if( m_typeId == asTYPEID_DOUBLE && outTypeId == asTYPEID_INT64 )
+			else if (m_typeId == asTYPEID_DOUBLE && outTypeId == asTYPEID_INT64)
 			{
 				*(asINT64*)outRef = asINT64(m_valueFlt);
 				return;
@@ -129,17 +224,17 @@ public:
 		}
 	}
 
-	void Set(void *value, int typeId)
+	void Set(void* value, int typeId)
 	{
 		Clear();
 		m_typeId = typeId;
-		if( typeId & asTYPEID_OBJHANDLE )
+		if (typeId & asTYPEID_OBJHANDLE)
 		{
 			// We're receiving a reference to the handle, so we need to dereference it
 			m_valueObj = *(void**)value;
 			m_engine->AddRefScriptObject(m_valueObj, m_engine->GetTypeInfoById(typeId));
 		}
-		else if( typeId & asTYPEID_MASK_OBJECT )
+		else if (typeId & asTYPEID_MASK_OBJECT)
 		{
 			// Create a copy of the object
 			m_valueObj = m_engine->CreateScriptObjectCopy(value, m_engine->GetTypeInfoById(typeId));
@@ -156,7 +251,7 @@ public:
 	void Clear()
 	{
 		// If it is a handle or a ref counted object, call release
-		if( m_typeId & asTYPEID_MASK_OBJECT )
+		if (m_typeId & asTYPEID_MASK_OBJECT)
 		{
 			// Let the engine release the object
 			m_engine->ReleaseScriptObject(m_valueObj, m_engine->GetTypeInfoById(m_typeId));
@@ -166,44 +261,44 @@ public:
 		m_valueObj = 0;
 	}
 
-	static void Register(asIScriptEngine *engine)
+	static void Register(asIScriptEngine* engine)
 	{
 		int r;
-		r = engine->RegisterObjectType("var", sizeof(CVariant), asOBJ_VALUE | asOBJ_ASHANDLE | asOBJ_APP_CLASS_CDAK); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("var", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(CVariant::Construct), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("var", asBEHAVE_CONSTRUCT, "void f(const var &in)", asFUNCTION(CVariant::CopyConstruct), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("var", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(CVariant::Destruct), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+		r = engine->RegisterObjectType("var", sizeof(CVariant), asOBJ_VALUE | asOBJ_ASHANDLE | asOBJ_APP_CLASS_CDAK); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("var", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(CVariant::Construct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("var", asBEHAVE_CONSTRUCT, "void f(const var &in)", asFUNCTION(CVariant::CopyConstruct), asCALL_CDECL_OBJLAST); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("var", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(CVariant::Destruct), asCALL_CDECL_OBJLAST); assert(r >= 0);
 
-		r = engine->RegisterObjectMethod("var", "var &opAssign(const ?&in)", asMETHOD(CVariant, opAssign), asCALL_THISCALL); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("var", "var &opHndlAssign(const ?&in)", asMETHOD(CVariant, opHandleAssign), asCALL_THISCALL); assert( r >= 0 );
+		r = engine->RegisterObjectMethod("var", "var &opAssign(const ?&in)", asMETHOD(CVariant, opAssign), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("var", "var &opHndlAssign(const ?&in)", asMETHOD(CVariant, opHandleAssign), asCALL_THISCALL); assert(r >= 0);
 
-		r = engine->RegisterObjectMethod("var", "void opCast(?&out)", asMETHOD(CVariant, opCast), asCALL_THISCALL); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("var", "void opConv(?&out)", asMETHOD(CVariant, opConv), asCALL_THISCALL); assert( r >= 0 );
+		r = engine->RegisterObjectMethod("var", "void opCast(?&out)", asMETHOD(CVariant, opCast), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("var", "void opConv(?&out)", asMETHOD(CVariant, opConv), asCALL_THISCALL); assert(r >= 0);
 	}
 
-	static void Construct(void *mem)
+	static void Construct(void* mem)
 	{
-		asIScriptContext *ctx = asGetActiveContext();
+		asIScriptContext* ctx = asGetActiveContext();
 		new (mem) CVariant(ctx->GetEngine());
 	}
 
-	static void CopyConstruct(const CVariant &o, void *mem)
+	static void CopyConstruct(const CVariant& o, void* mem)
 	{
 		new (mem) CVariant(o);
 	}
 
-	static void Destruct(CVariant &obj)
+	static void Destruct(CVariant& obj)
 	{
 		obj.~CVariant();
 	}
 
 public:
-	asIScriptEngine *m_engine;
+	asIScriptEngine* m_engine;
 	union
 	{
 		asINT64 m_valueInt;
 		double  m_valueFlt;
-		void   *m_valueObj;
+		void* m_valueObj;
 	};
 	int   m_typeId;
 };
@@ -213,7 +308,7 @@ public:
 typedef struct asBehavior_s
 {
 	asEBehaviours behavior;
-	const char * declaration;
+	const char* declaration;
 	asSFuncPtr funcPointer;
 	asECallConvTypes callConv;
 } asBehavior_t;
@@ -226,6 +321,136 @@ static const asBehavior_t astrace_ObjectBehaviors[] =
 	{ } // this was failing due to missing default constr in asSFuncPtr
 };
 
+// See doxygen ref doc_adv_class_hierarchy
+// The base class
+class base
+{
+public:
+	virtual void aMethod();
+
+	int aProperty;
+};
+
+// The derived class
+class derived : public base
+{
+public:
+	virtual void aNewMethod();
+	int aNewProperty;
+
+	// TODO: If derived type hides members of base type this pattern of registering members for the derived type cannot be used
+//private:
+//	using base::aMethod; // hide the base method of same name
+};
+
+// The code to register the classes
+// This is implemented as a template function, to support multiple inheritance
+template <class T>
+void RegisterBaseMembers(asIScriptEngine* engine, const char* type)
+{
+	int r;
+
+#ifdef AS_MAX_PORTABILITY
+	r = engine->RegisterObjectMethod(type, "void aMethod()", WRAP_MFN(T, aMethod), asCALL_GENERIC); assert(r >= 0);
+#else
+	r = engine->RegisterObjectMethod(type, "void aMethod()", asMETHOD(T, aMethod), asCALL_THISCALL); assert(r >= 0);
+#endif
+
+	r = engine->RegisterObjectProperty(type, "int aProperty", asOFFSET(T, aProperty)); assert(r >= 0);
+}
+
+template <class T>
+void RegisterDerivedMembers(asIScriptEngine* engine, const char* type)
+{
+	int r;
+
+	// Register the inherited members by calling 
+	// the registration of the base members
+	RegisterBaseMembers<T>(engine, type);
+
+	// Now register the new members
+#ifdef AS_MAX_PORTABILITY
+	r = engine->RegisterObjectMethod(type, "void aNewMethod()", WRAP_MFN(T, aNewMethod), asCALL_GENERIC); assert(r >= 0);
+#else
+	r = engine->RegisterObjectMethod(type, "void aNewMethod()", asMETHOD(T, aNewMethod), asCALL_THISCALL); assert(r >= 0);
+#endif
+
+	r = engine->RegisterObjectProperty(type, "int aNewProperty", asOFFSET(T, aNewProperty)); assert(r >= 0);
+}
+
+void RegisterTypes(asIScriptEngine* engine)
+{
+	int r;
+
+	// Register the base type
+	r = engine->RegisterObjectType("base", 0, asOBJ_REF); assert(r >= 0);
+	RegisterBaseMembers<base>(engine, "base");
+
+	// Register the derived type
+	r = engine->RegisterObjectType("derived", 0, asOBJ_REF); assert(r >= 0);
+	RegisterDerivedMembers<derived>(engine, "derived");
+}
+
+template<typename T>
+static void v2d_Constructor_def(void* self)
+{
+	::new(self) olc::v2d_generic<T>();
+}
+
+template<typename T>
+static void v2d_Constructor(int x, int y, void* self)
+{
+	::new(self) olc::v2d_generic<T>(x, y);
+}
+
+template<typename T>
+static void v2d_Constructor_copy(const olc::v2d_generic<T>& other, void* self)
+{
+	::new(self) olc::v2d_generic<T>(other);
+}
+
+// Factory func (registered with asOBJ_CDECL_OBJLAST + auxiliary pointer)
+int* factory_func(int* aux)
+{
+	(*aux)++; // The auxiliary pointer can be to a singleton allocated by the application
+	return new int();
+}
+
+// Factory copy func (registered with asOBJ_CDECL_OBJLAST + auxiliary pointer)
+int* factory_copy_func(int* obj, int* aux)
+{
+	(*aux)++;
+	return new int();
+}
+
+// Factory copy func (registered with asOBJ_CDECL_OBJFIRST + auxiliary pointer)
+int* factory_copy_func2(int* aux, int* obj)
+{
+	(*aux)++;
+	return new int();
+}
+
+void release_func(int* obj)
+{
+	delete obj;
+}
+
+struct EnemyTypeDetails {
+	//...blah...
+	int a;
+};
+
+class Enemy {
+public:
+	Enemy(const EnemyTypeDetails& type) : typeRef(type), typePtr(&type) {  }
+
+	int a;
+	const EnemyTypeDetails& typeRef; //What I want, but can't register
+	const EnemyTypeDetails* typePtr;
+};
+
+Enemy e(EnemyTypeDetails());
+
 bool Test()
 {
 	bool fail = TestHelper();
@@ -236,6 +461,321 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
  	asIScriptEngine *engine;
+
+	// Test class with constructor where all args have default values
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("Material", sizeof(uint32_t),
+			asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("Material",
+			asBEHAVE_CONSTRUCT, "void f(int detail = 0, int border = 0, int light = 0)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		r = engine->RegisterObjectType("Style", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("Style", asBEHAVE_FACTORY, "Style@ f(Material = Material())", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() { \n"
+			"  Style s(); \n" // call to the Style factory with default arg, which in turn calls Material constructor with default arg
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+
+	// Test placement constructor in global variable for registered type
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
+
+		r = engine->RegisterObjectType("Foo", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("Foo", asBEHAVE_FACTORY, "Foo @f(int a, int b)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"Foo s = Foo(1,2); \n" // Should be allowed. There should not be a copy of the object in this case
+			"Foo t(1,2); \n"); // Syntax sugar. Same effect as previous declaration
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test asOFFSET for an object member property as reference
+	// https://www.gamedev.net/forums/topic/717443-registerobjectmethod-crash-registering-a-const-reference/5466144/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("EnemyTypeDetails", sizeof(EnemyTypeDetails), asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
+		r = engine->RegisterObjectType("Enemy", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+	
+		// asOFFSET cannot be used to determine the offset of the member. This is because when the
+		// address of the member is taken C++ actually returns the address that it is referring to
+		// Standard offsetof and __builtin_offsetof also do not work
+		//int off1 = offsetof(Enemy, typeRef);
+		//int off2 = __builtin_offsetof(Enemy, typeRef);
+
+/* 
+		Disabled this test because the asOFFSET macro causes an exception when generating the
+		project with CMake for MSVC, even though I don't see any difference in the project settings. 
+		It also doesn't work on GNUC. It is anyway an invalid use of asOFFSET as it is not possible 
+		to get the offset for members declared as references in C++.
+
+		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typeRef", asOFFSET(Enemy, typeRef));
+*/
+		// Simulating a very large offset that would be calculated by asOFFSET for members as references (since it would try to compare with the actual referenced address)
+		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typeRef", 124353256);
+		if (r != asINVALID_ARG)
+			TEST_FAILED;
+		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typePtr", asOFFSET(Enemy, typePtr)); assert(r >= 0);
+
+		if (bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'Enemy' and 'const EnemyTypeDetails &typeRef' (Code: asINVALID_ARG, -5)\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test factory functions with auxiliary pointers using asOBJ_CDECL_OBJLAST and asOBJ_CDECL_OBJFIRST
+	// https://www.gamedev.net/forums/topic/711801-why-are-the-ascall_cdecl_objlastfirst-calling-conventions-only-supported-in-methods/5445516/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		int aux = 0;
+		engine->RegisterObjectType("boo", 0, asOBJ_REF | asOBJ_SCOPED);
+		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJLAST with an auxiliary object that will be passed to the factory function
+		engine->RegisterObjectBehaviour("boo", asBEHAVE_FACTORY, "boo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJLAST, &aux);
+		engine->RegisterObjectBehaviour("boo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
+
+		engine->RegisterObjectType("foo", 0, asOBJ_REF | asOBJ_SCOPED);
+		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJFIRST with an auxiliary object that will be passed to the factory function
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJFIRST, &aux);
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
+
+
+		r = ExecuteString(engine, "boo a; boo b; foo c;");
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		if (aux != 3)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test factory functions with auxiliary pointers using asOBJ_CDECL_OBJLAST and asOBJ_CDECL_OBJFIRST
+	// https://www.gamedev.net/forums/topic/717287-auxiliary-object-not-provided-when-using-type-in-template-array/5465594/
+SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		int aux = 0;
+		engine->RegisterObjectType("boo", 0, asOBJ_REF | asOBJ_SCOPED);
+		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJLAST with an auxiliary object that will be passed to the factory function
+		engine->RegisterObjectBehaviour("boo", asBEHAVE_FACTORY, "boo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJLAST, &aux);
+		engine->RegisterObjectBehaviour("boo", asBEHAVE_FACTORY, "boo @f(const boo &in)", asFUNCTION(factory_copy_func), asCALL_CDECL_OBJLAST, &aux);
+		engine->RegisterObjectBehaviour("boo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
+
+		engine->RegisterObjectType("foo", 0, asOBJ_REF | asOBJ_SCOPED);
+		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJFIRST with an auxiliary object that will be passed to the factory function
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJFIRST, &aux);
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f(const foo &in)", asFUNCTION(factory_copy_func2), asCALL_CDECL_OBJFIRST, &aux);
+		engine->RegisterObjectBehaviour("foo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
+
+		void *boo = engine->CreateScriptObject(engine->GetTypeInfoByName("boo"));
+		void* boo2 = engine->CreateScriptObjectCopy(boo, engine->GetTypeInfoByName("boo"));
+		release_func((int*)boo);
+		release_func((int*)boo2);
+
+		void* foo = engine->CreateScriptObject(engine->GetTypeInfoByName("foo"));
+		void* foo2 = engine->CreateScriptObjectCopy(foo, engine->GetTypeInfoByName("foo"));
+		release_func((int*)foo);
+		release_func((int*)foo2);
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		if (aux != 4)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+
+	// Test with incorrect opImplCast signature
+	// Reported by Patrick Jeeves
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("base", 0, asOBJ_REF | asOBJ_NOCOUNT);
+
+		engine->RegisterObjectType("test", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectBehaviour("test", asBEHAVE_FACTORY, "test @f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("test", "base @opImplCast(int)", asFUNCTION(0), asCALL_GENERIC);
+
+		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "void func() { test @t; base @b = t; }");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void func()\n"
+						   "test (1, 34) : Error   : Can't implicitly convert from 'test@&' to 'base@&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test registering olc::vec2d
+	// https://www.gamedev.net/forums/topic/712002-registering-a-template-struct/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		r = engine->RegisterObjectType("vi2d", sizeof(olc::vi2d), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<olc::vi2d>());
+#ifndef AS_MAX_PORTABILITY
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f()", asFUNCTIONPR(v2d_Constructor_def<int>, (void*), void), asCALL_CDECL_OBJLAST);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(int, int)", asFUNCTIONPR(v2d_Constructor<int>, (int, int, void*), void), asCALL_CDECL_OBJLAST);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(const vi2d &in)", asFUNCTIONPR(v2d_Constructor_copy<int>, (const olc::v2d_generic<int>&, void*), void), asCALL_CDECL_OBJLAST);
+#else
+		// Alternative 1
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f()", WRAP_OBJ_LAST_PR(v2d_Constructor_def<int>, (void*), void), asCALL_GENERIC);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(int, int)", WRAP_OBJ_LAST_PR(v2d_Constructor<int>, (int, int, void*), void), asCALL_GENERIC);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(const vi2d &in)", WRAP_OBJ_LAST_PR(v2d_Constructor_copy<int>, (const olc::v2d_generic<int>&, void*), void), asCALL_GENERIC);
+/*		// Alternative 2
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f()", WRAP_CON(olc::vi2d, ()), asCALL_GENERIC);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(int, int)", WRAP_CON(olc::vi2d, (int, int)), asCALL_GENERIC);
+		r = engine->RegisterObjectBehaviour("vi2d", asBEHAVE_CONSTRUCT, "void f(const vi2d &in)", WRAP_CON(olc::vi2d, (const olc::vi2d&)), asCALL_GENERIC);
+*/
+#endif
+
+		r = engine->RegisterObjectProperty("vi2d", "int x", asOFFSET(olc::vi2d, x));
+		r = engine->RegisterObjectProperty("vi2d", "int y", asOFFSET(olc::vi2d, y));
+
+		r = ExecuteString(engine, "vi2d v(1, 2); vi2d w(v); assert( w.x == 1 && w.y == 2 );");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test WRAP_MFN_PR on method without overload in derived class
+	// https://www.gamedev.net/forums/topic/708971-class-members-unregistering/5436764/
+#if defined(__GNUC__) || defined(__clang__)
+	PRINTF("Skipping test for WRAP_MFN_PR on GNUC and clang because it doesn't work\n");
+#else
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		struct Bas
+		{
+			void X() {}
+		};
+
+		struct Ch : public Bas
+		{
+		};
+
+		r = engine->RegisterObjectType("Bas", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+		r = engine->RegisterObjectMethod("Bas", "void X()", WRAP_MFN_PR(Bas, X, (), void), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectType("Ch", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
+		r = engine->RegisterObjectMethod("Ch", "void X()", WRAP_MFN_PR(Ch, X, (), void), asCALL_GENERIC); assert(r >= 0); // WRAP_MFN_PR fails to compile on gnuc
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+#endif
+
+	// Test registering class hierarchies
+	// See doxygen ref doc_adv_class_hierarchy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterTypes(engine);
+
+		asITypeInfo *type = engine->GetTypeInfoByName("derived");
+		if (type == 0)
+			TEST_FAILED;
+		if (type->GetMethodByName("aMethod") == 0)
+			TEST_FAILED;
+		if (type->GetMethodByName("aNewMethod") == 0)
+			TEST_FAILED;
+		if (std::string(type->GetPropertyDeclaration(0)) != "int aProperty")
+			TEST_FAILED;
+		if (std::string(type->GetPropertyDeclaration(1)) != "int aNewProperty")
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Using a registered non-pod value type without default constructor
 	// Reported by Phong Ba through e-mail on March 23rd, 2016
@@ -322,7 +862,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 		asIScriptFunction *func = mod->GetFunctionByName("func");
-		asBYTE bc[] = {asBC_SUSPEND, asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_RDSPtr, asBC_COPY, asBC_PopPtr, 
+		asBYTE bc[] = {asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_RDSPtr, asBC_COPY, asBC_PopPtr,
 					   asBC_SUSPEND, asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_COPY, asBC_PopPtr, 
 					   asBC_SUSPEND, asBC_RET};
 		if( !ValidateByteCode(func, bc) )
@@ -486,6 +1026,12 @@ bool Test()
 		engine->RegisterObjectType("rect", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		engine->RegisterObjectBehaviour("rect", asBEHAVE_FACTORY, "rect @f()", asFUNCTION(0), asCALL_GENERIC);
 		engine->RegisterObjectBehaviour("rect", asBEHAVE_LIST_FACTORY, "rect @f(int&in) {repeat {repeat_same int}}", asFUNCTION(0), asCALL_GENERIC);
+
+		// Test that it is possible to find the factory function even without knowing the name of it
+		asITypeInfo* type = engine->GetTypeInfoByDecl("rect");
+		asIScriptFunction *func = type->GetFactoryByDecl("rect @blah()");
+		if (func == 0)
+			TEST_FAILED;
 
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
@@ -1037,9 +1583,7 @@ bool Test()
 			TEST_FAILED;
 		if (bout.buffer != "script (1, 1) : Info    : Compiling ref func(ref)\n"
 			"script (1, 1) : Error   : Return type can't be 'ref'\n"
-			"script (1, 1) : Error   : Parameter type can't be 'ref', because the type cannot be instantiated.\n"
-			"script (1, 23) : Error   : Data type can't be 'ref'\n"
-			"script (1, 34) : Error   : Data type can't be 'ref'\n")
+			"script (1, 1) : Error   : Parameter type can't be 'ref', because the type cannot be instantiated.\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1090,7 +1634,6 @@ bool Test()
 		if (r >= 0)
 			TEST_FAILED;
 		if (bout.buffer != "ExecuteString (1, 5) : Error   : Object handle is not supported for this type\n"
-			"ExecuteString (1, 6) : Error   : Data type can't be 'ref'\n"
 			"System function (1, 4) : Error   : Object handle is not supported for this type\n"
 			" (0, 0) : Error   : Failed in call to function 'RegisterGlobalFunction' with 'ref@ func()' (Code: asINVALID_DECLARATION, -10)\n")
 		{
@@ -1286,7 +1829,7 @@ bool TestRefScoped()
 	if( sizeof(void*) == 4 )
 	{
 		if( bout.buffer != "ExecuteString (1, 8) : Error   : Object handle is not supported for this type\n"
-						   "ExecuteString (1, 13) : Error   : Can't implicitly convert from '<null handle>' to 'scoped&'.\n" )
+						   "ExecuteString (1, 13) : Error   : Can't implicitly convert from '<null handle>' to 'int'.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1295,7 +1838,7 @@ bool TestRefScoped()
 	else
 	{
 		if( bout.buffer != "ExecuteString (1, 8) : Error   : Object handle is not supported for this type\n"
-						   "ExecuteString (1, 13) : Error   : Can't implicitly convert from '<null handle>' to 'scoped&'.\n" )
+						   "ExecuteString (1, 13) : Error   : Can't implicitly convert from '<null handle>' to 'int'.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2124,8 +2667,11 @@ __attribute__((aligned(16)))
 #endif
 ;
 
-#if !defined(_WIN32) && (defined(__psp2__) || defined(__CELLOS_LV2__) || defined(__GNUC__))
+#if !defined(_WIN32) && (defined(__psp2__) || defined(__CELLOS_LV2__) || defined(__GNUC__)) && !defined(__clang__)
 	#define _aligned_malloc(s, a) memalign(a, s)
+	#define _aligned_free free
+#elif !defined(_WIN32) && defined(__clang__)
+	#define _aligned_malloc(s, a) aligned_alloc(s, a)
 	#define _aligned_free free
 #endif
 
@@ -2184,6 +2730,7 @@ bool TestAlignedScoped()
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
 			"vec g_pos = vec(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
+			"vec g_pos2(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
 			"void loop() \n"
 			"{ \n"
 			"  vec l_pos = vec(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
@@ -2193,6 +2740,10 @@ bool TestAlignedScoped()
 		// TODO: runtime optimize: The bytecode produced is not optimal. It should use the copy constructor to copy the global variable to a local variable
 		r = mod->Build();
 		if( r < 0 )
+			TEST_FAILED;
+
+		vec* g_pos = reinterpret_cast<vec*>(mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByName("g_pos")));
+		if (g_pos == 0 || (g_pos->x < -75 || g_pos->x > -74))
 			TEST_FAILED;
 
 		r = ExecuteString(engine, "loop()", mod);

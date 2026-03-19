@@ -1,9 +1,8 @@
 #include "utils.h"
+#include <sstream>
 using std::string;
 
 static const char * const TESTNAME = "TestGlobalVar";
-static const char *script1 = "float global = func() * g_f * 2.0f;";
-static const char *script2 = "float global = 1.0f;";
 
 static void func(asIScriptGeneric *gen)
 {
@@ -12,63 +11,6 @@ static void func(asIScriptGeneric *gen)
 
 static float cnst = 2.0f;
 static CScriptString *g_str = 0;
-
-static const char *script3 =
-"float f = 2;                 \n"
-"string str = 'test';         \n"
-"void TestGlobalVar()         \n"
-"{                            \n"
-"  float a = f + g_f;         \n"
-"  string s = str + g_str;    \n"
-"  g_f = a;                   \n"
-"  f = a;                     \n"
-"  g_str = s;                 \n"
-"  str = s;                   \n"
-"}                            \n";
-
-static const char *script4 =
-"const double gca=12;   \n"
-"const double gcb=5;    \n"
-"const double gcc=35.2; \n"
-"const double gcd=4;    \n"
-"double a=12;   \n"
-"double b=5;    \n"
-"double c=35.2; \n"
-"double d=4;    \n"
-"void test()          \n"
-"{                    \n"
-"  print(gca+\"\\n\");  \n"
-"  print(gcb+\"\\n\");  \n"
-"  print(gcc+\"\\n\");  \n"
-"  print(gcd+\"\\n\");  \n"
-"  print(a+\"\\n\");  \n"
-"  print(b+\"\\n\");  \n"
-"  print(c+\"\\n\");  \n"
-"  print(d+\"\\n\");  \n"
-"const double lca=12;   \n"
-"const double lcb=5;    \n"
-"const double lcc=35.2; \n"
-"const double lcd=4;    \n"
-"double la=12;   \n"
-"double lb=5;    \n"
-"double lc=35.2; \n"
-"double ld=4;    \n"
-"  print(lca+\"\\n\");  \n"
-"  print(lcb+\"\\n\");  \n"
-"  print(lcc+\"\\n\");  \n"
-"  print(lcd+\"\\n\");  \n"
-"  print(la+\"\\n\");  \n"
-"  print(lb+\"\\n\");  \n"
-"  print(lc+\"\\n\");  \n"
-"  print(ld+\"\\n\");  \n"
-"}                    \n";
-
-static const char *script5 =
-"uint OFLAG_BSP = uint(1024);";
-
-static const char *script6 = 
-"string @handle = @object; \n"
-"string  object = \"t\";   \n";
 
 void print(asIScriptGeneric *gen)
 {
@@ -87,8 +29,43 @@ bool TestGlobalVar()
 {
 	bool fail = false;
 	asIScriptEngine *engine;
+	asIScriptModule* mod;
 	COutStream out;
 	int r;
+
+	// Test huge amount of global variables
+	// https://www.gamedev.net/forums/topic/711782-signed-stack-offset-causes-failed-assertion-when-compiling-global-variables/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		// Turn off debug output, compiling this takes forever when debug output is on
+		engine->SetEngineProperty(asEP_NO_DEBUG_OUTPUT, true);
+
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+
+		std::stringstream script;
+		for (int n = 0; n < 100000; n++)
+			script << "int g_" << n << " = " << n << ";\n";
+		script << "array<int> g_arr = {42};\n";
+
+		mod->AddScriptSection("test", script.str().c_str());
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		int *v = (int*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByName("g_99999"));
+		if (*v != 99999)
+			TEST_FAILED;
+
+		CScriptArray* arr = (CScriptArray*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByName("g_arr"));
+		if (*(int*)arr->At(0) != 42)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test removing a global variable from a module before discarding the module
 	{
@@ -96,7 +73,7 @@ bool TestGlobalVar()
 
 		RegisterScriptArray(engine, false);
 
-		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test", "array<int> a(100000); \n");
 		r = mod->Build();
 		if (r < 0)
@@ -109,130 +86,189 @@ bool TestGlobalVar()
 		engine->ShutDownAndRelease();
 	}
 
-	g_str = new CScriptString("test");
-
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RegisterScriptString_Generic(engine);
-
-	engine->RegisterGlobalFunction("float func()", asFUNCTION(func), asCALL_GENERIC);
-	engine->RegisterGlobalProperty("float g_f", &cnst);
-	engine->RegisterGlobalProperty("string g_str", g_str);
-	engine->RegisterGlobalFunction("void print(string &in)", asFUNCTION(print), asCALL_GENERIC);
-
-	asIScriptModule *mod = engine->GetModule("a", asGM_ALWAYS_CREATE);
-
-	mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
-	if( mod->Build() < 0 )
+	// Test registered global properties
 	{
-		PRINTF("%s: build failed\n", TESTNAME);
-		TEST_FAILED;
+		g_str = new CScriptString("test");
+
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterScriptString_Generic(engine);
+
+		engine->RegisterGlobalFunction("float func()", asFUNCTION(func), asCALL_GENERIC);
+		engine->RegisterGlobalProperty("float g_f", &cnst);
+		engine->RegisterGlobalProperty("string g_str", g_str);
+		engine->RegisterGlobalFunction("void print(string &in)", asFUNCTION(print), asCALL_GENERIC);
+
+		mod = engine->GetModule("a", asGM_ALWAYS_CREATE);
+
+		mod->AddScriptSection(TESTNAME, "float global = func() * g_f * 2.0f;");
+		if (mod->Build() < 0)
+		{
+			PRINTF("%s: build failed\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		mod->AddScriptSection("script", "float global = 1.0f;");
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		if (mod->Build() < 0)
+		{
+			PRINTF("%s: build failed\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		mod->AddScriptSection("script", 
+			"float f = 2;                 \n"
+			"string str = 'test';         \n"
+			"void TestGlobalVar()         \n"
+			"{                            \n"
+			"  float a = f + g_f;         \n"
+			"  string s = str + g_str;    \n"
+			"  g_f = a;                   \n"
+			"  f = a;                     \n"
+			"  g_str = s;                 \n"
+			"  str = s;                   \n"
+			"}                            \n");
+		if (mod->Build() < 0)
+		{
+			PRINTF("%s: build failed\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		ExecuteString(engine, "TestGlobalVar()", mod);
+
+		float* f = (float*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("float f"));
+		string* str = (string*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("string str"));
+
+		float fv = *f; UNUSED_VAR(fv);
+		string strv = *str;
+
+		mod->ResetGlobalVars();
+
+		f = (float*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("float f"));
+		str = (string*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("string str"));
+
+		if (!CompareDouble(*f, 2) || *str != "test")
+		{
+			PRINTF("%s: Failed to reset the module\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		// Use another module so that we can test that the variable id is correct even for multiple modules
+		mod = engine->GetModule("b", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script", 
+			"const double gca=12;   \n"
+			"const double gcb=5;    \n"
+			"const double gcc=35.2; \n"
+			"const double gcd=4;    \n"
+			"double a=12;   \n"
+			"double b=5;    \n"
+			"double c=35.2; \n"
+			"double d=4;    \n"
+			"void test()          \n"
+			"{                    \n"
+			"  print(gca+\"\\n\");  \n"
+			"  print(gcb+\"\\n\");  \n"
+			"  print(gcc+\"\\n\");  \n"
+			"  print(gcd+\"\\n\");  \n"
+			"  print(a+\"\\n\");  \n"
+			"  print(b+\"\\n\");  \n"
+			"  print(c+\"\\n\");  \n"
+			"  print(d+\"\\n\");  \n"
+			"const double lca=12;   \n"
+			"const double lcb=5;    \n"
+			"const double lcc=35.2; \n"
+			"const double lcd=4;    \n"
+			"double la=12;   \n"
+			"double lb=5;    \n"
+			"double lc=35.2; \n"
+			"double ld=4;    \n"
+			"  print(lca+\"\\n\");  \n"
+			"  print(lcb+\"\\n\");  \n"
+			"  print(lcc+\"\\n\");  \n"
+			"  print(lcd+\"\\n\");  \n"
+			"  print(la+\"\\n\");  \n"
+			"  print(lb+\"\\n\");  \n"
+			"  print(lc+\"\\n\");  \n"
+			"  print(ld+\"\\n\");  \n"
+			"}                    \n");
+		if (mod->Build() < 0)
+		{
+			PRINTF("%s: build failed\n", TESTNAME);
+			TEST_FAILED;
+		}
+
+		int c = engine->GetModule("b")->GetGlobalVarCount();
+		if (c != 8) TEST_FAILED;
+		double d;
+		d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(0);
+		if (!CompareDouble(d, 12)) TEST_FAILED;
+		d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(engine->GetModule("b")->GetGlobalVarIndexByName("gcb"));
+		if (!CompareDouble(d, 5)) TEST_FAILED;
+		d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(engine->GetModule("b")->GetGlobalVarIndexByDecl("const double gcc"));
+		if (!CompareDouble(d, 35.2)) TEST_FAILED;
+		d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(3);
+		if (!CompareDouble(d, 4)) TEST_FAILED;
+
+		r = ExecuteString(engine, "test()", engine->GetModule("b"));
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->Release();
 	}
-
-	mod->AddScriptSection("script", script2, strlen(script2), 0);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	if( mod->Build() < 0 )
-	{
-		PRINTF("%s: build failed\n", TESTNAME);
-		TEST_FAILED;
-	}
-
-	mod->AddScriptSection("script", script3, strlen(script3), 0);
-	if( mod->Build() < 0 )
-	{
-		PRINTF("%s: build failed\n", TESTNAME);
-		TEST_FAILED;
-	}
-
-	ExecuteString(engine, "TestGlobalVar()", mod);
-
-	float *f = (float*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("float f"));
-	string *str = (string*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("string str"));
-
-	float fv = *f; UNUSED_VAR(fv);
-	string strv = *str;
-
-	mod->ResetGlobalVars();
-
-	f = (float*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("float f"));
-	str = (string*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByDecl("string str"));
-
-	if( !CompareDouble(*f, 2) || *str != "test" )
-	{
-		PRINTF("%s: Failed to reset the module\n", TESTNAME);
-		TEST_FAILED;
-	}
-
-	// Use another module so that we can test that the variable id is correct even for multiple modules
-	mod = engine->GetModule("b", asGM_ALWAYS_CREATE);
-	mod->AddScriptSection("script", script4);
-	if( mod->Build() < 0 )
-	{
-		PRINTF("%s: build failed\n", TESTNAME);
-		TEST_FAILED;
-	}
-
-	int c = engine->GetModule("b")->GetGlobalVarCount();
-	if( c != 8 ) TEST_FAILED;
-	double d;
-	d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(0); 
-	if( !CompareDouble(d, 12) ) TEST_FAILED;
-	d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(engine->GetModule("b")->GetGlobalVarIndexByName("gcb")); 
-	if( !CompareDouble(d, 5) ) TEST_FAILED;
-	d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(engine->GetModule("b")->GetGlobalVarIndexByDecl("const double gcc")); 
-	if( !CompareDouble(d, 35.2) ) TEST_FAILED;
-	d = *(double*)engine->GetModule("b")->GetAddressOfGlobalVar(3); 
-	if( !CompareDouble(d, 4) ) TEST_FAILED;
-	
-	ExecuteString(engine, "test()", engine->GetModule("b"));
-
-	engine->Release();
 
 	//--------------------
-	CScriptArray *gPacketData = 0;
-	unsigned int gPacketLength = 0;
+	{
+		CScriptArray* gPacketData = 0;
+		unsigned int gPacketLength = 0;
 
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RegisterScriptArray(engine, true);
-	r = engine->RegisterGlobalProperty("uint gPacketLength", &gPacketLength); assert( r >= 0 );
-	r = engine->RegisterGlobalProperty("uint8[] @gPacketData", &gPacketData); assert( r >= 0 );
-	engine->Release();
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterScriptArray(engine, true);
+		r = engine->RegisterGlobalProperty("uint gPacketLength", &gPacketLength); assert(r >= 0);
+		r = engine->RegisterGlobalProperty("uint8[] @gPacketData", &gPacketData); assert(r >= 0);
+		engine->Release();
 
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RegisterScriptArray(engine, true);
-	r = engine->RegisterGlobalProperty("uint8[] @gPacketData", &gPacketData); assert( r >= 0 );
-	r = engine->RegisterGlobalProperty("uint gPacketLength", &gPacketLength); assert( r >= 0 );
-	engine->Release();
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterScriptArray(engine, true);
+		r = engine->RegisterGlobalProperty("uint8[] @gPacketData", &gPacketData); assert(r >= 0);
+		r = engine->RegisterGlobalProperty("uint gPacketLength", &gPacketLength); assert(r >= 0);
+		engine->Release();
+	}
 
 	//-----------------------
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection("script", script5);
-	r = mod->Build(); 
-	if( r < 0 )
-		TEST_FAILED;
-	engine->Release();
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script", "uint OFLAG_BSP = uint(1024);");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		engine->Release();
+	}
 
 	//--------------------------
 	// Make sure GetGlobalVarPointer is able to handle objects and pointers correctly
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RegisterScriptString(engine);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection("script", script6);
-	r = mod->Build();
-	if( r < 0 )
-		TEST_FAILED;
-	else
 	{
-		CScriptString *object = (CScriptString*)engine->GetModule(0)->GetAddressOfGlobalVar(engine->GetModule(0)->GetGlobalVarIndexByName("object"));
-		CScriptString **handle = (CScriptString**)engine->GetModule(0)->GetAddressOfGlobalVar(engine->GetModule(0)->GetGlobalVarIndexByName("handle"));
-		if( *handle != object )
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterScriptString(engine);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script", 
+			"string @handle = @object; \n"
+			"string  object = \"t\";   \n");
+		r = mod->Build();
+		if (r < 0)
 			TEST_FAILED;
-		if( object->buffer != "t" )
-			TEST_FAILED;
+		else
+		{
+			CScriptString* object = (CScriptString*)engine->GetModule(0)->GetAddressOfGlobalVar(engine->GetModule(0)->GetGlobalVarIndexByName("object"));
+			CScriptString** handle = (CScriptString**)engine->GetModule(0)->GetAddressOfGlobalVar(engine->GetModule(0)->GetGlobalVarIndexByName("handle"));
+			if (*handle != object)
+				TEST_FAILED;
+			if (object->buffer != "t")
+				TEST_FAILED;
+		}
+		engine->Release();
 	}
-	engine->Release();
 
 	// Test accessing global var in namespace
 	// http://www.gamedev.net/topic/662385-calling-a-method-on-a-script-class-from-c/

@@ -23,6 +23,279 @@ bool Test()
 	asIScriptContext *ctx;
 	asIScriptModule *mod;
 
+	// Test dictionaryValue in global var holding a script object
+	// Reported by li zhuang
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+			class Test {}
+			dictionary dict = {{"", Test()}};
+			dictionaryValue val = Test();
+			)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod->Discard();
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "int dummy;");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test dictionary with class that has conversion constructors for both double and int64
+	// Reported by Sam Tupy
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+class broken {
+    broken() {val = 1;}
+    broken(double d) {val = 2;}
+    broken(int64 i) {val = 3;}
+	broken &opAssign(const broken &in o) {val = 4; return this;}
+	broken &opAssign(double o) {val = 5; return this;}
+	broken &opAssign(int64 o) {val = 6; return this;}
+	int val;
+}
+class single {
+	single() {val = 1;}
+	single(int64 i) {val = 2;}
+	single &opAssign(const single &in o) {val = 3; return this;}
+	single &opAssign(int64 o) {val = 4; return this;}
+	int val;
+}
+void main() {
+    broken b;
+	
+    dictionary().get("", b);
+	assert( b.val == 4 );
+
+	b = broken(dictionary()[""]);
+
+	single s;
+	dictionary().get("", s);
+	assert( s.val == 3 ); 
+}
+)");
+		// There are 3 options for broken. Both double and int64 have the same weight and are less costly than ?&out. 
+		// Due the to ambigous choice the ?&out should take priority even though it is more expensive.
+
+		// There are 2 options for single. int64 and ?&out doesn't have the same weight so int64 is chosen.
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "main()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test adding string to and retrieving from dictionary
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+void test() 
+{
+	dictionary dict;
+	dict['a'] = 'a';
+	dict.set('b', 'b');
+
+	string a, b;
+	dict.get('a', a);
+
+	assert( a == 'a' );
+
+	b = string(dict['b']);
+
+	assert( b == 'b' );
+}
+)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "test()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+
+	// Test modifying the dictionary while doing a foreach
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+void test() 
+{
+	dictionary dict = {{'a',1},{'b',2},{'c',3}};
+	string keys, values;
+	int count = 0;
+	foreach( auto val, auto key : dict )
+	{
+		// if( key == 'b' ) dict.delete(key);  // the order of the keys is compiler dependent, so to make the test persistent we must use count instead   
+		if( count++ == 1 ) dict.delete(key); // this will make the iter loose its anchor, but it must not crash the application
+		values += int(val);
+		keys += key;
+	}
+	
+	assert( values.length() != 3 );
+	assert( keys.length() != 3 );
+}
+)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "test()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test foreach with dictionary
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", R"(
+void test() 
+{
+	dictionary dict = {{'a',1},{'b',2},{'c',3}};
+	array<string> keys;
+	array<int> values;
+	foreach( auto val, auto key : dict )
+	{
+		values.insertLast(int(val));
+		keys.insertLast(key);
+	}
+	
+	values.sortAsc();
+	keys.sortAsc();
+	assert( values == {1,2,3} );
+	assert( keys == {'a','b','c'} );
+}
+)");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "test()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test setting dictionary element with class that doesn't have default constructor, but has a copy constructor taking a handle
 	// https://www.gamedev.net/forums/topic/699620-error-when-assigning-script-object-to-dictionary/
 	{
@@ -30,7 +303,7 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 
-		RegisterStdString(engine); // Register string type as ref type
+		RegisterStdString(engine);
 		RegisterScriptArray(engine, false);
 		RegisterScriptDictionary(engine);
 
@@ -1263,7 +1536,7 @@ bool Test()
 			"} \n"
 			"void main() \n"
 			"{ \n"
-			"  Test test = Test(); \n"
+			"  Test test(); \n"
 			"} \n";
 
 		mod->AddScriptSection("script", script);
