@@ -1525,7 +1525,7 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("array<T>", "void insertAt(int, const array<T>@+)", FO_SCRIPT_FUNC_THIS(ScriptArray_InsertArrAt), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("array<T>", "void insertFirst(const array<T>@+)", FO_SCRIPT_FUNC_THIS(ScriptArray_InsertArrFirst), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("array<T>", "void insertLast(const array<T>@+)", FO_SCRIPT_FUNC_THIS(ScriptArray_InsertArrLast), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("array<T>", "bool equals(const array<T>@+) const", FO_SCRIPT_FUNC_THIS(ScriptArray_Equals), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("array<T>", "bool opEquals(const array<T>@+) const", FO_SCRIPT_FUNC_THIS(ScriptArray_Equals), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterDefaultArrayType("array<T>"));
 }
