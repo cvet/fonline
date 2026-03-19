@@ -365,7 +365,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const bool is_fixed_type = engine->IsFixedType(entity_type);
 
     auto* as_engine = gen->GetEngine();
-    auto* result = CreateScriptArray(as_engine, strex(is_fixed_type ? "array<{}>" : "array<Proto{}>", entity_type).c_str());
+    auto* result = CreateScriptArray(as_engine, is_fixed_type ? strex("array<{}>", entity_type).c_str() : strex("array<Proto{}>", entity_type).c_str());
     result->Reserve(numeric_cast<int32>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {

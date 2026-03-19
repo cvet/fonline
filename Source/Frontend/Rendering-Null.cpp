@@ -247,19 +247,18 @@ public:
             }
 
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
-                auto& main_tex_buf = MainTexBuf.emplace();
+                auto& main_tex_buf = MainTexBuf = MainTexBuffer();
                 const float32* size_data = main_tex != nullptr ? main_tex->SizeData : GetFallbackTextureSizeData();
-                MemCopy(main_tex_buf.MainTexSize, size_data, 4 * sizeof(float32));
+                MemCopy(main_tex_buf->MainTexSize, size_data, 4 * sizeof(float32));
             }
         }
 
         if (_needProjBuf && !ProjBuf.has_value()) {
-            auto& proj_buf = ProjBuf.emplace();
-
-            proj_buf.ProjMatrix[0] = 1.0f;
-            proj_buf.ProjMatrix[5] = 1.0f;
-            proj_buf.ProjMatrix[10] = 1.0f;
-            proj_buf.ProjMatrix[15] = 1.0f;
+            auto& proj_buf = ProjBuf = ProjBuffer();
+            proj_buf->ProjMatrix[0] = 1.0f;
+            proj_buf->ProjMatrix[5] = 1.0f;
+            proj_buf->ProjMatrix[10] = 1.0f;
+            proj_buf->ProjMatrix[15] = 1.0f;
         }
     }
 };
