@@ -67,6 +67,7 @@ struct AngelScriptContextExtendedData
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
     shared_ptr<DebuggerStepState> StepState {};
+    std::exception_ptr Exception {};
 
     static auto Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData* { return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData()); }
 };

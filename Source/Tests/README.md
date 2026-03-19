@@ -16,6 +16,8 @@ This directory contains unit tests for deterministic engine/common functionality
 - `Test_Compressor.cpp` — compression/decompression roundtrips and invalid input handling
 - `Test_Containers.cpp` — container helpers, concepts, formatter/hash checks
 - `Test_DataSerialization.cpp` — binary reader/writer and pointer/bounds behavior
+- `Test_EngineMetadata.cpp` — migration rule registration, chain resolution, and cycle rejection
+- `Test_Rendering.cpp` — null renderer texture/storage validation and effect/draw-buffer smoke checks
 - `Test_ExtendedTypes.cpp` — value types (`ipos`, `isize`, `irect`, float variants)
 - `Test_GenericUtils.cpp` — hashing, random baseline checks, lerp/float helpers
 - `Test_Geometry.cpp` — distance/direction/angle and traversal helpers

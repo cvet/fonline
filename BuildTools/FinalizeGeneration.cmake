@@ -468,6 +468,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     # AngelScript core
     set(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
     set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
+    set(AS_DISABLE_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
     target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     target_compile_definitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
@@ -879,6 +880,8 @@ list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExtendedTypes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
@@ -1007,6 +1010,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     add_dependencies(AppHeadless ${FO_GEN_DEPENDENCIES})
@@ -1018,6 +1022,7 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
@@ -1119,7 +1124,7 @@ if(FO_BUILD_SERVER)
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ServerHeadless")
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib")
+    target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib" "ClientLib")
     WriteBuildHash(${FO_DEV_NAME}_ServerHeadless)
 
     if(FO_WINDOWS)

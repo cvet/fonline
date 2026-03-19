@@ -124,11 +124,24 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
+            else if (const auto section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+                type_name = section_type;
+            }
             else {
                 throw ProtoTextBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!engine.IsValidEntityType(type_name) || !engine.GetEntityType(type_name).HasProtos) {
+            if (engine.IsValidEntityType(type_name)) {
+                if (!engine.GetEntityType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (engine.IsFixedType(type_name)) {
+                if (!engine.GetFixedType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else {
                 throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
             }
 

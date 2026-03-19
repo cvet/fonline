@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -44,25 +44,38 @@
 #define TXT_s_ALREADY_DECLARED                      "'%s' is already declared"
 #define TXT_ABSTRACT_CLASS_s_CANNOT_BE_INSTANTIATED "Abstract class '%s' cannot be instantiated"
 #define TXT_ACCESSING_PRIVATE_PROP_s                "Accessing private property '%s' of parent class"
+#define TXT_ALL_CODE_PATHS_MUST_INIT_MEMBER         "Initialization after return. All code paths must initialize the members"
 #define TXT_ARG_NOT_LVALUE                          "Output argument expression is not assignable"
+#define TXT_ARGUMENT_TYPE_ERROR_i                   "Rejected due to type mismatch at positional parameter %i"
+#define TXT_ARGUMENT_TYPE_ERROR_s                   "Rejected due to type mismatch on parameter '%s'"
 #define TXT_ATTR_s_INFORMED_MULTIPLE_TIMES          "Attribute '%s' informed multiple times"
 #define TXT_AUTO_NOT_ALLOWED                        "Auto is not allowed here"
 
-#define TXT_BOTH_MUST_BE_SAME                     "Both expressions must have the same type"
+#define TXT_BOTH_MUST_BE_SAME                     "Can't find unambiguous implicit conversion to make both expressions have the same type"
 #define TXT_BOTH_CONDITIONS_MUST_CALL_CONSTRUCTOR "Both conditions must call constructor"
-#define TEXT_BASE_DOESNT_HAVE_DEF_CONSTR          "Base class doesn't have default constructor. Make explicit call to base constructor"
+#define TXT_BOTH_CONDITIONS_MUST_INIT_MEMBER_s    "Both conditions must initialize member '%s'"
+#define TXT_BASE_DOESNT_HAVE_DEF_CONSTR           "Base class doesn't have default constructor. Make explicit call to base constructor"
+#define TXT_BASE_DOESNT_HAVE_CPY_CONSTR_OR_DEF_CONSTR  "Base class doesn't have copy constructor or default constructor and assign operator. Make explicit call to base constructor"
 
 #define TXT_CANDIDATES_ARE                         "Candidates are:"
 #define TXT_CANNOT_CALL_CONSTRUCTOR_IN_LOOPS       "Can't call a constructor in loops"
 #define TXT_CANNOT_CALL_CONSTRUCTOR_IN_SWITCH      "Can't call a constructor in switch"
 #define TXT_CANNOT_CALL_CONSTRUCTOR_TWICE          "Can't call a constructor multiple times"
+#define TXT_CANNOT_CREATE_DELEGATE                 "Can't create delegate"
 #define TXT_CANNOT_CREATE_DELEGATE_FOR_NOREF_TYPES "Can't create delegate for types that do not support handles"
+#define TXT_CANNOT_DELETE_NON_AUTO_FUNC            "Cannot flag function that will not be auto generated as deleted"
+#define TXT_CANNOT_DEFINE_FUNC_THAT_IS_DELETED     "Conflict with explicit declaration of function and deleted function"
+#define TXT_CANNOT_FORM_ARRAY_OF_s                 "Can't form arrays of subtype '%s'"
 #define TXT_CANNOT_IMPLEMENT_SELF                  "Can't implement itself, or another interface that implements this interface"
+#define TXT_CANNOT_IMPLICITLY_CALL_EXPLICIT_COPY_CONSTR   "Can't implicitly call explicit copy constructor"
 #define TXT_CANNOT_INHERIT_FROM_s_FINAL            "Can't inherit from class '%s' marked as final"
 #define TXT_CANNOT_INHERIT_FROM_MULTIPLE_CLASSES   "Can't inherit from multiple classes"
 #define TXT_CANNOT_INHERIT_FROM_SELF               "Can't inherit from itself, or another class that inherits from this class"
+#define TXT_CANNOT_INIT_MEMBERS_IN_LOOPS           "Can't initialize the members in loops"
+#define TXT_CANNOT_INIT_MEMBERS_IN_SWITCH          "Can't initialize the members in switch"
 #define TXT_CANNOT_PASS_CLASS_METHOD_AS_ARG        "Can't pass class method as arg directly. Use a delegate object instead"
-#define TXT_CANNOT_RESOLVE_AUTO                     "Unable to resolve auto type"
+#define TXT_CANNOT_RESOLVE_AUTO                    "Unable to resolve auto type"
+#define TXT_CANNOT_ACCESS_NON_STATIC_MEMBER_s      "Cannot access non-static member '%s' like this"
 #define TXT_CANNOT_RETURN_REF_TO_LOCAL             "Can't return reference to local value."
 #define TXT_CANT_CONSTRUCT_s_USE_REF_CAST          "Can't construct handle '%s'. Use ref cast instead"
 #define TXT_CANT_IMPLICITLY_CONVERT_s_TO_s         "Can't implicitly convert from '%s' to '%s'."
@@ -70,21 +83,25 @@
 #define TXT_CHANGE_SIGN                            "Implicit conversion changed sign of value"
 #define TXT_CLASS_CANT_BE_FINAL_AND_ABSTRACT       "A class cannot be both abstract and final"
 #define TXT_COMPILING_s                            "Compiling %s"
+#define TXT_COMPILING_AUTO_s                       "Compiling auto generated %s"
 #define TXT_COMPOUND_ASGN_ON_VALUE_TYPE            "Compound assignments with property accessors on value types are not supported"
 #define TXT_COMPOUND_ASGN_WITH_IDX_PROP            "Compound assignments with indexed property accessors are not supported"
 #define TXT_COMPOUND_ASGN_REQUIRE_GET_SET          "Compound assignments with property accessors require both get and set accessors"
+#define TXT_PROP_ACCESS_s_DOES_NOT_EXPECT_INDEX    "Implemented property accessor '%s' does not expect index argument"
+#define TXT_PROP_ACCESS_s_EXPECTS_INDEX            "Implemented property accessor '%s' expects index argument"
 
 #define TXT_DATA_TYPE_CANT_BE_s                     "Data type can't be '%s'"
 #define TXT_DECL_IN_SWITCH                          "Variables cannot be declared in switch cases, except inside statement blocks"
 #define TXT_DEFAULT_MUST_BE_LAST                    "The default case must be the last one"
 #define TXT_DEF_ARG_MISSING_IN_FUNC_s               "All subsequent parameters after the first default value must have default values in function '%s'"
 #define TXT_DEF_ARG_TYPE_DOESNT_MATCH               "The type of the default argument expression doesn't match the function parameter type"
-#define TXT_DUPLICATE_NAMED_ARG                     "Duplicate named argument"
+#define TXT_DELETED_FUNC_CANT_HAVE_IMPL             "Deleted functions cannot have implementation"
 #define TXT_DERIVED_METHOD_MUST_HAVE_SAME_RETTYPE_s "The method in the derived class must have the same return type as in the base class: '%s'"
 #define TXT_DESTRUCTOR_MAY_NOT_HAVE_PARM            "The destructor must not have any parameters"
-#define TXT_DESTRUCTOR_s_s_NAME_ERROR              "The name of the destructor '%s::~%s' must be the same as the class"
+#define TXT_DESTRUCTOR_s_s_NAME_ERROR               "The name of the destructor '%s::~%s' must be the same as the class"
 #define TXT_DISALLOW_ASSIGN_ON_REF_TYPE             "Value assignment on reference types is not allowed. Did you mean to do a handle assignment?"
 #define TXT_DISALLOW_COMPOUND_ASSIGN_ON_REF_TYPE    "Compound assignment on reference types is not allowed"
+#define TXT_DUPLICATE_NAMED_ARGUMENT_s              "Duplicate named argument '%s'"
 #define TXT_DUPLICATE_SWITCH_CASE                   "Duplicate switch case"
 
 #define TXT_ELSE_WITH_EMPTY_STATEMENT         "Else with empty statement"
@@ -104,7 +121,10 @@
 #define TXT_EXPECTED_PRE_OPERATOR             "Expected pre operator"
 #define TXT_EXPECTED_STRING                   "Expected string"
 #define TXT_EXPR_DOESNT_EVAL_TO_FUNC          "Expression doesn't evaluate to a function"
-#define TXT_EXPR_MUST_BE_BOOL                 "Expression must be of boolean type"
+#define TXT_EXPR_MUST_BE_BOOL_s               "Expression must be of boolean type, instead found '%s'"
+#define TXT_EXPR_s_IS_DATA_TYPE               "Expression '%s' is a data type"
+#define TXT_EXTERNAL_SHARED_s_NOT_FOUND       "External shared entity '%s' not found"
+#define TXT_EXTERNAL_SHARED_s_CANNOT_REDEF    "External shared entity '%s' cannot redefine the original entity"
 
 #define TXT_FAILED_TO_COMPILE_DEF_ARG_d_IN_FUNC_s "Failed while compiling default arg for parameter %d in function '%s'"
 #define TXT_FAILED_TO_CREATE_TEMP_OBJ             "Previous error occurred while attempting to create a temporary copy of object"
@@ -121,14 +141,15 @@
 #define TXT_HANDLE_OF_HANDLE_IS_NOT_ALLOWED      "Handle to handle is not allowed"
 #define TXT_s_HIDES_VAR_IN_OUTER_SCOPE           "Variable '%s' hides another variable of same name in outer scope"
 
-#define TXT_IDENTIFIER_s_NOT_DATA_TYPE             "Identifier '%s' is not a data type"
+#define TXT_IDENTIFIER_s_NOT_DATA_TYPE              "Identifier '%s' is not a data type"
 #define TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_GLOBAL_NS "Identifier '%s' is not a data type in global namespace"
-#define TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s     "Identifier '%s' is not a data type in namespace '%s' or parent"
-#define TXT_IF_WITH_EMPTY_STATEMENT                "If with empty statement"
-#define TXT_ILLEGAL_MEMBER_TYPE                    "Illegal member type"
+#define TXT_IDENTIFIER_s_NOT_DATA_TYPE_IN_NS_s      "Identifier '%s' is not a data type in namespace '%s' or parent"
+#define TXT_IF_WITH_EMPTY_STATEMENT                 "If with empty statement"
+#define TXT_ILLEGAL_MEMBER_TYPE                     "Illegal member type"
 // TODO: Should be TXT_ILLEGAL_OPERATION_ON_s
 #define TXT_ILLEGAL_OPERATION                      "Illegal operation on this datatype"
 #define TXT_ILLEGAL_OPERATION_ON_s                 "Illegal operation on '%s'"
+#define TXT_ILLEGAL_RETURN_BY_VALUE_FOR_s          "Illegal return by value for '%s' in type cast"
 #define TXT_ILLEGAL_TARGET_TYPE_FOR_REF_CAST       "Illegal target type for reference cast"
 #define TXT_ILLEGAL_VARIABLE_NAME_s                "Illegal variable name '%s'."
 #define TXT_INHERITED_PRIVATE_PROP_ACCESS_s        "Illegal access to inherited private property '%s'"
@@ -148,16 +169,23 @@
 #define TXT_INVALID_OP_ON_METHOD                   "Invalid operation on method"
 #define TXT_INVALID_REF_PROP_ACCESS                "Invalid reference. Property accessors cannot be used in combined read/write operations"
 #define TXT_INVALID_SCOPE                          "Invalid scope resolution"
+#define TXT_INVALID_SIG_FOR_VIRTPROP               "Invalid signature for virtual property"
 #define TXT_INVALID_TYPE                           "Invalid type"
 #define TXT_INVALID_UNICODE_FORMAT_EXPECTED_d      "Invalid unicode escape sequence, expected %d hex digits"
 #define TXT_INVALID_UNICODE_VALUE                  "Invalid unicode code point"
 #define TXT_INVALID_UNICODE_SEQUENCE_IN_SRC        "Invalid unicode sequence in source"
+#define TXT_INVALID_USE_OF_NAMED_ARGS              "Invalid use of named arguments"
 
+#define TXT_MEMBER_s_ACCESSED_BEFORE_INIT           "The member '%s' is accessed before the initialization"
 #define TXT_METHOD_CANNOT_OVERRIDE_s                "Method '%s' declared as final and cannot be overridden"
 #define TXT_METHOD_CANT_HAVE_NAME_OF_CLASS          "The method cannot be named with the class name"
 #define TXT_METHOD_s_DOES_NOT_OVERRIDE              "Method '%s' marked as override but does not replace any base class or interface method"
 #define TXT_METHOD_s_s_HAS_NO_RETURN_TYPE           "Method '%s::%s' is missing the return type, nor is it the same name as object to be a constructor"
+#define TXT_METHOD_s_NOT_PART_OF_OBJECT_s           "Method '%s' is not part of object '%s'"
+#define TXT_MISSING_ARGUMENT_s                      "Rejected due to named parameter '%s' missing"
 #define TXT_MISSING_IMPLEMENTATION_OF_s             "Missing implementation of '%s'"
+#define TXT_MISSING_DEFINITION_OF_s                 "Missing definition of '%s'"
+#define TXT_MISSING_OR_INVALID_DEFINITON_OF_s       "Missing or invalid definition of '%s'"
 #define TXT_MIXIN_CANNOT_BE_DECLARED_AS_s           "Mixin class cannot be declared as '%s'"
 #define TXT_MIXIN_CANNOT_HAVE_CONSTRUCTOR           "Mixin classes cannot have constructors or destructors"
 #define TXT_MIXIN_CLASS_CANNOT_INHERIT              "Mixin class cannot inherit from classes"
@@ -175,8 +203,11 @@
 #define TXT_NAME_CONFLICT_s_GLOBAL_PROPERTY        "Name conflict. '%s' is a global property."
 #define TXT_NAME_CONFLICT_s_IS_NAMED_TYPE          "Name conflict. '%s' is a named type."
 #define TXT_NAME_CONFLICT_s_IS_FUNCDEF             "Name conflict. '%s' is a funcdef."
+#define TXT_NAME_CONFLICT_s_IS_FUNCTION            "Name conflict. '%s' is a global function."
 #define TXT_NAME_CONFLICT_s_IS_MIXIN               "Name conflict. '%s' is a mixin class."
+#define TXT_NAME_CONFLICT_s_IS_VIRTPROP            "Name conflict. '%s' is a virtual property."
 #define TXT_NAME_CONFLICT_s_STRUCT                 "Name conflict. '%s' is a class."
+#define TXT_NAME_CONFLICT_s_INTF                   "Name conflict. '%s' is an interface."
 #define TXT_NAME_CONFLICT_s_OBJ_PROPERTY           "Name conflict. '%s' is an object property."
 #define TXT_NAME_CONFLICT_s_METHOD                 "Name conflict. '%s' is a class method."
 #define TXT_NAME_CONFLICT_s_ALREADY_USED           "Name conflict. '%s' is already used."
@@ -193,19 +224,23 @@
 #define TXT_NO_MATCHING_SIGNATURES_TO_s            "No matching signatures to '%s'"
 #define TXT_NO_MATCHING_OP_FOUND_FOR_TYPE_s        "No matching operator that takes the type '%s' found"
 #define TXT_NO_MATCHING_OP_FOUND_FOR_TYPES_s_AND_s "No matching operator that takes the types '%s' and '%s' found"
+#define TXT_NO_MATCHING_SYMBOL_s                   "No matching symbol '%s'"
 #define TXT_NON_CONST_METHOD_ON_CONST_OBJ          "Non-const method call on read-only object reference"
 #define TXT_NONTERMINATED_STRING                   "Non-terminated string literal"
-#define TXT_NOT_A_FUNC_s_IS_VAR                    "Expression doesn't form a function call. '%s' is a variable of a non-function type"
+#define TXT_NOT_A_FUNC_s_IS_TYPE_s                 "Expression doesn't form a function call. '%s' evaluates to the non-function type '%s'"
 #define TXT_NOT_ALL_PATHS_RETURN                   "Not all paths return a value"
+#define TXT_NOT_ENOUGH_ARGUMENTS                   "Rejected due to not enough parameters"
 #define TXT_NOT_ENOUGH_VALUES_FOR_LIST             "Not enough values to match pattern"
 #define TXT_s_NOT_DECLARED                         "'%s' is not declared"
 #define TXT_NOT_EXACT                              "Implicit conversion of value is not exact"
+#define TXT_s_NOT_A_FOREACH_TYPE                   "Type '%s' is not valid type for foreach loops"
 #define TXT_s_NOT_INITIALIZED                      "'%s' is not initialized."
 #define TXT_NOT_LVALUE                             "Expression is not an l-value"
 #define TXT_s_NOT_MEMBER_OF_s                      "'%s' is not a member of '%s'"
 #define TXT_NOT_VALID_REFERENCE                    "Not a valid reference"
 #define TXT_NOT_VALID_LVALUE                       "Not a valid lvalue"
 #define TXT_NOTHING_WAS_BUILT                      "Nothing was built in the module"
+#define TXT_AMBIGUOUS_SYMBOL_NAME_s                "Ambiguous symbol name '%s'"
 
 #define TXT_OBJECT_DOESNT_SUPPORT_INDEX_OP          "Type '%s' doesn't support the indexing operator"
 #define TXT_OBJECT_HANDLE_NOT_SUPPORTED             "Object handle is not supported for this type"
@@ -216,19 +251,22 @@
 #define TXT_OPERANDS_MUST_BE_HANDLES                "Both operands must be handles when comparing identity"
 #define TXT_OVERLOAD_CONFLICTS_DUE_TO_DEFAULT_ARGS  "The overloaded functions are identical on initial parameters without default arguments"
 
-#define TXT_PARAMETER_ALREADY_DECLARED            "Parameter already declared"
-#define TXT_PARAMETER_CANT_BE_s                   "Parameter type can't be '%s', because the type cannot be instantiated."
-#define TXT_POS_ARG_AFTER_NAMED_ARG               "Positional arguments cannot be passed after named arguments"
-#define TXT_PRIVATE_METHOD_CALL_s                 "Illegal call to private method '%s'"
-#define TXT_PRIVATE_PROP_ACCESS_s                 "Illegal access to private property '%s'"
-#define TXT_PROTECTED_METHOD_CALL_s               "Illegal call to protected method '%s'"
-#define TXT_PROTECTED_PROP_ACCESS_s               "Illegal access to protected property '%s'"
-#define TXT_PROPERTY_ACCESSOR_DISABLED            "Property accessors have been disabled by the application"
-#define TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED "Property accessor must be implemented"
-#define TXT_PROPERTY_CANT_BE_CONST                "Class properties cannot be declared as const"
-#define TXT_PROPERTY_HAS_NO_GET_ACCESSOR          "The property has no get accessor"
-#define TXT_PROPERTY_HAS_NO_SET_ACCESSOR          "The property has no set accessor"
-#define TXT_PROPERTY_WITHOUT_ACCESSOR             "Virtual property must have at least one get or set accessor"
+#define TXT_PARAMETER_ALREADY_DECLARED                 "Parameter already declared"
+#define TXT_PARAMETER_CANT_BE_s                        "Parameter type can't be '%s', because the type cannot be instantiated."
+#define TXT_POS_ARG_AFTER_NAMED_ARG                    "Positional arguments cannot be passed after named arguments"
+#define TXT_POTENTIAL_MATCHING_NON_CONST_METHOD_HIDDEN "Potentially matching non-const method is hidden on read-only object reference"
+#define TXT_PREV_ERROR_WHILE_COMP_LIST_FOR_TYPE_s      "Previous error occurred while attempting to compile initialization list for type '%s'"
+#define TXT_PRIVATE_METHOD_CALL_s                      "Illegal call to private method '%s'"
+#define TXT_PRIVATE_PROP_ACCESS_s                      "Illegal access to private property '%s'"
+#define TXT_PROTECTED_METHOD_CALL_s                    "Illegal call to protected method '%s'"
+#define TXT_PROTECTED_PROP_ACCESS_s                    "Illegal access to protected property '%s'"
+#define TXT_PROP_ACCESS_WITH_INDEX_ONE_ARG             "Property accessor with index must have 1 and only 1 index argument"
+#define TXT_PROPERTY_ACCESSOR_DISABLED                 "Property accessors have been disabled by the application"
+#define TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED      "Property accessor must be implemented"
+#define TXT_PROPERTY_CANT_BE_CONST                     "Class properties cannot be declared as const"
+#define TXT_PROPERTY_HAS_NO_GET_ACCESSOR               "The property has no get accessor"
+#define TXT_PROPERTY_HAS_NO_SET_ACCESSOR               "The property has no set accessor"
+#define TXT_PROPERTY_WITHOUT_ACCESSOR                  "Virtual property must have at least one get or set accessor"
 
 #define TXT_REF_CANT_BE_TO_LOCAL_VAR            "Resulting reference cannot be returned. Returned references must not refer to local variables."
 #define TXT_REF_CANT_BE_RETURNED_DEFERRED_PARAM "Resulting reference cannot be returned. There are deferred arguments that may invalidate it."
@@ -244,15 +282,15 @@
 #define TXT_SHARED_CANNOT_IMPLEMENT_NON_SHARED_s       "Shared type cannot implement non-shared interface '%s'"
 #define TXT_SHARED_CANNOT_INHERIT_FROM_NON_SHARED_s    "Shared class cannot inherit from non-shared class '%s'"
 #define TXT_SHARED_CANNOT_USE_NON_SHARED_TYPE_s        "Shared code cannot use non-shared type '%s'"
-#define TXT_SHARED_s_DOESNT_MATCH_ORIGINAL             "Shared type '%s' doesn't match the original declaration in other module"
+#define TXT_SHARED_s_DOESNT_MATCH_ORIGINAL_s           "Shared type '%s' doesn't match the declaration in module '%s'"
 #define TXT_SECTION_IS_EMPTY                           "The script section is empty"
 #define TXT_SIGNED_UNSIGNED_MISMATCH                   "Signed/Unsigned mismatch"
 #define TXT_STRINGS_NOT_RECOGNIZED                     "Strings are not recognized by the application"
-#define TXT_SWITCH_CASE_MUST_BE_CONSTANT               "Case expressions must be constants"
+#define TXT_SWITCH_CASE_MUST_BE_CONSTANT               "Case expressions must be literal constants"
 #define TXT_SWITCH_MUST_BE_INTEGRAL                    "Switch expressions must be integral numbers"
 
 #define TXT_TMPL_s_EXPECTS_d_SUBTYPES          "Template '%s' expects %d sub type(s)"
-#define TXT_TMPL_SUBTYPE_MUST_NOT_BE_READ_ONLY "Template subtype must not be read-only"
+#define TXT_TOO_MANY_ARGUMENTS                 "Rejected due to too many parameters"
 #define TXT_TOO_MANY_JUMP_LABELS               "The function has too many jump labels to handle. Split the function into smaller ones."
 #define TXT_TOO_MANY_VALUES_FOR_LIST           "Too many values to match pattern"
 #define TXT_TYPE_s_CANNOT_BE_REFERENCE         "Type '%s' cannot be a reference"
@@ -272,6 +310,7 @@
 #define TXT_VOID_CANT_BE_OPERAND          "Void cannot be an operand in expressions"
 
 #define TXT_WARNINGS_TREATED_AS_ERROR     "Warnings are treated as errors by the application"
+#define TXT_WHERE_s_IS_s                  "Where '%s' is '%s'"
 #define TXT_WHILE_PARSING_ARG_LIST        "While parsing argument list"
 #define TXT_WHILE_PARSING_EXPRESSION      "While parsing expression"
 #define TXT_WHILE_PARSING_INIT_LIST       "While parsing initialization list"
@@ -292,7 +331,8 @@
 #define TXT_VALUE_TYPE_MUST_HAVE_SIZE                    "A value type must be registered with a non-zero size"
 #define TXT_TYPE_s_IS_MISSING_BEHAVIOURS                 "Type '%s' is missing behaviours"
 #define TXT_ILLEGAL_BEHAVIOUR_FOR_TYPE                   "The behaviour is not compatible with the type"
-#define TXT_GC_REQUIRE_ADD_REL_GC_BEHAVIOUR              "A garbage collected type must have the addref, release, and all gc behaviours"
+#define TXT_GC_REQUIRE_ADD_REL_GC_BEHAVIOUR              "A garbage collected ref type must have the addref, release, and all gc behaviours"
+#define TXT_VALUE_GC_REQUIRE_GC_BEHAVIOUR                "A garbage collected value type must have the gc enum references behaviour"
 #define TXT_SCOPE_REQUIRE_REL_BEHAVIOUR                  "A scoped reference type must have the release behaviour"
 #define TXT_REF_REQUIRE_ADD_REL_BEHAVIOUR                "A reference type must have the addref and release behaviours"
 #define TXT_NON_POD_REQUIRE_CONSTR_DESTR_BEHAVIOUR       "A non-pod value type must have at least one constructor and the destructor behaviours"
@@ -311,9 +351,9 @@
 #define TXT_TEMPLATE_LIST_FACTORY_EXPECTS_2_REF_PARAMS   "Template list factory expects two reference parameters. The last is the pointer to the initialization buffer"
 #define TXT_LIST_FACTORY_EXPECTS_1_REF_PARAM             "List factory expects only one reference parameter. The pointer to the initialization buffer will be passed in this parameter"
 #define TXT_FAILED_READ_SUBTYPE_OF_TEMPLATE_s            "Failed to read subtype of template type '%s'"
-#define TXT_FAILED_IN_FUNC_s_d                           "Failed in call to function '%s' (Code: %d)"
-#define TXT_FAILED_IN_FUNC_s_WITH_s_d                    "Failed in call to function '%s' with '%s' (Code: %d)"
-#define TXT_FAILED_IN_FUNC_s_WITH_s_AND_s_d              "Failed in call to function '%s' with '%s' and '%s' (Code: %d)"
+#define TXT_FAILED_IN_FUNC_s_s_d                         "Failed in call to function '%s' (Code: %s, %d)"
+#define TXT_FAILED_IN_FUNC_s_WITH_s_s_d                  "Failed in call to function '%s' with '%s' (Code: %s, %d)"
+#define TXT_FAILED_IN_FUNC_s_WITH_s_AND_s_s_d            "Failed in call to function '%s' with '%s' and '%s' (Code: %s, %d)"
 #define TXT_GC_RECEIVED_NULL_PTR                         "AddScriptObjectToGC called with null pointer"
 #define TXT_EXCEPTION_IN_NESTED_CALL                     "An exception occurred in a nested call"
 #define TXT_TYPE_s_IS_STILL_USED_BY_FUNC_s               "Type '%s' is still used by function '%s'"
@@ -325,6 +365,7 @@
 #define TXT_ENGINE_REF_COUNT_ERROR_DURING_SHUTDOWN       "Uh oh! The engine's reference count is increasing while it is being destroyed. Make sure references needed for clean-up are immediately released"
 #define TXT_MODULE_IS_IN_USE                             "The module is still in use and cannot be rebuilt. Discard it and request another module"
 #define TXT_EXTRNL_REF_TO_MODULE_s                       "There is an external reference to an object in module '%s', preventing it from being deleted"
+#define TXT_FUNC_s_RELEASED_BEFORE_CLEANUP               "The engine was shutdown before the context released. Function '%s' cannot be cleaned up"
 
 // Internal names
 
@@ -345,5 +386,41 @@
 #define TXT_OUT_OF_BOUNDS                 "Out of range"
 #define TXT_EXCEPTION_CAUGHT              "Caught an exception from the application"
 #define TXT_MISMATCH_IN_VALUE_ASSIGN      "Mismatching types in value assignment"
+#define TXT_TOO_MANY_NESTED_CALLS         "Too many nested calls"
+
+// Error codes
+#define ERROR_NAME(x) #x
+static const char*const errorNames[] =
+{
+	ERROR_NAME(asSUCCESS),
+	ERROR_NAME(asERROR),
+	ERROR_NAME(asCONTEXT_ACTIVE),
+	ERROR_NAME(asCONTEXT_NOT_FINISHED),
+	ERROR_NAME(asCONTEXT_NOT_PREPARED),
+	ERROR_NAME(asINVALID_ARG),
+	ERROR_NAME(asNO_FUNCTION),
+	ERROR_NAME(asNOT_SUPPORTED),
+	ERROR_NAME(asINVALID_NAME),
+	ERROR_NAME(asNAME_TAKEN),
+	ERROR_NAME(asINVALID_DECLARATION),
+	ERROR_NAME(asINVALID_OBJECT),
+	ERROR_NAME(asINVALID_TYPE),
+	ERROR_NAME(asALREADY_REGISTERED),
+	ERROR_NAME(asMULTIPLE_FUNCTIONS),
+	ERROR_NAME(asNO_MODULE),
+	ERROR_NAME(asNO_GLOBAL_VAR),
+	ERROR_NAME(asINVALID_CONFIGURATION),
+	ERROR_NAME(asINVALID_INTERFACE),
+	ERROR_NAME(asCANT_BIND_ALL_FUNCTIONS),
+	ERROR_NAME(asLOWER_ARRAY_DIMENSION_NOT_REGISTERED),
+	ERROR_NAME(asWRONG_CONFIG_GROUP),
+	ERROR_NAME(asCONFIG_GROUP_IS_IN_USE),
+	ERROR_NAME(asILLEGAL_BEHAVIOUR_FOR_TYPE),
+	ERROR_NAME(asWRONG_CALLING_CONV),
+	ERROR_NAME(asBUILD_IN_PROGRESS),
+	ERROR_NAME(asINIT_GLOBAL_VARS_FAILED),
+	ERROR_NAME(asOUT_OF_MEMORY),
+	ERROR_NAME(asMODULE_IS_IN_USE)
+};
 
 #endif

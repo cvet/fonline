@@ -241,6 +241,7 @@ namespace
         }
 
         [[nodiscard]] auto CheckMigrationRule(hstring, hstring, hstring) const noexcept -> optional<hstring> override { return std::nullopt; }
+        [[nodiscard]] auto GetProtoEntity(hstring, hstring) const noexcept -> const ProtoEntity* override { return nullptr; }
 
     private:
         unordered_map<string, BaseTypeDesc> _types {};

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="8.00"
 	Name="angelscript"
 	ProjectGUID="{39E6AF97-6BA3-4A72-8C61-BCEBF214EBFD}"
 	RootNamespace="angelscript"
@@ -42,7 +42,7 @@
 				WholeProgramOptimization="false"
 				PreprocessorDefinitions="ANGELSCRIPT_EXPORT;AS_DEBUG;WIN32;_DEBUG;_LIB"
 				StringPooling="true"
-				ExceptionHandling="0"
+				ExceptionHandling="1"
 				BasicRuntimeChecks="3"
 				SmallerTypeCheck="false"
 				RuntimeLibrary="3"
@@ -50,6 +50,7 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4996;4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -106,12 +107,13 @@
 				WholeProgramOptimization="true"
 				PreprocessorDefinitions="ANGELSCRIPT_EXPORT;WIN32;NDEBUG;_LIB"
 				StringPooling="true"
-				ExceptionHandling="0"
+				ExceptionHandling="1"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="false"
 				RuntimeTypeInfo="false"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
+				DisableSpecificWarnings="4996;4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"

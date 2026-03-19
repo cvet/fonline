@@ -2459,6 +2459,11 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     FO_RUNTIME_ASSERT(_curMap);
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        return nullptr;
+    }
+
     mpos corrected_hex = hex;
 
     if (proto->GetIsTile()) {

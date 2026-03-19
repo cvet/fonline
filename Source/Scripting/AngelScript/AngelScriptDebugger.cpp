@@ -394,10 +394,17 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
 
             for (int32 var_index = 0; var_index < vars_count; var_index++) {
                 const AngelScript::asUINT as_var_index = numeric_cast<AngelScript::asUINT>(var_index);
-                const auto* var_name = ctx->GetVarName(as_var_index, as_stack_level);
+                const char* var_name = nullptr;
+                int var_type_id = 0;
+                AngelScript::asETypeModifiers type_modifiers = AngelScript::asTM_NONE;
+                bool is_var_on_heap = false;
+                int stack_offset = 0;
+                ctx->GetVar(as_var_index, as_stack_level, &var_name, &var_type_id, &type_modifiers, &is_var_on_heap, &stack_offset);
+                ignore_unused(type_modifiers);
+                ignore_unused(is_var_on_heap);
+                ignore_unused(stack_offset);
                 const auto* var_decl = ctx->GetVarDeclaration(as_var_index, as_stack_level, true);
-                const int32 var_type_id = ctx->GetVarTypeId(as_var_index, as_stack_level);
-                auto* var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level);
+                auto* var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level, false, false);
 
                 LocalVariableInfo var;
                 var.Name = var_name != nullptr && *var_name != '\0' ? string {var_name} : strex("var{}", var_index).str();

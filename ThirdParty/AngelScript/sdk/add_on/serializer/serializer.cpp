@@ -23,28 +23,35 @@ CSerializer::CSerializer()
 
 CSerializer::~CSerializer()
 {
+	Clear();
+
+	// Delete the user types
+	std::map<std::string, CUserType*>::iterator it;
+	for (it = m_userTypes.begin(); it != m_userTypes.end(); it++)
+		delete it->second;
+}
+
+void CSerializer::Clear()
+{
 	// Extra objects need to be released, since they are not stored in 
 	// the module and we cannot rely on the application releasing them
-	for( size_t i = 0; i < m_extraObjects.size(); i++ )
+	for (size_t i = 0; i < m_extraObjects.size(); i++)
 	{
-		SExtraObject &o = m_extraObjects[i];
-		for( size_t i2 = 0; i2 < m_root.m_children.size(); i2++ )
+		SExtraObject& o = m_extraObjects[i];
+		for (size_t i2 = 0; i2 < m_root.m_children.size(); i2++)
 		{
-			if( m_root.m_children[i2]->m_originalPtr == o.originalObject && m_root.m_children[i2]->m_restorePtr )
+			if (m_root.m_children[i2]->m_originalPtr == o.originalObject && m_root.m_children[i2]->m_restorePtr)
 				reinterpret_cast<asIScriptObject*>(m_root.m_children[i2]->m_restorePtr)->Release();
 		}
 	}
+	m_extraObjects.resize(0);
 
 	// Clean the serialized values before we remove the user types
 	m_root.Uninit();
 
-	// Delete the user types
-	std::map<std::string, CUserType*>::iterator it;
-	for( it = m_userTypes.begin(); it != m_userTypes.end(); it++  )
-		delete it->second;
-
-	if( m_engine )
+	if (m_engine)
 		m_engine->Release();
+	m_engine = 0;
 }
 
 void CSerializer::AddUserType(CUserType *ref, const std::string &name)
@@ -350,7 +357,7 @@ void CSerializedValue::Store(void *ref, int typeId)
 
 void CSerializedValue::Restore(void *ref, int typeId)
 {
-	if( !this || !m_isInit || !ref )
+	if( !m_isInit || !ref )
 		return;
 
 	// Verify that the stored type matched the new type of the value being restored
@@ -384,7 +391,22 @@ void CSerializedValue::Restore(void *ref, int typeId)
 				// Create a new script object, but don't call its constructor as we will initialize the members. 
 				// Calling the constructor may have unwanted side effects if for example the constructor changes
 				// any outside entities, such as setting global variables to point to new objects, etc.
-				void *newObject = m_serializer->m_engine->CreateUninitializedScriptObject(ctype);
+				void* newObject = 0;
+				if( type->GetFlags() & asOBJ_SCRIPT_OBJECT )
+					newObject = m_serializer->m_engine->CreateUninitializedScriptObject(ctype);
+				// Allocate an unitialized object for the custom type
+				else if (m_serializer->m_userTypes[m_typeName])
+				{
+					newObject = m_serializer->m_userTypes[m_typeName]->AllocateUnitializedMemory(this);
+				}
+				else
+				{
+					std::string str = "Cannot allocate memory for type '";
+					str += type->GetName();
+					str += "'";
+					m_serializer->m_engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.c_str());
+				}
+
 				m_children[0]->Restore(newObject, ctype->GetTypeId());
 			}
 		}
@@ -520,15 +542,18 @@ void CSerializedValue::SetType(int typeId)
 
 	asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(typeId);
 
-	if( type )
+	if (type)
+	{
 		m_typeName = type->GetName();
+		m_typeDecl = m_serializer->m_engine->GetTypeDeclaration(typeId, true); // For templates we need the full declaration, not just the name
+	}
 }
 
 asITypeInfo *CSerializedValue::GetType()
 {
 	if( !m_typeName.empty() )
 	{
-		int newTypeId = m_serializer->m_mod->GetTypeIdByDecl(m_typeName.c_str());
+		int newTypeId = m_serializer->m_mod->GetTypeIdByDecl(m_typeDecl.c_str());
 		return m_serializer->m_engine->GetTypeInfoById(newTypeId);
 	}	
 

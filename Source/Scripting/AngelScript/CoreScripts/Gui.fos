@@ -1344,7 +1344,7 @@ class Panel : Object
 
     void _SetImage(Sprite::Sprite& curImage, string imageName, SpriteLayout imageLayout)
     {
-        _SetImage(curImage, hstring(imageName), imageLayout);
+        _SetImage(curImage, to_hstring(imageName), imageLayout);
     }
 
     void _SetImage(Sprite::Sprite& curImage, hstring imageName, SpriteLayout imageLayout)
@@ -2100,7 +2100,7 @@ class Screen : Panel
 
     void _FixClone() override
     {
-        _AvailableCursors = array<CursorType>(_AvailableCursors);
+        _AvailableCursors = _AvailableCursors.clone();
 
         Panel::_FixClone();
     }
@@ -2296,7 +2296,7 @@ class Grid : Panel
 
     void _FixClone() override
     {
-        _Cells = array<Object>(_Cells);
+        _Cells = _Cells.clone();
 
         Panel::_FixClone();
     }
@@ -2539,16 +2539,16 @@ class MessageBox : Text
         _DisplayedMessages = array<MessageBoxType> = {MessageBoxType::All};
         _IsNotCatchable = true;
 
-        _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
-        _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
+        _ScrollUp = Sprite::Sprite(to_hstring("MiniArrowUp.png"));
+        _ScrollDown = Sprite::Sprite(to_hstring("MiniArrowDown.png"));
     }
 
     void _FixClone() override
     {
-        _MessageTexts = array<string>(_MessageTexts);
-        _MessageTypes = array<MessageBoxType>(_MessageTypes);
-        _MessageTimes = array<string>(_MessageTimes);
-        _DisplayedMessages = array<MessageBoxType>(_DisplayedMessages);
+        _MessageTexts = _MessageTexts.clone();
+        _MessageTypes = _MessageTypes.clone();
+        _MessageTimes = _MessageTimes.clone();
+        _DisplayedMessages = _DisplayedMessages.clone();
 
         Text::_FixClone();
     }
@@ -2748,7 +2748,7 @@ class MessageBox : Text
 
     void SetDisplayedMessages(MessageBoxType[] messageTypes)
     {
-        _DisplayedMessages = array<MessageBoxType>(messageTypes);
+        _DisplayedMessages = messageTypes.clone();
         _GenerateText();
     }
 
@@ -2825,7 +2825,7 @@ class Console : TextInput
 
     void _FixClone() override
     {
-        _History = array<string>(_History);
+        _History = _History.clone();
 
         TextInput::_FixClone();
     }
@@ -3057,7 +3057,7 @@ class ItemView : Grid
 
     void _FixClone() override
     {
-        _Items = array<Item>(_Items);
+        _Items = _Items.clone();
 
         Grid::_FixClone();
     }
@@ -3640,6 +3640,61 @@ void EngineCallback_Start()
 {
     // Register custom screens
     GuiScreens::InitializeScreens();
+}
+
+void CleanupObjectGraph(Object obj)
+{
+    for (int i = obj._Children.length() - 1; i >= 0; i--) {
+        CleanupObjectGraph(obj._Children[i]);
+    }
+
+    Grid grid = cast<Grid>(obj);
+    if (grid != null) {
+        grid._Cells.clear();
+    }
+
+    Screen screen = cast<Screen>(obj);
+    if (screen != null) {
+        screen._AvailableCursors.clear();
+        screen._InputKeyPressed.clear();
+        screen._InputMousePressed.clear();
+        screen._IsRegistered = false;
+    }
+
+    obj._Grid = null;
+    obj._CellIndex = 0;
+    obj._Parent = null;
+    obj._Children.clear();
+    obj._ActiveSelf = false;
+}
+
+void EngineCallback_Finish()
+{
+    EngineCallback_InputLost();
+
+    DropMenu = null;
+    CurConsole = null;
+    DragAndDropHandlers.clear();
+    ScreenCreators = {};
+
+    if (CursorScreen != null) {
+        CursorScreen.Remove();
+        CleanupObjectGraph(CursorScreen);
+        CursorScreen = null;
+    }
+
+    for (int i = Screens.length() - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        screen.Remove();
+        CleanupObjectGraph(screen);
+    }
+
+    Screens.clear();
+    FocusedObjects.clear();
+    PressedObject = null;
+    LastPressedObject = null;
+    HoveredObject = null;
+    FindNextTextInputSkipObj = null;
 }
 
 void EngineCallback_Draw()

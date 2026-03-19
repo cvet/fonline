@@ -606,6 +606,11 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
     const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
@@ -621,6 +626,11 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
 {
     const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
@@ -679,6 +689,21 @@ FO_SCRIPT_API Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
+{
+    vector<Critter*> critters;
+    critters.reserve(server->EntityMngr.GetCritters().size());
+
+    for (auto& cr : server->EntityMngr.GetCritters() | std::views::values) {
+        if (cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
 {
     if (name.empty()) {
@@ -695,6 +720,40 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unlo
     }
 
     return server->LoginPlayer(unloginedPlayer, name);
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API Player* Server_Game_CreatePlayer(ServerEngine* server, string_view name)
+{
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+    if (strvex(name).trim() != name) {
+        throw ScriptException("Wrong player name (trimmed space)");
+    }
+    if (!strvex(name).is_valid_utf8()) {
+        throw ScriptException("Wrong player name encoding");
+    }
+
+    const auto player_id = server->MakePlayerId(name);
+
+    if (server->EntityMngr.GetPlayer(player_id) != nullptr) {
+        throw ScriptException("Player is already loaded");
+    }
+
+    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).Empty()) {
+        throw ScriptException("Player already exists, use GetPlayer");
+    }
+
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    auto player = SafeAlloc::MakeRefCounted<Player>(server, player_id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
+    auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, server->Hashes, *server);
+    player_doc.Emplace("_Name", string(name));
+    server->DbStorage.Insert(server->PlayersCollectionName, player_id, player_doc);
+
+    player->SetName(name);
+    player->AddRef();
+    return player.get();
 }
 
 ///@ ExportMethod PassOwnership

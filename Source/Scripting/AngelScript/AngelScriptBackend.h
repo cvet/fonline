@@ -76,6 +76,7 @@ public:
     auto CompileTextScripts(const vector<File>& files) -> vector<uint8>;
     void BindRequiredStuff();
     void AddCleanupCallback(function<void()> callback);
+    void AddPostCleanupCallback(function<void()> callback);
     void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
 
 private:
@@ -87,6 +88,7 @@ private:
     unique_ptr<AngelScriptContextManager> _contextMngr {};
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
+    vector<function<void()>> _postCleanupCallbacks {};
     unique_ptr<DebuggerEndpointServer> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
 };
