@@ -467,7 +467,12 @@ def format_source(env: Mapping[str, str]) -> None:
 	if not files:
 		log('No files matched format patterns')
 		return
-	run([clang_format, '-i', *[str(path) for path in files]])
+
+	total = len(files)
+	for index, path in enumerate(files, start=1):
+		rel_path = path.relative_to(source_root).as_posix().replace('/', '\\')
+		print(f'Formatting [{index}/{total}] {rel_path}', flush=True)
+		subprocess.check_call([clang_format, '-i', str(path)])
 
 
 def build_toolset(target: str, env: Mapping[str, str]) -> None:
@@ -520,7 +525,8 @@ def main() -> None:
 			print_env_summary(env)
 		return
 
-	print_env_summary(env)
+	if args.command != 'format-source':
+		print_env_summary(env)
 
 	if args.command == 'build':
 		configure_build(args.platform, args.target, args.config, env)

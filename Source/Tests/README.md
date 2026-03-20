@@ -29,17 +29,20 @@ This directory contains unit tests for deterministic engine/common functionality
 
 ## Running tests
 
-From a configured build directory:
+Prefer running unit tests from VS Code CMake Tools:
+
+- build or run the `RunUnitTests` target for the standard workflow;
+- use `LF_UnitTests` directly when you need the executable target without the wrapper target.
+
+If you need the binary location for debugger or launch configuration wiring, the executable is emitted under `Binaries/Tests-*` for the active platform, for example:
+
+- Windows: `Binaries/Tests-Windows-win64/LF_UnitTests.exe`
+- Linux: `Binaries/Tests-Linux-x64/LF_UnitTests`
+
+From a configured build directory the equivalent shell command is:
 
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
-```
-
-Or build and run explicitly:
-
-```bash
-cmake --build . --config RelWithDebInfo --target LF_UnitTests
-./Binaries/Tests-Windows-win64/LF_UnitTests.exe
 ```
 
 ## Notes
@@ -47,3 +50,4 @@ cmake --build . --config RelWithDebInfo --target LF_UnitTests
 - Keep tests deterministic and platform-stable.
 - Avoid network, filesystem, and timing-sensitive behavior in unit suites unless mocked.
 - New test sources must be added to `FO_TESTS_SOURCE` in `Engine/BuildTools/FinalizeGeneration.cmake`.
+- Treat `LF_UnitTests` run through VS Code CMake Tools as the minimum validation baseline for engine-side changes.
