@@ -674,6 +674,16 @@ static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
     ScriptGenericCall(gen, true, [&](FuncCallData& call) { mehtod.Call(call); });
 }
 
+static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* obj = gen->GetObject();
+    const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
+
+    new (gen->GetAddressOfReturnLocation()) bool(obj == other);
+}
+
 template<typename T>
 static void Global_GetZero(AngelScript::asIScriptGeneric* gen)
 {
@@ -924,6 +934,8 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     const auto register_ref_type_body = [&](const BaseTypeDesc& type) {
         const char* name = type.Name.c_str();
         const auto& ref_type = *type.RefType;
+
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_GENERIC(RefType_Equals), FO_SCRIPT_GENERIC_CONV));
 
         for (const auto& method : ref_type.Methods) {
             if (method.Name == "__AddRef") {

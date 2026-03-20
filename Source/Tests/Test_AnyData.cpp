@@ -215,6 +215,96 @@ TEST_CASE("AnyData")
         CHECK(parsed_arr.Empty());
         CHECK(parsed_dict.Empty());
     }
+
+    SECTION("InvalidBoolRejected")
+    {
+        CHECK_THROWS_AS((AnyData::ParseValue("Enabled", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("foo", false, true, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key Enabled", true, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("2", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("-1", false, false, AnyData::ValueType::Bool)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("0.5", false, false, AnyData::ValueType::Bool)), AnyDataException);
+    }
+
+    SECTION("InvalidNumbersRejected")
+    {
+        CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("1 two 3", false, true, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key NaNish", true, false, AnyData::ValueType::Float64)), AnyDataException);
+    }
+
+    SECTION("BoolAcceptsNumbersAndExplicitLiterals")
+    {
+        CHECK(AnyData::ParseValue("True", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(!AnyData::ParseValue("False", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(AnyData::ParseValue("1", false, false, AnyData::ValueType::Bool).AsBool());
+        CHECK(!AnyData::ParseValue("0", false, false, AnyData::ValueType::Bool).AsBool());
+    }
+
+    SECTION("MalformedDictRejected")
+    {
+        CHECK_THROWS_AS((AnyData::ParseValue("key_only", true, false, AnyData::ValueType::String)), AnyDataException);
+    }
+
+    SECTION("MalformedQuotedTokenRejected")
+    {
+        CHECK_THROWS_AS((AnyData::ParseValue("\"unterminated", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key \"unterminated", true, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("\"1 2", false, true, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("\"quoted\"tail", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("\"key with space\"tail value", true, false, AnyData::ValueType::String)), AnyDataException);
+    }
+
+    SECTION("DanglingEscapeRejected")
+    {
+        CHECK_THROWS_AS((AnyData::ParseValue("abc\\", false, false, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("one two\\", false, true, AnyData::ValueType::String)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key value\\", true, false, AnyData::ValueType::String)), AnyDataException);
+    }
+
+    SECTION("WhitespaceTrimmedForTypedScalars")
+    {
+        CHECK(AnyData::ParseValue("  -42\t", false, false, AnyData::ValueType::Int64).AsInt64() == -42);
+        CHECK(AnyData::ParseValue("\t3.5 ", false, false, AnyData::ValueType::Float64).AsDouble() == 3.5);
+        CHECK(AnyData::ParseValue("  true\t", false, false, AnyData::ValueType::Bool).AsBool());
+    }
+
+    SECTION("QuotedStringsRoundTripInContainers")
+    {
+        AnyData::Array arr;
+        arr.EmplaceBack(string(" spaced value "));
+        arr.EmplaceBack(string("quote \" value"));
+
+        const auto encoded_arr = AnyData::ValueToString(arr.Copy());
+        CHECK(arr == AnyData::ParseValue(encoded_arr, false, true, AnyData::ValueType::String).AsArray());
+
+        AnyData::Dict dict;
+        dict.Emplace("key space", string("value with spaces"));
+        dict.Emplace("key_quote", string("value \"quote\""));
+
+        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
+    }
+
+    SECTION("DictKeysAreDecodedAndDuplicateKeysRejected")
+    {
+        AnyData::Dict dict;
+        dict.Emplace("key \"quoted\"", string("value1"));
+        dict.Emplace("path\\segment", string("value2"));
+
+        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        const auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
+        const auto& parsed_dict = parsed_value.AsDict();
+
+        CHECK(parsed_dict.Contains("key \"quoted\""));
+        CHECK(parsed_dict.Contains("path\\segment"));
+        CHECK(parsed_dict["key \"quoted\""].AsString() == "value1");
+        CHECK(parsed_dict["path\\segment"].AsString() == "value2");
+
+        CHECK_THROWS_AS((AnyData::ParseValue("dup 1 dup 2", true, false, AnyData::ValueType::Int64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("dup \"1 2\" dup \"3 4\"", true, true, AnyData::ValueType::Int64)), AnyDataException);
+    }
 }
 
 FO_END_NAMESPACE

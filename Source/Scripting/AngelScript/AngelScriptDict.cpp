@@ -636,7 +636,7 @@ auto ScriptDict::operator==(const ScriptDict& other) const -> bool
     auto it1 = _data.begin();
     auto it2 = other._data.begin();
 
-    for (size_t i = 0; i > _data.size(); i++) {
+    for (size_t i = 0; i < _data.size(); i++) {
         if (!Equals(_keyTypeId, _keyTypeData.get(), _typeInfo->GetEngine(), it1->first, it2->first)) {
             return false;
         }
@@ -1079,7 +1079,7 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Exists), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", FO_SCRIPT_METHOD(ScriptDict, IsEmpty), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", FO_SCRIPT_FUNC_THIS(ScriptDict_Clone), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool equals(const dict<T1,T2>@+ other) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Equals), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>@+ other) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Equals), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETREFCOUNT, "int f()", FO_SCRIPT_METHOD(ScriptDict, GetRefCount), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_SETGCFLAG, "void f()", FO_SCRIPT_METHOD(ScriptDict, SetFlag), FO_SCRIPT_METHOD_CONV));
