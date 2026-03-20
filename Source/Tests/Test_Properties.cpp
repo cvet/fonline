@@ -990,9 +990,14 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 3);
-        REQUIRE(raw_sizes->size() == 3);
-        CHECK((*raw_sizes)[0] == sizeof(uint16) * 2);
+        REQUIRE(raw_data->size() == 4);
+        REQUIRE(raw_sizes->size() == 4);
+        CHECK((*raw_sizes)[0] == sizeof(uint8));
+        CHECK((*raw_sizes)[1] == sizeof(uint16) * 2);
+
+        uint8 store_type = 0xFF;
+        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
 
@@ -1002,6 +1007,14 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         CHECK(restored.GetValue<int32>(public_value_prop) == 42);
         CHECK(restored.GetValue<bool>(owner_flag_prop));
         CHECK(restored.GetValue<string>(public_name_prop) == "public-override");
+
+        Properties restored_full(&registrator);
+        restored_full.CopyFrom(proto);
+        restored_full.RestoreData(owned_chunks);
+
+        CHECK(restored_full.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_full.GetValue<bool>(owner_flag_prop));
+        CHECK(restored_full.GetValue<string>(public_name_prop) == "public-override");
     }
 
     SECTION("StoreDataWithProtectedKeepsOwnerSyncOverrides")
@@ -1017,9 +1030,14 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 4);
-        REQUIRE(raw_sizes->size() == 4);
-        CHECK((*raw_sizes)[0] == sizeof(uint16) * 3);
+        REQUIRE(raw_data->size() == 5);
+        REQUIRE(raw_sizes->size() == 5);
+        CHECK((*raw_sizes)[0] == sizeof(uint8));
+        CHECK((*raw_sizes)[1] == sizeof(uint16) * 3);
+
+        uint8 store_type = 0xFF;
+        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
 
@@ -1029,6 +1047,14 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         CHECK(restored.GetValue<int32>(public_value_prop) == 42);
         CHECK_FALSE(restored.GetValue<bool>(owner_flag_prop));
         CHECK(restored.GetValue<string>(public_name_prop) == "public-override");
+
+        Properties restored_full(&registrator);
+        restored_full.CopyFrom(proto);
+        restored_full.RestoreData(owned_chunks);
+
+        CHECK(restored_full.GetValue<int32>(public_value_prop) == 42);
+        CHECK_FALSE(restored_full.GetValue<bool>(owner_flag_prop));
+        CHECK(restored_full.GetValue<string>(public_name_prop) == "public-override");
     }
 
     SECTION("StoreDataPreservesZeroSizedOverlayEntry")
@@ -1042,10 +1068,15 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 2);
-        REQUIRE(raw_sizes->size() == 2);
-        CHECK((*raw_sizes)[0] == sizeof(uint16));
-        CHECK((*raw_sizes)[1] == 0);
+        REQUIRE(raw_data->size() == 3);
+        REQUIRE(raw_sizes->size() == 3);
+        CHECK((*raw_sizes)[0] == sizeof(uint8));
+        CHECK((*raw_sizes)[1] == sizeof(uint16));
+        CHECK((*raw_sizes)[2] == 0);
+
+        uint8 store_type = 0xFF;
+        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
 

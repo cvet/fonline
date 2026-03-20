@@ -37,6 +37,8 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr size_t OVERLAY_START_CAPACITY = 16;
+static constexpr uint8 FULL_DATA_STORE_TYPE = 0;
+static constexpr uint8 SEPARATE_PROPS_STORE_TYPE = 1;
 
 static auto RawDataEqual(const_span<uint8> left, const_span<uint8> right) noexcept -> bool
 {
@@ -722,6 +724,9 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
     cache.Sizes.clear();
     cache.PropertyIndices.clear();
 
+    cache.Data.push_back(_baseProps ? &SEPARATE_PROPS_STORE_TYPE : &FULL_DATA_STORE_TYPE);
+    cache.Sizes.push_back(sizeof(uint8));
+
     if (_baseProps) {
         for (const auto& entry : _overlayEntries) {
             const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
@@ -739,14 +744,14 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
         }
 
         if (!cache.PropertyIndices.empty()) {
-            cache.Data.insert(cache.Data.begin(), reinterpret_cast<const uint8*>(cache.PropertyIndices.data()));
-            cache.Sizes.insert(cache.Sizes.begin(), numeric_cast<uint32>(cache.PropertyIndices.size() * sizeof(uint16)));
+            cache.Data.insert(cache.Data.begin() + 1, reinterpret_cast<const uint8*>(cache.PropertyIndices.data()));
+            cache.Sizes.insert(cache.Sizes.begin() + 1, numeric_cast<uint32>(cache.PropertyIndices.size() * sizeof(uint16)));
         }
     }
     else {
         cache.PropertyIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
 
-        const auto preserve_size = 1u + (!cache.PropertyIndices.empty() ? 1u + cache.PropertyIndices.size() : 0);
+        const auto preserve_size = 2u + (!cache.PropertyIndices.empty() ? 1u + cache.PropertyIndices.size() : 0);
         cache.Data.reserve(preserve_size);
         cache.Sizes.reserve(preserve_size);
 
@@ -789,56 +794,93 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
 
     FO_RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
 
-    if (_baseProps) {
-        RemoveSyncedOverlayEntries();
-
-        if (all_data.empty()) {
+    const auto apply_separate_props_data = [this](const vector<const uint8*>& separate_data, const vector<uint32>& separate_sizes) {
+        if (separate_data.empty()) {
             return;
         }
 
-        const uint32 property_data_count = all_data_sizes[0] / sizeof(uint16);
-        FO_RUNTIME_ASSERT(all_data_sizes[0] == property_data_count * sizeof(uint16));
-        FO_RUNTIME_ASSERT(all_data.size() == 1 + property_data_count);
+        const uint32 property_data_count = separate_sizes[0] / sizeof(uint16);
+        FO_RUNTIME_ASSERT(separate_sizes[0] == property_data_count * sizeof(uint16));
+        FO_RUNTIME_ASSERT(separate_data.size() == 1 + property_data_count);
 
         for (uint32 i = 0; i < property_data_count; i++) {
             uint16 prop_index {};
-            MemCopy(&prop_index, all_data[0] + i * sizeof(uint16), sizeof(uint16));
+            MemCopy(&prop_index, separate_data[0] + i * sizeof(uint16), sizeof(uint16));
 
             FO_RUNTIME_ASSERT(prop_index > 0);
             FO_RUNTIME_ASSERT(prop_index < _registrator->_registeredProperties.size());
             const auto& prop = _registrator->_registeredProperties[prop_index];
             FO_RUNTIME_ASSERT(prop);
-            SetRawData(prop.get(), {all_data[1 + i], all_data_sizes[1 + i]});
+            SetRawData(prop.get(), {separate_data[1 + i], separate_sizes[1 + i]});
         }
-    }
-    else {
-        // Restore plain data
-        FO_RUNTIME_ASSERT(!all_data_sizes.empty());
+    };
+
+    const auto apply_full_data = [this](Properties& target, const vector<const uint8*>& full_data, const vector<uint32>& full_sizes) {
+        FO_RUNTIME_ASSERT(!full_sizes.empty());
+
         const auto public_size = numeric_cast<uint32>(_registrator->_publicPodDataSpace.size());
         const auto protected_size = numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size());
         const auto private_size = numeric_cast<uint32>(_registrator->_privatePodDataSpace.size());
-        FO_RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
+        FO_RUNTIME_ASSERT(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size);
 
-        if (all_data_sizes[0] != 0) {
-            MemCopy(_podData.get(), all_data[0], all_data_sizes[0]);
+        if (full_sizes[0] != 0) {
+            MemCopy(target._podData.get(), full_data[0], full_sizes[0]);
         }
 
-        // Restore complex data
-        if (all_data.size() > 1) {
-            const uint32 comlplex_data_count = all_data_sizes[1] / sizeof(uint16);
+        if (full_data.size() > 1) {
+            const uint32 comlplex_data_count = full_sizes[1] / sizeof(uint16);
             FO_RUNTIME_ASSERT(comlplex_data_count > 0);
             vector<uint16> complex_indicies(comlplex_data_count);
-            MemCopy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
+            MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
                 FO_RUNTIME_ASSERT(complex_indicies[i] > 0);
                 FO_RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
                 const auto& prop = _registrator->_registeredProperties[complex_indicies[i]];
                 FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-                const auto data_size = all_data_sizes[2 + i];
-                const auto* data = all_data[2 + i];
-                SetRawData(prop.get(), {data, data_size});
+                const auto data_size = full_sizes[2 + i];
+                const auto* data = full_data[2 + i];
+                target.SetRawData(prop.get(), {data, data_size});
             }
+        }
+    };
+
+    if (all_data.empty()) {
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+        }
+
+        return;
+    }
+
+    FO_RUNTIME_ASSERT(all_data_sizes[0] == sizeof(uint8));
+
+    uint8 store_type = 0;
+    MemCopy(&store_type, all_data[0], sizeof(store_type));
+
+    vector<const uint8*> payload_data(all_data.begin() + 1, all_data.end());
+    vector<uint32> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
+
+    if (store_type == SEPARATE_PROPS_STORE_TYPE) {
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+        }
+
+        apply_separate_props_data(payload_data, payload_sizes);
+    }
+    else {
+        FO_RUNTIME_ASSERT(store_type == FULL_DATA_STORE_TYPE);
+
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+
+            Properties full_props(_registrator.get());
+            full_props.CopyFrom(*_baseProps);
+            apply_full_data(full_props, payload_data, payload_sizes);
+            RebuildOverlayFromFullData(full_props);
+        }
+        else {
+            apply_full_data(*this, payload_data, payload_sizes);
         }
     }
 
